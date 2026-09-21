@@ -3,8 +3,53 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Update version info from preload bridge
   const electronInfo = document.getElementById('electron-version-info');
-  if (window.electronAPI) {
+  if (window.electronAPI && electronInfo) {
     electronInfo.textContent = `Electron ${window.electronAPI.version || 'v33.x'} (${window.electronAPI.platform || 'linux'})`;
+  }
+
+  // Window control buttons (frameless window)
+  const minBtn = document.getElementById('win-min');
+  const maxBtn = document.getElementById('win-max');
+  const closeBtn = document.getElementById('win-close');
+  const iconMax = document.getElementById('icon-max');
+  const iconRestore = document.getElementById('icon-restore');
+
+  if (window.electronAPI) {
+    minBtn?.addEventListener('click', () => {
+      window.electronAPI.minimizeWindow();
+    });
+
+    maxBtn?.addEventListener('click', () => {
+      window.electronAPI.maximizeWindow();
+    });
+
+    closeBtn?.addEventListener('click', () => {
+      window.electronAPI.closeWindow();
+    });
+
+    const menuBar = document.querySelector('.menu-bar');
+    menuBar?.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.menu-item, .window-controls, button')) return;
+      window.electronAPI.maximizeWindow();
+    });
+
+    window.electronAPI.onMaximizedState?.((isMaximized) => {
+      if (isMaximized) {
+        iconMax?.classList.add('hidden');
+        iconRestore?.classList.remove('hidden');
+      } else {
+        iconMax?.classList.remove('hidden');
+        iconRestore?.classList.add('hidden');
+      }
+    });
+
+    // Check initial state
+    window.electronAPI.isWindowMaximized?.().then((isMaximized) => {
+      if (isMaximized) {
+        iconMax?.classList.add('hidden');
+        iconRestore?.classList.remove('hidden');
+      }
+    });
   }
 
   // Viewport Mouse Tracking / Coordinate calculation demo
