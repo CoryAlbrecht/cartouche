@@ -4,7 +4,7 @@
   "description": "Cartouche - Modern Desktop GIS Application",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "electron . --no-sandbox",
     "test": "echo \"No test specified\" && exit 0"
   },
   "keywords": [
