@@ -1,0 +1,541 @@
+@import './vscode-theme.css';
+
+/* Workbench Master Container */
+.workbench-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--vscode-editor-bg);
+}
+
+/* Frameless Window Menubar */
+.workbench-menubar {
+  display: flex;
+  align-items: center;
+  background-color: var(--cartouche-menubar-bg);
+  color: var(--cartouche-menubar-fg);
+  border-bottom: 1px solid var(--cartouche-menubar-border);
+  height: 30px;
+  padding: 0 10px;
+  -webkit-app-region: drag;
+  z-index: 100;
+}
+
+.menu-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+  -webkit-app-region: drag;
+}
+
+.app-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  pointer-events: none;
+  object-fit: contain;
+}
+
+.app-title-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.22);
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.4px;
+}
+
+.menu-items-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.menu-dropdown-trigger {
+  padding: 3px 7px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 11.5px;
+  color: #ffffff;
+  transition: background-color 0.12s ease;
+}
+
+.menu-dropdown-trigger:hover {
+  background-color: var(--cartouche-menubar-hover);
+}
+
+.menu-spacer {
+  flex: 1;
+}
+
+/* Window Control Buttons */
+.window-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  margin-right: -10px;
+  -webkit-app-region: no-drag;
+}
+
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.12s ease;
+}
+
+.win-btn:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.win-btn.win-close:hover {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+/* Workbench Main Area */
+.workbench-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* VS Code Style Activity Bar (Vertical Left) */
+.activity-bar {
+  width: 46px;
+  background-color: var(--vscode-activityBar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  border-right: 1px solid #252526;
+  z-index: 50;
+  user-select: none;
+}
+
+.activity-bar-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--vscode-activityBar-inactiveFg);
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 16px;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.activity-bar-btn:hover {
+  color: var(--vscode-activityBar-fg);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.activity-bar-btn.active {
+  color: var(--vscode-activityBar-fg);
+}
+
+.activity-bar-btn.active::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background-color: var(--vscode-activityBar-activeBorder);
+}
+
+.activity-bar-spacer {
+  flex: 1;
+}
+
+/* Dockview Container Area */
+.dockview-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Dockview Customizations for VS Code Styling */
+.dockview-theme-dark .dockview-tab {
+  background-color: var(--vscode-tab-inactiveBg);
+  color: var(--vscode-tab-inactiveFg);
+  border-right: 1px solid var(--vscode-tab-border);
+}
+
+.dockview-theme-dark .dockview-tab:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dockview-theme-dark .dockview-tab.dockview-tab-selected {
+  background-color: var(--vscode-tab-activeBg);
+  color: var(--vscode-tab-activeFg);
+  border-top: 1px solid var(--vscode-activityBar-activeBorder);
+}
+
+/* VS Code Style Status Bar */
+.workbench-statusbar {
+  display: flex;
+  align-items: center;
+  background-color: var(--vscode-statusBar-bg);
+  color: var(--vscode-statusBar-fg);
+  height: 22px;
+  padding: 0 10px;
+  font-size: 11px;
+  user-select: none;
+  z-index: 100;
+}
+
+.statusbar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 100%;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.statusbar-item:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.statusbar-separator {
+  width: 1px;
+  height: 12px;
+  background-color: rgba(255, 255, 255, 0.25);
+  margin: 0 4px;
+}
+
+.statusbar-spacer {
+  flex: 1;
+}
+
+/* Panel Generic Headers / Toolbars */
+.panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background-color: #252526;
+  border-bottom: 1px solid #2d2d2d;
+  font-size: 11px;
+}
+
+.panel-subtitle {
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #969696;
+}
+
+.panel-toolbar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #cccccc;
+  font-size: 12px;
+}
+
+.icon-btn:hover {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+.small-action-btn {
+  background-color: #333333;
+  border: 1px solid #3c3c3c;
+  color: #cccccc;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.small-action-btn:hover {
+  background-color: #404040;
+  color: #ffffff;
+}
+
+/* Layer Tree Panel */
+.layer-tree-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #252526;
+  color: #cccccc;
+}
+
+.layers-tree-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.layer-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.layer-tree-item:hover {
+  background-color: #2a2d2e;
+}
+
+.layer-tree-item.active {
+  background-color: #37373d;
+  color: #ffffff;
+}
+
+.layer-kind-icon {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.layer-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.layer-name {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: #858585;
+}
+
+.opacity-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.opacity-control input[type="range"] {
+  width: 55px;
+  height: 3px;
+  accent-color: #007acc;
+}
+
+/* Attribute Table Panel */
+.attribute-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+}
+
+.attribute-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background-color: #252526;
+  border-bottom: 1px solid #2d2d2d;
+  font-size: 11.5px;
+}
+
+.table-scroll-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+.gis-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.gis-data-table th {
+  position: sticky;
+  top: 0;
+  background-color: #252526;
+  color: #cccccc;
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid #333333;
+  border-right: 1px solid #2d2d2d;
+  font-weight: 600;
+}
+
+.gis-data-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #2b2b2b;
+  border-right: 1px solid #282828;
+  color: #d4d4d4;
+  white-space: nowrap;
+}
+
+.gis-data-table tr:hover {
+  background-color: #2a2d2e;
+}
+
+.gis-data-table tr.selected-row {
+  background-color: #094771;
+  color: #ffffff;
+}
+
+.cell-id {
+  font-family: monospace;
+  color: #569cd6;
+}
+
+.geometry-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  background-color: #333333;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #4ec9b0;
+}
+
+.empty-panel-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #858585;
+  font-size: 12px;
+}
+
+/* Console Log Panel */
+.console-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  font-family: Consolas, 'Courier New', monospace;
+}
+
+.console-log-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.console-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.log-time {
+  color: #6a9955;
+  font-size: 10px;
+}
+
+.log-source {
+  color: #4ec9b0;
+  font-size: 10.5px;
+}
+
+.log-badge {
+  font-size: 9.5px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: bold;
+}
+
+.badge-info {
+  background-color: #0e639c;
+  color: #ffffff;
+}
+
+.badge-success {
+  background-color: #107c41;
+  color: #ffffff;
+}
+
+.badge-warn {
+  background-color: #d19a66;
+  color: #1e1e1e;
+}
+
+.badge-error {
+  background-color: #f14c4c;
+  color: #ffffff;
+}
+
+.log-message {
+  color: #d4d4d4;
+  word-break: break-all;
+}
+
+.console-empty {
+  color: #666666;
+  font-style: italic;
+  padding: 10px;
+}
+
+/* Map Floating Action Buttons */
+.map-action-btn {
+  width: 28px;
+  height: 28px;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s ease;
+}
+
+.map-action-btn:hover {
+  background-color: #ffffff;
+  border-color: #9ca3af;
+  transform: scale(1.05);
+}

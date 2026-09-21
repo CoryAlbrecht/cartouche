@@ -1,39 +1,52 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, ipcMain } from 'electron';
+import path from 'path';
 
-let mainWindow = null;
+let mainWindow: BrowserWindow | null = null;
+
+// Ensure Linux sandbox safety
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-sandbox');
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1366,
-    height: 850,
-    minWidth: 900,
-    minHeight: 600,
+    width: 1400,
+    height: 900,
+    minWidth: 960,
+    minHeight: 640,
     title: 'Cartouche',
-    backgroundColor: '#ffffff',
-    frame: false, // Remove OS native window wrapper
+    backgroundColor: '#1e1e1e',
+    frame: false, // Frameless window with custom VS Code-style menubar & window controls
     icon: path.join(__dirname, '../../assets/svg/logo.svg'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  // Handle URL loading in Vite dev vs production build
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    const targetUrl = devServerUrl.endsWith('/')
+      ? `${devServerUrl}src/renderer/index.html`
+      : `${devServerUrl}/src/renderer/index.html`;
+    mainWindow.loadURL(targetUrl);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../../dist/src/renderer/index.html'));
+  }
 
   mainWindow.on('maximize', () => {
-    mainWindow.webContents.send('window-maximized-state', true);
+    mainWindow?.webContents.send('window-maximized-state', true);
   });
 
   mainWindow.on('unmaximize', () => {
-    mainWindow.webContents.send('window-maximized-state', false);
+    mainWindow?.webContents.send('window-maximized-state', false);
   });
 
-  // Optional: Open DevTools in development
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 }
 

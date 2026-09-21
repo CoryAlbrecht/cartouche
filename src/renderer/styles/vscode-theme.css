@@ -1,0 +1,73 @@
+/* Import standard Dockview stylesheet */
+@import 'dockview-react/dist/styles/dockview.css';
+
+/* VS Code Dark/Neutral Workbench Palette */
+:root {
+  --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --vscode-font-size: 12px;
+
+  /* Window / Menubar Palette */
+  --cartouche-menubar-bg: #1b446c;
+  --cartouche-menubar-fg: #ffffff;
+  --cartouche-menubar-hover: rgba(255, 255, 255, 0.18);
+  --cartouche-menubar-border: #133346;
+
+  /* VS Code Core Colors */
+  --vscode-activityBar-bg: #333333;
+  --vscode-activityBar-fg: #ffffff;
+  --vscode-activityBar-inactiveFg: #858585;
+  --vscode-activityBar-activeBorder: #007acc;
+
+  --vscode-sideBar-bg: #252526;
+  --vscode-sideBar-fg: #cccccc;
+  --vscode-sideBar-border: #1e1e1e;
+
+  --vscode-editor-bg: #1e1e1e;
+  --vscode-panel-bg: #1e1e1e;
+  --vscode-panel-border: #2b2b2b;
+
+  --vscode-tab-activeBg: #1e1e1e;
+  --vscode-tab-inactiveBg: #2d2d2d;
+  --vscode-tab-activeFg: #ffffff;
+  --vscode-tab-inactiveFg: #969696;
+  --vscode-tab-border: #252526;
+
+  --vscode-statusBar-bg: #007acc;
+  --vscode-statusBar-fg: #ffffff;
+
+  --vscode-badge-bg: #007acc;
+  --vscode-badge-fg: #ffffff;
+
+  --vscode-button-bg: #0e639c;
+  --vscode-button-fg: #ffffff;
+  --vscode-button-hoverBg: #1177bb;
+
+  /* Dockview Theme Overrides for VS Code Dark Look */
+  --dockview-theme-background-color: #1e1e1e;
+  --dockview-theme-foreground-color: #cccccc;
+  --dockview-theme-border-color: #2b2b2b;
+  --dockview-theme-separator-color: #2b2b2b;
+  --dockview-theme-splitter-color: transparent;
+  --dockview-theme-active-border-color: #007acc;
+
+  --dockview-tab-height: 32px;
+  --dockview-tab-font-size: 11px;
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background-color: var(--vscode-editor-bg);
+  color: var(--vscode-sideBar-fg);
+  user-select: none;
+}

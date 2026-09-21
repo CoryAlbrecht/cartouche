@@ -3,6 +3,7 @@ node_modules/
 
 # Production / Build output
 dist/
+dist-electron/
 build/
 out/
 
