@@ -1,5 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import path from 'path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -19,7 +23,7 @@ function createWindow() {
     frame: false, // Frameless window with custom VS Code-style menubar & window controls
     icon: path.join(__dirname, '../../assets/svg/logo.svg'),
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
+      preload: path.join(__dirname, '../preload/preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
@@ -36,6 +40,18 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/src/renderer/index.html'));
   }
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[Main] Window loaded successfully');
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Main] Page failed to load: ${errorCode} - ${errorDescription} (${validatedURL})`);
+  });
+
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    console.log(`[Renderer] [${level}] ${message} (${sourceId}:${line})`);
+  });
 
   mainWindow.on('maximize', () => {
     mainWindow?.webContents.send('window-maximized-state', true);

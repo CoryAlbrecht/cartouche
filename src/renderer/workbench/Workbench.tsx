@@ -23,13 +23,15 @@ export const Workbench: React.FC = () => {
 
   // Monitor maximized state from Electron IPC
   useEffect(() => {
-    window.electronAPI?.isWindowMaximized().then((max) => setIsMaximized(max));
-    const unsubscribe = window.electronAPI?.onMaximizedState((max) => {
-      setIsMaximized(max);
-    });
-    return () => {
-      unsubscribe?.();
-    };
+    if (window.electronAPI) {
+      window.electronAPI.isWindowMaximized().then((max) => setIsMaximized(max)).catch(() => {});
+      const unsubscribe = window.electronAPI.onMaximizedState((max) => {
+        setIsMaximized(max);
+      });
+      return () => {
+        unsubscribe?.();
+      };
+    }
   }, []);
 
   // Frameless window controls

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     electron([
@@ -38,6 +39,11 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/preload',
+            lib: {
+              entry: path.resolve(__dirname, 'src/main/preload.ts'),
+              formats: ['cjs'],
+              fileName: () => 'preload.cjs'
+            },
             rollupOptions: {
               external: ['electron']
             }
