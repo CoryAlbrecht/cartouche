@@ -12,6 +12,7 @@ function createWindow() {
     title: 'Cartouche',
     backgroundColor: '#ffffff',
     frame: false, // Remove OS native window wrapper
+    icon: path.join(__dirname, '../../assets/logo.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

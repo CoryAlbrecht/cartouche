@@ -77,6 +77,15 @@ html, body {
   align-items: center;
   margin-right: 8px;
   -webkit-app-region: drag;
+  gap: 6px;
+}
+
+.app-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  object-fit: contain;
+  pointer-events: none;
 }
 
 .app-title-badge {
