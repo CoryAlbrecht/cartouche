@@ -1,14 +1,19 @@
 :root {
-  --bg-dark: #18191f;
-  --bg-panel: #20222b;
-  --bg-header: #282a36;
-  --bg-hover: #323544;
-  --bg-active: #3c4053;
-  --border-color: #2e3242;
-  --text-main: #e2e4eb;
-  --text-muted: #8e94a5;
-  --accent-color: #58a6ff;
-  --accent-green: #3fb950;
+  --bg-default: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-toolbar: #f7f9fa;
+  --bg-menubar: #1b446c; /* Medium dark blue */
+  --text-menubar: #ffffff;
+  --menubar-hover: rgba(255, 255, 255, 0.2);
+  --border-color: #d6dbe1;
+  --border-light: #eaedf1;
+  --text-main: #000000;
+  --text-muted: #596273;
+  --bg-hover: #eef2f6;
+  --bg-active: #dbeafe;
+  --accent-color: #1b446c;
+  --accent-active-border: #2563eb;
+  --accent-green: #15803d;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -24,9 +29,9 @@ html, body {
   height: 100%;
   overflow: hidden;
   font-family: var(--font-family);
-  background-color: var(--bg-dark);
+  background-color: var(--bg-default);
   color: var(--text-main);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 #app {
@@ -34,14 +39,16 @@ html, body {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
+  background-color: var(--bg-default);
 }
 
-/* Menu Bar */
+/* Menu Bar - White text on Medium Dark Blue */
 .menu-bar {
   display: flex;
   align-items: center;
-  background-color: var(--bg-header);
-  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-menubar);
+  color: var(--text-menubar);
+  border-bottom: 1px solid #133250;
   padding: 0 10px;
   height: 30px;
   -webkit-app-region: drag;
@@ -52,11 +59,13 @@ html, body {
   cursor: pointer;
   border-radius: 3px;
   font-size: 12px;
+  color: var(--text-menubar);
+  transition: background-color 0.15s ease;
   -webkit-app-region: no-drag;
 }
 
 .menu-item:hover {
-  background-color: var(--bg-hover);
+  background-color: var(--menubar-hover);
 }
 
 .menu-spacer {
@@ -66,17 +75,18 @@ html, body {
 .app-title-badge {
   font-size: 11px;
   font-weight: 600;
-  color: var(--accent-color);
-  background-color: rgba(88, 166, 255, 0.1);
-  padding: 2px 6px;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
   border-radius: 4px;
+  letter-spacing: 0.3px;
 }
 
 /* Toolbar */
 .toolbar {
   display: flex;
   align-items: center;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-toolbar);
   border-bottom: 1px solid var(--border-color);
   padding: 4px 10px;
   gap: 4px;
@@ -87,7 +97,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: transparent;
+  background-color: transparent;
   border: 1px solid transparent;
   color: var(--text-main);
   padding: 4px 8px;
@@ -104,8 +114,9 @@ html, body {
 
 .tool-btn.active {
   background-color: var(--bg-active);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
+  border-color: var(--accent-active-border);
+  color: #1d4ed8;
+  font-weight: 500;
 }
 
 .toolbar-separator {
@@ -121,6 +132,7 @@ html, body {
   flex: 1;
   overflow: hidden;
   position: relative;
+  background-color: var(--bg-default);
 }
 
 .dock-panel {
@@ -145,16 +157,16 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: #f3f5f8;
   border-bottom: 1px solid var(--border-color);
 }
 
 .dock-header h3 {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
+  letter-spacing: 0.6px;
+  color: #333333;
 }
 
 .dock-actions {
@@ -164,15 +176,17 @@ html, body {
 
 .icon-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px 5px;
   border-radius: 3px;
   font-size: 12px;
+  color: var(--text-main);
 }
 
 .icon-btn:hover {
   background-color: var(--bg-hover);
+  border-color: var(--border-color);
 }
 
 .layers-list {
@@ -182,6 +196,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  background-color: var(--bg-panel);
 }
 
 .layer-item {
@@ -190,12 +205,15 @@ html, body {
   gap: 8px;
   padding: 6px 8px;
   border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: #fafbfc;
+  border: 1px solid var(--border-light);
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .layer-item:hover {
   background-color: var(--bg-hover);
+  border-color: var(--border-color);
 }
 
 .layer-swatch {
@@ -203,24 +221,26 @@ html, body {
   height: 12px;
   border-radius: 2px;
   display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
 .layer-swatch.base-tile {
-  background: #3a506b;
+  background: #3b82f6;
 }
 
 .layer-swatch.polygon {
-  background: #e07a5f;
+  background: #f97316;
 }
 
 .layer-swatch.point {
-  background: #f4a261;
+  background: #10b981;
   border-radius: 50%;
 }
 
 .layer-title {
   flex: 1;
   font-size: 12px;
+  color: var(--text-main);
   cursor: pointer;
 }
 
@@ -229,28 +249,31 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background-color: var(--bg-panel);
 }
 
 .property-group label {
   font-size: 11px;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: #4b5563;
   display: block;
   margin-bottom: 4px;
 }
 
 .property-value {
   padding: 6px 8px;
-  background-color: var(--bg-dark);
+  background-color: #f9fafb;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   font-family: monospace;
-  font-size: 12px;
+  font-size: 11px;
+  color: var(--text-main);
 }
 
 /* Map Viewport */
 .map-viewport {
   flex: 1;
-  background-color: #121317;
+  background-color: #ffffff;
   position: relative;
   overflow: hidden;
   cursor: crosshair;
@@ -263,43 +286,46 @@ html, body {
   right: 0;
   bottom: 0;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 .viewport-hud {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 14px;
+  right: 14px;
   pointer-events: none;
 }
 
 .hud-box {
-  background-color: rgba(24, 25, 31, 0.85);
+  background-color: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(4px);
   padding: 6px 12px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 11px;
-  color: var(--text-muted);
+  font-weight: 500;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Bottom Status Bar */
 .status-bar {
   display: flex;
   align-items: center;
-  background-color: var(--bg-header);
+  background-color: #f3f5f8;
   border-top: 1px solid var(--border-color);
   height: 26px;
   padding: 0 10px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-main);
 }
 
 .status-item {
   display: flex;
   align-items: center;
+  color: var(--text-main);
 }
 
 .status-separator {
@@ -315,5 +341,5 @@ html, body {
 
 .status-ready {
   color: var(--accent-green);
-  font-weight: 500;
+  font-weight: 600;
 }
