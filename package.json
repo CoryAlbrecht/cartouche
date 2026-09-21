@@ -1,0 +1,22 @@
+{
+  "name": "cartouche",
+  "version": "0.1.0",
+  "description": "Cartouche - Modern Desktop GIS Application",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"No test specified\" && exit 0"
+  },
+  "keywords": [
+    "gis",
+    "mapping",
+    "geospatial",
+    "electron",
+    "desktop-gis"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
