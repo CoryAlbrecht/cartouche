@@ -14,3 +14,8 @@ out/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Editor backup/swap files
+*.swp
+*.swo
+*~
