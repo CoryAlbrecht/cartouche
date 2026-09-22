@@ -4,7 +4,7 @@
 /* VS Code Dark/Neutral Workbench Palette */
 :root {
   --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --vscode-font-size: 12px;
+  --vscode-font-size: 12pt;
 
   /* Window / Menubar Palette */
   --cartouche-menubar-bg: #1b446c;
@@ -50,8 +50,8 @@
   --dockview-theme-splitter-color: transparent;
   --dockview-theme-active-border-color: #007acc;
 
-  --dockview-tab-height: 32px;
-  --dockview-tab-font-size: 11px;
+  --dockview-tab-height: 34px;
+  --dockview-tab-font-size: 11pt;
 }
 
 /* Global Reset */

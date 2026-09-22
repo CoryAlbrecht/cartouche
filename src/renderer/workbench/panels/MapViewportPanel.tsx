@@ -229,7 +229,7 @@ class ImperativeMapCanvasEngine {
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
     ctx.fillStyle = '#6b7280';
-    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.font = '10pt -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
     const step = this.zoom > 10 ? 5 : this.zoom > 4 ? 15 : 30;
 
@@ -304,7 +304,7 @@ class ImperativeMapCanvasEngine {
     if (!poiLayer) return;
 
     ctx.save();
-    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.font = '11pt -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
     for (const feature of this.features) {
       if (feature.layerId !== poiLayer.id) continue;
@@ -380,7 +380,7 @@ class ImperativeMapCanvasEngine {
     ctx.stroke();
 
     ctx.fillStyle = '#111827';
-    ctx.font = '10px sans-serif';
+    ctx.font = '10pt sans-serif';
     ctx.fillText(`${distKm} km • ${this.crs.authId}`, 24, this.height - 22);
     ctx.restore();
   }
