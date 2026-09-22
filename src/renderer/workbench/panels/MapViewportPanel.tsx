@@ -8,6 +8,8 @@ import {
   selectedFeatureIdsSignal,
   activeCrsSignal,
   featuresSignal,
+  activeToolSignal,
+  mapActionSignal,
   addConsoleLog
 } from '@renderer/state/gisSignals';
 import type { GisLayer, GisFeature, CRS } from '@shared/types';
@@ -31,6 +33,7 @@ class ImperativeMapCanvasEngine {
   private isDragging = false;
   private lastMouseX = 0;
   private lastMouseY = 0;
+  private activeTool: 'pan' | 'select' | 'point' | 'line' | 'polygon' = 'pan';
 
   private layers: GisLayer[] = [];
   private features: GisFeature[] = [];
@@ -44,7 +47,7 @@ class ImperativeMapCanvasEngine {
     this.canvas.style.display = 'block';
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
-    this.canvas.style.cursor = 'crosshair';
+    this.canvas.style.cursor = 'grab';
 
     this.container.appendChild(this.canvas);
     const context = this.canvas.getContext('2d', { alpha: false });
@@ -128,6 +131,21 @@ class ImperativeMapCanvasEngine {
     return [lon, lat];
   }
 
+  public setActiveTool(tool: 'pan' | 'select' | 'point' | 'line' | 'polygon'): void {
+    this.activeTool = tool;
+    this.updateCursor();
+  }
+
+  private updateCursor(): void {
+    if (this.isDragging) {
+      this.canvas.style.cursor = 'grabbing';
+    } else if (this.activeTool === 'pan') {
+      this.canvas.style.cursor = 'grab';
+    } else {
+      this.canvas.style.cursor = 'crosshair';
+    }
+  }
+
   private bindEvents(): void {
     this.canvas.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
@@ -141,7 +159,7 @@ class ImperativeMapCanvasEngine {
     window.addEventListener('mouseup', () => {
       if (this.isDragging) {
         this.isDragging = false;
-        this.canvas.style.cursor = 'crosshair';
+        this.updateCursor();
       }
     });
 
@@ -216,7 +234,6 @@ class ImperativeMapCanvasEngine {
     this.drawGraticule(ctx);
 
     // Render vector map layers
-    this.drawSampleWorldBoundaries(ctx);
     this.drawFeatures(ctx);
 
     // Render viewport decoration (Compass, Scale Bar)
@@ -262,96 +279,93 @@ class ImperativeMapCanvasEngine {
     }
   }
 
-  private drawSampleWorldBoundaries(ctx: CanvasRenderingContext2D): void {
-    const adminLayer = this.layers.find((l) => l.id === 'layer-admin-boundaries' && l.visible);
-    if (!adminLayer) return;
-
-    ctx.save();
-    ctx.globalAlpha = adminLayer.opacity;
-    ctx.strokeStyle = adminLayer.color;
-    ctx.lineWidth = 1.5;
-    ctx.fillStyle = 'rgba(224, 122, 95, 0.08)';
-
-    // Stylized continent / reference regions
-    const continents: [number, number][][] = [
-      // Europe / Eurasia bounding sample
-      [[-10, 36], [0, 43], [15, 45], [30, 42], [45, 40], [60, 55], [35, 68], [10, 62], [-5, 58]],
-      // Africa sample
-      [[-17, 15], [-5, 36], [32, 31], [50, 12], [40, -10], [28, -34], [18, -34], [10, 0]],
-      // Americas sample
-      [[-125, 48], [-75, 45], [-80, 25], [-60, -5], [-40, -10], [-55, -35], [-70, -55], [-75, -20], [-105, 20], [-120, 35]],
-      // East Asia / Japan
-      [[100, 20], [120, 22], [135, 35], [145, 45], [130, 50], [110, 40]]
-    ];
-
-    for (const polygon of continents) {
-      ctx.beginPath();
-      polygon.forEach(([lon, lat], index) => {
-        const [px, py] = this.geoToPixel(lon, lat);
-        if (index === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      });
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }
-
   private drawFeatures(ctx: CanvasRenderingContext2D): void {
-    const poiLayer = this.layers.find((l) => l.id === 'layer-poi-stations' && l.visible);
-    if (!poiLayer) return;
+    if (this.features.length === 0 || this.layers.length === 0) return;
 
     ctx.save();
     ctx.font = '11pt -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
+    const visibleLayersMap = new Map(
+      this.layers.filter((l) => l.visible).map((l) => [l.id, l])
+    );
+
     for (const feature of this.features) {
-      if (feature.layerId !== poiLayer.id) continue;
-      const coords = feature.coordinates as [number, number];
-      if (!Array.isArray(coords)) continue;
-
-      const [lon, lat] = coords;
-      const [px, py] = this.geoToPixel(lon, lat);
-
-      // Check viewport visibility
-      if (px < -20 || px > this.width + 20 || py < -20 || py > this.height + 20) continue;
+      const layer = visibleLayersMap.get(feature.layerId);
+      if (!layer) continue;
 
       const isSelected = this.selectedIds.has(feature.id);
+      const layerColor = layer.color || '#2563eb';
+      const layerOpacity = layer.opacity ?? 1;
 
-      // Selection Halo
-      if (isSelected) {
+      ctx.globalAlpha = layerOpacity;
+
+      if (layer.geometryKind === 'Point' && Array.isArray(feature.coordinates)) {
+        const [lon, lat] = feature.coordinates as [number, number];
+        const [px, py] = this.geoToPixel(lon, lat);
+
+        if (px < -20 || px > this.width + 20 || py < -20 || py > this.height + 20) continue;
+
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(px, py, 13, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
+          ctx.fill();
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
         ctx.beginPath();
-        ctx.arc(px, py, 13, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(37, 99, 235, 0.25)';
+        ctx.arc(px, py, 7, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#2563eb' : layerColor;
         ctx.fill();
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        if (feature.properties?.name || feature.id) {
+          const name = String(feature.properties?.name || feature.id);
+          ctx.fillStyle = '#111827';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.strokeText(name, px + 10, py + 4);
+          ctx.fillText(name, px + 10, py + 4);
+        }
+      } else if (layer.geometryKind === 'Polygon' && Array.isArray(feature.coordinates)) {
+        const rings = feature.coordinates as [number, number][][];
+        if (rings.length > 0 && Array.isArray(rings[0])) {
+          ctx.beginPath();
+          rings[0].forEach(([lon, lat], idx) => {
+            const [px, py] = this.geoToPixel(lon, lat);
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.closePath();
+          ctx.fillStyle = isSelected ? 'rgba(37, 99, 235, 0.25)' : 'rgba(0, 0, 0, 0.08)';
+          ctx.fill();
+          ctx.strokeStyle = isSelected ? '#2563eb' : layerColor;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      } else if (layer.geometryKind === 'LineString' && Array.isArray(feature.coordinates)) {
+        const points = feature.coordinates as [number, number][];
+        if (points.length > 1) {
+          ctx.beginPath();
+          points.forEach(([lon, lat], idx) => {
+            const [px, py] = this.geoToPixel(lon, lat);
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.strokeStyle = isSelected ? '#2563eb' : layerColor;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
       }
-
-      // Outer point ring
-      ctx.beginPath();
-      ctx.arc(px, py, 7, 0, Math.PI * 2);
-      ctx.fillStyle = isSelected ? '#2563eb' : poiLayer.color;
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Inner logo pulse dot
-      ctx.beginPath();
-      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-
-      // Feature Label
-      const name = String(feature.properties.name || feature.id);
-      ctx.fillStyle = '#111827';
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.strokeText(name, px + 10, py + 4);
-      ctx.fillText(name, px + 10, py + 4);
     }
 
     ctx.restore();
@@ -417,11 +431,25 @@ export const MapViewportPanel: React.FC = React.memo(() => {
     resizeObserver.observe(container);
 
     // 3. Unidirectional Signal Bridge via @preact/signals-react effect()
+    let lastActionTimestamp = 0;
     const disposeSignals = effect(() => {
       engine.setLayers(layersSignal.value);
       engine.setFeatures(featuresSignal.value);
       engine.setSelection(selectedFeatureIdsSignal.value);
       engine.setCrs(activeCrsSignal.value);
+      engine.setActiveTool(activeToolSignal.value);
+
+      const action = mapActionSignal.value;
+      if (action && action.timestamp > lastActionTimestamp) {
+        lastActionTimestamp = action.timestamp;
+        if (action.action === 'zoomIn') {
+          engine.zoomIn();
+        } else if (action.action === 'zoomOut') {
+          engine.zoomOut();
+        } else if (action.action === 'reset') {
+          engine.resetExtent();
+        }
+      }
     });
 
     // 4. Cleanup and context destruction

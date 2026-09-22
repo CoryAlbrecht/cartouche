@@ -1,58 +1,48 @@
 import { signal, computed } from '@preact/signals-react';
 import type { CRS, GisLayer, GisFeature, ConsoleLogEntry, BoundingBox } from '@shared/types';
 
-// Initial sample layers
-const initialLayers: GisLayer[] = [
-  {
-    id: 'layer-osm-tiles',
-    name: 'OpenStreetMap Carto',
-    kind: 'tile',
-    geometryKind: 'Raster',
-    visible: true,
-    opacity: 1.0,
-    color: '#3b82f6',
-    featureCount: 1
-  },
-  {
-    id: 'layer-admin-boundaries',
-    name: 'Administrative Boundaries',
-    kind: 'vector',
-    geometryKind: 'Polygon',
-    visible: true,
-    opacity: 0.7,
-    color: '#e07a5f',
-    featureCount: 34
-  },
-  {
-    id: 'layer-waterways',
-    name: 'Major Waterways & Rivers',
-    kind: 'vector',
-    geometryKind: 'LineString',
-    visible: true,
-    opacity: 0.9,
-    color: '#38bdf8',
-    featureCount: 182
-  },
-  {
-    id: 'layer-poi-stations',
-    name: 'Muon Detector Stations',
-    kind: 'vector',
-    geometryKind: 'Point',
-    visible: true,
-    opacity: 1.0,
-    color: '#10b981',
-    featureCount: 8
-  }
-];
+// Clean initial state (no hardcoded project or default layers)
+const initialLayers: GisLayer[] = [];
+const initialFeatures: GisFeature[] = [];
 
-// Initial sample features
-const initialFeatures: GisFeature[] = [
-  { id: 101, layerId: 'layer-poi-stations', geometryType: 'Point', properties: { name: 'Gran Sasso Observatory', elevation: 963, status: 'Active', fluxRate: '1.24/cm²/min' }, coordinates: [13.57, 42.45] },
-  { id: 102, layerId: 'layer-poi-stations', geometryType: 'Point', properties: { name: 'Kamioka Neutrino Lab', elevation: 350, status: 'Active', fluxRate: '1.18/cm²/min' }, coordinates: [137.31, 36.42] },
-  { id: 103, layerId: 'layer-poi-stations', geometryType: 'Point', properties: { name: 'Pyramid of Khafre Array', elevation: 75, status: 'Scanning', fluxRate: '1.42/cm²/min' }, coordinates: [31.13, 29.97] },
-  { id: 104, layerId: 'layer-poi-stations', geometryType: 'Point', properties: { name: 'Mt. Vesuvius Muon Unit', elevation: 1281, status: 'Active', fluxRate: '1.30/cm²/min' }, coordinates: [14.42, 40.82] },
-  { id: 105, layerId: 'layer-poi-stations', geometryType: 'Point', properties: { name: 'CERN Beamline Tracker', elevation: 430, status: 'Calibrating', fluxRate: '3.89/cm²/min' }, coordinates: [6.05, 46.23] }
-];
+// Project state signals
+export const hasProjectSignal = signal<boolean>(false);
+export const projectNameSignal = signal<string | null>(null);
+export const isDirtySignal = signal<boolean>(false);
+export const undoStackSignal = signal<unknown[]>([]);
+export const redoStackSignal = signal<unknown[]>([]);
+export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
+
+// Active interactive tool ('pan' is default drag canvas mode)
+export const activeToolSignal = signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>('pan');
+
+// Toolbar placement and visibility signals
+export type ToolbarId = 'basic' | 'digitizing' | 'snapping';
+export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
+
+export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
+  basic: true,
+  digitizing: false,
+  snapping: false
+});
+
+export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
+  basic: 'top',
+  digitizing: 'top',
+  snapping: 'top'
+});
+
+export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
+  top: ['basic', 'digitizing', 'snapping'],
+  bottom: [],
+  left: [],
+  right: []
+});
+
+export const snappingEnabledSignal = signal<boolean>(false);
+
+// Map command action triggers (Zoom In, Zoom Out, Reset, etc.)
+export const mapActionSignal = signal<{ action: 'zoomIn' | 'zoomOut' | 'reset'; timestamp: number } | null>(null);
 
 // High-frequency map signals
 export const cursorCoordsSignal = signal<{ lon: number; lat: number; x: number; y: number } | null>(null);
@@ -69,15 +59,13 @@ export const activeCrsSignal = signal<CRS>({
 
 // Layer & Feature Selection State
 export const layersSignal = signal<GisLayer[]>(initialLayers);
-export const activeLayerIdSignal = signal<string | null>('layer-poi-stations');
-export const selectedFeatureIdsSignal = signal<Set<string | number>>(new Set([101]));
+export const activeLayerIdSignal = signal<string | null>(null);
+export const selectedFeatureIdsSignal = signal<Set<string | number>>(new Set());
 export const featuresSignal = signal<GisFeature[]>(initialFeatures);
 
 // Console logs
 export const consoleLogsSignal = signal<ConsoleLogEntry[]>([
-  { id: 'log-1', timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Cartouche Desktop Workbench initialized.', source: 'Kernel' },
-  { id: 'log-2', timestamp: new Date().toLocaleTimeString(), level: 'success', message: 'Dockview layout system mounted with 4 dock panels.', source: 'Dockview' },
-  { id: 'log-3', timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Hardware-isolated spatial map canvas engine connected.', source: 'MapCanvas' }
+  { id: 'log-1', timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Cartouche Desktop Workbench initialized.', source: 'Kernel' }
 ]);
 
 // Computed derivations
@@ -141,3 +129,107 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
   };
   consoleLogsSignal.value = [...consoleLogsSignal.value.slice(-199), entry];
 }
+
+// Toolbar management actions
+export function toggleToolbar(id: ToolbarId) {
+  const current = visibleToolbarsSignal.value;
+  visibleToolbarsSignal.value = {
+    ...current,
+    [id]: !current[id]
+  };
+}
+
+export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?: number) {
+  const currentZone = toolbarLocationsSignal.value[id];
+  toolbarLocationsSignal.value = {
+    ...toolbarLocationsSignal.value,
+    [id]: targetZone
+  };
+
+  const order = { ...toolbarOrderSignal.value };
+  // Remove from old zone
+  order[currentZone] = order[currentZone].filter((item) => item !== id);
+  // Add to target zone
+  if (typeof targetIndex === 'number' && targetIndex >= 0) {
+    order[targetZone].splice(targetIndex, 0, id);
+  } else {
+    order[targetZone].push(id);
+  }
+  toolbarOrderSignal.value = order;
+}
+
+// Project Actions
+export function createNewProject() {
+  hasProjectSignal.value = true;
+  projectNameSignal.value = 'Untitled Project';
+  isDirtySignal.value = false;
+  layersSignal.value = [];
+  featuresSignal.value = [];
+  selectedFeatureIdsSignal.value = new Set();
+  undoStackSignal.value = [];
+  redoStackSignal.value = [];
+  addConsoleLog('info', 'New empty project initialized.', 'Project');
+}
+
+export function openProjectAction() {
+  addConsoleLog('info', 'Open project requested.', 'Project');
+}
+
+export function saveProjectAction() {
+  if (!hasProjectSignal.value) return;
+  isDirtySignal.value = false;
+  addConsoleLog('info', `Project "${projectNameSignal.value || 'Untitled'}" saved successfully.`, 'Project');
+}
+
+export function saveAsProjectAction() {
+  if (!hasProjectSignal.value) return;
+  addConsoleLog('info', 'Save As project requested.', 'Project');
+}
+
+// Edit Actions
+export function undoAction() {
+  if (undoStackSignal.value.length === 0) return;
+  addConsoleLog('info', 'Undo performed.', 'Edit');
+}
+
+export function redoAction() {
+  if (redoStackSignal.value.length === 0) return;
+  addConsoleLog('info', 'Redo performed.', 'Edit');
+}
+
+export function cutAction() {
+  if (selectedFeatureIdsSignal.value.size === 0) return;
+  const selected = featuresSignal.value.filter((f) => selectedFeatureIdsSignal.value.has(f.id));
+  clipboardFeaturesSignal.value = selected;
+  featuresSignal.value = featuresSignal.value.filter((f) => !selectedFeatureIdsSignal.value.has(f.id));
+  selectedFeatureIdsSignal.value = new Set();
+  addConsoleLog('info', `Cut ${selected.length} feature(s) to clipboard.`, 'Edit');
+}
+
+export function copyAction() {
+  if (selectedFeatureIdsSignal.value.size === 0) return;
+  const selected = featuresSignal.value.filter((f) => selectedFeatureIdsSignal.value.has(f.id));
+  clipboardFeaturesSignal.value = selected;
+  addConsoleLog('info', `Copied ${selected.length} feature(s) to clipboard.`, 'Edit');
+}
+
+export function pasteAction() {
+  if (clipboardFeaturesSignal.value.length === 0) return;
+  const pasted = clipboardFeaturesSignal.value.map((f) => ({
+    ...f,
+    id: `feature-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`
+  }));
+  featuresSignal.value = [...featuresSignal.value, ...pasted];
+  addConsoleLog('info', `Pasted ${pasted.length} feature(s).`, 'Edit');
+}
+
+export function editAttributesAction() {
+  if (selectedFeatureIdsSignal.value.size === 0) return;
+  addConsoleLog('info', 'Edit Attributes requested for selected feature(s).', 'Edit');
+}
+
+// View / Canvas actions
+export function triggerMapAction(action: 'zoomIn' | 'zoomOut' | 'reset') {
+  mapActionSignal.value = { action, timestamp: Date.now() };
+}
+

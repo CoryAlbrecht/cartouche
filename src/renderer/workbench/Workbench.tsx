@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   DockviewReact,
-  DockviewDefaultTab,
   type DockviewReadyEvent,
   type DockviewApi,
   type IDockviewPanel,
@@ -9,18 +8,60 @@ import {
   type GetTabContextMenuItemsParams
 } from 'dockview-react';
 import { useSignals } from '@preact/signals-react/runtime';
+import Icon from '@renderer/components/common/MdiIcon';
+import {
+  mdiFileOutline,
+  mdiFolderOpenOutline,
+  mdiContentSaveOutline,
+  mdiContentSaveEditOutline,
+  mdiUndo,
+  mdiRedo,
+  mdiContentCut,
+  mdiContentCopy,
+  mdiContentPaste,
+  mdiTableEdit,
+  mdiCogOutline,
+  mdiMapPlus,
+  mdiMagnifyPlusOutline,
+  mdiMagnifyMinusOutline,
+  mdiVectorPolygon,
+  mdiImageOutline,
+  mdiPlusBoxOutline,
+  mdiInformationOutline,
+  mdiCheck,
+  mdiChevronRight
+} from '@mdi/js';
 import { panelComponents } from './panelRegistry';
+import { ToolbarPanel } from './toolbars/ToolbarPanel';
 import {
   cursorCoordsSignal,
   activeCrsSignal,
   scaleDenominatorSignal,
   zoomSignal,
   selectedFeaturesCountSignal,
-  addConsoleLog
+  selectedFeatureIdsSignal,
+  hasProjectSignal,
+  undoStackSignal,
+  redoStackSignal,
+  clipboardFeaturesSignal,
+  visibleToolbarsSignal,
+  addConsoleLog,
+  createNewProject,
+  openProjectAction,
+  saveProjectAction,
+  saveAsProjectAction,
+  undoAction,
+  redoAction,
+  cutAction,
+  copyAction,
+  pasteAction,
+  editAttributesAction,
+  triggerMapAction,
+  toggleToolbar
 } from '@renderer/state/gisSignals';
 import logoSvg from '../../../assets/svg/logo.svg';
 
-const SAVED_LAYOUT_KEY = 'cartouche_workbench_layout_v1';
+const SAVED_LAYOUT_KEY = 'cartouche_workbench_layout_v2';
 
 /**
  * Custom Tab Component that disables closing the last remaining map canvas tab.
@@ -31,7 +72,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
     api.id.startsWith('map-viewport') ||
     (api as any).panel?.view?.contentComponent === 'map-viewport';
 
-  const [isLastMapTab, setIsLastMapTab] = useState(false);
+  const [isLastMapTab, setIsLastMapTab] = useState(isMapTab);
 
   useEffect(() => {
     const updateTabState = () => {
@@ -51,17 +92,39 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
   }, [containerApi, isMapTab]);
 
   return (
-    <DockviewDefaultTab
-      {...props}
-      className={isLastMapTab ? 'dv-tab-close-disabled' : undefined}
-      closeActionOverride={
-        isLastMapTab
-          ? () => {
-              addConsoleLog('warn', 'The last map canvas tab cannot be closed.', 'Workbench');
-            }
-          : undefined
-      }
-    />
+    <div
+      className={`dv-default-tab ${isLastMapTab ? 'dv-tab-close-disabled' : ''}`}
+      data-testid="dockview-dv-default-tab"
+    >
+      <span className="dv-default-tab-content">{(api as any).title || 'Spatial Map Viewport'}</span>
+      <button
+        type="button"
+        className="dv-default-tab-action"
+        aria-label="Close tab"
+        disabled={isLastMapTab}
+        style={
+          isLastMapTab
+            ? { opacity: 0.22, cursor: 'not-allowed' }
+            : undefined
+        }
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isLastMapTab) {
+            addConsoleLog('warn', 'The last map canvas tab cannot be closed.', 'Workbench');
+            return;
+          }
+          api.close();
+        }}
+      >
+        <svg height="11" width="11" viewBox="0 0 28 28" className="dv-svg">
+          <path
+            fill="currentColor"
+            d="M 2.1 0 L 0 2.1 L 11.9 14 L 0 25.9 L 2.1 28 L 14 16.1 L 25.9 28 L 28 25.9 L 16.1 14 L 28 2.1 L 25.9 0 L 14 11.9 Z"
+          />
+        </svg>
+      </button>
+    </div>
   );
 };
 
@@ -70,14 +133,27 @@ export const Workbench: React.FC = () => {
 
   const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [activeActivityTab, setActiveActivityTab] = useState<'layers' | 'search' | 'tools'>('layers');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [openPanels, setOpenPanels] = useState<{ attributes: boolean; layers: boolean }>({
+    attributes: false,
+    layers: true
+  });
+
+  // Track which dockview panels are open
+  const updateOpenPanelsState = useCallback((api: DockviewApi) => {
+    const hasAttr = !!api.getPanel('attribute-table');
+    const hasLayers = !!api.getPanel('layer-tree');
+    setOpenPanels({ attributes: hasAttr, layers: hasLayers });
+  }, []);
 
   // Close open dropdown on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest('.menu-item-wrapper')) {
         setOpenMenu(null);
+        setActiveSubmenu(null);
       }
     };
     window.addEventListener('click', handleOutsideClick);
@@ -106,45 +182,31 @@ export const Workbench: React.FC = () => {
     window.electronAPI?.maximizeWindow();
   };
 
-  // Initialize and load default Dockview layout
+  // Default starting layout (Requirement 6):
+  // Left: Empty Layers Panel ("No project")
+  // Center: Maps Canvas Tab Group with 1 tab
   const loadDefaultLayout = useCallback((api: DockviewApi) => {
     api.clear();
 
-    // 1. Center: Map Viewport
+    // 1. Center: Map Viewport (Canvas tab group with 1 tab)
     const mapPanel = api.addPanel({
       id: 'map-viewport',
       component: 'map-viewport',
       title: 'Spatial Map Viewport'
     });
 
-    // 2. Left: Layer Tree (Table of Contents)
+    // 2. Left: Layers Panel
     api.addPanel({
       id: 'layer-tree',
       component: 'layer-tree',
-      title: 'Layers & Groups',
+      title: 'Layers',
       position: { referencePanel: mapPanel, direction: 'left' },
       initialWidth: 260
     });
 
-    // 3. Bottom: Attribute Table
-    const tablePanel = api.addPanel({
-      id: 'attribute-table',
-      component: 'attribute-table',
-      title: 'Features & Attributes',
-      position: { referencePanel: mapPanel, direction: 'below' },
-      initialHeight: 220
-    });
-
-    // 4. Tabbed within bottom: Execution Console
-    api.addPanel({
-      id: 'console',
-      component: 'console',
-      title: 'Workbench Console',
-      position: { referencePanel: tablePanel, direction: 'within' }
-    });
-
-    addConsoleLog('info', 'Default VS Code-style dock layout established.', 'Dockview');
-  }, []);
+    addConsoleLog('info', 'Default GIS layout initialized: Layers Panel (Left), Map Viewport (Center).', 'Dockview');
+    updateOpenPanelsState(api);
+  }, [updateOpenPanelsState]);
 
   // Open or focus an individual dockview panel
   const openPanel = useCallback(
@@ -172,8 +234,30 @@ export const Workbench: React.FC = () => {
         position: referencePanel && direction ? { referencePanel, direction } : undefined
       });
       addConsoleLog('info', `Opened panel: ${title}`, 'Dockview');
+      updateOpenPanelsState(dockviewApi);
     },
-    [dockviewApi]
+    [dockviewApi, updateOpenPanelsState]
+  );
+
+  // Toggle dockview panel open/close
+  const togglePanel = useCallback(
+    (
+      id: string,
+      component: string,
+      title: string,
+      direction: 'left' | 'right' | 'above' | 'below'
+    ) => {
+      if (!dockviewApi) return;
+      const existing = dockviewApi.getPanel(id);
+      if (existing) {
+        existing.api.close();
+        addConsoleLog('info', `Closed panel: ${title}`, 'Dockview');
+      } else {
+        openPanel(id, component, title, direction);
+      }
+      updateOpenPanelsState(dockviewApi);
+    },
+    [dockviewApi, openPanel, updateOpenPanelsState]
   );
 
   const onReady = useCallback(
@@ -186,7 +270,7 @@ export const Workbench: React.FC = () => {
       if (savedLayout) {
         try {
           api.fromJSON(JSON.parse(savedLayout));
-          addConsoleLog('info', 'Restored layout from persistent local storage.', 'Dockview');
+          addConsoleLog('info', 'Restored layout from persistent storage.', 'Dockview');
         } catch (err) {
           console.warn('Failed to parse saved layout, resetting to default:', err);
           loadDefaultLayout(api);
@@ -214,14 +298,16 @@ export const Workbench: React.FC = () => {
             }
           }
           originalClose();
+          updateOpenPanelsState(api);
         };
       };
 
       api.panels.forEach(guardPanelClose);
       api.onDidAddPanel(guardPanelClose);
 
-      // Auto-save layout on any change
+      // Auto-save layout on any change & update panel state
       api.onDidLayoutChange(() => {
+        updateOpenPanelsState(api);
         try {
           const json = api.toJSON();
           localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(json));
@@ -229,8 +315,10 @@ export const Workbench: React.FC = () => {
           console.error('Failed to save layout:', err);
         }
       });
+
+      updateOpenPanelsState(api);
     },
-    [loadDefaultLayout]
+    [loadDefaultLayout, updateOpenPanelsState]
   );
 
   // Tab right-click context menu items
@@ -255,7 +343,22 @@ export const Workbench: React.FC = () => {
     return items;
   }, []);
 
-  // Status bar signal values
+  // Menu action triggers
+  const handleMenuClick = (action: () => void) => {
+    action();
+    setOpenMenu(null);
+    setActiveSubmenu(null);
+  };
+
+  // State checks for conditional greyed-out / disabled states
+  const hasProject = hasProjectSignal.value;
+  const canUndo = undoStackSignal.value.length > 0;
+  const canRedo = redoStackSignal.value.length > 0;
+  const hasSelectedFeatures = selectedFeatureIdsSignal.value.size > 0;
+  const hasClipboard = clipboardFeaturesSignal.value.length > 0;
+  const visibleToolbars = visibleToolbarsSignal.value;
+
+  // Status bar signals
   const coords = cursorCoordsSignal.value;
   const crs = activeCrsSignal.value;
   const scale = scaleDenominatorSignal.value;
@@ -272,270 +375,489 @@ export const Workbench: React.FC = () => {
         </div>
 
         <nav className="menu-items-group">
-          {/* Project Menu */}
+          {/* =========================================================================
+              1. PROJECT MENU
+             ========================================================================= */}
           <div className="menu-item-wrapper">
             <div
               className={`menu-dropdown-trigger ${openMenu === 'project' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'project' ? null : 'project')}
+              onClick={() => {
+                setOpenMenu(openMenu === 'project' ? null : 'project');
+                setActiveSubmenu(null);
+              }}
             >
               Project
             </div>
             {openMenu === 'project' && (
               <div className="menu-dropdown">
+                {/* * New... $$ */}
                 <div
                   className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'New Project initialized.', 'Project');
-                    setOpenMenu(null);
-                  }}
+                  onClick={() => handleMenuClick(createNewProject)}
                 >
-                  <span>New Project</span>
-                  <span className="menu-shortcut">Ctrl+N</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiFileOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">New...</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
+
+                {/* * Open... $$ */}
                 <div
                   className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Open Project dialog requested.', 'Project');
-                    setOpenMenu(null);
-                  }}
+                  onClick={() => handleMenuClick(openProjectAction)}
                 >
-                  <span>Open Project...</span>
-                  <span className="menu-shortcut">Ctrl+O</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiFolderOpenOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Open...</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
+
+                {/* * Save $$ (greyed out if no project) */}
                 <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Project saved successfully.', 'Project');
-                    setOpenMenu(null);
-                  }}
+                  className={`menu-dropdown-item ${!hasProject ? 'disabled' : ''}`}
+                  onClick={() => hasProject && handleMenuClick(saveProjectAction)}
                 >
-                  <span>Save Project</span>
-                  <span className="menu-shortcut">Ctrl+S</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiContentSaveOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Save</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
-                <div className="menu-dropdown-separator" />
+
+                {/* * Save As... $$ (greyed out if no project) */}
                 <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    handleClose();
-                    setOpenMenu(null);
-                  }}
+                  className={`menu-dropdown-item ${!hasProject ? 'disabled' : ''}`}
+                  onClick={() => hasProject && handleMenuClick(saveAsProjectAction)}
                 >
-                  <span>Exit</span>
-                  <span className="menu-shortcut">Alt+F4</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiContentSaveEditOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Save As...</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Edit Menu */}
+          {/* =========================================================================
+              2. EDIT MENU
+             ========================================================================= */}
           <div className="menu-item-wrapper">
             <div
               className={`menu-dropdown-trigger ${openMenu === 'edit' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'edit' ? null : 'edit')}
+              onClick={() => {
+                setOpenMenu(openMenu === 'edit' ? null : 'edit');
+                setActiveSubmenu(null);
+              }}
             >
               Edit
             </div>
             {openMenu === 'edit' && (
               <div className="menu-dropdown">
+                {/* * Undo $$ (greyed out if no edits) */}
                 <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Undo requested.', 'Edit');
-                    setOpenMenu(null);
-                  }}
+                  className={`menu-dropdown-item ${!canUndo ? 'disabled' : ''}`}
+                  onClick={() => canUndo && handleMenuClick(undoAction)}
                 >
-                  <span>Undo</span>
-                  <span className="menu-shortcut">Ctrl+Z</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiUndo} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Undo</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
+
+                {/* * Redo $$ (greyed out if no edits) */}
+                <div
+                  className={`menu-dropdown-item ${!canRedo ? 'disabled' : ''}`}
+                  onClick={() => canRedo && handleMenuClick(redoAction)}
+                >
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiRedo} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Redo</span>
+                  <span className="menu-shortcut-slot" />
+                </div>
+
+                <div className="menu-dropdown-separator" />
+
+                {/* * Cut (greyed out if no selection) */}
+                <div
+                  className={`menu-dropdown-item ${!hasSelectedFeatures ? 'disabled' : ''}`}
+                  onClick={() => hasSelectedFeatures && handleMenuClick(cutAction)}
+                >
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiContentCut} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Cut</span>
+                  <span className="menu-shortcut-slot" />
+                </div>
+
+                {/* * Copy (greyed out if no selection) */}
+                <div
+                  className={`menu-dropdown-item ${!hasSelectedFeatures ? 'disabled' : ''}`}
+                  onClick={() => hasSelectedFeatures && handleMenuClick(copyAction)}
+                >
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiContentCopy} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Copy</span>
+                  <span className="menu-shortcut-slot" />
+                </div>
+
+                {/* * Paste (greyed out if empty buffer) */}
+                <div
+                  className={`menu-dropdown-item ${!hasClipboard ? 'disabled' : ''}`}
+                  onClick={() => hasClipboard && handleMenuClick(pasteAction)}
+                >
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiContentPaste} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Paste</span>
+                  <span className="menu-shortcut-slot" />
+                </div>
+
+                <div className="menu-dropdown-separator" />
+
+                {/* * Edit Attributes... $$ (greyed out if no selection) */}
+                <div
+                  className={`menu-dropdown-item ${!hasSelectedFeatures ? 'disabled' : ''}`}
+                  onClick={() => hasSelectedFeatures && handleMenuClick(editAttributesAction)}
+                >
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiTableEdit} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Edit Attributes...</span>
+                  <span className="menu-shortcut-slot" />
+                </div>
+
+                <div className="menu-dropdown-separator" />
+
+                {/* * Preferences... $$ */}
                 <div
                   className="menu-dropdown-item"
                   onClick={() => {
-                    addConsoleLog('info', 'Redo requested.', 'Edit');
-                    setOpenMenu(null);
+                    handleMenuClick(() => {
+                      addConsoleLog('info', 'Preferences dialog requested.', 'Edit');
+                    });
                   }}
                 >
-                  <span>Redo</span>
-                  <span className="menu-shortcut">Ctrl+Y</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiCogOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Preferences...</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
               </div>
             )}
           </div>
 
-          {/* View Menu */}
+          {/* =========================================================================
+              3. VIEW MENU
+             ========================================================================= */}
           <div className="menu-item-wrapper">
             <div
               className={`menu-dropdown-trigger ${openMenu === 'view' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'view' ? null : 'view')}
+              onClick={() => {
+                setOpenMenu(openMenu === 'view' ? null : 'view');
+                setActiveSubmenu(null);
+              }}
             >
               View
             </div>
             {openMenu === 'view' && (
               <div className="menu-dropdown">
+                {/* * New Map View */}
                 <div
                   className="menu-dropdown-item"
                   onClick={() => {
-                    openPanel('map-viewport', 'map-viewport', 'Spatial Map Viewport');
-                    setOpenMenu(null);
+                    handleMenuClick(() => {
+                      if (!dockviewApi) return;
+                      const newId = `map-viewport-${Date.now()}`;
+                      const count = dockviewApi.panels.filter((p) => p.id.startsWith('map-viewport')).length + 1;
+                      openPanel(newId, 'map-viewport', `Spatial Map Viewport (${count})`, 'within');
+                    });
                   }}
                 >
-                  <span>🗺 Spatial Map Viewport</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiMapPlus} size="14px" />
+                  </span>
+                  <span className="menu-item-label">New Map View</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
+
+                {/* * Zoom In */}
                 <div
                   className="menu-dropdown-item"
-                  onClick={() => {
-                    const id = `map-viewport-${Date.now()}`;
-                    openPanel(id, 'map-viewport', `Spatial Map Viewport (${id.slice(-4)})`);
-                    setOpenMenu(null);
-                  }}
+                  onClick={() => handleMenuClick(() => triggerMapAction('zoomIn'))}
                 >
-                  <span>➕ New Map Viewport</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiMagnifyPlusOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Zoom In</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
+
+                {/* * Zoom Out */}
                 <div
                   className="menu-dropdown-item"
-                  onClick={() => {
-                    openPanel('layer-tree', 'layer-tree', 'Layers & Groups', 'left');
-                    setOpenMenu(null);
-                  }}
+                  onClick={() => handleMenuClick(() => triggerMapAction('zoomOut'))}
                 >
-                  <span>🗂 Layers & Groups</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiMagnifyMinusOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Zoom Out</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
-                <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    openPanel('attribute-table', 'attribute-table', 'Features & Attributes', 'below');
-                    setOpenMenu(null);
-                  }}
-                >
-                  <span>📊 Features & Attributes</span>
-                </div>
-                <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    openPanel('console', 'console', 'Workbench Console', 'below');
-                    setOpenMenu(null);
-                  }}
-                >
-                  <span>💻 Workbench Console</span>
-                </div>
+
                 <div className="menu-dropdown-separator" />
+
+                {/* Panels Submenu */}
+                <div
+                  className="menu-submenu-wrapper"
+                  onMouseEnter={() => setActiveSubmenu('panels')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSubmenu(activeSubmenu === 'panels' ? null : 'panels');
+                  }}
+                >
+                  <div className="menu-dropdown-item menu-submenu-trigger">
+                    <span className="menu-item-icon-slot" />
+                    <span className="menu-item-label">Panels</span>
+                    <Icon path={mdiChevronRight} size="14px" className="menu-arrow" />
+                  </div>
+
+                  {activeSubmenu === 'panels' && (
+                    <div className="menu-submenu-dropdown">
+                      {/* ? Attributes */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          togglePanel('attribute-table', 'attribute-table', 'Features & Attributes', 'below');
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}
+                      >
+                        <span className="menu-item-check-slot">
+                          {openPanels.attributes && <Icon path={mdiCheck} size="14px" />}
+                        </span>
+                        <span className="menu-item-label">Attributes</span>
+                      </div>
+
+                      {/* ? Layers */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          togglePanel('layer-tree', 'layer-tree', 'Layers', 'left');
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}
+                      >
+                        <span className="menu-item-check-slot">
+                          {openPanels.layers && <Icon path={mdiCheck} size="14px" />}
+                        </span>
+                        <span className="menu-item-label">Layers</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Toolbars Submenu */}
+                <div
+                  className="menu-submenu-wrapper"
+                  onMouseEnter={() => setActiveSubmenu('toolbars')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSubmenu(activeSubmenu === 'toolbars' ? null : 'toolbars');
+                  }}
+                >
+                  <div className="menu-dropdown-item menu-submenu-trigger">
+                    <span className="menu-item-icon-slot" />
+                    <span className="menu-item-label">Toolbars</span>
+                    <Icon path={mdiChevronRight} size="14px" className="menu-arrow" />
+                  </div>
+
+                  {activeSubmenu === 'toolbars' && (
+                    <div className="menu-submenu-dropdown">
+                      {/* ? Digitizing */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          toggleToolbar('digitizing');
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}
+                      >
+                        <span className="menu-item-check-slot">
+                          {visibleToolbars.digitizing && <Icon path={mdiCheck} size="14px" />}
+                        </span>
+                        <span className="menu-item-label">Digitizing</span>
+                      </div>
+
+                      {/* ? Snapping */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          toggleToolbar('snapping');
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}
+                      >
+                        <span className="menu-item-check-slot">
+                          {visibleToolbars.snapping && <Icon path={mdiCheck} size="14px" />}
+                        </span>
+                        <span className="menu-item-label">Snapping</span>
+                      </div>
+
+                      {/* ? Basic */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          toggleToolbar('basic');
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}
+                      >
+                        <span className="menu-item-check-slot">
+                          {visibleToolbars.basic && <Icon path={mdiCheck} size="14px" />}
+                        </span>
+                        <span className="menu-item-label">Basic</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="menu-dropdown-separator" />
+
+                {/* Reset docking to default */}
                 <div
                   className="menu-dropdown-item"
                   onClick={() => {
-                    if (dockviewApi) loadDefaultLayout(dockviewApi);
-                    setOpenMenu(null);
+                    handleMenuClick(() => {
+                      if (dockviewApi) loadDefaultLayout(dockviewApi);
+                    });
                   }}
                 >
-                  <span>↺ Reset Workspace Layout</span>
+                  <span className="menu-item-icon-slot" />
+                  <span className="menu-item-label">Reset docking to default</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Layer Menu */}
+          {/* =========================================================================
+              4. LAYERS MENU
+             ========================================================================= */}
           <div className="menu-item-wrapper">
             <div
-              className={`menu-dropdown-trigger ${openMenu === 'layer' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'layer' ? null : 'layer')}
+              className={`menu-dropdown-trigger ${openMenu === 'layers' ? 'active' : ''}`}
+              onClick={() => {
+                setOpenMenu(openMenu === 'layers' ? null : 'layers');
+                setActiveSubmenu(null);
+              }}
             >
-              Layer
+              Layers
             </div>
-            {openMenu === 'layer' && (
+            {openMenu === 'layers' && (
               <div className="menu-dropdown">
+                {/* Add Submenu */}
                 <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Add Vector Layer dialog requested.', 'Layer');
-                    setOpenMenu(null);
+                  className="menu-submenu-wrapper"
+                  onMouseEnter={() => setActiveSubmenu('addLayer')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSubmenu(activeSubmenu === 'addLayer' ? null : 'addLayer');
                   }}
                 >
-                  <span>Add Vector Layer...</span>
+                  <div className="menu-dropdown-item menu-submenu-trigger">
+                    <span className="menu-item-icon-slot" />
+                    <span className="menu-item-label">Add</span>
+                    <Icon path={mdiChevronRight} size="14px" className="menu-arrow" />
+                  </div>
+
+                  {activeSubmenu === 'addLayer' && (
+                    <div className="menu-submenu-dropdown">
+                      {/* * Add Vector Layer */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          handleMenuClick(() => {
+                            addConsoleLog('info', 'Add Vector Layer dialog requested.', 'Layers');
+                          });
+                        }}
+                      >
+                        <span className="menu-item-icon-slot">
+                          <Icon path={mdiVectorPolygon} size="14px" />
+                        </span>
+                        <span className="menu-item-label">Add Vector Layer...</span>
+                      </div>
+
+                      {/* * Add Raster Layer */}
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={() => {
+                          handleMenuClick(() => {
+                            addConsoleLog('info', 'Add Raster Layer dialog requested.', 'Layers');
+                          });
+                        }}
+                      >
+                        <span className="menu-item-icon-slot">
+                          <Icon path={mdiImageOutline} size="14px" />
+                        </span>
+                        <span className="menu-item-label">Add Raster Layer...</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* * Create Layer */}
                 <div
                   className="menu-dropdown-item"
                   onClick={() => {
-                    addConsoleLog('info', 'Add Raster Layer dialog requested.', 'Layer');
-                    setOpenMenu(null);
+                    handleMenuClick(() => {
+                      addConsoleLog('info', 'Create Layer dialog requested.', 'Layers');
+                    });
                   }}
                 >
-                  <span>Add Raster Layer...</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiPlusBoxOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">Create Layer...</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Vector Menu */}
-          <div className="menu-item-wrapper">
-            <div
-              className={`menu-dropdown-trigger ${openMenu === 'vector' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'vector' ? null : 'vector')}
-            >
-              Vector
-            </div>
-            {openMenu === 'vector' && (
-              <div className="menu-dropdown">
-                <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Geoprocessing: Buffer dialog requested.', 'Vector');
-                    setOpenMenu(null);
-                  }}
-                >
-                  <span>Geoprocessing: Buffer...</span>
-                </div>
-                <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Geometry: Centroids dialog requested.', 'Vector');
-                    setOpenMenu(null);
-                  }}
-                >
-                  <span>Geometry: Centroids...</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Raster Menu */}
-          <div className="menu-item-wrapper">
-            <div
-              className={`menu-dropdown-trigger ${openMenu === 'raster' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'raster' ? null : 'raster')}
-            >
-              Raster
-            </div>
-            {openMenu === 'raster' && (
-              <div className="menu-dropdown">
-                <div
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    addConsoleLog('info', 'Raster Calculator requested.', 'Raster');
-                    setOpenMenu(null);
-                  }}
-                >
-                  <span>Raster Calculator...</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Help Menu */}
+          {/* =========================================================================
+              5. HELP MENU
+             ========================================================================= */}
           <div className="menu-item-wrapper">
             <div
               className={`menu-dropdown-trigger ${openMenu === 'help' ? 'active' : ''}`}
-              onClick={() => setOpenMenu(openMenu === 'help' ? null : 'help')}
+              onClick={() => {
+                setOpenMenu(openMenu === 'help' ? null : 'help');
+                setActiveSubmenu(null);
+              }}
             >
               Help
             </div>
             {openMenu === 'help' && (
               <div className="menu-dropdown">
+                {/* * About */}
                 <div
                   className="menu-dropdown-item"
                   onClick={() => {
-                    addConsoleLog('info', 'Cartouche v0.1.0 — Desktop Geographic Information System', 'System');
-                    setOpenMenu(null);
+                    handleMenuClick(() => setShowAboutModal(true));
                   }}
                 >
-                  <span>About Cartouche</span>
+                  <span className="menu-item-icon-slot">
+                    <Icon path={mdiInformationOutline} size="14px" />
+                  </span>
+                  <span className="menu-item-label">About</span>
+                  <span className="menu-shortcut-slot" />
                 </div>
               </div>
             )}
@@ -587,54 +909,33 @@ export const Workbench: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Workbench Body: Activity Bar + Dockview Canvas */}
-      <div className="workbench-main">
-        {/* VS Code Style Activity Bar */}
-        <aside className="activity-bar">
-          <button
-            className={`activity-bar-btn ${activeActivityTab === 'layers' ? 'active' : ''}`}
-            title="Layers & Catalog"
-            onClick={() => setActiveActivityTab('layers')}
-          >
-            🗂
-          </button>
-          <button
-            className={`activity-bar-btn ${activeActivityTab === 'search' ? 'active' : ''}`}
-            title="Spatial Search"
-            onClick={() => setActiveActivityTab('search')}
-          >
-            🔍
-          </button>
-          <button
-            className={`activity-bar-btn ${activeActivityTab === 'tools' ? 'active' : ''}`}
-            title="Processing Toolbox"
-            onClick={() => setActiveActivityTab('tools')}
-          >
-            ⚙
-          </button>
-          <div className="activity-bar-spacer" />
-          <button
-            className="activity-bar-btn"
-            title="Reset Dock Layout"
-            onClick={() => dockviewApi && loadDefaultLayout(dockviewApi)}
-          >
-            ↺
-          </button>
-        </aside>
+      {/* Outer Toolbar Panel: Top (Under Menubar) */}
+      <ToolbarPanel zone="top" />
 
-        {/* Dockview Docking Area */}
+      {/* Main Workbench Body: Left Toolbar + Dockview Center + Right Toolbar */}
+      <div className="workbench-main">
+        {/* Outer Toolbar Panel: Left */}
+        <ToolbarPanel zone="left" />
+
+        {/* Dockview Container with 4 Edge Panel capabilities */}
         <main className="dockview-wrapper">
           <DockviewReact
-            className="dockview-theme-dark"
+            className="dockview-theme-light"
             components={panelComponents}
             defaultTabComponent={WorkbenchTab}
             getTabContextMenuItems={getTabContextMenuItems}
             onReady={onReady}
           />
         </main>
+
+        {/* Outer Toolbar Panel: Right */}
+        <ToolbarPanel zone="right" />
       </div>
 
-      {/* VS Code Style Status Bar (High-frequency direct signal updates) */}
+      {/* Outer Toolbar Panel: Bottom (Above Status Bar) */}
+      <ToolbarPanel zone="bottom" />
+
+      {/* Status Bar */}
       <footer className="workbench-statusbar">
         <div className="statusbar-item" title="Current Cursor Coordinates (Lon, Lat)">
           {coords ? (
@@ -677,6 +978,38 @@ export const Workbench: React.FC = () => {
           ● Ready
         </div>
       </footer>
+
+      {/* About Modal Dialog */}
+      {showAboutModal && (
+        <div className="modal-backdrop" onClick={() => setShowAboutModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <img src={logoSvg} alt="Cartouche" className="modal-logo" />
+              <div>
+                <h2>Cartouche Desktop</h2>
+                <div className="modal-subtitle">Particle Physics Geographic Information System • v0.1.0</div>
+              </div>
+            </div>
+            <div className="modal-body">
+              <p>
+                Cartouche is an advanced Desktop GIS platform engineered for cosmic-ray muon tomography,
+                subterranean density mapping, and high-energy astroparticle physics spatial intelligence.
+              </p>
+              <div className="modal-specs">
+                <div><strong>Electron Runtime:</strong> Desktop Multi-Process Architecture</div>
+                <div><strong>Graphics Pipeline:</strong> Isolated HTML5 Canvas 2D / WebGL</div>
+                <div><strong>Docking System:</strong> Dockview 4-Edge Grid Container</div>
+                <div><strong>Design Standard:</strong> Pure White Canvas (#ffffff), Medium Blue Menubar (#1b446c)</div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn" onClick={() => setShowAboutModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

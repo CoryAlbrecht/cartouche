@@ -3,6 +3,7 @@ import { useSignals } from '@preact/signals-react/runtime';
 import {
   layersSignal,
   activeLayerIdSignal,
+  hasProjectSignal,
   toggleLayerVisibility,
   setLayerOpacity,
   setActiveLayer,
@@ -28,6 +29,7 @@ function getGeometryIcon(kind?: GeometryKind) {
 export const LayerTreePanel: React.FC = () => {
   useSignals();
   const layers = layersSignal.value;
+  const hasProject = hasProjectSignal.value;
   const activeLayerId = activeLayerIdSignal.value;
   const visibleCount = visibleLayersCountSignal.value;
 
@@ -55,7 +57,17 @@ export const LayerTreePanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="layers-tree-list">
+      {layers.length === 0 ? (
+        <div className="empty-layers-state">
+          <div className="empty-layers-title">{hasProject ? 'No layers' : 'No project'}</div>
+          <div className="empty-layers-desc">
+            {hasProject
+              ? 'Add a vector or raster layer from the Layers menu.'
+              : 'Create or open a project to load and manage map layers.'}
+          </div>
+        </div>
+      ) : (
+        <div className="layers-tree-list">
         {layers.map((layer) => {
           const isActive = layer.id === activeLayerId;
 
@@ -108,6 +120,7 @@ export const LayerTreePanel: React.FC = () => {
           );
         })}
       </div>
+      )}
     </div>
   );
 };

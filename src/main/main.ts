@@ -19,8 +19,8 @@ function createWindow() {
     minWidth: 960,
     minHeight: 640,
     title: 'Cartouche',
-    backgroundColor: '#1e1e1e',
-    frame: false, // Frameless window with custom VS Code-style menubar & window controls
+    backgroundColor: '#ffffff',
+    frame: false, // Frameless window with custom menubar & window controls
     icon: path.join(__dirname, '../../assets/svg/logo.svg'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.cjs'),
