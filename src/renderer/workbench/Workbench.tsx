@@ -20,6 +20,18 @@ export const Workbench: React.FC = () => {
   const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [activeActivityTab, setActiveActivityTab] = useState<'layers' | 'search' | 'tools'>('layers');
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  // Close open dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.menu-item-wrapper')) {
+        setOpenMenu(null);
+      }
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Monitor maximized state from Electron IPC
   useEffect(() => {
@@ -83,6 +95,36 @@ export const Workbench: React.FC = () => {
     addConsoleLog('info', 'Default VS Code-style dock layout established.', 'Dockview');
   }, []);
 
+  // Open or focus an individual dockview panel
+  const openPanel = useCallback(
+    (
+      id: string,
+      component: string,
+      title: string,
+      direction?: 'left' | 'right' | 'above' | 'below' | 'within'
+    ) => {
+      if (!dockviewApi) return;
+      const existing = dockviewApi.getPanel(id);
+      if (existing) {
+        existing.api.setActive();
+        addConsoleLog('info', `Focused existing panel: ${title}`, 'Dockview');
+        return;
+      }
+
+      const panels = dockviewApi.panels;
+      const referencePanel = panels.length > 0 ? panels[0] : undefined;
+
+      dockviewApi.addPanel({
+        id,
+        component,
+        title,
+        position: referencePanel && direction ? { referencePanel, direction } : undefined
+      });
+      addConsoleLog('info', `Opened panel: ${title}`, 'Dockview');
+    },
+    [dockviewApi]
+  );
+
   const onReady = useCallback(
     (event: DockviewReadyEvent) => {
       const api = event.api;
@@ -132,13 +174,264 @@ export const Workbench: React.FC = () => {
         </div>
 
         <nav className="menu-items-group">
-          <div className="menu-dropdown-trigger">Project</div>
-          <div className="menu-dropdown-trigger">Edit</div>
-          <div className="menu-dropdown-trigger">View</div>
-          <div className="menu-dropdown-trigger">Layer</div>
-          <div className="menu-dropdown-trigger">Vector</div>
-          <div className="menu-dropdown-trigger">Raster</div>
-          <div className="menu-dropdown-trigger">Help</div>
+          {/* Project Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'project' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'project' ? null : 'project')}
+            >
+              Project
+            </div>
+            {openMenu === 'project' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'New Project initialized.', 'Project');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>New Project</span>
+                  <span className="menu-shortcut">Ctrl+N</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Open Project dialog requested.', 'Project');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Open Project...</span>
+                  <span className="menu-shortcut">Ctrl+O</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Project saved successfully.', 'Project');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Save Project</span>
+                  <span className="menu-shortcut">Ctrl+S</span>
+                </div>
+                <div className="menu-dropdown-separator" />
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    handleClose();
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Exit</span>
+                  <span className="menu-shortcut">Alt+F4</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Edit Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'edit' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'edit' ? null : 'edit')}
+            >
+              Edit
+            </div>
+            {openMenu === 'edit' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Undo requested.', 'Edit');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Undo</span>
+                  <span className="menu-shortcut">Ctrl+Z</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Redo requested.', 'Edit');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Redo</span>
+                  <span className="menu-shortcut">Ctrl+Y</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* View Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'view' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'view' ? null : 'view')}
+            >
+              View
+            </div>
+            {openMenu === 'view' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    openPanel('map-viewport', 'map-viewport', 'Spatial Map Viewport');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>🗺 Spatial Map Viewport</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    openPanel('layer-tree', 'layer-tree', 'Layers & Groups', 'left');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>🗂 Layers & Groups</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    openPanel('attribute-table', 'attribute-table', 'Features & Attributes', 'below');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>📊 Features & Attributes</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    openPanel('console', 'console', 'Workbench Console', 'below');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>💻 Workbench Console</span>
+                </div>
+                <div className="menu-dropdown-separator" />
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    if (dockviewApi) loadDefaultLayout(dockviewApi);
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>↺ Reset Workspace Layout</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Layer Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'layer' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'layer' ? null : 'layer')}
+            >
+              Layer
+            </div>
+            {openMenu === 'layer' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Add Vector Layer dialog requested.', 'Layer');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Add Vector Layer...</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Add Raster Layer dialog requested.', 'Layer');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Add Raster Layer...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Vector Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'vector' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'vector' ? null : 'vector')}
+            >
+              Vector
+            </div>
+            {openMenu === 'vector' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Geoprocessing: Buffer dialog requested.', 'Vector');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Geoprocessing: Buffer...</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Geometry: Centroids dialog requested.', 'Vector');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Geometry: Centroids...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Raster Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'raster' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'raster' ? null : 'raster')}
+            >
+              Raster
+            </div>
+            {openMenu === 'raster' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Raster Calculator requested.', 'Raster');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>Raster Calculator...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Help Menu */}
+          <div className="menu-item-wrapper">
+            <div
+              className={`menu-dropdown-trigger ${openMenu === 'help' ? 'active' : ''}`}
+              onClick={() => setOpenMenu(openMenu === 'help' ? null : 'help')}
+            >
+              Help
+            </div>
+            {openMenu === 'help' && (
+              <div className="menu-dropdown">
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    addConsoleLog('info', 'Cartouche v0.1.0 — Desktop Geographic Information System', 'System');
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>About Cartouche</span>
+                </div>
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="menu-spacer" />
