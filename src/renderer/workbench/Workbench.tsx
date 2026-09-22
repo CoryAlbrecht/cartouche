@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { DockviewReact, type DockviewReadyEvent, type DockviewApi } from 'dockview-react';
+import {
+  DockviewReact,
+  DockviewDefaultTab,
+  type DockviewReadyEvent,
+  type DockviewApi,
+  type IDockviewPanel,
+  type IDockviewPanelHeaderProps,
+  type GetTabContextMenuItemsParams
+} from 'dockview-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { panelComponents } from './panelRegistry';
 import {
@@ -13,6 +21,49 @@ import {
 import logoSvg from '../../../assets/svg/logo.svg';
 
 const SAVED_LAYOUT_KEY = 'cartouche_workbench_layout_v1';
+
+/**
+ * Custom Tab Component that disables closing the last remaining map canvas tab.
+ */
+const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
+  const { api, containerApi } = props;
+  const isMapTab =
+    api.id.startsWith('map-viewport') ||
+    (api as any).panel?.view?.contentComponent === 'map-viewport';
+
+  const [isLastMapTab, setIsLastMapTab] = useState(false);
+
+  useEffect(() => {
+    const updateTabState = () => {
+      const mapPanels = containerApi.panels.filter(
+        (p) =>
+          p.id.startsWith('map-viewport') ||
+          (p as any).view?.contentComponent === 'map-viewport'
+      );
+      setIsLastMapTab(isMapTab && mapPanels.length <= 1);
+    };
+
+    updateTabState();
+    const disposable = containerApi.onDidLayoutChange(updateTabState);
+    return () => {
+      disposable.dispose();
+    };
+  }, [containerApi, isMapTab]);
+
+  return (
+    <DockviewDefaultTab
+      {...props}
+      className={isLastMapTab ? 'dv-tab-close-disabled' : undefined}
+      closeActionOverride={
+        isLastMapTab
+          ? () => {
+              addConsoleLog('warn', 'The last map canvas tab cannot be closed.', 'Workbench');
+            }
+          : undefined
+      }
+    />
+  );
+};
 
 export const Workbench: React.FC = () => {
   useSignals();
@@ -144,6 +195,31 @@ export const Workbench: React.FC = () => {
         loadDefaultLayout(api);
       }
 
+      // Guard all panels against closing the last remaining map viewport
+      const guardPanelClose = (panel: IDockviewPanel) => {
+        const originalClose = panel.api.close.bind(panel.api);
+        panel.api.close = () => {
+          const isMap =
+            panel.id.startsWith('map-viewport') ||
+            (panel as any).view?.contentComponent === 'map-viewport';
+          if (isMap) {
+            const mapPanels = api.panels.filter(
+              (p) =>
+                p.id.startsWith('map-viewport') ||
+                (p as any).view?.contentComponent === 'map-viewport'
+            );
+            if (mapPanels.length <= 1) {
+              addConsoleLog('warn', 'The last map canvas tab cannot be closed.', 'Workbench');
+              return;
+            }
+          }
+          originalClose();
+        };
+      };
+
+      api.panels.forEach(guardPanelClose);
+      api.onDidAddPanel(guardPanelClose);
+
       // Auto-save layout on any change
       api.onDidLayoutChange(() => {
         try {
@@ -156,6 +232,28 @@ export const Workbench: React.FC = () => {
     },
     [loadDefaultLayout]
   );
+
+  // Tab right-click context menu items
+  const getTabContextMenuItems = useCallback((params: GetTabContextMenuItemsParams) => {
+    const { panel, api } = params;
+    const isMapTab =
+      panel.id.startsWith('map-viewport') ||
+      (panel as any).view?.contentComponent === 'map-viewport';
+
+    const mapPanels = api.panels.filter(
+      (p) =>
+        p.id.startsWith('map-viewport') ||
+        (p as any).view?.contentComponent === 'map-viewport'
+    );
+    const isLastMap = isMapTab && mapPanels.length <= 1;
+
+    const items: any[] = [];
+    if (!isLastMap) {
+      items.push('close');
+    }
+    items.push('closeOthers', 'closeAll', 'separator', 'maximize');
+    return items;
+  }, []);
 
   // Status bar signal values
   const coords = cursorCoordsSignal.value;
@@ -281,6 +379,16 @@ export const Workbench: React.FC = () => {
                   }}
                 >
                   <span>🗺 Spatial Map Viewport</span>
+                </div>
+                <div
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    const id = `map-viewport-${Date.now()}`;
+                    openPanel(id, 'map-viewport', `Spatial Map Viewport (${id.slice(-4)})`);
+                    setOpenMenu(null);
+                  }}
+                >
+                  <span>➕ New Map Viewport</span>
                 </div>
                 <div
                   className="menu-dropdown-item"
@@ -519,6 +627,8 @@ export const Workbench: React.FC = () => {
           <DockviewReact
             className="dockview-theme-dark"
             components={panelComponents}
+            defaultTabComponent={WorkbenchTab}
+            getTabContextMenuItems={getTabContextMenuItems}
             onReady={onReady}
           />
         </main>

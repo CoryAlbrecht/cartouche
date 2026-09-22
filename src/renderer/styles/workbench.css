@@ -592,3 +592,15 @@
   border-color: #9ca3af;
   transform: scale(1.05);
 }
+
+/* Disabled Tab Close Button (Active when only 1 map canvas remains) */
+.dv-tab .dv-default-tab.dv-tab-close-disabled .dv-default-tab-action {
+  opacity: 0.25;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.dv-tab .dv-default-tab.dv-tab-close-disabled .dv-default-tab-action:hover {
+  background-color: transparent !important;
+  color: inherit !important;
+}
