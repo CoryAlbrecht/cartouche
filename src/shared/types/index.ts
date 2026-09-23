@@ -17,15 +17,31 @@ export interface CRS {
 
 export type GeometryKind = 'Point' | 'LineString' | 'Polygon' | 'Raster';
 
+export type OlFlatStyle = Record<string, any>;
+
+export interface GisLayerGroup {
+  id: string;
+  name: string;
+  visible: boolean;
+  expanded?: boolean;
+  parentId?: string | null;
+}
+
 export interface GisLayer {
   id: string;
   name: string;
+  baseFileName?: string;
+  dataName?: string;
+  projectSettingsName?: string;
+  groupId?: string | null;
   kind: 'vector' | 'raster' | 'tile';
   geometryKind?: GeometryKind;
   visible: boolean;
   opacity: number;
   color: string;
   featureCount: number;
+  flatStyle?: OlFlatStyle;
+  flatGeobufBuffer?: ArrayBuffer;
 }
 
 export interface GisFeature {
@@ -34,6 +50,12 @@ export interface GisFeature {
   geometryType: GeometryKind;
   properties: Record<string, string | number | boolean | null>;
   coordinates: unknown;
+}
+
+export interface FlatGeobufLayerPayload {
+  layerId: string;
+  buffer: ArrayBuffer;
+  flatStyle: OlFlatStyle;
 }
 
 export interface ConsoleLogEntry {
@@ -53,6 +75,8 @@ export interface ElectronAPI {
   closeWindow: () => void;
   isWindowMaximized: () => Promise<boolean>;
   onMaximizedState: (callback: (isMaximized: boolean) => void) => () => void;
+  fetchLayerFlatGeobuf: (layerId: string) => Promise<FlatGeobufLayerPayload | null>;
+  encodeFeaturesToFlatGeobuf: (features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>;
 }
 
 declare global {

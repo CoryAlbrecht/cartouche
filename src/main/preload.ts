@@ -15,7 +15,10 @@ const electronAPI: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('window-maximized-state', handler);
     };
-  }
+  },
+  fetchLayerFlatGeobuf: (layerId: string) => ipcRenderer.invoke('gis:fetch-layer-flatgeobuf', layerId),
+  encodeFeaturesToFlatGeobuf: (features: any[], geometryKind: any) =>
+    ipcRenderer.invoke('gis:encode-flatgeobuf', features, geometryKind)
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

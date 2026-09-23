@@ -1,13 +1,15 @@
 import { signal, computed } from '@preact/signals-react';
-import type { CRS, GisLayer, GisFeature, ConsoleLogEntry, BoundingBox } from '@shared/types';
+import type { CRS, GisLayer, GisLayerGroup, GisFeature, ConsoleLogEntry, BoundingBox } from '@shared/types';
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
 const initialFeatures: GisFeature[] = [];
+const initialGroups: GisLayerGroup[] = [];
 
 // Project state signals
 export const hasProjectSignal = signal<boolean>(false);
 export const projectNameSignal = signal<string | null>(null);
+export const projectVisibleSignal = signal<boolean>(true);
 export const isDirtySignal = signal<boolean>(false);
 export const undoStackSignal = signal<unknown[]>([]);
 export const redoStackSignal = signal<unknown[]>([]);
@@ -57,7 +59,8 @@ export const activeCrsSignal = signal<CRS>({
   isGeographic: true
 });
 
-// Layer & Feature Selection State
+// Layer & Group & Feature Selection State
+export const layerGroupsSignal = signal<GisLayerGroup[]>(initialGroups);
 export const layersSignal = signal<GisLayer[]>(initialLayers);
 export const activeLayerIdSignal = signal<string | null>(null);
 export const selectedFeatureIdsSignal = signal<Set<string | number>>(new Set());
@@ -68,14 +71,58 @@ export const consoleLogsSignal = signal<ConsoleLogEntry[]>([
   { id: 'log-1', timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Cartouche Desktop Workbench initialized.', source: 'Kernel' }
 ]);
 
+/**
+ * Resolves display name using 3-tier priority hierarchy:
+ * 1. Project settings layer name (highest)
+ * 2. Internal data layer name (medium)
+ * 3. Base file name no directory (lowest)
+ * Fallback: layer.name
+ */
+export function getLayerDisplayName(layer: GisLayer): string {
+  if (layer.projectSettingsName && layer.projectSettingsName.trim() !== '') {
+    return layer.projectSettingsName;
+  }
+  if (layer.dataName && layer.dataName.trim() !== '') {
+    return layer.dataName;
+  }
+  if (layer.baseFileName && layer.baseFileName.trim() !== '') {
+    return layer.baseFileName;
+  }
+  return layer.name || 'Unnamed Layer';
+}
+
 // Computed derivations
 export const activeLayerSignal = computed(() => {
   const activeId = activeLayerIdSignal.value;
   return layersSignal.value.find((l) => l.id === activeId) ?? null;
 });
 
+export const effectiveVisibleLayersSignal = computed(() => {
+  if (!projectVisibleSignal.value) return [];
+
+  const groupsMap = new Map<string, GisLayerGroup>(
+    layerGroupsSignal.value.map((g) => [g.id, g])
+  );
+
+  const isGroupHierarchyVisible = (groupId: string | null | undefined): boolean => {
+    if (!groupId) return true;
+    let currentId: string | null | undefined = groupId;
+    while (currentId) {
+      const group = groupsMap.get(currentId);
+      if (!group || !group.visible) return false;
+      currentId = group.parentId;
+    }
+    return true;
+  };
+
+  return layersSignal.value.filter((layer) => {
+    if (!layer.visible) return false;
+    return isGroupHierarchyVisible(layer.groupId);
+  });
+});
+
 export const visibleLayersCountSignal = computed(() => {
-  return layersSignal.value.filter((l) => l.visible).length;
+  return effectiveVisibleLayersSignal.value.length;
 });
 
 export const selectedFeaturesCountSignal = computed(() => {
@@ -147,9 +194,7 @@ export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?
   };
 
   const order = { ...toolbarOrderSignal.value };
-  // Remove from old zone
   order[currentZone] = order[currentZone].filter((item) => item !== id);
-  // Add to target zone
   if (typeof targetIndex === 'number' && targetIndex >= 0) {
     order[targetZone].splice(targetIndex, 0, id);
   } else {
@@ -159,16 +204,91 @@ export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?
 }
 
 // Project Actions
-export function createNewProject() {
+export function createNewProject(name: string = 'New Project') {
   hasProjectSignal.value = true;
-  projectNameSignal.value = 'Untitled Project';
+  projectNameSignal.value = name;
+  projectVisibleSignal.value = true;
   isDirtySignal.value = false;
+  layerGroupsSignal.value = [];
   layersSignal.value = [];
   featuresSignal.value = [];
   selectedFeatureIdsSignal.value = new Set();
   undoStackSignal.value = [];
   redoStackSignal.value = [];
-  addConsoleLog('info', 'New empty project initialized.', 'Project');
+  addConsoleLog('info', `Project "${name}" initialized.`, 'Project');
+}
+
+export function toggleProjectVisibility() {
+  projectVisibleSignal.value = !projectVisibleSignal.value;
+}
+
+export function getDefaultOlFlatStyle(geometryKind?: string): Record<string, any> {
+  const gKind = (geometryKind || 'Point').toLowerCase();
+  if (gKind.includes('polygon')) {
+    return {
+      'fill-color': '#0000FF',
+      'stroke-color': '#00007F',
+      'stroke-width': 2
+    };
+  }
+  if (gKind.includes('line')) {
+    return {
+      'stroke-color': '#007F00',
+      'stroke-width': 2
+    };
+  }
+  return {
+    'circle-radius': 8,
+    'circle-fill-color': '#7F0000',
+    'circle-stroke-color': '#FF0000',
+    'circle-stroke-width': 1
+  };
+}
+
+export function addLayerAction(layerInput: Omit<GisLayer, 'id'> & { id?: string }) {
+  if (!hasProjectSignal.value) {
+    createNewProject('New Project');
+  }
+  const id = layerInput.id || `layer-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const newLayer: GisLayer = {
+    ...layerInput,
+    id,
+    flatStyle: layerInput.flatStyle || getDefaultOlFlatStyle(layerInput.geometryKind)
+  };
+  layersSignal.value = [...layersSignal.value, newLayer];
+  if (!activeLayerIdSignal.value) {
+    activeLayerIdSignal.value = id;
+  }
+  addConsoleLog('info', `Added layer "${getLayerDisplayName(newLayer)}".`, 'Layers');
+  return newLayer;
+}
+
+export function addLayerGroupAction(name: string = 'New Group', parentId: string | null = null) {
+  if (!hasProjectSignal.value) {
+    createNewProject('New Project');
+  }
+  const newGroup: GisLayerGroup = {
+    id: `group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name,
+    visible: true,
+    expanded: true,
+    parentId
+  };
+  layerGroupsSignal.value = [...layerGroupsSignal.value, newGroup];
+  addConsoleLog('info', `Added layer group "${name}".`, 'Layers');
+  return newGroup;
+}
+
+export function toggleLayerGroupVisibility(groupId: string) {
+  layerGroupsSignal.value = layerGroupsSignal.value.map((g) =>
+    g.id === groupId ? { ...g, visible: !g.visible } : g
+  );
+}
+
+export function toggleLayerGroupExpanded(groupId: string) {
+  layerGroupsSignal.value = layerGroupsSignal.value.map((g) =>
+    g.id === groupId ? { ...g, expanded: !g.expanded } : g
+  );
 }
 
 export function openProjectAction() {
@@ -232,4 +352,3 @@ export function editAttributesAction() {
 export function triggerMapAction(action: 'zoomIn' | 'zoomOut' | 'reset') {
   mapActionSignal.value = { action, timestamp: Date.now() };
 }
-

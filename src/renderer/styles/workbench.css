@@ -1,4 +1,4 @@
-@import './vscode-theme.css';
+@import "./vscode-theme.css";
 
 /* Workbench Master Container */
 .workbench-container {
@@ -106,7 +106,9 @@
   color: #111827;
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.1s ease, color 0.1s ease;
+  transition:
+    background-color 0.1s ease,
+    color 0.1s ease;
 }
 
 .menu-dropdown-item:hover {
@@ -478,17 +480,115 @@
   border-top: 2px solid #1b446c;
 }
 
+/* OpenLayers Canvas Container Styling */
+.ol-viewport {
+  background-color: #ffffff !important;
+}
+
+/* =========================================================================
+   Widget System Styles
+   ========================================================================= */
+.cartouche-widget {
+  transition: border-color 0.15s ease;
+}
+
+.cartouche-widget.is-undocked {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.basic-widget-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.widget-control-btn:hover {
+  background-color: #f1f5f9;
+  color: #1e293b !important;
+}
+
+.widget-menu-item:hover {
+  background-color: #f1f5f9;
+}
+
+.toolbar-grabber:hover {
+  color: #475569 !important;
+}
+
+/* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area) */
+.toolbar-container-widget-drop-target {
+  position: relative;
+}
+
+.toolbar-container-widget-drop-target::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.toolbar-container-widget-drop-target.zone-left::before {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: -8px;
+}
+
+.toolbar-container-widget-drop-target.zone-right::before {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: -8px;
+}
+
+.toolbar-container-widget-drop-target.zone-top::before {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: -8px;
+}
+
+.toolbar-container-widget-drop-target.zone-bottom::before {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: -8px;
+}
+
 /* =========================================================================
    5. Panels: Layers, Attribute Table, Console
    ========================================================================= */
+/* Hide Dockview tab bar when Layers panel is standalone in a single-tab group */
+.dockview-theme-light
+  .dv-groupview:has(.layer-tree-panel)
+  .dv-tabs-and-actions-container.dv-single-tab,
+.dockview-theme-light
+  .dv-group-view:has(.layer-tree-panel)
+  .dv-tabs-and-actions-container.dv-single-tab,
+.dockview-theme-light
+  .dockview-group-container:has(.layer-tree-panel)
+  .dv-tabs-and-actions-container.dv-single-tab {
+  display: none !important;
+}
+
 .panel-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background-color: #f8fafc;
+  background-color: #faf8fc;
   border-bottom: 1px solid #e2e8f0;
   font-size: 10.5pt;
+  user-select: none;
+}
+
+.layer-tree-header {
+  background-color: #faf8fc !important;
+  cursor: grab;
+}
+
+.layer-tree-header:active {
+  cursor: grabbing;
 }
 
 .panel-subtitle {
@@ -526,13 +626,93 @@
   color: #0f172a;
 }
 
-.layers-tree-list {
+.layers-tree-container {
   flex: 1;
   overflow-y: auto;
-  padding: 4px;
+  padding: 4px 6px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.tree-node-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease;
+  font-size: 11pt;
+}
+
+.tree-node-row:hover {
+  background-color: #f1f5f9;
+}
+
+.tree-node-row.active {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.tree-node-project {
+  font-weight: 600;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+}
+
+.tree-node-group {
+  font-weight: 500;
+  color: #334155;
+}
+
+.tree-node-layer {
+  font-weight: 400;
+  color: #0f172a;
+}
+
+.tree-indent {
+  width: 14px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.tree-chevron {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.tree-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #1b446c;
+  cursor: pointer;
+  margin: 0;
+}
+
+.tree-icon-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.tree-node-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11pt;
 }
 
 .layer-tree-item {
@@ -709,7 +889,7 @@
   flex-direction: column;
   height: 100%;
   background-color: #ffffff;
-  font-family: Consolas, 'Courier New', monospace;
+  font-family: Consolas, "Courier New", monospace;
 }
 
 .console-log-list {
