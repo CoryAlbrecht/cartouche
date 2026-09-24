@@ -6,6 +6,7 @@ dist/
 dist-electron/
 build/
 out/
+release/
 
 # Environment and local files
 .env

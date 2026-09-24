@@ -25,10 +25,10 @@ interface CategoryTab {
 }
 
 const categories: CategoryTab[] = [
+  { id: "general", label: "General", icon: mdiCogOutline },
   { id: "ui", label: "UI & Display", icon: mdiPaletteOutline },
   { id: "rendering", label: "Rendering", icon: mdiVectorTriangle },
   { id: "plugins", label: "Plugins & Extensions", icon: mdiPuzzleOutline },
-  { id: "general", label: "General", icon: mdiCogOutline },
 ];
 
 export const PreferencesDialog: React.FC = () => {
