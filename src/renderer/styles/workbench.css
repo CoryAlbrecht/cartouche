@@ -258,7 +258,7 @@
   width: 100%;
   border-bottom: 1px solid #e2e8f0;
   padding: 2px 6px;
-  min-height: 34px;
+  min-height: 42px;
   gap: 4px;
 }
 
@@ -271,7 +271,7 @@
   width: 100%;
   border-top: 1px solid #e2e8f0;
   padding: 2px 6px;
-  min-height: 34px;
+  min-height: 42px;
   gap: 4px;
 }
 
@@ -285,7 +285,7 @@
   height: 100%;
   border-right: 1px solid #e2e8f0;
   padding: 6px 3px;
-  min-width: 36px;
+  min-width: 42px;
   gap: 4px;
 }
 
@@ -298,7 +298,7 @@
   height: 100%;
   border-left: 1px solid #e2e8f0;
   padding: 6px 3px;
-  min-width: 36px;
+  min-width: 42px;
   gap: 4px;
 }
 
@@ -356,8 +356,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
@@ -510,8 +510,12 @@
   background-color: #f1f5f9;
 }
 
+.toolbar-grabber {
+  color: #475569;
+}
+
 .toolbar-grabber:hover {
-  color: #475569 !important;
+  color: #0037b9 !important;
 }
 
 /* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area) */

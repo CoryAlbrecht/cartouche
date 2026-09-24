@@ -1,6 +1,8 @@
 import React from "react";
 import { Widget } from "./Widget";
 import type { ToolbarId, ToolbarZone } from "@renderer/state/gisSignals";
+import Icon from "@renderer/components/common/MdiIcon";
+import { mdiDrag, mdiDragHorizontal, mdiPowerOn, mdiMinus } from "@mdi/js";
 
 export interface ToolbarWidgetProps {
   id: ToolbarId;
@@ -34,12 +36,12 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   return (
     <Widget
       id={`toolbar-widget-${id}`}
-      background="#ffffff"
+      background='#ffffff'
       border={1}
-      borderColor="#e2e8f0"
+      borderColor='#e2e8f0'
       location={zone}
-      minWidth={isHorizontal ? "auto" : 28}
-      minHeight={isHorizontal ? 28 : "auto"}
+      minWidth={isHorizontal ? "auto" : 36}
+      minHeight={isHorizontal ? 36 : "auto"}
       style={{
         display: "inline-flex",
         flexDirection: isHorizontal ? "row" : "column",
@@ -49,42 +51,39 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         gap: "2px",
         boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
         cursor: "default",
-      }}
-    >
-      {/* Grabber Handle: U+28FF Braille Pattern Dots 12345678 (⣿) */}
+      }}>
+      {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with high contrast */}
       <span
-        className="toolbar-grabber"
-        title="Drag toolbar to reorder or move to another edge"
+        className='toolbar-grabber'
+        title='Drag toolbar to reorder or move to another edge'
         draggable={true}
         onDragStart={handleDragStart}
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
           cursor: "grab",
           userSelect: "none",
-          color: "#94a3b8",
-          fontSize: "11pt",
-          lineHeight: 1,
           padding: isHorizontal ? "0 2px" : "2px 0",
-          letterSpacing: "-1px",
-        }}
-      >
-        ⣿
+        }}>
+        <Icon path={isHorizontal ? mdiDrag : mdiDragHorizontal} size='24px' />
       </span>
 
       {/* Child Controls */}
       {children}
 
-      {/* Divider: U+2502 Light Vertical Bar (│) */}
+      {/* Divider: MDI Icon 'power-on' (horizontal) / 'minus' (vertical) */}
       <span
-        className="toolbar-divider"
+        className='toolbar-divider'
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
           color: "#cbd5e1",
-          fontSize: "11pt",
-          lineHeight: 1,
           padding: isHorizontal ? "0 2px" : "2px 0",
           userSelect: "none",
-        }}
-      >
-        │
+        }}>
+        <Icon path={isHorizontal ? mdiPowerOn : mdiMinus} size='24px' />
       </span>
     </Widget>
   );

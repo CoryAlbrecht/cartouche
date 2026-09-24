@@ -26,41 +26,37 @@ export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
 }) => {
   useSignals();
   return (
-    <ToolbarWidget id="basic" zone={zone}>
+    <ToolbarWidget id='basic' zone={zone}>
       <button
-        className="toolbar-btn"
-        title="New Project (Blank)"
+        className='toolbar-btn'
+        title='New Project (Blank)'
         onClick={() => createNewProject()}
-        aria-label="New Project"
-      >
-        <Icon path={mdiFileOutline} size="16px" />
+        aria-label='New Project'>
+        <Icon path={mdiFileOutline} size='24px' />
       </button>
       <button
-        className="toolbar-btn"
-        title="Open Project..."
+        className='toolbar-btn'
+        title='Open Project...'
         onClick={openProjectAction}
-        aria-label="Open Project"
-      >
-        <Icon path={mdiFolderOpenOutline} size="16px" />
+        aria-label='Open Project'>
+        <Icon path={mdiFolderOpenOutline} size='24px' />
       </button>
       <button
-        className="toolbar-btn"
-        title="Save Project"
+        className='toolbar-btn'
+        title='Save Project'
         disabled={!hasProjectSignal.value}
         onClick={saveProjectAction}
-        aria-label="Save Project"
-      >
-        <Icon path={mdiContentSaveOutline} size="16px" />
+        aria-label='Save Project'>
+        <Icon path={mdiContentSaveOutline} size='24px' />
       </button>
       <button
         className={`toolbar-btn ${activeToolSignal.value === "pan" ? "active" : ""}`}
-        title="Drag Map Canvas (Pan)"
+        title='Drag Map Canvas (Pan)'
         onClick={() => {
           activeToolSignal.value = "pan";
         }}
-        aria-label="Drag Map Canvas"
-      >
-        <Icon path={mdiHandBackRightOutline} size="16px" />
+        aria-label='Drag Map Canvas'>
+        <Icon path={mdiHandBackRightOutline} size='24px' />
       </button>
     </ToolbarWidget>
   );

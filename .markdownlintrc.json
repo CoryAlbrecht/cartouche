@@ -1,6 +1,1 @@
-{
-  "MD0004": {
-    "enabled": true,
-    "stye": "dash"
-  }
-}
+{ "MD0004": { "enabled": true, "stye": "dash" } }

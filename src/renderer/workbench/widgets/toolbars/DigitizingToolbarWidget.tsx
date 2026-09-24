@@ -19,44 +19,40 @@ export const DigitizingToolbarWidget: React.FC<
 > = ({ zone = "top" }) => {
   useSignals();
   return (
-    <ToolbarWidget id="digitizing" zone={zone}>
+    <ToolbarWidget id='digitizing' zone={zone}>
       <button
-        className="toolbar-btn"
-        title="Toggle Editing"
+        className='toolbar-btn'
+        title='Toggle Editing'
         onClick={() => {}}
-        aria-label="Toggle Editing"
-      >
-        <Icon path={mdiPencilOutline} size="16px" />
+        aria-label='Toggle Editing'>
+        <Icon path={mdiPencilOutline} size='24px' />
       </button>
       <button
-        className="toolbar-btn"
-        title="Add Point Feature"
+        className='toolbar-btn'
+        title='Add Point Feature'
         onClick={() => {
           activeToolSignal.value = "point";
         }}
-        aria-label="Add Point Feature"
-      >
-        <Icon path={mdiMapMarkerPlusOutline} size="16px" />
+        aria-label='Add Point Feature'>
+        <Icon path={mdiMapMarkerPlusOutline} size='24px' />
       </button>
       <button
-        className="toolbar-btn"
-        title="Add Line Feature"
+        className='toolbar-btn'
+        title='Add Line Feature'
         onClick={() => {
           activeToolSignal.value = "line";
         }}
-        aria-label="Add Line Feature"
-      >
-        <Icon path={mdiVectorPolyline} size="16px" />
+        aria-label='Add Line Feature'>
+        <Icon path={mdiVectorPolyline} size='24px' />
       </button>
       <button
-        className="toolbar-btn"
-        title="Add Polygon Feature"
+        className='toolbar-btn'
+        title='Add Polygon Feature'
         onClick={() => {
           activeToolSignal.value = "polygon";
         }}
-        aria-label="Add Polygon Feature"
-      >
-        <Icon path={mdiVectorPolygon} size="16px" />
+        aria-label='Add Polygon Feature'>
+        <Icon path={mdiVectorPolygon} size='24px' />
       </button>
     </ToolbarWidget>
   );

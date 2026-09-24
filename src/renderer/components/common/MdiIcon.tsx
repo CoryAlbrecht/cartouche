@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 export interface MdiIconProps {
   path: string;
@@ -11,29 +11,28 @@ export interface MdiIconProps {
 
 export const Icon: React.FC<MdiIconProps> = ({
   path,
-  size = '16px',
-  color = 'currentColor',
+  size = "24px",
+  color = "currentColor",
   className,
   title,
-  style
+  style,
 }) => {
-  const dimension = typeof size === 'number' ? `${size * 24}px` : size;
+  const dimension = typeof size === "number" ? `${size * 24}px` : size;
 
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox='0 0 24 24'
       width={dimension}
       height={dimension}
       fill={color}
       className={className}
       style={{
-        display: 'inline-block',
-        verticalAlign: 'middle',
+        display: "inline-block",
+        verticalAlign: "middle",
         flexShrink: 0,
-        ...style
+        ...style,
       }}
-      aria-hidden={!title}
-    >
+      aria-hidden={!title}>
       {title && <title>{title}</title>}
       <path d={path} />
     </svg>
