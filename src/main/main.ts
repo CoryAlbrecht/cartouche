@@ -91,6 +91,17 @@ app.whenReady().then(() => {
     return mainWindow ? mainWindow.isMaximized() : false;
   });
 
+  // Keyboard Shortcuts System IPC Handlers
+  ipcMain?.handle('gis:execute-shortcut', async (_event, shortcutName: string) => {
+    const { ShortcutRegistry } = await import('./shortcuts/ShortcutRegistry');
+    ShortcutRegistry.executeShortcut(shortcutName);
+  });
+
+  ipcMain?.handle('gis:get-shortcuts', async () => {
+    const { ShortcutRegistry } = await import('./shortcuts/ShortcutRegistry');
+    return ShortcutRegistry.getAllShortcutDefinitions();
+  });
+
   // FlatGeobuf Zero-Copy IPC Pipeline & OpenLayers Flat Styling
   ipcMain?.handle('gis:encode-flatgeobuf', async (_event, features: any[], geometryKind: string) => {
     try {

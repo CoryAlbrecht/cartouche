@@ -18,7 +18,9 @@ const electronAPI: ElectronAPI = {
   },
   fetchLayerFlatGeobuf: (layerId: string) => ipcRenderer.invoke('gis:fetch-layer-flatgeobuf', layerId),
   encodeFeaturesToFlatGeobuf: (features: any[], geometryKind: any) =>
-    ipcRenderer.invoke('gis:encode-flatgeobuf', features, geometryKind)
+    ipcRenderer.invoke('gis:encode-flatgeobuf', features, geometryKind),
+  executeShortcut: (name: string) => ipcRenderer.invoke('gis:execute-shortcut', name),
+  getShortcuts: () => ipcRenderer.invoke('gis:get-shortcuts')
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

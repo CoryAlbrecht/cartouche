@@ -59,6 +59,11 @@ import {
   triggerMapAction,
   toggleToolbar,
 } from "@renderer/state/gisSignals";
+import {
+  loadShortcutsFromMain,
+  getShortcutFormattedKey,
+  registeredShortcutsSignal,
+} from "@renderer/state/shortcutSignals";
 import logoSvg from "../../../assets/svg/logo.svg";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
@@ -181,6 +186,88 @@ export const Workbench: React.FC = () => {
         unsubscribe?.();
       };
     }
+  }, []);
+
+  // Initialize keyboard shortcuts from Main Process and handle global hotkeys
+  useEffect(() => {
+    loadShortcutsFromMain();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore keystrokes when focused on editable input elements
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName;
+        if (
+          tagName === "INPUT" ||
+          tagName === "TEXTAREA" ||
+          tagName === "SELECT" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+
+      const key = e.key.toLowerCase();
+      const ctrl = e.ctrlKey;
+      const alt = e.altKey;
+      const shift = e.shiftKey;
+      const meta = e.metaKey;
+
+      const shortcuts = registeredShortcutsSignal.value;
+      for (const s of shortcuts) {
+        const c = s.keyCombination;
+        if (
+          c.key.toLowerCase() === key &&
+          !!c.ctrl === ctrl &&
+          !!c.alt === alt &&
+          !!c.shift === shift &&
+          !!c.meta === meta
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Execute shortcut function in Main Process via IPC
+          window.electronAPI?.executeShortcut(s.name);
+
+          // Trigger corresponding Renderer signal updates
+          switch (s.name) {
+            case "new_project":
+              createNewProject();
+              break;
+            case "open_project":
+              openProjectAction();
+              break;
+            case "save_project":
+              if (hasProjectSignal.value) saveProjectAction();
+              break;
+            case "save_as_project":
+              if (hasProjectSignal.value) saveAsProjectAction();
+              break;
+            case "undo_action":
+              if (undoStackSignal.value.length > 0) undoAction();
+              break;
+            case "redo_action":
+              if (redoStackSignal.value.length > 0) redoAction();
+              break;
+            case "add_vector_layer":
+              addConsoleLog(
+                "info",
+                "Add Vector Layer dialog requested.",
+                "Layers",
+              );
+              break;
+            default:
+              break;
+          }
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   // Frameless window controls
@@ -467,53 +554,79 @@ export const Workbench: React.FC = () => {
                 {/* * New... $$ */}
                 <div
                   className="menu-dropdown-item"
-                  onClick={() => handleMenuClick(createNewProject)}
+                  onClick={() =>
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("new_project");
+                      createNewProject();
+                    })
+                  }
                 >
                   <span className="menu-item-icon-slot">
                     <Icon path={mdiFileOutline} size="14px" />
                   </span>
                   <span className="menu-item-label">New...</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className="menu-shortcut-slot">
+                    {getShortcutFormattedKey("new_project")}
+                  </span>
                 </div>
 
                 {/* * Open... $$ */}
                 <div
                   className="menu-dropdown-item"
-                  onClick={() => handleMenuClick(openProjectAction)}
+                  onClick={() =>
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("open_project");
+                      openProjectAction();
+                    })
+                  }
                 >
                   <span className="menu-item-icon-slot">
                     <Icon path={mdiFolderOpenOutline} size="14px" />
                   </span>
                   <span className="menu-item-label">Open...</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className="menu-shortcut-slot">
+                    {getShortcutFormattedKey("open_project")}
+                  </span>
                 </div>
 
                 {/* * Save $$ (greyed out if no project) */}
                 <div
                   className={`menu-dropdown-item ${!hasProject ? "disabled" : ""}`}
                   onClick={() =>
-                    hasProject && handleMenuClick(saveProjectAction)
+                    hasProject &&
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("save_project");
+                      saveProjectAction();
+                    })
                   }
                 >
                   <span className="menu-item-icon-slot">
                     <Icon path={mdiContentSaveOutline} size="14px" />
                   </span>
                   <span className="menu-item-label">Save</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className="menu-shortcut-slot">
+                    {getShortcutFormattedKey("save_project")}
+                  </span>
                 </div>
 
                 {/* * Save As... $$ (greyed out if no project) */}
                 <div
                   className={`menu-dropdown-item ${!hasProject ? "disabled" : ""}`}
                   onClick={() =>
-                    hasProject && handleMenuClick(saveAsProjectAction)
+                    hasProject &&
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("save_as_project");
+                      saveAsProjectAction();
+                    })
                   }
                 >
                   <span className="menu-item-icon-slot">
                     <Icon path={mdiContentSaveEditOutline} size="14px" />
                   </span>
                   <span className="menu-item-label">Save As...</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className="menu-shortcut-slot">
+                    {getShortcutFormattedKey("save_as_project")}
+                  </span>
                 </div>
               </div>
             )}
@@ -537,25 +650,41 @@ export const Workbench: React.FC = () => {
                 {/* * Undo $$ (greyed out if no edits) */}
                 <div
                   className={`menu-dropdown-item ${!canUndo ? "disabled" : ""}`}
-                  onClick={() => canUndo && handleMenuClick(undoAction)}
+                  onClick={() =>
+                    canUndo &&
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("undo_action");
+                      undoAction();
+                    })
+                  }
                 >
                   <span className="menu-item-icon-slot">
                     <Icon path={mdiUndo} size="14px" />
                   </span>
                   <span className="menu-item-label">Undo</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className="menu-shortcut-slot">
+                    {getShortcutFormattedKey("undo_action")}
+                  </span>
                 </div>
 
                 {/* * Redo $$ (greyed out if no edits) */}
                 <div
                   className={`menu-dropdown-item ${!canRedo ? "disabled" : ""}`}
-                  onClick={() => canRedo && handleMenuClick(redoAction)}
+                  onClick={() =>
+                    canRedo &&
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("redo_action");
+                      redoAction();
+                    })
+                  }
                 >
                   <span className="menu-item-icon-slot">
                     <Icon path={mdiRedo} size="14px" />
                   </span>
                   <span className="menu-item-label">Redo</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className="menu-shortcut-slot">
+                    {getShortcutFormattedKey("redo_action")}
+                  </span>
                 </div>
 
                 <div className="menu-dropdown-separator" />
@@ -924,6 +1053,7 @@ export const Workbench: React.FC = () => {
                         className="menu-dropdown-item"
                         onClick={() => {
                           handleMenuClick(() => {
+                            window.electronAPI?.executeShortcut("add_vector_layer");
                             addConsoleLog(
                               "info",
                               "Add Vector Layer dialog requested.",
@@ -937,6 +1067,9 @@ export const Workbench: React.FC = () => {
                         </span>
                         <span className="menu-item-label">
                           Add Vector Layer...
+                        </span>
+                        <span className="menu-shortcut-slot">
+                          {getShortcutFormattedKey("add_vector_layer")}
                         </span>
                       </div>
 

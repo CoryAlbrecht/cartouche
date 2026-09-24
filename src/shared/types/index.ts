@@ -66,6 +66,22 @@ export interface ConsoleLogEntry {
   source?: string;
 }
 
+export interface KeyCombination {
+  key: string;
+  ctrl?: boolean;
+  alt?: boolean;
+  shift?: boolean;
+  meta?: boolean;
+}
+
+export interface KeyboardShortcutDefinition {
+  name: string;
+  displayName: string;
+  description: string;
+  keyCombination: KeyCombination;
+  formattedKey?: string;
+}
+
 export interface ElectronAPI {
   platform: string;
   version: string;
@@ -77,6 +93,8 @@ export interface ElectronAPI {
   onMaximizedState: (callback: (isMaximized: boolean) => void) => () => void;
   fetchLayerFlatGeobuf: (layerId: string) => Promise<FlatGeobufLayerPayload | null>;
   encodeFeaturesToFlatGeobuf: (features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>;
+  executeShortcut: (name: string) => Promise<void>;
+  getShortcuts: () => Promise<KeyboardShortcutDefinition[]>;
 }
 
 declare global {
