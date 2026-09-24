@@ -102,6 +102,17 @@ app.whenReady().then(() => {
     return ShortcutRegistry.getAllShortcutDefinitions();
   });
 
+  // Preferences System IPC Handlers
+  ipcMain?.handle('gis:get-preference', async (_event, name?: string) => {
+    const { default: getPreferenceValue } = await import('./api/ui/preferences/GetPreferenceValue');
+    return getPreferenceValue(name);
+  });
+
+  ipcMain?.handle('gis:set-preference', async (_event, name: string, value: any) => {
+    const { default: setPreferenceValue } = await import('./api/ui/preferences/SetPreferenceValue');
+    return setPreferenceValue(name, value);
+  });
+
   // FlatGeobuf Zero-Copy IPC Pipeline & OpenLayers Flat Styling
   ipcMain?.handle('gis:encode-flatgeobuf', async (_event, features: any[], geometryKind: string) => {
     try {

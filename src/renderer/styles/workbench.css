@@ -1123,3 +1123,302 @@
 .modal-btn:hover {
   background-color: #24588c;
 }
+
+/* =========================================================================
+   8. Preferences Dialog
+   ========================================================================= */
+.preferences-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(2px);
+}
+
+.preferences-modal-container {
+  background: #ffffff;
+  border-radius: 8px;
+  width: 720px;
+  max-width: 92vw;
+  height: 520px;
+  max-height: 85vh;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  border: 1px solid #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preferences-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.preferences-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13pt;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.preferences-title-icon {
+  color: #1b446c;
+}
+
+.preferences-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.preferences-close-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.preferences-modal-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.preferences-sidebar {
+  width: 220px;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preferences-sidebar-title {
+  font-size: 9.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  padding: 4px 8px 8px;
+}
+
+.preferences-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 11pt;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.preferences-tab-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.preferences-tab-btn.active {
+  background-color: #e2e8f0;
+  color: #1b446c;
+  font-weight: 600;
+}
+
+.preferences-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preferences-section-title {
+  font-size: 13pt;
+  font-weight: 600;
+  color: #0f172a;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.preferences-empty-state {
+  color: #64748b;
+  font-size: 11pt;
+  font-style: italic;
+  padding: 20px 0;
+}
+
+.preferences-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preference-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: border-color 0.12s ease;
+}
+
+.preference-item-row:hover {
+  border-color: #cbd5e1;
+}
+
+.preference-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.preference-item-name {
+  font-size: 11.5pt;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.preference-item-desc {
+  font-size: 10pt;
+  color: #64748b;
+}
+
+.preference-item-key {
+  font-size: 9pt;
+  font-family: monospace;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.preference-item-control {
+  min-width: 160px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.preference-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11pt;
+  color: #334155;
+  cursor: pointer;
+  user-select: none;
+}
+
+.preference-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #1b446c;
+  cursor: pointer;
+}
+
+.preference-select,
+.preference-input-number,
+.preference-input-text {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 11pt;
+  color: #0f172a;
+  background-color: #ffffff;
+  outline: none;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+  width: 100%;
+  max-width: 200px;
+}
+
+.preference-select:focus,
+.preference-input-number:focus,
+.preference-input-text:focus {
+  border-color: #1b446c;
+  box-shadow: 0 0 0 2px rgba(27, 68, 108, 0.15);
+}
+
+.preferences-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.preferences-shortcut-hint {
+  font-size: 9.5pt;
+  color: #94a3b8;
+}
+
+.preferences-footer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preferences-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 4px;
+  font-size: 11pt;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.preferences-btn-secondary {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.preferences-btn-secondary:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.preferences-btn-primary {
+  background: #1b446c;
+  color: #ffffff;
+}
+
+.preferences-btn-primary:hover {
+  background-color: #24588c;
+}

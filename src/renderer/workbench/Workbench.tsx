@@ -64,6 +64,11 @@ import {
   getShortcutFormattedKey,
   registeredShortcutsSignal,
 } from "@renderer/state/shortcutSignals";
+import {
+  openPreferencesDialog,
+  loadPreferences,
+} from "@renderer/state/preferencesSignals";
+import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import logoSvg from "../../../assets/svg/logo.svg";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
@@ -74,8 +79,8 @@ const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
   const { api, containerApi } = props;
   const isMapTab =
-    api.id.startsWith("map-viewport") ||
-    (api as any).panel?.view?.contentComponent === "map-viewport";
+    api.id.startsWith("map-viewport")
+    || (api as any).panel?.view?.contentComponent === "map-viewport";
 
   const [isLastMapTab, setIsLastMapTab] = useState(isMapTab);
 
@@ -83,8 +88,8 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
     const updateTabState = () => {
       const mapPanels = containerApi.panels.filter(
         (p) =>
-          p.id.startsWith("map-viewport") ||
-          (p as any).view?.contentComponent === "map-viewport",
+          p.id.startsWith("map-viewport")
+          || (p as any).view?.contentComponent === "map-viewport"
       );
       setIsLastMapTab(isMapTab && mapPanels.length <= 1);
     };
@@ -99,15 +104,14 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
   return (
     <div
       className={`dv-default-tab ${isLastMapTab ? "dv-tab-close-disabled" : ""}`}
-      data-testid="dockview-dv-default-tab"
-    >
-      <span className="dv-default-tab-content">
+      data-testid='dockview-dv-default-tab'>
+      <span className='dv-default-tab-content'>
         {(api as any).title || "Spatial Map Viewport"}
       </span>
       <button
-        type="button"
-        className="dv-default-tab-action"
-        aria-label="Close tab"
+        type='button'
+        className='dv-default-tab-action'
+        aria-label='Close tab'
         disabled={isLastMapTab}
         style={
           isLastMapTab ? { opacity: 0.22, cursor: "not-allowed" } : undefined
@@ -119,17 +123,16 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
             addConsoleLog(
               "warn",
               "The last map canvas tab cannot be closed.",
-              "Workbench",
+              "Workbench"
             );
             return;
           }
           api.close();
-        }}
-      >
-        <svg height="11" width="11" viewBox="0 0 28 28" className="dv-svg">
+        }}>
+        <svg height='11' width='11' viewBox='0 0 28 28' className='dv-svg'>
           <path
-            fill="currentColor"
-            d="M 2.1 0 L 0 2.1 L 11.9 14 L 0 25.9 L 2.1 28 L 14 16.1 L 25.9 28 L 28 25.9 L 16.1 14 L 28 2.1 L 25.9 0 L 14 11.9 Z"
+            fill='currentColor'
+            d='M 2.1 0 L 0 2.1 L 11.9 14 L 0 25.9 L 2.1 28 L 14 16.1 L 25.9 28 L 28 25.9 L 16.1 14 L 28 2.1 L 25.9 0 L 14 11.9 Z'
           />
         </svg>
       </button>
@@ -148,10 +151,7 @@ export const Workbench: React.FC = () => {
   const [openPanels, setOpenPanels] = useState<{
     attributes: boolean;
     layers: boolean;
-  }>({
-    attributes: false,
-    layers: true,
-  });
+  }>({ attributes: false, layers: true });
 
   // Track which dockview panels are open
   const updateOpenPanelsState = useCallback((api: DockviewApi) => {
@@ -190,6 +190,7 @@ export const Workbench: React.FC = () => {
 
   // Initialize keyboard shortcuts from Main Process and handle global hotkeys
   useEffect(() => {
+    loadPreferences();
     loadShortcutsFromMain();
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -198,10 +199,10 @@ export const Workbench: React.FC = () => {
       if (target) {
         const tagName = target.tagName;
         if (
-          tagName === "INPUT" ||
-          tagName === "TEXTAREA" ||
-          tagName === "SELECT" ||
-          target.isContentEditable
+          tagName === "INPUT"
+          || tagName === "TEXTAREA"
+          || tagName === "SELECT"
+          || target.isContentEditable
         ) {
           return;
         }
@@ -217,11 +218,11 @@ export const Workbench: React.FC = () => {
       for (const s of shortcuts) {
         const c = s.keyCombination;
         if (
-          c.key.toLowerCase() === key &&
-          !!c.ctrl === ctrl &&
-          !!c.alt === alt &&
-          !!c.shift === shift &&
-          !!c.meta === meta
+          c.key.toLowerCase() === key
+          && !!c.ctrl === ctrl
+          && !!c.alt === alt
+          && !!c.shift === shift
+          && !!c.meta === meta
         ) {
           e.preventDefault();
           e.stopPropagation();
@@ -249,11 +250,14 @@ export const Workbench: React.FC = () => {
             case "redo_action":
               if (redoStackSignal.value.length > 0) redoAction();
               break;
+            case "open_preferences":
+              openPreferencesDialog();
+              break;
             case "add_vector_layer":
               addConsoleLog(
                 "info",
                 "Add Vector Layer dialog requested.",
-                "Layers",
+                "Layers"
               );
               break;
             default:
@@ -277,7 +281,7 @@ export const Workbench: React.FC = () => {
   const handleMenubarDblClick = (e: React.MouseEvent) => {
     if (
       (e.target as HTMLElement).closest(
-        ".window-controls, .menu-items-group, button",
+        ".window-controls, .menu-items-group, button"
       )
     )
       return;
@@ -310,11 +314,11 @@ export const Workbench: React.FC = () => {
       addConsoleLog(
         "info",
         "Default GIS layout initialized: Layers Panel (Left), Map Viewport (Center).",
-        "Dockview",
+        "Dockview"
       );
       updateOpenPanelsState(api);
     },
-    [updateOpenPanelsState],
+    [updateOpenPanelsState]
   );
 
   // Open or focus an individual dockview panel
@@ -323,7 +327,7 @@ export const Workbench: React.FC = () => {
       id: string,
       component: string,
       title: string,
-      direction?: "left" | "right" | "above" | "below" | "within",
+      direction?: "left" | "right" | "above" | "below" | "within"
     ) => {
       if (!dockviewApi) return;
       const existing = dockviewApi.getPanel(id);
@@ -341,14 +345,14 @@ export const Workbench: React.FC = () => {
         component,
         title,
         position:
-          referencePanel && direction
-            ? { referencePanel, direction }
-            : undefined,
+          referencePanel && direction ?
+            { referencePanel, direction }
+          : undefined,
       });
       addConsoleLog("info", `Opened panel: ${title}`, "Dockview");
       updateOpenPanelsState(dockviewApi);
     },
-    [dockviewApi, updateOpenPanelsState],
+    [dockviewApi, updateOpenPanelsState]
   );
 
   // Toggle dockview panel open/close
@@ -357,7 +361,7 @@ export const Workbench: React.FC = () => {
       id: string,
       component: string,
       title: string,
-      direction: "left" | "right" | "above" | "below",
+      direction: "left" | "right" | "above" | "below"
     ) => {
       if (!dockviewApi) return;
       const existing = dockviewApi.getPanel(id);
@@ -369,7 +373,7 @@ export const Workbench: React.FC = () => {
       }
       updateOpenPanelsState(dockviewApi);
     },
-    [dockviewApi, openPanel, updateOpenPanelsState],
+    [dockviewApi, openPanel, updateOpenPanelsState]
   );
 
   const onReady = useCallback(
@@ -385,12 +389,12 @@ export const Workbench: React.FC = () => {
           addConsoleLog(
             "info",
             "Restored layout from persistent storage.",
-            "Dockview",
+            "Dockview"
           );
         } catch (err) {
           console.warn(
             "Failed to parse saved layout, resetting to default:",
-            err,
+            err
           );
           loadDefaultLayout(api);
         }
@@ -403,19 +407,19 @@ export const Workbench: React.FC = () => {
         const originalClose = panel.api.close.bind(panel.api);
         panel.api.close = () => {
           const isMap =
-            panel.id.startsWith("map-viewport") ||
-            (panel as any).view?.contentComponent === "map-viewport";
+            panel.id.startsWith("map-viewport")
+            || (panel as any).view?.contentComponent === "map-viewport";
           if (isMap) {
             const mapPanels = api.panels.filter(
               (p) =>
-                p.id.startsWith("map-viewport") ||
-                (p as any).view?.contentComponent === "map-viewport",
+                p.id.startsWith("map-viewport")
+                || (p as any).view?.contentComponent === "map-viewport"
             );
             if (mapPanels.length <= 1) {
               addConsoleLog(
                 "warn",
                 "The last map canvas tab cannot be closed.",
-                "Workbench",
+                "Workbench"
               );
               return;
             }
@@ -427,14 +431,14 @@ export const Workbench: React.FC = () => {
 
       // Enforce strict directive: Panels MUST NEVER be grouped with map canvases in a tab group
       const isMapViewportPanel = (panel: IDockviewPanel) =>
-        panel.id.startsWith("map-viewport") ||
-        (panel as any).view?.contentComponent === "map-viewport";
+        panel.id.startsWith("map-viewport")
+        || (panel as any).view?.contentComponent === "map-viewport";
 
       const enforceMapCanvasGroupIsolation = (api: DockviewApi) => {
         api.groups.forEach((group) => {
           const mapPanels = group.panels.filter(isMapViewportPanel);
           const nonMapPanels = group.panels.filter(
-            (p) => !isMapViewportPanel(p),
+            (p) => !isMapViewportPanel(p)
           );
 
           if (mapPanels.length > 0 && nonMapPanels.length > 0) {
@@ -448,7 +452,7 @@ export const Workbench: React.FC = () => {
               addConsoleLog(
                 "warn",
                 `Panels cannot be grouped with map canvases. Moved panel "${panel.title || panel.id}".`,
-                "Workbench",
+                "Workbench"
               );
             });
           }
@@ -473,7 +477,7 @@ export const Workbench: React.FC = () => {
 
       updateOpenPanelsState(api);
     },
-    [loadDefaultLayout, updateOpenPanelsState],
+    [loadDefaultLayout, updateOpenPanelsState]
   );
 
   // Tab right-click context menu items
@@ -481,13 +485,13 @@ export const Workbench: React.FC = () => {
     (params: GetTabContextMenuItemsParams) => {
       const { panel, api } = params;
       const isMapTab =
-        panel.id.startsWith("map-viewport") ||
-        (panel as any).view?.contentComponent === "map-viewport";
+        panel.id.startsWith("map-viewport")
+        || (panel as any).view?.contentComponent === "map-viewport";
 
       const mapPanels = api.panels.filter(
         (p) =>
-          p.id.startsWith("map-viewport") ||
-          (p as any).view?.contentComponent === "map-viewport",
+          p.id.startsWith("map-viewport")
+          || (p as any).view?.contentComponent === "map-viewport"
       );
       const isLastMap = isMapTab && mapPanels.length <= 1;
 
@@ -498,7 +502,7 @@ export const Workbench: React.FC = () => {
       items.push("closeOthers", "closeAll", "separator", "maximize");
       return items;
     },
-    [],
+    []
   );
 
   // Menu action triggers
@@ -524,67 +528,63 @@ export const Workbench: React.FC = () => {
   const selectedCount = selectedFeaturesCountSignal.value;
 
   return (
-    <div className="workbench-container">
+    <div className='workbench-container'>
       {/* Frameless Top Menubar */}
       <header
-        className="workbench-menubar"
-        onDoubleClick={handleMenubarDblClick}
-      >
-        <div className="menu-brand">
-          <img src={logoSvg} alt="Cartouche" className="app-logo" />
-          <span className="app-title-badge">Cartouche</span>
+        className='workbench-menubar'
+        onDoubleClick={handleMenubarDblClick}>
+        <div className='menu-brand'>
+          <img src={logoSvg} alt='Cartouche' className='app-logo' />
+          <span className='app-title-badge'>Cartouche</span>
         </div>
 
-        <nav className="menu-items-group">
+        <nav className='menu-items-group'>
           {/* =========================================================================
               1. PROJECT MENU
              ========================================================================= */}
-          <div className="menu-item-wrapper">
+          <div className='menu-item-wrapper'>
             <div
               className={`menu-dropdown-trigger ${openMenu === "project" ? "active" : ""}`}
               onClick={() => {
                 setOpenMenu(openMenu === "project" ? null : "project");
                 setActiveSubmenu(null);
-              }}
-            >
+              }}>
               Project
             </div>
             {openMenu === "project" && (
-              <div className="menu-dropdown">
+              <div className='menu-dropdown'>
                 {/* * New... $$ */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => {
                       window.electronAPI?.executeShortcut("new_project");
                       createNewProject();
                     })
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiFileOutline} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiFileOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">New...</span>
-                  <span className="menu-shortcut-slot">
+                  <span className='menu-item-label'>New...</span>
+                  <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("new_project")}
                   </span>
                 </div>
 
                 {/* * Open... $$ */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => {
                       window.electronAPI?.executeShortcut("open_project");
                       openProjectAction();
                     })
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiFolderOpenOutline} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiFolderOpenOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Open...</span>
-                  <span className="menu-shortcut-slot">
+                  <span className='menu-item-label'>Open...</span>
+                  <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("open_project")}
                   </span>
                 </div>
@@ -593,18 +593,17 @@ export const Workbench: React.FC = () => {
                 <div
                   className={`menu-dropdown-item ${!hasProject ? "disabled" : ""}`}
                   onClick={() =>
-                    hasProject &&
-                    handleMenuClick(() => {
+                    hasProject
+                    && handleMenuClick(() => {
                       window.electronAPI?.executeShortcut("save_project");
                       saveProjectAction();
                     })
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiContentSaveOutline} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiContentSaveOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Save</span>
-                  <span className="menu-shortcut-slot">
+                  <span className='menu-item-label'>Save</span>
+                  <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("save_project")}
                   </span>
                 </div>
@@ -613,18 +612,17 @@ export const Workbench: React.FC = () => {
                 <div
                   className={`menu-dropdown-item ${!hasProject ? "disabled" : ""}`}
                   onClick={() =>
-                    hasProject &&
-                    handleMenuClick(() => {
+                    hasProject
+                    && handleMenuClick(() => {
                       window.electronAPI?.executeShortcut("save_as_project");
                       saveAsProjectAction();
                     })
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiContentSaveEditOutline} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiContentSaveEditOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Save As...</span>
-                  <span className="menu-shortcut-slot">
+                  <span className='menu-item-label'>Save As...</span>
+                  <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("save_as_project")}
                   </span>
                 </div>
@@ -635,34 +633,32 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               2. EDIT MENU
              ========================================================================= */}
-          <div className="menu-item-wrapper">
+          <div className='menu-item-wrapper'>
             <div
               className={`menu-dropdown-trigger ${openMenu === "edit" ? "active" : ""}`}
               onClick={() => {
                 setOpenMenu(openMenu === "edit" ? null : "edit");
                 setActiveSubmenu(null);
-              }}
-            >
+              }}>
               Edit
             </div>
             {openMenu === "edit" && (
-              <div className="menu-dropdown">
+              <div className='menu-dropdown'>
                 {/* * Undo $$ (greyed out if no edits) */}
                 <div
                   className={`menu-dropdown-item ${!canUndo ? "disabled" : ""}`}
                   onClick={() =>
-                    canUndo &&
-                    handleMenuClick(() => {
+                    canUndo
+                    && handleMenuClick(() => {
                       window.electronAPI?.executeShortcut("undo_action");
                       undoAction();
                     })
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiUndo} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiUndo} size='14px' />
                   </span>
-                  <span className="menu-item-label">Undo</span>
-                  <span className="menu-shortcut-slot">
+                  <span className='menu-item-label'>Undo</span>
+                  <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("undo_action")}
                   </span>
                 </div>
@@ -671,36 +667,34 @@ export const Workbench: React.FC = () => {
                 <div
                   className={`menu-dropdown-item ${!canRedo ? "disabled" : ""}`}
                   onClick={() =>
-                    canRedo &&
-                    handleMenuClick(() => {
+                    canRedo
+                    && handleMenuClick(() => {
                       window.electronAPI?.executeShortcut("redo_action");
                       redoAction();
                     })
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiRedo} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiRedo} size='14px' />
                   </span>
-                  <span className="menu-item-label">Redo</span>
-                  <span className="menu-shortcut-slot">
+                  <span className='menu-item-label'>Redo</span>
+                  <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("redo_action")}
                   </span>
                 </div>
 
-                <div className="menu-dropdown-separator" />
+                <div className='menu-dropdown-separator' />
 
                 {/* * Cut (greyed out if no selection) */}
                 <div
                   className={`menu-dropdown-item ${!hasSelectedFeatures ? "disabled" : ""}`}
                   onClick={() =>
                     hasSelectedFeatures && handleMenuClick(cutAction)
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiContentCut} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiContentCut} size='14px' />
                   </span>
-                  <span className="menu-item-label">Cut</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Cut</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
                 {/* * Copy (greyed out if no selection) */}
@@ -708,63 +702,57 @@ export const Workbench: React.FC = () => {
                   className={`menu-dropdown-item ${!hasSelectedFeatures ? "disabled" : ""}`}
                   onClick={() =>
                     hasSelectedFeatures && handleMenuClick(copyAction)
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiContentCopy} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiContentCopy} size='14px' />
                   </span>
-                  <span className="menu-item-label">Copy</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Copy</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
                 {/* * Paste (greyed out if empty buffer) */}
                 <div
                   className={`menu-dropdown-item ${!hasClipboard ? "disabled" : ""}`}
-                  onClick={() => hasClipboard && handleMenuClick(pasteAction)}
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiContentPaste} size="14px" />
+                  onClick={() => hasClipboard && handleMenuClick(pasteAction)}>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiContentPaste} size='14px' />
                   </span>
-                  <span className="menu-item-label">Paste</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Paste</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
-                <div className="menu-dropdown-separator" />
+                <div className='menu-dropdown-separator' />
 
                 {/* * Edit Attributes... $$ (greyed out if no selection) */}
                 <div
                   className={`menu-dropdown-item ${!hasSelectedFeatures ? "disabled" : ""}`}
                   onClick={() =>
                     hasSelectedFeatures && handleMenuClick(editAttributesAction)
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiTableEdit} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiTableEdit} size='14px' />
                   </span>
-                  <span className="menu-item-label">Edit Attributes...</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Edit Attributes...</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
-                <div className="menu-dropdown-separator" />
+                <div className='menu-dropdown-separator' />
 
                 {/* * Preferences... $$ */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => {
-                      addConsoleLog(
-                        "info",
-                        "Preferences dialog requested.",
-                        "Edit",
-                      );
+                      openPreferencesDialog();
                     });
-                  }}
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiCogOutline} size="14px" />
+                  }}>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiCogOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Preferences...</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Preferences...</span>
+                  <span className='menu-shortcut-slot'>
+                    {getShortcutFormattedKey("open_preferences")}
+                  </span>
                 </div>
               </div>
             )}
@@ -773,140 +761,133 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               3. VIEW MENU
              ========================================================================= */}
-          <div className="menu-item-wrapper">
+          <div className='menu-item-wrapper'>
             <div
               className={`menu-dropdown-trigger ${openMenu === "view" ? "active" : ""}`}
               onClick={() => {
                 setOpenMenu(openMenu === "view" ? null : "view");
                 setActiveSubmenu(null);
-              }}
-            >
+              }}>
               View
             </div>
             {openMenu === "view" && (
-              <div className="menu-dropdown">
+              <div className='menu-dropdown'>
                 {/* * New Map View */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => {
                       if (!dockviewApi) return;
                       const newId = `map-viewport-${Date.now()}`;
                       const count =
                         dockviewApi.panels.filter((p) =>
-                          p.id.startsWith("map-viewport"),
+                          p.id.startsWith("map-viewport")
                         ).length + 1;
                       openPanel(
                         newId,
                         "map-viewport",
                         `Spatial Map Viewport (${count})`,
-                        "within",
+                        "within"
                       );
                     });
-                  }}
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiMapPlus} size="14px" />
+                  }}>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiMapPlus} size='14px' />
                   </span>
-                  <span className="menu-item-label">New Map View</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>New Map View</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
                 {/* * Zoom In */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => triggerMapAction("zoomIn"))
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiMagnifyPlusOutline} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiMagnifyPlusOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Zoom In</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Zoom In</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
                 {/* * Zoom Out */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => triggerMapAction("zoomOut"))
-                  }
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiMagnifyMinusOutline} size="14px" />
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiMagnifyMinusOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Zoom Out</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Zoom Out</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
 
-                <div className="menu-dropdown-separator" />
+                <div className='menu-dropdown-separator' />
 
                 {/* Panels Submenu */}
                 <div
-                  className="menu-submenu-wrapper"
+                  className='menu-submenu-wrapper'
                   onMouseEnter={() => setActiveSubmenu("panels")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveSubmenu(
-                      activeSubmenu === "panels" ? null : "panels",
+                      activeSubmenu === "panels" ? null : "panels"
                     );
-                  }}
-                >
-                  <div className="menu-dropdown-item menu-submenu-trigger">
-                    <span className="menu-item-icon-slot" />
-                    <span className="menu-item-label">Panels</span>
+                  }}>
+                  <div className='menu-dropdown-item menu-submenu-trigger'>
+                    <span className='menu-item-icon-slot' />
+                    <span className='menu-item-label'>Panels</span>
                     <Icon
                       path={mdiChevronRight}
-                      size="14px"
-                      className="menu-arrow"
+                      size='14px'
+                      className='menu-arrow'
                     />
                   </div>
 
                   {activeSubmenu === "panels" && (
-                    <div className="menu-submenu-dropdown">
+                    <div className='menu-submenu-dropdown'>
                       {/* ? Attributes */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           togglePanel(
                             "attribute-table",
                             "attribute-table",
                             "Features & Attributes",
-                            "below",
+                            "below"
                           );
                           setOpenMenu(null);
                           setActiveSubmenu(null);
-                        }}
-                      >
-                        <span className="menu-item-check-slot">
+                        }}>
+                        <span className='menu-item-check-slot'>
                           {openPanels.attributes && (
-                            <Icon path={mdiCheck} size="14px" />
+                            <Icon path={mdiCheck} size='14px' />
                           )}
                         </span>
-                        <span className="menu-item-label">Attributes</span>
+                        <span className='menu-item-label'>Attributes</span>
                       </div>
 
                       {/* ? Layers */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           togglePanel(
                             "layer-tree",
                             "layer-tree",
                             "Layers",
-                            "left",
+                            "left"
                           );
                           setOpenMenu(null);
                           setActiveSubmenu(null);
-                        }}
-                      >
-                        <span className="menu-item-check-slot">
+                        }}>
+                        <span className='menu-item-check-slot'>
                           {openPanels.layers && (
-                            <Icon path={mdiCheck} size="14px" />
+                            <Icon path={mdiCheck} size='14px' />
                           )}
                         </span>
-                        <span className="menu-item-label">Layers</span>
+                        <span className='menu-item-label'>Layers</span>
                       </div>
                     </div>
                   )}
@@ -914,97 +895,92 @@ export const Workbench: React.FC = () => {
 
                 {/* Toolbars Submenu */}
                 <div
-                  className="menu-submenu-wrapper"
+                  className='menu-submenu-wrapper'
                   onMouseEnter={() => setActiveSubmenu("toolbars")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveSubmenu(
-                      activeSubmenu === "toolbars" ? null : "toolbars",
+                      activeSubmenu === "toolbars" ? null : "toolbars"
                     );
-                  }}
-                >
-                  <div className="menu-dropdown-item menu-submenu-trigger">
-                    <span className="menu-item-icon-slot" />
-                    <span className="menu-item-label">Toolbars</span>
+                  }}>
+                  <div className='menu-dropdown-item menu-submenu-trigger'>
+                    <span className='menu-item-icon-slot' />
+                    <span className='menu-item-label'>Toolbars</span>
                     <Icon
                       path={mdiChevronRight}
-                      size="14px"
-                      className="menu-arrow"
+                      size='14px'
+                      className='menu-arrow'
                     />
                   </div>
 
                   {activeSubmenu === "toolbars" && (
-                    <div className="menu-submenu-dropdown">
+                    <div className='menu-submenu-dropdown'>
                       {/* ? Digitizing */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           toggleToolbar("digitizing");
                           setOpenMenu(null);
                           setActiveSubmenu(null);
-                        }}
-                      >
-                        <span className="menu-item-check-slot">
+                        }}>
+                        <span className='menu-item-check-slot'>
                           {visibleToolbars.digitizing && (
-                            <Icon path={mdiCheck} size="14px" />
+                            <Icon path={mdiCheck} size='14px' />
                           )}
                         </span>
-                        <span className="menu-item-label">Digitizing</span>
+                        <span className='menu-item-label'>Digitizing</span>
                       </div>
 
                       {/* ? Snapping */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           toggleToolbar("snapping");
                           setOpenMenu(null);
                           setActiveSubmenu(null);
-                        }}
-                      >
-                        <span className="menu-item-check-slot">
+                        }}>
+                        <span className='menu-item-check-slot'>
                           {visibleToolbars.snapping && (
-                            <Icon path={mdiCheck} size="14px" />
+                            <Icon path={mdiCheck} size='14px' />
                           )}
                         </span>
-                        <span className="menu-item-label">Snapping</span>
+                        <span className='menu-item-label'>Snapping</span>
                       </div>
 
                       {/* ? Basic */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           toggleToolbar("basic");
                           setOpenMenu(null);
                           setActiveSubmenu(null);
-                        }}
-                      >
-                        <span className="menu-item-check-slot">
+                        }}>
+                        <span className='menu-item-check-slot'>
                           {visibleToolbars.basic && (
-                            <Icon path={mdiCheck} size="14px" />
+                            <Icon path={mdiCheck} size='14px' />
                           )}
                         </span>
-                        <span className="menu-item-label">Basic</span>
+                        <span className='menu-item-label'>Basic</span>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="menu-dropdown-separator" />
+                <div className='menu-dropdown-separator' />
 
                 {/* Reset docking to default */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => {
                       if (dockviewApi) loadDefaultLayout(dockviewApi);
                     });
-                  }}
-                >
-                  <span className="menu-item-icon-slot" />
-                  <span className="menu-item-label">
+                  }}>
+                  <span className='menu-item-icon-slot' />
+                  <span className='menu-item-label'>
                     Reset docking to default
                   </span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-shortcut-slot' />
                 </div>
               </div>
             )}
@@ -1013,83 +989,81 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               4. LAYERS MENU
              ========================================================================= */}
-          <div className="menu-item-wrapper">
+          <div className='menu-item-wrapper'>
             <div
               className={`menu-dropdown-trigger ${openMenu === "layers" ? "active" : ""}`}
               onClick={() => {
                 setOpenMenu(openMenu === "layers" ? null : "layers");
                 setActiveSubmenu(null);
-              }}
-            >
+              }}>
               Layers
             </div>
             {openMenu === "layers" && (
-              <div className="menu-dropdown">
+              <div className='menu-dropdown'>
                 {/* Add Submenu */}
                 <div
-                  className="menu-submenu-wrapper"
+                  className='menu-submenu-wrapper'
                   onMouseEnter={() => setActiveSubmenu("addLayer")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveSubmenu(
-                      activeSubmenu === "addLayer" ? null : "addLayer",
+                      activeSubmenu === "addLayer" ? null : "addLayer"
                     );
-                  }}
-                >
-                  <div className="menu-dropdown-item menu-submenu-trigger">
-                    <span className="menu-item-icon-slot" />
-                    <span className="menu-item-label">Add</span>
+                  }}>
+                  <div className='menu-dropdown-item menu-submenu-trigger'>
+                    <span className='menu-item-icon-slot' />
+                    <span className='menu-item-label'>Add</span>
                     <Icon
                       path={mdiChevronRight}
-                      size="14px"
-                      className="menu-arrow"
+                      size='14px'
+                      className='menu-arrow'
                     />
                   </div>
 
                   {activeSubmenu === "addLayer" && (
-                    <div className="menu-submenu-dropdown">
+                    <div className='menu-submenu-dropdown'>
                       {/* * Add Vector Layer */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           handleMenuClick(() => {
-                            window.electronAPI?.executeShortcut("add_vector_layer");
+                            window.electronAPI?.executeShortcut(
+                              "add_vector_layer"
+                            );
                             addConsoleLog(
                               "info",
                               "Add Vector Layer dialog requested.",
-                              "Layers",
+                              "Layers"
                             );
                           });
-                        }}
-                      >
-                        <span className="menu-item-icon-slot">
-                          <Icon path={mdiVectorPolygon} size="14px" />
+                        }}>
+                        <span className='menu-item-icon-slot'>
+                          <Icon path={mdiVectorPolygon} size='14px' />
                         </span>
-                        <span className="menu-item-label">
+                        <span className='menu-item-label'>
                           Add Vector Layer...
                         </span>
-                        <span className="menu-shortcut-slot">
+                        <span className='menu-shortcut-slot'>
                           {getShortcutFormattedKey("add_vector_layer")}
                         </span>
                       </div>
 
                       {/* * Add Raster Layer */}
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={() => {
                           handleMenuClick(() => {
                             addConsoleLog(
                               "info",
                               "Add Raster Layer dialog requested.",
-                              "Layers",
+                              "Layers"
                             );
                           });
-                        }}
-                      >
-                        <span className="menu-item-icon-slot">
-                          <Icon path={mdiImageOutline} size="14px" />
+                        }}>
+                        <span className='menu-item-icon-slot'>
+                          <Icon path={mdiImageOutline} size='14px' />
                         </span>
-                        <span className="menu-item-label">
+                        <span className='menu-item-label'>
                           Add Raster Layer...
                         </span>
                       </div>
@@ -1099,22 +1073,21 @@ export const Workbench: React.FC = () => {
 
                 {/* * Create Layer */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => {
                       addConsoleLog(
                         "info",
                         "Create Layer dialog requested.",
-                        "Layers",
+                        "Layers"
                       );
                     });
-                  }}
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiPlusBoxOutline} size="14px" />
+                  }}>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiPlusBoxOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">Create Layer...</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>Create Layer...</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
               </div>
             )}
@@ -1123,113 +1096,104 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               5. HELP MENU
              ========================================================================= */}
-          <div className="menu-item-wrapper">
+          <div className='menu-item-wrapper'>
             <div
               className={`menu-dropdown-trigger ${openMenu === "help" ? "active" : ""}`}
               onClick={() => {
                 setOpenMenu(openMenu === "help" ? null : "help");
                 setActiveSubmenu(null);
-              }}
-            >
+              }}>
               Help
             </div>
             {openMenu === "help" && (
-              <div className="menu-dropdown">
+              <div className='menu-dropdown'>
                 {/* * About */}
                 <div
-                  className="menu-dropdown-item"
+                  className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => setShowAboutModal(true));
-                  }}
-                >
-                  <span className="menu-item-icon-slot">
-                    <Icon path={mdiInformationOutline} size="14px" />
+                  }}>
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiInformationOutline} size='14px' />
                   </span>
-                  <span className="menu-item-label">About</span>
-                  <span className="menu-shortcut-slot" />
+                  <span className='menu-item-label'>About</span>
+                  <span className='menu-shortcut-slot' />
                 </div>
               </div>
             )}
           </div>
         </nav>
 
-        <div className="menu-spacer" />
+        <div className='menu-spacer' />
 
         {/* Window controls */}
-        <div className="window-controls">
+        <div className='window-controls'>
           <button
-            className="win-btn"
-            title="Minimize"
+            className='win-btn'
+            title='Minimize'
             onClick={handleMinimize}
-            aria-label="Minimize"
-          >
-            <svg width="10" height="1" viewBox="0 0 10 1">
-              <rect width="10" height="1" fill="currentColor" />
+            aria-label='Minimize'>
+            <svg width='10' height='1' viewBox='0 0 10 1'>
+              <rect width='10' height='1' fill='currentColor' />
             </svg>
           </button>
           <button
-            className="win-btn"
+            className='win-btn'
             title={isMaximized ? "Restore" : "Maximize"}
             onClick={handleMaximize}
-            aria-label="Maximize"
-          >
-            {isMaximized ? (
+            aria-label='Maximize'>
+            {isMaximized ?
               <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              >
-                <rect x="2.5" y="0.5" width="7" height="7" />
-                <rect x="0.5" y="2.5" width="7" height="7" />
+                width='10'
+                height='10'
+                viewBox='0 0 10 10'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='1.2'>
+                <rect x='2.5' y='0.5' width='7' height='7' />
+                <rect x='0.5' y='2.5' width='7' height='7' />
               </svg>
-            ) : (
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              >
-                <rect x="1" y="1" width="8" height="8" />
+            : <svg
+                width='10'
+                height='10'
+                viewBox='0 0 10 10'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='1.2'>
+                <rect x='1' y='1' width='8' height='8' />
               </svg>
-            )}
+            }
           </button>
           <button
-            className="win-btn win-close"
-            title="Close"
+            className='win-btn win-close'
+            title='Close'
             onClick={handleClose}
-            aria-label="Close"
-          >
+            aria-label='Close'>
             <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              stroke="currentColor"
-              strokeWidth="1.2"
-            >
-              <line x1="1" y1="1" x2="9" y2="9" />
-              <line x1="9" y1="1" x2="1" y2="9" />
+              width='10'
+              height='10'
+              viewBox='0 0 10 10'
+              stroke='currentColor'
+              strokeWidth='1.2'>
+              <line x1='1' y1='1' x2='9' y2='9' />
+              <line x1='9' y1='1' x2='1' y2='9' />
             </svg>
           </button>
         </div>
       </header>
 
       {/* Outer Toolbar Panel: Top (Under Menubar) */}
-      <ToolbarPanel zone="top" />
+      <ToolbarPanel zone='top' />
 
       {/* Main Workbench Body: Left Toolbar + Dockview Center + Right Toolbar */}
-      <div className="workbench-main">
+      <div className='workbench-main'>
         {/* Outer Toolbar Panel: Left */}
-        <ToolbarPanel zone="left" />
+        <ToolbarPanel zone='left' />
 
         {/* Dockview Container with 4 Edge Panel capabilities */}
-        <main className="dockview-wrapper">
+        <main className='dockview-wrapper'>
           <DockviewReact
-            className="dockview-theme-light"
+            className='dockview-theme-light'
             components={panelComponents}
             defaultTabComponent={WorkbenchTab}
             getTabContextMenuItems={getTabContextMenuItems}
@@ -1238,63 +1202,59 @@ export const Workbench: React.FC = () => {
         </main>
 
         {/* Outer Toolbar Panel: Right */}
-        <ToolbarPanel zone="right" />
+        <ToolbarPanel zone='right' />
       </div>
 
       {/* Outer Toolbar Panel: Bottom (Above Status Bar) */}
-      <ToolbarPanel zone="bottom" />
+      <ToolbarPanel zone='bottom' />
 
       {/* Status Bar */}
-      <footer className="workbench-statusbar">
+      <footer className='workbench-statusbar'>
         <div
-          className="statusbar-item"
-          title="Current Cursor Coordinates (Lon, Lat)"
-        >
-          {coords ? (
+          className='statusbar-item'
+          title='Current Cursor Coordinates (Lon, Lat)'>
+          {coords ?
             <span>
-              {coords.lon >= 0
-                ? `${coords.lon.toFixed(4)}°E`
-                : `${Math.abs(coords.lon).toFixed(4)}°W`}
+              {coords.lon >= 0 ?
+                `${coords.lon.toFixed(4)}°E`
+              : `${Math.abs(coords.lon).toFixed(4)}°W`}
               ,{" "}
-              {coords.lat >= 0
-                ? `${coords.lat.toFixed(4)}°N`
-                : `${Math.abs(coords.lat).toFixed(4)}°S`}
+              {coords.lat >= 0 ?
+                `${coords.lat.toFixed(4)}°N`
+              : `${Math.abs(coords.lat).toFixed(4)}°S`}
             </span>
-          ) : (
-            <span>Coordinate: 0.0000°, 0.0000°</span>
-          )}
+          : <span>Coordinate: 0.0000°, 0.0000°</span>}
         </div>
 
-        <div className="statusbar-separator" />
+        <div className='statusbar-separator' />
 
-        <div className="statusbar-item" title="Cartographic Scale">
+        <div className='statusbar-item' title='Cartographic Scale'>
           Scale: 1 : {scale.toLocaleString()}
         </div>
 
-        <div className="statusbar-separator" />
+        <div className='statusbar-separator' />
 
-        <div className="statusbar-item" title="Zoom Level">
+        <div className='statusbar-item' title='Zoom Level'>
           Zoom: {zoom}x
         </div>
 
-        <div className="statusbar-separator" />
+        <div className='statusbar-separator' />
 
-        <div className="statusbar-item" title="Selected Features">
+        <div className='statusbar-item' title='Selected Features'>
           Selected: {selectedCount}
         </div>
 
-        <div className="statusbar-spacer" />
+        <div className='statusbar-spacer' />
 
         <div
-          className="statusbar-item"
-          title="Active Coordinate Reference System"
-        >
+          className='statusbar-item'
+          title='Active Coordinate Reference System'>
           🌐 {crs.authId}
         </div>
 
-        <div className="statusbar-separator" />
+        <div className='statusbar-separator' />
 
-        <div className="statusbar-item" title="Application Core Status">
+        <div className='statusbar-item' title='Application Core Status'>
           ● Ready
         </div>
       </footer>
@@ -1302,26 +1262,25 @@ export const Workbench: React.FC = () => {
       {/* About Modal Dialog */}
       {showAboutModal && (
         <div
-          className="modal-backdrop"
-          onClick={() => setShowAboutModal(false)}
-        >
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <img src={logoSvg} alt="Cartouche" className="modal-logo" />
+          className='modal-backdrop'
+          onClick={() => setShowAboutModal(false)}>
+          <div className='modal-dialog' onClick={(e) => e.stopPropagation()}>
+            <div className='modal-header'>
+              <img src={logoSvg} alt='Cartouche' className='modal-logo' />
               <div>
                 <h2>Cartouche Desktop</h2>
-                <div className="modal-subtitle">
+                <div className='modal-subtitle'>
                   Particle Physics Geographic Information System • v0.1.0
                 </div>
               </div>
             </div>
-            <div className="modal-body">
+            <div className='modal-body'>
               <p>
                 Cartouche is a desktop GIS platform made for quick and easy
                 editing and presentation of spatial data.
               </p>
               <p>Cartouche uses the following open source software</p>
-              <div className="modal-specs">
+              <div className='modal-specs'>
                 <div>
                   <strong>Electron Runtime:</strong> Desktop Multi-Process
                   Architecture
@@ -1335,17 +1294,19 @@ export const Workbench: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className='modal-footer'>
               <button
-                className="modal-btn"
-                onClick={() => setShowAboutModal(false)}
-              >
+                className='modal-btn'
+                onClick={() => setShowAboutModal(false)}>
                 Close
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Preferences Modal Dialog */}
+      <PreferencesDialog />
     </div>
   );
 };

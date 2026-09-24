@@ -20,7 +20,9 @@ const electronAPI: ElectronAPI = {
   encodeFeaturesToFlatGeobuf: (features: any[], geometryKind: any) =>
     ipcRenderer.invoke('gis:encode-flatgeobuf', features, geometryKind),
   executeShortcut: (name: string) => ipcRenderer.invoke('gis:execute-shortcut', name),
-  getShortcuts: () => ipcRenderer.invoke('gis:get-shortcuts')
+  getShortcuts: () => ipcRenderer.invoke('gis:get-shortcuts'),
+  getPreferenceValue: (name?: string) => ipcRenderer.invoke('gis:get-preference', name),
+  setPreferenceValue: (name: string, value: any) => ipcRenderer.invoke('gis:set-preference', name, value)
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

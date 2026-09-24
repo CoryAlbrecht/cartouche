@@ -1,0 +1,70 @@
+name: Build Desktop Packages
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  build-linux:
+    name: Build Linux (.deb & .rpm)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install RPM packaging tool
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend & Electron modules
+        run: npm run build
+
+      - name: Create Linux Packages
+        run: npm run package:linux
+
+      - name: Upload Linux Distributables
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages-${{ github.sha }}
+          path: |
+            release/*.deb
+            release/*.rpm
+
+  build-windows:
+    name: Build Windows (.msi & .exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend & Electron modules
+        run: npm run build
+
+      - name: Create Windows Packages
+        run: npm run package:win
+
+      - name: Upload Windows Distributables
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages-${{ github.sha }}
+          path: |
+            release/*.msi
+            release/*.exe

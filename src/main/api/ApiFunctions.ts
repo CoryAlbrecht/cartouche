@@ -10,3 +10,5 @@ export { default as saveAsProject } from './project/saveAsProject';
 export { default as toggleProjectVisibility } from './project/toggleProjectVisibility';
 export { default as undoAction } from './edit/undoAction';
 export { default as redoAction } from './edit/redoAction';
+export { default as getPreferenceValue } from './ui/preferences/GetPreferenceValue';
+export { default as setPreferenceValue } from './ui/preferences/SetPreferenceValue';

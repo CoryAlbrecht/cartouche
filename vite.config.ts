@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
@@ -14,13 +15,15 @@ export default defineConfig({
       {
         entry: path.resolve(__dirname, 'src/main/main.ts'),
         onstart(options) {
-          options.startup(['.', '--no-sandbox']);
+          // Open V8 inspect port for the Main process without remote-debugging-port contention
+          options.startup(['.', '--inspect=5858', '--no-sandbox']);
         },
         vite: {
           build: {
             outDir: 'dist-electron/main',
+            sourcemap: true,
             rollupOptions: {
-              external: ['electron']
+              external: ['electron', 'gdal-async', 'better-sqlite3']
             }
           },
           resolve: {
@@ -39,6 +42,7 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/preload',
+            sourcemap: true,
             lib: {
               entry: path.resolve(__dirname, 'src/main/preload.ts'),
               formats: ['cjs'],
@@ -71,7 +75,8 @@ export default defineConfig({
       input: path.resolve(__dirname, 'src/renderer/index.html')
     },
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    sourcemap: true
   },
   server: {
     port: 5173

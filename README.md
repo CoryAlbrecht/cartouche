@@ -5,18 +5,39 @@ A modern, high-performance desktop Geographic Information System (GIS) applicati
 ## Project Structure
 
 ```
-cartouche/
-├── .gitignore             # Git ignore rules for node_modules, build outputs
-├── package.json           # App manifest and dependency configuration
-├── README.md              # Project overview and instructions
-└── src/
-    ├── main/
-    │   ├── main.js        # Electron main process (window lifecycle, IPC)
-    │   └── preload.js     # Secure context bridge between main and renderer
-    └── renderer/
-        ├── index.html     # GIS workbench layout (layers panel, map canvas, inspector)
-        ├── styles.css     # Modern dark desktop GIS workstation theme
-        └── renderer.js    # UI interactivity and coordinate tracking
+cartouche
+├── assets
+│   ├── svg
+│   └── xml
+│       └── schemas
+├── dist
+│   ├── assets
+│   └── src
+│       └── renderer
+├── dist-electron
+│   ├── main
+│   └── preload
+├── node_modules
+├── src
+│   ├── main
+│   │   ├── api
+│   │   │   ├── edit
+│   │   │   ├── layers
+│   │   │   │   └── vector
+│   │   │   └── project
+│   │   └── shortcuts
+│   ├── renderer
+│   │   ├── components
+│   │   │   └── common
+│   │   ├── state
+│   │   ├── styles
+│   │   └── workbench
+│   │       ├── panels
+│   │       └── widgets
+│   │           └── toolbars
+│   └── shared
+│       └── types
+└── test
 ```
 
 ## Getting Started

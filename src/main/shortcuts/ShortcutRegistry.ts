@@ -82,6 +82,15 @@ class ShortcutRegistryClass {
         description: 'Re-applies the last undone operation',
         shortcutFunction: ApiFunctions.redoAction,
         keyCombination: { key: 'y', ctrl: true }
+      },
+      {
+        name: 'open_preferences',
+        displayName: 'Preferences',
+        description: 'Opens application preferences dialog',
+        shortcutFunction: () => {
+          console.log('[Shortcut] Triggering open_preferences...');
+        },
+        keyCombination: { key: ',', ctrl: true }
       }
     ];
 

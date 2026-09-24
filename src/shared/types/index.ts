@@ -82,6 +82,17 @@ export interface KeyboardShortcutDefinition {
   formattedKey?: string;
 }
 
+export interface PreferenceItem<T = any> {
+  displayName: string;
+  value: T;
+  category?: 'ui' | 'rendering' | 'plugins' | 'general';
+  description?: string;
+  type?: 'string' | 'number' | 'boolean' | 'select';
+  options?: Array<{ label: string; value: any }>;
+}
+
+export type PreferenceMap = Record<string, PreferenceItem>;
+
 export interface ElectronAPI {
   platform: string;
   version: string;
@@ -95,6 +106,8 @@ export interface ElectronAPI {
   encodeFeaturesToFlatGeobuf: (features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>;
   executeShortcut: (name: string) => Promise<void>;
   getShortcuts: () => Promise<KeyboardShortcutDefinition[]>;
+  getPreferenceValue: (name?: string) => Promise<PreferenceMap>;
+  setPreferenceValue: (name: string, value: any) => Promise<PreferenceMap>;
 }
 
 declare global {
