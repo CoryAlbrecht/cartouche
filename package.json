@@ -1,6 +1,6 @@
 {
   "name": "cartouche",
-  "version": "0.1.0",
+  "version": "0.1.0-dev",
   "type": "module",
   "description": "Cartouche - Modern Desktop GIS Application",
   "main": "dist-electron/main/main.js",
@@ -33,13 +33,20 @@
   "build": {
     "appId": "com.hanfastolfe.maps.cartouche",
     "productName": "Cartouche",
+    "icon": "assets/icon.png",
     "directories": {
       "output": "release"
     },
+    "extraResources": [
+      "assets/icon.png",
+      "assets/logo.png",
+      "assets/svg/logo.svg"
+    ],
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "assets/**/*"
     ],
     "asar": true,
     "asarUnpack": [
@@ -50,7 +57,9 @@
         "deb",
         "rpm"
       ],
-      "category": "Graphics;Science;Geoscience"
+      "category": "Graphics;Science;Geoscience",
+      "desktopName": "cartouche",
+      "icon": "assets/icon.png"
     },
     "deb": {
       "depends": [
