@@ -48,7 +48,7 @@ jobs:
           REV_INDEX=$((TOTAL_COMMITS - 1))
           if [ $REV_INDEX -lt 0 ]; then REV_INDEX=0; fi
 
-          FULL_VER="${BASE_VER}.${REV_INDEX}-${TYPE}"
+          FULL_VER="${BASE_VER}-${TYPE}+${REV_INDEX}"
 
           echo "Base version: $BASE_VER"
           echo "Revision:     $REV_INDEX"
