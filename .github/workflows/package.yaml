@@ -85,7 +85,7 @@ jobs:
 
       - name: Apply Branch Version to package.json
         run: |
-          npm version --no-git-tag-version ${{ needs.resolve-version.outputs.full_version }}
+          npm pkg set version=${{ needs.resolve-version.outputs.full_version }}
 
       - name: Install dependencies
         run: npm ci
@@ -120,7 +120,7 @@ jobs:
 
       - name: Apply Branch Version to package.json
         run: |
-          npm version --no-git-tag-version ${{ needs.resolve-version.outputs.full_version }}
+          npm pkg set version=${{ needs.resolve-version.outputs.full_version }}
 
       - name: Install dependencies
         run: npm ci
