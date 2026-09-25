@@ -1142,14 +1142,18 @@
   background: #ffffff;
   border-radius: 8px;
   width: 720px;
-  max-width: 92vw;
+  min-width: 480px;
+  max-width: 95vw;
   height: 520px;
-  max-height: 85vh;
+  min-height: 360px;
+  max-height: 95vh;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
   border: 1px solid #cbd5e1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  resize: both;
 }
 
 .preferences-modal-header {
@@ -1360,6 +1364,28 @@
   max-width: 200px;
 }
 
+.preference-number-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+  max-width: 200px;
+}
+
+.preference-number-wrapper .preference-input-number {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+.preference-unit-badge {
+  font-size: 10pt;
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .preference-select:focus,
 .preference-input-number:focus,
 .preference-input-text:focus {
@@ -1421,4 +1447,20 @@
 
 .preferences-btn-primary:hover {
   background-color: #24588c;
+}
+
+.preferences-resize-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: se-resize;
+  padding: 2px;
+  user-select: none;
+  margin-left: 8px;
+  transition: color 0.12s ease;
+}
+
+.preferences-resize-handle:hover {
+  color: #1b446c;
 }

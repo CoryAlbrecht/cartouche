@@ -4,7 +4,7 @@ import { addConsoleLog } from './gisSignals';
 
 export const isPreferencesOpenSignal = signal<boolean>(false);
 export const preferencesMapSignal = signal<PreferenceMap>({});
-export const activeCategorySignal = signal<string>('ui');
+export const activeCategorySignal = signal<string>('general');
 
 /**
  * Loads preference descriptors from the Main process via IPC and updates preferencesMapSignal.

@@ -8,6 +8,7 @@ import {
   mdiPuzzleOutline,
   mdiCogOutline,
   mdiCheck,
+  mdiResizeBottomRight,
 } from "@mdi/js";
 import {
   isPreferencesOpenSignal,
@@ -34,6 +35,10 @@ const categories: CategoryTab[] = [
 export const PreferencesDialog: React.FC = () => {
   useSignals();
   const [draftValues, setDraftValues] = useState<Record<string, any>>({});
+  const [dialogSize, setDialogSize] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 720, height: 520 });
 
   useEffect(() => {
     if (isPreferencesOpenSignal.value) {
@@ -50,11 +55,13 @@ export const PreferencesDialog: React.FC = () => {
     return null;
   }
 
-  const activeCat = activeCategorySignal.value;
+  const activeCat =
+    activeCategorySignal.value || categories[0]?.id || "general";
   const allPrefs = preferencesMapSignal.value;
 
-  // Filter preferences for active category
+  // Filter preferences for active category, excluding hidden items
   const categoryPrefs = Object.entries(allPrefs).filter(([_, item]) => {
+    if (item.hidden) return false;
     const itemCat = item.category || "general";
     return itemCat === activeCat;
   });
@@ -82,6 +89,40 @@ export const PreferencesDialog: React.FC = () => {
     }
   };
 
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = dialogSize.width;
+    const startHeight = dialogSize.height;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+
+      const newWidth = Math.max(
+        480,
+        Math.min(window.innerWidth * 0.95, startWidth + deltaX)
+      );
+      const newHeight = Math.max(
+        360,
+        Math.min(window.innerHeight * 0.95, startHeight + deltaY)
+      );
+
+      setDialogSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
   return (
     <div
       className='preferences-modal-backdrop'
@@ -90,6 +131,10 @@ export const PreferencesDialog: React.FC = () => {
       tabIndex={-1}>
       <div
         className='preferences-modal-container'
+        style={{
+          width: `${dialogSize.width}px`,
+          height: `${dialogSize.height}px`,
+        }}
         onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className='preferences-modal-header'>
@@ -189,20 +234,38 @@ export const PreferencesDialog: React.FC = () => {
                             ))}
                           </select>
                         : item.type === "number" ?
-                          <input
-                            type='number'
-                            step='any'
-                            value={
-                              currentValue !== undefined ? currentValue : ""
-                            }
-                            onChange={(e) =>
-                              handleFieldChange(
-                                key,
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className='preference-input-number'
-                          />
+                          <div className='preference-number-wrapper'>
+                            <input
+                              type='number'
+                              min={item.minimum}
+                              max={item.maximum}
+                              step={item.step !== undefined ? item.step : "any"}
+                              value={
+                                currentValue !== undefined ? currentValue : ""
+                              }
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value);
+                                if (isNaN(val)) val = 0;
+                                if (
+                                  item.minimum !== undefined
+                                  && val < item.minimum
+                                )
+                                  val = item.minimum;
+                                if (
+                                  item.maximum !== undefined
+                                  && val > item.maximum
+                                )
+                                  val = item.maximum;
+                                handleFieldChange(key, val);
+                              }}
+                              className='preference-input-number'
+                            />
+                            {item.unit && (
+                              <span className='preference-unit-badge'>
+                                {item.unit}
+                              </span>
+                            )}
+                          </div>
                         : <input
                             type='text'
                             value={
@@ -240,6 +303,13 @@ export const PreferencesDialog: React.FC = () => {
               <Icon path={mdiCheck} size='16px' />
               <span>Save Changes</span>
             </button>
+          </div>
+          <div
+            className='preferences-resize-handle'
+            onMouseDown={handleResizeMouseDown}
+            title='Resize (Click and drag)'
+            aria-label='Resize Dialog'>
+            <Icon path={mdiResizeBottomRight} size='16px' />
           </div>
         </div>
       </div>

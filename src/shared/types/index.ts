@@ -85,6 +85,13 @@ export interface KeyboardShortcutDefinition {
 export interface PreferenceItem<T = any> {
   displayName: string;
   value: T;
+  defaultValue?: any;
+  ephemeral?: boolean;
+  hidden?: boolean;
+  minimum?: number;
+  maximum?: number;
+  step?: number;
+  unit?: string;
   category?: 'ui' | 'rendering' | 'plugins' | 'general';
   description?: string;
   type?: 'string' | 'number' | 'boolean' | 'select';
