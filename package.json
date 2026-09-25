@@ -1,6 +1,6 @@
 {
   "name": "cartouche",
-  "version": "0.1.0",
+  "version": "0.1.0-dev",
   "type": "module",
   "description": "Cartouche - Modern Desktop GIS Application",
   "main": "dist-electron/main/main.js",
