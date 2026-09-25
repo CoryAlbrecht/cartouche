@@ -3,11 +3,72 @@ name: Build Desktop Packages
 on:
   push:
     branches:
-      - "**"
+      - "version-[0-9]+.[0-9]+.[0-9]+-dev"
+      - "version-[0-9]+.[0-9]+.[0-9]+-rc"
+      - "version-[0-9]+.[0-9]+.[0-9]+-stable"
+      - "version-[0-9]+.[0-9]+.[0-9]+-lts"
+
+permissions:
+  contents: write
 
 jobs:
+  resolve-version:
+    name: Parse and Validate Version
+    runs-on: ubuntu-latest
+    outputs:
+      base_version: ${{ steps.version_calc.outputs.base_version }}
+      build_number: ${{ steps.version_calc.outputs.build_number }}
+      rel_type: ${{ steps.version_calc.outputs.rel_type }}
+      full_version: ${{ steps.version_calc.outputs.full_version }}
+      is_prerelease: ${{ steps.version_calc.outputs.is_prerelease }}
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract branch version and commit count
+        id: version_calc
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          echo "Processing branch: $BRANCH"
+
+          # Enforce regex: version-W.X.Y-(dev|rc|stable|lts)
+          REGEX="^version-([0-9]+\.[0-9]+\.[0-9]+)-(dev|rc|stable|lts)$"
+          if [[ ! "$BRANCH" =~ $REGEX ]]; then
+            echo "::error ::Branch name '$BRANCH' does not match required pattern version-W.X.Y-(dev|rc|stable|lts)"
+            exit 1
+          fi
+
+          BASE_VER="${BASH_REMATCH[1]}"
+          TYPE="${BASH_REMATCH[2]}"
+
+          # Calculate Z (0-indexed commit count)
+          TOTAL_COMMITS=$(git rev-list --count HEAD)
+          REV_INDEX=$((TOTAL_COMMITS - 1))
+          if [ $REV_INDEX -lt 0 ]; then REV_INDEX=0; fi
+
+          FULL_VER="${BASE_VER}.${REV_INDEX}-${TYPE}"
+
+          echo "Base version: $BASE_VER"
+          echo "Revision:     $REV_INDEX"
+          echo "Release type: $TYPE"
+          echo "Full version: $FULL_VER"
+
+          echo "base_version=$BASE_VER" >> $GITHUB_OUTPUT
+          echo "build_number=$REV_INDEX" >> $GITHUB_OUTPUT
+          echo "rel_type=$TYPE" >> $GITHUB_OUTPUT
+          echo "full_version=$FULL_VER" >> $GITHUB_OUTPUT
+
+          if [[ "$TYPE" == "stable" || "$TYPE" == "lts" ]]; then
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          fi
+
   build-linux:
     name: Build Linux (.deb & .rpm)
+    needs: resolve-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -22,6 +83,10 @@ jobs:
       - name: Install RPM packaging tool
         run: sudo apt-get update && sudo apt-get install -y rpm
 
+      - name: Apply Branch Version to package.json
+        run: |
+          npm version --no-git-tag-version ${{ needs.resolve-version.outputs.full_version }}
+
       - name: Install dependencies
         run: npm ci
 
@@ -34,13 +99,14 @@ jobs:
       - name: Upload Linux Distributables
         uses: actions/upload-artifact@v4
         with:
-          name: linux-packages-${{ github.sha }}
+          name: linux-packages
           path: |
             release/*.deb
             release/*.rpm
 
   build-windows:
-    name: Build Windows (.msi & .exe)
+    name: Build Windows (.msi)
+    needs: resolve-version
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -51,6 +117,10 @@ jobs:
         with:
           node-version: 22
           cache: "npm"
+
+      - name: Apply Branch Version to package.json
+        run: |
+          npm version --no-git-tag-version ${{ needs.resolve-version.outputs.full_version }}
 
       - name: Install dependencies
         run: npm ci
@@ -64,7 +134,35 @@ jobs:
       - name: Upload Windows Distributables
         uses: actions/upload-artifact@v4
         with:
-          name: windows-packages-${{ github.sha }}
+          name: windows-packages
           path: |
             release/*.msi
-            release/*.exe
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [resolve-version, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux Distributables
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: release-assets
+
+      - name: Download Windows Distributables
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-packages
+          path: release-assets
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.resolve-version.outputs.full_version }}
+          name: Cartouche v${{ needs.resolve-version.outputs.full_version }}
+          draft: false
+          prerelease:
+            ${{ needs.resolve-version.outputs.is_prerelease == 'true' }}
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
