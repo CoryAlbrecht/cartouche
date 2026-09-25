@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,12 +8,67 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
-// Ensure Linux sandbox safety
-if (process.platform === 'linux' && app?.commandLine) {
-  app.commandLine.appendSwitch('no-sandbox');
+function getIconPath(): string {
+  const candidates = [
+    path.join(__dirname, '../../assets/icon.png'),
+    path.join(__dirname, '../assets/icon.png'),
+    path.join(app.getAppPath(), 'assets/icon.png'),
+    path.join(process.resourcesPath, 'assets/icon.png')
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return path.join(__dirname, '../../assets/icon.png');
+}
+
+function setupLinuxDesktopIntegration() {
+  if (process.platform !== 'linux') return;
+  try {
+    const homeDir = app.getPath('home');
+    const userIconDir = path.join(homeDir, '.local', 'share', 'icons', 'hicolor', '512x512', 'apps');
+    const userAppDir = path.join(homeDir, '.local', 'share', 'applications');
+    const pixmapsDir = path.join(homeDir, '.local', 'share', 'pixmaps');
+
+    fs.mkdirSync(userIconDir, { recursive: true });
+    fs.mkdirSync(userAppDir, { recursive: true });
+    fs.mkdirSync(pixmapsDir, { recursive: true });
+
+    const srcIcon = getIconPath();
+    if (fs.existsSync(srcIcon)) {
+      fs.copyFileSync(srcIcon, path.join(userIconDir, 'cartouche.png'));
+      fs.copyFileSync(srcIcon, path.join(pixmapsDir, 'cartouche.png'));
+    }
+
+    const desktopPath = path.join(userAppDir, 'cartouche.desktop');
+    const desktopContent = `[Desktop Entry]
+Name=Cartouche
+Exec=${process.execPath} ${path.join(__dirname, 'main.js')} %U
+Terminal=false
+Type=Application
+Icon=cartouche
+StartupWMClass=cartouche
+Comment=Cartouche Desktop GIS Application
+Categories=Graphics;Science;Geoscience;
+`;
+    fs.writeFileSync(desktopPath, desktopContent);
+  } catch (err) {
+    console.warn('[Main] Linux desktop integration setup warning:', err);
+  }
+}
+
+// Ensure Linux sandbox safety & desktop integration
+if (process.platform === 'linux') {
+  if (app?.commandLine) {
+    app.commandLine.appendSwitch('no-sandbox');
+  }
+  app.setName('cartouche');
+  setupLinuxDesktopIntegration();
 }
 
 function createWindow() {
+  const iconPath = getIconPath();
+  const iconImage = nativeImage.createFromPath(iconPath);
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -21,7 +77,7 @@ function createWindow() {
     title: 'Cartouche',
     backgroundColor: '#ffffff',
     frame: false, // Frameless window with custom menubar & window controls
-    icon: path.join(__dirname, '../../assets/svg/logo.svg'),
+    icon: iconImage,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.cjs'),
       contextIsolation: true,
@@ -29,6 +85,10 @@ function createWindow() {
       sandbox: false
     }
   });
+
+  if (process.platform === 'linux' && !iconImage.isEmpty()) {
+    mainWindow.setIcon(iconImage);
+  }
 
   // Handle URL loading in Vite dev vs production build
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;

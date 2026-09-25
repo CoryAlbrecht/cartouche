@@ -38,12 +38,25 @@ const iconsDir = path.join(shareDir, "icons", "hicolor", "scalable", "apps");
 const sysBinDir = path.join(stagingDir, "usr", "local", "bin");
 const sysAppsDir = path.join(stagingDir, "usr", "share", "applications");
 
+const icon512Dir = path.join(shareDir, "icons", "hicolor", "512x512", "apps");
+const sysIcon512Dir = path.join(
+  stagingDir,
+  "usr",
+  "share",
+  "icons",
+  "hicolor",
+  "512x512",
+  "apps"
+);
+
 fs.mkdirSync(binDir, { recursive: true });
 fs.mkdirSync(libDir, { recursive: true });
 fs.mkdirSync(appsDir, { recursive: true });
 fs.mkdirSync(iconsDir, { recursive: true });
+fs.mkdirSync(icon512Dir, { recursive: true });
 fs.mkdirSync(sysBinDir, { recursive: true });
 fs.mkdirSync(sysAppsDir, { recursive: true });
+fs.mkdirSync(sysIcon512Dir, { recursive: true });
 
 // Copy unpacked app files into /usr/local/share/cartouche/lib
 console.log("==> Copying app files to /usr/local/share/cartouche/lib...");
@@ -61,10 +74,16 @@ const sysSymlinkPath = path.join(sysBinDir, "cartouche");
 if (fs.existsSync(sysSymlinkPath)) fs.unlinkSync(sysSymlinkPath);
 fs.symlinkSync("/usr/local/share/cartouche/bin/cartouche", sysSymlinkPath);
 
-// Copy logo SVG to icons directory
-const logoSrc = path.join(projectRoot, "assets", "svg", "logo.svg");
-if (fs.existsSync(logoSrc)) {
-  fs.copyFileSync(logoSrc, path.join(iconsDir, "cartouche.svg"));
+// Copy logo SVG and PNG icons to hicolor icon directories
+const logoSvgSrc = path.join(projectRoot, "assets", "svg", "logo.svg");
+const iconPngSrc = path.join(projectRoot, "assets", "icon.png");
+
+if (fs.existsSync(logoSvgSrc)) {
+  fs.copyFileSync(logoSvgSrc, path.join(iconsDir, "cartouche.svg"));
+}
+if (fs.existsSync(iconPngSrc)) {
+  fs.copyFileSync(iconPngSrc, path.join(icon512Dir, "cartouche.png"));
+  fs.copyFileSync(iconPngSrc, path.join(sysIcon512Dir, "cartouche.png"));
 }
 
 // Create desktop entry file
@@ -73,8 +92,8 @@ Name=Cartouche
 Exec=/usr/local/share/cartouche/bin/cartouche %U
 Terminal=false
 Type=Application
-Icon=/usr/local/share/cartouche/share/icons/hicolor/scalable/apps/cartouche.svg
-StartupWMClass=Cartouche
+Icon=cartouche
+StartupWMClass=cartouche
 Comment=Cartouche Desktop GIS Application
 Categories=Graphics;Science;Geoscience;
 `;
