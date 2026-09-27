@@ -23,7 +23,7 @@ jobs:
       is_prerelease: ${{ steps.version_calc.outputs.is_prerelease }}
     steps:
       - name: Checkout repository with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -72,16 +72,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: "npm"
 
-      - name: Install RPM packaging tool
-        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Install Linux packaging tools (RPM & FPM)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm ruby ruby-dev rubygems build-essential
+          sudo gem install --no-document fpm
 
       - name: Apply Branch Version to package.json
         run: |
@@ -97,7 +100,7 @@ jobs:
         run: npm run package:linux
 
       - name: Upload Linux Distributables
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: linux-packages
           path: |
@@ -110,10 +113,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: "npm"
@@ -135,7 +138,7 @@ jobs:
         run: npm run package:win
 
       - name: Upload Windows Distributables
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: windows-packages
           path: |
@@ -147,13 +150,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Linux Distributables
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: linux-packages
           path: release-assets
 
       - name: Download Windows Distributables
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: windows-packages
           path: release-assets

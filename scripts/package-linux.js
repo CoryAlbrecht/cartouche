@@ -100,13 +100,40 @@ Categories=Graphics;Science;Geoscience;
 fs.writeFileSync(path.join(appsDir, "cartouche.desktop"), desktopContent);
 fs.writeFileSync(path.join(sysAppsDir, "cartouche.desktop"), desktopContent);
 
-// Find cached fpm executable wrapper
-const fpmPath = execSync(
-  "find ~/.cache/electron-builder/fpm* -maxdepth 2 -name fpm -type f 2>/dev/null | head -n 1",
-  { encoding: "utf8" }
-).trim();
+// Find fpm executable (system 'fpm' or electron-builder cached fpm)
+let fpmPath = "";
+try {
+  fpmPath = execSync("which fpm", { encoding: "utf8" }).trim();
+} catch {
+  // Fallback to electron-builder cached fpm
+  fpmPath = execSync(
+    "find ~/.cache/electron-builder/fpm* -maxdepth 2 -name fpm -type f 2>/dev/null | head -n 1",
+    { encoding: "utf8" }
+  ).trim();
+}
+
 if (!fpmPath || !fs.existsSync(fpmPath)) {
-  throw new Error("fpm executable not found in ~/.cache/electron-builder");
+  console.log(
+    "==> fpm not found, downloading electron-builder fpm dependency..."
+  );
+  try {
+    execSync("npx electron-builder build --linux deb", {
+      cwd: projectRoot,
+      stdio: "inherit",
+    });
+  } catch {
+    // Ignore build errors if deb target incomplete; we only need fpm download
+  }
+  fpmPath = execSync(
+    "find ~/.cache/electron-builder/fpm* -maxdepth 2 -name fpm -type f 2>/dev/null | head -n 1",
+    { encoding: "utf8" }
+  ).trim();
+}
+
+if (!fpmPath || !fs.existsSync(fpmPath)) {
+  throw new Error(
+    "fpm executable not found. Please install fpm (gem install fpm) or install system dependencies."
+  );
 }
 
 const pkgVersion =
