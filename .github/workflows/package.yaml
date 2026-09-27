@@ -12,163 +12,81 @@ permissions:
   contents: write
 
 jobs:
-  resolve-version:
-    name: Parse and Validate Version
-    runs-on: ubuntu-latest
-    outputs:
-      base_version: ${{ steps.version_calc.outputs.base_version }}
-      build_number: ${{ steps.version_calc.outputs.build_number }}
-      rel_type: ${{ steps.version_calc.outputs.rel_type }}
-      full_version: ${{ steps.version_calc.outputs.full_version }}
-      is_prerelease: ${{ steps.version_calc.outputs.is_prerelease }}
+  build-and-release:
+    name: Build & Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            pkg_script: npm run package:linux
+          - os: windows-latest
+            target: windows
+            pkg_script: npm run package:win
+
     steps:
-      - name: Checkout repository with full history
+      - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Extract branch version and commit count
-        id: version_calc
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Cache Electron Binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key:
+            ${{ runner.os }}-electron-${{ hashFiles('cartouche/package.json') }}
+
+      - name: Calculate & Set Version
+        id: version
+        shell: bash
         run: |
           BRANCH="${GITHUB_REF_NAME}"
-          echo "Processing branch: $BRANCH"
-
-          # Enforce regex: version-W.X.Y-(dev|rc|stable|lts)
           REGEX="^version-([0-9]+\.[0-9]+\.[0-9]+)-(dev|rc|stable|lts)$"
           if [[ ! "$BRANCH" =~ $REGEX ]]; then
-            echo "::error ::Branch name '$BRANCH' does not match required pattern version-W.X.Y-(dev|rc|stable|lts)"
-            exit 1
+            echo "Invalid branch pattern '$BRANCH'" && exit 1
           fi
-
           BASE_VER="${BASH_REMATCH[1]}"
           TYPE="${BASH_REMATCH[2]}"
-
-          # Calculate Z (0-indexed commit count)
           TOTAL_COMMITS=$(git rev-list --count HEAD)
           REV_INDEX=$((TOTAL_COMMITS - 1))
           if [ $REV_INDEX -lt 0 ]; then REV_INDEX=0; fi
-
           FULL_VER="${BASE_VER}-${TYPE}+${REV_INDEX}"
 
-          echo "Base version: $BASE_VER"
-          echo "Revision:     $REV_INDEX"
-          echo "Release type: $TYPE"
-          echo "Full version: $FULL_VER"
-
-          echo "base_version=$BASE_VER" >> $GITHUB_OUTPUT
-          echo "build_number=$REV_INDEX" >> $GITHUB_OUTPUT
-          echo "rel_type=$TYPE" >> $GITHUB_OUTPUT
-          echo "full_version=$FULL_VER" >> $GITHUB_OUTPUT
-
+          npm pkg set version="${FULL_VER}"
+          echo "full_version=${FULL_VER}" >> $GITHUB_OUTPUT
           if [[ "$TYPE" == "stable" || "$TYPE" == "lts" ]]; then
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           else
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
 
-  build-linux:
-    name: Build Linux (.deb & .rpm)
-    needs: resolve-version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: "npm"
-
-      - name: Install Linux packaging tools (RPM & FPM)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm ruby ruby-dev rubygems build-essential
-          sudo gem install --no-document fpm
-
-      - name: Apply Branch Version to package.json
-        run: |
-          npm pkg set version=${{ needs.resolve-version.outputs.full_version }}
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Build frontend & Electron modules
-        run: npm run build
-
-      - name: Create Linux Packages
-        run: npm run package:linux
-
-      - name: Upload Linux Distributables
-        uses: actions/upload-artifact@v6
-        with:
-          name: linux-packages
-          path: |
-            release/*.deb
-            release/*.rpm
-
-  build-windows:
-    name: Build Windows (.msi)
-    needs: resolve-version
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: "npm"
-
-      - name: Apply Branch Version to package.json
+      - name: Build & Package App
         run: |
-          npm pkg set version=${{ needs.resolve-version.outputs.full_version }}
+          npm run build
+          ${{ matrix.pkg_script }}
 
-      - name: Install dependencies
-        run: npm ci  --ignore-scripts
-
-      - name: Rebuild Electron-native modules
-        run: npm run rebuild
-
-      - name: Build frontend & Electron modules
-        run: npm run build
-
-      - name: Create Windows Packages
-        run: npm run package:win
-
-      - name: Upload Windows Distributables
-        uses: actions/upload-artifact@v6
-        with:
-          name: windows-packages
-          path: |
-            release/*.msi
-
-  publish-release:
-    name: Publish GitHub Release
-    needs: [resolve-version, build-linux, build-windows]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Linux Distributables
-        uses: actions/download-artifact@v6
-        with:
-          name: linux-packages
-          path: release-assets
-
-      - name: Download Windows Distributables
-        uses: actions/download-artifact@v6
-        with:
-          name: windows-packages
-          path: release-assets
-
-      - name: Publish Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.resolve-version.outputs.full_version }}
-          name: Cartouche v${{ needs.resolve-version.outputs.full_version }}
-          draft: false
-          prerelease:
-            ${{ needs.resolve-version.outputs.is_prerelease == 'true' }}
-          files: release-assets/*
+          tag_name: v${{ steps.version.outputs.full_version }}
+          name: Cartouche v${{ steps.version.outputs.full_version }}
+          prerelease: ${{ steps.version.outputs.is_prerelease == 'true' }}
+          files: |
+            cartouche/release/*.deb
+            cartouche/release/*.rpm
+            cartouche/release/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
