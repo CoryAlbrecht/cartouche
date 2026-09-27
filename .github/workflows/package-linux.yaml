@@ -1,4 +1,4 @@
-name: Build Desktop Packages
+name: Build Desktop Packages (Linux)
 
 on:
   push:
@@ -12,18 +12,9 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build & Release (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: linux
-            pkg_script: npm run package:linux
-          - os: windows-latest
-            target: windows
-            pkg_script: npm run package:win
+  build-linux:
+    name: Build & Release (Linux)
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -38,7 +29,7 @@ jobs:
           cache: "npm"
 
       - name: Cache Electron Binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/electron
@@ -75,7 +66,7 @@ jobs:
       - name: Build & Package App
         run: |
           npm run build
-          ${{ matrix.pkg_script }}
+          npm run package:linux
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -86,6 +77,5 @@ jobs:
           files: |
             release/*.deb
             release/*.rpm
-            release/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
