@@ -15,9 +15,6 @@ jobs:
   build-and-release:
     name: Build & Release (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: cartouche
     strategy:
       matrix:
         include:
@@ -39,7 +36,6 @@ jobs:
         with:
           node-version: 22
           cache: "npm"
-          cache-dependency-path: cartouche/package-lock.json
 
       - name: Cache Electron Binaries
         uses: actions/cache@v4
@@ -47,8 +43,7 @@ jobs:
           path: |
             ~/.cache/electron
             ~/.cache/electron-builder
-          key:
-            ${{ runner.os }}-electron-${{ hashFiles('cartouche/package.json') }}
+          key: ${{ runner.os }}-electron-${{ hashFiles('package.json') }}
 
       - name: Calculate & Set Version
         id: version
@@ -89,8 +84,8 @@ jobs:
           name: Cartouche v${{ steps.version.outputs.full_version }}
           prerelease: ${{ steps.version.outputs.is_prerelease == 'true' }}
           files: |
-            cartouche/release/*.deb
-            cartouche/release/*.rpm
-            cartouche/release/*.msi
+            release/*.deb
+            release/*.rpm
+            release/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
