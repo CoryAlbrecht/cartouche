@@ -1,5 +1,5 @@
 {
-  "MD0004": { "enabled": true, "stye": "dash" },
-  "MD0032": { "enabled": false },
-  "MD0013": { "enabled": false }
+  "MD004": { "style": "dash" },
+  "MD013": false,
+  "MD032": false
 }

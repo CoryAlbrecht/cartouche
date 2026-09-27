@@ -123,7 +123,10 @@ jobs:
           npm pkg set version=${{ needs.resolve-version.outputs.full_version }}
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci  --ignore-scripts
+
+      - name: Rebuild Electron-native modules
+        run: npm run rebuild
 
       - name: Build frontend & Electron modules
         run: npm run build

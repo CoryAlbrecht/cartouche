@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "rebuild": "electron-rebuild -j 12 -f -w gdal-async,better-sqlite3",
-    "build": "tsc && vite build && npm run rebuild",
+    "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "stylelint \"src/**/*.css\"",
     "start": "vite",
@@ -57,8 +57,8 @@
         "deb",
         "rpm"
       ],
-      "category": "Graphics;Science;Geoscience",
-      "desktopName": "cartouche",
+      "category": "Graphics",
+      "executableName": "cartouche",
       "icon": "assets/icon.png"
     },
     "deb": {
