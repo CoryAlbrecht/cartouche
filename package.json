@@ -33,6 +33,7 @@
   "build": {
     "appId": "com.hanfastolfe.maps.cartouche",
     "productName": "Cartouche",
+    "npmRebuild": false,
     "icon": "assets/icon.png",
     "directories": {
       "output": "release"

@@ -63,6 +63,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild native Electron dependencies
+        run: npm run rebuild
+
       - name: Build & Package App
         run: |
           npm run build
