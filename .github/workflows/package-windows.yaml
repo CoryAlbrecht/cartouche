@@ -60,11 +60,23 @@ jobs:
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Install dependencies
+      - name: Install dependencies (bypassing postinstall)
         run: npm ci --ignore-scripts
 
-      - name: Rebuild native Electron dependencies
-        run: npx electron-builder install-app-deps
+      - name: Download gdal-async prebuilt binary
+        run:
+          npx @mapbox/node-pre-gyp install --directory=node_modules/gdal-async
+
+      - name: Rebuild better-sqlite3 for Electron
+        run: npx @electron/rebuild -w better-sqlite3
+
+      - name: Ensure gdal-async binding for Electron 37
+        shell: bash
+        run: |
+          GDAL_DIR="node_modules/gdal-async/lib/binding"
+          if [ -d "$GDAL_DIR/node-v127-win32-x64" ] && [ ! -d "$GDAL_DIR/node-v135-win32-x64" ]; then
+            cp -r "$GDAL_DIR/node-v127-win32-x64" "$GDAL_DIR/node-v135-win32-x64"
+          fi
 
       - name: Build & Package App
         run: |
