@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
+import { useSignals, useSignal } from "@preact/signals-react/runtime";
 
 export interface WidgetContextMenuItem {
   label: string;
@@ -42,25 +43,30 @@ export const Widget: React.FC<WidgetProps> = ({
   onUndock,
   customContextMenuItems = [],
 }) => {
-  const [contextMenuPos, setContextMenuPos] = useState<{
+  useSignals();
+  const widgetContextMenuPositionSignal = useSignal<{
     x: number;
     y: number;
   } | null>(null);
-  const [isUndocked, setIsUndocked] = useState(false);
+  const isWidgetUndockedSignal = useSignal<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [dimensions, setDimensions] = useState<{
-    width: number;
-    height: number;
-  }>({ width: 0, height: 0 });
+  const widgetDimensionsSignal = useSignal<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
+
+  const contextMenuPos = widgetContextMenuPositionSignal.value;
+  const isUndocked = isWidgetUndockedSignal.value;
+  const dimensions = widgetDimensionsSignal.value;
 
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setDimensions({
+        widgetDimensionsSignal.value = {
           width: Math.round(entry.contentRect.width),
           height: Math.round(entry.contentRect.height),
-        });
+        };
       }
     });
     observer.observe(containerRef.current);
@@ -70,10 +76,12 @@ export const Widget: React.FC<WidgetProps> = ({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenuPos({ x: e.clientX, y: e.clientY });
+    widgetContextMenuPositionSignal.value = { x: e.clientX, y: e.clientY };
   };
 
-  const closeContextMenu = () => setContextMenuPos(null);
+  const closeContextMenu = () => {
+    widgetContextMenuPositionSignal.value = null;
+  };
 
   useEffect(() => {
     if (!contextMenuPos) return;
@@ -84,17 +92,17 @@ export const Widget: React.FC<WidgetProps> = ({
 
   const defaultMenu: WidgetContextMenuItem[] = [
     ...(onClose ? [{ label: "Close", action: () => onClose() }] : []),
-    ...(onUndock
-      ? [
-          {
-            label: "Undock to Floating Window",
-            action: () => {
-              setIsUndocked(true);
-              onUndock();
-            },
+    ...(onUndock ?
+      [
+        {
+          label: "Undock to Floating Window",
+          action: () => {
+            isWidgetUndockedSignal.value = true;
+            onUndock();
           },
-        ]
-      : []),
+        },
+      ]
+    : []),
   ];
 
   const menuItems =
@@ -122,14 +130,13 @@ export const Widget: React.FC<WidgetProps> = ({
         boxSizing: "border-box",
         overflow: "hidden",
         ...style,
-      }}
-    >
+      }}>
       {children}
 
       {/* Floating Widget Context Menu */}
       {contextMenuPos && (
         <div
-          className="widget-context-menu"
+          className='widget-context-menu'
           style={{
             position: "fixed",
             top: contextMenuPos.y,
@@ -143,12 +150,11 @@ export const Widget: React.FC<WidgetProps> = ({
             fontSize: "11pt",
             color: "#0f172a",
             minWidth: "140px",
-          }}
-        >
+          }}>
           {menuItems.map((item, idx) => (
             <div
               key={idx}
-              className="widget-menu-item"
+              className='widget-menu-item'
               onClick={(e) => {
                 e.stopPropagation();
                 item.action();
@@ -161,8 +167,7 @@ export const Widget: React.FC<WidgetProps> = ({
                 alignItems: "center",
                 justifyContent: "space-between",
                 userSelect: "none",
-              }}
-            >
+              }}>
               <span>{item.label}</span>
               {item.checked && (
                 <span style={{ marginLeft: "8px", color: "#1b446c" }}>✓</span>

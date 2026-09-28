@@ -7,7 +7,7 @@ import {
   type IDockviewPanelHeaderProps,
   type GetTabContextMenuItemsParams,
 } from "dockview-react";
-import { useSignals } from "@preact/signals-react/runtime";
+import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
   mdiFileOutline,
@@ -45,6 +45,8 @@ import {
   redoStackSignal,
   clipboardFeaturesSignal,
   visibleToolbarsSignal,
+  isWindowMaximizedSignal,
+  openDockPanelsSignal,
   addConsoleLog,
   createNewProject,
   openProjectAction,
@@ -144,28 +146,39 @@ export const Workbench: React.FC = () => {
   useSignals();
 
   const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
-  const [isMaximized, setIsMaximized] = useState(false);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
-  const [showAboutModal, setShowAboutModal] = useState(false);
-  const [openPanels, setOpenPanels] = useState<{
-    attributes: boolean;
-    layers: boolean;
-  }>({ attributes: false, layers: true });
+  const activeMenubarMenuSignal = useSignal<string | null>(null);
+  const activeMenubarSubmenuSignal = useSignal<string | null>(null);
+  const isAboutModalOpenSignal = useSignal<boolean>(false);
+
+  const openMenu = activeMenubarMenuSignal.value;
+  const activeSubmenu = activeMenubarSubmenuSignal.value;
+  const showAboutModal = isAboutModalOpenSignal.value;
+  const isMaximized = isWindowMaximizedSignal.value;
+  const openPanels = openDockPanelsSignal.value;
+
+  const setOpenMenu = (val: string | null) => {
+    activeMenubarMenuSignal.value = val;
+  };
+  const setActiveSubmenu = (val: string | null) => {
+    activeMenubarSubmenuSignal.value = val;
+  };
+  const setShowAboutModal = (val: boolean) => {
+    isAboutModalOpenSignal.value = val;
+  };
 
   // Track which dockview panels are open
   const updateOpenPanelsState = useCallback((api: DockviewApi) => {
     const hasAttr = !!api.getPanel("attribute-table");
     const hasLayers = !!api.getPanel("layer-tree");
-    setOpenPanels({ attributes: hasAttr, layers: hasLayers });
+    openDockPanelsSignal.value = { attributes: hasAttr, layers: hasLayers };
   }, []);
 
   // Close open dropdown on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest(".menu-item-wrapper")) {
-        setOpenMenu(null);
-        setActiveSubmenu(null);
+        activeMenubarMenuSignal.value = null;
+        activeMenubarSubmenuSignal.value = null;
       }
     };
     window.addEventListener("click", handleOutsideClick);
@@ -177,10 +190,12 @@ export const Workbench: React.FC = () => {
     if (window.electronAPI) {
       window.electronAPI
         .isWindowMaximized()
-        .then((max) => setIsMaximized(max))
+        .then((max) => {
+          isWindowMaximizedSignal.value = max;
+        })
         .catch(() => {});
       const unsubscribe = window.electronAPI.onMaximizedState((max) => {
-        setIsMaximized(max);
+        isWindowMaximizedSignal.value = max;
       });
       return () => {
         unsubscribe?.();

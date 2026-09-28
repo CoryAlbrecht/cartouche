@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useSignals } from "@preact/signals-react/runtime";
+import React, { useEffect } from "react";
+import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
   mdiPaletteOutline,
@@ -33,7 +33,7 @@ const categories: CategoryTab[] = [
 
 export const PreferencesDialog: React.FC = () => {
   useSignals();
-  const [draftValues, setDraftValues] = useState<Record<string, any>>({});
+  const draftPreferencesSignal = useSignal<Record<string, any>>({});
 
   useEffect(() => {
     if (isPreferencesOpenSignal.value) {
@@ -42,7 +42,7 @@ export const PreferencesDialog: React.FC = () => {
       for (const [key, item] of Object.entries(allPrefs)) {
         initial[key] = item.value;
       }
-      setDraftValues(initial);
+      draftPreferencesSignal.value = initial;
     }
   }, [isPreferencesOpenSignal.value]);
 
@@ -62,11 +62,14 @@ export const PreferencesDialog: React.FC = () => {
   });
 
   const handleFieldChange = (key: string, newValue: any) => {
-    setDraftValues((prev) => ({ ...prev, [key]: newValue }));
+    draftPreferencesSignal.value = {
+      ...draftPreferencesSignal.value,
+      [key]: newValue,
+    };
   };
 
   const handleSave = async () => {
-    for (const [key, value] of Object.entries(draftValues)) {
+    for (const [key, value] of Object.entries(draftPreferencesSignal.value)) {
       if (allPrefs[key] && allPrefs[key].value !== value) {
         await updatePreference(key, value);
       }
@@ -165,8 +168,8 @@ export const PreferencesDialog: React.FC = () => {
                   {categoryPrefs.map(
                     ([key, item]: [string, PreferenceItem]) => {
                       const currentValue =
-                        draftValues[key] !== undefined ?
-                          draftValues[key]
+                        draftPreferencesSignal.value[key] !== undefined ?
+                          draftPreferencesSignal.value[key]
                         : item.value;
 
                       return (

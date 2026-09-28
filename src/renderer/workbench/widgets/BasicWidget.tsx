@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
+import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import { Widget, type WidgetProps } from "./Widget";
 import Icon from "@renderer/components/common/MdiIcon";
 import { mdiWindowMinimize, mdiWindowRestore, mdiClose } from "@mdi/js";
@@ -25,30 +26,25 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
   onClose,
   onUndock,
 }) => {
-  const [isMinimized, setIsMinimized] = useState(false);
+  useSignals();
+  const isBasicWidgetMinimizedSignal = useSignal<boolean>(false);
+  const isMinimized = isBasicWidgetMinimizedSignal.value;
   const savedBoundsRef = useRef<{
     maxWidth: number | string;
     maxHeight: number | string;
-  }>({
-    maxWidth,
-    maxHeight,
-  });
+  }>({ maxWidth, maxHeight });
 
   const toggleMinimize = () => {
-    setIsMinimized((prev) => {
-      if (!prev) {
-        savedBoundsRef.current = { maxWidth, maxHeight };
-      }
-      return !prev;
-    });
+    if (!isBasicWidgetMinimizedSignal.value) {
+      savedBoundsRef.current = { maxWidth, maxHeight };
+    }
+    isBasicWidgetMinimizedSignal.value = !isBasicWidgetMinimizedSignal.value;
   };
 
-  const activeMaxWidth = isMinimized
-    ? "100%"
-    : savedBoundsRef.current.maxWidth || maxWidth;
-  const activeMaxHeight = isMinimized
-    ? "30px"
-    : savedBoundsRef.current.maxHeight || maxHeight;
+  const activeMaxWidth =
+    isMinimized ? "100%" : savedBoundsRef.current.maxWidth || maxWidth;
+  const activeMaxHeight =
+    isMinimized ? "30px" : savedBoundsRef.current.maxHeight || maxHeight;
 
   return (
     <Widget
@@ -70,11 +66,10 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
         boxSizing: "border-box",
         transition: "max-height 0.2s ease, min-height 0.2s ease",
         ...style,
-      }}
-    >
+      }}>
       {/* Header Row: Label + Minimize Toggle + Close Button */}
       <div
-        className="basic-widget-header"
+        className='basic-widget-header'
         style={{
           display: "flex",
           alignItems: "center",
@@ -86,10 +81,9 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
           minHeight: "26px",
           userSelect: "none",
           cursor: "grab",
-        }}
-      >
+        }}>
         <span
-          className="basic-widget-title"
+          className='basic-widget-title'
           style={{
             fontWeight: 600,
             fontSize: "10.5pt",
@@ -97,22 +91,16 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-          }}
-        >
+          }}>
           {displayName}
         </span>
 
         <div
-          className="basic-widget-controls"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-          }}
-        >
+          className='basic-widget-controls'
+          style={{ display: "flex", alignItems: "center", gap: "4px" }}>
           <button
-            type="button"
-            className="widget-control-btn"
+            type='button'
+            className='widget-control-btn'
             title={isMinimized ? "Restore" : "Minimize"}
             onClick={(e) => {
               e.stopPropagation();
@@ -127,8 +115,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
               borderRadius: "2px",
               display: "flex",
               alignItems: "center",
-            }}
-          >
+            }}>
             <Icon
               path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
               size={14}
@@ -137,9 +124,9 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
 
           {onClose && (
             <button
-              type="button"
-              className="widget-control-btn"
-              title="Close"
+              type='button'
+              className='widget-control-btn'
+              title='Close'
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
@@ -153,8 +140,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
                 borderRadius: "2px",
                 display: "flex",
                 alignItems: "center",
-              }}
-            >
+              }}>
               <Icon path={mdiClose} size={14} />
             </button>
           )}
@@ -164,13 +150,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = ({
       {/* Widget Content Body */}
       {!isMinimized && (
         <div
-          className="basic-widget-body"
-          style={{
-            flex: 1,
-            overflow: "auto",
-            position: "relative",
-          }}
-        >
+          className='basic-widget-body'
+          style={{ flex: 1, overflow: "auto", position: "relative" }}>
           {children}
         </div>
       )}

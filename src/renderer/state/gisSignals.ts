@@ -43,6 +43,13 @@ export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
 
 export const snappingEnabledSignal = signal<boolean>(false);
 
+// Workbench window geometry & panel layout signals
+export const isWindowMaximizedSignal = signal<boolean>(false);
+export const openDockPanelsSignal = signal<{ attributes: boolean; layers: boolean }>({
+  attributes: false,
+  layers: true
+});
+
 // Map command action triggers (Zoom In, Zoom Out, Reset, etc.)
 export const mapActionSignal = signal<{ action: 'zoomIn' | 'zoomOut' | 'reset'; timestamp: number } | null>(null);
 

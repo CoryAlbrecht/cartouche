@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Widget } from "./Widget";
 import {
   visibleToolbarsSignal,
@@ -7,7 +7,7 @@ import {
   type ToolbarId,
   type ToolbarZone,
 } from "@renderer/state/gisSignals";
-import { useSignals } from "@preact/signals-react/runtime";
+import { useSignals, useSignal } from "@preact/signals-react/runtime";
 
 export interface ToolbarContainerWidgetProps {
   zone: ToolbarZone;
@@ -19,7 +19,8 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
   children,
 }) => {
   useSignals();
-  const [isDragOver, setIsDragOver] = useState(false);
+  const isToolbarZoneDragOverSignal = useSignal<boolean>(false);
+  const isDragOver = isToolbarZoneDragOverSignal.value;
 
   const isHorizontal = zone === "top" || zone === "bottom";
   const visibleToolbars = visibleToolbarsSignal.value;
@@ -36,19 +37,19 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
       label: toolbarLabels[id],
       checked: visibleToolbars[id],
       action: () => toggleToolbar(id),
-    }),
+    })
   );
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+    isToolbarZoneDragOverSignal.value = true;
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (!isDragOver) {
-      setIsDragOver(true);
+    if (!isToolbarZoneDragOverSignal.value) {
+      isToolbarZoneDragOverSignal.value = true;
     }
   };
 
@@ -56,13 +57,13 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     e.preventDefault();
     // Only clear dragOver if mouse leaves the container element completely
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false);
+      isToolbarZoneDragOverSignal.value = false;
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    isToolbarZoneDragOverSignal.value = false;
     const toolbarId = e.dataTransfer.getData("text/plain") as ToolbarId;
     if (toolbarId && visibleToolbars[toolbarId] !== undefined) {
       moveToolbar(toolbarId, zone);
@@ -73,9 +74,8 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
   const activeBorderColor = isDragOver ? "#0284c7" : "#f8fafc";
 
   // Fast transition on drag-enter (0.05s), slow smooth transition on drag-leave (0.7s)
-  const currentTransition = isDragOver
-    ? "all 0.0s ease-in"
-    : "all 0.7s ease-out";
+  const currentTransition =
+    isDragOver ? "all 0.0s ease-in" : "all 0.7s ease-out";
 
   // Auto-collapse drop target if no visible children in zone; expands on drag over
   if (!hasChildren) {
@@ -87,8 +87,15 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         style={{
-          minWidth: isHorizontal ? "100%" : isDragOver ? "36px" : "1px",
-          minHeight: isHorizontal ? (isDragOver ? "36px" : "1px") : "100%",
+          minWidth:
+            isHorizontal ? "100%"
+            : isDragOver ? "36px"
+            : "1px",
+          minHeight:
+            isHorizontal ?
+              isDragOver ? "36px"
+              : "1px"
+            : "100%",
           backgroundColor: activeBackground,
           borderWidth: "1px",
           borderStyle: "solid",
@@ -99,8 +106,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-        }}
-      ></div>
+        }}></div>
     );
   }
 
@@ -114,8 +120,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
         width: isHorizontal ? "100%" : "auto",
         height: isHorizontal ? "auto" : "100%",
         display: "flex",
-      }}
-    >
+      }}>
       <Widget
         id={`toolbar-container-${zone}`}
         background={activeBackground}
@@ -137,8 +142,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
           width: "100%",
           height: "100%",
           transition: currentTransition,
-        }}
-      >
+        }}>
         {children}
       </Widget>
     </div>
