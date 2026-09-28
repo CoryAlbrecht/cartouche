@@ -32,6 +32,91 @@ const defaultPreferences: PreferenceMap = {
     description: 'Dimensions for toolbar and panel action icons',
     type: 'number'
   },
+  'ui.workbench.location.x': {
+    displayName: 'Workbench Window X Position',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.workbench.location.y': {
+    displayName: 'Workbench Window Y Position',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.workbench.location.width': {
+    displayName: 'Workbench Window Width',
+    value: 1400,
+    defaultValue: 1400,
+    minimum: 960,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.workbench.location.height': {
+    displayName: 'Workbench Window Height',
+    value: 900,
+    defaultValue: 900,
+    minimum: 640,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.workbench.location.maximized': {
+    displayName: 'Workbench Window Maximized State',
+    value: false,
+    defaultValue: false,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'boolean'
+  },
+  'ui.preferencesDialog.location.x': {
+    displayName: 'Preferences Dialog X Position',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.preferencesDialog.location.y': {
+    displayName: 'Preferences Dialog Y Position',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.preferencesDialog.location.width': {
+    displayName: 'Preferences Dialog Width',
+    value: 720,
+    defaultValue: 720,
+    minimum: 480,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.preferencesDialog.location.height': {
+    displayName: 'Preferences Dialog Height',
+    value: 520,
+    defaultValue: 520,
+    minimum: 360,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
   'rendering.simplification.threshold': {
     displayName: 'Simplification Threshold',
     value: 1.0,
@@ -60,38 +145,73 @@ const defaultPreferences: PreferenceMap = {
 class PreferencesStoreManager {
   private preferences: PreferenceMap = { ...defaultPreferences };
   private filePath: string | null = null;
+  private isLoaded = false;
 
   constructor() {
-    this.initStore();
+    this.ensureLoaded();
   }
 
-  private initStore(): void {
+  private getStoreFilePath(): string | null {
+    if (this.filePath) return this.filePath;
     try {
-      if (app && app.isReady()) {
+      if (app) {
+        if (!app.getName() || app.getName() === 'Electron') {
+          app.setName('cartouche');
+        }
         const userDataPath = app.getPath('userData');
         this.filePath = path.join(userDataPath, 'preferences.json');
-        this.loadFromDisk();
+        return this.filePath;
       }
     } catch {
-      // Memory-only fallback if app is not yet ready during tests
+      return null;
+    }
+    return null;
+  }
+
+  private ensureLoaded(): void {
+    if (this.isLoaded) return;
+    const targetPath = this.getStoreFilePath();
+    if (targetPath) {
+      this.loadFromDisk();
     }
   }
 
-  private loadFromDisk(): void {
+  public loadFromDisk(): void {
+    const targetPath = this.getStoreFilePath();
+    if (!targetPath) return;
+
     let parsed: Record<string, any> = {};
-    if (this.filePath && fs.existsSync(this.filePath)) {
+    if (fs.existsSync(targetPath)) {
       try {
-        const data = fs.readFileSync(this.filePath, 'utf-8');
+        const data = fs.readFileSync(targetPath, 'utf-8');
         parsed = JSON.parse(data);
       } catch (err) {
         console.warn('[PreferencesStore] Failed to load preferences from disk:', err);
       }
     }
 
+    let didMigrate = false;
+
+    const migrateKey = (oldKey: string, newKey: string) => {
+      if (parsed[oldKey] !== undefined) {
+        if (parsed[newKey] === undefined) {
+          parsed[newKey] = parsed[oldKey];
+        }
+        delete parsed[oldKey];
+        delete this.preferences[oldKey];
+        didMigrate = true;
+      }
+    };
+
+    migrateKey('ui.preferencesDialog.x', 'ui.preferencesDialog.location.x');
+    migrateKey('ui.preferencesDialog.y', 'ui.preferencesDialog.location.y');
+    migrateKey('ui.preferencesDialog.width', 'ui.preferencesDialog.location.width');
+    migrateKey('ui.preferencesDialog.height', 'ui.preferencesDialog.location.height');
+    migrateKey('ui.workbench.maximized', 'ui.workbench.location.maximized');
+
     // Process known default preferences
     for (const [key, item] of Object.entries(this.preferences)) {
       if (item.ephemeral) {
-        // Ephemeral items are never restored from disk and reset to defaultValue on app launch
         item.value = item.defaultValue !== undefined ? item.defaultValue : item.value;
       } else if (parsed[key] !== undefined) {
         const diskVal = parsed[key];
@@ -116,19 +236,15 @@ class PreferencesStoreManager {
         };
       }
     }
+    this.isLoaded = true;
+    if (didMigrate) {
+      this.saveToDisk();
+    }
   }
 
   private saveToDisk(): void {
-    if (!this.filePath) {
-      try {
-        if (app && app.isReady()) {
-          this.filePath = path.join(app.getPath('userData'), 'preferences.json');
-        }
-      } catch {
-        return;
-      }
-    }
-    if (!this.filePath) return;
+    const targetPath = this.getStoreFilePath();
+    if (!targetPath) return;
     try {
       const toSave: Record<string, any> = {};
       for (const [key, item] of Object.entries(this.preferences)) {
@@ -136,13 +252,15 @@ class PreferencesStoreManager {
           toSave[key] = item.value;
         }
       }
-      fs.writeFileSync(this.filePath, JSON.stringify(toSave, null, 2), 'utf-8');
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      fs.writeFileSync(targetPath, JSON.stringify(toSave, null, 2), 'utf-8');
     } catch (err) {
       console.error('[PreferencesStore] Failed to save preferences to disk:', err);
     }
   }
 
   public get(name?: string): PreferenceMap {
+    this.ensureLoaded();
     if (!name || name.trim() === '') {
       return { ...this.preferences };
     }
@@ -154,6 +272,7 @@ class PreferencesStoreManager {
   }
 
   public set(name: string, value: any): PreferenceMap {
+    this.ensureLoaded();
     const key = name.trim();
     if (this.preferences[key]) {
       this.preferences[key] = {

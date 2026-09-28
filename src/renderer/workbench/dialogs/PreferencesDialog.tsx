@@ -2,13 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
-  mdiClose,
   mdiPaletteOutline,
   mdiVectorTriangle,
   mdiPuzzleOutline,
   mdiCogOutline,
   mdiCheck,
-  mdiResizeBottomRight,
 } from "@mdi/js";
 import {
   isPreferencesOpenSignal,
@@ -17,6 +15,7 @@ import {
   updatePreference,
   closePreferencesDialog,
 } from "@renderer/state/preferencesSignals";
+import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindowPortal";
 import type { PreferenceItem } from "@shared/types";
 
 interface CategoryTab {
@@ -35,21 +34,17 @@ const categories: CategoryTab[] = [
 export const PreferencesDialog: React.FC = () => {
   useSignals();
   const [draftValues, setDraftValues] = useState<Record<string, any>>({});
-  const [dialogSize, setDialogSize] = useState<{
-    width: number;
-    height: number;
-  }>({ width: 720, height: 520 });
 
   useEffect(() => {
     if (isPreferencesOpenSignal.value) {
-      // Initialize draft values from preferencesMapSignal
+      const allPrefs = preferencesMapSignal.value;
       const initial: Record<string, any> = {};
-      for (const [key, item] of Object.entries(preferencesMapSignal.value)) {
+      for (const [key, item] of Object.entries(allPrefs)) {
         initial[key] = item.value;
       }
       setDraftValues(initial);
     }
-  }, [isPreferencesOpenSignal.value, preferencesMapSignal.value]);
+  }, [isPreferencesOpenSignal.value]);
 
   if (!isPreferencesOpenSignal.value) {
     return null;
@@ -89,230 +84,213 @@ export const PreferencesDialog: React.FC = () => {
     }
   };
 
-  const handleResizeMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const savedW =
+    typeof allPrefs["ui.preferencesDialog.location.width"]?.value === "number" ?
+      allPrefs["ui.preferencesDialog.location.width"].value
+    : 720;
+  const savedH =
+    (
+      typeof allPrefs["ui.preferencesDialog.location.height"]?.value
+      === "number"
+    ) ?
+      allPrefs["ui.preferencesDialog.location.height"].value
+    : 520;
+  const savedX =
+    typeof allPrefs["ui.preferencesDialog.location.x"]?.value === "number" ?
+      allPrefs["ui.preferencesDialog.location.x"].value
+    : -1;
+  const savedY =
+    typeof allPrefs["ui.preferencesDialog.location.y"]?.value === "number" ?
+      allPrefs["ui.preferencesDialog.location.y"].value
+    : -1;
 
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = dialogSize.width;
-    const startHeight = dialogSize.height;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-
-      const newWidth = Math.max(
-        480,
-        Math.min(window.innerWidth * 0.95, startWidth + deltaX)
-      );
-      const newHeight = Math.max(
-        360,
-        Math.min(window.innerHeight * 0.95, startHeight + deltaY)
-      );
-
-      setDialogSize({ width: newWidth, height: newHeight });
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  };
+  let windowFeatures = `width=${savedW},height=${savedH}`;
+  if (savedX >= 0 && savedY >= 0) {
+    windowFeatures += `,left=${savedX},top=${savedY}`;
+  }
 
   return (
-    <div
-      className='preferences-modal-backdrop'
-      onClick={closePreferencesDialog}
-      onKeyDown={handleKeyDown}
-      tabIndex={-1}>
+    <DetachedWindowPortal
+      frameName='preferencesWindow'
+      title='Preferences'
+      features={windowFeatures}
+      onClose={closePreferencesDialog}>
       <div
-        className='preferences-modal-container'
-        style={{
-          width: `${dialogSize.width}px`,
-          height: `${dialogSize.height}px`,
-        }}
-        onClick={(e) => e.stopPropagation()}>
-        {/* Modal Header */}
-        <div className='preferences-modal-header'>
-          <div className='preferences-modal-title'>
-            <Icon
-              path={mdiCogOutline}
-              size='20px'
-              className='preferences-title-icon'
-            />
-            <span>Preferences</span>
-          </div>
-          <button
-            className='preferences-close-btn'
-            onClick={closePreferencesDialog}
-            title='Close (Esc)'
-            aria-label='Close Preferences'>
-            <Icon path={mdiClose} size='18px' />
-          </button>
-        </div>
-
-        {/* Modal Body: Left Sidebar + Right Content */}
-        <div className='preferences-modal-body'>
-          {/* Left Category Navigation */}
-          <div className='preferences-sidebar'>
-            <div className='preferences-sidebar-title'>Categories</div>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                className={`preferences-tab-btn ${activeCat === cat.id ? "active" : ""}`}
-                onClick={() => {
-                  activeCategorySignal.value = cat.id;
-                }}>
-                <Icon path={cat.icon} size='18px' />
-                <span>{cat.label}</span>
-              </button>
-            ))}
+        className='preferences-modal-backdrop'
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}>
+        <div className='preferences-modal-container'>
+          {/* Header */}
+          <div className='preferences-modal-header'>
+            <div className='preferences-modal-title'>
+              <Icon
+                path={mdiCogOutline}
+                size='20px'
+                className='preferences-title-icon'
+              />
+              <span>Preferences</span>
+            </div>
           </div>
 
-          {/* Right Form Fields */}
-          <div className='preferences-content'>
-            <div className='preferences-section-title'>
-              {categories.find((c) => c.id === activeCat)?.label
-                || "General Preferences"}
+          {/* Modal Body: Left Sidebar + Right Content */}
+          <div className='preferences-modal-body'>
+            {/* Left Category Navigation */}
+            <div className='preferences-sidebar'>
+              <div className='preferences-sidebar-title'>Categories</div>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  className={`preferences-tab-btn ${activeCat === cat.id ? "active" : ""}`}
+                  onClick={() => {
+                    activeCategorySignal.value = cat.id;
+                  }}>
+                  <Icon path={cat.icon} size='18px' />
+                  <span>{cat.label}</span>
+                </button>
+              ))}
             </div>
 
-            {categoryPrefs.length === 0 ?
-              <div className='preferences-empty-state'>
-                No configurable options found in this category.
+            {/* Right Form Fields */}
+            <div className='preferences-content'>
+              <div className='preferences-section-title'>
+                {categories.find((c) => c.id === activeCat)?.label
+                  || "General Preferences"}
               </div>
-            : <div className='preferences-form-group'>
-                {categoryPrefs.map(([key, item]: [string, PreferenceItem]) => {
-                  const currentValue =
-                    draftValues[key] !== undefined ?
-                      draftValues[key]
-                    : item.value;
 
-                  return (
-                    <div key={key} className='preference-item-row'>
-                      <div className='preference-item-info'>
-                        <div className='preference-item-name'>
-                          {item.displayName}
-                        </div>
-                        {item.description && (
-                          <div className='preference-item-desc'>
-                            {item.description}
-                          </div>
-                        )}
-                        <div className='preference-item-key'>{key}</div>
-                      </div>
+              {categoryPrefs.length === 0 ?
+                <div className='preferences-empty-state'>
+                  No configurable options found in this category.
+                </div>
+              : <div className='preferences-form-group'>
+                  {categoryPrefs.map(
+                    ([key, item]: [string, PreferenceItem]) => {
+                      const currentValue =
+                        draftValues[key] !== undefined ?
+                          draftValues[key]
+                        : item.value;
 
-                      <div className='preference-item-control'>
-                        {item.type === "boolean" ?
-                          <label className='preference-checkbox-label'>
-                            <input
-                              type='checkbox'
-                              checked={!!currentValue}
-                              onChange={(e) =>
-                                handleFieldChange(key, e.target.checked)
-                              }
-                              className='preference-checkbox'
-                            />
-                            <span>{currentValue ? "Enabled" : "Disabled"}</span>
-                          </label>
-                        : item.type === "select" && item.options ?
-                          <select
-                            value={String(currentValue)}
-                            onChange={(e) =>
-                              handleFieldChange(key, e.target.value)
-                            }
-                            className='preference-select'>
-                            {item.options.map((opt) => (
-                              <option
-                                key={String(opt.value)}
-                                value={String(opt.value)}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        : item.type === "number" ?
-                          <div className='preference-number-wrapper'>
-                            <input
-                              type='number'
-                              min={item.minimum}
-                              max={item.maximum}
-                              step={item.step !== undefined ? item.step : "any"}
-                              value={
-                                currentValue !== undefined ? currentValue : ""
-                              }
-                              onChange={(e) => {
-                                let val = parseFloat(e.target.value);
-                                if (isNaN(val)) val = 0;
-                                if (
-                                  item.minimum !== undefined
-                                  && val < item.minimum
-                                )
-                                  val = item.minimum;
-                                if (
-                                  item.maximum !== undefined
-                                  && val > item.maximum
-                                )
-                                  val = item.maximum;
-                                handleFieldChange(key, val);
-                              }}
-                              className='preference-input-number'
-                            />
-                            {item.unit && (
-                              <span className='preference-unit-badge'>
-                                {item.unit}
-                              </span>
+                      return (
+                        <div key={key} className='preference-item-row'>
+                          <div className='preference-item-info'>
+                            <div className='preference-item-name'>
+                              {item.displayName}
+                            </div>
+                            {item.description && (
+                              <div className='preference-item-desc'>
+                                {item.description}
+                              </div>
                             )}
+                            <div className='preference-item-key'>{key}</div>
                           </div>
-                        : <input
-                            type='text'
-                            value={
-                              currentValue !== undefined ? currentValue : ""
-                            }
-                            onChange={(e) =>
-                              handleFieldChange(key, e.target.value)
-                            }
-                            className='preference-input-text'
-                          />
-                        }
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            }
-          </div>
-        </div>
 
-        {/* Modal Footer Actions */}
-        <div className='preferences-modal-footer'>
-          <div className='preferences-shortcut-hint'>
-            Press Esc to cancel, Ctrl+Enter to save
+                          <div className='preference-item-control'>
+                            {item.type === "boolean" ?
+                              <label className='preference-checkbox-label'>
+                                <input
+                                  type='checkbox'
+                                  checked={!!currentValue}
+                                  onChange={(e) =>
+                                    handleFieldChange(key, e.target.checked)
+                                  }
+                                  className='preference-checkbox'
+                                />
+                                <span>
+                                  {currentValue ? "Enabled" : "Disabled"}
+                                </span>
+                              </label>
+                            : item.type === "select" && item.options ?
+                              <select
+                                value={String(currentValue)}
+                                onChange={(e) =>
+                                  handleFieldChange(key, e.target.value)
+                                }
+                                className='preference-select'>
+                                {item.options.map((opt) => (
+                                  <option
+                                    key={String(opt.value)}
+                                    value={String(opt.value)}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            : item.type === "number" ?
+                              <div className='preference-number-wrapper'>
+                                <input
+                                  type='number'
+                                  min={item.minimum}
+                                  max={item.maximum}
+                                  step={
+                                    item.step !== undefined ? item.step : "any"
+                                  }
+                                  value={
+                                    currentValue !== undefined ? currentValue
+                                    : ""
+                                  }
+                                  onChange={(e) => {
+                                    let val = parseFloat(e.target.value);
+                                    if (isNaN(val)) val = 0;
+                                    if (
+                                      item.minimum !== undefined
+                                      && val < item.minimum
+                                    )
+                                      val = item.minimum;
+                                    if (
+                                      item.maximum !== undefined
+                                      && val > item.maximum
+                                    )
+                                      val = item.maximum;
+                                    handleFieldChange(key, val);
+                                  }}
+                                  className='preference-input-number'
+                                />
+                                {item.unit && (
+                                  <span className='preference-unit-badge'>
+                                    {item.unit}
+                                  </span>
+                                )}
+                              </div>
+                            : <input
+                                type='text'
+                                value={
+                                  currentValue !== undefined ? currentValue : ""
+                                }
+                                onChange={(e) =>
+                                  handleFieldChange(key, e.target.value)
+                                }
+                                className='preference-input-text'
+                              />
+                            }
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              }
+            </div>
           </div>
-          <div className='preferences-footer-buttons'>
-            <button
-              className='preferences-btn preferences-btn-secondary'
-              onClick={closePreferencesDialog}>
-              Cancel
-            </button>
-            <button
-              className='preferences-btn preferences-btn-primary'
-              onClick={handleSave}>
-              <Icon path={mdiCheck} size='16px' />
-              <span>Save Changes</span>
-            </button>
-          </div>
-          <div
-            className='preferences-resize-handle'
-            onMouseDown={handleResizeMouseDown}
-            title='Resize (Click and drag)'
-            aria-label='Resize Dialog'>
-            <Icon path={mdiResizeBottomRight} size='16px' />
+
+          {/* Modal Footer Actions */}
+          <div className='preferences-modal-footer'>
+            <div className='preferences-shortcut-hint'>
+              Press Esc to cancel, Ctrl+Enter to save
+            </div>
+            <div className='preferences-footer-buttons'>
+              <button
+                className='preferences-btn preferences-btn-secondary'
+                onClick={closePreferencesDialog}>
+                Cancel
+              </button>
+              <button
+                className='preferences-btn preferences-btn-primary'
+                onClick={handleSave}>
+                <Icon path={mdiCheck} size='16px' />
+                <span>Save Changes</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </DetachedWindowPortal>
   );
 };

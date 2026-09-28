@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,14 +70,29 @@ function createWindow() {
   const iconPath = getIconPath();
   const iconImage = nativeImage.createFromPath(iconPath);
 
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+  PreferencesStore.loadFromDisk();
+  const wbPrefs = PreferencesStore.get();
+  const savedWbX = wbPrefs['ui.workbench.location.x']?.value;
+  const savedWbY = wbPrefs['ui.workbench.location.y']?.value;
+  const savedWbW = wbPrefs['ui.workbench.location.width']?.value;
+  const savedWbH = wbPrefs['ui.workbench.location.height']?.value;
+
+  const hasValidWidth = typeof savedWbW === 'number' && savedWbW >= 960;
+  const hasValidHeight = typeof savedWbH === 'number' && savedWbH >= 640;
+  const hasValidPos = typeof savedWbX === 'number' && typeof savedWbY === 'number' && (savedWbX !== -1 || savedWbY !== -1);
+
+  const wbWidth = hasValidWidth ? Math.floor(savedWbW) : 1400;
+  const wbHeight = hasValidHeight ? Math.floor(savedWbH) : 900;
+
+  const mainWindowOptions: Electron.BrowserWindowConstructorOptions = {
+    width: wbWidth,
+    height: wbHeight,
     minWidth: 960,
     minHeight: 640,
     title: 'Cartouche',
     backgroundColor: '#ffffff',
     frame: false, // Frameless window with custom menubar & window controls
+    show: false, // Hide until Cartouche preferences bounds are explicitly set
     icon: iconImage,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.cjs'),
@@ -84,7 +100,49 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false
     }
-  });
+  };
+
+  if (hasValidPos) {
+    mainWindowOptions.x = Math.floor(savedWbX);
+    mainWindowOptions.y = Math.floor(savedWbY);
+  }
+
+  mainWindow = new BrowserWindow(mainWindowOptions);
+
+  // Explicitly apply Cartouche preferences bounds to override Electron/Chromium internal userData/Preferences
+  if (hasValidPos && hasValidWidth && hasValidHeight) {
+    mainWindow.setBounds({
+      x: Math.floor(savedWbX),
+      y: Math.floor(savedWbY),
+      width: Math.floor(savedWbW),
+      height: Math.floor(savedWbH)
+    });
+  } else if (hasValidWidth && hasValidHeight) {
+    mainWindow.setSize(Math.floor(savedWbW), Math.floor(savedWbH));
+  }
+
+  const isMaximized = wbPrefs['ui.workbench.location.maximized']?.value === true;
+  if (isMaximized) {
+    mainWindow.maximize();
+  }
+
+  mainWindow.show();
+
+  const saveWorkbenchBounds = () => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized() && !mainWindow.isMaximized()) {
+      const bounds = mainWindow.getBounds();
+      PreferencesStore.set('ui.workbench.location.x', bounds.x);
+      PreferencesStore.set('ui.workbench.location.y', bounds.y);
+      PreferencesStore.set('ui.workbench.location.width', bounds.width);
+      PreferencesStore.set('ui.workbench.location.height', bounds.height);
+    }
+  };
+
+  mainWindow.on('resize', saveWorkbenchBounds);
+  mainWindow.on('resized', saveWorkbenchBounds);
+  mainWindow.on('move', saveWorkbenchBounds);
+  mainWindow.on('moved', saveWorkbenchBounds);
+  mainWindow.on('close', saveWorkbenchBounds);
 
   if (process.platform === 'linux' && !iconImage.isEmpty()) {
     mainWindow.setIcon(iconImage);
@@ -101,6 +159,71 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../../dist/src/renderer/index.html'));
   }
 
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    if (details.frameName === 'preferencesWindow') {
+      PreferencesStore.loadFromDisk();
+      const prefs = PreferencesStore.get();
+      const savedX = prefs['ui.preferencesDialog.location.x']?.value;
+      const savedY = prefs['ui.preferencesDialog.location.y']?.value;
+      const savedWidth = prefs['ui.preferencesDialog.location.width']?.value;
+      const savedHeight = prefs['ui.preferencesDialog.location.height']?.value;
+
+      const width = typeof savedWidth === 'number' && savedWidth >= 480 ? Math.floor(savedWidth) : 720;
+      const height = typeof savedHeight === 'number' && savedHeight >= 360 ? Math.floor(savedHeight) : 520;
+
+      const windowOptions: Electron.BrowserWindowConstructorOptions = {
+        width,
+        height,
+        minWidth: 480,
+        minHeight: 360,
+        title: 'Preferences',
+        autoHideMenuBar: true,
+        frame: true,
+        resizable: true,
+        show: true,
+        parent: mainWindow || undefined,
+        icon: iconImage,
+        webPreferences: {
+          preload: path.join(__dirname, '../preload/preload.cjs'),
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: false
+        }
+      };
+
+      if (typeof savedX === 'number' && savedX >= 0 && typeof savedY === 'number' && savedY >= 0) {
+        windowOptions.x = Math.floor(savedX);
+        windowOptions.y = Math.floor(savedY);
+      }
+
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: windowOptions
+      };
+    }
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('did-create-window', (childWindow, details) => {
+    if (details.frameName === 'preferencesWindow') {
+      const saveChildBounds = () => {
+        if (childWindow && !childWindow.isDestroyed()) {
+          const bounds = childWindow.getBounds();
+          PreferencesStore.set('ui.preferencesDialog.location.x', bounds.x);
+          PreferencesStore.set('ui.preferencesDialog.location.y', bounds.y);
+          PreferencesStore.set('ui.preferencesDialog.location.width', bounds.width);
+          PreferencesStore.set('ui.preferencesDialog.location.height', bounds.height);
+        }
+      };
+
+      childWindow.on('resize', saveChildBounds);
+      childWindow.on('resized', saveChildBounds);
+      childWindow.on('move', saveChildBounds);
+      childWindow.on('moved', saveChildBounds);
+      childWindow.on('close', saveChildBounds);
+    }
+  });
+
   mainWindow.webContents.on('did-finish-load', () => {
     console.log('[Main] Window loaded successfully');
   });
@@ -114,10 +237,13 @@ function createWindow() {
   });
 
   mainWindow.on('maximize', () => {
+    PreferencesStore.set('ui.workbench.location.maximized', true);
     mainWindow?.webContents.send('window-maximized-state', true);
   });
 
   mainWindow.on('unmaximize', () => {
+    PreferencesStore.set('ui.workbench.location.maximized', false);
+    saveWorkbenchBounds();
     mainWindow?.webContents.send('window-maximized-state', false);
   });
 
@@ -127,6 +253,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  PreferencesStore.loadFromDisk();
   createWindow();
 
   ipcMain?.on('window-minimize', () => {
