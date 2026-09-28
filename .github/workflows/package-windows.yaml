@@ -70,7 +70,9 @@ jobs:
           install --directory=node_modules/gdal-async
 
       - name: Rebuild better-sqlite3 for Electron
-        run: npx @electron/rebuild -w better-sqlite3
+        run:
+          npx node-gyp rebuild --directory=node_modules/better-sqlite3
+          --target=37.3.0 --arch=x64 --dist-url=https://electronjs.org/headers
 
       - name: Ensure gdal-async binding for Electron 37
         shell: bash

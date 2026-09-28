@@ -6,7 +6,7 @@
   "main": "dist-electron/main/main.js",
   "scripts": {
     "dev": "vite",
-    "rebuild": "electron-rebuild -j 12 -f -w gdal-async,better-sqlite3",
+    "rebuild": "node-gyp rebuild --directory=node_modules/better-sqlite3 --target=37.3.0 --arch=x64 --dist-url=https://electronjs.org/headers",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "stylelint \"src/**/*.css\"",
