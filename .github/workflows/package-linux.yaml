@@ -1,5 +1,9 @@
 name: Build Desktop Packages (Linux)
 
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 on:
   push:
     branches:
@@ -80,5 +84,25 @@ jobs:
           files: |
             release/*.deb
             release/*.rpm
+
+      - name: Prune Old Releases for Current Branch
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_PREFIX: "v${{ steps.version.outputs.full_version }}"
+          KEEP_COUNT: 3 # Number of recent releases to keep
+        run: |
+          # Extract prefix matching this branch's version pattern (e.g. "v1.2.3-dev+")
+          BRANCH_PREFIX="${TAG_PREFIX%+*}+"
+
+          # 1. Fetch releases matching this branch prefix, sorted newest to oldest
+          # 2. Skip the newest KEEP_COUNT releases
+          # 3. Delete the older releases and their underlying tags
+          gh release list --limit 100 --json tagName --jq ".[].tagName" \
+            | grep "^${BRANCH_PREFIX}" \
+            | tail -n +$((KEEP_COUNT + 1)) \
+            | while read -r tag; do
+                if [ -n "$tag" ]; then
+                  echo "Deleting release and tag: $tag"
+                  gh release delete "$tag" --yes --cleanup-tag
+                fi
+              done
