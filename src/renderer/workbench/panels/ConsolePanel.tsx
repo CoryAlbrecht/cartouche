@@ -1,9 +1,40 @@
+/**
+ * @file ConsolePanel.tsx
+ * @module renderer/workbench/panels/ConsolePanel
+ * @description Dockview panel component displaying system event logs, execution warnings, and error messages.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @see {@link BasicWidget}
+ */
+
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "../widgets/BasicWidget";
 import { consoleLogsSignal, addConsoleLog } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
 
+/**
+ * @component ConsolePanel
+ * @description Renders output logs list panel inside Dockview layout.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @param {Partial<IDockviewPanelProps>} props - Dockview panel properties.
+ * @returns {React.ReactElement} ConsolePanel element.
+ */
+/**
+ * @component ConsolePanel
+ * @description Renders output logs list panel inside Dockview layout.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @param {Partial<IDockviewPanelProps>} props - Dockview panel properties.
+ * @returns {React.ReactElement} ConsolePanel element.
+ */
 export const ConsolePanel: React.FC<Partial<IDockviewPanelProps>> = (props) => {
   useSignals();
   const logs = consoleLogsSignal.value;

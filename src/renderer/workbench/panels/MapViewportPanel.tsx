@@ -1,3 +1,14 @@
+/**
+ * @file MapViewportPanel.tsx
+ * @module renderer/workbench/panels/MapViewportPanel
+ * @description Isolated imperative OpenLayers map canvas viewport panel, strictly insulated from React VDOM reconciliation loops.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @see {@link OpenLayersEngine}
+ */
+
 import React, { useEffect, useRef } from "react";
 import { effect } from "@preact/signals-react";
 import OlMap from "ol/Map.js";
@@ -27,8 +38,12 @@ import type { IDockviewPanelProps } from "dockview-react";
 import "ol/ol.css";
 
 /**
- * Isolated OpenLayers Map Engine.
- * Runs directly on the DOM container, completely insulated from React VDOM reconciliation.
+ * @class OpenLayersEngine
+ * @description Imperative OpenLayers map canvas engine operating directly on target DOM element, isolated from React VDOM reconciliation.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
  */
 class OpenLayersEngine {
   private map: OlMap;
@@ -245,6 +260,16 @@ class OpenLayersEngine {
   }
 }
 
+/**
+ * @component MapViewportPanel
+ * @description Renders OpenLayers map viewport canvas inside Dockview layout with floating navigation controls.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @param {IDockviewPanelProps} props - Dockview panel properties.
+ * @returns {React.ReactElement} Map viewport panel element.
+ */
 export const MapViewportPanel: React.FC<IDockviewPanelProps | any> = React.memo(
   () => {
     const containerRef = useRef<HTMLDivElement | null>(null);

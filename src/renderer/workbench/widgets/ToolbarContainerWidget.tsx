@@ -1,3 +1,14 @@
+/**
+ * @file ToolbarContainerWidget.tsx
+ * @module renderer/workbench/widgets/ToolbarContainerWidget
+ * @description Outer panel edge container widget managing masonry layout and drag-and-drop relocation for toolbars across 4 outer zones.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link ToolbarWidget}
+ */
+
 import React from "react";
 import { Widget } from "./Widget";
 import {
@@ -9,11 +20,26 @@ import {
 } from "@renderer/state/gisSignals";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 
+/**
+ * @typedef {Object} ToolbarContainerWidgetProps
+ * @property {ToolbarZone} zone - Outer panel dock zone identifier ('top' | 'bottom' | 'left' | 'right').
+ * @property {React.ReactNode} [children] - Child toolbar widgets docked inside this container zone.
+ */
 export interface ToolbarContainerWidgetProps {
   zone: ToolbarZone;
   children?: React.ReactNode;
 }
 
+/**
+ * @component ToolbarContainerWidget
+ * @description Outer 4-edge panel container hosting docked ToolbarWidget items and handling dragover drop targets.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @param {ToolbarContainerWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} Toolbar container zone element.
+ */
 export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
   zone,
   children,

@@ -1,7 +1,23 @@
+/**
+ * @file shortcutSignals.ts
+ * @module renderer/state/shortcutSignals
+ * @description Preact reactive signals store managing renderer-side keyboard shortcut definitions synced from Main Process over IPC.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-23
+ * @since 0.1.0-dev
+ * @see {@link KeyboardShortcutDefinition}
+ */
+
 import { signal, computed } from '@preact/signals-react';
 import type { KeyboardShortcutDefinition } from '@shared/types';
 import { addConsoleLog } from './gisSignals';
 
+/**
+ * @signal
+ * @description Array of registered keyboard shortcut definitions synchronized from Main process.
+ * @type {Signal<KeyboardShortcutDefinition[]>}
+ */
 export const registeredShortcutsSignal = signal<KeyboardShortcutDefinition[]>([]);
 
 export const shortcutsMapSignal = computed(() => {
@@ -13,7 +29,14 @@ export const shortcutsMapSignal = computed(() => {
 });
 
 /**
- * Returns formatted shortcut string for UI menu slots by shortcut name (e.g. "add_vector_layer" -> "Ctrl+Alt+V")
+ * @description Returns formatted shortcut string for UI menu slots by shortcut name (e.g. "add_vector_layer" -> "Ctrl+Alt+V").
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-23
+ * @since 0.1.0-dev
+ * @param {string} name - Unique shortcut action ID.
+ * @param {string} [defaultFallback=''] - Default string returned if shortcut is unmapped.
+ * @returns {string} Formatted shortcut key combination string.
  */
 export function getShortcutFormattedKey(name: string, defaultFallback: string = ''): string {
   const shortcut = shortcutsMapSignal.value.get(name);
@@ -24,7 +47,12 @@ export function getShortcutFormattedKey(name: string, defaultFallback: string = 
 }
 
 /**
- * Fetches shortcut definitions from Main process IPC
+ * @description Asynchronously fetches registered shortcut definitions from Main process over Electron IPC bridge.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-23
+ * @since 0.1.0-dev
+ * @returns {Promise<void>} Resolves when shortcuts are loaded into signal state.
  */
 export async function loadShortcutsFromMain(): Promise<void> {
   if (window.electronAPI?.getShortcuts) {

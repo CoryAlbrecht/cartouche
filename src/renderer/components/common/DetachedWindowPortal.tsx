@@ -1,6 +1,24 @@
+/**
+ * @file DetachedWindowPortal.tsx
+ * @module renderer/components/common/DetachedWindowPortal
+ * @description React Portal component rendering React child elements into an isolated detached browser window pop-out (e.g. non-modal preferences window).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-28
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ */
+
 import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
 
+/**
+ * @typedef {Object} DetachedWindowPortalProps
+ * @property {string} [title='Preferences'] - Window title bar text string.
+ * @property {string} [frameName='preferencesWindow'] - Unique target frame window name identifier.
+ * @property {string} [features='width=720,height=520'] - Native window features and initial geometry bounds.
+ * @property {() => void} onClose - Callback function invoked when child window is closed.
+ * @property {React.ReactNode} children - React elements rendered inside the detached window portal body.
+ */
 interface DetachedWindowPortalProps {
   title?: string;
   frameName?: string;
@@ -9,6 +27,16 @@ interface DetachedWindowPortalProps {
   children: React.ReactNode;
 }
 
+/**
+ * @component DetachedWindowPortal
+ * @description Renders child components into an isolated secondary window using React Portals and synchronizes parent document CSS stylesheets.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-28
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @param {DetachedWindowPortalProps} props - Component properties.
+ * @returns {React.ReactElement} React Portal mounting container element into child window body.
+ */
 export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
   title = "Preferences",
   frameName = "preferencesWindow",

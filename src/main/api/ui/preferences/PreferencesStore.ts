@@ -1,9 +1,42 @@
+/**
+ * @file PreferencesStore.ts
+ * @module main/api/ui/preferences/PreferencesStore
+ * @description Main Process persistent preferences store manager, handling disk persistence, migrations, and default UI configurations.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link PreferenceMap}
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { app } from 'electron';
 import type { PreferenceMap } from '@shared/types';
 
+/**
+ * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @type {PreferenceMap}
+ */
 const defaultPreferences: PreferenceMap = {
+  'general.autosave.preferences': {
+    displayName: 'Preferences Autosave Timeout',
+    value: 5,
+    defaultValue: 5,
+    minimum: 1,
+    maximum: 60,
+    step: 1,
+    unit: 's',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Time in seconds to wait after editing a preference before automatically saving changes to disk.',
+    type: 'number'
+  },
   'ui.basefont.size': {
     displayName: 'Base Font Size',
     value: 12,
@@ -142,15 +175,39 @@ const defaultPreferences: PreferenceMap = {
   }
 };
 
+/**
+ * @class PreferencesStoreManager
+ * @description Manages persistent loading, setting, disk serialization, and legacy key migrations for application preferences.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ */
 class PreferencesStoreManager {
   private preferences: PreferenceMap = { ...defaultPreferences };
   private filePath: string | null = null;
   private isLoaded = false;
 
+  /**
+   * @description Initializes the preferences store manager instance and ensures disk preferences are loaded.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   */
   constructor() {
     this.ensureLoaded();
   }
 
+  /**
+   * @description Resolves the file system path to the preferences JSON storage file in user app data directory.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   * @private
+   * @returns {string | null} Absolute path to preferences file or null if unavailable.
+   */
   private getStoreFilePath(): string | null {
     if (this.filePath) return this.filePath;
     try {
@@ -168,6 +225,15 @@ class PreferencesStoreManager {
     return null;
   }
 
+  /**
+   * @description Ensures preferences have been loaded from disk once.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
   private ensureLoaded(): void {
     if (this.isLoaded) return;
     const targetPath = this.getStoreFilePath();
@@ -176,6 +242,14 @@ class PreferencesStoreManager {
     }
   }
 
+  /**
+   * @description Reads preferences JSON file from disk, applies schema migrations, and syncs internal preference map.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
   public loadFromDisk(): void {
     const targetPath = this.getStoreFilePath();
     if (!targetPath) return;
@@ -242,6 +316,15 @@ class PreferencesStoreManager {
     }
   }
 
+  /**
+   * @description Serializes non-ephemeral preferences to disk in JSON format.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
   private saveToDisk(): void {
     const targetPath = this.getStoreFilePath();
     if (!targetPath) return;
@@ -259,6 +342,15 @@ class PreferencesStoreManager {
     }
   }
 
+  /**
+   * @description Retrieves all preference definitions or a specific preference by key name.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   * @param {string} [name] - Optional preference key identifier. If omitted, returns entire preference map.
+   * @returns {PreferenceMap} Preference map containing target or all preference items.
+   */
   public get(name?: string): PreferenceMap {
     this.ensureLoaded();
     if (!name || name.trim() === '') {
@@ -271,6 +363,16 @@ class PreferencesStoreManager {
     return {};
   }
 
+  /**
+   * @description Updates a preference value by key name and persists changes to disk.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-28
+   * @since 0.1.0-dev
+   * @param {string} name - Preference key identifier.
+   * @param {any} value - New value to store for the preference.
+   * @returns {PreferenceMap} Map containing the updated preference entry.
+   */
   public set(name: string, value: any): PreferenceMap {
     this.ensureLoaded();
     const key = name.trim();

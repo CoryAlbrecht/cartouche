@@ -1,3 +1,16 @@
+/**
+ * @file gisSignals.ts
+ * @module renderer/state/gisSignals
+ * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link GisLayer}
+ * @see {@link GisFeature}
+ * @see {@link GisLayerGroup}
+ */
+
 import { signal, computed } from '@preact/signals-react';
 import type { CRS, GisLayer, GisLayerGroup, GisFeature, ConsoleLogEntry, BoundingBox } from '@shared/types';
 
@@ -7,33 +20,88 @@ const initialFeatures: GisFeature[] = [];
 const initialGroups: GisLayerGroup[] = [];
 
 // Project state signals
+/**
+ * @signal hasProjectSignal
+ * @description Signal indicating whether an active project file is loaded in the Workbench.
+ * @type {Signal<boolean>}
+ */
 export const hasProjectSignal = signal<boolean>(false);
+/**
+ * @signal projectNameSignal
+ * @description Signal holding the active project name string.
+ * @type {Signal<string | null>}
+ */
 export const projectNameSignal = signal<string | null>(null);
+/**
+ * @signal projectVisibleSignal
+ * @description Signal controlling global project layer rendering visibility in map canvas.
+ * @type {Signal<boolean>}
+ */
 export const projectVisibleSignal = signal<boolean>(true);
+/**
+ * @signal isDirtySignal
+ * @description Signal indicating whether unsaved modifications exist in the current project.
+ * @type {Signal<boolean>}
+ */
 export const isDirtySignal = signal<boolean>(false);
+/**
+ * @signal undoStackSignal
+ * @description Command history stack signal for edit undo actions.
+ * @type {Signal<unknown[]>}
+ */
 export const undoStackSignal = signal<unknown[]>([]);
+/**
+ * @signal redoStackSignal
+ * @description Command history stack signal for edit redo actions.
+ * @type {Signal<unknown[]>}
+ */
 export const redoStackSignal = signal<unknown[]>([]);
+/**
+ * @signal clipboardFeaturesSignal
+ * @description Internal spatial feature clipboard signal for cut/copy/paste operations.
+ * @type {Signal<GisFeature[]>}
+ */
 export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
+/**
+ * @signal activeToolSignal
+ * @description Active canvas interactive tool mode ('pan' | 'select' | 'point' | 'line' | 'polygon').
+ * @type {Signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>}
+ */
 export const activeToolSignal = signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>('pan');
 
 // Toolbar placement and visibility signals
 export type ToolbarId = 'basic' | 'digitizing' | 'snapping';
 export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
 
+/**
+ * @signal visibleToolbarsSignal
+ * @description Map of toolbar IDs to visibility boolean flags.
+ * @type {Signal<Record<ToolbarId, boolean>>}
+ */
 export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
   basic: true,
   digitizing: false,
   snapping: false
 });
 
+/**
+ * @signal toolbarLocationsSignal
+ * @description Map of toolbar IDs to assigned outer panel dock zones.
+ * @type {Signal<Record<ToolbarId, ToolbarZone>>}
+ */
 export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
   basic: 'top',
   digitizing: 'top',
   snapping: 'top'
 });
 
+/**
+ * @signal toolbarOrderSignal
+ * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
+ * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
+ */
 export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
   top: ['basic', 'digitizing', 'snapping'],
   bottom: [],
@@ -41,25 +109,70 @@ export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
   right: []
 });
 
+/**
+ * @signal snappingEnabledSignal
+ * @description Toggle signal for spatial vertex and segment snapping during digitizing.
+ * @type {Signal<boolean>}
+ */
 export const snappingEnabledSignal = signal<boolean>(false);
 
 // Workbench window geometry & panel layout signals
+/**
+ * @signal isWindowMaximizedSignal
+ * @description Reactive signal tracking electron main window maximized state.
+ * @type {Signal<boolean>}
+ */
 export const isWindowMaximizedSignal = signal<boolean>(false);
+/**
+ * @signal openDockPanelsSignal
+ * @description Dockview panel open/closed visibility state signal.
+ * @type {Signal<{ attributes: boolean; layers: boolean }>}
+ */
 export const openDockPanelsSignal = signal<{ attributes: boolean; layers: boolean }>({
   attributes: false,
   layers: true
 });
 
 // Map command action triggers (Zoom In, Zoom Out, Reset, etc.)
+/**
+ * @signal mapActionSignal
+ * @description Trigger signal for imperative map viewport actions (zoomIn, zoomOut, reset).
+ * @type {Signal<{ action: 'zoomIn' | 'zoomOut' | 'reset'; timestamp: number } | null>}
+ */
 export const mapActionSignal = signal<{ action: 'zoomIn' | 'zoomOut' | 'reset'; timestamp: number } | null>(null);
 
 // High-frequency map signals
+/**
+ * @signal cursorCoordsSignal
+ * @description High-frequency signal tracking cursor geographic and pixel coordinates over map canvas.
+ * @type {Signal<{ lon: number; lat: number; x: number; y: number } | null>}
+ */
 export const cursorCoordsSignal = signal<{ lon: number; lat: number; x: number; y: number } | null>(null);
+/**
+ * @signal viewportExtentSignal
+ * @description Spatial extent bounding box signal [minX, minY, maxX, maxY] of current map viewport.
+ * @type {Signal<BoundingBox>}
+ */
 export const viewportExtentSignal = signal<BoundingBox>([-180, -90, 180, 90]);
+/**
+ * @signal zoomSignal
+ * @description Active map zoom level numeric signal.
+ * @type {Signal<number>}
+ */
 export const zoomSignal = signal<number>(2.5);
+/**
+ * @signal scaleDenominatorSignal
+ * @description Active map scale denominator numeric signal.
+ * @type {Signal<number>}
+ */
 export const scaleDenominatorSignal = signal<number>(25000000);
 
 // Geographic projection state
+/**
+ * @signal activeCrsSignal
+ * @description Active coordinate reference system (CRS) definition signal.
+ * @type {Signal<CRS>}
+ */
 export const activeCrsSignal = signal<CRS>({
   authId: 'EPSG:4326',
   name: 'WGS 84 (Geographic Lat/Lon)',
@@ -67,13 +180,43 @@ export const activeCrsSignal = signal<CRS>({
 });
 
 // Layer & Group & Feature Selection State
+/**
+ * @signal layerGroupsSignal
+ * @description Array signal containing project layer group accordion definitions.
+ * @type {Signal<GisLayerGroup[]>}
+ */
 export const layerGroupsSignal = signal<GisLayerGroup[]>(initialGroups);
+/**
+ * @signal layersSignal
+ * @description Array signal containing loaded GIS spatial layers.
+ * @type {Signal<GisLayer[]>}
+ */
 export const layersSignal = signal<GisLayer[]>(initialLayers);
+/**
+ * @signal activeLayerIdSignal
+ * @description Currently selected active GIS layer ID signal.
+ * @type {Signal<string | null>}
+ */
 export const activeLayerIdSignal = signal<string | null>(null);
+/**
+ * @signal selectedFeatureIdsSignal
+ * @description Set signal of selected spatial feature record IDs.
+ * @type {Signal<Set<string | number>>}
+ */
 export const selectedFeatureIdsSignal = signal<Set<string | number>>(new Set());
+/**
+ * @signal featuresSignal
+ * @description Array signal containing loaded spatial feature objects across layers.
+ * @type {Signal<GisFeature[]>}
+ */
 export const featuresSignal = signal<GisFeature[]>(initialFeatures);
 
 // Console logs
+/**
+ * @signal consoleLogsSignal
+ * @description Array signal of Workbench system output console log entries.
+ * @type {Signal<ConsoleLogEntry[]>}
+ */
 export const consoleLogsSignal = signal<ConsoleLogEntry[]>([
   { id: 'log-1', timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Cartouche Desktop Workbench initialized.', source: 'Kernel' }
 ]);
@@ -99,11 +242,21 @@ export function getLayerDisplayName(layer: GisLayer): string {
 }
 
 // Computed derivations
+/**
+ * @signal activeLayerSignal
+ * @description Computed derivation returning active layer object corresponding to activeLayerIdSignal.
+ * @type {ReadonlySignal<GisLayer | null>}
+ */
 export const activeLayerSignal = computed(() => {
   const activeId = activeLayerIdSignal.value;
   return layersSignal.value.find((l) => l.id === activeId) ?? null;
 });
 
+/**
+ * @signal effectiveVisibleLayersSignal
+ * @description Computed derivation filtering layers by layer visibility and parent group hierarchy visibility.
+ * @type {ReadonlySignal<GisLayer[]>}
+ */
 export const effectiveVisibleLayersSignal = computed(() => {
   if (!projectVisibleSignal.value) return [];
 
@@ -128,14 +281,29 @@ export const effectiveVisibleLayersSignal = computed(() => {
   });
 });
 
+/**
+ * @signal visibleLayersCountSignal
+ * @description Computed derivation returning count of effectively visible layers.
+ * @type {ReadonlySignal<number>}
+ */
 export const visibleLayersCountSignal = computed(() => {
   return effectiveVisibleLayersSignal.value.length;
 });
 
+/**
+ * @signal selectedFeaturesCountSignal
+ * @description Computed derivation returning count of selected spatial feature records.
+ * @type {ReadonlySignal<number>}
+ */
 export const selectedFeaturesCountSignal = computed(() => {
   return selectedFeatureIdsSignal.value.size;
 });
 
+/**
+ * @signal activeLayerFeaturesSignal
+ * @description Computed derivation returning feature records belonging to the active layer.
+ * @type {ReadonlySignal<GisFeature[]>}
+ */
 export const activeLayerFeaturesSignal = computed(() => {
   const activeId = activeLayerIdSignal.value;
   if (!activeId) return featuresSignal.value;

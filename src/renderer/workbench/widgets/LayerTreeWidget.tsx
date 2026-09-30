@@ -1,3 +1,14 @@
+/**
+ * @file LayerTreeWidget.tsx
+ * @module renderer/workbench/widgets/LayerTreeWidget
+ * @description Layer tree panel widget managing project layer hierarchy, layer group accordions, layer visibility toggles, and active layer selection.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @see {@link BasicWidget}
+ */
+
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "./BasicWidget";
@@ -33,6 +44,15 @@ import {
 import type { GisLayer, GisLayerGroup, GeometryKind } from "@shared/types";
 import logoSvg from "../../../../assets/svg/logo.svg";
 
+/**
+ * @description Resolves Material Design Icon path corresponding to layer geometry kind.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @param {GeometryKind} [geometryKind] - Layer geometry kind string.
+ * @returns {string} MDI icon SVG path string.
+ */
 function getLayerIcon(geometryKind?: GeometryKind) {
   switch (geometryKind) {
     case "Point":
@@ -48,11 +68,26 @@ function getLayerIcon(geometryKind?: GeometryKind) {
   }
 }
 
+/**
+ * @typedef {Object} LayerTreeWidgetProps
+ * @property {() => void} [onClose] - Callback when widget is closed.
+ * @property {() => void} [onUndock] - Callback when widget is undocked.
+ */
 export interface LayerTreeWidgetProps {
   onClose?: () => void;
   onUndock?: () => void;
 }
 
+/**
+ * @component LayerTreeWidget
+ * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, search filter, and group actions.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @param {LayerTreeWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} Layer tree widget panel instance.
+ */
 export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = ({
   onClose,
   onUndock,

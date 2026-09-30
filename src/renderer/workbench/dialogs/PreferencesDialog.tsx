@@ -1,4 +1,16 @@
-import React, { useEffect } from "react";
+/**
+ * @file PreferencesDialog.tsx
+ * @module renderer/workbench/dialogs/PreferencesDialog
+ * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-09-30
+ * @since 0.1.0-dev
+ * @see {@link DetachedWindowPortal}
+ * @see {@link preferencesMapSignal}
+ */
+
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
@@ -6,7 +18,9 @@ import {
   mdiVectorTriangle,
   mdiPuzzleOutline,
   mdiCogOutline,
-  mdiCheck,
+  mdiFileEditOutline,
+  mdiSync,
+  mdiCached,
 } from "@mdi/js";
 import {
   isPreferencesOpenSignal,
@@ -31,20 +45,106 @@ const categories: CategoryTab[] = [
   { id: "plugins", label: "Plugins & Extensions", icon: mdiPuzzleOutline },
 ];
 
+/**
+ * @component PreferencesDialog
+ * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-09-30
+ * @since 0.1.0-dev
+ * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
+ */
 export const PreferencesDialog: React.FC = () => {
   useSignals();
   const draftPreferencesSignal = useSignal<Record<string, any>>({});
+  const [saveStatus, setSaveStatus] = useState<"idle" | "editing" | "saving">(
+    "idle"
+  );
+  const [isSyncIcon, setIsSyncIcon] = useState<boolean>(true);
+
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const animIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingChangesRef = useRef<Record<string, any>>({});
+
+  const allPrefs = preferencesMapSignal.value;
+
+  /**
+   * @description Flushes pending preference edits to Main Process store via IPC and manages save icon animation states.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-30
+   * @updated 2026-09-30
+   * @since 0.1.0-dev
+   * @returns {Promise<void>}
+   */
+  const executeAutosave = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    const changes = { ...pendingChangesRef.current };
+    if (Object.keys(changes).length === 0) {
+      setSaveStatus("idle");
+      return;
+    }
+
+    setSaveStatus("saving");
+
+    if (animIntervalRef.current) {
+      clearInterval(animIntervalRef.current);
+    }
+    animIntervalRef.current = setInterval(() => {
+      setIsSyncIcon((prev) => !prev);
+    }, 180);
+
+    try {
+      for (const [key, value] of Object.entries(changes)) {
+        if (allPrefs[key] && allPrefs[key].value !== value) {
+          await updatePreference(key, value);
+          delete pendingChangesRef.current[key];
+        }
+      }
+    } catch (err) {
+      console.error("[PreferencesDialog] Error auto-saving preferences:", err);
+    } finally {
+      if (animIntervalRef.current) {
+        clearInterval(animIntervalRef.current);
+        animIntervalRef.current = null;
+      }
+      setSaveStatus("idle");
+    }
+  }, [allPrefs]);
 
   useEffect(() => {
     if (isPreferencesOpenSignal.value) {
-      const allPrefs = preferencesMapSignal.value;
       const initial: Record<string, any> = {};
       for (const [key, item] of Object.entries(allPrefs)) {
         initial[key] = item.value;
       }
       draftPreferencesSignal.value = initial;
+      pendingChangesRef.current = {};
+      setSaveStatus("idle");
     }
   }, [isPreferencesOpenSignal.value]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      if (animIntervalRef.current) {
+        clearInterval(animIntervalRef.current);
+      }
+      // Flush any remaining un-saved changes on unmount
+      const remaining = { ...pendingChangesRef.current };
+      if (Object.keys(remaining).length > 0) {
+        pendingChangesRef.current = {};
+        for (const [k, v] of Object.entries(remaining)) {
+          updatePreference(k, v);
+        }
+      }
+    };
+  }, []);
 
   if (!isPreferencesOpenSignal.value) {
     return null;
@@ -52,7 +152,6 @@ export const PreferencesDialog: React.FC = () => {
 
   const activeCat =
     activeCategorySignal.value || categories[0]?.id || "general";
-  const allPrefs = preferencesMapSignal.value;
 
   // Filter preferences for active category, excluding hidden items
   const categoryPrefs = Object.entries(allPrefs).filter(([_, item]) => {
@@ -61,29 +160,57 @@ export const PreferencesDialog: React.FC = () => {
     return itemCat === activeCat;
   });
 
+  /**
+   * @description Handles control input changes by updating local draft signal and resetting debounced autosave timer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-30
+   * @updated 2026-09-30
+   * @since 0.1.0-dev
+   * @param {string} key - Preference descriptor key.
+   * @param {any} newValue - Modified preference value.
+   * @returns {void}
+   */
   const handleFieldChange = (key: string, newValue: any) => {
     draftPreferencesSignal.value = {
       ...draftPreferencesSignal.value,
       [key]: newValue,
     };
-  };
 
-  const handleSave = async () => {
-    for (const [key, value] of Object.entries(draftPreferencesSignal.value)) {
-      if (allPrefs[key] && allPrefs[key].value !== value) {
-        await updatePreference(key, value);
-      }
+    pendingChangesRef.current[key] = newValue;
+    setSaveStatus("editing");
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
     }
-    closePreferencesDialog();
+
+    const timeoutSec =
+      typeof allPrefs["general.autosave.preferences"]?.value === "number" ?
+        allPrefs["general.autosave.preferences"].value
+      : 5;
+    const timeoutMs = Math.max(1, timeoutSec) * 1000;
+
+    saveTimerRef.current = setTimeout(() => {
+      executeAutosave();
+    }, timeoutMs);
   };
 
+  /**
+   * @description Keyboard event listener handling dialog Escape dismissal and flushing pending autosave edits.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-09-30
+   * @since 0.1.0-dev
+   * @param {React.KeyboardEvent} e - Keyboard event object.
+   * @returns {void}
+   */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      closePreferencesDialog();
-    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleSave();
+      if (Object.keys(pendingChangesRef.current).length > 0) {
+        executeAutosave().then(() => closePreferencesDialog());
+      } else {
+        closePreferencesDialog();
+      }
     }
   };
 
@@ -273,23 +400,25 @@ export const PreferencesDialog: React.FC = () => {
             </div>
           </div>
 
-          {/* Modal Footer Actions */}
+          {/* Modal Footer: Normally blank, bottom-right status indicator icons */}
           <div className='preferences-modal-footer'>
-            <div className='preferences-shortcut-hint'>
-              Press Esc to cancel, Ctrl+Enter to save
-            </div>
-            <div className='preferences-footer-buttons'>
-              <button
-                className='preferences-btn preferences-btn-secondary'
-                onClick={closePreferencesDialog}>
-                Cancel
-              </button>
-              <button
-                className='preferences-btn preferences-btn-primary'
-                onClick={handleSave}>
-                <Icon path={mdiCheck} size='16px' />
-                <span>Save Changes</span>
-              </button>
+            <div className='preferences-status-indicator'>
+              {saveStatus === "editing" && (
+                <Icon
+                  path={mdiFileEditOutline}
+                  size='20px'
+                  title='Changes pending auto-save...'
+                  style={{ color: "#64748b" }}
+                />
+              )}
+              {saveStatus === "saving" && (
+                <Icon
+                  path={isSyncIcon ? mdiSync : mdiCached}
+                  size='20px'
+                  title='Auto-saving changes...'
+                  style={{ color: "#1b446c" }}
+                />
+              )}
             </div>
           </div>
         </div>

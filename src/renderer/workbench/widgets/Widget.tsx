@@ -1,6 +1,23 @@
+/**
+ * @file Widget.tsx
+ * @module renderer/workbench/widgets/Widget
+ * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ */
+
 import React, { useRef, useEffect } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 
+/**
+ * @typedef {Object} WidgetContextMenuItem
+ * @property {string} label - Context menu item display title.
+ * @property {() => void} action - Callback executed on clicking menu item.
+ * @property {string} [icon] - Optional MDI icon path.
+ * @property {boolean} [checked] - True if checkmark icon is displayed.
+ */
 export interface WidgetContextMenuItem {
   label: string;
   action: () => void;
@@ -8,6 +25,24 @@ export interface WidgetContextMenuItem {
   checked?: boolean;
 }
 
+/**
+ * @typedef {Object} WidgetProps
+ * @property {string} [id] - Unique container DOM element ID.
+ * @property {string} [background='#f3f3f3'] - Background color hex or CSS string.
+ * @property {'top' | 'bottom' | 'left' | 'right'} [location='left'] - Outer panel dock zone.
+ * @property {number | string} [minWidth=32] - Minimum width constraint in pixels or CSS.
+ * @property {number | string} [maxWidth='auto'] - Maximum width constraint in pixels or CSS.
+ * @property {number | string} [minHeight=32] - Minimum height constraint in pixels or CSS.
+ * @property {number | string} [maxHeight='auto'] - Maximum height constraint in pixels or CSS.
+ * @property {number | string} [border=0] - Border width in pixels or CSS string.
+ * @property {string} [borderColor='#f3f3f3'] - Border color hex or CSS string.
+ * @property {string} [className] - Optional custom CSS class string.
+ * @property {React.CSSProperties} [style] - Inline CSS style overrides.
+ * @property {React.ReactNode} [children] - Child elements rendered inside widget.
+ * @property {() => void} [onClose] - Callback when widget is closed.
+ * @property {() => void} [onUndock] - Callback when widget is undocked.
+ * @property {WidgetContextMenuItem[]} [customContextMenuItems] - Optional array of context menu items.
+ */
 export interface WidgetProps {
   id?: string;
   background?: string;
@@ -26,6 +61,16 @@ export interface WidgetProps {
   customContextMenuItems?: WidgetContextMenuItem[];
 }
 
+/**
+ * @component Widget
+ * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @param {WidgetProps} props - Component properties.
+ * @returns {React.ReactElement} Base widget container element.
+ */
 export const Widget: React.FC<WidgetProps> = ({
   id,
   background = "#f3f3f3",

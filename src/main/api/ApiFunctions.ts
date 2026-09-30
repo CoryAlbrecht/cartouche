@@ -1,6 +1,16 @@
 /**
- * Master aggregation barrel for Main Process Core API functions.
- * All API functions reside in their own file as default export.
+ * @file ApiFunctions.ts
+ * @module main/api/ApiFunctions
+ * @description Master aggregation barrel module re-exporting main process core API actions for project management, editing, layers, and preferences.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @see {@link newProject}
+ * @see {@link openProject}
+ * @see {@link saveProject}
+ * @see {@link saveAsProject}
+ * @see {@link addVectorLayer}
  */
 export { default as addVectorLayer } from './layers/vector/addVectorLayer';
 export { default as newProject } from './project/newProject';

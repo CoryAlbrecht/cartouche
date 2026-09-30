@@ -1,3 +1,16 @@
+/**
+ * @file Workbench.tsx
+ * @module renderer/workbench/Workbench
+ * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link DockviewReact}
+ * @see {@link ToolbarPanel}
+ * @see {@link PreferencesDialog}
+ */
+
 import React, { useCallback, useEffect, useState } from "react";
 import {
   DockviewReact,
@@ -76,7 +89,14 @@ import logoSvg from "../../../assets/svg/logo.svg";
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 
 /**
- * Custom Tab Component that disables closing the last remaining map canvas tab.
+ * @component WorkbenchTab
+ * @description Custom tab header renderer component that visually disables close action on the last remaining map viewport canvas tab.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @param {IDockviewPanelHeaderProps} props - Dockview tab header properties.
+ * @returns {React.ReactElement} Tab header DOM node.
  */
 const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
   const { api, containerApi } = props;
@@ -142,6 +162,15 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
   );
 };
 
+/**
+ * @component Workbench
+ * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @returns {React.ReactElement} Main workbench window container.
+ */
 export const Workbench: React.FC = () => {
   useSignals();
 

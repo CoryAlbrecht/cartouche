@@ -1,3 +1,14 @@
+/**
+ * @file main.ts
+ * @module main/main
+ * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, and IPC communication channels.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link PreferencesStore}
+ */
+
 import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,6 +20,14 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
+/**
+ * @description Resolves the application icon file path across development, packaged assets, and system resource directories.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @returns {string} Absolute file system path to the application icon.
+ */
 function getIconPath(): string {
   const candidates = [
     path.join(__dirname, '../../assets/icon.png'),
@@ -22,6 +41,14 @@ function getIconPath(): string {
   return path.join(__dirname, '../../assets/icon.png');
 }
 
+/**
+ * @description Configures Linux desktop entry files, menu integration, and high-resolution application icon paths.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
 function setupLinuxDesktopIntegration() {
   if (process.platform !== 'linux') return;
   try {
@@ -66,6 +93,15 @@ if (process.platform === 'linux') {
   setupLinuxDesktopIntegration();
 }
 
+/**
+ * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore and attaching IPC event handlers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link PreferencesStore}
+ * @returns {void}
+ */
 function createWindow() {
   const iconPath = getIconPath();
   const iconImage = nativeImage.createFromPath(iconPath);

@@ -1,15 +1,42 @@
+/**
+ * @file ToolbarWidget.tsx
+ * @module renderer/workbench/widgets/ToolbarWidget
+ * @description Dockable toolbar widget subclass of Widget featuring MDI grabber drag handles and divider icons.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @see {@link Widget}
+ */
+
 import React from "react";
 import { Widget } from "./Widget";
 import type { ToolbarId, ToolbarZone } from "@renderer/state/gisSignals";
 import Icon from "@renderer/components/common/MdiIcon";
 import { mdiDrag, mdiDragHorizontal, mdiPowerOn, mdiMinus } from "@mdi/js";
 
+/**
+ * @typedef {Object} ToolbarWidgetProps
+ * @property {ToolbarId} id - Toolbar identifier string ('basic' | 'digitizing' | 'snapping').
+ * @property {ToolbarZone} [zone='top'] - Active dock zone placement ('top' | 'bottom' | 'left' | 'right').
+ * @property {React.ReactNode} [children] - Toolbar action buttons and controls.
+ */
 export interface ToolbarWidgetProps {
   id: ToolbarId;
   zone?: ToolbarZone;
   children?: React.ReactNode;
 }
 
+/**
+ * @component ToolbarWidget
+ * @description Individual toolbar container widget rendered inside outer panel zones with drag handles and orientation awareness.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @param {ToolbarWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} Rendered toolbar widget element.
+ */
 export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   id,
   zone = "top",

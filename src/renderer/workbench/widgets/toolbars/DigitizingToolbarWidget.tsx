@@ -1,3 +1,14 @@
+/**
+ * @file DigitizingToolbarWidget.tsx
+ * @module renderer/workbench/widgets/toolbars/DigitizingToolbarWidget
+ * @description Toolbar widget providing vector feature digitizing tools (Point, Line, Polygon) and editing state toggles.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @see {@link ToolbarWidget}
+ */
+
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
@@ -10,10 +21,24 @@ import {
 import { type ToolbarZone, activeToolSignal } from "@renderer/state/gisSignals";
 import { ToolbarWidget } from "../ToolbarWidget";
 
+/**
+ * @typedef {Object} DigitizingToolbarWidgetProps
+ * @property {ToolbarZone} [zone='top'] - Outer panel dock zone.
+ */
 export interface DigitizingToolbarWidgetProps {
   zone?: ToolbarZone;
 }
 
+/**
+ * @component DigitizingToolbarWidget
+ * @description Renders spatial digitizing buttons for drawing new Point, Line, or Polygon features.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @param {DigitizingToolbarWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} DigitizingToolbarWidget instance.
+ */
 export const DigitizingToolbarWidget: React.FC<
   DigitizingToolbarWidgetProps
 > = ({ zone = "top" }) => {

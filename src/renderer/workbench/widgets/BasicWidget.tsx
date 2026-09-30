@@ -1,15 +1,43 @@
+/**
+ * @file BasicWidget.tsx
+ * @module renderer/workbench/widgets/BasicWidget
+ * @description Standard subclass of Widget featuring a 3-control header bar (label, minimize toggle, close button) and collapsable content body.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @see {@link Widget}
+ */
+
 import React, { useRef } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import { Widget, type WidgetProps } from "./Widget";
 import Icon from "@renderer/components/common/MdiIcon";
 import { mdiWindowMinimize, mdiWindowRestore, mdiClose } from "@mdi/js";
 
+/**
+ * @typedef {Object} BasicWidgetProps
+ * @extends WidgetProps
+ * @property {string} [name='basic-widget'] - Widget identifier string.
+ * @property {string} [displayName='Basic'] - Title label text rendered in header.
+ * @property {React.ReactNode} [children] - Content rendered inside body.
+ */
 export interface BasicWidgetProps extends Omit<WidgetProps, "children"> {
   name?: string;
   displayName?: string;
   children?: React.ReactNode;
 }
 
+/**
+ * @component BasicWidget
+ * @description Subclasses Widget to provide a collapsable panel container with a title header bar and minimize/close controls.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-28
+ * @since 0.1.0-dev
+ * @param {BasicWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} Basic widget panel element.
+ */
 export const BasicWidget: React.FC<BasicWidgetProps> = ({
   name = "basic-widget",
   displayName = "Basic",

@@ -1,6 +1,25 @@
+/**
+ * @file ShortcutRegistry.ts
+ * @module main/shortcuts/ShortcutRegistry
+ * @description Centralized keyboard shortcut registry for the Cartouche main process, binding action handlers to key combinations.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @see {@link ApiFunctions}
+ */
+
 import type { KeyCombination, KeyboardShortcutDefinition } from '@shared/types';
 import * as ApiFunctions from '../api/ApiFunctions';
 
+/**
+ * @typedef {Object} KeyboardShortcut
+ * @property {string} name - Unique string identifier for the shortcut action.
+ * @property {string} displayName - Human-readable name for UI menus and dialogs.
+ * @property {string} description - Detailed explanation of what the shortcut action performs.
+ * @property {() => void} shortcutFunction - Executable callback function invoked when triggered.
+ * @property {KeyCombination} keyCombination - Modifier keys and target key configuration.
+ */
 export interface KeyboardShortcut {
   name: string;
   displayName: string;
@@ -10,7 +29,13 @@ export interface KeyboardShortcut {
 }
 
 /**
- * Formats a key combination object into a user-facing string (e.g. "Ctrl+Alt+V").
+ * @description Formats a key combination object into a user-facing shortcut string (e.g. "Ctrl+Alt+V").
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @param {KeyCombination} combo - The key combination object containing key and modifiers.
+ * @returns {string} Human-readable formatted key combination string.
  */
 export function formatKeyCombination(combo: KeyCombination): string {
   const parts: string[] = [];
@@ -24,13 +49,37 @@ export function formatKeyCombination(combo: KeyCombination): string {
   return parts.join('+');
 }
 
+/**
+ * @class ShortcutRegistryClass
+ * @description Singleton class managing registration, lookup, and execution of global application keyboard shortcuts.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ */
 class ShortcutRegistryClass {
   private shortcutsMap = new Map<string, KeyboardShortcut>();
 
+  /**
+   * @description Initializes the shortcut registry and registers default application shortcuts.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-23
+   * @updated 2026-09-24
+   * @since 0.1.0-dev
+   */
   constructor() {
     this.registerDefaultShortcuts();
   }
 
+  /**
+   * @description Registers all default application keyboard shortcuts into the active map.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-23
+   * @updated 2026-09-24
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
   private registerDefaultShortcuts(): void {
     // Master Keyboard Shortcuts Registry
     const defaults: KeyboardShortcut[] = [
@@ -99,14 +148,41 @@ class ShortcutRegistryClass {
     }
   }
 
+  /**
+   * @description Registers a single keyboard shortcut in the map.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-23
+   * @updated 2026-09-24
+   * @since 0.1.0-dev
+   * @param {KeyboardShortcut} shortcut - Shortcut definition containing name, action, and key combination.
+   * @returns {void}
+   */
   public registerShortcut(shortcut: KeyboardShortcut): void {
     this.shortcutsMap.set(shortcut.name, shortcut);
   }
 
+  /**
+   * @description Retrieves a registered keyboard shortcut by its unique name identifier.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-23
+   * @updated 2026-09-24
+   * @since 0.1.0-dev
+   * @param {string} name - Unique identifier of the shortcut.
+   * @returns {KeyboardShortcut | undefined} The registered shortcut object or undefined if not found.
+   */
   public getShortcutByName(name: string): KeyboardShortcut | undefined {
     return this.shortcutsMap.get(name);
   }
 
+  /**
+   * @description Executes the callback action associated with a registered shortcut name.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-23
+   * @updated 2026-09-24
+   * @since 0.1.0-dev
+   * @param {string} name - Unique identifier of the shortcut to execute.
+   * @returns {void}
+   */
   public executeShortcut(name: string): void {
     const shortcut = this.shortcutsMap.get(name);
     if (shortcut && typeof shortcut.shortcutFunction === 'function') {
@@ -117,6 +193,14 @@ class ShortcutRegistryClass {
     }
   }
 
+  /**
+   * @description Returns all registered shortcut definitions formatted for transmission over IPC to renderer processes.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-23
+   * @updated 2026-09-24
+   * @since 0.1.0-dev
+   * @returns {KeyboardShortcutDefinition[]} Array of keyboard shortcut definitions.
+   */
   public getAllShortcutDefinitions(): KeyboardShortcutDefinition[] {
     return Array.from(this.shortcutsMap.values()).map((s) => ({
       name: s.name,

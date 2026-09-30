@@ -1,3 +1,14 @@
+/**
+ * @file AttributeTablePanel.tsx
+ * @module renderer/workbench/panels/AttributeTablePanel
+ * @description Dockview panel component displaying tabular feature properties and attribute records for active spatial layers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @see {@link BasicWidget}
+ */
+
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "../widgets/BasicWidget";
@@ -10,6 +21,16 @@ import {
 } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
 
+/**
+ * @component AttributeTablePanel
+ * @description Renders interactive attribute table for inspecting and selecting feature records of active GIS layers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-09-22
+ * @since 0.1.0-dev
+ * @param {Partial<IDockviewPanelProps>} props - Dockview panel properties.
+ * @returns {React.ReactElement} AttributeTablePanel element.
+ */
 export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
   props,
 ) => {

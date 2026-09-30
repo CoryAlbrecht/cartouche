@@ -1,3 +1,14 @@
+/**
+ * @file BasicToolbarWidget.tsx
+ * @module renderer/workbench/widgets/toolbars/BasicToolbarWidget
+ * @description Toolbar widget rendering project actions (New, Open, Save) and default Pan canvas mode button.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @see {@link ToolbarWidget}
+ */
+
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
@@ -17,10 +28,34 @@ import {
 } from "@renderer/state/gisSignals";
 import { ToolbarWidget } from "../ToolbarWidget";
 
+/**
+ * @typedef {Object} BasicToolbarWidgetProps
+ * @property {ToolbarZone} [zone='top'] - Outer panel dock zone.
+ */
 export interface BasicToolbarWidgetProps {
   zone?: ToolbarZone;
 }
 
+/**
+ * @component BasicToolbarWidget
+ * @description Renders basic project file management buttons and canvas pan tool toggle.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @param {BasicToolbarWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} BasicToolbarWidget instance.
+ */
+/**
+ * @component BasicToolbarWidget
+ * @description Renders basic project file management buttons and canvas pan tool toggle.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-09-24
+ * @since 0.1.0-dev
+ * @param {BasicToolbarWidgetProps} props - Component properties.
+ * @returns {React.ReactElement} BasicToolbarWidget instance.
+ */
 export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
   zone = "top",
 }) => {
