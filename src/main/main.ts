@@ -196,23 +196,31 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    if (details.frameName === 'preferencesWindow') {
+    const frameName = details.frameName;
+    if (frameName && (frameName.endsWith('Window') || frameName === 'preferencesWindow')) {
       PreferencesStore.loadFromDisk();
       const prefs = PreferencesStore.get();
-      const savedX = prefs['ui.preferencesDialog.location.x']?.value;
-      const savedY = prefs['ui.preferencesDialog.location.y']?.value;
-      const savedWidth = prefs['ui.preferencesDialog.location.width']?.value;
-      const savedHeight = prefs['ui.preferencesDialog.location.height']?.value;
+      const dialogKey = frameName.replace(/Window$/, '');
+      const locationKeyPrefix = frameName === 'preferencesWindow' ? 'ui.preferencesDialog.location' : `ui.${dialogKey}.location`;
 
-      const width = typeof savedWidth === 'number' && savedWidth >= 480 ? Math.floor(savedWidth) : 720;
-      const height = typeof savedHeight === 'number' && savedHeight >= 360 ? Math.floor(savedHeight) : 520;
+      const savedX = prefs[`${locationKeyPrefix}.x`]?.value;
+      const savedY = prefs[`${locationKeyPrefix}.y`]?.value;
+      const savedWidth = prefs[`${locationKeyPrefix}.width`]?.value;
+      const savedHeight = prefs[`${locationKeyPrefix}.height`]?.value;
+
+      const defaultW = frameName === 'addLayerWindow' ? 640 : (frameName === 'preferencesWindow' ? 720 : 640);
+      const defaultH = frameName === 'addLayerWindow' ? 480 : (frameName === 'preferencesWindow' ? 520 : 480);
+      const minW = frameName === 'addLayerWindow' ? 400 : 360;
+      const minH = frameName === 'addLayerWindow' ? 300 : 280;
+
+      const width = typeof savedWidth === 'number' && savedWidth >= minW ? Math.floor(savedWidth) : defaultW;
+      const height = typeof savedHeight === 'number' && savedHeight >= minH ? Math.floor(savedHeight) : defaultH;
 
       const windowOptions: Electron.BrowserWindowConstructorOptions = {
         width,
         height,
-        minWidth: 480,
-        minHeight: 360,
-        title: 'Preferences',
+        minWidth: minW,
+        minHeight: minH,
         autoHideMenuBar: true,
         frame: true,
         resizable: true,
@@ -241,14 +249,17 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('did-create-window', (childWindow, details) => {
-    if (details.frameName === 'preferencesWindow') {
+    const frameName = details.frameName;
+    if (frameName && (frameName.endsWith('Window') || frameName === 'preferencesWindow')) {
+      const dialogKey = frameName.replace(/Window$/, '');
+      const locationKeyPrefix = frameName === 'preferencesWindow' ? 'ui.preferencesDialog.location' : `ui.${dialogKey}.location`;
       const saveChildBounds = () => {
         if (childWindow && !childWindow.isDestroyed()) {
           const bounds = childWindow.getBounds();
-          PreferencesStore.set('ui.preferencesDialog.location.x', bounds.x);
-          PreferencesStore.set('ui.preferencesDialog.location.y', bounds.y);
-          PreferencesStore.set('ui.preferencesDialog.location.width', bounds.width);
-          PreferencesStore.set('ui.preferencesDialog.location.height', bounds.height);
+          PreferencesStore.set(`${locationKeyPrefix}.x`, bounds.x);
+          PreferencesStore.set(`${locationKeyPrefix}.y`, bounds.y);
+          PreferencesStore.set(`${locationKeyPrefix}.width`, bounds.width);
+          PreferencesStore.set(`${locationKeyPrefix}.height`, bounds.height);
         }
       };
 

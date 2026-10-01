@@ -46,6 +46,7 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
 }) => {
   const [containerEl] = useState(() => document.createElement("div"));
   const childWindowRef = useRef<Window | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isClosingRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -54,26 +55,38 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
   const initialFrameNameRef = useRef(frameName);
 
   useEffect(() => {
+    // Cancel pending close timer if React StrictMode re-mounts component synchronously
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
     containerEl.className = "detached-portal-container";
     containerEl.style.height = "100vh";
     containerEl.style.width = "100vw";
     containerEl.style.display = "flex";
     containerEl.style.flexDirection = "column";
 
-    const childWindow = window.open(
-      "",
-      initialFrameNameRef.current,
-      initialFeaturesRef.current
-    );
-    if (!childWindow) {
-      console.error("[DetachedWindowPortal] Failed to open child window");
-      onCloseRef.current();
-      return;
+    let childWindow = childWindowRef.current;
+    if (!childWindow || childWindow.closed) {
+      isClosingRef.current = false;
+      childWindow = window.open(
+        "",
+        initialFrameNameRef.current,
+        initialFeaturesRef.current
+      );
+      if (!childWindow) {
+        console.error("[DetachedWindowPortal] Failed to open child window");
+        onCloseRef.current();
+        return;
+      }
+      childWindowRef.current = childWindow;
     }
 
-    childWindowRef.current = childWindow;
     childWindow.document.title = title;
-    childWindow.document.body.appendChild(containerEl);
+    if (!childWindow.document.body.contains(containerEl)) {
+      childWindow.document.body.appendChild(containerEl);
+    }
     childWindow.document.body.style.margin = "0";
     childWindow.document.body.style.padding = "0";
     childWindow.document.body.style.background = "#ffffff";
@@ -115,13 +128,18 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
 
     return () => {
       observer.disconnect();
-      childWindow.removeEventListener("unload", handleUnload);
-      if (!isClosingRef.current && !childWindow.closed) {
-        isClosingRef.current = true;
-        childWindow.close();
-      }
+      childWindow?.removeEventListener("unload", handleUnload);
+
+      // Defer closing window briefly so React StrictMode DEV double-invoke can cancel it if component remains mounted
+      closeTimerRef.current = setTimeout(() => {
+        if (!isClosingRef.current && childWindowRef.current && !childWindowRef.current.closed) {
+          isClosingRef.current = true;
+          childWindowRef.current.close();
+          childWindowRef.current = null;
+        }
+      }, 50);
     };
-  }, [containerEl]); // Runs ONCE on mount!
+  }, [containerEl]);
 
   useEffect(() => {
     if (childWindowRef.current && !childWindowRef.current.closed) {
