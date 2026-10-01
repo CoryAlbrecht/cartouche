@@ -1,4 +1,4 @@
-@import "./vscode-theme.css";
+@import "./theme.css";
 
 /* Workbench Master Container */
 .workbench-container {
@@ -9,7 +9,7 @@
   overflow: hidden;
   background-color: #ffffff;
   color: #000000;
-  font-size: var(--vscode-font-size);
+  font-size: var(--cartouche-ui-basefont-size);
 }
 
 /* =========================================================================
@@ -45,7 +45,7 @@
 }
 
 .app-title-badge {
-  font-size: 11pt;
+  font-size: 0.9167rem;
   font-weight: 700;
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.22);
@@ -65,7 +65,7 @@
   padding: 3px 8px;
   cursor: pointer;
   border-radius: 3px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   color: #ffffff;
   transition: background-color 0.12s ease;
 }
@@ -102,7 +102,7 @@
   display: flex;
   align-items: center;
   padding: 5px 12px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   color: #111827;
   cursor: pointer;
   user-select: none;
@@ -157,7 +157,7 @@
 .menu-shortcut-slot {
   min-width: 40px;
   text-align: right;
-  font-size: 9.5pt;
+  font-size: 0.7917rem;
   color: #6b7280;
   margin-left: 12px;
 }
@@ -395,7 +395,7 @@
 }
 
 .context-menu-title {
-  font-size: 10pt;
+  font-size: 0.8333rem;
   font-weight: 600;
   color: #64748b;
   padding: 4px 12px;
@@ -412,7 +412,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 12px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   color: #1e293b;
   cursor: pointer;
   transition: background-color 0.1s ease;
@@ -465,7 +465,7 @@
   background-color: #f1f5f9;
   color: #475569;
   border-right: 1px solid #e2e8f0;
-  font-size: 11pt;
+  font-size: 0.9167rem;
 }
 
 .dockview-theme-light .dockview-tab:hover {
@@ -562,16 +562,28 @@
 /* =========================================================================
    5. Panels: Layers, Attribute Table, Console
    ========================================================================= */
-/* Hide Dockview tab bar when Layers panel is standalone in a single-tab group */
+/* Hide Dockview tab bar for groups containing non-map Widgets (which manage their own header bar) */
 .dockview-theme-light
-  .dv-groupview:has(.layer-tree-panel)
-  .dv-tabs-and-actions-container.dv-single-tab,
+  .dv-groupview:has(.basic-widget)
+  .dv-tabs-and-actions-container,
 .dockview-theme-light
-  .dv-group-view:has(.layer-tree-panel)
-  .dv-tabs-and-actions-container.dv-single-tab,
+  .dv-groupview:has(.layer-tree-panel-widget)
+  .dv-tabs-and-actions-container,
 .dockview-theme-light
-  .dockview-group-container:has(.layer-tree-panel)
-  .dv-tabs-and-actions-container.dv-single-tab {
+  .dv-groupview:has(.widget-container)
+  .dv-tabs-and-actions-container,
+.dockview-theme-light
+  .dv-group-view:has(.basic-widget)
+  .dv-tabs-and-actions-container,
+.dockview-theme-light
+  .dv-group-view:has(.layer-tree-panel-widget)
+  .dv-tabs-and-actions-container,
+.dockview-theme-light
+  .dockview-group-container:has(.basic-widget)
+  .dv-tabs-and-actions-container,
+.dockview-theme-light
+  .dockview-group-container:has(.layer-tree-panel-widget)
+  .dv-tabs-and-actions-container {
   display: none !important;
 }
 
@@ -582,7 +594,7 @@
   padding: 6px 10px;
   background-color: #faf8fc;
   border-bottom: 1px solid #e2e8f0;
-  font-size: 10.5pt;
+  font-size: 0.875rem;
   user-select: none;
 }
 
@@ -614,7 +626,7 @@
   padding: 2px 4px;
   border-radius: 3px;
   color: #475569;
-  font-size: 11pt;
+  font-size: 0.9167rem;
 }
 
 .icon-btn:hover {
@@ -622,7 +634,7 @@
   color: #0f172a;
 }
 
-.layer-tree-panel {
+.layer-tree-panel-widget {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -648,7 +660,7 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.12s ease;
-  font-size: 11pt;
+  font-size: 0.9167rem;
 }
 
 .tree-node-row:hover {
@@ -716,7 +728,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 11pt;
+  font-size: 0.9167rem;
 }
 
 .layer-tree-item {
@@ -739,7 +751,7 @@
 }
 
 .layer-kind-icon {
-  font-size: 13pt;
+  font-size: 1.0833rem;
   font-weight: bold;
 }
 
@@ -752,7 +764,7 @@
 }
 
 .layer-name {
-  font-size: 11pt;
+  font-size: 0.9167rem;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -763,7 +775,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 9.5pt;
+  font-size: 0.7917rem;
   color: #64748b;
 }
 
@@ -792,14 +804,14 @@
 }
 
 .empty-layers-title {
-  font-size: 13pt;
+  font-size: 1.0833rem;
   font-weight: 600;
   color: #334155;
   margin-bottom: 6px;
 }
 
 .empty-layers-desc {
-  font-size: 10.5pt;
+  font-size: 0.875rem;
   color: #64748b;
   line-height: 1.4;
   max-width: 200px;
@@ -820,7 +832,7 @@
   padding: 6px 12px;
   background-color: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
-  font-size: 11pt;
+  font-size: 0.9167rem;
 }
 
 .table-scroll-wrapper {
@@ -831,7 +843,7 @@
 .gis-data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11pt;
+  font-size: 0.9167rem;
 }
 
 .gis-data-table th {
@@ -874,7 +886,7 @@
   background-color: #f1f5f9;
   border: 1px solid #cbd5e1;
   border-radius: 3px;
-  font-size: 9.5pt;
+  font-size: 0.7917rem;
   color: #0284c7;
 }
 
@@ -884,7 +896,7 @@
   justify-content: center;
   height: 100%;
   color: #64748b;
-  font-size: 12pt;
+  font-size: 1rem;
 }
 
 /* Console Log Panel */
@@ -909,23 +921,23 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 10.5pt;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
 .log-time {
   color: #64748b;
-  font-size: 9.5pt;
+  font-size: 0.7917rem;
 }
 
 .log-source {
   color: #1b446c;
-  font-size: 10pt;
+  font-size: 0.8333rem;
   font-weight: 600;
 }
 
 .log-badge {
-  font-size: 8.5pt;
+  font-size: 0.7083rem;
   padding: 0 4px;
   border-radius: 2px;
   font-weight: bold;
@@ -970,7 +982,7 @@
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   color: #1f2937;
-  font-size: 15px;
+  font-size: 1.25rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -1008,7 +1020,7 @@
   color: #ffffff;
   height: 24px;
   padding: 0 10px;
-  font-size: 10.5pt;
+  font-size: 0.875rem;
   user-select: none;
   z-index: 100;
 }
@@ -1077,14 +1089,14 @@
 }
 
 .modal-subtitle {
-  font-size: 10.5pt;
+  font-size: 0.875rem;
   color: #64748b;
   margin-top: 2px;
 }
 
 .modal-body {
   padding: 20px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   color: #334155;
   line-height: 1.5;
 }
@@ -1094,7 +1106,7 @@
   padding: 10px 14px;
   background: #f1f5f9;
   border-radius: 6px;
-  font-size: 10pt;
+  font-size: 0.8333rem;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1115,7 +1127,7 @@
   padding: 6px 18px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   font-weight: 500;
   transition: background-color 0.12s ease;
 }
@@ -1203,7 +1215,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13pt;
+  font-size: 1.0833rem;
   font-weight: 600;
   color: #1e293b;
 }
@@ -1249,7 +1261,7 @@
 }
 
 .preferences-sidebar-title {
-  font-size: 9.5pt;
+  font-size: 0.7917rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1267,7 +1279,7 @@
   background: transparent;
   border-radius: 6px;
   color: #475569;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
@@ -1297,7 +1309,7 @@
 }
 
 .preferences-section-title {
-  font-size: 13pt;
+  font-size: 1.0833rem;
   font-weight: 600;
   color: #0f172a;
   border-bottom: 2px solid #e2e8f0;
@@ -1306,7 +1318,7 @@
 
 .preferences-empty-state {
   color: #64748b;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   font-style: italic;
   padding: 20px 0;
 }
@@ -1341,18 +1353,18 @@
 }
 
 .preference-item-name {
-  font-size: 11.5pt;
+  font-size: 0.9583rem;
   font-weight: 600;
   color: #1e293b;
 }
 
 .preference-item-desc {
-  font-size: 10pt;
+  font-size: 0.8333rem;
   color: #64748b;
 }
 
 .preference-item-key {
-  font-size: 9pt;
+  font-size: 0.75rem;
   font-family: monospace;
   color: #94a3b8;
   margin-top: 2px;
@@ -1368,7 +1380,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   color: #334155;
   cursor: pointer;
   user-select: none;
@@ -1387,7 +1399,7 @@
   padding: 6px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   color: #0f172a;
   background-color: #ffffff;
   outline: none;
@@ -1414,7 +1426,7 @@
 }
 
 .preference-unit-badge {
-  font-size: 10pt;
+  font-size: 0.8333rem;
   color: #64748b;
   font-weight: 500;
   white-space: nowrap;
@@ -1438,7 +1450,7 @@
 }
 
 .preferences-shortcut-hint {
-  font-size: 9.5pt;
+  font-size: 0.7917rem;
   color: #94a3b8;
 }
 
@@ -1454,7 +1466,7 @@
   gap: 6px;
   padding: 7px 16px;
   border-radius: 4px;
-  font-size: 11pt;
+  font-size: 0.9167rem;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;

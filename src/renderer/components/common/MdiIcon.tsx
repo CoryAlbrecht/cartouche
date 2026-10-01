@@ -4,7 +4,7 @@
  * @description Standardized Material Design Icons (MDI) SVG renderer component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  */
 
@@ -33,7 +33,7 @@ export interface MdiIconProps {
  * @description Renders a Material Design Icon SVG vector paths with standard viewbox and theme dimensions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @param {MdiIconProps} props - Component properties.
  * @returns {React.ReactElement} Scalable Vector Graphics (SVG) element.
@@ -46,7 +46,12 @@ export const Icon: React.FC<MdiIconProps> = ({
   title,
   style,
 }) => {
-  const dimension = typeof size === "number" ? `${size * 24}px` : size;
+  const dimension =
+    typeof size === "number" ?
+      size <= 4 ?
+        `${size * 24}px`
+      : `${size}px`
+    : size;
 
   return (
     <svg

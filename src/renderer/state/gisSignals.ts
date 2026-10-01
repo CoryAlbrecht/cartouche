@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-28
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -526,4 +526,34 @@ export function editAttributesAction() {
 // View / Canvas actions
 export function triggerMapAction(action: 'zoomIn' | 'zoomOut' | 'reset') {
   mapActionSignal.value = { action, timestamp: Date.now() };
+}
+
+type TogglePanelFn = (id: string, component: string, title: string, direction: 'left' | 'right' | 'above' | 'below') => void;
+let togglePanelHandler: TogglePanelFn | null = null;
+
+/**
+ * @description Registers the active Dockview panel toggle callback handler from Workbench shell.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-30
+ * @updated 2026-09-30
+ * @since 0.1.0-dev
+ * @param {TogglePanelFn} handler - Panel toggle function.
+ * @returns {void}
+ */
+export function registerTogglePanelHandler(handler: TogglePanelFn): void {
+  togglePanelHandler = handler;
+}
+
+/**
+ * @description Triggers showing or hiding the Layers panel widget in the Dockview grid.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-30
+ * @updated 2026-09-30
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function toggleLayersPanelAction(): void {
+  if (togglePanelHandler) {
+    togglePanelHandler('layer-tree', 'layer-tree', 'Layers', 'left');
+  }
 }

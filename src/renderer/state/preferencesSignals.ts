@@ -4,12 +4,12 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
 
-import { signal } from '@preact/signals-react';
+import { signal, type Signal } from '@preact/signals-react';
 import type { PreferenceMap } from '@shared/types';
 import { addConsoleLog } from './gisSignals';
 
@@ -19,12 +19,14 @@ import { addConsoleLog } from './gisSignals';
  * @type {Signal<boolean>}
  */
 export const isPreferencesOpenSignal = signal<boolean>(false);
+
 /**
  * @signal
  * @description Signal holding active reactive map of preference descriptors.
  * @type {Signal<PreferenceMap>}
  */
 export const preferencesMapSignal = signal<PreferenceMap>({});
+
 /**
  * @signal
  * @description Signal tracking active selected category tab in preferences dialog UI.
@@ -33,10 +35,50 @@ export const preferencesMapSignal = signal<PreferenceMap>({});
 export const activeCategorySignal = signal<string>('general');
 
 /**
+ * @signal
+ * @description Signal holding workbench base font size setting in points.
+ * @type {Signal<number | undefined>}
+ */
+export const prefsUiBaseFontSize = signal<number | undefined>(undefined);
+
+/**
+ * @signal
+ * @description Signal holding toolbar icon size setting in pixels.
+ * @type {Signal<number | undefined>}
+ */
+export const prefsUiIconSize = signal<number | undefined>(undefined);
+
+/**
+ * @description Lookup dictionary mapping preference key strings to exported Preact Signal instances.
+ */
+const PREFERENCE_SIGNALS_MAP: Record<string, Signal<any>> = {
+  'ui.basefont.size': prefsUiBaseFontSize,
+  'ui.icon.size': prefsUiIconSize
+};
+
+/**
+ * @description Helper function to attach Signal instances to PreferenceItem records and update signal values.
+ * @param {PreferenceMap} map - Preference map to attach and sync signals for.
+ * @returns {PreferenceMap} Modified preference map.
+ */
+function attachAndSyncSignals(map: PreferenceMap): PreferenceMap {
+  for (const key of Object.keys(map)) {
+    const item = map[key];
+    if (PREFERENCE_SIGNALS_MAP[key]) {
+      item.signal = PREFERENCE_SIGNALS_MAP[key];
+    }
+    if (item.signal) {
+      item.signal.value = item.value;
+    }
+  }
+  return map;
+}
+
+/**
  * @description Loads preference descriptors from the Main process via IPC and updates preferencesMapSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @param {string} [name] - Optional preference key to fetch specific item.
  * @returns {Promise<PreferenceMap>} Loaded preference map.
@@ -45,14 +87,17 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
   try {
     if (window.electronAPI?.getPreferenceValue) {
       const prefs = await window.electronAPI.getPreferenceValue(name);
+      let merged: PreferenceMap;
       if (name && name.trim() !== '') {
-        preferencesMapSignal.value = {
+        merged = {
           ...preferencesMapSignal.value,
           ...prefs
         };
       } else {
-        preferencesMapSignal.value = { ...prefs };
+        merged = { ...prefs };
       }
+      attachAndSyncSignals(merged);
+      preferencesMapSignal.value = merged;
       return prefs;
     }
   } catch (err) {
@@ -65,7 +110,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
  * @description Saves a single preference value via IPC and updates preferencesMapSignal reactively.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @param {string} name - Preference key identifier.
  * @param {any} value - New preference value to set.
@@ -75,10 +120,12 @@ export async function updatePreference(name: string, value: any): Promise<void> 
   try {
     if (window.electronAPI?.setPreferenceValue) {
       const updatedMap = await window.electronAPI.setPreferenceValue(name, value);
-      preferencesMapSignal.value = {
+      const merged = {
         ...preferencesMapSignal.value,
         ...updatedMap
       };
+      attachAndSyncSignals(merged);
+      preferencesMapSignal.value = merged;
       addConsoleLog('info', `Preference updated: "${name}" = ${JSON.stringify(value)}`, 'Preferences');
     }
   } catch (err) {
@@ -91,7 +138,7 @@ export async function updatePreference(name: string, value: any): Promise<void> 
  * @description Opens the Preferences Dialog modal and loads current preferences from Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -105,7 +152,7 @@ export function openPreferencesDialog(): void {
  * @description Closes the Preferences Dialog modal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @returns {void}
  */

@@ -20,6 +20,7 @@ import {
   type IDockviewPanelHeaderProps,
   type GetTabContextMenuItemsParams,
 } from "dockview-react";
+import { effect } from "@preact/signals-react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
@@ -44,7 +45,7 @@ import {
   mdiCheck,
   mdiChevronRight,
 } from "@mdi/js";
-import { panelComponents } from "./panelRegistry";
+import { widgetComponents } from "./widgetRegistry";
 import { ToolbarPanel } from "./widgets/toolbars/ToolbarPanel";
 import {
   cursorCoordsSignal,
@@ -73,6 +74,8 @@ import {
   editAttributesAction,
   triggerMapAction,
   toggleToolbar,
+  registerTogglePanelHandler,
+  toggleLayersPanelAction,
 } from "@renderer/state/gisSignals";
 import {
   loadShortcutsFromMain,
@@ -82,6 +85,7 @@ import {
 import {
   openPreferencesDialog,
   loadPreferences,
+  prefsUiBaseFontSize,
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import logoSvg from "../../../assets/svg/logo.svg";
@@ -232,6 +236,20 @@ export const Workbench: React.FC = () => {
     }
   }, []);
 
+  // Synchronize base font size preference signal with CSS custom property on document root
+  useEffect(() => {
+    const dispose = effect(() => {
+      const fontSize = prefsUiBaseFontSize.value;
+      if (fontSize) {
+        document.documentElement.style.setProperty(
+          "--cartouche-ui-basefont-size",
+          `${fontSize}pt`
+        );
+      }
+    });
+    return () => dispose();
+  }, []);
+
   // Initialize keyboard shortcuts from Main Process and handle global hotkeys
   useEffect(() => {
     loadPreferences();
@@ -303,6 +321,9 @@ export const Workbench: React.FC = () => {
                 "Add Vector Layer dialog requested.",
                 "Layers"
               );
+              break;
+            case "toggle_layers_panel":
+              toggleLayersPanelAction();
               break;
             default:
               break;
@@ -420,6 +441,10 @@ export const Workbench: React.FC = () => {
     [dockviewApi, openPanel, updateOpenPanelsState]
   );
 
+  useEffect(() => {
+    registerTogglePanelHandler(togglePanel);
+  }, [togglePanel]);
+
   const onReady = useCallback(
     (event: DockviewReadyEvent) => {
       const api = event.api;
@@ -503,13 +528,24 @@ export const Workbench: React.FC = () => {
         });
       };
 
+      const enforceWidgetHeaderHiding = (api: DockviewApi) => {
+        api.groups.forEach((group) => {
+          const hasWidget = group.panels.some((p) => !isMapViewportPanel(p));
+          if (hasWidget && group.header) {
+            group.header.hidden = true;
+          }
+        });
+      };
+
       api.panels.forEach(guardPanelClose);
       api.onDidAddPanel(guardPanelClose);
       enforceMapCanvasGroupIsolation(api);
+      enforceWidgetHeaderHiding(api);
 
       // Auto-save layout on any change & update panel state
       api.onDidLayoutChange(() => {
         enforceMapCanvasGroupIsolation(api);
+        enforceWidgetHeaderHiding(api);
         updateOpenPanelsState(api);
         try {
           const json = api.toJSON();
@@ -932,6 +968,10 @@ export const Workbench: React.FC = () => {
                           )}
                         </span>
                         <span className='menu-item-label'>Layers</span>
+                        <span className='menu-shortcut-slot'>
+                          {getShortcutFormattedKey("toggle_layers_panel")
+                            || "Ctrl+L"}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -1238,7 +1278,7 @@ export const Workbench: React.FC = () => {
         <main className='dockview-wrapper'>
           <DockviewReact
             className='dockview-theme-light'
-            components={panelComponents}
+            components={widgetComponents}
             defaultTabComponent={WorkbenchTab}
             getTabContextMenuItems={getTabContextMenuItems}
             onReady={onReady}

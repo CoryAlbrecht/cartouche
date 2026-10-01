@@ -4,7 +4,7 @@
  * @description Dockview panel component displaying tabular feature properties and attribute records for active spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-22
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  */
@@ -26,27 +26,22 @@ import type { IDockviewPanelProps } from "dockview-react";
  * @description Renders interactive attribute table for inspecting and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-22
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @param {Partial<IDockviewPanelProps>} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTablePanel element.
  */
 export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
-  props,
+  props
 ) => {
   useSignals();
   const activeLayer = activeLayerSignal.value;
   const features = activeLayerFeaturesSignal.value;
   const selectedIds = selectedFeatureIdsSignal.value;
 
-  const handleClose = () => {
-    if (props?.api) {
-      props.api.close();
-    }
-  };
-
-  const displayName = activeLayer
-    ? `Attributes — ${activeLayer.name} (${features.length} features)`
+  const displayName =
+    activeLayer ?
+      `Attributes — ${activeLayer.name} (${features.length} features)`
     : "Attribute Table";
 
   const attributeKeys =
@@ -54,26 +49,22 @@ export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
 
   return (
     <BasicWidget
-      name="attribute-table-widget"
+      name='attribute-table-widget'
       displayName={displayName}
-      onClose={handleClose}
       minHeight={150}
-    >
+      {...props}>
       <div
-        className="attribute-table-container"
-        style={{ height: "100%", display: "flex", flexDirection: "column" }}
-      >
-        {!activeLayer ? (
+        className='attribute-table-container'
+        style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+        {!activeLayer ?
           <div
-            className="empty-panel-message"
-            style={{ padding: "16px", color: "#64748b", textAlign: "center" }}
-          >
+            className='empty-panel-message'
+            style={{ padding: "16px", color: "#64748b", textAlign: "center" }}>
             Select a layer from the Layers panel to inspect attributes.
           </div>
-        ) : (
-          <>
+        : <>
             <div
-              className="attribute-table-header"
+              className='attribute-table-header'
               style={{
                 padding: "6px 10px",
                 backgroundColor: "#f8fafc",
@@ -81,22 +72,19 @@ export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-              }}
-            >
+              }}>
               <span
-                className="table-title"
-                style={{ fontSize: "10pt", color: "#334155" }}
-              >
+                className='table-title'
+                style={{ fontSize: "0.8333rem", color: "#334155" }}>
                 <strong>{activeLayer.name}</strong> — {features.length} features
                 ({selectedIds.size} selected)
               </span>
-              <div className="table-actions">
+              <div className='table-actions'>
                 {selectedIds.size > 0 && (
                   <button
-                    className="small-action-btn"
+                    className='small-action-btn'
                     onClick={clearSelection}
-                    style={{ fontSize: "9pt", padding: "2px 8px" }}
-                  >
+                    style={{ fontSize: "0.75rem", padding: "2px 8px" }}>
                     Deselect All
                   </button>
                 )}
@@ -104,17 +92,15 @@ export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
             </div>
 
             <div
-              className="table-scroll-wrapper"
-              style={{ flex: 1, overflow: "auto" }}
-            >
+              className='table-scroll-wrapper'
+              style={{ flex: 1, overflow: "auto" }}>
               <table
-                className="gis-data-table"
+                className='gis-data-table'
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  fontSize: "10pt",
-                }}
-              >
+                  fontSize: "0.8333rem",
+                }}>
                 <thead>
                   <tr style={{ backgroundColor: "#f1f5f9", textAlign: "left" }}>
                     <th
@@ -122,8 +108,7 @@ export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
                         width: 40,
                         textAlign: "center",
                         padding: "4px 8px",
-                      }}
-                    >
+                      }}>
                       #
                     </th>
                     <th style={{ width: 60, padding: "4px 8px" }}>ID</th>
@@ -145,12 +130,10 @@ export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
                         onClick={() => toggleFeatureSelection(feature.id)}
                         style={{
                           cursor: "pointer",
-                          backgroundColor: isSelected
-                            ? "#e0f2fe"
-                            : "transparent",
+                          backgroundColor:
+                            isSelected ? "#e0f2fe" : "transparent",
                           borderBottom: "1px solid #f1f5f9",
-                        }}
-                      >
+                        }}>
                         <td style={{ textAlign: "center", padding: "4px 8px" }}>
                           {idx + 1}
                         </td>
@@ -170,7 +153,7 @@ export const AttributeTablePanel: React.FC<Partial<IDockviewPanelProps>> = (
               </table>
             </div>
           </>
-        )}
+        }
       </div>
     </BasicWidget>
   );

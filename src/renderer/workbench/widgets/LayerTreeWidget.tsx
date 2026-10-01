@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, layer group accordions, layer visibility toggles, and active layer selection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-22
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  */
@@ -16,14 +16,12 @@ import Icon from "@renderer/components/common/MdiIcon";
 import {
   mdiFolderOutline,
   mdiFolderOpenOutline,
-  mdiFolderPlusOutline,
   mdiVectorPolygon,
   mdiVectorPolyline,
   mdiVectorPoint,
   mdiImageOutline,
   mdiChevronDown,
   mdiChevronRight,
-  mdiMagnify,
 } from "@mdi/js";
 import {
   layersSignal,
@@ -38,11 +36,11 @@ import {
   toggleLayerGroupVisibility,
   toggleLayerGroupExpanded,
   setActiveLayer,
-  addLayerGroupAction,
   visibleLayersCountSignal,
 } from "@renderer/state/gisSignals";
 import type { GisLayer, GisLayerGroup, GeometryKind } from "@shared/types";
 import logoSvg from "../../../../assets/svg/logo.svg";
+import type { IDockviewPanelProps } from "dockview-react";
 
 /**
  * @description Resolves Material Design Icon path corresponding to layer geometry kind.
@@ -73,7 +71,7 @@ function getLayerIcon(geometryKind?: GeometryKind) {
  * @property {() => void} [onClose] - Callback when widget is closed.
  * @property {() => void} [onUndock] - Callback when widget is undocked.
  */
-export interface LayerTreeWidgetProps {
+export interface LayerTreeWidgetProps extends Partial<IDockviewPanelProps> {
   onClose?: () => void;
   onUndock?: () => void;
 }
@@ -83,15 +81,12 @@ export interface LayerTreeWidgetProps {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, search filter, and group actions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-22
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
  */
-export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = ({
-  onClose,
-  onUndock,
-}) => {
+export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   useSignals();
   const layers = layersSignal.value;
   const groups = layerGroupsSignal.value;
@@ -116,27 +111,25 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = ({
         key={layer.id}
         className={`tree-node-row tree-node-layer ${isActive ? "active" : ""}`}
         style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
-        onClick={() => setActiveLayer(layer.id)}
-      >
-        <span className="tree-indent" />
+        onClick={() => setActiveLayer(layer.id)}>
+        <span className='tree-indent' />
 
         <input
-          type="checkbox"
-          className="tree-checkbox"
+          type='checkbox'
+          className='tree-checkbox'
           checked={layer.visible}
           onChange={() => toggleLayerVisibility(layer.id)}
           onClick={(e) => e.stopPropagation()}
-          title="Toggle layer visibility"
+          title='Toggle layer visibility'
         />
 
         <span
-          className="tree-icon-slot"
-          style={{ color: layer.color || "#2563eb" }}
-        >
-          <Icon path={iconPath} size="15px" />
+          className='tree-icon-slot'
+          style={{ color: layer.color || "#2563eb" }}>
+          <Icon path={iconPath} size='15px' />
         </span>
 
-        <span className="tree-node-title" title={resolvedName}>
+        <span className='tree-node-title' title={resolvedName}>
           {resolvedName}
         </span>
       </div>
@@ -152,43 +145,41 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = ({
     return (
       <React.Fragment key={group.id}>
         <div
-          className="tree-node-row tree-node-group"
-          style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
-        >
+          className='tree-node-row tree-node-group'
+          style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}>
           <span
-            className="tree-chevron"
+            className='tree-chevron'
             onClick={(e) => {
               e.stopPropagation();
               toggleLayerGroupExpanded(group.id);
-            }}
-          >
+            }}>
             <Icon
               path={isExpanded ? mdiChevronDown : mdiChevronRight}
-              size="14px"
+              size='14px'
             />
           </span>
 
           <input
-            type="checkbox"
-            className="tree-checkbox"
+            type='checkbox'
+            className='tree-checkbox'
             checked={group.visible}
             onChange={() => toggleLayerGroupVisibility(group.id)}
             onClick={(e) => e.stopPropagation()}
-            title="Toggle group visibility"
+            title='Toggle group visibility'
           />
 
-          <span className="tree-icon-slot group-icon">
+          <span className='tree-icon-slot group-icon'>
             <Icon
               path={isExpanded ? mdiFolderOpenOutline : mdiFolderOutline}
-              size="15px"
+              size='15px'
             />
           </span>
 
-          <span className="tree-node-title">{group.name}</span>
+          <span className='tree-node-title'>{group.name}</span>
         </div>
 
         {isExpanded && (
-          <div className="tree-node-children">
+          <div className='tree-node-children'>
             {childGroups.map((g) => renderGroupRow(g, indentLevel + 1))}
             {groupLayers.map((l) => renderLayerRow(l, indentLevel + 1))}
           </div>
@@ -202,105 +193,52 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = ({
 
   return (
     <BasicWidget
-      name="layer-tree-widget"
+      name='layer-tree-widget'
       displayName={displayName}
-      onClose={onClose}
-      onUndock={onUndock}
-      className="layer-tree-panel-widget"
-    >
+      className='layer-tree-panel-widget'
+      {...props}>
       <div
-        className="layer-tree-container"
+        className='layer-tree-container'
         style={{
           backgroundColor: "#ffffff",
           height: "100%",
           display: "flex",
           flexDirection: "column",
-        }}
-      >
-        {/* Quick Search & Filter Header */}
-        <div
-          className="layer-tree-filter-bar"
-          style={{ padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}
-        >
-          <div
-            className="tree-search-box"
-            style={{ display: "flex", alignItems: "center", gap: "4px" }}
-          >
-            <Icon path={mdiMagnify} size="14px" color="#94a3b8" />
-            <input
-              type="text"
-              className="tree-search-input"
-              placeholder="Filter layers..."
-              style={{
-                border: "none",
-                outline: "none",
-                fontSize: "10pt",
-                width: "100%",
-              }}
-            />
-            {hasProject && (
-              <button
-                type="button"
-                className="icon-action-btn"
-                title="Add Layer Group"
-                onClick={() => addLayerGroupAction("New Group")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <Icon path={mdiFolderPlusOutline} size="14px" color="#475569" />
-              </button>
-            )}
-          </div>
-        </div>
-
+        }}>
         {/* Tree Control Content (Pure White Background) */}
         <div
-          className="layer-tree-viewport"
+          className='layer-tree-viewport'
           style={{
             flex: 1,
             overflowY: "auto",
             backgroundColor: "#ffffff",
             padding: "4px 0",
-          }}
-        >
-          {!hasProject ? (
-            <div
-              className="empty-layers-state"
-              style={{ padding: "16px", color: "#64748b", textAlign: "center" }}
-            >
-              <p style={{ margin: 0, fontWeight: 500 }}>No project open</p>
-              <p style={{ margin: "4px 0 0 0", fontSize: "10pt" }}>
-                Add a layer or create a project to get started.
-              </p>
-            </div>
-          ) : (
-            <div className="layer-tree-root">
+          }}>
+          {hasProject && (
+            <div className='layer-tree-root'>
               {/* Top-Level Project Root Item */}
-              <div className="tree-node-row tree-node-project">
+              <div className='tree-node-row tree-node-project'>
                 <input
-                  type="checkbox"
-                  className="tree-checkbox"
+                  type='checkbox'
+                  className='tree-checkbox'
                   checked={projectVisible}
                   onChange={toggleProjectVisibility}
-                  title="Toggle project visibility"
+                  title='Toggle project visibility'
                 />
-                <span className="tree-icon-slot project-icon">
+                <span className='tree-icon-slot project-icon'>
                   <img
                     src={logoSvg}
-                    alt="Cartouche"
+                    alt='Cartouche'
                     style={{ width: 14, height: 14 }}
                   />
                 </span>
-                <span className="tree-node-title project-title">
+                <span className='tree-node-title project-title'>
                   {projectName}
                 </span>
               </div>
 
               {/* Children: Layer Groups & Ungrouped Layers */}
-              <div className="tree-project-children">
+              <div className='tree-project-children'>
                 {topLevelGroups.map((g) => renderGroupRow(g, 1))}
                 {ungroupedLayers.map((l) => renderLayerRow(l, 1))}
               </div>

@@ -4,9 +4,11 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  */
+
+import type { Signal } from '@preact/signals-react';
 
 /**
  * @typedef {Object} Coordinate
@@ -180,6 +182,7 @@ export interface KeyboardShortcutDefinition {
  * @property {string} displayName - Label shown in preferences editor.
  * @property {T} value - Currently stored preference value.
  * @property {any} [defaultValue] - Default reset value.
+ * @property {Signal<T>} [signal] - Optional Preact reactive signal instance bound to this preference.
  * @property {boolean} [ephemeral] - If true, value resets on reload.
  * @property {boolean} [hidden] - If true, omitted from preferences dialog UI.
  * @property {number} [minimum] - Minimum numeric value constraint.
@@ -195,6 +198,7 @@ export interface PreferenceItem<T = any> {
   displayName: string;
   value: T;
   defaultValue?: any;
+  signal?: Signal<T>;
   ephemeral?: boolean;
   hidden?: boolean;
   minimum?: number;

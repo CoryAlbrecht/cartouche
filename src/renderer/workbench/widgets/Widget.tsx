@@ -4,12 +4,13 @@
  * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-28
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  */
 
 import React, { useRef, useEffect } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
+import type { DockviewPanelApi, DockviewApi } from "dockview-core";
 
 /**
  * @typedef {Object} WidgetContextMenuItem
@@ -36,12 +37,15 @@ export interface WidgetContextMenuItem {
  * @property {number | string} [maxHeight='auto'] - Maximum height constraint in pixels or CSS.
  * @property {number | string} [border=0] - Border width in pixels or CSS string.
  * @property {string} [borderColor='#f3f3f3'] - Border color hex or CSS string.
+ * @property {number | string} [padding=0] - Inner padding in pixels or CSS string.
  * @property {string} [className] - Optional custom CSS class string.
  * @property {React.CSSProperties} [style] - Inline CSS style overrides.
  * @property {React.ReactNode} [children] - Child elements rendered inside widget.
  * @property {() => void} [onClose] - Callback when widget is closed.
  * @property {() => void} [onUndock] - Callback when widget is undocked.
  * @property {WidgetContextMenuItem[]} [customContextMenuItems] - Optional array of context menu items.
+ * @property {DockviewApi} [containerApi] - Optional parent Dockview container API instance.
+ * @property {DockviewPanelApi} [panelApi] - Optional Dockview panel API instance.
  */
 export interface WidgetProps {
   id?: string;
@@ -53,12 +57,15 @@ export interface WidgetProps {
   maxHeight?: number | string;
   border?: number | string;
   borderColor?: string;
+  padding?: number | string;
   className?: string;
   style?: React.CSSProperties;
   children?: React.ReactNode;
   onClose?: () => void;
   onUndock?: () => void;
   customContextMenuItems?: WidgetContextMenuItem[];
+  containerApi?: DockviewApi;
+  panelApi?: DockviewPanelApi;
 }
 
 /**
@@ -66,7 +73,7 @@ export interface WidgetProps {
  * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-28
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @param {WidgetProps} props - Component properties.
  * @returns {React.ReactElement} Base widget container element.
@@ -80,7 +87,8 @@ export const Widget: React.FC<WidgetProps> = ({
   minHeight = 32,
   maxHeight = "auto",
   border = 0,
-  borderColor = "#f3f3f3",
+  borderColor = background,
+  padding = 0,
   className = "",
   style = {},
   children,
@@ -167,6 +175,7 @@ export const Widget: React.FC<WidgetProps> = ({
         borderWidth: typeof border === "number" ? `${border}px` : border,
         borderStyle: border ? "solid" : "none",
         borderColor: borderColor,
+        padding: typeof padding === "number" ? `${padding}px` : padding,
         minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth,
         maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth,
         minHeight: typeof minHeight === "number" ? `${minHeight}px` : minHeight,
@@ -192,7 +201,7 @@ export const Widget: React.FC<WidgetProps> = ({
             borderRadius: "4px",
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
             padding: "4px 0",
-            fontSize: "11pt",
+            fontSize: "0.9167rem",
             color: "#0f172a",
             minWidth: "140px",
           }}>

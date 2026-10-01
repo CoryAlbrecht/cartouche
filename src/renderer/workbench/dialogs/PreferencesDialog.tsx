@@ -176,6 +176,11 @@ export const PreferencesDialog: React.FC = () => {
       [key]: newValue,
     };
 
+    const targetItem = allPrefs[key];
+    if (targetItem?.signal) {
+      targetItem.signal.value = newValue;
+    }
+
     pendingChangesRef.current[key] = newValue;
     setSaveStatus("editing");
 

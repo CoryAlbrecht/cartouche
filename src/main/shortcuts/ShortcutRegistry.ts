@@ -4,7 +4,7 @@
  * @description Centralized keyboard shortcut registry for the Cartouche main process, binding action handlers to key combinations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-09-24
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @see {@link ApiFunctions}
  */
@@ -140,6 +140,15 @@ class ShortcutRegistryClass {
           console.log('[Shortcut] Triggering open_preferences...');
         },
         keyCombination: { key: ',', ctrl: true }
+      },
+      {
+        name: 'toggle_layers_panel',
+        displayName: 'Toggle Layers Panel',
+        description: 'Toggles visibility of the Layers panel widget in the workbench grid',
+        shortcutFunction: () => {
+          console.log('[Shortcut] Triggering toggle_layers_panel...');
+        },
+        keyCombination: { key: 'l', ctrl: true }
       }
     ];
 

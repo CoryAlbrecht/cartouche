@@ -1,0 +1,77 @@
+/* Import standard Dockview stylesheet */
+@import "dockview-react/dist/styles/dockview.css";
+
+/* Cartouche UI Design System */
+:root {
+  --cartouche-theme-font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --cartouche-ui-basefont-size: 12pt;
+
+  /* Window / Menubar Palette */
+  --cartouche-menubar-bg: #1b446c;
+  --cartouche-menubar-fg: #ffffff;
+  --cartouche-menubar-hover: rgba(255, 255, 255, 0.2);
+  --cartouche-menubar-border: #133346;
+
+  /* Core Desktop GIS Palette */
+  --cartouche-theme-activity-bar-bg: #f8fafc;
+  --cartouche-theme-activity-bar-fg: #0f172a;
+  --cartouche-theme-activity-bar-inactive-fg: #64748b;
+  --cartouche-theme-activity-bar-active-border: #1b446c;
+
+  --cartouche-theme-side-bar-bg: #ffffff;
+  --cartouche-theme-side-bar-fg: #000000;
+  --cartouche-theme-side-bar-border: #e2e8f0;
+
+  --cartouche-theme-editor-bg: #ffffff;
+  --cartouche-theme-panel-bg: #ffffff;
+  --cartouche-theme-panel-border: #e2e8f0;
+
+  --cartouche-theme-tab-active-bg: #ffffff;
+  --cartouche-theme-tab-inactive-bg: #f1f5f9;
+  --cartouche-theme-tab-active-fg: #000000;
+  --cartouche-theme-tab-inactive-fg: #64748b;
+  --cartouche-theme-tab-border: #e2e8f0;
+
+  --cartouche-theme-status-bar-bg: #1b446c;
+  --cartouche-theme-status-bar-fg: #ffffff;
+
+  --cartouche-theme-badge-bg: #1b446c;
+  --cartouche-theme-badge-fg: #ffffff;
+
+  --cartouche-theme-button-bg: #1b446c;
+  --cartouche-theme-button-fg: #ffffff;
+  --cartouche-theme-button-hover-bg: #24588c;
+
+  /* Dockview Theme Overrides for Light Clean Desktop Look */
+  --dockview-theme-background-color: #ffffff;
+  --dockview-theme-foreground-color: #000000;
+  --dockview-theme-border-color: #e2e8f0;
+  --dockview-theme-separator-color: #e2e8f0;
+  --dockview-theme-splitter-color: transparent;
+  --dockview-theme-active-border-color: #1b446c;
+
+  --dockview-tab-height: 32px;
+  --dockview-tab-font-size: 0.9rem;
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--cartouche-theme-font-family);
+  font-size: var(--cartouche-ui-basefont-size);
+  background-color: #ffffff;
+  color: #000000;
+  user-select: none;
+}
