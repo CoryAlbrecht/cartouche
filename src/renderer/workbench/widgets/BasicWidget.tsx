@@ -4,12 +4,12 @@
  * @description Standard subclass of Widget featuring a 3-control header bar (label, minimize toggle, close button) and collapsable content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import { Widget, type WidgetProps } from "./Widget";
 import Icon from "@renderer/components/common/MdiIcon";
@@ -20,8 +20,25 @@ import {
   type DockviewApi,
   type DockviewPanelApi,
 } from "dockview-core";
+import {
+  prefsUiBaseFontSize,
+  prefsUiIconSize,
+} from "@renderer/state/preferencesSignals";
 
 import type { IDockviewPanelProps } from "dockview-react";
+
+/**
+ * Helper to parse pixel values from number or CSS string representations.
+ */
+function parsePxValue(
+  val: number | string | undefined,
+  defaultVal: number
+): number {
+  if (val === undefined || val === null) return defaultVal;
+  if (typeof val === "number") return val;
+  const parsed = parseFloat(val);
+  return isNaN(parsed) ? defaultVal : parsed;
+}
 
 /**
  * @typedef {Object} BasicWidgetProps
@@ -46,7 +63,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a collapsable panel container with a title header bar and minimize/close controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -60,7 +77,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     border = 1,
     padding = 4,
     location = "left",
-    minWidth = 180,
+    minWidth,
     maxWidth = "auto",
     minHeight = 120,
     maxHeight = "auto",
@@ -75,6 +92,9 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const effectiveContainerApi = props.containerApi;
 
   useSignals();
+  const baseFontSizePt = prefsUiBaseFontSize.value ?? 12;
+  const iconSize = prefsUiIconSize.value ?? 14;
+
   const isBasicWidgetMinimizedSignal = useSignal<boolean>(false);
   const isMinimized = isBasicWidgetMinimizedSignal.value;
   const savedBoundsRef = useRef<{
@@ -129,6 +149,40 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
 
   const canClose = !!(onClose || effectivePanelApi);
 
+  // Dynamic minimum width floor calculation: border + padding + button controls + 4rem
+  const borderPx = 2 * parsePxValue(border, 1);
+  const paddingPx = 2 * parsePxValue(padding, 4);
+
+  const buttonCount = canClose ? 2 : 1;
+  const buttonPaddingPx = 4; // 2px left + 2px right per control button
+  const buttonGapPx = buttonCount > 1 ? 4 : 0;
+  const headerPaddingPx = 16; // 8px left + 8px right inner header padding
+  const buttonControlsWidth =
+    buttonCount * (iconSize + buttonPaddingPx) + buttonGapPx + headerPaddingPx;
+
+  // 4rem in pixels (base font size in pt converted to px where 1pt = 4/3 px)
+  const baseFontSizePx = baseFontSizePt * (4 / 3);
+  const fourRemPx = 4 * baseFontSizePx;
+
+  const computedMinWidthFloor =
+    borderPx + paddingPx + buttonControlsWidth + fourRemPx;
+  const requestedMinWidth = parsePxValue(minWidth, 32);
+  const effectiveMinWidth = Math.max(
+    requestedMinWidth,
+    Math.ceil(computedMinWidthFloor)
+  );
+
+  useEffect(() => {
+    if (
+      effectivePanelApi
+      && typeof (effectivePanelApi as any).setConstraints === "function"
+    ) {
+      (effectivePanelApi as any).setConstraints({
+        minimumWidth: effectiveMinWidth,
+      });
+    }
+  }, [effectivePanelApi, effectiveMinWidth]);
+
   return (
     <Widget
       id={name}
@@ -137,7 +191,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       borderColor={borderColor}
       padding={padding}
       location={location}
-      minWidth={minWidth}
+      minWidth={effectiveMinWidth}
       maxWidth={activeMaxWidth}
       minHeight={isMinimized ? 30 : minHeight}
       maxHeight={activeMaxHeight}
@@ -180,13 +234,21 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            flex: 1,
+            minWidth: 0,
+            marginRight: "8px",
           }}>
           {displayName}
         </span>
 
         <div
           className='basic-widget-controls'
-          style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            flexShrink: 0,
+          }}>
           <button
             type='button'
             className='widget-control-btn'
@@ -213,7 +275,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             }}>
             <Icon
               path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
-              size='14px'
+              size={`${iconSize}px`}
             />
           </button>
 
@@ -242,7 +304,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                 display: "flex",
                 alignItems: "center",
               }}>
-              <Icon path={mdiClose} size='14px' />
+              <Icon path={mdiClose} size={`${iconSize}px`} />
             </button>
           )}
         </div>

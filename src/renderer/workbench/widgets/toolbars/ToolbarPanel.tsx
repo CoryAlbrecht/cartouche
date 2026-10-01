@@ -4,7 +4,7 @@
  * @description Panel widget router rendering active toolbars inside target outer dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-22
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link ToolbarContainerWidget}
  */
@@ -19,6 +19,7 @@ import {
 } from "@renderer/state/gisSignals";
 import { ToolbarContainerWidget } from "../ToolbarContainerWidget";
 import { BasicToolbarWidget } from "./BasicToolbarWidget";
+import { LayerToolbarWidget } from "./LayerToolbarWidget";
 import { DigitizingToolbarWidget } from "./DigitizingToolbarWidget";
 import { SnappingToolbarWidget } from "./SnappingToolbarWidget";
 
@@ -27,6 +28,7 @@ const toolbarComponentMap: Record<
   React.FC<{ zone?: ToolbarZone }>
 > = {
   basic: BasicToolbarWidget,
+  layer: LayerToolbarWidget,
   digitizing: DigitizingToolbarWidget,
   snapping: SnappingToolbarWidget,
 };

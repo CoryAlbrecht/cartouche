@@ -4,7 +4,7 @@
  * @description Outer panel edge container widget managing masonry layout and drag-and-drop relocation for toolbars across 4 outer zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -35,7 +35,7 @@ export interface ToolbarContainerWidgetProps {
  * @description Outer 4-edge panel container hosting docked ToolbarWidget items and handling dragover drop targets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {ToolbarContainerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Toolbar container zone element.
@@ -54,6 +54,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
 
   const toolbarLabels: Record<ToolbarId, string> = {
     basic: "Basic Toolbar",
+    layer: "Layer Toolbar",
     digitizing: "Digitizing Toolbar",
     snapping: "Snapping Toolbar",
   };

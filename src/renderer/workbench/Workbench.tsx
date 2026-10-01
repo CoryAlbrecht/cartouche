@@ -4,14 +4,14 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link PreferencesDialog}
  */
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   DockviewReact,
   type DockviewReadyEvent,
@@ -91,6 +91,16 @@ import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import logoSvg from "../../../assets/svg/logo.svg";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
+const SAVED_PANEL_STATES_KEY = "cartouche_workbench_panel_states_v1";
+
+interface SavedPanelState {
+  isFloating: boolean;
+  floatingBounds?: { x: number; y: number; width: number; height: number };
+  referencePanelId?: string;
+  direction?: "left" | "right" | "above" | "below";
+  width?: number;
+  height?: number;
+}
 
 /**
  * @component WorkbenchTab
@@ -353,6 +363,88 @@ export const Workbench: React.FC = () => {
     window.electronAPI?.maximizeWindow();
   };
 
+  const savedPanelStatesRef = useRef<Map<string, SavedPanelState>>(new Map());
+
+  // Load saved panel states from localStorage on mount
+  useEffect(() => {
+    const savedStates = localStorage.getItem(SAVED_PANEL_STATES_KEY);
+    if (savedStates) {
+      try {
+        const parsed = JSON.parse(savedStates) as Record<
+          string,
+          SavedPanelState
+        >;
+        Object.entries(parsed).forEach(([key, val]) => {
+          savedPanelStatesRef.current.set(key, val);
+        });
+      } catch (err) {
+        console.warn("Failed to parse saved panel states:", err);
+      }
+    }
+  }, []);
+
+  // Helper to capture active panel geometry and bounds
+  const capturePanelStates = useCallback((api: DockviewApi) => {
+    api.panels.forEach((panel) => {
+      const isMap =
+        panel.id.startsWith("map-viewport")
+        || (panel as any).view?.contentComponent === "map-viewport";
+      if (isMap) return;
+
+      const isFloating =
+        !!(panel.api as any).isFloating
+        || !!(panel.group as any)?.api?.isFloating;
+      let floatingBounds:
+        | { x: number; y: number; width: number; height: number }
+        | undefined;
+      if (isFloating) {
+        const groupEl = (panel as any).group?.element;
+        if (groupEl) {
+          const rect = groupEl.getBoundingClientRect();
+          floatingBounds = {
+            x: Math.round(rect.left),
+            y: Math.round(rect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          };
+        }
+      }
+
+      const mapPanels = api.panels.filter(
+        (p) =>
+          p.id.startsWith("map-viewport")
+          || (p as any).view?.contentComponent === "map-viewport"
+      );
+      const refId = mapPanels.length > 0 ? mapPanels[0].id : undefined;
+
+      const width =
+        panel.api.width > 0 ? panel.api.width : (panel as any).group?.width;
+      const height =
+        panel.api.height > 0 ? panel.api.height : (panel as any).group?.height;
+
+      savedPanelStatesRef.current.set(panel.id, {
+        isFloating,
+        floatingBounds,
+        referencePanelId: refId,
+        direction: panel.id === "layer-tree" ? "left" : "below",
+        width: width && width > 0 ? width : undefined,
+        height: height && height > 0 ? height : undefined,
+      });
+    });
+
+    try {
+      const obj: Record<string, SavedPanelState> = {};
+      savedPanelStatesRef.current.forEach(
+        (val: SavedPanelState, key: string) => {
+          obj[key] = val;
+        }
+      );
+      localStorage.setItem(SAVED_PANEL_STATES_KEY, JSON.stringify(obj));
+    } catch (err) {
+      console.warn("Failed to persist saved panel states:", err);
+    }
+  }, []);
+
   // Default starting layout (Requirement 6):
   // Left: Empty Layers Panel ("No project")
   // Center: Maps Canvas Tab Group with 1 tab
@@ -360,21 +452,23 @@ export const Workbench: React.FC = () => {
     (api: DockviewApi) => {
       api.clear();
 
-      // 1. Center: Map Viewport (Canvas tab group with 1 tab)
+      // 1. Center: Map Viewport (Canvas tab group with 1 tab) - high priority absorbs window resizes
       const mapPanel = api.addPanel({
         id: "map-viewport",
         component: "map-viewport",
         title: "Spatial Map Viewport",
-      });
+        priority: "high",
+      } as any);
 
-      // 2. Left: Layers Panel
+      // 2. Left: Layers Panel - low priority maintains fixed width on window resizes
       api.addPanel({
         id: "layer-tree",
         component: "layer-tree",
         title: "Layers",
         position: { referencePanel: mapPanel, direction: "left" },
         initialWidth: 260,
-      });
+        priority: "low",
+      } as any);
 
       addConsoleLog(
         "info",
@@ -402,18 +496,66 @@ export const Workbench: React.FC = () => {
         return;
       }
 
-      const panels = dockviewApi.panels;
-      const referencePanel = panels.length > 0 ? panels[0] : undefined;
+      const savedState = savedPanelStatesRef.current.get(id);
 
-      dockviewApi.addPanel({
-        id,
-        component,
-        title,
-        position:
-          referencePanel && direction ?
-            { referencePanel, direction }
-          : undefined,
-      });
+      let newPanel: IDockviewPanel;
+      if (savedState?.isFloating && savedState.floatingBounds) {
+        newPanel = dockviewApi.addPanel({
+          id,
+          component,
+          title,
+          floating: {
+            x: savedState.floatingBounds.x,
+            y: savedState.floatingBounds.y,
+            width: savedState.floatingBounds.width,
+            height: savedState.floatingBounds.height,
+          },
+          priority: "low",
+        } as any);
+      } else {
+        const panels = dockviewApi.panels;
+        const mapPanels = panels.filter(
+          (p) =>
+            p.id.startsWith("map-viewport")
+            || (p as any).view?.contentComponent === "map-viewport"
+        );
+        const refPanelId =
+          savedState?.referencePanelId
+          || (mapPanels.length > 0 ? mapPanels[0].id : panels[0]?.id);
+        const targetRefPanel =
+          refPanelId ? dockviewApi.getPanel(refPanelId) : undefined;
+        const targetDir = savedState?.direction || (direction as any) || "left";
+
+        const initialWidth = savedState?.width || 260;
+        const initialHeight = savedState?.height || 200;
+
+        newPanel = dockviewApi.addPanel({
+          id,
+          component,
+          title,
+          position:
+            targetRefPanel ?
+              { referencePanel: targetRefPanel, direction: targetDir }
+            : undefined,
+          initialWidth,
+          initialHeight,
+          priority: "low",
+        } as any);
+
+        if (savedState?.width || savedState?.height) {
+          setTimeout(() => {
+            try {
+              newPanel.api.setSize({
+                width: savedState?.width,
+                height: savedState?.height,
+              });
+            } catch (err) {
+              console.warn(`Failed to set size for panel ${id}:`, err);
+            }
+          }, 0);
+        }
+      }
+
       addConsoleLog("info", `Opened panel: ${title}`, "Dockview");
       updateOpenPanelsState(dockviewApi);
     },
@@ -546,6 +688,7 @@ export const Workbench: React.FC = () => {
       api.onDidLayoutChange(() => {
         enforceMapCanvasGroupIsolation(api);
         enforceWidgetHeaderHiding(api);
+        capturePanelStates(api);
         updateOpenPanelsState(api);
         try {
           const json = api.toJSON();
@@ -1045,6 +1188,22 @@ export const Workbench: React.FC = () => {
                           )}
                         </span>
                         <span className='menu-item-label'>Basic</span>
+                      </div>
+
+                      {/* ? Layer */}
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={() => {
+                          toggleToolbar("layer");
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}>
+                        <span className='menu-item-check-slot'>
+                          {visibleToolbars.layer && (
+                            <Icon path={mdiCheck} size='14px' />
+                          )}
+                        </span>
+                        <span className='menu-item-label'>Layer</span>
                       </div>
                     </div>
                   )}

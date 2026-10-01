@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -72,7 +72,7 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 export const activeToolSignal = signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>('pan');
 
 // Toolbar placement and visibility signals
-export type ToolbarId = 'basic' | 'digitizing' | 'snapping';
+export type ToolbarId = 'basic' | 'layer' | 'digitizing' | 'snapping';
 export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
 
 /**
@@ -82,6 +82,7 @@ export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
  */
 export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
   basic: true,
+  layer: true,
   digitizing: false,
   snapping: false
 });
@@ -93,6 +94,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  */
 export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
   basic: 'top',
+  layer: 'top',
   digitizing: 'top',
   snapping: 'top'
 });
@@ -103,7 +105,7 @@ export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
 export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
-  top: ['basic', 'digitizing', 'snapping'],
+  top: ['basic', 'layer', 'digitizing', 'snapping'],
   bottom: [],
   left: [],
   right: []

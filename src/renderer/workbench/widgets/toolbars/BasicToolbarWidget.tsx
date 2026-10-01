@@ -1,10 +1,10 @@
 /**
  * @file BasicToolbarWidget.tsx
  * @module renderer/workbench/widgets/toolbars/BasicToolbarWidget
- * @description Toolbar widget rendering project actions (New, Open, Save), Layers panel toggle, and default Pan canvas mode button.
+ * @description Toolbar widget rendering project actions (New, Open, Save) and default Pan canvas mode button.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -17,17 +17,14 @@ import {
   mdiFolderOpenOutline,
   mdiContentSaveOutline,
   mdiHandBackRightOutline,
-  mdiLayersOutline,
 } from "@mdi/js";
 import {
   type ToolbarZone,
   hasProjectSignal,
   activeToolSignal,
-  openDockPanelsSignal,
   createNewProject,
   openProjectAction,
   saveProjectAction,
-  toggleLayersPanelAction,
 } from "@renderer/state/gisSignals";
 import { ToolbarWidget } from "../ToolbarWidget";
 
@@ -41,10 +38,10 @@ export interface BasicToolbarWidgetProps {
 
 /**
  * @component BasicToolbarWidget
- * @description Renders basic project file management buttons, Layers panel toggle, and canvas pan tool toggle.
+ * @description Renders basic project file management buttons and canvas pan tool toggle.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {BasicToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} BasicToolbarWidget instance.
@@ -76,13 +73,6 @@ export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
         onClick={saveProjectAction}
         aria-label='Save Project'>
         <Icon path={mdiContentSaveOutline} size='24px' />
-      </button>
-      <button
-        className={`toolbar-btn ${openDockPanelsSignal.value.layers ? "active" : ""}`}
-        title='Toggle Layers Panel (Ctrl+L)'
-        onClick={toggleLayersPanelAction}
-        aria-label='Toggle Layers Panel'>
-        <Icon path={mdiLayersOutline} size='24px' />
       </button>
       <button
         className={`toolbar-btn ${activeToolSignal.value === "pan" ? "active" : ""}`}
