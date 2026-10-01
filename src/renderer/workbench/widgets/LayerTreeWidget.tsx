@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, layer group accordions, layer visibility toggles, and active layer selection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  */
@@ -19,7 +19,7 @@ import {
   mdiVectorPolygon,
   mdiVectorPolyline,
   mdiVectorPoint,
-  mdiImageOutline,
+  mdiCheckerboard,
   mdiChevronDown,
   mdiChevronRight,
 } from "@mdi/js";
@@ -46,7 +46,7 @@ import type { IDockviewPanelProps } from "dockview-react";
  * @description Resolves Material Design Icon path corresponding to layer geometry kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-22
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {GeometryKind} [geometryKind] - Layer geometry kind string.
  * @returns {string} MDI icon SVG path string.
@@ -60,7 +60,7 @@ function getLayerIcon(geometryKind?: GeometryKind) {
     case "Polygon":
       return mdiVectorPolygon;
     case "Raster":
-      return mdiImageOutline;
+      return mdiCheckerboard;
     default:
       return mdiVectorPolygon;
   }
