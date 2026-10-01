@@ -1,21 +1,21 @@
 /**
  * @file AddLayerDialog.tsx
  * @module renderer/workbench/dialogs/AddLayerDialog
- * @description Add Layer modal dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the active project state.
+ * @description Non-modal, resizable Add Layer dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
  * @updated 2026-10-01
  * @since 0.1.0-dev
+ * @see {@link Dialog}
  * @see {@link isAddLayerOpenSignal}
  * @see {@link openAddLayerDialog}
  * @see {@link closeAddLayerDialog}
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
-  mdiClose,
   mdiVectorPolygon,
   mdiImageOutline,
   mdiDatabaseOutline,
@@ -27,6 +27,7 @@ import {
   closeAddLayerDialog,
   addConsoleLog,
 } from "@renderer/state/gisSignals";
+import { Dialog } from "./Dialog";
 
 /**
  * @typedef {'vector' | 'raster' | 'database'} SourceType
@@ -57,12 +58,12 @@ const sourceTabs: SourceTab[] = [
 
 /**
  * @component AddLayerDialog
- * @description Renders a modal dialog allowing users to browse and attach Vector, Raster, or Database spatial layers.
+ * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
  * @updated 2026-10-01
  * @since 0.1.0-dev
- * @returns {React.ReactElement | null} Add Layer dialog modal element or null if closed.
+ * @returns {React.ReactElement | null} Add Layer dialog window element or null if closed.
  */
 export const AddLayerDialog: React.FC = () => {
   useSignals();
@@ -70,17 +71,6 @@ export const AddLayerDialog: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SourceType>("vector");
   const [filePath, setFilePath] = useState<string>("");
   const [layerName, setLayerName] = useState<string>("");
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        closeAddLayerDialog();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -105,81 +95,68 @@ export const AddLayerDialog: React.FC = () => {
   };
 
   return (
-    <div
-      className='cartouche-modal-overlay'
-      onClick={() => closeAddLayerDialog()}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-      <div
-        className='cartouche-modal-container'
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "6px",
-          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
-          width: "560px",
-          maxWidth: "90vw",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          border: "1px solid #cbd5e1",
-          fontSize: "12pt",
-          color: "#000000",
-        }}>
-        {/* Header Bar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#1b446c",
-            color: "#ffffff",
-            padding: "10px 16px",
-            fontWeight: 600,
-            fontSize: "1rem",
-            userSelect: "none",
-          }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Icon path={mdiPlus} size='18px' />
-            <span>Add Layer</span>
-          </div>
+    <Dialog
+      name='addLayerWindow'
+      title='Add Layer'
+      icon={mdiPlus}
+      isOpen={isOpen}
+      onClose={closeAddLayerDialog}
+      defaultWidth={620}
+      defaultHeight={460}
+      footer={
+        <>
           <button
             type='button'
             onClick={() => closeAddLayerDialog()}
-            title='Close (Esc)'
             style={{
-              background: "none",
-              border: "none",
-              color: "#ffffff",
+              padding: "8px 16px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "4px",
               cursor: "pointer",
-              padding: "2px",
+              fontWeight: 500,
+              fontSize: "0.875rem",
+              color: "#334155",
+            }}>
+            Cancel
+          </button>
+          <button
+            type='button'
+            onClick={handleAdd}
+            style={{
               display: "flex",
               alignItems: "center",
-              borderRadius: "3px",
-              opacity: 0.85,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.85")}>
-            <Icon path={mdiClose} size='18px' />
+              gap: "6px",
+              padding: "8px 18px",
+              backgroundColor: "#1b446c",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              color: "#ffffff",
+            }}>
+            <Icon path={mdiPlus} size='16px' />
+            <span>Add Layer</span>
           </button>
-        </div>
-
+        </>
+      }>
+      <div
+        className='add-layer-dialog-container'
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          height: "100%",
+          backgroundColor: "#ffffff",
+        }}>
         {/* Source Type Selector Tabs */}
         <div
           style={{
             display: "flex",
             borderBottom: "1px solid #cbd5e1",
             backgroundColor: "#f8fafc",
+            flexShrink: 0,
           }}>
           {sourceTabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -209,8 +186,16 @@ export const AddLayerDialog: React.FC = () => {
           })}
         </div>
 
-        {/* Content Body */}
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        {/* Content Body Form */}
+        <div
+          style={{
+            padding: "20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            flex: 1,
+            overflow: "auto",
+          }}>
           <div>
             <label
               style={{
@@ -287,54 +272,7 @@ export const AddLayerDialog: React.FC = () => {
             />
           </div>
         </div>
-
-        {/* Action Footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: "10px",
-            padding: "12px 20px",
-            backgroundColor: "#f8fafc",
-            borderTop: "1px solid #cbd5e1",
-          }}>
-          <button
-            type='button'
-            onClick={() => closeAddLayerDialog()}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
-            Cancel
-          </button>
-          <button
-            type='button'
-            onClick={handleAdd}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 18px",
-              backgroundColor: "#1b446c",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              color: "#ffffff",
-            }}>
-            <Icon path={mdiPlus} size='16px' />
-            <span>Add Layer</span>
-          </button>
-        </div>
       </div>
-    </div>
+    </Dialog>
   );
 };

@@ -4,7 +4,7 @@
  * @description Centralized keyboard shortcut registry for the Cartouche main process, binding action handlers to key combinations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-01
+ * @updated 2026-09-30
  * @since 0.1.0-dev
  * @see {@link ApiFunctions}
  */
@@ -54,7 +54,7 @@ export function formatKeyCombination(combo: KeyCombination): string {
  * @description Singleton class managing registration, lookup, and execution of global application keyboard shortcuts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-01
+ * @updated 2026-09-24
  * @since 0.1.0-dev
  */
 class ShortcutRegistryClass {
@@ -64,7 +64,7 @@ class ShortcutRegistryClass {
    * @description Initializes the shortcut registry and registers default application shortcuts.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-23
-   * @updated 2026-10-01
+   * @updated 2026-09-24
    * @since 0.1.0-dev
    */
   constructor() {
@@ -75,7 +75,7 @@ class ShortcutRegistryClass {
    * @description Registers all default application keyboard shortcuts into the active map.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-23
-   * @updated 2026-10-01
+   * @updated 2026-09-24
    * @since 0.1.0-dev
    * @private
    * @returns {void}
@@ -85,10 +85,19 @@ class ShortcutRegistryClass {
     const defaults: KeyboardShortcut[] = [
       {
         name: 'add_layer',
-        displayName: 'Add Layer...',
+        displayName: 'Add Layer',
         description: 'Opens the Add Layer dialog box to attach spatial data sources',
-        shortcutFunction: ApiFunctions.addLayer,
+        shortcutFunction: () => {
+          console.log('[Shortcut] Triggering add_layer...');
+        },
         keyCombination: { key: 'l', ctrl: true, shift: true }
+      },
+      {
+        name: 'add_vector_layer',
+        displayName: 'Add Vector Layer',
+        description: 'Adds a new vector layer from a spatial data source to the project',
+        shortcutFunction: ApiFunctions.addVectorLayer,
+        keyCombination: { key: 'v', ctrl: true, alt: true }
       },
       {
         name: 'new_project',

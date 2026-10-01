@@ -4,9 +4,9 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
- * @see {@link DetachedWindowPortal}
+ * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
  */
 
@@ -29,7 +29,7 @@ import {
   updatePreference,
   closePreferencesDialog,
 } from "@renderer/state/preferencesSignals";
-import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindowPortal";
+import { Dialog } from "./Dialog";
 import type { PreferenceItem } from "@shared/types";
 
 interface CategoryTab {
@@ -245,189 +245,190 @@ export const PreferencesDialog: React.FC = () => {
   }
 
   return (
-    <DetachedWindowPortal
-      frameName='preferencesWindow'
+    <Dialog
+      name='preferencesWindow'
       title='Preferences'
-      features={windowFeatures}
-      onClose={closePreferencesDialog}>
+      icon={mdiCogOutline}
+      isOpen={isPreferencesOpenSignal.value}
+      onClose={() => {
+        if (Object.keys(pendingChangesRef.current).length > 0) {
+          executeAutosave().then(() => closePreferencesDialog());
+        } else {
+          closePreferencesDialog();
+        }
+      }}
+      defaultWidth={savedW}
+      defaultHeight={savedH}
+      x={savedX}
+      y={savedY}
+      footer={
+        <div className='preferences-status-indicator'>
+          {saveStatus === "editing" && (
+            <Icon
+              path={mdiFileEditOutline}
+              size='20px'
+              title='Changes pending auto-save...'
+              style={{ color: "#64748b" }}
+            />
+          )}
+          {saveStatus === "saving" && (
+            <Icon
+              path={isSyncIcon ? mdiSync : mdiCached}
+              size='20px'
+              title='Auto-saving changes...'
+              style={{ color: "#1b446c" }}
+            />
+          )}
+        </div>
+      }>
       <div
-        className='preferences-modal-backdrop'
+        className='preferences-modal-container'
         onKeyDown={handleKeyDown}
-        tabIndex={-1}>
-        <div className='preferences-modal-container'>
-          {/* Header */}
-          <div className='preferences-modal-header'>
-            <div className='preferences-modal-title'>
-              <Icon
-                path={mdiCogOutline}
-                size='20px'
-                className='preferences-title-icon'
-              />
-              <span>Preferences</span>
-            </div>
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          height: "100%",
+          overflow: "hidden",
+        }}>
+        {/* Modal Body: Left Sidebar + Right Content */}
+        <div className='preferences-modal-body'>
+          {/* Left Category Navigation */}
+          <div className='preferences-sidebar'>
+            <div className='preferences-sidebar-title'>Categories</div>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                className={`preferences-tab-btn ${activeCat === cat.id ? "active" : ""}`}
+                onClick={() => {
+                  activeCategorySignal.value = cat.id;
+                }}>
+                <Icon path={cat.icon} size='18px' />
+                <span>{cat.label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Modal Body: Left Sidebar + Right Content */}
-          <div className='preferences-modal-body'>
-            {/* Left Category Navigation */}
-            <div className='preferences-sidebar'>
-              <div className='preferences-sidebar-title'>Categories</div>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  className={`preferences-tab-btn ${activeCat === cat.id ? "active" : ""}`}
-                  onClick={() => {
-                    activeCategorySignal.value = cat.id;
-                  }}>
-                  <Icon path={cat.icon} size='18px' />
-                  <span>{cat.label}</span>
-                </button>
-              ))}
+          {/* Right Form Fields */}
+          <div className='preferences-content'>
+            <div className='preferences-section-title'>
+              {categories.find((c) => c.id === activeCat)?.label
+                || "General Preferences"}
             </div>
 
-            {/* Right Form Fields */}
-            <div className='preferences-content'>
-              <div className='preferences-section-title'>
-                {categories.find((c) => c.id === activeCat)?.label
-                  || "General Preferences"}
+            {categoryPrefs.length === 0 ?
+              <div className='preferences-empty-state'>
+                No configurable options found in this category.
               </div>
+            : <div className='preferences-form-group'>
+                {categoryPrefs.map(
+                  ([key, item]: [string, PreferenceItem]) => {
+                    const currentValue =
+                      draftPreferencesSignal.value[key] !== undefined ?
+                        draftPreferencesSignal.value[key]
+                      : item.value;
 
-              {categoryPrefs.length === 0 ?
-                <div className='preferences-empty-state'>
-                  No configurable options found in this category.
-                </div>
-              : <div className='preferences-form-group'>
-                  {categoryPrefs.map(
-                    ([key, item]: [string, PreferenceItem]) => {
-                      const currentValue =
-                        draftPreferencesSignal.value[key] !== undefined ?
-                          draftPreferencesSignal.value[key]
-                        : item.value;
-
-                      return (
-                        <div key={key} className='preference-item-row'>
-                          <div className='preference-item-info'>
-                            <div className='preference-item-name'>
-                              {item.displayName}
+                    return (
+                      <div key={key} className='preference-item-row'>
+                        <div className='preference-item-info'>
+                          <div className='preference-item-name'>
+                            {item.displayName}
+                          </div>
+                          {item.description && (
+                            <div className='preference-item-desc'>
+                              {item.description}
                             </div>
-                            {item.description && (
-                              <div className='preference-item-desc'>
-                                {item.description}
-                              </div>
-                            )}
-                            <div className='preference-item-key'>{key}</div>
-                          </div>
-
-                          <div className='preference-item-control'>
-                            {item.type === "boolean" ?
-                              <label className='preference-checkbox-label'>
-                                <input
-                                  type='checkbox'
-                                  checked={!!currentValue}
-                                  onChange={(e) =>
-                                    handleFieldChange(key, e.target.checked)
-                                  }
-                                  className='preference-checkbox'
-                                />
-                                <span>
-                                  {currentValue ? "Enabled" : "Disabled"}
-                                </span>
-                              </label>
-                            : item.type === "select" && item.options ?
-                              <select
-                                value={String(currentValue)}
-                                onChange={(e) =>
-                                  handleFieldChange(key, e.target.value)
-                                }
-                                className='preference-select'>
-                                {item.options.map((opt) => (
-                                  <option
-                                    key={String(opt.value)}
-                                    value={String(opt.value)}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            : item.type === "number" ?
-                              <div className='preference-number-wrapper'>
-                                <input
-                                  type='number'
-                                  min={item.minimum}
-                                  max={item.maximum}
-                                  step={
-                                    item.step !== undefined ? item.step : "any"
-                                  }
-                                  value={
-                                    currentValue !== undefined ? currentValue
-                                    : ""
-                                  }
-                                  onChange={(e) => {
-                                    let val = parseFloat(e.target.value);
-                                    if (isNaN(val)) val = 0;
-                                    if (
-                                      item.minimum !== undefined
-                                      && val < item.minimum
-                                    )
-                                      val = item.minimum;
-                                    if (
-                                      item.maximum !== undefined
-                                      && val > item.maximum
-                                    )
-                                      val = item.maximum;
-                                    handleFieldChange(key, val);
-                                  }}
-                                  className='preference-input-number'
-                                />
-                                {item.unit && (
-                                  <span className='preference-unit-badge'>
-                                    {item.unit}
-                                  </span>
-                                )}
-                              </div>
-                            : <input
-                                type='text'
-                                value={
-                                  currentValue !== undefined ? currentValue : ""
-                                }
-                                onChange={(e) =>
-                                  handleFieldChange(key, e.target.value)
-                                }
-                                className='preference-input-text'
-                              />
-                            }
-                          </div>
+                          )}
+                          <div className='preference-item-key'>{key}</div>
                         </div>
-                      );
-                    }
-                  )}
-                </div>
-              }
-            </div>
-          </div>
 
-          {/* Modal Footer: Normally blank, bottom-right status indicator icons */}
-          <div className='preferences-modal-footer'>
-            <div className='preferences-status-indicator'>
-              {saveStatus === "editing" && (
-                <Icon
-                  path={mdiFileEditOutline}
-                  size='20px'
-                  title='Changes pending auto-save...'
-                  style={{ color: "#64748b" }}
-                />
-              )}
-              {saveStatus === "saving" && (
-                <Icon
-                  path={isSyncIcon ? mdiSync : mdiCached}
-                  size='20px'
-                  title='Auto-saving changes...'
-                  style={{ color: "#1b446c" }}
-                />
-              )}
-            </div>
+                        <div className='preference-item-control'>
+                          {item.type === "boolean" ?
+                            <label className='preference-checkbox-label'>
+                              <input
+                                type='checkbox'
+                                checked={!!currentValue}
+                                onChange={(e) =>
+                                  handleFieldChange(key, e.target.checked)
+                                }
+                                className='preference-checkbox'
+                              />
+                              <span>
+                                {currentValue ? "Enabled" : "Disabled"}
+                              </span>
+                            </label>
+                          : item.type === "select" && item.options ?
+                            <select
+                              value={String(currentValue)}
+                              onChange={(e) =>
+                                handleFieldChange(key, e.target.value)
+                              }
+                              className='preference-select'>
+                              {item.options.map((opt) => (
+                                <option
+                                  key={String(opt.value)}
+                                  value={String(opt.value)}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          : item.type === "number" ?
+                            <div className='preference-number-wrapper'>
+                              <input
+                                type='number'
+                                min={item.minimum}
+                                max={item.maximum}
+                                step={
+                                  item.step !== undefined ? item.step : "any"
+                                }
+                                value={
+                                  currentValue !== undefined ? currentValue
+                                  : ""
+                                }
+                                onChange={(e) => {
+                                  let val = parseFloat(e.target.value);
+                                  if (isNaN(val)) val = 0;
+                                  if (
+                                    item.minimum !== undefined
+                                    && val < item.minimum
+                                  )
+                                    val = item.minimum;
+                                  if (
+                                    item.maximum !== undefined
+                                    && val > item.maximum
+                                  )
+                                    val = item.maximum;
+                                  handleFieldChange(key, val);
+                                }}
+                                className='preference-input-number'
+                              />
+                              {item.unit && (
+                                <span className='preference-unit-badge'>
+                                  {item.unit}
+                                </span>
+                              )}
+                            </div>
+                          : <input
+                              type='text'
+                              value={
+                                currentValue !== undefined ? currentValue : ""
+                              }
+                              onChange={(e) =>
+                                handleFieldChange(key, e.target.value)
+                              }
+                              className='preference-input-text'
+                            />
+                          }
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            }
           </div>
         </div>
       </div>
-    </DetachedWindowPortal>
+    </Dialog>
   );
 };

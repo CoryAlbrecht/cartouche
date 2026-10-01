@@ -9,7 +9,6 @@
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link PreferencesDialog}
- * @see {@link AddLayerDialog}
  */
 
 import React, { useCallback, useEffect, useState, useRef } from "react";
@@ -39,12 +38,11 @@ import {
   mdiMapPlus,
   mdiMagnifyPlusOutline,
   mdiMagnifyMinusOutline,
-  mdiVectorPolygon,
-  mdiImageOutline,
   mdiPlusBoxOutline,
   mdiInformationOutline,
   mdiCheck,
   mdiChevronRight,
+  mdiPlus,
 } from "@mdi/js";
 import { widgetComponents } from "./widgetRegistry";
 import { ToolbarPanel } from "./widgets/toolbars/ToolbarPanel";
@@ -77,6 +75,7 @@ import {
   toggleToolbar,
   registerTogglePanelHandler,
   toggleLayersPanelAction,
+  openAddLayerDialog,
 } from "@renderer/state/gisSignals";
 import {
   loadShortcutsFromMain,
@@ -89,6 +88,7 @@ import {
   prefsUiBaseFontSize,
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
+import { AddLayerDialog } from "./dialogs/AddLayerDialog";
 import logoSvg from "../../../assets/svg/logo.svg";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
@@ -326,12 +326,9 @@ export const Workbench: React.FC = () => {
             case "open_preferences":
               openPreferencesDialog();
               break;
+            case "add_layer":
             case "add_vector_layer":
-              addConsoleLog(
-                "info",
-                "Add Vector Layer dialog requested.",
-                "Layers"
-              );
+              openAddLayerDialog();
               break;
             case "toggle_layers_panel":
               toggleLayersPanelAction();
@@ -1244,75 +1241,22 @@ export const Workbench: React.FC = () => {
             </div>
             {openMenu === "layers" && (
               <div className='menu-dropdown'>
-                {/* Add Submenu */}
+                {/* * Add... $$ */}
                 <div
-                  className='menu-submenu-wrapper'
-                  onMouseEnter={() => setActiveSubmenu("addLayer")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveSubmenu(
-                      activeSubmenu === "addLayer" ? null : "addLayer"
-                    );
+                  className='menu-dropdown-item'
+                  onClick={() => {
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeShortcut("add_layer");
+                      openAddLayerDialog();
+                    });
                   }}>
-                  <div className='menu-dropdown-item menu-submenu-trigger'>
-                    <span className='menu-item-icon-slot' />
-                    <span className='menu-item-label'>Add</span>
-                    <Icon
-                      path={mdiChevronRight}
-                      size='14px'
-                      className='menu-arrow'
-                    />
-                  </div>
-
-                  {activeSubmenu === "addLayer" && (
-                    <div className='menu-submenu-dropdown'>
-                      {/* * Add Vector Layer */}
-                      <div
-                        className='menu-dropdown-item'
-                        onClick={() => {
-                          handleMenuClick(() => {
-                            window.electronAPI?.executeShortcut(
-                              "add_vector_layer"
-                            );
-                            addConsoleLog(
-                              "info",
-                              "Add Vector Layer dialog requested.",
-                              "Layers"
-                            );
-                          });
-                        }}>
-                        <span className='menu-item-icon-slot'>
-                          <Icon path={mdiVectorPolygon} size='14px' />
-                        </span>
-                        <span className='menu-item-label'>
-                          Add Vector Layer...
-                        </span>
-                        <span className='menu-shortcut-slot'>
-                          {getShortcutFormattedKey("add_vector_layer")}
-                        </span>
-                      </div>
-
-                      {/* * Add Raster Layer */}
-                      <div
-                        className='menu-dropdown-item'
-                        onClick={() => {
-                          handleMenuClick(() => {
-                            addConsoleLog(
-                              "info",
-                              "Add Raster Layer dialog requested.",
-                              "Layers"
-                            );
-                          });
-                        }}>
-                        <span className='menu-item-icon-slot'>
-                          <Icon path={mdiImageOutline} size='14px' />
-                        </span>
-                        <span className='menu-item-label'>
-                          Add Raster Layer...
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  <span className='menu-item-icon-slot'>
+                    <Icon path={mdiPlus} size='14px' />
+                  </span>
+                  <span className='menu-item-label'>Add...</span>
+                  <span className='menu-shortcut-slot'>
+                    {getShortcutFormattedKey("add_layer")}
+                  </span>
                 </div>
 
                 {/* * Create Layer */}
@@ -1548,6 +1492,9 @@ export const Workbench: React.FC = () => {
 
       {/* Preferences Modal Dialog */}
       <PreferencesDialog />
+
+      {/* Add Layer Non-Modal Dialog */}
+      <AddLayerDialog />
     </div>
   );
 };
