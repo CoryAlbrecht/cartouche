@@ -1,10 +1,10 @@
 /**
  * @file DetachedWindowPortal.tsx
  * @module renderer/components/common/DetachedWindowPortal
- * @description React Portal component rendering React child elements into an isolated detached browser window pop-out (e.g. non-modal preferences window).
+ * @description React Portal component rendering React child elements into an isolated detached browser window pop-out with React StrictMode DEV double-invoke resilience.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  */
 
@@ -29,10 +29,10 @@ interface DetachedWindowPortalProps {
 
 /**
  * @component DetachedWindowPortal
- * @description Renders child components into an isolated secondary window using React Portals and synchronizes parent document CSS stylesheets.
+ * @description Renders child components into an isolated secondary window using React Portals, synchronizing parent document CSS stylesheets and handling StrictMode re-mount cancellation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {DetachedWindowPortalProps} props - Component properties.
  * @returns {React.ReactElement} React Portal mounting container element into child window body.

@@ -1,10 +1,10 @@
 /**
  * @file main.ts
  * @module main/main
- * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, and IPC communication channels.
+ * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  */
@@ -94,10 +94,10 @@ if (process.platform === 'linux') {
 }
 
 /**
- * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore and attaching IPC event handlers.
+ * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
