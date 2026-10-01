@@ -63,6 +63,38 @@ export const redoStackSignal = signal<unknown[]>([]);
  */
 export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
+/**
+ * @signal isAddLayerOpenSignal
+ * @description Signal controlling Add Layer dialog modal visibility.
+ * @type {Signal<boolean>}
+ */
+export const isAddLayerOpenSignal = signal<boolean>(false);
+
+/**
+ * @description Opens the Add Layer dialog box modal.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-01
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openAddLayerDialog(): void {
+  isAddLayerOpenSignal.value = true;
+  addConsoleLog('info', 'Add Layer dialog opened.', 'Layers');
+}
+
+/**
+ * @description Closes the Add Layer dialog box modal.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-01
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeAddLayerDialog(): void {
+  isAddLayerOpenSignal.value = false;
+}
+
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
  * @signal activeToolSignal

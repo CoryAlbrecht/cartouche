@@ -9,6 +9,7 @@
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link PreferencesDialog}
+ * @see {@link AddLayerDialog}
  */
 
 import React, { useCallback, useEffect, useState, useRef } from "react";
