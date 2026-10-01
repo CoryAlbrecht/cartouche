@@ -1513,7 +1513,7 @@ export const Workbench: React.FC = () => {
               <div>
                 <h2>Cartouche Desktop</h2>
                 <div className='modal-subtitle'>
-                  Particle Physics Geographic Information System • v0.1.0
+                  Geographic Information System • v0.1.0
                 </div>
               </div>
             </div>
@@ -1522,6 +1522,7 @@ export const Workbench: React.FC = () => {
                 Cartouche is a desktop GIS platform made for quick and easy
                 editing and presentation of spatial data.
               </p>
+              <hr />
               <p>Cartouche uses the following open source software</p>
               <div className='modal-specs'>
                 <div>
@@ -1530,10 +1531,6 @@ export const Workbench: React.FC = () => {
                 </div>
                 <div>
                   <strong>Dockview-React</strong> Dockview 4-Edge Grid Container
-                </div>
-                <div>
-                  <strong></strong> Pure White Canvas (#ffffff), Medium Blue
-                  Menubar (#1b446c)
                 </div>
               </div>
             </div>
