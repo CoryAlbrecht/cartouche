@@ -118,45 +118,20 @@ export const Dialog: React.FC<DialogProps> = ({
           overflow: "hidden",
           boxSizing: "border-box",
         }}>
-        {/* Standardized Dialog Header Bar */}
-        <div
-          className='cartouche-dialog-header'
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#1b446c",
-            color: "#ffffff",
-            padding: "8px 14px",
-            fontWeight: 600,
-            fontSize: "1rem",
-            userSelect: "none",
-            flexShrink: 0,
-          }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {icon && <Icon path={icon} size='18px' />}
-            <span>{title}</span>
+        {/* Standardized Frameless Dialog Header Bar */}
+        <div className='cartouche-dialog-header'>
+          <div className='cartouche-dialog-title-container'>
+            {icon && <Icon path={icon} size='18px' style={{ flexShrink: 0 }} />}
+            <span className='cartouche-dialog-title'>{title}</span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className='cartouche-dialog-header-actions'>
             {headerActions}
             <button
               type='button'
+              className='cartouche-dialog-close-btn'
               onClick={() => onClose()}
-              title='Close (Esc)'
-              style={{
-                background: "none",
-                border: "none",
-                color: "#ffffff",
-                cursor: "pointer",
-                padding: "2px",
-                display: "flex",
-                alignItems: "center",
-                borderRadius: "3px",
-                opacity: 0.85,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.85")}>
+              title='Close (Esc)'>
               <Icon path={mdiClose} size='18px' />
             </button>
           </div>

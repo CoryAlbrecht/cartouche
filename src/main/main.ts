@@ -222,7 +222,7 @@ function createWindow() {
         minWidth: minW,
         minHeight: minH,
         autoHideMenuBar: true,
-        frame: true,
+        frame: false, // Frameless child dialog window with custom title bar
         resizable: true,
         show: true,
         parent: mainWindow || undefined,

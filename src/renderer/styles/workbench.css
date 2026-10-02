@@ -1511,3 +1511,66 @@
 .preferences-resize-handle:hover {
   color: #1b446c;
 }
+
+/* Custom Frameless Dialog Header Bar */
+.cartouche-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--cartouche-menubar-bg, #1b446c);
+  color: var(--cartouche-menubar-fg, #ffffff);
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-weight: 500;
+  font-size: 0.9167rem;
+  user-select: none;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.cartouche-dialog-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  -webkit-app-region: drag;
+}
+
+.cartouche-dialog-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.cartouche-dialog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+.cartouche-dialog-close-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  opacity: 0.85;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+}
+
+.cartouche-dialog-close-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
