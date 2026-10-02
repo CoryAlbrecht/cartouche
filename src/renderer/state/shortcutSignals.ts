@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing renderer-side keyboard shortcut definitions synced from Main Process over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-09-23
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link KeyboardShortcutDefinition}
  */
@@ -14,12 +14,25 @@ import type { KeyboardShortcutDefinition } from '@shared/types';
 import { addConsoleLog } from './gisSignals';
 
 /**
- * @signal
+ * @signal registeredShortcutsSignal
  * @description Array of registered keyboard shortcut definitions synchronized from Main process.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
  * @type {Signal<KeyboardShortcutDefinition[]>}
  */
 export const registeredShortcutsSignal = signal<KeyboardShortcutDefinition[]>([]);
 
+/**
+ * @signal shortcutsMapSignal
+ * @description Computed map derivation mapping shortcut action names to shortcut definitions.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-23
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
+ * @type {ReadonlySignal<Map<string, KeyboardShortcutDefinition>>}
+ */
 export const shortcutsMapSignal = computed(() => {
   const map = new Map<string, KeyboardShortcutDefinition>();
   for (const shortcut of registeredShortcutsSignal.value) {

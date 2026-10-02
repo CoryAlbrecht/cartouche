@@ -4,7 +4,7 @@
  * @description Toolbar widget managing feature vertex and line segment snapping settings during spatial editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-24
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -32,17 +32,7 @@ export interface SnappingToolbarWidgetProps {
  * @description Renders snapping control buttons to toggle vertex/segment snapping during spatial feature digitizing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-24
- * @since 0.1.0-dev
- * @param {SnappingToolbarWidgetProps} props - Component properties.
- * @returns {React.ReactElement} SnappingToolbarWidget instance.
- */
-/**
- * @component SnappingToolbarWidget
- * @description Renders snapping control buttons to toggle vertex/segment snapping during spatial feature digitizing.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-22
- * @updated 2026-09-24
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {SnappingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} SnappingToolbarWidget instance.

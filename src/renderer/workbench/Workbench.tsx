@@ -94,6 +94,15 @@ import logoSvg from "../../../assets/svg/logo.svg";
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 const SAVED_PANEL_STATES_KEY = "cartouche_workbench_panel_states_v1";
 
+/**
+ * @typedef {Object} SavedPanelState
+ * @property {boolean} isFloating - Flag indicating if panel is undocked floating.
+ * @property {{ x: number; y: number; width: number; height: number }} [floatingBounds] - Screen bounding box when floating.
+ * @property {string} [referencePanelId] - Relative dock reference panel ID.
+ * @property {'left' | 'right' | 'above' | 'below'} [direction] - Dock direction relative to reference panel.
+ * @property {number} [width] - Panel width in pixels.
+ * @property {number} [height] - Panel height in pixels.
+ */
 interface SavedPanelState {
   isFloating: boolean;
   floatingBounds?: { x: number; y: number; width: number; height: number };
@@ -182,7 +191,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-28
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @returns {React.ReactElement} Main workbench window container.
  */
@@ -190,8 +199,38 @@ export const Workbench: React.FC = () => {
   useSignals();
 
   const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
+
+  /**
+   * @signal activeMenubarMenuSignal
+   * @description Reactive signal tracking open top menubar dropdown menu category ('project' | 'edit' | 'view' | 'layer' | 'help' | null).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-21
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<string | null>}
+   */
   const activeMenubarMenuSignal = useSignal<string | null>(null);
+
+  /**
+   * @signal activeMenubarSubmenuSignal
+   * @description Reactive signal tracking active open menubar nested submenu ID.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-21
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<string | null>}
+   */
   const activeMenubarSubmenuSignal = useSignal<string | null>(null);
+
+  /**
+   * @signal isAboutModalOpenSignal
+   * @description Reactive signal controlling open state visibility of About Cartouche modal dialog.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-21
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<boolean>}
+   */
   const isAboutModalOpenSignal = useSignal<boolean>(false);
 
   const openMenu = activeMenubarMenuSignal.value;

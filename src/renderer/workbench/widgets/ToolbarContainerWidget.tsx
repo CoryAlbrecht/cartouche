@@ -45,6 +45,15 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
   children,
 }) => {
   useSignals();
+  /**
+   * @signal isToolbarZoneDragOverSignal
+   * @description Reactive signal tracking dragover state when hovering toolbar widgets over container zone.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-22
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<boolean>}
+   */
   const isToolbarZoneDragOverSignal = useSignal<boolean>(false);
   const isDragOver = isToolbarZoneDragOverSignal.value;
 

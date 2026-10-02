@@ -32,6 +32,12 @@ import {
 import { Dialog } from "./Dialog";
 import type { PreferenceItem } from "@shared/types";
 
+/**
+ * @typedef {Object} CategoryTab
+ * @property {string} id - Category tab unique ID.
+ * @property {string} label - Category tab user display label.
+ * @property {string} icon - MDI SVG icon path definition.
+ */
 interface CategoryTab {
   id: string;
   label: string;
@@ -50,12 +56,21 @@ const categories: CategoryTab[] = [
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
 export const PreferencesDialog: React.FC = () => {
   useSignals();
+  /**
+   * @signal draftPreferencesSignal
+   * @description Local reactive signal holding draft preference values before debounced auto-save flushing.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-24
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<Record<string, any>>}
+   */
   const draftPreferencesSignal = useSignal<Record<string, any>>({});
   const [saveStatus, setSaveStatus] = useState<"idle" | "editing" | "saving">(
     "idle"

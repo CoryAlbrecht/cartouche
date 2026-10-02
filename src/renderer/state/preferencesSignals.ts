@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -14,36 +14,56 @@ import type { PreferenceMap } from '@shared/types';
 import { addConsoleLog } from './gisSignals';
 
 /**
- * @signal
+ * @signal isPreferencesOpenSignal
  * @description Signal controlling preferences dialog modal visibility.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
 export const isPreferencesOpenSignal = signal<boolean>(false);
 
 /**
- * @signal
+ * @signal preferencesMapSignal
  * @description Signal holding active reactive map of preference descriptors.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
  * @type {Signal<PreferenceMap>}
  */
 export const preferencesMapSignal = signal<PreferenceMap>({});
 
 /**
- * @signal
+ * @signal activeCategorySignal
  * @description Signal tracking active selected category tab in preferences dialog UI.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
  * @type {Signal<string>}
  */
 export const activeCategorySignal = signal<string>('general');
 
 /**
- * @signal
+ * @signal prefsUiBaseFontSize
  * @description Signal holding workbench base font size setting in points.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
  * @type {Signal<number | undefined>}
  */
 export const prefsUiBaseFontSize = signal<number | undefined>(undefined);
 
 /**
- * @signal
+ * @signal prefsUiIconSize
  * @description Signal holding toolbar icon size setting in pixels.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-10-01
+ * @since 0.1.0-dev
  * @type {Signal<number | undefined>}
  */
 export const prefsUiIconSize = signal<number | undefined>(undefined);

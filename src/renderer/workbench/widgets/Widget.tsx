@@ -97,12 +97,41 @@ export const Widget: React.FC<WidgetProps> = ({
   customContextMenuItems = [],
 }) => {
   useSignals();
+  /**
+   * @signal widgetContextMenuPositionSignal
+   * @description Reactive signal holding mouse position coordinates (x, y) for widget secondary click context menu.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-22
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<{ x: number; y: number } | null>}
+   */
   const widgetContextMenuPositionSignal = useSignal<{
     x: number;
     y: number;
   } | null>(null);
+
+  /**
+   * @signal isWidgetUndockedSignal
+   * @description Reactive signal tracking whether widget container is undocked floating.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-22
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<boolean>}
+   */
   const isWidgetUndockedSignal = useSignal<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * @signal widgetDimensionsSignal
+   * @description Reactive signal tracking current observed widget width and height bounds.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-22
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<{ width: number; height: number }>}
+   */
   const widgetDimensionsSignal = useSignal<{ width: number; height: number }>({
     width: 0,
     height: 0,

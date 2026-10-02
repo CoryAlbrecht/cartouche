@@ -95,6 +95,15 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const baseFontSizePt = prefsUiBaseFontSize.value ?? 12;
   const iconSize = prefsUiIconSize.value ?? 14;
 
+  /**
+   * @signal isBasicWidgetMinimizedSignal
+   * @description Reactive signal tracking minimize toggle state of BasicWidget container.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-22
+   * @updated 2026-10-01
+   * @since 0.1.0-dev
+   * @type {Signal<boolean>}
+   */
   const isBasicWidgetMinimizedSignal = useSignal<boolean>(false);
   const isMinimized = isBasicWidgetMinimizedSignal.value;
   const savedBoundsRef = useRef<{

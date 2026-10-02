@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-30
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  */
 
@@ -263,6 +263,10 @@ export interface ElectronAPI {
 }
 
 declare global {
+  /**
+   * @typedef {Object} Window
+   * @property {ElectronAPI} [electronAPI] - Electron safe native contextBridge API.
+   */
   interface Window {
     electronAPI?: ElectronAPI;
   }

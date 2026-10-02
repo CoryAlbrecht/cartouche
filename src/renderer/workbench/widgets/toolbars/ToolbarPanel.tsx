@@ -46,7 +46,7 @@ interface ToolbarPanelProps {
  * @description Renders ordered active toolbar widgets corresponding to a specific outer container dock zone.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-22
+ * @updated 2026-10-01
  * @since 0.1.0-dev
  * @param {ToolbarPanelProps} props - Component properties.
  * @returns {React.ReactElement} Outer toolbar container zone.
