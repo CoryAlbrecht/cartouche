@@ -4,7 +4,7 @@
  * @description Main Process persistent preferences store manager, handling disk persistence, migrations, and default UI configurations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-28
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -13,178 +13,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app } from 'electron';
 import type { PreferenceMap } from '@shared/types';
+import { defaultPreferences } from '@shared/preferences';
 
 /**
- * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-24
- * @updated 2026-09-28
- * @since 0.1.0-dev
- * @type {PreferenceMap}
+ * @description Helper function to check if a preference key string represents a window/dialog location or geometry property.
+ * @param {string} key - Preference key identifier.
+ * @returns {boolean} True if the key is a location or window bounds property.
  */
-const defaultPreferences: PreferenceMap = {
-  'general.autosave.preferences': {
-    displayName: 'Preferences Autosave Timeout',
-    value: 5,
-    defaultValue: 5,
-    minimum: 1,
-    maximum: 60,
-    step: 1,
-    unit: 's',
-    ephemeral: false,
-    hidden: false,
-    category: 'general',
-    description: 'Time in seconds to wait after editing a preference before automatically saving changes to disk.',
-    type: 'number'
-  },
-  'ui.basefont.size': {
-    displayName: 'Base Font Size',
-    value: 12,
-    defaultValue: 12,
-    minimum: 4,
-    maximum: 72,
-    step: 1,
-    unit: 'pt',
-    ephemeral: false,
-    hidden: false,
-    category: 'ui',
-    description: 'Default workbench font size across panels and controls',
-    type: 'number'
-  },
-  'ui.icon.size': {
-    displayName: 'Toolbar Icon Size',
-    value: 24,
-    defaultValue: 24,
-    minimum: 4,
-    maximum: 64,
-    step: 1,
-    unit: 'px',
-    ephemeral: false,
-    hidden: false,
-    category: 'ui',
-    description: 'Dimensions for toolbar and panel action icons',
-    type: 'number'
-  },
-  'ui.workbench.location.x': {
-    displayName: 'Workbench Window X Position',
-    value: -1,
-    defaultValue: -1,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.workbench.location.y': {
-    displayName: 'Workbench Window Y Position',
-    value: -1,
-    defaultValue: -1,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.workbench.location.width': {
-    displayName: 'Workbench Window Width',
-    value: 1400,
-    defaultValue: 1400,
-    minimum: 960,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.workbench.location.height': {
-    displayName: 'Workbench Window Height',
-    value: 900,
-    defaultValue: 900,
-    minimum: 640,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.workbench.location.maximized': {
-    displayName: 'Workbench Window Maximized State',
-    value: false,
-    defaultValue: false,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'boolean'
-  },
-  'ui.preferencesDialog.location.x': {
-    displayName: 'Preferences Dialog X Position',
-    value: -1,
-    defaultValue: -1,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.preferencesDialog.location.y': {
-    displayName: 'Preferences Dialog Y Position',
-    value: -1,
-    defaultValue: -1,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.preferencesDialog.location.width': {
-    displayName: 'Preferences Dialog Width',
-    value: 720,
-    defaultValue: 720,
-    minimum: 480,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'ui.preferencesDialog.location.height': {
-    displayName: 'Preferences Dialog Height',
-    value: 520,
-    defaultValue: 520,
-    minimum: 360,
-    ephemeral: false,
-    hidden: true,
-    category: 'ui',
-    type: 'number'
-  },
-  'rendering.simplification.threshold': {
-    displayName: 'Simplification Threshold',
-    value: 1.0,
-    defaultValue: 1.0,
-    minimum: 0.0,
-    maximum: 10.0,
-    step: 0.1,
-    ephemeral: false,
-    hidden: false,
-    category: 'rendering',
-    description: 'Tolerance threshold for rendering vector feature geometries',
-    type: 'number'
-  },
-  'plugin.debug.enable': {
-    displayName: 'Enable Plugin Debug Mode',
-    value: false,
-    defaultValue: false,
-    ephemeral: false,
-    hidden: false,
-    category: 'plugins',
-    description: 'Enable verbose logging for extension host execution and RPC channels',
-    type: 'boolean'
-  }
-};
+function isLocationKey(key: string): boolean {
+  return key.includes('.location.') || /\.(location|x|y|width|height|maximized)$/i.test(key);
+}
 
 /**
  * @class PreferencesStoreManager
  * @description Manages persistent loading, setting, disk serialization, and legacy key migrations for application preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-28
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  */
 class PreferencesStoreManager {
-  private preferences: PreferenceMap = { ...defaultPreferences };
+  private preferences: PreferenceMap = JSON.parse(JSON.stringify(defaultPreferences));
   private filePath: string | null = null;
   private isLoaded = false;
 
@@ -246,7 +95,7 @@ class PreferencesStoreManager {
    * @description Reads preferences JSON file from disk, applies schema migrations, and syncs internal preference map.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-24
-   * @updated 2026-09-28
+   * @updated 2026-10-02
    * @since 0.1.0-dev
    * @returns {void}
    */
@@ -299,13 +148,14 @@ class PreferencesStoreManager {
     for (const [key, val] of Object.entries(parsed)) {
       if (!this.preferences[key]) {
         const itemVal = typeof val === 'object' && val !== null && 'value' in val ? (val as any).value : val;
+        const isLoc = isLocationKey(key);
         this.preferences[key] = {
           displayName: key,
           value: itemVal,
           defaultValue: itemVal,
           ephemeral: false,
-          hidden: false,
-          category: 'general',
+          hidden: isLoc,
+          category: isLoc ? 'ui' : 'general',
           type: typeof itemVal === 'boolean' ? 'boolean' : typeof itemVal === 'number' ? 'number' : 'string'
         };
       }
@@ -367,7 +217,7 @@ class PreferencesStoreManager {
    * @description Updates a preference value by key name and persists changes to disk.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-24
-   * @updated 2026-09-28
+   * @updated 2026-10-02
    * @since 0.1.0-dev
    * @param {string} name - Preference key identifier.
    * @param {any} value - New value to store for the preference.
@@ -382,13 +232,14 @@ class PreferencesStoreManager {
         value
       };
     } else {
+      const isLoc = isLocationKey(key);
       this.preferences[key] = {
         displayName: key,
         value,
         defaultValue: value,
         ephemeral: false,
-        hidden: false,
-        category: 'general',
+        hidden: isLoc,
+        category: isLoc ? 'ui' : 'general',
         type: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
       };
     }

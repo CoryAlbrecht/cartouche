@@ -4,13 +4,13 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
  */
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
@@ -56,7 +56,7 @@ const categories: CategoryTab[] = [
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -72,10 +72,11 @@ export const PreferencesDialog: React.FC = () => {
    * @type {Signal<Record<string, any>>}
    */
   const draftPreferencesSignal = useSignal<Record<string, any>>({});
-  const [saveStatus, setSaveStatus] = useState<"idle" | "editing" | "saving">(
-    "idle"
-  );
-  const [isSyncIcon, setIsSyncIcon] = useState<boolean>(true);
+  const saveStatusSignal = useSignal<"idle" | "editing" | "saving">("idle");
+  const isSyncIconSignal = useSignal<boolean>(true);
+
+  const saveStatus = saveStatusSignal.value;
+  const isSyncIcon = isSyncIconSignal.value;
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const animIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -87,7 +88,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Flushes pending preference edits to Main Process store via IPC and manages save icon animation states.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-30
-   * @updated 2026-09-30
+   * @updated 2026-10-02
    * @since 0.1.0-dev
    * @returns {Promise<void>}
    */
@@ -99,17 +100,17 @@ export const PreferencesDialog: React.FC = () => {
 
     const changes = { ...pendingChangesRef.current };
     if (Object.keys(changes).length === 0) {
-      setSaveStatus("idle");
+      saveStatusSignal.value = "idle";
       return;
     }
 
-    setSaveStatus("saving");
+    saveStatusSignal.value = "saving";
 
     if (animIntervalRef.current) {
       clearInterval(animIntervalRef.current);
     }
     animIntervalRef.current = setInterval(() => {
-      setIsSyncIcon((prev) => !prev);
+      isSyncIconSignal.value = !isSyncIconSignal.value;
     }, 180);
 
     try {
@@ -126,7 +127,7 @@ export const PreferencesDialog: React.FC = () => {
         clearInterval(animIntervalRef.current);
         animIntervalRef.current = null;
       }
-      setSaveStatus("idle");
+      saveStatusSignal.value = "idle";
     }
   }, [allPrefs]);
 
@@ -138,7 +139,7 @@ export const PreferencesDialog: React.FC = () => {
       }
       draftPreferencesSignal.value = initial;
       pendingChangesRef.current = {};
-      setSaveStatus("idle");
+      saveStatusSignal.value = "idle";
     }
   }, [isPreferencesOpenSignal.value]);
 
@@ -197,7 +198,7 @@ export const PreferencesDialog: React.FC = () => {
     }
 
     pendingChangesRef.current[key] = newValue;
-    setSaveStatus("editing");
+    saveStatusSignal.value = "editing";
 
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
@@ -336,109 +337,101 @@ export const PreferencesDialog: React.FC = () => {
                 No configurable options found in this category.
               </div>
             : <div className='preferences-form-group'>
-                {categoryPrefs.map(
-                  ([key, item]: [string, PreferenceItem]) => {
-                    const currentValue =
-                      draftPreferencesSignal.value[key] !== undefined ?
-                        draftPreferencesSignal.value[key]
-                      : item.value;
+                {categoryPrefs.map(([key, item]: [string, PreferenceItem]) => {
+                  const currentValue =
+                    draftPreferencesSignal.value[key] !== undefined ?
+                      draftPreferencesSignal.value[key]
+                    : item.value;
 
-                    return (
-                      <div key={key} className='preference-item-row'>
-                        <div className='preference-item-info'>
-                          <div className='preference-item-name'>
-                            {item.displayName}
-                          </div>
-                          {item.description && (
-                            <div className='preference-item-desc'>
-                              {item.description}
-                            </div>
-                          )}
-                          <div className='preference-item-key'>{key}</div>
+                  return (
+                    <div key={key} className='preference-item-row'>
+                      <div className='preference-item-info'>
+                        <div className='preference-item-name'>
+                          {item.displayName}
                         </div>
+                        {item.description && (
+                          <div className='preference-item-desc'>
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
 
-                        <div className='preference-item-control'>
-                          {item.type === "boolean" ?
-                            <label className='preference-checkbox-label'>
-                              <input
-                                type='checkbox'
-                                checked={!!currentValue}
-                                onChange={(e) =>
-                                  handleFieldChange(key, e.target.checked)
-                                }
-                                className='preference-checkbox'
-                              />
-                              <span>
-                                {currentValue ? "Enabled" : "Disabled"}
-                              </span>
-                            </label>
-                          : item.type === "select" && item.options ?
-                            <select
-                              value={String(currentValue)}
+                      <div className='preference-item-control'>
+                        {item.type === "boolean" ?
+                          <label className='preference-checkbox-label'>
+                            <input
+                              type='checkbox'
+                              checked={!!currentValue}
                               onChange={(e) =>
-                                handleFieldChange(key, e.target.value)
+                                handleFieldChange(key, e.target.checked)
                               }
-                              className='preference-select'>
-                              {item.options.map((opt) => (
-                                <option
-                                  key={String(opt.value)}
-                                  value={String(opt.value)}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          : item.type === "number" ?
-                            <div className='preference-number-wrapper'>
-                              <input
-                                type='number'
-                                min={item.minimum}
-                                max={item.maximum}
-                                step={
-                                  item.step !== undefined ? item.step : "any"
-                                }
-                                value={
-                                  currentValue !== undefined ? currentValue
-                                  : ""
-                                }
-                                onChange={(e) => {
-                                  let val = parseFloat(e.target.value);
-                                  if (isNaN(val)) val = 0;
-                                  if (
-                                    item.minimum !== undefined
-                                    && val < item.minimum
-                                  )
-                                    val = item.minimum;
-                                  if (
-                                    item.maximum !== undefined
-                                    && val > item.maximum
-                                  )
-                                    val = item.maximum;
-                                  handleFieldChange(key, val);
-                                }}
-                                className='preference-input-number'
-                              />
-                              {item.unit && (
-                                <span className='preference-unit-badge'>
-                                  {item.unit}
-                                </span>
-                              )}
-                            </div>
-                          : <input
-                              type='text'
+                              className='preference-checkbox'
+                            />
+                            <span>{currentValue ? "Enabled" : "Disabled"}</span>
+                          </label>
+                        : item.type === "select" && item.options ?
+                          <select
+                            value={String(currentValue)}
+                            onChange={(e) =>
+                              handleFieldChange(key, e.target.value)
+                            }
+                            className='preference-select'>
+                            {item.options.map((opt) => (
+                              <option
+                                key={String(opt.value)}
+                                value={String(opt.value)}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        : item.type === "number" ?
+                          <div className='preference-number-wrapper'>
+                            <input
+                              type='number'
+                              min={item.minimum}
+                              max={item.maximum}
+                              step={item.step !== undefined ? item.step : "any"}
                               value={
                                 currentValue !== undefined ? currentValue : ""
                               }
-                              onChange={(e) =>
-                                handleFieldChange(key, e.target.value)
-                              }
-                              className='preference-input-text'
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value);
+                                if (isNaN(val)) val = 0;
+                                if (
+                                  item.minimum !== undefined
+                                  && val < item.minimum
+                                )
+                                  val = item.minimum;
+                                if (
+                                  item.maximum !== undefined
+                                  && val > item.maximum
+                                )
+                                  val = item.maximum;
+                                handleFieldChange(key, val);
+                              }}
+                              className='preference-input-number'
                             />
-                          }
-                        </div>
+                            {item.unit && (
+                              <span className='preference-unit-badge'>
+                                {item.unit}
+                              </span>
+                            )}
+                          </div>
+                        : <input
+                            type='text'
+                            value={
+                              currentValue !== undefined ? currentValue : ""
+                            }
+                            onChange={(e) =>
+                              handleFieldChange(key, e.target.value)
+                            }
+                            className='preference-input-text'
+                          />
+                        }
                       </div>
-                    );
-                  }
-                )}
+                    </div>
+                  );
+                })}
               </div>
             }
           </div>

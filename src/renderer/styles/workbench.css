@@ -45,7 +45,7 @@
 }
 
 .app-title-badge {
-  font-size: 0.9167rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.22);
@@ -58,10 +58,13 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  height: 100%;
   -webkit-app-region: no-drag;
 }
 
 .menu-dropdown-trigger {
+  display: flex;
+  align-items: center;
   padding: 3px 8px;
   cursor: pointer;
   border-radius: 3px;
@@ -77,6 +80,9 @@
 
 .menu-item-wrapper {
   position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
 }
 
 /* =========================================================================
@@ -86,7 +92,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 2px;
+  margin-top: 0;
   background-color: #ffffff;
   border: 1px solid #d1d5db;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
@@ -98,11 +104,20 @@
   color: #111827;
 }
 
+.menu-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+
 .menu-dropdown-item {
   display: flex;
   align-items: center;
   padding: 5px 12px;
-  font-size: 0.9167rem;
+  font-size: 1rem;
   color: #111827;
   cursor: pointer;
   user-select: none;
@@ -201,6 +216,15 @@
   padding: 4px 0;
   z-index: 1050;
   -webkit-app-region: no-drag;
+}
+
+.menu-submenu-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -10px;
+  width: 12px;
+  height: calc(100% + 8px);
 }
 
 .menu-spacer {
@@ -1353,21 +1377,14 @@
 }
 
 .preference-item-name {
-  font-size: 0.9583rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #1e293b;
 }
 
 .preference-item-desc {
-  font-size: 0.8333rem;
+  font-size: 0.85rem;
   color: #64748b;
-}
-
-.preference-item-key {
-  font-size: 0.75rem;
-  font-family: monospace;
-  color: #94a3b8;
-  margin-top: 2px;
 }
 
 .preference-item-control {
@@ -1566,11 +1583,12 @@
   opacity: 0.85;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
-  transition: opacity 0.12s ease, background-color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    background-color 0.12s ease;
 }
 
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
   background-color: rgba(255, 255, 255, 0.2);
 }
-

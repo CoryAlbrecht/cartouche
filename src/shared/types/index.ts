@@ -4,11 +4,14 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  */
 
 import type { Signal } from '@preact/signals-react';
+import type { KeyboardShortcutDefinition } from './shortcuts';
+
+export * from './shortcuts';
 
 /**
  * @typedef {Object} Coordinate
@@ -145,38 +148,6 @@ export interface ConsoleLogEntry {
 }
 
 /**
- * @typedef {Object} KeyCombination
- * @property {string} key - Trigger key character.
- * @property {boolean} [ctrl] - Requires Control key.
- * @property {boolean} [alt] - Requires Alt key.
- * @property {boolean} [shift] - Requires Shift key.
- * @property {boolean} [meta] - Requires Meta/Super key.
- */
-export interface KeyCombination {
-  key: string;
-  ctrl?: boolean;
-  alt?: boolean;
-  shift?: boolean;
-  meta?: boolean;
-}
-
-/**
- * @typedef {Object} KeyboardShortcutDefinition
- * @property {string} name - Unique shortcut action ID.
- * @property {string} displayName - Human-readable shortcut action name.
- * @property {string} description - Detailed description of action.
- * @property {KeyCombination} keyCombination - Modifier and key configuration.
- * @property {string} [formattedKey] - Pre-formatted display text string.
- */
-export interface KeyboardShortcutDefinition {
-  name: string;
-  displayName: string;
-  description: string;
-  keyCombination: KeyCombination;
-  formattedKey?: string;
-}
-
-/**
  * @typedef {Object} PreferenceItem
  * @template T
  * @property {string} displayName - Label shown in preferences editor.
@@ -233,6 +204,7 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {() => Promise<KeyboardShortcutDefinition[]>} getShortcuts - Fetches array of registered shortcut definitions.
  * @property {(name?: string) => Promise<PreferenceMap>} getPreferenceValue - Queries preference map item(s).
  * @property {(name: string, value: any) => Promise<PreferenceMap>} setPreferenceValue - Updates preference item value.
+ * @property {(options?: { title?: string; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
  */
 export interface ElectronAPI {
   platform: string;
@@ -260,6 +232,12 @@ export interface ElectronAPI {
   getPreferenceValue: (name?: string) => Promise<PreferenceMap>;
   /** @ipc gis:set-preference */
   setPreferenceValue: (name: string, value: any) => Promise<PreferenceMap>;
+  /** @ipc dialog:open-files */
+  openFiles?: (options?: {
+    title?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+    multiSelections?: boolean;
+  }) => Promise<string[]>;
 }
 
 declare global {

@@ -4,29 +4,14 @@
  * @description Centralized keyboard shortcut registry for the Cartouche main process, binding action handlers to key combinations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-09-30
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link ApiFunctions}
  */
 
-import type { KeyCombination, KeyboardShortcutDefinition } from '@shared/types';
+import type { KeyCombination, KeyboardShortcutDefinition, KeyboardShortcut } from '@shared/types';
+import { defaultShortcuts } from '@shared/shortcuts';
 import * as ApiFunctions from '../api/ApiFunctions';
-
-/**
- * @typedef {Object} KeyboardShortcut
- * @property {string} name - Unique string identifier for the shortcut action.
- * @property {string} displayName - Human-readable name for UI menus and dialogs.
- * @property {string} description - Detailed explanation of what the shortcut action performs.
- * @property {() => void} shortcutFunction - Executable callback function invoked when triggered.
- * @property {KeyCombination} keyCombination - Modifier keys and target key configuration.
- */
-export interface KeyboardShortcut {
-  name: string;
-  displayName: string;
-  description: string;
-  shortcutFunction: () => void;
-  keyCombination: KeyCombination;
-}
 
 /**
  * @description Formats a key combination object into a user-facing shortcut string (e.g. "Ctrl+Alt+V").
@@ -64,7 +49,7 @@ class ShortcutRegistryClass {
    * @description Initializes the shortcut registry and registers default application shortcuts.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-23
-   * @updated 2026-09-24
+   * @updated 2026-10-02
    * @since 0.1.0-dev
    */
   constructor() {
@@ -75,94 +60,31 @@ class ShortcutRegistryClass {
    * @description Registers all default application keyboard shortcuts into the active map.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-23
-   * @updated 2026-09-24
+   * @updated 2026-10-02
    * @since 0.1.0-dev
    * @private
    * @returns {void}
    */
   private registerDefaultShortcuts(): void {
-    // Master Keyboard Shortcuts Registry
-    const defaults: KeyboardShortcut[] = [
-      {
-        name: 'add_layer',
-        displayName: 'Add Layer',
-        description: 'Opens the Add Layer dialog box to attach spatial data sources',
-        shortcutFunction: () => {
-          console.log('[Shortcut] Triggering add_layer...');
-        },
-        keyCombination: { key: 'l', ctrl: true, shift: true }
-      },
-      {
-        name: 'add_vector_layer',
-        displayName: 'Add Vector Layer',
-        description: 'Adds a new vector layer from a spatial data source to the project',
-        shortcutFunction: ApiFunctions.addVectorLayer,
-        keyCombination: { key: 'v', ctrl: true, alt: true }
-      },
-      {
-        name: 'new_project',
-        displayName: 'New Project',
-        description: 'Initializes a new blank project with default canvas',
-        shortcutFunction: ApiFunctions.newProject,
-        keyCombination: { key: 'n', ctrl: true }
-      },
-      {
-        name: 'open_project',
-        displayName: 'Open Project',
-        description: 'Opens an existing Cartouche project file',
-        shortcutFunction: ApiFunctions.openProject,
-        keyCombination: { key: 'o', ctrl: true }
-      },
-      {
-        name: 'save_project',
-        displayName: 'Save Project',
-        description: 'Saves current active project state',
-        shortcutFunction: ApiFunctions.saveProject,
-        keyCombination: { key: 's', ctrl: true }
-      },
-      {
-        name: 'save_as_project',
-        displayName: 'Save Project As',
-        description: 'Saves current active project state under a new file path',
-        shortcutFunction: ApiFunctions.saveAsProject,
-        keyCombination: { key: 's', ctrl: true, shift: true }
-      },
-      {
-        name: 'undo_action',
-        displayName: 'Undo',
-        description: 'Reverts the previous editing or layer operation',
-        shortcutFunction: ApiFunctions.undoAction,
-        keyCombination: { key: 'z', ctrl: true }
-      },
-      {
-        name: 'redo_action',
-        displayName: 'Redo',
-        description: 'Re-applies the last undone operation',
-        shortcutFunction: ApiFunctions.redoAction,
-        keyCombination: { key: 'y', ctrl: true }
-      },
-      {
-        name: 'open_preferences',
-        displayName: 'Preferences',
-        description: 'Opens application preferences dialog',
-        shortcutFunction: () => {
-          console.log('[Shortcut] Triggering open_preferences...');
-        },
-        keyCombination: { key: ',', ctrl: true }
-      },
-      {
-        name: 'toggle_layers_panel',
-        displayName: 'Toggle Layers Panel',
-        description: 'Toggles visibility of the Layers panel widget in the workbench grid',
-        shortcutFunction: () => {
-          console.log('[Shortcut] Triggering toggle_layers_panel...');
-        },
-        keyCombination: { key: 'l', ctrl: true }
-      }
-    ];
+    const actionMap: Record<string, () => void> = {
+      new_project: ApiFunctions.newProject,
+      open_project: ApiFunctions.openProject,
+      save_project: ApiFunctions.saveProject,
+      save_as_project: ApiFunctions.saveAsProject,
+      undo_action: ApiFunctions.undoAction,
+      redo_action: ApiFunctions.redoAction
+    };
 
-    for (const shortcut of defaults) {
-      this.registerShortcut(shortcut);
+    for (const def of defaultShortcuts) {
+      const shortcutFunction =
+        actionMap[def.name] ||
+        (() => {
+          console.log(`[Shortcut] Triggering ${def.name}...`);
+        });
+      this.registerShortcut({
+        ...def,
+        shortcutFunction
+      });
     }
   }
 

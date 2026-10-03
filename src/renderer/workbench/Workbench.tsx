@@ -4,14 +4,14 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link PreferencesDialog}
  */
 
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   DockviewReact,
   type DockviewReadyEvent,
@@ -42,7 +42,7 @@ import {
   mdiInformationOutline,
   mdiCheck,
   mdiChevronRight,
-  mdiPlus,
+  mdiLayersPlus,
 } from "@mdi/js";
 import { widgetComponents } from "./widgetRegistry";
 import { ToolbarPanel } from "./widgets/toolbars/ToolbarPanel";
@@ -74,8 +74,8 @@ import {
   triggerMapAction,
   toggleToolbar,
   registerTogglePanelHandler,
-  toggleLayersPanelAction,
-  openAddLayerDialog,
+  toggleLayersWidgetAction,
+  openAddLayersDialog,
 } from "@renderer/state/gisSignals";
 import {
   loadShortcutsFromMain,
@@ -88,7 +88,7 @@ import {
   prefsUiBaseFontSize,
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
-import { AddLayerDialog } from "./dialogs/AddLayerDialog";
+import { AddLayersDialog } from "./dialogs/AddLayersDialog";
 import logoSvg from "../../../assets/svg/logo.svg";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
@@ -117,7 +117,7 @@ interface SavedPanelState {
  * @description Custom tab header renderer component that visually disables close action on the last remaining map viewport canvas tab.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-28
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @param {IDockviewPanelHeaderProps} props - Dockview tab header properties.
  * @returns {React.ReactElement} Tab header DOM node.
@@ -128,7 +128,8 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
     api.id.startsWith("map-viewport")
     || (api as any).panel?.view?.contentComponent === "map-viewport";
 
-  const [isLastMapTab, setIsLastMapTab] = useState(isMapTab);
+  const isLastMapTabSignal = useSignal(isMapTab);
+  const isLastMapTab = isLastMapTabSignal.value;
 
   useEffect(() => {
     const updateTabState = () => {
@@ -137,7 +138,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
           p.id.startsWith("map-viewport")
           || (p as any).view?.contentComponent === "map-viewport"
       );
-      setIsLastMapTab(isMapTab && mapPanels.length <= 1);
+      isLastMapTabSignal.value = isMapTab && mapPanels.length <= 1;
     };
 
     updateTabState();
@@ -191,14 +192,18 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @returns {React.ReactElement} Main workbench window container.
  */
 export const Workbench: React.FC = () => {
   useSignals();
 
-  const [dockviewApi, setDockviewApi] = useState<DockviewApi | null>(null);
+  const dockviewApiSignal = useSignal<DockviewApi | null>(null);
+  const dockviewApi = dockviewApiSignal.value;
+  const setDockviewApi = (api: DockviewApi | null) => {
+    dockviewApiSignal.value = api;
+  };
 
   /**
    * @signal activeMenubarMenuSignal
@@ -247,6 +252,28 @@ export const Workbench: React.FC = () => {
   };
   const setShowAboutModal = (val: boolean) => {
     isAboutModalOpenSignal.value = val;
+  };
+
+  const menuCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMenuEnter = (menuName: string) => {
+    if (menuCloseTimerRef.current) {
+      clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
+    setOpenMenu(menuName);
+    setActiveSubmenu(null);
+  };
+
+  const handleMenuLeave = () => {
+    if (menuCloseTimerRef.current) {
+      clearTimeout(menuCloseTimerRef.current);
+    }
+    menuCloseTimerRef.current = setTimeout(() => {
+      setOpenMenu(null);
+      setActiveSubmenu(null);
+      menuCloseTimerRef.current = null;
+    }, 180);
   };
 
   // Track which dockview panels are open
@@ -365,12 +392,11 @@ export const Workbench: React.FC = () => {
             case "open_preferences":
               openPreferencesDialog();
               break;
-            case "add_layer":
-            case "add_vector_layer":
-              openAddLayerDialog();
+            case "add_layers":
+              openAddLayersDialog();
               break;
-            case "toggle_layers_panel":
-              toggleLayersPanelAction();
+            case "toggle_layers_widget":
+              toggleLayersWidgetAction();
               break;
             default:
               break;
@@ -767,6 +793,10 @@ export const Workbench: React.FC = () => {
 
   // Menu action triggers
   const handleMenuClick = (action: () => void) => {
+    if (menuCloseTimerRef.current) {
+      clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
     action();
     setOpenMenu(null);
     setActiveSubmenu(null);
@@ -802,7 +832,10 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               1. PROJECT MENU
              ========================================================================= */}
-          <div className='menu-item-wrapper'>
+          <div
+            className='menu-item-wrapper'
+            onMouseEnter={() => handleMenuEnter("project")}
+            onMouseLeave={handleMenuLeave}>
             <div
               className={`menu-dropdown-trigger ${openMenu === "project" ? "active" : ""}`}
               onClick={() => {
@@ -893,7 +926,10 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               2. EDIT MENU
              ========================================================================= */}
-          <div className='menu-item-wrapper'>
+          <div
+            className='menu-item-wrapper'
+            onMouseEnter={() => handleMenuEnter("edit")}
+            onMouseLeave={handleMenuLeave}>
             <div
               className={`menu-dropdown-trigger ${openMenu === "edit" ? "active" : ""}`}
               onClick={() => {
@@ -1021,7 +1057,10 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               3. VIEW MENU
              ========================================================================= */}
-          <div className='menu-item-wrapper'>
+          <div
+            className='menu-item-wrapper'
+            onMouseEnter={() => handleMenuEnter("view")}
+            onMouseLeave={handleMenuLeave}>
             <div
               className={`menu-dropdown-trigger ${openMenu === "view" ? "active" : ""}`}
               onClick={() => {
@@ -1035,6 +1074,7 @@ export const Workbench: React.FC = () => {
                 {/* * New Map View */}
                 <div
                   className='menu-dropdown-item'
+                  onMouseEnter={() => setActiveSubmenu(null)}
                   onClick={() => {
                     handleMenuClick(() => {
                       if (!dockviewApi) return;
@@ -1061,6 +1101,7 @@ export const Workbench: React.FC = () => {
                 {/* * Zoom In */}
                 <div
                   className='menu-dropdown-item'
+                  onMouseEnter={() => setActiveSubmenu(null)}
                   onClick={() =>
                     handleMenuClick(() => triggerMapAction("zoomIn"))
                   }>
@@ -1074,6 +1115,7 @@ export const Workbench: React.FC = () => {
                 {/* * Zoom Out */}
                 <div
                   className='menu-dropdown-item'
+                  onMouseEnter={() => setActiveSubmenu(null)}
                   onClick={() =>
                     handleMenuClick(() => triggerMapAction("zoomOut"))
                   }>
@@ -1090,6 +1132,7 @@ export const Workbench: React.FC = () => {
                 <div
                   className='menu-submenu-wrapper'
                   onMouseEnter={() => setActiveSubmenu("panels")}
+                  onMouseLeave={() => setActiveSubmenu(null)}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveSubmenu(
@@ -1149,8 +1192,7 @@ export const Workbench: React.FC = () => {
                         </span>
                         <span className='menu-item-label'>Layers</span>
                         <span className='menu-shortcut-slot'>
-                          {getShortcutFormattedKey("toggle_layers_panel")
-                            || "Ctrl+L"}
+                          {getShortcutFormattedKey("toggle_layers_widget")}
                         </span>
                       </div>
                     </div>
@@ -1161,6 +1203,7 @@ export const Workbench: React.FC = () => {
                 <div
                   className='menu-submenu-wrapper'
                   onMouseEnter={() => setActiveSubmenu("toolbars")}
+                  onMouseLeave={() => setActiveSubmenu(null)}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveSubmenu(
@@ -1179,38 +1222,6 @@ export const Workbench: React.FC = () => {
 
                   {activeSubmenu === "toolbars" && (
                     <div className='menu-submenu-dropdown'>
-                      {/* ? Digitizing */}
-                      <div
-                        className='menu-dropdown-item'
-                        onClick={() => {
-                          toggleToolbar("digitizing");
-                          setOpenMenu(null);
-                          setActiveSubmenu(null);
-                        }}>
-                        <span className='menu-item-check-slot'>
-                          {visibleToolbars.digitizing && (
-                            <Icon path={mdiCheck} size='14px' />
-                          )}
-                        </span>
-                        <span className='menu-item-label'>Digitizing</span>
-                      </div>
-
-                      {/* ? Snapping */}
-                      <div
-                        className='menu-dropdown-item'
-                        onClick={() => {
-                          toggleToolbar("snapping");
-                          setOpenMenu(null);
-                          setActiveSubmenu(null);
-                        }}>
-                        <span className='menu-item-check-slot'>
-                          {visibleToolbars.snapping && (
-                            <Icon path={mdiCheck} size='14px' />
-                          )}
-                        </span>
-                        <span className='menu-item-label'>Snapping</span>
-                      </div>
-
                       {/* ? Basic */}
                       <div
                         className='menu-dropdown-item'
@@ -1242,6 +1253,38 @@ export const Workbench: React.FC = () => {
                         </span>
                         <span className='menu-item-label'>Layer</span>
                       </div>
+
+                      {/* ? Digitizing */}
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={() => {
+                          toggleToolbar("digitizing");
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}>
+                        <span className='menu-item-check-slot'>
+                          {visibleToolbars.digitizing && (
+                            <Icon path={mdiCheck} size='14px' />
+                          )}
+                        </span>
+                        <span className='menu-item-label'>Digitizing</span>
+                      </div>
+
+                      {/* ? Snapping */}
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={() => {
+                          toggleToolbar("snapping");
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}>
+                        <span className='menu-item-check-slot'>
+                          {visibleToolbars.snapping && (
+                            <Icon path={mdiCheck} size='14px' />
+                          )}
+                        </span>
+                        <span className='menu-item-label'>Snapping</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1251,6 +1294,7 @@ export const Workbench: React.FC = () => {
                 {/* Reset docking to default */}
                 <div
                   className='menu-dropdown-item'
+                  onMouseEnter={() => setActiveSubmenu(null)}
                   onClick={() => {
                     handleMenuClick(() => {
                       if (dockviewApi) loadDefaultLayout(dockviewApi);
@@ -1269,7 +1313,10 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               4. LAYERS MENU
              ========================================================================= */}
-          <div className='menu-item-wrapper'>
+          <div
+            className='menu-item-wrapper'
+            onMouseEnter={() => handleMenuEnter("layers")}
+            onMouseLeave={handleMenuLeave}>
             <div
               className={`menu-dropdown-trigger ${openMenu === "layers" ? "active" : ""}`}
               onClick={() => {
@@ -1280,21 +1327,21 @@ export const Workbench: React.FC = () => {
             </div>
             {openMenu === "layers" && (
               <div className='menu-dropdown'>
-                {/* * Add... $$ */}
+                {/* * Add Layers... $$ */}
                 <div
                   className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("add_layer");
-                      openAddLayerDialog();
+                      window.electronAPI?.executeShortcut("add_layers");
+                      openAddLayersDialog();
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiPlus} size='14px' />
+                    <Icon path={mdiLayersPlus} size='14px' />
                   </span>
-                  <span className='menu-item-label'>Add...</span>
+                  <span className='menu-item-label'>Add Layers...</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("add_layer")}
+                    {getShortcutFormattedKey("add_layers")}
                   </span>
                 </div>
 
@@ -1323,7 +1370,10 @@ export const Workbench: React.FC = () => {
           {/* =========================================================================
               5. HELP MENU
              ========================================================================= */}
-          <div className='menu-item-wrapper'>
+          <div
+            className='menu-item-wrapper'
+            onMouseEnter={() => handleMenuEnter("help")}
+            onMouseLeave={handleMenuLeave}>
             <div
               className={`menu-dropdown-trigger ${openMenu === "help" ? "active" : ""}`}
               onClick={() => {
@@ -1532,8 +1582,8 @@ export const Workbench: React.FC = () => {
       {/* Preferences Modal Dialog */}
       <PreferencesDialog />
 
-      {/* Add Layer Non-Modal Dialog */}
-      <AddLayerDialog />
+      {/* Add Layers Non-Modal Dialog */}
+      <AddLayersDialog />
     </div>
   );
 };

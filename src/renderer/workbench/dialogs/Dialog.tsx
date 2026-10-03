@@ -4,11 +4,11 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
- * @see {@link AddLayerDialog}
+ * @see {@link AddLayersDialog}
  */
 
 import React, { useEffect } from "react";

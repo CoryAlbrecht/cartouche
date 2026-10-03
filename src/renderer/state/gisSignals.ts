@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -13,6 +13,7 @@
 
 import { signal, computed } from '@preact/signals-react';
 import type { CRS, GisLayer, GisLayerGroup, GisFeature, ConsoleLogEntry, BoundingBox } from '@shared/types';
+import { getDefaultLayerStyle } from '@shared/styles/defaultLayerStyles';
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
@@ -651,26 +652,7 @@ export function toggleProjectVisibility() {
  * @returns {Record<string, any>} Flat style object definition.
  */
 export function getDefaultOlFlatStyle(geometryKind?: string): Record<string, any> {
-  const gKind = (geometryKind || 'Point').toLowerCase();
-  if (gKind.includes('polygon')) {
-    return {
-      'fill-color': '#0000FF',
-      'stroke-color': '#00007F',
-      'stroke-width': 2
-    };
-  }
-  if (gKind.includes('line')) {
-    return {
-      'stroke-color': '#007F00',
-      'stroke-width': 2
-    };
-  }
-  return {
-    'circle-radius': 8,
-    'circle-fill-color': '#7F0000',
-    'circle-stroke-color': '#FF0000',
-    'circle-stroke-width': 1
-  };
+  return getDefaultLayerStyle(geometryKind);
 }
 
 /**
@@ -924,53 +906,53 @@ export function registerTogglePanelHandler(handler: TogglePanelFn): void {
 }
 
 /**
- * @description Triggers showing or hiding the Layers panel widget in the Dockview grid.
+ * @description Triggers showing or hiding the Layers widget in the Dockview grid.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-30
- * @updated 2026-09-30
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function toggleLayersPanelAction(): void {
+export function toggleLayersWidgetAction(): void {
   if (togglePanelHandler) {
     togglePanelHandler('layer-tree', 'layer-tree', 'Layers', 'left');
   }
 }
 
 /**
- * @signal isAddLayerOpenSignal
- * @description Boolean signal controlling open state visibility of non-modal Add Layer dialog.
+ * @signal isAddLayersOpenSignal
+ * @description Boolean signal controlling open state visibility of non-modal Add Layers dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
-export const isAddLayerOpenSignal = signal<boolean>(false);
+export const isAddLayersOpenSignal = signal<boolean>(false);
 
 /**
- * @description Opens non-modal Add Layer dialog box.
+ * @description Opens non-modal Add Layers dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function openAddLayerDialog(): void {
-  isAddLayerOpenSignal.value = true;
-  addConsoleLog('info', 'Add Layer dialog opened.', 'Layers');
+export function openAddLayersDialog(): void {
+  isAddLayersOpenSignal.value = true;
+  addConsoleLog('info', 'Add Layers dialog opened.', 'Layers');
 }
 
 /**
- * @description Closes non-modal Add Layer dialog box.
+ * @description Closes non-modal Add Layers dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function closeAddLayerDialog(): void {
-  isAddLayerOpenSignal.value = false;
-  addConsoleLog('info', 'Add Layer dialog closed.', 'Layers');
+export function closeAddLayersDialog(): void {
+  isAddLayersOpenSignal.value = false;
+  addConsoleLog('info', 'Add Layers dialog closed.', 'Layers');
 }
 

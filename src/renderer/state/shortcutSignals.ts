@@ -42,7 +42,7 @@ export const shortcutsMapSignal = computed(() => {
 });
 
 /**
- * @description Returns formatted shortcut string for UI menu slots by shortcut name (e.g. "add_vector_layer" -> "Ctrl+Alt+V").
+ * @description Returns formatted shortcut string for UI menu slots by shortcut name (e.g. "add_layers" -> "Ctrl+L").
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
  * @updated 2026-09-23

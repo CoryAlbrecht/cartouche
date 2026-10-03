@@ -4,16 +4,17 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  */
 
-import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
+import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,7 +98,7 @@ if (process.platform === 'linux') {
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-02
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -208,10 +209,10 @@ function createWindow() {
       const savedWidth = prefs[`${locationKeyPrefix}.width`]?.value;
       const savedHeight = prefs[`${locationKeyPrefix}.height`]?.value;
 
-      const defaultW = frameName === 'addLayerWindow' ? 640 : (frameName === 'preferencesWindow' ? 720 : 640);
-      const defaultH = frameName === 'addLayerWindow' ? 480 : (frameName === 'preferencesWindow' ? 520 : 480);
-      const minW = frameName === 'addLayerWindow' ? 400 : 360;
-      const minH = frameName === 'addLayerWindow' ? 300 : 280;
+      const defaultW = frameName === 'addLayersWindow' ? 640 : (frameName === 'preferencesWindow' ? 720 : 640);
+      const defaultH = frameName === 'addLayersWindow' ? 480 : (frameName === 'preferencesWindow' ? 520 : 480);
+      const minW = frameName === 'addLayersWindow' ? 400 : 360;
+      const minH = frameName === 'addLayersWindow' ? 300 : 280;
 
       const width = typeof savedWidth === 'number' && savedWidth >= minW ? Math.floor(savedWidth) : defaultW;
       const height = typeof savedHeight === 'number' && savedHeight >= minH ? Math.floor(savedHeight) : defaultH;
@@ -325,6 +326,25 @@ app.whenReady().then(() => {
     return mainWindow ? mainWindow.isMaximized() : false;
   });
 
+  // File System Dialog IPC Handlers
+  ipcMain?.handle('dialog:open-files', async (_event, options?: { title?: string; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
+    const properties: Array<'openFile' | 'multiSelections'> = ['openFile'];
+    if (options?.multiSelections !== false) {
+      properties.push('multiSelections');
+    }
+    const dialogOptions: Electron.OpenDialogOptions = {
+      title: options?.title || 'Select Vector Data Files',
+      properties,
+      filters: options?.filters || [
+        { name: 'Any (*.*)', extensions: ['*'] },
+        { name: 'FlatGeobuf (*.fgb)', extensions: ['fgb'] }
+      ]
+    };
+    const res = mainWindow ? await dialog.showOpenDialog(mainWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions);
+    if (res.canceled) return [];
+    return res.filePaths;
+  });
+
   // Keyboard Shortcuts System IPC Handlers
   ipcMain?.handle('gis:execute-shortcut', async (_event, shortcutName: string) => {
     const { ShortcutRegistry } = await import('./shortcuts/ShortcutRegistry');
@@ -381,29 +401,10 @@ app.whenReady().then(() => {
   });
 
   ipcMain?.handle('gis:fetch-layer-flatgeobuf', async (_event, layerId: string) => {
-    // Return default style per user specification
-    const defaultStyles: Record<string, any> = {
-      Polygon: {
-        'fill-color': '#0000FF',
-        'stroke-color': '#00007F',
-        'stroke-width': 2
-      },
-      LineString: {
-        'stroke-color': '#007F00',
-        'stroke-width': 2
-      },
-      Point: {
-        'circle-radius': 8,
-        'circle-fill-color': '#7F0000',
-        'circle-stroke-color': '#FF0000',
-        'circle-stroke-width': 1
-      }
-    };
-
     return {
       layerId,
       buffer: new ArrayBuffer(0),
-      flatStyle: defaultStyles.Polygon
+      flatStyle: defaultLayerStyles.Polygon
     };
   });
 
