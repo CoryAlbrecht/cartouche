@@ -21,7 +21,7 @@
   background-color: var(--cartouche-menubar-bg);
   color: var(--cartouche-menubar-fg);
   border-bottom: 1px solid var(--cartouche-menubar-border);
-  height: 32px;
+  height: 2em;
   padding: 0 10px;
   -webkit-app-region: drag;
   z-index: 100;
@@ -105,7 +105,7 @@
 }
 
 .menu-dropdown::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -8px;
   left: 0;
@@ -219,7 +219,7 @@
 }
 
 .menu-submenu-dropdown::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -4px;
   left: -10px;
@@ -380,8 +380,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 2em;
+  height: 2em;
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
@@ -481,7 +481,7 @@
 
 /* Light Clean Dockview Overrides */
 .dockview-theme-light {
-  --dockview-tab-height: 32px;
+  --dockview-tab-height: 2em;
   --dockview-activegroup-visibleindicator-color: #1b446c;
 }
 
@@ -1042,7 +1042,7 @@
   align-items: center;
   background-color: var(--cartouche-menubar-bg);
   color: #ffffff;
-  height: 24px;
+  height: 1.5rem;
   padding: 0 10px;
   font-size: 0.875rem;
   user-select: none;
@@ -1065,7 +1065,7 @@
 
 .statusbar-separator {
   width: 1px;
-  height: 14px;
+  height: 0.875rem;
   background-color: rgba(255, 255, 255, 0.25);
   margin: 0 4px;
 }
@@ -1536,8 +1536,8 @@
   justify-content: space-between;
   background-color: var(--cartouche-menubar-bg, #1b446c);
   color: var(--cartouche-menubar-fg, #ffffff);
-  height: 32px;
-  min-height: 32px;
+  height: 2em;
+  min-height: 2em;
   padding: 0 10px;
   font-weight: 500;
   font-size: 0.9167rem;

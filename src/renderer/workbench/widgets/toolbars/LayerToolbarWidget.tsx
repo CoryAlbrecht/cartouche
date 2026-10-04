@@ -4,7 +4,7 @@
  * @description Toolbar widget providing layer management panel toggles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -12,7 +12,8 @@
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
-import { mdiLayersOutline, mdiLayersPlus } from "@mdi/js";
+import { mdiLayersOutline } from "@mdi/js";
+import { LayerPlusOutlineIcon } from "@shared/icons";
 import {
   type ToolbarZone,
   openDockPanelsSignal,
@@ -35,7 +36,7 @@ export interface LayerToolbarWidgetProps {
  * @description Subclasses ToolbarWidget to render layer management and visibility toggle controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @param {LayerToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} LayerToolbarWidget instance.
@@ -68,7 +69,7 @@ export const LayerToolbarWidget: React.FC<LayerToolbarWidgetProps> = ({
         title={addLayersTitle}
         onClick={openAddLayersDialog}
         aria-label='Add Layers'>
-        <Icon path={mdiLayersPlus} size='24px' />
+        <LayerPlusOutlineIcon size={24} />
       </button>
     </ToolbarWidget>
   );

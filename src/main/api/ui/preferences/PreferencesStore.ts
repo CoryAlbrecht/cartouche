@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app } from 'electron';
 import type { PreferenceMap } from '@shared/types';
-import { defaultPreferences } from '@shared/preferences';
+import { BUILTIN_PREFERENCES } from '@shared/preferences';
 
 /**
  * @description Helper function to check if a preference key string represents a window/dialog location or geometry property.
@@ -33,7 +33,7 @@ function isLocationKey(key: string): boolean {
  * @since 0.1.0-dev
  */
 class PreferencesStoreManager {
-  private preferences: PreferenceMap = JSON.parse(JSON.stringify(defaultPreferences));
+  private preferences: PreferenceMap = JSON.parse(JSON.stringify(BUILTIN_PREFERENCES));
   private filePath: string | null = null;
   private isLoaded = false;
 

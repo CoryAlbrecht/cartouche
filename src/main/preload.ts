@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { ElectronAPI } from '@shared/types';
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -53,8 +53,34 @@ const electronAPI: ElectronAPI = {
   getPreferenceValue: (name?: string) => ipcRenderer.invoke('gis:get-preference', name),
   /** @ipc gis:set-preference */
   setPreferenceValue: (name: string, value: any) => ipcRenderer.invoke('gis:set-preference', name, value),
+  /** @ipc gis:get-filetypes */
+  getFileTypes: () => ipcRenderer.invoke('gis:get-filetypes'),
+  /** @ipc gis:identify-file */
+  identifyFile: (filePath: string) => ipcRenderer.invoke('gis:identify-file', filePath),
   /** @ipc dialog:open-files */
-  openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options)
+  openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  /** @ipc gis:open-project */
+  openProject: (filePath?: string) => ipcRenderer.invoke('gis:open-project', filePath),
+  /** @ipc gis:get-current-project */
+  getCurrentProject: () => ipcRenderer.invoke('gis:get-current-project'),
+  /** @ipc project:loaded */
+  onProjectLoaded: (callback: (project: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, project: any) => callback(project);
+    ipcRenderer.on('project:loaded', handler);
+    return () => {
+      ipcRenderer.removeListener('project:loaded', handler);
+    };
+  },
+  /** @ipc gis:get-i18n-state */
+  getI18nState: () => ipcRenderer.invoke('gis:get-i18n-state'),
+  /** @ipc i18n:state-changed */
+  onI18nStateChanged: (callback: (state: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: any) => callback(state);
+    ipcRenderer.on('i18n:state-changed', handler);
+    return () => {
+      ipcRenderer.removeListener('i18n:state-changed', handler);
+    };
+  }
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

@@ -12,7 +12,17 @@
  */
 
 import { signal, computed } from '@preact/signals-react';
-import type { CRS, GisLayer, GisLayerGroup, GisFeature, ConsoleLogEntry, BoundingBox } from '@shared/types';
+import type {
+  CRS,
+  GisLayer,
+  GisLayerGroup,
+  GisFeature,
+  ConsoleLogEntry,
+  BoundingBox,
+  ProjectModel,
+  ProjectLayerItem,
+  ProjectGroupItem
+} from '@shared/types';
 import { getDefaultLayerStyle } from '@shared/styles/defaultLayerStyles';
 
 // Clean initial state (no hardcoded project or default layers)
@@ -21,6 +31,17 @@ const initialFeatures: GisFeature[] = [];
 const initialGroups: GisLayerGroup[] = [];
 
 // Project state signals
+/**
+ * @signal currentProjectSignal
+ * @description Signal holding the active in-memory ProjectModel instance or null if no project loaded.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-03
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectModel | null>}
+ */
+export const currentProjectSignal = signal<ProjectModel | null>(null);
+
 /**
  * @signal hasProjectSignal
  * @description Signal indicating whether an active project file is loaded in the Workbench.
@@ -739,15 +760,115 @@ export function toggleLayerGroupExpanded(groupId: string) {
 }
 
 /**
- * @description Action handler requesting project file open flow.
+ * @description Converts a hierarchical ProjectModel layer and group tree into flat GisLayerGroup[] and GisLayer[] arrays.
  * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
+ * @date 2026-10-03
+ * @updated 2026-10-03
  * @since 0.1.0-dev
+ * @param {ProjectModel} project - The source ProjectModel to convert.
+ * @returns {{ groups: GisLayerGroup[]; layers: GisLayer[] }} Flattened groups and layers arrays.
+ */
+export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayerGroup[]; layers: GisLayer[] } {
+  const groups: GisLayerGroup[] = [];
+  const layers: GisLayer[] = [];
+
+  function walkItems(items: Array<ProjectLayerItem | ProjectGroupItem>, parentId: string | null = null) {
+    for (const item of items) {
+      if ('children' in item) {
+        // It's a ProjectGroupItem
+        const groupId = item.id || `group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        groups.push({
+          id: groupId,
+          name: item.name,
+          visible: item.visible !== false,
+          expanded: item.expanded !== false,
+          parentId
+        });
+        walkItems(item.children, groupId);
+      } else {
+        // It's a ProjectLayerItem
+        const baseFileName = item.source ? item.source.split(/[/\\]/).pop() || item.source : undefined;
+        layers.push({
+          id: item.id,
+          name: item.name,
+          baseFileName,
+          dataName: item.source,
+          groupId: parentId,
+          kind: 'vector',
+          geometryKind: 'Polygon',
+          visible: item.visible !== false,
+          opacity: item.opacity ?? 1.0,
+          color: '#2563eb',
+          featureCount: 0
+        });
+      }
+    }
+  }
+
+  if (project.layers && Array.isArray(project.layers)) {
+    walkItems(project.layers, null);
+  }
+  return { groups, layers };
+}
+
+/**
+ * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-03
+ * @since 0.1.0-dev
+ * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
  */
-export function openProjectAction() {
+export function loadProjectIntoSignals(project: ProjectModel): void {
+  const { groups, layers } = projectToGisHierarchy(project);
+  currentProjectSignal.value = project;
+  hasProjectSignal.value = true;
+  projectNameSignal.value = project.metadata?.title || 'Untitled Project';
+  projectVisibleSignal.value = true;
+  layerGroupsSignal.value = groups;
+  layersSignal.value = layers;
+  isDirtySignal.value = false;
+  if (layers.length > 0) {
+    activeLayerIdSignal.value = layers[0].id;
+  }
+  addConsoleLog('info', `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`, 'Project');
+}
+
+/**
+ * @description Action handler requesting project file open flow, opening native file picker for 'project' category.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-03
+ * @since 0.1.0-dev
+ * @returns {Promise<void>}
+ */
+export async function openProjectAction(): Promise<void> {
   addConsoleLog('info', 'Open project requested.', 'Project');
+  try {
+    if (!window.electronAPI?.openFiles) {
+      console.warn('[gisSignals] electronAPI.openFiles unavailable');
+      return;
+    }
+    const filePaths = await window.electronAPI.openFiles({
+      title: 'Open Cartouche Project',
+      category: 'project',
+      multiSelections: false
+    });
+    if (!filePaths || filePaths.length === 0) {
+      return;
+    }
+    const chosenPath = filePaths[0];
+    if (window.electronAPI?.openProject) {
+      const project = await window.electronAPI.openProject(chosenPath);
+      if (project) {
+        loadProjectIntoSignals(project);
+      }
+    }
+  } catch (err) {
+    console.error('[gisSignals] Failed to open project:', err);
+    addConsoleLog('error', `Failed to open project: ${err}`, 'Project');
+  }
 }
 
 /**

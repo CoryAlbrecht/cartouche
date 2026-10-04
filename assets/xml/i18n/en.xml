@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ci18n:localization xmlns="http://maps.hanfastolfe.com/cartouche/schemas/i18n/1.0"
+    xmlns:ci18n="http://maps.hanfastolfe.com/cartouche/schemas/i18n/1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maps.hanfastolfe.com/cartouche/schemas/i18n/1.0 ../schemas/i18n.xsd"
+    locale="en">
+    <string name="new_project">New Project...</string>
+    <string name="open_project">Open Project...</string>
+    <string name="save_project">Save Project</string>
+    <string name="save_project_as">Save Project As...</string>
+    <string name="add_layers">Add Layers...</string>
+    <string name="quit">Quit</string>
+    <string name="hello_name">Hello {name}</string>
+    <string name="shortcut_save">Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.</string>
+</ci18n:localization>

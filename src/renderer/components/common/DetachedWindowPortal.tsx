@@ -112,9 +112,25 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
 
     syncStyles();
 
+    // Sync inline styles on the document root (e.g., CSS variables like base font size)
+    const syncRootStyles = () => {
+      if (!childWindow || childWindow.closed) return;
+      childWindow.document.documentElement.style.cssText =
+        document.documentElement.style.cssText;
+    };
+
+    syncRootStyles();
+
     // Observe head changes for dynamic dev styles (e.g., Vite HMR)
     const observer = new MutationObserver(() => syncStyles());
     observer.observe(document.head, { childList: true, subtree: true });
+
+    // Observe root element style attribute for CSS variable updates
+    const rootObserver = new MutationObserver(() => syncRootStyles());
+    rootObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["style"],
+    });
 
     // Sync window closing from OS window close button
     const handleUnload = () => {
@@ -128,11 +144,16 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
 
     return () => {
       observer.disconnect();
+      rootObserver.disconnect();
       childWindow?.removeEventListener("unload", handleUnload);
 
       // Defer closing window briefly so React StrictMode DEV double-invoke can cancel it if component remains mounted
       closeTimerRef.current = setTimeout(() => {
-        if (!isClosingRef.current && childWindowRef.current && !childWindowRef.current.closed) {
+        if (
+          !isClosingRef.current
+          && childWindowRef.current
+          && !childWindowRef.current.closed
+        ) {
           isClosingRef.current = true;
           childWindowRef.current.close();
           childWindowRef.current = null;

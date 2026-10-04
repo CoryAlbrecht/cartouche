@@ -52,7 +52,7 @@
   --dockview-theme-splitter-color: transparent;
   --dockview-theme-active-border-color: #1b446c;
 
-  --dockview-tab-height: 32px;
+  --dockview-tab-height: 2em;
   --dockview-tab-font-size: 0.9rem;
 }
 

@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -15,12 +15,12 @@
 import React from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/MdiIcon";
+import { LayerPlusOutlineIcon } from "@shared/icons";
 import {
   mdiVectorPolygon,
   mdiImageOutline,
   mdiDatabaseOutline,
   mdiFolderOpenOutline,
-  mdiLayersPlus,
   mdiClose,
 } from "@mdi/js";
 import {
@@ -62,7 +62,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -120,10 +120,7 @@ export const AddLayersDialog: React.FC = () => {
       if (window.electronAPI?.openFiles) {
         const selected = await window.electronAPI.openFiles({
           title: "Select Vector Data Files",
-          filters: [
-            { name: "Any (*.*)", extensions: ["*"] },
-            { name: "FlatGeobuf (*.fgb)", extensions: ["fgb"] },
-          ],
+          category: "vector",
           multiSelections: true,
         });
         if (selected && selected.length > 0) {
@@ -146,6 +143,7 @@ export const AddLayersDialog: React.FC = () => {
       if (window.electronAPI?.openFiles) {
         const selected = await window.electronAPI.openFiles({
           title: `Select ${activeTab.toUpperCase()} Data File`,
+          category: activeTab === "raster" ? "raster" : undefined,
           multiSelections: false,
         });
         if (selected && selected.length > 0) {
@@ -196,7 +194,7 @@ export const AddLayersDialog: React.FC = () => {
     <Dialog
       name='addLayersWindow'
       title='Add Layers'
-      icon={mdiLayersPlus}
+      icon={<LayerPlusOutlineIcon size={18} />}
       isOpen={isOpen}
       onClose={closeAddLayersDialog}
       defaultWidth={620}
@@ -234,7 +232,7 @@ export const AddLayersDialog: React.FC = () => {
               fontSize: "0.875rem",
               color: "#ffffff",
             }}>
-            <Icon path={mdiLayersPlus} size='16px' />
+            <LayerPlusOutlineIcon size={16} />
             <span>Add Layers</span>
           </button>
         </>
@@ -280,7 +278,7 @@ export const AddLayersDialog: React.FC = () => {
                   userSelect: "none",
                   transition: "color 0.15s ease",
                 }}>
-                <Icon path={tab.icon} size='16px' />
+                <Icon path={tab.icon} size='1em' />
                 <span>{tab.label}</span>
               </div>
             );
@@ -379,7 +377,7 @@ export const AddLayersDialog: React.FC = () => {
                             height: "14px",
                             lineHeight: 1,
                           }}>
-                          <Icon path={mdiClose} size='12px' />
+                          <Icon path={mdiClose} size='0.75em' />
                         </button>
                       </span>
                     );
@@ -463,7 +461,7 @@ export const AddLayersDialog: React.FC = () => {
                   color: "#334155",
                   height: "38px",
                 }}>
-                <Icon path={mdiFolderOpenOutline} size='16px' />
+                <Icon path={mdiFolderOpenOutline} size='1em' />
                 <span>Browse...</span>
               </button>
             </div>

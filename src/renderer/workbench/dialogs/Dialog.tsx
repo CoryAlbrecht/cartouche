@@ -4,7 +4,7 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
@@ -21,7 +21,7 @@ import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindow
  * @typedef {Object} DialogProps
  * @property {string} name - Unique frame name identifier for the detached window.
  * @property {string} title - Title text displayed in OS window frame and dialog header bar.
- * @property {string} [icon] - Optional MDI SVG path string for title bar branding icon.
+ * @property {string | React.ReactNode} [icon] - Optional MDI SVG path string or custom icon node for title bar branding icon.
  * @property {boolean} isOpen - Signal or boolean flag controlling dialog window visibility.
  * @property {() => void} onClose - Callback invoked when closing dialog or pressing Escape.
  * @property {number} [defaultWidth=640] - Default window width in pixels.
@@ -37,7 +37,7 @@ import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindow
 export interface DialogProps {
   name: string;
   title: string;
-  icon?: string;
+  icon?: string | React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
   defaultWidth?: number;
@@ -56,7 +56,7 @@ export interface DialogProps {
  * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, and Escape key dismissal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-01
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @param {DialogProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered detached portal dialog window or null if closed.
@@ -113,7 +113,7 @@ export const Dialog: React.FC<DialogProps> = ({
           height: "100%",
           backgroundColor: "#ffffff",
           color: "#000000",
-          fontSize: "12pt",
+          fontSize: "1rem",
           fontFamily: "system-ui, -apple-system, sans-serif",
           overflow: "hidden",
           boxSizing: "border-box",
@@ -121,7 +121,10 @@ export const Dialog: React.FC<DialogProps> = ({
         {/* Standardized Frameless Dialog Header Bar */}
         <div className='cartouche-dialog-header'>
           <div className='cartouche-dialog-title-container'>
-            {icon && <Icon path={icon} size='18px' style={{ flexShrink: 0 }} />}
+            {icon
+              && (typeof icon === "string" ?
+                <Icon path={icon} size='1.125em' style={{ flexShrink: 0 }} />
+              : icon)}
             <span className='cartouche-dialog-title'>{title}</span>
           </div>
 
@@ -132,7 +135,7 @@ export const Dialog: React.FC<DialogProps> = ({
               className='cartouche-dialog-close-btn'
               onClick={() => onClose()}
               title='Close (Esc)'>
-              <Icon path={mdiClose} size='18px' />
+              <Icon path={mdiClose} size='1.125em' />
             </button>
           </div>
         </div>
@@ -159,8 +162,8 @@ export const Dialog: React.FC<DialogProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
-              gap: "10px",
-              padding: "10px 16px",
+              gap: "0.625rem",
+              padding: "0.625rem 1rem",
               backgroundColor: "#f8fafc",
               borderTop: "1px solid #cbd5e1",
               flexShrink: 0,

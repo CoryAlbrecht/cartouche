@@ -19,7 +19,7 @@ import type { ShortcutDefinition } from '../types';
  * @since 0.1.0-dev
  * @type {ShortcutDefinition[]}
  */
-export const defaultShortcuts: ShortcutDefinition[] = [
+export const BUILTIN_SHORTCUTS: ShortcutDefinition[] = [
   {
     name: 'add_layers',
     displayName: 'Add Layers',

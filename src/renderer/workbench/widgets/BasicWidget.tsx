@@ -154,11 +154,11 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const activeMaxWidth =
     isMinimized ? "100%" : savedBoundsRef.current.maxWidth || maxWidth;
   const activeMaxHeight =
-    isMinimized ? "30px" : savedBoundsRef.current.maxHeight || maxHeight;
+    isMinimized ? "1.875em" : savedBoundsRef.current.maxHeight || maxHeight;
 
   const canClose = !!(onClose || effectivePanelApi);
 
-  // Dynamic minimum width floor calculation: border + padding + button controls + 4rem
+  // Dynamic minimum width floor calculation: border + padding + button controls + title margin + buffer + 4rem
   const borderPx = 2 * parsePxValue(border, 1);
   const paddingPx = 2 * parsePxValue(padding, 4);
 
@@ -166,8 +166,14 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const buttonPaddingPx = 4; // 2px left + 2px right per control button
   const buttonGapPx = buttonCount > 1 ? 4 : 0;
   const headerPaddingPx = 16; // 8px left + 8px right inner header padding
+  const titleMarginPx = 8; // 8px right margin on the title span
+  const safetyBufferPx = 16; // Extra buffer to prevent cutoff from panel borders or scrollbars
   const buttonControlsWidth =
-    buttonCount * (iconSize + buttonPaddingPx) + buttonGapPx + headerPaddingPx;
+    buttonCount * (iconSize + buttonPaddingPx)
+    + buttonGapPx
+    + headerPaddingPx
+    + titleMarginPx
+    + safetyBufferPx;
 
   // 4rem in pixels (base font size in pt converted to px where 1pt = 4/3 px)
   const baseFontSizePx = baseFontSizePt * (4 / 3);
@@ -182,13 +188,13 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   );
 
   useEffect(() => {
-    if (
-      effectivePanelApi
-      && typeof (effectivePanelApi as any).setConstraints === "function"
-    ) {
-      (effectivePanelApi as any).setConstraints({
-        minimumWidth: effectiveMinWidth,
-      });
+    if (effectivePanelApi) {
+      // DockviewPanelApi's setConstraints doesn't dynamically update the panel's minimum width due to a limitation in dockview-core.
+      // We must apply the constraints directly to the parent DockviewGroupPanel's API instead.
+      const groupApi = (effectivePanelApi as any).group?.api;
+      if (groupApi && typeof groupApi.setConstraints === "function") {
+        groupApi.setConstraints({ minimumWidth: effectiveMinWidth });
+      }
     }
   }, [effectivePanelApi, effectiveMinWidth]);
 
@@ -202,7 +208,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       location={location}
       minWidth={effectiveMinWidth}
       maxWidth={activeMaxWidth}
-      minHeight={isMinimized ? 30 : minHeight}
+      minHeight={isMinimized ? "1.875em" : minHeight}
       maxHeight={activeMaxHeight}
       className={`basic-widget ${name} ${isMinimized ? "is-minimized" : ""} ${className}`}
       onClose={canClose ? handleClose : undefined}
@@ -229,8 +235,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           backgroundColor: "#faf8fc",
           padding: "4px 8px",
           borderBottom: isMinimized ? "none" : "1px solid #e2e8f0",
-          height: "26px",
-          minHeight: "26px",
+          height: "1.625em",
+          minHeight: "1.625em",
           userSelect: "none",
           cursor: effectivePanelApi ? "grab" : "default",
         }}>

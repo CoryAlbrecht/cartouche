@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -22,6 +22,7 @@ import {
 } from "dockview-react";
 import { effect } from "@preact/signals-react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
+import { useTranslation } from "@renderer/hooks/useTranslation";
 import Icon from "@renderer/components/common/MdiIcon";
 import {
   mdiFileOutline,
@@ -42,8 +43,8 @@ import {
   mdiInformationOutline,
   mdiCheck,
   mdiChevronRight,
-  mdiLayersPlus,
 } from "@mdi/js";
+import { LayerPlusOutlineIcon } from "@shared/icons";
 import { widgetComponents } from "./widgetRegistry";
 import { ToolbarPanel } from "./widgets/toolbars/ToolbarPanel";
 import {
@@ -63,6 +64,7 @@ import {
   addConsoleLog,
   createNewProject,
   openProjectAction,
+  loadProjectIntoSignals,
   saveProjectAction,
   saveAsProjectAction,
   undoAction,
@@ -198,6 +200,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  */
 export const Workbench: React.FC = () => {
   useSignals();
+  const { t } = useTranslation();
 
   const dockviewApiSignal = useSignal<DockviewApi | null>(null);
   const dockviewApi = dockviewApiSignal.value;
@@ -443,6 +446,16 @@ export const Workbench: React.FC = () => {
       } catch (err) {
         console.warn("Failed to parse saved panel states:", err);
       }
+    }
+  }, []);
+
+  // Listen for project loaded broadcasts from Main process
+  useEffect(() => {
+    if (window.electronAPI?.onProjectLoaded) {
+      const unsubscribe = window.electronAPI.onProjectLoaded((project) => {
+        loadProjectIntoSignals(project);
+      });
+      return unsubscribe;
     }
   }, []);
 
@@ -858,7 +871,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiFileOutline} size='14px' />
                   </span>
-                  <span className='menu-item-label'>New...</span>
+                  <span className='menu-item-label'>{t("new_project")}</span>
                   <span className='menu-shortcut-slot'>
                     {getShortcutFormattedKey("new_project")}
                   </span>
@@ -869,7 +882,6 @@ export const Workbench: React.FC = () => {
                   className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("open_project");
                       openProjectAction();
                     })
                   }>
@@ -1337,7 +1349,7 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiLayersPlus} size='14px' />
+                    <LayerPlusOutlineIcon size={14} />
                   </span>
                   <span className='menu-item-label'>Add Layers...</span>
                   <span className='menu-shortcut-slot'>

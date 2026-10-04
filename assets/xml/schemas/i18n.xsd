@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://maps.hanfastolfe.com/cartouche/schemas/i18n/1.0"
+    xmlns:ci18n="http://maps.hanfastolfe.com/cartouche/schemas/i18n/1.0"
+    elementFormDefault="qualified">
+
+    <xs:element name="localization">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="string" minOccurs="0" maxOccurs="unbounded">
+                    <xs:complexType mixed="true">
+                        <xs:sequence>
+                            <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded" />
+                        </xs:sequence>
+                        <xs:attribute name="name" type="xs:string" use="required" />
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+            <xs:attribute name="locale" type="xs:string" use="required" />
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>

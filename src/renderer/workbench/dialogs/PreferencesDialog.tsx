@@ -282,7 +282,7 @@ export const PreferencesDialog: React.FC = () => {
           {saveStatus === "editing" && (
             <Icon
               path={mdiFileEditOutline}
-              size='20px'
+              size='1.25em'
               title='Changes pending auto-save...'
               style={{ color: "#64748b" }}
             />
@@ -290,7 +290,7 @@ export const PreferencesDialog: React.FC = () => {
           {saveStatus === "saving" && (
             <Icon
               path={isSyncIcon ? mdiSync : mdiCached}
-              size='20px'
+              size='1.25em'
               title='Auto-saving changes...'
               style={{ color: "#1b446c" }}
             />
@@ -319,7 +319,7 @@ export const PreferencesDialog: React.FC = () => {
                 onClick={() => {
                   activeCategorySignal.value = cat.id;
                 }}>
-                <Icon path={cat.icon} size='18px' />
+                <Icon path={cat.icon} size='1.125em' />
                 <span>{cat.label}</span>
               </button>
             ))}

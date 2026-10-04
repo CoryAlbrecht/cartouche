@@ -19,7 +19,7 @@ import type { PreferenceMap } from '../types';
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
-export const defaultPreferences: PreferenceMap = {
+export const BUILTIN_PREFERENCES: PreferenceMap = {
   'general.autosave.preferences': {
     displayName: 'Preferences Autosave Timeout',
     value: 5,
@@ -33,6 +33,24 @@ export const defaultPreferences: PreferenceMap = {
     category: 'general',
     description: 'Time in seconds to wait after editing a preference before automatically saving changes to disk.',
     type: 'number'
+  },
+  'general.paths.absolute': {
+    displayName: 'Use Absolute Paths',
+    value: false,
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'When true save all external pathnames as absolute paths. Otherwise save as relative to the project file location.',
+    type: 'boolean'
+  },
+  'general.project.defaults.author': {
+    displayName: 'Default Project Author',
+    description: 'The "author" field in project metadata is set to this for new projects.',
+    value: undefined,
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    type: 'string'
   },
   'ui.basefont.size': {
     displayName: 'Base Font Size',

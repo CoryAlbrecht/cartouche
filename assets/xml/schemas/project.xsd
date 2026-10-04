@@ -1,58 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  targetNamespace="http://cartouche.maps.hanfastolfe.com/schemas/project/1.0"
-  xmlns:mgp="http://cartouche.maps.hanfastolfe.com/schemas/project/1.0"
+  targetNamespace="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
   elementFormDefault="qualified"
   attributeFormDefault="unqualified"
   version="1.0">
 
   <xs:annotation>
-    <xs:documentation> Cartouche Project File XML Schema (version 1.0). Defines the persistence
-      structure for Cartouche map workspaces, layer hierarchies, coordinate reference systems, map
-      viewport states, and project metadata. </xs:documentation>
+    <xs:documentation>
+      Cartouche Project File XML Schema (version 1.0). Defines the persistence
+      structure for Cartouche map workspaces, project metadata, coordinate reference systems,
+      map viewport camera states, layer/group hierarchies, and shared styles.
+    </xs:documentation>
   </xs:annotation>
 
+  <xs:import namespace="http://purl.org/dc/elements/1.1/" schemaLocation="dc.xsd" />
+  <xs:import namespace="http://www.w3.org/1999/xlink" schemaLocation="xlink.xsd" />
+
   <!-- Root Element -->
-  <xs:element name="CartoucheProject" type="mgp:ProjectType" />
+  <xs:element name="project" type="ProjectType" />
 
   <!-- Complex Type: Project Definition -->
   <xs:complexType name="ProjectType">
     <xs:sequence>
-      <!-- Project Metadata -->
-      <xs:element name="metadata" type="mgp:ProjectMetadataType" />
+      <!-- Project Metadata (Dublin Core + application properties) -->
+      <xs:element name="metadata" type="MetadataType" />
 
-      <!-- Coordinate Reference System (CRS) -->
-      <xs:element name="crs" type="mgp:CrsType" />
+      <!-- Coordinate Reference System (CRS) - Optional -->
+      <xs:element name="crs" type="CrsType" minOccurs="0" />
 
-      <!-- Map Viewport Extent and Camera State -->
-      <xs:element name="viewport" type="mgp:ViewportType" />
+      <!-- Map Viewport Extent and Camera State - Optional -->
+      <xs:element name="viewport" type="ViewportType" minOccurs="0" />
 
-      <!-- Data Layers Collection -->
-      <xs:element name="layers" type="mgp:LayersCollectionType" />
+      <!-- Data Layers and Groups Collection - Optional -->
+      <xs:element name="layers" type="LayersType" minOccurs="0" />
 
-      <!-- Layer Tree Hierarchy (Table of Contents Groups & Ordering) -->
-      <xs:element name="layerTree" type="mgp:LayerTreeType" />
+      <!-- Shared Styles Collection - Optional -->
+      <xs:element name="styles" type="StylesType" minOccurs="0" />
 
-      <!-- Optional Bookmarks -->
-      <xs:element name="bookmarks" type="mgp:BookmarksCollectionType" minOccurs="0" />
+      <!-- Optional Bookmarks Collection -->
+      <xs:element name="bookmarks" type="BookmarksCollectionType" minOccurs="0" />
 
       <!-- Extensible Project Properties / Key-Value Settings -->
-      <xs:element name="customProperties" type="mgp:CustomPropertiesType" minOccurs="0" />
+      <xs:element name="customProperties" type="CustomPropertiesType" minOccurs="0" />
     </xs:sequence>
-    <xs:attribute name="version" type="xs:string" use="required" fixed="1.0" />
+    <xs:attribute name="version" type="xs:string" default="1.0" />
     <xs:attribute name="encoding" type="xs:string" default="UTF-8" />
   </xs:complexType>
 
-  <!-- Metadata Type -->
-  <xs:complexType name="ProjectMetadataType">
-    <xs:sequence>
-      <xs:element name="title" type="xs:string" />
-      <xs:element name="description" type="xs:string" minOccurs="0" />
-      <xs:element name="author" type="xs:string" minOccurs="0" />
+  <!-- Metadata Type (supports standard Dublin Core elements and Cartouche metadata) -->
+  <xs:complexType name="MetadataType">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element ref="dc:title" />
+      <xs:element ref="dc:creator" />
+      <xs:element ref="dc:subject" />
+      <xs:element ref="dc:description" />
+      <xs:element ref="dc:publisher" />
+      <xs:element ref="dc:contributor" />
+      <xs:element ref="dc:date" />
+      <xs:element ref="dc:type" />
+      <xs:element ref="dc:format" />
+      <xs:element ref="dc:identifier" />
+      <xs:element ref="dc:source" />
+      <xs:element ref="dc:language" />
+      <xs:element ref="dc:relation" />
+      <xs:element ref="dc:coverage" />
+      <xs:element ref="dc:rights" />
       <xs:element name="createdAt" type="xs:dateTime" />
       <xs:element name="updatedAt" type="xs:dateTime" />
-      <xs:element name="appVersion" type="xs:string" minOccurs="0" />
-    </xs:sequence>
+      <xs:element name="appVersion" type="xs:string" />
+      <xs:any namespace="http://purl.org/dc/elements/1.1/" processContents="lax" />
+    </xs:choice>
   </xs:complexType>
 
   <!-- CRS Type -->
@@ -73,8 +94,8 @@
   <!-- Viewport Type -->
   <xs:complexType name="ViewportType">
     <xs:sequence>
-      <xs:element name="extent" type="mgp:EnvelopeType" />
-      <xs:element name="center" type="mgp:Point2DType" minOccurs="0" />
+      <xs:element name="extent" type="EnvelopeType" minOccurs="0" />
+      <xs:element name="center" type="Point2DType" minOccurs="0" />
       <xs:element name="zoom" type="xs:double" minOccurs="0" />
       <xs:element name="scale" type="xs:double" minOccurs="0" />
       <xs:element name="rotation" type="xs:double" default="0.0" minOccurs="0" />
@@ -93,46 +114,54 @@
     <xs:attribute name="y" type="xs:double" use="required" />
   </xs:complexType>
 
-  <!-- Layers Collection -->
-  <xs:complexType name="LayersCollectionType">
+  <!-- Layers & Groups Collection -->
+  <xs:complexType name="LayersType">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="layer" type="LayerType" />
+      <xs:element name="group" type="GroupType" />
+    </xs:choice>
+  </xs:complexType>
+
+  <!-- Group Type (supports nested groups and layers) -->
+  <xs:complexType name="GroupType">
     <xs:sequence>
-      <xs:element name="layer" type="mgp:LayerType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="name" type="xs:string" minOccurs="0" />
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="layer" type="LayerType" />
+        <xs:element name="group" type="GroupType" />
+      </xs:choice>
     </xs:sequence>
+    <xs:attribute name="id" type="xs:string" />
+    <xs:attribute name="name" type="xs:string" />
+    <xs:attribute name="visible" type="xs:boolean" default="true" />
+    <xs:attribute name="expanded" type="xs:boolean" default="true" />
   </xs:complexType>
 
   <!-- Individual Layer Type -->
   <xs:complexType name="LayerType">
-    <xs:sequence>
+    <xs:all>
       <xs:element name="name" type="xs:string" />
-      <xs:element name="source" type="mgp:LayerSourceType" />
-      <xs:element name="crs" type="mgp:CrsType" minOccurs="0" />
-      <xs:element name="styleReference" type="xs:string" minOccurs="0">
+      <xs:element name="type" type="xs:string">
         <xs:annotation>
-          <xs:documentation>Relative or absolute URI to an external Cartouche style file (.xml/.mgs)</xs:documentation>
+          <xs:documentation>Layer format identifier, e.g. esri-shapefile, geojson, geotiff, gpkg</xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:element name="customProperties" type="mgp:CustomPropertiesType" minOccurs="0" />
-    </xs:sequence>
+      <xs:element name="source" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Relative or absolute file path, URI, or connection string</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="style" type="StyleType" minOccurs="0" />
+      <xs:element name="crs" type="CrsType" minOccurs="0" />
+      <xs:element name="customProperties" type="CustomPropertiesType" minOccurs="0" />
+    </xs:all>
     <xs:attribute name="id" type="xs:string" use="required" />
-    <xs:attribute name="type" type="mgp:LayerKindType" use="required" />
     <xs:attribute name="visible" type="xs:boolean" default="true" />
-    <xs:attribute name="opacity" type="mgp:OpacityType" default="1.0" />
+    <xs:attribute name="opacity" type="OpacityType" default="1.0" />
     <xs:attribute name="selectable" type="xs:boolean" default="true" />
-    <xs:attribute name="minScale" type="xs:double" minOccurs="0" />
-    <xs:attribute name="maxScale" type="xs:double" minOccurs="0" />
+    <xs:attribute name="minScale" type="xs:double" />
+    <xs:attribute name="maxScale" type="xs:double" />
   </xs:complexType>
-
-  <xs:simpleType name="LayerKindType">
-    <xs:restriction釘base="xs:string">
-    <xs:enumeration value="vector" />
-    <xs:enumeration value="raster" />
-    <xs:enumeration value="tile" />
-    <xs:enumeration value="wms" />
-    <xs:enumeration value="wmts" />
-    <xs:enumeration value="wfs" />
-    <xs:enumeration value="pointcloud" />
-    </xs:restriction>
-  </xs:simpleType>
 
   <xs:simpleType name="OpacityType">
     <xs:restriction base="xs:decimal">
@@ -141,63 +170,36 @@
     </xs:restriction>
   </xs:simpleType>
 
-  <!-- Layer Source Specification -->
-  <xs:complexType name="LayerSourceType">
+  <!-- Style Type (supports inline OpenLayers flat styles JSON CDATA or xlink:href reference) -->
+  <xs:complexType name="StyleType">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="id" type="xs:string" />
+        <xs:attribute ref="xlink:href" />
+        <xs:attribute ref="xlink:type" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <!-- Shared Styles Collection -->
+  <xs:complexType name="StylesType">
     <xs:sequence>
-      <xs:element name="path" type="xs:string">
-        <xs:annotation>
-          <xs:documentation>Local file path, database connection string, or service endpoint URI</xs:documentation>
-        </xs:annotation>
-      </xs:element>
-      <xs:element name="format" type="xs:string">
-        <xs:annotation>
-          <xs:documentation>e.g., GeoJSON, Shapefile, FlatGeobuf, GeoTIFF, GeoPackage, PostGIS, OSM</xs:documentation>
-        </xs:annotation>
-      </xs:element>
-      <xs:element name="encoding" type="xs:string" default="UTF-8" minOccurs="0" />
-      <xs:element name="subsetFilter" type="xs:string" minOccurs="0">
-        <xs:annotation>
-          <xs:documentation>SQL or spatial expression filter for vector features</xs:documentation>
-        </xs:annotation>
-      </xs:element>
+      <xs:element name="style" type="StyleType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-  </xs:complexType>
-
-  <!-- Layer Tree / Hierarchy -->
-  <xs:complexType name="LayerTreeType">
-    <xs:choice minOccurs="0" maxOccurs="unbounded">
-      <xs:element name="group" type="mgp:LayerTreeGroupType" />
-      <xs:element name="layerRef" type="mgp:LayerTreeRefType" />
-    </xs:choice>
-  </xs:complexType>
-
-  <xs:complexType name="LayerTreeGroupType">
-    <xs:choice minOccurs="0" maxOccurs="unbounded">
-      <xs:element name="group" type="mgp:LayerTreeGroupType" />
-      <xs:element name="layerRef" type="mgp:LayerTreeRefType" />
-    </xs:choice>
-    <xs:attribute name="name" type="xs:string" use="required" />
-    <xs:attribute name="expanded" type="xs:boolean" default="true" />
-    <xs:attribute name="checked" type="xs:boolean" default="true" />
-  </xs:complexType>
-
-  <xs:complexType name="LayerTreeRefType">
-    <xs:attribute name="id" type="xs:string" use="required" />
-    <xs:attribute name="visible" type="xs:boolean" default="true" />
   </xs:complexType>
 
   <!-- Bookmarks Collection -->
   <xs:complexType name="BookmarksCollectionType">
     <xs:sequence>
-      <xs:element name="bookmark" type="mgp:BookmarkType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="bookmark" type="BookmarkType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 
   <xs:complexType name="BookmarkType">
     <xs:sequence>
       <xs:element name="name" type="xs:string" />
-      <xs:element name="extent" type="mgp:EnvelopeType" />
-      <xs:element name="crs" type="mgp:CrsType" minOccurs="0" />
+      <xs:element name="extent" type="EnvelopeType" />
+      <xs:element name="crs" type="CrsType" minOccurs="0" />
     </xs:sequence>
     <xs:attribute name="id" type="xs:string" use="required" />
   </xs:complexType>
@@ -205,7 +207,7 @@
   <!-- Custom Key-Value Properties -->
   <xs:complexType name="CustomPropertiesType">
     <xs:sequence>
-      <xs:element name="property" type="mgp:PropertyItemType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="property" type="PropertyItemType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 

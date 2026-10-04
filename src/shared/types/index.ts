@@ -4,14 +4,18 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  */
 
 import type { Signal } from '@preact/signals-react';
 import type { KeyboardShortcutDefinition } from './shortcuts';
+import type { FileCategory, FileTypeDescriptor } from './filetypes';
 
 export * from './shortcuts';
+export * from './filetypes';
+export * from './project';
+export * from './i18n';
 
 /**
  * @typedef {Object} Coordinate
@@ -204,7 +208,9 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {() => Promise<KeyboardShortcutDefinition[]>} getShortcuts - Fetches array of registered shortcut definitions.
  * @property {(name?: string) => Promise<PreferenceMap>} getPreferenceValue - Queries preference map item(s).
  * @property {(name: string, value: any) => Promise<PreferenceMap>} setPreferenceValue - Updates preference item value.
- * @property {(options?: { title?: string; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
+ * @property {() => Promise<FileTypeDescriptor[]>} [getFileTypes] - Fetches array of registered file type descriptors.
+ * @property {(filePath: string) => Promise<FileTypeDescriptor | undefined>} [identifyFile] - Identifies file type descriptor for target file path.
+ * @property {(options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
  */
 export interface ElectronAPI {
   platform: string;
@@ -232,12 +238,27 @@ export interface ElectronAPI {
   getPreferenceValue: (name?: string) => Promise<PreferenceMap>;
   /** @ipc gis:set-preference */
   setPreferenceValue: (name: string, value: any) => Promise<PreferenceMap>;
+  /** @ipc gis:get-filetypes */
+  getFileTypes?: () => Promise<FileTypeDescriptor[]>;
+  /** @ipc gis:identify-file */
+  identifyFile?: (filePath: string) => Promise<FileTypeDescriptor | undefined>;
   /** @ipc dialog:open-files */
   openFiles?: (options?: {
     title?: string;
+    category?: FileCategory;
     filters?: Array<{ name: string; extensions: string[] }>;
     multiSelections?: boolean;
   }) => Promise<string[]>;
+  /** @ipc gis:open-project */
+  openProject?: (filePath?: string) => Promise<import('./project').ProjectModel | null>;
+  /** @ipc gis:get-current-project */
+  getCurrentProject?: () => Promise<import('./project').ProjectModel | null>;
+  /** @ipc project:loaded */
+  onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
+  /** @ipc gis:get-i18n-state */
+  getI18nState?: () => Promise<import('./i18n').I18nState>;
+  /** @ipc i18n:state-changed */
+  onI18nStateChanged?: (callback: (state: import('./i18n').I18nState) => void) => () => void;
 }
 
 declare global {

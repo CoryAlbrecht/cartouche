@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-03
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  */
@@ -13,8 +13,10 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
+import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -300,8 +302,12 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   PreferencesStore.loadFromDisk();
+  
+  const { i18nStore } = await import('./i18n/I18nStore');
+  i18nStore.loadSystemLocale();
+
   createWindow();
 
   ipcMain?.on('window-minimize', () => {
@@ -327,22 +333,46 @@ app.whenReady().then(() => {
   });
 
   // File System Dialog IPC Handlers
-  ipcMain?.handle('dialog:open-files', async (_event, options?: { title?: string; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
+  ipcMain?.handle('dialog:open-files', async (_event, options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
     const properties: Array<'openFile' | 'multiSelections'> = ['openFile'];
     if (options?.multiSelections !== false) {
       properties.push('multiSelections');
     }
+    const filters = options?.filters || fileTypeRegistry.getFileFilters(options?.category);
     const dialogOptions: Electron.OpenDialogOptions = {
-      title: options?.title || 'Select Vector Data Files',
+      title: options?.title || 'Select Data Files',
       properties,
-      filters: options?.filters || [
-        { name: 'Any (*.*)', extensions: ['*'] },
-        { name: 'FlatGeobuf (*.fgb)', extensions: ['fgb'] }
-      ]
+      filters
     };
     const res = mainWindow ? await dialog.showOpenDialog(mainWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions);
     if (res.canceled) return [];
     return res.filePaths;
+  });
+
+  // Project Management IPC Handlers
+  ipcMain?.handle('gis:open-project', async (_event, filePath?: string) => {
+    const { default: openProject } = await import('./api/project/openProject');
+    return openProject(filePath);
+  });
+
+  ipcMain?.handle('gis:get-current-project', async () => {
+    const { projectStore } = await import('./project/ProjectStore');
+    return projectStore.getProject();
+  });
+
+  // Localization IPC Handlers
+  ipcMain?.handle('gis:get-i18n-state', async () => {
+    const { i18nStore } = await import('./i18n/I18nStore');
+    return i18nStore.getState();
+  });
+
+  // File Types Registry IPC Handlers
+  ipcMain?.handle('gis:get-filetypes', async () => {
+    return fileTypeRegistry.getAllDescriptors();
+  });
+
+  ipcMain?.handle('gis:identify-file', async (_event, filePath: string) => {
+    return fileTypeRegistry.identifyFile(filePath);
   });
 
   // Keyboard Shortcuts System IPC Handlers

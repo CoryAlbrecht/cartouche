@@ -10,7 +10,7 @@
  */
 
 import type { KeyCombination, KeyboardShortcutDefinition, KeyboardShortcut } from '@shared/types';
-import { defaultShortcuts } from '@shared/shortcuts';
+import { BUILTIN_SHORTCUTS } from '@shared/shortcuts';
 import * as ApiFunctions from '../api/ApiFunctions';
 
 /**
@@ -75,7 +75,7 @@ class ShortcutRegistryClass {
       redo_action: ApiFunctions.redoAction
     };
 
-    for (const def of defaultShortcuts) {
+    for (const def of BUILTIN_SHORTCUTS) {
       const shortcutFunction =
         actionMap[def.name] ||
         (() => {
