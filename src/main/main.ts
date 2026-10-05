@@ -376,14 +376,14 @@ app.whenReady().then(async () => {
   });
 
   // Keyboard Shortcuts System IPC Handlers
-  ipcMain?.handle('gis:execute-shortcut', async (_event, shortcutName: string) => {
-    const { ShortcutRegistry } = await import('./shortcuts/ShortcutRegistry');
-    ShortcutRegistry.executeShortcut(shortcutName);
+  ipcMain?.handle('gis:execute-action', async (_event, shortcutName: string) => {
+    const { ActionRegistry } = await import('./actions/ActionRegistry');
+    ActionRegistry.executeAction(shortcutName);
   });
 
-  ipcMain?.handle('gis:get-shortcuts', async () => {
-    const { ShortcutRegistry } = await import('./shortcuts/ShortcutRegistry');
-    return ShortcutRegistry.getAllShortcutDefinitions();
+  ipcMain?.handle('gis:get-actions', async () => {
+    const { ActionRegistry } = await import('./actions/ActionRegistry');
+    return ActionRegistry.getAllActionDefinitions();
   });
 
   // Preferences System IPC Handlers

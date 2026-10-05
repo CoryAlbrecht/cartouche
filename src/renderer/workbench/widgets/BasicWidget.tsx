@@ -12,7 +12,7 @@
 import React, { useRef, useEffect } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import { Widget, type WidgetProps } from "./Widget";
-import Icon from "@renderer/components/common/MdiIcon";
+import Icon from "@renderer/components/common/Icon";
 import { mdiWindowMinimize, mdiWindowRestore, mdiClose } from "@mdi/js";
 import {
   PanelTransfer,

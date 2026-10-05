@@ -11,16 +11,18 @@
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import Icon from "@renderer/components/common/MdiIcon";
-import { mdiLayersOutline } from "@mdi/js";
-import { LayerPlusOutlineIcon } from "@shared/icons";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import Icon from "@renderer/components/common/Icon";
 import {
   type ToolbarZone,
   openDockPanelsSignal,
   toggleLayersWidgetAction,
   openAddLayersDialog,
 } from "@renderer/state/gisSignals";
-import { getShortcutFormattedKey } from "@renderer/state/shortcutSignals";
+import {
+  getActionFormattedKey,
+  getActionIcon,
+} from "@renderer/state/actionSignals";
 import { ToolbarWidget } from "../ToolbarWidget";
 
 /**
@@ -45,15 +47,18 @@ export const LayerToolbarWidget: React.FC<LayerToolbarWidgetProps> = ({
   zone = "top",
 }) => {
   useSignals();
-  const addLayersShortcut = getShortcutFormattedKey("add_layers");
-  const addLayersTitle = addLayersShortcut
-    ? `Add Layers... (${addLayersShortcut})`
-    : "Add Layers...";
+  const { t } = useTranslation();
+  const addLayersShortcut = getActionFormattedKey("add_layers");
+  const addLayersTitle =
+    addLayersShortcut ?
+      `${t("add_layers")} (${addLayersShortcut})`
+    : t("add_layers");
 
-  const toggleLayersShortcut = getShortcutFormattedKey("toggle_layers_widget");
-  const toggleLayersTitle = toggleLayersShortcut
-    ? `Toggle Layers Widget (${toggleLayersShortcut})`
-    : "Toggle Layers Widget";
+  const toggleLayersShortcut = getActionFormattedKey("toggle_layers_widget");
+  const toggleLayersTitle =
+    toggleLayersShortcut ?
+      `${t("toggle_layers_widget")} (${toggleLayersShortcut})`
+    : t("toggle_layers_widget");
 
   return (
     <ToolbarWidget id='layer' zone={zone}>
@@ -61,15 +66,15 @@ export const LayerToolbarWidget: React.FC<LayerToolbarWidgetProps> = ({
         className={`toolbar-btn ${openDockPanelsSignal.value.layers ? "active" : ""}`}
         title={toggleLayersTitle}
         onClick={toggleLayersWidgetAction}
-        aria-label='Toggle Layers Widget'>
-        <Icon path={mdiLayersOutline} size='24px' />
+        aria-label={t("toggle_layers_widget")}>
+        <Icon path={getActionIcon("toggle_layers_widget")} size='24px' />
       </button>
       <button
         className='toolbar-btn'
         title={addLayersTitle}
         onClick={openAddLayersDialog}
-        aria-label='Add Layers'>
-        <LayerPlusOutlineIcon size={24} />
+        aria-label={t("add_layers")}>
+        <Icon path={getActionIcon("add_layers")} size='24px' />
       </button>
     </ToolbarWidget>
   );

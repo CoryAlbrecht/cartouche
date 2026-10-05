@@ -12,7 +12,7 @@
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "./BasicWidget";
-import Icon from "@renderer/components/common/MdiIcon";
+import Icon from "@renderer/components/common/Icon";
 import {
   mdiFolderOutline,
   mdiFolderOpenOutline,

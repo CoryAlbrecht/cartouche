@@ -4,12 +4,24 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maps.hanfastolfe.com/cartouche/schemas/i18n/1.0 ../schemas/i18n.xsd"
     locale="en">
+    <!-- File Menu -->
     <string name="new_project">New Project...</string>
     <string name="open_project">Open Project...</string>
     <string name="save_project">Save Project</string>
-    <string name="save_project_as">Save Project As...</string>
+    <string name="save_as_project">Save Project As...</string>
     <string name="add_layers">Add Layers...</string>
-    <string name="quit">Quit</string>
-    <string name="hello_name">Hello {name}</string>
+    <string name="new_map_view">New Map View</string>
+    <string name="pan_tool">Drag Map Canvas (Pan)</string>
+    <string name="toggle_layers_widget">Toggle Layers Widget</string>
+    <string name="exit_app">Exit</string>
+    <!-- Edit Menu -->
+    <string name="undo_action">Undo</string>
+    <string name="redo_action">Redo</string>
+    <string name="cut">Cut</string>
+    <string name="copy">Copy</string>
+    <string name="paste">Paste</string>
+    <string name="edit_layer_attributes">Edit Layer Attributes...</string>
+    <string name="open_preferences">Open Preferences...</string>
+    <!-- Miscellaneous -->
     <string name="shortcut_save">Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.</string>
 </ci18n:localization>

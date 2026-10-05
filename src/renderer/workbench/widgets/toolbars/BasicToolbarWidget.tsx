@@ -4,20 +4,15 @@
  * @description Toolbar widget rendering project actions (New, Open, Save) and default Pan canvas mode button.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-01
+ * @updated 2026-10-04
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import Icon from "@renderer/components/common/MdiIcon";
-import {
-  mdiFileOutline,
-  mdiFolderOpenOutline,
-  mdiContentSaveOutline,
-  mdiHandBackRightOutline,
-} from "@mdi/js";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import Icon from "@renderer/components/common/Icon";
 import {
   type ToolbarZone,
   hasProjectSignal,
@@ -26,6 +21,7 @@ import {
   openProjectAction,
   saveProjectAction,
 } from "@renderer/state/gisSignals";
+import { getActionFormattedKey, getActionIcon } from "@renderer/state/actionSignals";
 import { ToolbarWidget } from "../ToolbarWidget";
 
 /**
@@ -41,7 +37,7 @@ export interface BasicToolbarWidgetProps {
  * @description Renders basic project file management buttons and canvas pan tool toggle.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-01
+ * @updated 2026-10-04
  * @since 0.1.0-dev
  * @param {BasicToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} BasicToolbarWidget instance.
@@ -50,38 +46,60 @@ export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
   zone = "top",
 }) => {
   useSignals();
+  const { t } = useTranslation();
+
+  const newProjectShortcut = getActionFormattedKey("new_project");
+  const newProjectTitle = newProjectShortcut
+    ? `${t("new_project")} (${newProjectShortcut})`
+    : t("new_project");
+
+  const openProjectShortcut = getActionFormattedKey("open_project");
+  const openProjectTitle = openProjectShortcut
+    ? `${t("open_project")} (${openProjectShortcut})`
+    : t("open_project");
+
+  const saveProjectShortcut = getActionFormattedKey("save_project");
+  const saveProjectTitle = saveProjectShortcut
+    ? `${t("save_project")} (${saveProjectShortcut})`
+    : t("save_project");
+
+  const panToolShortcut = getActionFormattedKey("pan_tool");
+  const panToolTitle = panToolShortcut
+    ? `${t("pan_tool")} (${panToolShortcut})`
+    : t("pan_tool");
+
   return (
     <ToolbarWidget id='basic' zone={zone}>
       <button
         className='toolbar-btn'
-        title='New Project (Blank)'
+        title={newProjectTitle}
         onClick={() => createNewProject()}
-        aria-label='New Project'>
-        <Icon path={mdiFileOutline} size='24px' />
+        aria-label={t("new_project")}>
+        <Icon path={getActionIcon("new_project")} size='24px' />
       </button>
       <button
         className='toolbar-btn'
-        title='Open Project...'
+        title={openProjectTitle}
         onClick={openProjectAction}
-        aria-label='Open Project'>
-        <Icon path={mdiFolderOpenOutline} size='24px' />
+        aria-label={t("open_project")}>
+        <Icon path={getActionIcon("open_project")} size='24px' />
       </button>
       <button
-        className='toolbar-btn'
-        title='Save Project'
+        className={`toolbar-btn ${!hasProjectSignal.value ? "disabled" : ""}`}
+        title={saveProjectTitle}
         disabled={!hasProjectSignal.value}
         onClick={saveProjectAction}
-        aria-label='Save Project'>
-        <Icon path={mdiContentSaveOutline} size='24px' />
+        aria-label={t("save_project")}>
+        <Icon path={getActionIcon("save_project")} size='24px' />
       </button>
       <button
         className={`toolbar-btn ${activeToolSignal.value === "pan" ? "active" : ""}`}
-        title='Drag Map Canvas (Pan)'
+        title={panToolTitle}
         onClick={() => {
           activeToolSignal.value = "pan";
         }}
-        aria-label='Drag Map Canvas'>
-        <Icon path={mdiHandBackRightOutline} size='24px' />
+        aria-label={t("pan_tool")}>
+        <Icon path={getActionIcon("pan_tool")} size='24px' />
       </button>
     </ToolbarWidget>
   );

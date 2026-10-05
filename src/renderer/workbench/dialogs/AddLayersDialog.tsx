@@ -14,8 +14,8 @@
 
 import React from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
-import Icon from "@renderer/components/common/MdiIcon";
-import { LayerPlusOutlineIcon } from "@shared/icons";
+import Icon from "@renderer/components/common/Icon";
+
 import {
   mdiVectorPolygon,
   mdiImageOutline,
@@ -194,7 +194,7 @@ export const AddLayersDialog: React.FC = () => {
     <Dialog
       name='addLayersWindow'
       title='Add Layers'
-      icon={<LayerPlusOutlineIcon size={18} />}
+      icon={<Icon name="file:layers-plus-outline.svg" size={18} />}
       isOpen={isOpen}
       onClose={closeAddLayersDialog}
       defaultWidth={620}
@@ -232,7 +232,7 @@ export const AddLayersDialog: React.FC = () => {
               fontSize: "0.875rem",
               color: "#ffffff",
             }}>
-            <LayerPlusOutlineIcon size={16} />
+            <Icon name="file:layers-plus-outline.svg" size={16} />
             <span>Add Layers</span>
           </button>
         </>

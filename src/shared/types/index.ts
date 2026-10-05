@@ -9,10 +9,10 @@
  */
 
 import type { Signal } from '@preact/signals-react';
-import type { KeyboardShortcutDefinition } from './shortcuts';
+import type { ActionDefinition } from './actions';
 import type { FileCategory, FileTypeDescriptor } from './filetypes';
 
-export * from './shortcuts';
+export * from './actions';
 export * from './filetypes';
 export * from './project';
 export * from './i18n';
@@ -204,8 +204,8 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {(callback: (isMaximized: boolean) => void) => () => void} onMaximizedState - Registers window maximized state change listener.
  * @property {(layerId: string) => Promise<FlatGeobufLayerPayload | null>} fetchLayerFlatGeobuf - Fetches binary layer FlatGeobuf data.
  * @property {(features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>} encodeFeaturesToFlatGeobuf - Encodes feature collection to FlatGeobuf binary buffer.
- * @property {(name: string) => Promise<void>} executeShortcut - Triggers main process keyboard shortcut by name.
- * @property {() => Promise<KeyboardShortcutDefinition[]>} getShortcuts - Fetches array of registered shortcut definitions.
+ * @property {(name: string) => Promise<void>} executeAction - Triggers main process keyboard shortcut by name.
+ * @property {() => Promise<ActionDefinition[]>} getActions - Fetches array of registered shortcut definitions.
  * @property {(name?: string) => Promise<PreferenceMap>} getPreferenceValue - Queries preference map item(s).
  * @property {(name: string, value: any) => Promise<PreferenceMap>} setPreferenceValue - Updates preference item value.
  * @property {() => Promise<FileTypeDescriptor[]>} [getFileTypes] - Fetches array of registered file type descriptors.
@@ -230,10 +230,10 @@ export interface ElectronAPI {
   fetchLayerFlatGeobuf: (layerId: string) => Promise<FlatGeobufLayerPayload | null>;
   /** @ipc gis:encode-flatgeobuf */
   encodeFeaturesToFlatGeobuf: (features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>;
-  /** @ipc gis:execute-shortcut */
-  executeShortcut: (name: string) => Promise<void>;
-  /** @ipc gis:get-shortcuts */
-  getShortcuts: () => Promise<KeyboardShortcutDefinition[]>;
+  /** @ipc gis:execute-action */
+  executeAction: (name: string) => Promise<void>;
+  /** @ipc gis:get-actions */
+  getActions: () => Promise<ActionDefinition[]>;
   /** @ipc gis:get-preference */
   getPreferenceValue: (name?: string) => Promise<PreferenceMap>;
   /** @ipc gis:set-preference */

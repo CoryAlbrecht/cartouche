@@ -12,7 +12,7 @@
 import React from "react";
 import { Widget } from "./Widget";
 import type { ToolbarId, ToolbarZone } from "@renderer/state/gisSignals";
-import Icon from "@renderer/components/common/MdiIcon";
+import Icon from "@renderer/components/common/Icon";
 import { mdiDrag, mdiDragHorizontal, mdiPowerOn, mdiMinus } from "@mdi/js";
 
 /**

@@ -45,10 +45,10 @@ const electronAPI: ElectronAPI = {
   /** @ipc gis:encode-flatgeobuf */
   encodeFeaturesToFlatGeobuf: (features: any[], geometryKind: any) =>
     ipcRenderer.invoke('gis:encode-flatgeobuf', features, geometryKind),
-  /** @ipc gis:execute-shortcut */
-  executeShortcut: (name: string) => ipcRenderer.invoke('gis:execute-shortcut', name),
-  /** @ipc gis:get-shortcuts */
-  getShortcuts: () => ipcRenderer.invoke('gis:get-shortcuts'),
+  /** @ipc gis:execute-action */
+  executeAction: (name: string) => ipcRenderer.invoke('gis:execute-action', name),
+  /** @ipc gis:get-actions */
+  getActions: () => ipcRenderer.invoke('gis:get-actions'),
   /** @ipc gis:get-preference */
   getPreferenceValue: (name?: string) => ipcRenderer.invoke('gis:get-preference', name),
   /** @ipc gis:set-preference */

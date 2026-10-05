@@ -11,7 +11,7 @@
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import Icon from "@renderer/components/common/MdiIcon";
+import Icon from "@renderer/components/common/Icon";
 import { mdiMagnet, mdiVectorPoint, mdiVectorLine } from "@mdi/js";
 import {
   type ToolbarZone,

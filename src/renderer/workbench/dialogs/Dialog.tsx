@@ -13,7 +13,7 @@
 
 import React, { useEffect } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import Icon from "@renderer/components/common/MdiIcon";
+import Icon from "@renderer/components/common/Icon";
 import { mdiClose } from "@mdi/js";
 import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindowPortal";
 

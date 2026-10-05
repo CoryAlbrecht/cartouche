@@ -23,20 +23,12 @@ import {
 import { effect } from "@preact/signals-react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import { useTranslation } from "@renderer/hooks/useTranslation";
-import Icon from "@renderer/components/common/MdiIcon";
+import Icon from "@renderer/components/common/Icon";
 import {
-  mdiFileOutline,
-  mdiFolderOpenOutline,
-  mdiContentSaveOutline,
-  mdiContentSaveEditOutline,
-  mdiUndo,
-  mdiRedo,
   mdiContentCut,
   mdiContentCopy,
   mdiContentPaste,
   mdiTableEdit,
-  mdiCogOutline,
-  mdiMapPlus,
   mdiMagnifyPlusOutline,
   mdiMagnifyMinusOutline,
   mdiPlusBoxOutline,
@@ -44,7 +36,7 @@ import {
   mdiCheck,
   mdiChevronRight,
 } from "@mdi/js";
-import { LayerPlusOutlineIcon } from "@shared/icons";
+
 import { widgetComponents } from "./widgetRegistry";
 import { ToolbarPanel } from "./widgets/toolbars/ToolbarPanel";
 import {
@@ -80,10 +72,11 @@ import {
   openAddLayersDialog,
 } from "@renderer/state/gisSignals";
 import {
-  loadShortcutsFromMain,
-  getShortcutFormattedKey,
-  registeredShortcutsSignal,
-} from "@renderer/state/shortcutSignals";
+  loadActionsFromMain,
+  getActionFormattedKey,
+  getActionIcon,
+  registeredActionsSignal,
+} from "@renderer/state/actionSignals";
 import {
   openPreferencesDialog,
   loadPreferences,
@@ -333,7 +326,7 @@ export const Workbench: React.FC = () => {
   // Initialize keyboard shortcuts from Main Process and handle global hotkeys
   useEffect(() => {
     loadPreferences();
-    loadShortcutsFromMain();
+    loadActionsFromMain();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore keystrokes when focused on editable input elements
@@ -356,11 +349,12 @@ export const Workbench: React.FC = () => {
       const shift = e.shiftKey;
       const meta = e.metaKey;
 
-      const shortcuts = registeredShortcutsSignal.value;
+      const shortcuts = registeredActionsSignal.value;
       for (const s of shortcuts) {
         const c = s.keyCombination;
         if (
-          c.key.toLowerCase() === key
+          c
+          && c.key.toLowerCase() === key
           && !!c.ctrl === ctrl
           && !!c.alt === alt
           && !!c.shift === shift
@@ -370,7 +364,7 @@ export const Workbench: React.FC = () => {
           e.stopPropagation();
 
           // Execute shortcut function in Main Process via IPC
-          window.electronAPI?.executeShortcut(s.name);
+          window.electronAPI?.executeAction(s.name);
 
           // Trigger corresponding Renderer signal updates
           switch (s.name) {
@@ -864,16 +858,19 @@ export const Workbench: React.FC = () => {
                   className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("new_project");
+                      window.electronAPI?.executeAction("new_project");
                       createNewProject();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiFileOutline} size='14px' />
+                    <Icon
+                      path={getActionIcon("new_project")}
+                      size='14px'
+                    />
                   </span>
                   <span className='menu-item-label'>{t("new_project")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("new_project")}
+                    {getActionFormattedKey("new_project")}
                   </span>
                 </div>
 
@@ -886,11 +883,14 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiFolderOpenOutline} size='14px' />
+                    <Icon
+                      path={getActionIcon("open_project")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>Open...</span>
+                  <span className='menu-item-label'>{t("open_project")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("open_project")}
+                    {getActionFormattedKey("open_project")}
                   </span>
                 </div>
 
@@ -900,16 +900,19 @@ export const Workbench: React.FC = () => {
                   onClick={() =>
                     hasProject
                     && handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("save_project");
+                      window.electronAPI?.executeAction("save_project");
                       saveProjectAction();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiContentSaveOutline} size='14px' />
+                    <Icon
+                      path={getActionIcon("save_project")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>Save</span>
+                  <span className='menu-item-label'>{t("save_project")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("save_project")}
+                    {getActionFormattedKey("save_project")}
                   </span>
                 </div>
 
@@ -919,16 +922,19 @@ export const Workbench: React.FC = () => {
                   onClick={() =>
                     hasProject
                     && handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("save_as_project");
+                      window.electronAPI?.executeAction("save_as_project");
                       saveAsProjectAction();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiContentSaveEditOutline} size='14px' />
+                    <Icon
+                      path={getActionIcon("save_as_project")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>Save As...</span>
+                  <span className='menu-item-label'>{t("save_as_project")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("save_as_project")}
+                    {getActionFormattedKey("save_as_project")}
                   </span>
                 </div>
               </div>
@@ -958,16 +964,19 @@ export const Workbench: React.FC = () => {
                   onClick={() =>
                     canUndo
                     && handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("undo_action");
+                      window.electronAPI?.executeAction("undo_action");
                       undoAction();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiUndo} size='14px' />
+                    <Icon
+                      path={getActionIcon("undo_action")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>Undo</span>
+                  <span className='menu-item-label'>{t("undo_action")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("undo_action")}
+                    {getActionFormattedKey("undo_action")}
                   </span>
                 </div>
 
@@ -977,16 +986,19 @@ export const Workbench: React.FC = () => {
                   onClick={() =>
                     canRedo
                     && handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("redo_action");
+                      window.electronAPI?.executeAction("redo_action");
                       redoAction();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiRedo} size='14px' />
+                    <Icon
+                      path={getActionIcon("redo_action")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>Redo</span>
+                  <span className='menu-item-label'>{t("redo_action")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("redo_action")}
+                    {getActionFormattedKey("redo_action")}
                   </span>
                 </div>
 
@@ -1001,7 +1013,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiContentCut} size='14px' />
                   </span>
-                  <span className='menu-item-label'>Cut</span>
+                  <span className='menu-item-label'>{t("cut")}</span>
                   <span className='menu-shortcut-slot' />
                 </div>
 
@@ -1014,7 +1026,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiContentCopy} size='14px' />
                   </span>
-                  <span className='menu-item-label'>Copy</span>
+                  <span className='menu-item-label'>{t("copy")}</span>
                   <span className='menu-shortcut-slot' />
                 </div>
 
@@ -1025,7 +1037,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiContentPaste} size='14px' />
                   </span>
-                  <span className='menu-item-label'>Paste</span>
+                  <span className='menu-item-label'>{t("paste")}</span>
                   <span className='menu-shortcut-slot' />
                 </div>
 
@@ -1040,7 +1052,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiTableEdit} size='14px' />
                   </span>
-                  <span className='menu-item-label'>Edit Attributes...</span>
+                  <span className='menu-item-label'>{t("edit_layer_attributes")}</span>
                   <span className='menu-shortcut-slot' />
                 </div>
 
@@ -1055,11 +1067,14 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiCogOutline} size='14px' />
+                    <Icon
+                      path={getActionIcon("open_preferences")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>Preferences...</span>
+                  <span className='menu-item-label'>{t("open_preferences")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("open_preferences")}
+                    {getActionFormattedKey("open_preferences")}
                   </span>
                 </div>
               </div>
@@ -1104,9 +1119,12 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiMapPlus} size='14px' />
+                    <Icon
+                      path={getActionIcon("new_map_view")}
+                      size='14px'
+                    />
                   </span>
-                  <span className='menu-item-label'>New Map View</span>
+                  <span className='menu-item-label'>{t("new_map_view")}</span>
                   <span className='menu-shortcut-slot' />
                 </div>
 
@@ -1204,7 +1222,7 @@ export const Workbench: React.FC = () => {
                         </span>
                         <span className='menu-item-label'>Layers</span>
                         <span className='menu-shortcut-slot'>
-                          {getShortcutFormattedKey("toggle_layers_widget")}
+                          {getActionFormattedKey("toggle_layers_widget")}
                         </span>
                       </div>
                     </div>
@@ -1344,16 +1362,16 @@ export const Workbench: React.FC = () => {
                   className='menu-dropdown-item'
                   onClick={() => {
                     handleMenuClick(() => {
-                      window.electronAPI?.executeShortcut("add_layers");
+                      window.electronAPI?.executeAction("add_layers");
                       openAddLayersDialog();
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <LayerPlusOutlineIcon size={14} />
+                    <Icon name="file:layers-plus-outline.svg" size={14} />
                   </span>
-                  <span className='menu-item-label'>Add Layers...</span>
+                  <span className='menu-item-label'>{t("add_layers")}</span>
                   <span className='menu-shortcut-slot'>
-                    {getShortcutFormattedKey("add_layers")}
+                    {getActionFormattedKey("add_layers")}
                   </span>
                 </div>
 
