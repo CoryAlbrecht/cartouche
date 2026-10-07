@@ -4,19 +4,20 @@
  * @description Central in-memory store maintaining authoritative active Cartouche project state in the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-07
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  */
 
 import type { ProjectModel } from '@shared/types';
+import { LayerGroup } from './models/LayerGroup';
 
 /**
  * @class ProjectStore
  * @description In-memory store managing active Cartouche project state, active file path, and dirty modification flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-07
  * @since 0.1.0-dev
  */
 export class ProjectStore {
@@ -24,6 +25,7 @@ export class ProjectStore {
   private currentProject: ProjectModel | null = null;
   private projectFilePath: string | null = null;
   private isDirtyState: boolean = false;
+  private rootGroup: LayerGroup = new LayerGroup('root', 'root');
 
   private constructor() {}
 
@@ -31,7 +33,7 @@ export class ProjectStore {
    * @description Retrieves the singleton instance of ProjectStore.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-10-07
    * @since 0.1.0-dev
    * @returns {ProjectStore} Singleton store instance.
    */
@@ -44,6 +46,8 @@ export class ProjectStore {
 
   /**
    * @description Gets the currently loaded in-memory project model.
+   * Note: The 'layers' property on the returned model should be ignored
+   * for runtime access; use getRootGroup() instead.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
    * @updated 2026-10-03
@@ -56,15 +60,18 @@ export class ProjectStore {
 
   /**
    * @description Sets the active project model and associated disk file path.
+   * Warning: this does not automatically populate the runtime layer tree.
+   * IProjectLoader implementations should populate getRootGroup() directly.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-10-07
    * @since 0.1.0-dev
    * @param {ProjectModel} project - The project model to activate in memory.
    * @param {string} [filePath] - Optional filesystem path where project is stored.
    * @returns {void}
    */
   public setProject(project: ProjectModel, filePath?: string): void {
+    this.closeProject(); // Ensure any existing native resources are disposed
     this.currentProject = project;
     this.projectFilePath = filePath || project.filePath || null;
     this.isDirtyState = false;
@@ -72,16 +79,32 @@ export class ProjectStore {
 
   /**
    * @description Clears active project state and closes open project workspace.
+   * Recursively disposes of all loaded layers to free C++ memory bounds.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-10-07
    * @since 0.1.0-dev
    * @returns {void}
    */
   public closeProject(): void {
+    this.rootGroup[Symbol.dispose]();
+    this.rootGroup = new LayerGroup('root', 'root');
+    
     this.currentProject = null;
     this.projectFilePath = null;
     this.isDirtyState = false;
+  }
+
+  /**
+   * @description Returns the root LayerGroup managing the runtime layer tree.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-07
+   * @updated 2026-10-07
+   * @since 0.1.0-dev
+   * @returns {LayerGroup} The root layer group.
+   */
+  public getRootGroup(): LayerGroup {
+    return this.rootGroup;
   }
 
   /**

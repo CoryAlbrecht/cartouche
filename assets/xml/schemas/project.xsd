@@ -157,6 +157,9 @@
     </xs:all>
     <xs:attribute name="id" type="xs:string" use="required" />
     <xs:attribute name="visible" type="xs:boolean" default="true" />
+    <xs:attribute name="readOnly" type="xs:boolean" default="false" />
+    <xs:attribute name="layerKind" type="xs:string" />
+    <xs:attribute name="geometryKind" type="xs:string" />
     <xs:attribute name="opacity" type="OpacityType" default="1.0" />
     <xs:attribute name="selectable" type="xs:boolean" default="true" />
     <xs:attribute name="minScale" type="xs:double" />

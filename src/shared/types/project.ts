@@ -70,10 +70,15 @@ export interface ProjectViewport {
  * @property {boolean} [visible] - Initial rendering visibility state.
  * @property {number} [opacity] - Initial layer opacity (0.0 to 1.0).
  * @property {boolean} [selectable] - Whether layer features can be selected interactively.
+ * @property {boolean} [readOnly] - Whether the layer should be strictly treated as read-only.
+ * @property {string} [layerKind] - General GIS category (vector or raster).
+ * @property {GeometryKind} [geometryKind] - Spatial geometry type for vector features.
  * @property {string | { href?: string; content?: string }} [style] - Layer style rule definition or reference.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  */
+import type { GeometryKind } from ".";
+
 export interface ProjectLayerItem {
   id: string;
   name: string;
@@ -82,6 +87,9 @@ export interface ProjectLayerItem {
   visible?: boolean;
   opacity?: number;
   selectable?: boolean;
+  readOnly?: boolean;
+  layerKind?: 'vector' | 'raster';
+  geometryKind?: GeometryKind;
   style?: string | { href?: string; content?: string };
   crs?: ProjectCrs;
   customProperties?: Record<string, unknown>;
