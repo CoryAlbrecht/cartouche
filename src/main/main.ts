@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-03
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  */
@@ -17,6 +17,16 @@ import type { FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
+import { pathExists } from "./api/ApiFunctions";
+import { addLayers } from "./api/layers/addLayer";
+import {
+  setNodeVisibility,
+  setNodeSelection,
+  removeNodes,
+  createGroup,
+  renameNode,
+  reorderNodes
+} from './api/project/layerTreeOperations';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -436,6 +446,38 @@ app.whenReady().then(async () => {
       buffer: new ArrayBuffer(0),
       flatStyle: defaultLayerStyles.Polygon
     };
+  });
+
+  ipcMain?.handle('gis:add-layers', async (_event, layers: any[]) => {
+    await addLayers(layers);
+  });
+
+  ipcMain?.handle('gis:path-exists', async (_event, filePath: string) => {
+    return await pathExists(filePath);
+  });
+
+  ipcMain?.handle('gis:set-node-visibility', async (_event, nodeId: string, visible: boolean) => {
+    setNodeVisibility(nodeId, visible);
+  });
+
+  ipcMain?.handle('gis:set-node-selection', async (_event, selectedNodeIds: string[]) => {
+    setNodeSelection(selectedNodeIds);
+  });
+
+  ipcMain?.handle('gis:remove-nodes', async (_event, nodeIds: string[]) => {
+    removeNodes(nodeIds);
+  });
+
+  ipcMain?.handle('gis:create-group', async (_event, name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) => {
+    createGroup(name, targetNodeId, childNodeIds, newGroupId);
+  });
+
+  ipcMain?.handle('gis:rename-node', async (_event, nodeId: string, newName: string) => {
+    renameNode(nodeId, newName);
+  });
+
+  ipcMain?.handle('gis:reorder-nodes', async (_event, draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => {
+    reorderNodes(draggedNodeIds, targetNodeId, position);
   });
 
   app.on('activate', () => {

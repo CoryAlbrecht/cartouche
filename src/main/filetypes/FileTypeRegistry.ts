@@ -4,7 +4,7 @@
  * @description Central registry managing GIS file format descriptors, magic byte sniffing, format identification, reader dispatching, and native file dialog filter generation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  */
 
@@ -12,6 +12,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { FileCategory, FileTypeDescriptor } from '@shared/types';
 import { BUILTIN_FILE_TYPES } from '@shared/filetypes';
+import { gdalVectorLoader, gdalRasterLoader } from './loaders/gdalLoaders';
 
 /**
  * @typedef {(filePath: string, descriptor: FileTypeDescriptor, options?: Record<string, unknown>) => Promise<unknown>} FileLoaderFn
@@ -41,11 +42,28 @@ export class FileTypeRegistry {
    * @description Initializes internal maps and registers core built-in geospatial format descriptors.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-10-09
    * @since 0.1.0-dev
    */
   constructor() {
     this.registerDefaultFileTypes();
+    this.registerDefaultLoaders();
+  }
+
+  /**
+   * Registers default built-in file format loaders into the registry.
+   *
+   * @description Maps standard GDAL vector and raster loaders to their built-in loader IDs.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-09
+   * @updated 2026-10-09
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
+  private registerDefaultLoaders(): void {
+    this.registerLoader('gdal:vector', gdalVectorLoader);
+    this.registerLoader('gdal:raster', gdalRasterLoader);
   }
 
   /**

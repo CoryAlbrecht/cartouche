@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-02
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -15,7 +15,7 @@ import type { PreferenceMap } from '../types';
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-02
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */

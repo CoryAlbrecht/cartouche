@@ -4,7 +4,7 @@
  * @description Runtime representation of a physical spatial dataset loaded in memory.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-07
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  */
 
@@ -74,11 +74,11 @@ export class Layer extends LayerTreeNode implements Disposable {
    */
   [Symbol.dispose](): void {
     if (this.nativeObject) {
-      // In a real scenario, this would check if nativeObject is a gdal.Dataset and call .close()
-      // For example: if (typeof this.nativeObject.close === 'function') this.nativeObject.close();
       const obj = this.nativeObject as any;
       if (typeof obj.close === 'function') {
         obj.close();
+      } else if (obj.ds && typeof obj.ds.close === 'function') {
+        obj.ds.close();
       } else if (typeof obj.dispose === 'function') {
         obj.dispose();
       }

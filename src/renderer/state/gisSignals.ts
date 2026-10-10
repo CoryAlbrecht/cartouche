@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -30,61 +30,25 @@ const initialLayers: GisLayer[] = [];
 const initialFeatures: GisFeature[] = [];
 const initialGroups: GisLayerGroup[] = [];
 
-// Project state signals
-/**
- * @signal currentProjectSignal
- * @description Signal holding the active in-memory ProjectModel instance or null if no project loaded.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-03
- * @updated 2026-10-03
- * @since 0.1.0-dev
- * @type {Signal<ProjectModel | null>}
- */
-export const currentProjectSignal = signal<ProjectModel | null>(null);
+import {
+  currentProjectSignal,
+  hasProjectSignal,
+  projectNameSignal,
+  projectVisibleSignal,
+  isDirtySignal,
+  projectTreeSignal,
+  projectTreeStatsSignal
+} from './projectSignals';
 
-/**
- * @signal hasProjectSignal
- * @description Signal indicating whether an active project file is loaded in the Workbench.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<boolean>}
- */
-export const hasProjectSignal = signal<boolean>(false);
-
-/**
- * @signal projectNameSignal
- * @description Signal holding the active project name string.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<string | null>}
- */
-export const projectNameSignal = signal<string | null>(null);
-
-/**
- * @signal projectVisibleSignal
- * @description Signal controlling global project layer rendering visibility in map canvas.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<boolean>}
- */
-export const projectVisibleSignal = signal<boolean>(true);
-
-/**
- * @signal isDirtySignal
- * @description Signal indicating whether unsaved modifications exist in the current project.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<boolean>}
- */
-export const isDirtySignal = signal<boolean>(false);
+export {
+  currentProjectSignal,
+  hasProjectSignal,
+  projectNameSignal,
+  projectVisibleSignal,
+  isDirtySignal,
+  projectTreeSignal,
+  projectTreeStatsSignal
+};
 
 /**
  * @signal undoStackSignal
@@ -826,6 +790,7 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
   hasProjectSignal.value = true;
   projectNameSignal.value = project.metadata?.title || 'Untitled Project';
   projectVisibleSignal.value = true;
+  projectTreeSignal.value = project.layers || [];
   layerGroupsSignal.value = groups;
   layersSignal.value = layers;
   isDirtySignal.value = false;

@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-03
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -29,6 +29,8 @@ import {
   addConsoleLog,
 } from "@renderer/state/gisSignals";
 import { Dialog } from "./Dialog";
+import { ModalDialog } from "./ModalDialog";
+import type { AddLayerParams } from "@shared/types";
 
 /**
  * @typedef {'vector' | 'raster' | 'database'} SourceType
@@ -73,6 +75,7 @@ export const AddLayersDialog: React.FC = () => {
   const filePathSignal = useSignal<string>("");
   const vectorFilesSignal = useSignal<string[]>([]);
   const vectorInputTextSignal = useSignal<string>("");
+  const invalidFilesSignal = useSignal<string[]>([]);
 
   const inputRef = React.useRef<HTMLInputElement | null>(null);
 
@@ -157,11 +160,11 @@ export const AddLayersDialog: React.FC = () => {
    * @description Confirms and attaches the selected layer dataset to the project state.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-01
-   * @updated 2026-10-02
+   * @updated 2026-10-09
    * @since 0.1.0-dev
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleAdd = (): void => {
+  const handleAdd = async (): Promise<void> => {
     addTypedPaths();
     if (activeTab === "vector") {
       const files = vectorFilesSignal.value;
@@ -169,25 +172,43 @@ export const AddLayersDialog: React.FC = () => {
         addConsoleLog("warn", "No vector files selected to add.", "Layers");
         return;
       }
-      const count = files.length;
-      const display =
-        count > 0 ?
-          (files[0].split(/[/\\]/).pop() || "Vector Layer")
-          + (count > 1 ? ` (+${count - 1} more)` : "")
-        : "New Vector Layer";
-      addConsoleLog(
-        "info",
-        `Adding ${count} vector layer(s): "${display}"`,
-        "Layers"
-      );
+      
+      const validFiles: string[] = [];
+      const invalidFiles: string[] = [];
+      
+      for (const file of files) {
+        const exists = await window.electronAPI?.pathExists?.(file);
+        if (exists) {
+          validFiles.push(file);
+        } else {
+          invalidFiles.push(file);
+        }
+      }
+      
+      if (invalidFiles.length > 0) {
+        invalidFilesSignal.value = invalidFiles;
+      }
+      
+      if (validFiles.length > 0) {
+        const layersToAdd: AddLayerParams[] = validFiles.map(file => ({
+          sourceType: "vector",
+          filePath: file
+        }));
+        await window.electronAPI?.addLayers?.(layersToAdd);
+        addConsoleLog("info", `Added ${validFiles.length} vector layer(s)`, "Layers");
+      }
+      
+      if (invalidFiles.length === 0) {
+        closeAddLayersDialog();
+      }
     } else {
       const name =
         filePath ?
           filePath.split(/[/\\]/).pop() || "New Layer"
         : `New ${activeTab.toUpperCase()} Layer`;
       addConsoleLog("info", `Adding ${activeTab} layer: "${name}"`, "Layers");
+      closeAddLayersDialog();
     }
-    closeAddLayersDialog();
   };
 
   return (
@@ -468,6 +489,28 @@ export const AddLayersDialog: React.FC = () => {
           </div>
         </div>
       </div>
+      <ModalDialog
+        title="Missing Files"
+        isOpen={invalidFilesSignal.value.length > 0}
+        onClose={() => {
+          invalidFilesSignal.value = [];
+          closeAddLayersDialog();
+        }}
+        buttons={[
+          {
+            label: "OK",
+            primary: true,
+            onClick: () => {
+              invalidFilesSignal.value = [];
+              closeAddLayersDialog();
+            }
+          }
+        ]}
+      >
+        <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+          {`The following files could not be found and will be skipped:\n\n${invalidFilesSignal.value.join("\n")}`}
+        </p>
+      </ModalDialog>
     </Dialog>
   );
 };

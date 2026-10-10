@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  */
 
@@ -17,6 +17,10 @@
  * @property {string} [createdAt] - Project creation date timestamp.
  * @property {string} [updatedAt] - Project last modified timestamp.
  * @property {string} [appVersion] - Application version used to author the project.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ProjectMetadata {
   title: string;
@@ -36,6 +40,10 @@ export interface ProjectMetadata {
  * @property {string} [description] - Human-readable projection title.
  * @property {string} [proj4] - Proj4 definition parameter string.
  * @property {string} [wkt] - Well-Known Text coordinate system definition.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ProjectCrs {
   authId: string;
@@ -52,6 +60,10 @@ export interface ProjectCrs {
  * @property {number} [zoom] - Initial camera zoom level.
  * @property {number} [scale] - Initial map scale denominator.
  * @property {number} [rotation] - Initial map view rotation in radians or degrees.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ProjectViewport {
   extent?: { xmin: number; ymin: number; xmax: number; ymax: number };
@@ -68,6 +80,7 @@ export interface ProjectViewport {
  * @property {string} type - File format identifier string (e.g. "esri-shapefile", "geojson").
  * @property {string} source - Relative or absolute path / URI to dataset source.
  * @property {boolean} [visible] - Initial rendering visibility state.
+ * @property {boolean} [selected] - Whether the layer node is selected in the layer tree.
  * @property {number} [opacity] - Initial layer opacity (0.0 to 1.0).
  * @property {boolean} [selectable] - Whether layer features can be selected interactively.
  * @property {boolean} [readOnly] - Whether the layer should be strictly treated as read-only.
@@ -76,6 +89,10 @@ export interface ProjectViewport {
  * @property {string | { href?: string; content?: string }} [style] - Layer style rule definition or reference.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-09
+ * @since 0.1.0-dev
  */
 import type { GeometryKind } from ".";
 
@@ -85,6 +102,7 @@ export interface ProjectLayerItem {
   type: string;
   source: string;
   visible?: boolean;
+  selected?: boolean;
   opacity?: number;
   selectable?: boolean;
   readOnly?: boolean;
@@ -100,13 +118,19 @@ export interface ProjectLayerItem {
  * @property {string} [id] - Optional unique identifier for the layer group.
  * @property {string} name - Display name of the layer group.
  * @property {boolean} [visible] - Initial group visibility toggle.
+ * @property {boolean} [selected] - Whether the group node is selected in the layer tree.
  * @property {boolean} [expanded] - Initial tree node expansion accordion state.
  * @property {Array<ProjectLayerItem | ProjectGroupItem>} children - Ordered list of child layers and nested groups.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-09
+ * @since 0.1.0-dev
  */
 export interface ProjectGroupItem {
   id?: string;
   name: string;
   visible?: boolean;
+  selected?: boolean;
   expanded?: boolean;
   children: Array<ProjectLayerItem | ProjectGroupItem>;
 }
@@ -115,6 +139,10 @@ export interface ProjectGroupItem {
  * @typedef {Object} ProjectStyleItem
  * @property {string} id - Style identifier referenced by layers (e.g. "coastline-style").
  * @property {string} content - Serialized OpenLayers flat styles JSON rules string.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ProjectStyleItem {
   id: string;
@@ -131,6 +159,10 @@ export interface ProjectStyleItem {
  * @property {Array<ProjectLayerItem | ProjectGroupItem>} layers - Hierarchical layer and group tree.
  * @property {ProjectStyleItem[]} [styles] - Project shared style collection.
  * @property {Record<string, unknown>} [customProperties] - Extensible project properties.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ProjectModel {
   format: string;
@@ -141,4 +173,17 @@ export interface ProjectModel {
   layers: Array<ProjectLayerItem | ProjectGroupItem>;
   styles?: ProjectStyleItem[];
   customProperties?: Record<string, unknown>;
+}
+
+/**
+ * @typedef {Object} AddLayerParams
+ * @property {'vector' | 'raster' | 'database'} sourceType - Format type of spatial data source.
+ * @property {string} filePath - Absolute path or connection URI for spatial data file.
+ * @property {string} [layerName] - Optional custom display name for spatial layer.
+ */
+export interface AddLayerParams {
+  sourceType: 'vector' | 'raster' | 'database';
+  filePath: string;
+  layerName?: string;
+  layerId?: string;
 }

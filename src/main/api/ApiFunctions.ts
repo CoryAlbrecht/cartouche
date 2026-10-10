@@ -20,4 +20,5 @@ export { default as undoAction } from './edit/undoAction';
 export { default as redoAction } from './edit/redoAction';
 export { default as getPreferenceValue } from './ui/preferences/GetPreferenceValue';
 export { default as setPreferenceValue } from './ui/preferences/SetPreferenceValue';
-export { addLayer } from './layers/addLayer';
+export { addLayer, addLayers } from './layers/addLayer';
+export { pathExists } from './fs/pathExists';

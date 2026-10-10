@@ -4,7 +4,7 @@
  * @description Centralized TypeScript type definitions and interfaces for application actions (shortcuts, menus, toolbars).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-04
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  */
 
@@ -15,6 +15,10 @@
  * @property {boolean} [alt] - Requires Alt key.
  * @property {boolean} [shift] - Requires Shift key.
  * @property {boolean} [meta] - Requires Meta/Super key.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-02
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface KeyCombination {
   key: string;
@@ -32,6 +36,10 @@ export interface KeyCombination {
  * @property {KeyCombination} [keyCombination] - Optional modifier keys and target key configuration.
  * @property {() => void} [functionCall] - Executable callback function invoked when triggered (Main Process only).
  * @property {string} [formattedKey] - Pre-formatted display text string for the key combination.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-02
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ActionDefinition {
   name: string;

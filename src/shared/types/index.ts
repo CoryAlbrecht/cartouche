@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-03
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  */
 
@@ -21,6 +21,10 @@ export * from './i18n';
  * @typedef {Object} Coordinate
  * @property {number} x - Spatial X coordinate or longitude.
  * @property {number} y - Spatial Y coordinate or latitude.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface Coordinate {
   x: number;
@@ -28,8 +32,12 @@ export interface Coordinate {
 }
 
 /**
- * @typedef {[number, number, number, number]} BoundingBox
- * Tuple representing spatial extent bounding box bounds `[minX, minY, maxX, maxY]`.
+ * @typedef {number[]} BoundingBox
+ * @description Tuple representing spatial extent bounding box bounds `[minX, minY, maxX, maxY]`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export type BoundingBox = [minX: number, minY: number, maxX: number, maxY: number];
 
@@ -38,6 +46,10 @@ export type BoundingBox = [minX: number, minY: number, maxX: number, maxY: numbe
  * @property {string} authId - Authority identifier (e.g. "EPSG:4326").
  * @property {string} name - Coordinate reference system descriptive title.
  * @property {boolean} isGeographic - True if CRS uses geographic coordinates (degrees).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface CRS {
   authId: string;
@@ -46,14 +58,22 @@ export interface CRS {
 }
 
 /**
- * @typedef {'Point' | 'LineString' | 'Polygon' | 'Raster'} GeometryKind
- * Enumeration of supported GIS spatial geometry and dataset kinds.
+ * @typedef {string} GeometryKind
+ * @description Enumeration of supported GIS spatial geometry and dataset kinds.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export type GeometryKind = 'Point' | 'LineString' | 'Polygon' | 'Raster';
 
 /**
  * @typedef {Record<string, any>} OlFlatStyle
- * OpenLayers vector flat style object rules descriptor.
+ * @description OpenLayers vector flat style object rules descriptor.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export type OlFlatStyle = Record<string, any>;
 
@@ -64,6 +84,10 @@ export type OlFlatStyle = Record<string, any>;
  * @property {boolean} visible - Visibility toggle state for all child items.
  * @property {boolean} [expanded] - Accordion expansion state in tree view.
  * @property {string | null} [parentId] - ID of parent container group if nested.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface GisLayerGroup {
   id: string;
@@ -89,6 +113,10 @@ export interface GisLayerGroup {
  * @property {number} featureCount - Count of loaded spatial feature records.
  * @property {OlFlatStyle} [flatStyle] - Compiled OpenLayers flat style rules.
  * @property {ArrayBuffer} [flatGeobufBuffer] - Zero-copy binary FlatGeobuf vector payload buffer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface GisLayer {
   id: string;
@@ -114,6 +142,10 @@ export interface GisLayer {
  * @property {GeometryKind} geometryType - Spatial geometry type.
  * @property {Record<string, string | number | boolean | null>} properties - Feature attribute table values.
  * @property {unknown} coordinates - Spatial coordinates array or structure.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface GisFeature {
   id: string | number;
@@ -128,6 +160,10 @@ export interface GisFeature {
  * @property {string} layerId - Spatial layer identifier.
  * @property {ArrayBuffer} buffer - Serialized FlatGeobuf binary buffer.
  * @property {OlFlatStyle} flatStyle - OpenLayers flat style rules.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface FlatGeobufLayerPayload {
   layerId: string;
@@ -142,6 +178,10 @@ export interface FlatGeobufLayerPayload {
  * @property {'info' | 'warn' | 'error' | 'success'} level - Severity level.
  * @property {string} message - Output log text.
  * @property {string} [source] - Sub-system origin module name.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface ConsoleLogEntry {
   id: string;
@@ -168,6 +208,10 @@ export interface ConsoleLogEntry {
  * @property {string} [description] - Extended tooltip or helper text.
  * @property {'string' | 'number' | 'boolean' | 'select'} [type] - Preference input control widget type.
  * @property {Array<{ label: string; value: any }>} [options] - Select dropdown choices.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export interface PreferenceItem<T = any> {
   displayName: string;
@@ -188,7 +232,11 @@ export interface PreferenceItem<T = any> {
 
 /**
  * @typedef {Record<string, PreferenceItem>} PreferenceMap
- * Map of string preference keys to preference item descriptors.
+ * @description Map of string preference keys to preference item descriptors.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-08
+ * @since 0.1.0-dev
  */
 export type PreferenceMap = Record<string, PreferenceItem>;
 
@@ -211,6 +259,10 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {() => Promise<FileTypeDescriptor[]>} [getFileTypes] - Fetches array of registered file type descriptors.
  * @property {(filePath: string) => Promise<FileTypeDescriptor | undefined>} [identifyFile] - Identifies file type descriptor for target file path.
  * @property {(options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-09
+ * @since 0.1.0-dev
  */
 export interface ElectronAPI {
   platform: string;
@@ -255,10 +307,28 @@ export interface ElectronAPI {
   getCurrentProject?: () => Promise<import('./project').ProjectModel | null>;
   /** @ipc project:loaded */
   onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
+  /** @ipc project:layers-tree-updated */
+  onProjectLayersTreeUpdated?: (callback: (tree: Array<import('./project').ProjectLayerItem | import('./project').ProjectGroupItem>) => void) => () => void;
   /** @ipc gis:get-i18n-state */
   getI18nState?: () => Promise<import('./i18n').I18nState>;
   /** @ipc i18n:state-changed */
   onI18nStateChanged?: (callback: (state: import('./i18n').I18nState) => void) => () => void;
+  /** @ipc gis:add-layers */
+  addLayers?: (layers: import('./project').AddLayerParams[]) => Promise<void>;
+  /** @ipc gis:path-exists */
+  pathExists?: (filePath: string) => Promise<boolean>;
+  /** @ipc gis:set-node-visibility */
+  setNodeVisibility?: (nodeId: string, visible: boolean) => Promise<void>;
+  /** @ipc gis:set-node-selection */
+  setNodeSelection?: (selectedNodeIds: string[]) => Promise<void>;
+  /** @ipc gis:remove-nodes */
+  removeNodes?: (nodeIds: string[]) => Promise<void>;
+  /** @ipc gis:create-group */
+  createGroup?: (name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) => Promise<void>;
+  /** @ipc gis:rename-node */
+  renameNode?: (nodeId: string, newName: string) => Promise<void>;
+  /** @ipc gis:reorder-nodes */
+  reorderNodes?: (draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => Promise<void>;
 }
 
 declare global {

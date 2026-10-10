@@ -4,7 +4,7 @@
  * @description Shared default OpenLayers vector layer styling rules and lookup helpers for Polygon, LineString, and Point feature geometries.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-02
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  */
 
@@ -12,7 +12,7 @@
  * @description Standard default styling rules for spatial vector layers by geometry type.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-02
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  * @type {Record<string, Record<string, any>>}
  */
@@ -38,7 +38,7 @@ export const defaultLayerStyles: Record<string, Record<string, any>> = {
  * @description Generates default OpenLayers flat styling expression based on geometry type.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-02
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  * @param {string} [geometryKind] - Optional geometry kind string ('Point' | 'LineString' | 'Polygon' | 'Raster').
  * @returns {Record<string, any>} Flat style object definition.

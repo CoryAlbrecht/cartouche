@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-03
+ * @updated 2026-10-09
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -58,6 +58,11 @@ const electronAPI: ElectronAPI = {
   /** @ipc gis:identify-file */
   identifyFile: (filePath: string) => ipcRenderer.invoke('gis:identify-file', filePath),
   /** @ipc dialog:open-files */
+  /** @ipc gis:add-layers */
+  addLayers: (layers: any[]) => ipcRenderer.invoke('gis:add-layers', layers),
+  /** @ipc gis:path-exists */
+  pathExists: (filePath: string) => ipcRenderer.invoke('gis:path-exists', filePath),
+
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc gis:open-project */
   openProject: (filePath?: string) => ipcRenderer.invoke('gis:open-project', filePath),
@@ -71,6 +76,14 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('project:loaded', handler);
     };
   },
+  /** @ipc project:layers-tree-updated */
+  onProjectLayersTreeUpdated: (callback: (tree: any[]) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, tree: any[]) => callback(tree);
+    ipcRenderer.on('project:layers-tree-updated', handler);
+    return () => {
+      ipcRenderer.removeListener('project:layers-tree-updated', handler);
+    };
+  },
   /** @ipc gis:get-i18n-state */
   getI18nState: () => ipcRenderer.invoke('gis:get-i18n-state'),
   /** @ipc i18n:state-changed */
@@ -80,7 +93,21 @@ const electronAPI: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('i18n:state-changed', handler);
     };
-  }
+  },
+  /** @ipc gis:set-node-visibility */
+  setNodeVisibility: (nodeId: string, visible: boolean) => ipcRenderer.invoke('gis:set-node-visibility', nodeId, visible),
+  /** @ipc gis:set-node-selection */
+  setNodeSelection: (selectedNodeIds: string[]) => ipcRenderer.invoke('gis:set-node-selection', selectedNodeIds),
+  /** @ipc gis:remove-nodes */
+  removeNodes: (nodeIds: string[]) => ipcRenderer.invoke('gis:remove-nodes', nodeIds),
+  /** @ipc gis:create-group */
+  createGroup: (name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) =>
+    ipcRenderer.invoke('gis:create-group', name, targetNodeId, childNodeIds, newGroupId),
+  /** @ipc gis:rename-node */
+  renameNode: (nodeId: string, newName: string) => ipcRenderer.invoke('gis:rename-node', nodeId, newName),
+  /** @ipc gis:reorder-nodes */
+  reorderNodes: (draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') =>
+    ipcRenderer.invoke('gis:reorder-nodes', draggedNodeIds, targetNodeId, position)
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

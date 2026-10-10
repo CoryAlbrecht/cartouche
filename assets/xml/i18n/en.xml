@@ -24,4 +24,17 @@
     <string name="open_preferences">Open Preferences...</string>
     <!-- Miscellaneous -->
     <string name="shortcut_save">Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.</string>
+    <!-- Layer Tree & Modal Dialogs -->
+    <string name="remove_layer_title">Remove Layer</string>
+    <string name="remove_group_title">Remove Group</string>
+    <string name="remove_items_title">Remove Selected Items</string>
+    <string name="remove_layer_prompt">Are you sure you want to remove layer '{0}' from the project?</string>
+    <string name="remove_group_prompt">Are you sure you want to remove group '{0}'? This will also remove all items inside it.</string>
+    <string name="remove_items_prompt">Are you sure you want to remove the {0} selected items from the project? Any groups will also have their contents removed.</string>
+    <string name="dialog_remove">Remove</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="create_group">Create Group</string>
+    <string name="remove_layer">Remove Layer</string>
+    <string name="remove_group">Remove Group</string>
+    <string name="remove_selected_items">Remove Selected Items</string>
 </ci18n:localization>

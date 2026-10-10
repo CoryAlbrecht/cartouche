@@ -4,20 +4,20 @@
  * @description Built-in geospatial raster, vector, project, and tabular format definitions for the Cartouche File Types Registry.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  */
 
 import type { FileTypeDescriptor } from '@shared/types';
 
 /**
- * Built-in geospatial raster, vector, project, style, and tabular format definitions.
+ * @description Built-in geospatial raster, vector, project, style, and tabular format definitions.
  * Isomorphic metadata safe for import across both Node.js Main and browser/React Renderer processes.
  *
  * @type {FileTypeDescriptor[]}
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-08
  * @since 0.1.0-dev
  */
 export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [

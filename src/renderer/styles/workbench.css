@@ -696,6 +696,49 @@
   color: #0369a1;
 }
 
+.tree-node-row.selected {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.tree-node-row.dimmed .tree-icon-slot,
+.tree-node-row.dimmed .tree-node-title {
+  opacity: 0.45;
+  filter: grayscale(100%);
+}
+
+.tree-drop-marker {
+  height: 2px;
+  background-color: #1b446c;
+  border-radius: 1px;
+  margin: 1px 0;
+  position: relative;
+  pointer-events: none;
+}
+
+.tree-drop-marker::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  background-color: #1b446c;
+  border-radius: 50%;
+}
+
+.tree-inline-input {
+  flex: 1;
+  font-size: 0.9167rem;
+  font-family: inherit;
+  border: 1px solid #1b446c;
+  border-radius: 2px;
+  padding: 1px 4px;
+  outline: none;
+  color: #000000;
+  background-color: #ffffff;
+}
+
 .tree-node-project {
   font-weight: 600;
   color: #1e293b;
