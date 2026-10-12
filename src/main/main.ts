@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  */
@@ -17,7 +17,7 @@ import type { FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
-import { pathExists } from "./api/ApiFunctions";
+import { pathExists, resolveDialogParent } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
@@ -343,20 +343,46 @@ app.whenReady().then(async () => {
   });
 
   // File System Dialog IPC Handlers
+  let isFileDialogOpen = false;
+
+  /**
+   * @description Handles dialog:open-files IPC invocation to present native file picker modal to calling window.
+   * Resolves target window via resolveDialogParent (prioritizing the focused child window, sender, or fallback mainWindow).
+   * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-02
+   * @updated 2026-10-12
+   * @since 0.1.0-dev
+   * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
+   * @param {Object} [options] - Dialog options including category, filters, and multiSelections.
+   * @returns {Promise<string[]>} Selected file paths or empty array if canceled.
+   */
   ipcMain?.handle('dialog:open-files', async (_event, options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
-    const properties: Array<'openFile' | 'multiSelections'> = ['openFile'];
-    if (options?.multiSelections !== false) {
-      properties.push('multiSelections');
+    if (isFileDialogOpen) {
+      return [];
     }
-    const filters = options?.filters || fileTypeRegistry.getFileFilters(options?.category);
-    const dialogOptions: Electron.OpenDialogOptions = {
-      title: options?.title || 'Select Data Files',
-      properties,
-      filters
-    };
-    const res = mainWindow ? await dialog.showOpenDialog(mainWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions);
-    if (res.canceled) return [];
-    return res.filePaths;
+    isFileDialogOpen = true;
+    try {
+      const properties: Array<'openFile' | 'multiSelections'> = ['openFile'];
+      if (options?.multiSelections !== false) {
+        properties.push('multiSelections');
+      }
+      const filters = options?.filters || fileTypeRegistry.getFileFilters(options?.category);
+      const dialogOptions: Electron.OpenDialogOptions = {
+        title: options?.title || 'Select Data Files',
+        properties,
+        filters
+      };
+      const targetWindow = resolveDialogParent(_event.sender, mainWindow);
+      const res = targetWindow ? await dialog.showOpenDialog(targetWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions);
+      if (res.canceled) return [];
+      return res.filePaths;
+    } catch (err) {
+      console.error('[Main] dialog:open-files error:', err);
+      return [];
+    } finally {
+      isFileDialogOpen = false;
+    }
   });
 
   // Project Management IPC Handlers

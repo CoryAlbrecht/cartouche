@@ -4,7 +4,7 @@
  * @description Built-in geospatial raster, vector, project, and tabular format definitions for the Cartouche File Types Registry.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 
@@ -17,7 +17,7 @@ import type { FileTypeDescriptor } from '@shared/types';
  * @type {FileTypeDescriptor[]}
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
@@ -243,8 +243,8 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     id: 'osm-pbf',
     name: 'OpenStreetMap Protobuf (PBF)',
     category: 'vector',
-    primaryExtensions: ['.pbf', '.osm.pbf'],
-    accessoryExtensions: [],
+    primaryExtensions: ['.pbf'],
+    accessoryExtensions: ['.osm.pbf'],
     mimeType: 'application/x-protobuf',
     magicNumbers: [
       {

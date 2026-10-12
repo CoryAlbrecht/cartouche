@@ -4,7 +4,7 @@
  * @description Central registry managing GIS file format descriptors, magic byte sniffing, format identification, reader dispatching, and native file dialog filter generation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 
@@ -180,7 +180,7 @@ export class FileTypeRegistry {
    * Includes a composite "All Supported Formats" group followed by individual format filter groups.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-10-12
    * @since 0.1.0-dev
    * @param {FileCategory} [category] - Optional category filter to restrict descriptors.
    * @returns {Array<{ name: string; extensions: string[] }>} Array of native file dialog filter objects.
@@ -194,14 +194,22 @@ export class FileTypeRegistry {
     const filters: Array<{ name: string; extensions: string[] }> = [];
 
     for (const desc of descriptors) {
-      const cleanedExts = desc.primaryExtensions.map((ext) => ext.replace(/^\./, ''));
+      const cleanedExts = desc.primaryExtensions
+        .map((ext) => {
+          const stripped = ext.replace(/^[*.]+/, '').trim();
+          return stripped.includes('.') ? stripped.split('.').pop() || stripped : stripped;
+        })
+        .filter((ext): ext is string => ext.length > 0);
+
       for (const ext of cleanedExts) {
         allExtensionsSet.add(ext);
       }
-      filters.push({
-        name: desc.name,
-        extensions: cleanedExts
-      });
+      if (cleanedExts.length > 0) {
+        filters.push({
+          name: desc.name,
+          extensions: cleanedExts
+        });
+      }
     }
 
     const allExtensions = Array.from(allExtensionsSet);
@@ -211,6 +219,11 @@ export class FileTypeRegistry {
         extensions: allExtensions
       });
     }
+
+    filters.push({
+      name: 'All Files (*.*)',
+      extensions: ['*']
+    });
 
     return filters;
   }

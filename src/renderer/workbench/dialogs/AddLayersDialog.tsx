@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -113,7 +113,7 @@ export const AddLayersDialog: React.FC = () => {
    * @description Handles browsing local filesystem for spatial dataset files using native system multi-select dialog.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-01
-   * @updated 2026-10-02
+   * @updated 2026-10-12
    * @since 0.1.0-dev
    * @returns {Promise<void>}
    */
@@ -121,20 +121,24 @@ export const AddLayersDialog: React.FC = () => {
     if (activeTab === "vector") {
       addConsoleLog("info", "Browsing for Vector data files...", "Layers");
       if (window.electronAPI?.openFiles) {
-        const selected = await window.electronAPI.openFiles({
-          title: "Select Vector Data Files",
-          category: "vector",
-          multiSelections: true,
-        });
-        if (selected && selected.length > 0) {
-          const current = vectorFilesSignal.value;
-          const merged = Array.from(new Set([...current, ...selected]));
-          vectorFilesSignal.value = merged;
-          addConsoleLog(
-            "info",
-            `Selected ${selected.length} vector file(s)`,
-            "Layers"
-          );
+        try {
+          const selected = await window.electronAPI.openFiles({
+            title: "Select Vector Data Files",
+            category: "vector",
+            multiSelections: true,
+          });
+          if (selected && selected.length > 0) {
+            const current = vectorFilesSignal.value;
+            const merged = Array.from(new Set([...current, ...selected]));
+            vectorFilesSignal.value = merged;
+            addConsoleLog(
+              "info",
+              `Selected ${selected.length} vector file(s)`,
+              "Layers"
+            );
+          }
+        } catch (err: any) {
+          addConsoleLog("error", `Failed to browse vector files: ${err?.message || err}`, "Layers");
         }
       }
     } else {
@@ -144,13 +148,17 @@ export const AddLayersDialog: React.FC = () => {
         "Layers"
       );
       if (window.electronAPI?.openFiles) {
-        const selected = await window.electronAPI.openFiles({
-          title: `Select ${activeTab.toUpperCase()} Data File`,
-          category: activeTab === "raster" ? "raster" : undefined,
-          multiSelections: false,
-        });
-        if (selected && selected.length > 0) {
-          filePathSignal.value = selected[0];
+        try {
+          const selected = await window.electronAPI.openFiles({
+            title: `Select ${activeTab.toUpperCase()} Data File`,
+            category: activeTab === "raster" ? "raster" : undefined,
+            multiSelections: false,
+          });
+          if (selected && selected.length > 0) {
+            filePathSignal.value = selected[0];
+          }
+        } catch (err: any) {
+          addConsoleLog("error", `Failed to browse ${activeTab} file: ${err?.message || err}`, "Layers");
         }
       }
     }
