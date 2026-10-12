@@ -19,7 +19,7 @@
     "clean:build": "rimraf dist dist-electron",
     "clean:package": "rimraf release",
     "clean": "npm run clean:build && npm run clean:rebuild && npm run clean:package",
-    "test": "echo \"No test specified\" && exit 0"
+    "test": "node --import jiti/register --test \"tests/**/*.test.ts\""
   },
   "keywords": [
     "gis",

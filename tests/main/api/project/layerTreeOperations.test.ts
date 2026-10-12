@@ -1,25 +1,25 @@
 /**
  * @file layerTreeOperations.test.ts
- * @module main/api/project/__tests__/layerTreeOperations.test
+ * @module tests/main/api/project/layerTreeOperations.test
  * @description Unit tests for Main process layer tree mutation API handlers (visibility, selection, deletion, group creation, reordering).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { projectStore } from '../../../project/ProjectStore';
-import { LayerGroup } from '../../../project/models/LayerGroup';
-import { Layer } from '../../../project/models/Layer';
+import { projectStore } from '../../../../src/main/project/ProjectStore';
+import { LayerGroup } from '../../../../src/main/project/models/LayerGroup';
+import { Layer } from '../../../../src/main/project/models/Layer';
 import {
   setNodeVisibility,
   setNodeSelection,
   removeNodes,
   createGroup,
   reorderNodes
-} from '../layerTreeOperations';
+} from '../../../../src/main/api/project/layerTreeOperations';
 
 describe('layerTreeOperations', () => {
   beforeEach(() => {

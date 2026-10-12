@@ -1,6 +1,6 @@
 /**
  * @file resolveDialogParent.test.ts
- * @module main/api/dialog/__tests__/resolveDialogParent.test
+ * @module tests/main/api/dialog/resolveDialogParent.test
  * @description Unit tests for resolveDialogParent resolution hierarchy (focused window -> sender -> fallback mainWindow).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
@@ -10,7 +10,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { resolveDialogParent } from '../resolveDialogParent';
+import { resolveDialogParent } from '../../../../src/main/api/dialog/resolveDialogParent';
 
 describe('resolveDialogParent', () => {
   it('returns focused window when available and alive', () => {
@@ -80,3 +80,4 @@ describe('resolveDialogParent', () => {
     assert.strictEqual(res, undefined);
   });
 });
+

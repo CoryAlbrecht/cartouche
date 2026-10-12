@@ -1,4 +1,13 @@
-// vite.config.ts
+/**
+ * @file vite.config.ts
+ * @module config/vite
+ * @description Vite configuration for Cartouche desktop GIS application, configuring Electron main, preload, and React renderer compilation with vendor chunk splitting.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-12
+ * @since 0.1.0-dev
+ */
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
@@ -72,7 +81,31 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      input: path.resolve(__dirname, 'src/renderer/index.html')
+      input: path.resolve(__dirname, 'src/renderer/index.html'),
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (
+              id.includes('/ol/') ||
+              id.includes('ol-ext') ||
+              id.includes('proj4') ||
+              id.includes('flatgeobuf') ||
+              id.includes('@turf') ||
+              id.includes('geostyler') ||
+              id.includes('geotiff')
+            ) {
+              return 'vendor-gis';
+            }
+            if (id.includes('dockview')) {
+              return 'vendor-dockview';
+            }
+            if (id.includes('react') || id.includes('@preact')) {
+              return 'vendor-react';
+            }
+            return 'vendor';
+          }
+        }
+      }
     },
     outDir: 'dist',
     emptyOutDir: true,

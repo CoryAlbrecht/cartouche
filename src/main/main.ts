@@ -7,9 +7,11 @@
  * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
+ * @see {@link handleIpc}
  */
 
-import { app, BrowserWindow, dialog, ipcMain, nativeImage } from 'electron';
+import { app, BrowserWindow, dialog, nativeImage } from 'electron';
+import { handleIpc, onIpc } from './ipc/registerIpcHandler';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -320,11 +322,11 @@ app.whenReady().then(async () => {
 
   createWindow();
 
-  ipcMain?.on('window-minimize', () => {
+  onIpc('window-minimize', () => {
     if (mainWindow) mainWindow.minimize();
   });
 
-  ipcMain?.on('window-maximize', () => {
+  onIpc('window-maximize', () => {
     if (mainWindow) {
       if (mainWindow.isMaximized()) {
         mainWindow.unmaximize();
@@ -334,11 +336,11 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain?.on('window-close', () => {
+  onIpc('window-close', () => {
     if (mainWindow) mainWindow.close();
   });
 
-  ipcMain?.handle('window-is-maximized', () => {
+  handleIpc('window-is-maximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false;
   });
 
@@ -357,7 +359,7 @@ app.whenReady().then(async () => {
    * @param {Object} [options] - Dialog options including category, filters, and multiSelections.
    * @returns {Promise<string[]>} Selected file paths or empty array if canceled.
    */
-  ipcMain?.handle('dialog:open-files', async (_event, options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
+  handleIpc('dialog:open-files', async (_event, options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
     if (isFileDialogOpen) {
       return [];
     }
@@ -386,55 +388,55 @@ app.whenReady().then(async () => {
   });
 
   // Project Management IPC Handlers
-  ipcMain?.handle('gis:open-project', async (_event, filePath?: string) => {
+  handleIpc('gis:open-project', async (_event, filePath?: string) => {
     const { default: openProject } = await import('./api/project/openProject');
     return openProject(filePath);
   });
 
-  ipcMain?.handle('gis:get-current-project', async () => {
+  handleIpc('gis:get-current-project', async () => {
     const { projectStore } = await import('./project/ProjectStore');
     return projectStore.getProject();
   });
 
   // Localization IPC Handlers
-  ipcMain?.handle('gis:get-i18n-state', async () => {
+  handleIpc('gis:get-i18n-state', async () => {
     const { i18nStore } = await import('./i18n/I18nStore');
     return i18nStore.getState();
   });
 
   // File Types Registry IPC Handlers
-  ipcMain?.handle('gis:get-filetypes', async () => {
+  handleIpc('gis:get-filetypes', async () => {
     return fileTypeRegistry.getAllDescriptors();
   });
 
-  ipcMain?.handle('gis:identify-file', async (_event, filePath: string) => {
+  handleIpc('gis:identify-file', async (_event, filePath: string) => {
     return fileTypeRegistry.identifyFile(filePath);
   });
 
   // Keyboard Shortcuts System IPC Handlers
-  ipcMain?.handle('gis:execute-action', async (_event, shortcutName: string) => {
+  handleIpc('gis:execute-action', async (_event, shortcutName: string) => {
     const { ActionRegistry } = await import('./actions/ActionRegistry');
     ActionRegistry.executeAction(shortcutName);
   });
 
-  ipcMain?.handle('gis:get-actions', async () => {
+  handleIpc('gis:get-actions', async () => {
     const { ActionRegistry } = await import('./actions/ActionRegistry');
     return ActionRegistry.getAllActionDefinitions();
   });
 
   // Preferences System IPC Handlers
-  ipcMain?.handle('gis:get-preference', async (_event, name?: string) => {
+  handleIpc('gis:get-preference', async (_event, name?: string) => {
     const { default: getPreferenceValue } = await import('./api/ui/preferences/GetPreferenceValue');
     return getPreferenceValue(name);
   });
 
-  ipcMain?.handle('gis:set-preference', async (_event, name: string, value: any) => {
+  handleIpc('gis:set-preference', async (_event, name: string, value: any) => {
     const { default: setPreferenceValue } = await import('./api/ui/preferences/SetPreferenceValue');
     return setPreferenceValue(name, value);
   });
 
   // FlatGeobuf Zero-Copy IPC Pipeline & OpenLayers Flat Styling
-  ipcMain?.handle('gis:encode-flatgeobuf', async (_event, features: any[], geometryKind: string) => {
+  handleIpc('gis:encode-flatgeobuf', async (_event, features: any[], geometryKind: string) => {
     try {
       const { geojson } = await import('flatgeobuf');
       const geojsonFeatures = (features || []).map((f: any) => {
@@ -466,7 +468,7 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain?.handle('gis:fetch-layer-flatgeobuf', async (_event, layerId: string) => {
+  handleIpc('gis:fetch-layer-flatgeobuf', async (_event, layerId: string) => {
     return {
       layerId,
       buffer: new ArrayBuffer(0),
@@ -474,35 +476,35 @@ app.whenReady().then(async () => {
     };
   });
 
-  ipcMain?.handle('gis:add-layers', async (_event, layers: any[]) => {
+  handleIpc('gis:add-layers', async (_event, layers: any[]) => {
     await addLayers(layers);
   });
 
-  ipcMain?.handle('gis:path-exists', async (_event, filePath: string) => {
+  handleIpc('gis:path-exists', async (_event, filePath: string) => {
     return await pathExists(filePath);
   });
 
-  ipcMain?.handle('gis:set-node-visibility', async (_event, nodeId: string, visible: boolean) => {
+  handleIpc('gis:set-node-visibility', async (_event, nodeId: string, visible: boolean) => {
     setNodeVisibility(nodeId, visible);
   });
 
-  ipcMain?.handle('gis:set-node-selection', async (_event, selectedNodeIds: string[]) => {
+  handleIpc('gis:set-node-selection', async (_event, selectedNodeIds: string[]) => {
     setNodeSelection(selectedNodeIds);
   });
 
-  ipcMain?.handle('gis:remove-nodes', async (_event, nodeIds: string[]) => {
+  handleIpc('gis:remove-nodes', async (_event, nodeIds: string[]) => {
     removeNodes(nodeIds);
   });
 
-  ipcMain?.handle('gis:create-group', async (_event, name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) => {
+  handleIpc('gis:create-group', async (_event, name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) => {
     createGroup(name, targetNodeId, childNodeIds, newGroupId);
   });
 
-  ipcMain?.handle('gis:rename-node', async (_event, nodeId: string, newName: string) => {
+  handleIpc('gis:rename-node', async (_event, nodeId: string, newName: string) => {
     renameNode(nodeId, newName);
   });
 
-  ipcMain?.handle('gis:reorder-nodes', async (_event, draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => {
+  handleIpc('gis:reorder-nodes', async (_event, draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => {
     reorderNodes(draggedNodeIds, targetNodeId, position);
   });
 

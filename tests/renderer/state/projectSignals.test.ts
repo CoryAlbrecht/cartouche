@@ -1,10 +1,10 @@
 /**
  * @file projectSignals.test.ts
- * @module renderer/state/__tests__/projectSignals.test
+ * @module tests/renderer/state/projectSignals.test
  * @description Unit tests for Preact project signals, hierarchical visibility counting, selection manipulation, and context menu hooks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 
@@ -23,8 +23,8 @@ import {
   selectedNodeIdsSignal,
   registerLayerTreeContextMenuHook,
   layerTreeContextMenuHooksSignal
-} from '../projectSignals';
-import type { ProjectLayerItem, ProjectGroupItem } from '../../../shared/types';
+} from '../../../src/renderer/state/projectSignals';
+import type { ProjectLayerItem, ProjectGroupItem } from '../../../src/shared/types';
 
 describe('projectSignals', () => {
   beforeEach(() => {
