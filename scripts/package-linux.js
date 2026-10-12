@@ -1,7 +1,19 @@
+/**
+ * @file package-linux.js
+ * @module scripts/package-linux
+ * @description Linux packaging automation script assembling staging directories and invoking fpm to build Debian (.deb) and Red Hat (.rpm) installer packages.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-27
+ * @updated 2026-10-12
+ * @since 0.1.0-dev
+ * @see {@link formatRpmVersionAndRelease}
+ */
+
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
+import { formatRpmVersionAndRelease } from "./format-rpm-version.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -156,13 +168,15 @@ execSync(debCmd, { stdio: "inherit" });
 
 // Build .rpm package
 console.log("==> Building .rpm package with fpm...");
-const rpmCmd = `"${fpmPath}" -s dir -t rpm -n cartouche -v "${pkgVersion}" \
+const { version: rpmVersion, release: rpmRelease } = formatRpmVersionAndRelease(pkgVersion);
+const rpmFileName = `cartouche-${rpmVersion}-${rpmRelease}.x86_64.rpm`;
+const rpmCmd = `"${fpmPath}" -s dir -t rpm -n cartouche -v "${rpmVersion}" --iteration "${rpmRelease}" \
   -m "Cory Albrecht <cory@hanfastolfe.com>" \
   --description "Cartouche Desktop GIS Application" \
   --license MIT \
   --category "Graphics;Science;Geoscience" \
   -d "gtk3" -d "libnotify" -d "nss" -d "libXScrnSaver" -d "alsa-lib" -d "glibc" \
-  -p "${path.join(releaseDir, `cartouche-${pkgVersion}.x86_64.rpm`)}" \
+  -p "${path.join(releaseDir, rpmFileName)}" \
   --force \
   -C "${stagingDir}" .`;
 execSync(rpmCmd, { stdio: "inherit" });
@@ -172,5 +186,6 @@ console.log(
   `    - ${path.join(releaseDir, `cartouche_${pkgVersion}_amd64.deb`)}`
 );
 console.log(
-  `    - ${path.join(releaseDir, `cartouche-${pkgVersion}.x86_64.rpm`)}`
+  `    - ${path.join(releaseDir, rpmFileName)}`
 );
+
