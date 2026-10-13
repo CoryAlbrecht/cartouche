@@ -15,6 +15,7 @@
  * @see {@link saveActiveLayerAs}
  * @see {@link resolveDialogParent}
  * @see {@link renameLayerTreeNode}
+ * @see {@link cancelAction}
  */
 export { default as newProject } from './project/newProject';
 export { default as openProject } from './project/openProject';
@@ -25,6 +26,7 @@ export { default as saveActiveLayer } from './layers/saveActiveLayer';
 export { default as saveActiveLayerAs } from './layers/saveActiveLayerAs';
 export { default as toggleProjectVisibility } from './project/toggleProjectVisibility';
 export { default as renameLayerTreeNode } from './project/renameLayerTreeNode';
+export { default as cancelAction } from './edit/cancelAction';
 export { default as undoAction } from './edit/undoAction';
 export { default as redoAction } from './edit/redoAction';
 export { default as getPreferenceValue } from './ui/preferences/GetPreferenceValue';

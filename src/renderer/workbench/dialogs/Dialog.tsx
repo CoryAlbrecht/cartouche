@@ -4,7 +4,7 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
@@ -23,7 +23,8 @@ import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindow
  * @property {string} title - Title text displayed in OS window frame and dialog header bar.
  * @property {string | React.ReactNode} [icon] - Optional MDI SVG path string or custom icon node for title bar branding icon.
  * @property {boolean} isOpen - Signal or boolean flag controlling dialog window visibility.
- * @property {() => void} onClose - Callback invoked when closing dialog or pressing Escape.
+ * @property {() => void} onClose - Callback invoked when closing dialog or clicking close.
+ * @property {() => void} [onCancel] - Optional callback invoked specifically when cancelling via Escape key.
  * @property {number} [defaultWidth=640] - Default window width in pixels.
  * @property {number} [defaultHeight=480] - Default window height in pixels.
  * @property {number} [x=-1] - Optional left window position in pixels.
@@ -40,6 +41,7 @@ export interface DialogProps {
   icon?: string | React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
+  onCancel?: () => void;
   defaultWidth?: number;
   defaultHeight?: number;
   x?: number;
@@ -56,7 +58,7 @@ export interface DialogProps {
  * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, and Escape key dismissal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {DialogProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered detached portal dialog window or null if closed.
@@ -67,6 +69,7 @@ export const Dialog: React.FC<DialogProps> = ({
   icon,
   isOpen,
   onClose,
+  onCancel,
   defaultWidth = 640,
   defaultHeight = 480,
   x = -1,
@@ -82,14 +85,20 @@ export const Dialog: React.FC<DialogProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        e.stopPropagation();
+        if (onCancel) {
+          onCancel();
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, onCancel]);
 
   if (!isOpen) return null;
 

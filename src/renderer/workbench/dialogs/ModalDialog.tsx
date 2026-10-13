@@ -4,7 +4,7 @@
  * @description Standardized React portal-based modal dialog to block interaction with parent window.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @component ModalDialog
  */
@@ -35,7 +35,7 @@ export interface ModalDialogProps {
  * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {ModalDialogProps} props - Component properties.
  * @returns {React.ReactPortal | null} Rendered portal or null when closed.
@@ -51,8 +51,10 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };

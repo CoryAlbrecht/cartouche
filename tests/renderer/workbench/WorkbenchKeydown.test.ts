@@ -1,0 +1,173 @@
+/**
+ * @file WorkbenchKeydown.test.ts
+ * @module tests/renderer/workbench/WorkbenchKeydown.test
+ * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @see {@link handleWorkbenchKeyDown}
+ */
+
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import createJiti from 'jiti';
+import {
+  activeToolSignal,
+  selectedFeatureIdsSignal
+} from '../../../src/renderer/state/gisSignals';
+import {
+  editingNodeIdSignal,
+  projectTreeSignal,
+  selectedNodeIdsSignal,
+  setNodeSelection
+} from '../../../src/renderer/state/projectSignals';
+import { registeredActionsSignal } from '../../../src/renderer/state/actionSignals';
+
+const jiti = createJiti(import.meta.url, {
+  jsx: true,
+  alias: {
+    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
+    '@shared': path.resolve(process.cwd(), 'src/shared')
+  }
+});
+
+const { handleWorkbenchKeyDown } = jiti('../../../src/renderer/workbench/workbenchShortcuts') as {
+  handleWorkbenchKeyDown: (e: any) => void;
+};
+
+/**
+ * @description Creates a mock KeyboardEvent for testing keydown dispatching.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @param {Object} options - Event parameters.
+ * @returns {any} Mock keyboard event.
+ */
+function createMockKeyEvent(options: {
+  key: string;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+  metaKey?: boolean;
+  defaultPrevented?: boolean;
+  target?: any;
+}): any {
+  let prevented = options.defaultPrevented || false;
+  let stopped = false;
+  return {
+    key: options.key,
+    ctrlKey: options.ctrlKey || false,
+    altKey: options.altKey || false,
+    shiftKey: options.shiftKey || false,
+    metaKey: options.metaKey || false,
+    get defaultPrevented() {
+      return prevented;
+    },
+    preventDefault() {
+      prevented = true;
+    },
+    stopPropagation() {
+      stopped = true;
+    },
+    get propagationStopped() {
+      return stopped;
+    },
+    target: options.target || { tagName: 'DIV' }
+  };
+}
+
+describe('Workbench Global Keyboard Listener', () => {
+  beforeEach(() => {
+    activeToolSignal.value = 'pan';
+    selectedFeatureIdsSignal.value = new Set();
+    editingNodeIdSignal.value = null;
+    projectTreeSignal.value = [
+      {
+        id: 'layer-roads',
+        name: 'Roads',
+        type: 'vector',
+        source: '/path/to/roads.shp',
+        visible: true,
+        selected: false
+      }
+    ];
+    setNodeSelection([]);
+
+    registeredActionsSignal.value = [
+      {
+        name: 'cancel_action',
+        description: 'Cancels the active operation, reverts tool, or clears selection',
+        keyCombination: { key: 'Escape' }
+      }
+    ];
+  });
+
+  it('dispatches cancel_action when Escape is pressed and no input/modal captures focus', () => {
+    activeToolSignal.value = 'polygon';
+    setNodeSelection(['layer-roads']);
+    selectedFeatureIdsSignal.value = new Set(['feature-1']);
+
+    const event = createMockKeyEvent({ key: 'Escape' });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(activeToolSignal.value, 'pan');
+    assert.deepEqual(selectedNodeIdsSignal.value, []);
+    assert.equal(selectedFeatureIdsSignal.value.size, 0);
+  });
+
+  it('bypasses cancel_action when editingNodeIdSignal is active (inline rename)', () => {
+    editingNodeIdSignal.value = 'layer-roads';
+    activeToolSignal.value = 'polygon';
+
+    const event = createMockKeyEvent({ key: 'Escape' });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(activeToolSignal.value, 'polygon');
+  });
+
+  it('bypasses cancel_action when target is an editable input or textarea', () => {
+    activeToolSignal.value = 'polygon';
+
+    const event = createMockKeyEvent({
+      key: 'Escape',
+      target: { tagName: 'INPUT' }
+    });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(activeToolSignal.value, 'polygon');
+  });
+
+  it('bypasses cancel_action when target is inside a modal dialog', () => {
+    activeToolSignal.value = 'polygon';
+
+    const event = createMockKeyEvent({
+      key: 'Escape',
+      target: {
+        tagName: 'BUTTON',
+        closest: (selector: string) => selector.includes('modal-dialog') ? {} : null
+      }
+    });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(activeToolSignal.value, 'polygon');
+  });
+
+  it('bypasses cancel_action when event has already been defaultPrevented', () => {
+    activeToolSignal.value = 'polygon';
+
+    const event = createMockKeyEvent({
+      key: 'Escape',
+      defaultPrevented: true
+    });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(activeToolSignal.value, 'polygon');
+  });
+});

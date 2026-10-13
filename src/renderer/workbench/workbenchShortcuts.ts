@@ -1,0 +1,141 @@
+/**
+ * @file workbenchShortcuts.ts
+ * @module renderer/workbench/workbenchShortcuts
+ * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @see {@link registeredActionsSignal}
+ * @see {@link cancelAction}
+ */
+
+import {
+  hasProjectSignal,
+  isProjectDirtySignal,
+  activeLayerIdSignal,
+  undoStackSignal,
+  redoStackSignal,
+  newProjectAction,
+  openProjectAction,
+  closeProjectAction,
+  saveProjectAction,
+  saveAsProjectAction,
+  saveActiveLayerAction,
+  saveActiveLayerAsAction,
+  undoAction,
+  redoAction,
+  openAddLayersDialog,
+  toggleLayersWidgetAction,
+  cancelAction
+} from '../state/gisSignals';
+import { openPreferencesDialog } from '../state/preferencesSignals';
+import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
+import { registeredActionsSignal } from '../state/actionSignals';
+
+/**
+ * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
+ * Bypasses dispatching when focused on text inputs, active inline rename editors, or modal dialogs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @param {KeyboardEvent} e - Native DOM keyboard event.
+ * @returns {void}
+ */
+export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
+  if (e.defaultPrevented) {
+    return;
+  }
+
+  // Ignore global shortcut keystrokes when editing a node title or focused on editable input elements
+  if (editingNodeIdSignal.value !== null) {
+    return;
+  }
+
+  const target = e.target as HTMLElement | null;
+  if (target) {
+    const tagName = target.tagName;
+    if (
+      tagName === 'INPUT'
+      || tagName === 'TEXTAREA'
+      || tagName === 'SELECT'
+      || target.isContentEditable
+      || (typeof target.closest === 'function' && target.closest('.modal-backdrop, .modal-dialog, [role="dialog"]'))
+    ) {
+      return;
+    }
+  }
+
+  const key = e.key.toLowerCase();
+  const ctrl = e.ctrlKey;
+  const alt = e.altKey;
+  const shift = e.shiftKey;
+  const meta = e.metaKey;
+
+  const shortcuts = registeredActionsSignal.value;
+  for (const s of shortcuts) {
+    const c = s.keyCombination;
+    if (
+      c
+      && c.key.toLowerCase() === key
+      && !!c.ctrl === ctrl
+      && !!c.alt === alt
+      && !!c.shift === shift
+      && !!c.meta === meta
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Trigger corresponding Renderer signal updates or execute Main action
+      switch (s.name) {
+        case 'new_project':
+          newProjectAction();
+          break;
+        case 'open_project':
+          openProjectAction();
+          break;
+        case 'close_project':
+          if (hasProjectSignal.value) closeProjectAction();
+          break;
+        case 'save_project':
+          if (hasProjectSignal.value && isProjectDirtySignal.value) saveProjectAction();
+          break;
+        case 'save_as_project':
+          if (hasProjectSignal.value) saveAsProjectAction();
+          break;
+        case 'save_active_layer':
+          if (activeLayerIdSignal.value) saveActiveLayerAction();
+          break;
+        case 'save_active_layer_as':
+          if (activeLayerIdSignal.value) saveActiveLayerAsAction();
+          break;
+        case 'undo_action':
+          if (undoStackSignal.value.length > 0) undoAction();
+          break;
+        case 'redo_action':
+          if (redoStackSignal.value.length > 0) redoAction();
+          break;
+        case 'open_preferences':
+          openPreferencesDialog();
+          break;
+        case 'add_layers':
+          openAddLayersDialog();
+          break;
+        case 'toggle_layers_widget':
+          toggleLayersWidgetAction();
+          break;
+        case 'rename_layer_tree_node':
+          requestRenameSelectedNode();
+          break;
+        case 'cancel_action':
+          cancelAction();
+          break;
+        default:
+          window.electronAPI?.executeAction(s.name);
+          break;
+      }
+      break;
+    }
+  }
+}

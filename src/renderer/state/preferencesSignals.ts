@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-01
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -178,4 +178,23 @@ export function openPreferencesDialog(): void {
  */
 export function closePreferencesDialog(): void {
   isPreferencesOpenSignal.value = false;
+}
+
+/**
+ * @description Cancels pending preference edits, reverting any modified signals back to authoritative values and closing dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function cancelPreferencesEdits(): void {
+  const currentMap = preferencesMapSignal.value;
+  for (const item of Object.values(currentMap)) {
+    if (item.signal && item.value !== undefined) {
+      item.signal.value = item.value;
+    }
+  }
+  closePreferencesDialog();
+  addConsoleLog('info', 'Preferences changes cancelled.', 'Preferences');
 }

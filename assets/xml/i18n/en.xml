@@ -18,6 +18,7 @@
     <string name="toggle_layers_widget">Toggle Layers Widget</string>
     <string name="exit_app">Exit</string>
     <!-- Edit Menu -->
+    <string name="cancel_action">Cancel</string>
     <string name="undo_action">Undo</string>
     <string name="redo_action">Redo</string>
     <string name="cut">Cut</string>

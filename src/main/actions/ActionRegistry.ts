@@ -4,7 +4,7 @@
  * @description Centralized Action registry for the Cartouche main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-04
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 
@@ -12,10 +12,10 @@ import type { KeyCombination, ActionDefinition } from '@shared/types';
 import { BUILTIN_ACTIONS } from './defaults';
 
 /**
- * @description Formats a key combination object into a user-facing shortcut string (e.g. "Ctrl+Alt+V").
+ * @description Formats a key combination object into a user-facing shortcut string (e.g. "Ctrl+Alt+V", "Escape").
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-09-24
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {KeyCombination} combo - The key combination object containing key and modifiers.
  * @returns {string} Human-readable formatted key combination string.
@@ -27,7 +27,15 @@ export function formatKeyCombination(combo: KeyCombination): string {
   if (combo.shift) parts.push('Shift');
   if (combo.meta) parts.push('Meta');
   if (combo.key) {
-    parts.push(combo.key.toUpperCase());
+    if (combo.key.toLowerCase() === 'escape') {
+      parts.push('Escape');
+    } else if (/^f\d+$/i.test(combo.key)) {
+      parts.push(combo.key.toUpperCase());
+    } else if (combo.key.length === 1) {
+      parts.push(combo.key.toUpperCase());
+    } else {
+      parts.push(combo.key.charAt(0).toUpperCase() + combo.key.slice(1));
+    }
   }
   return parts.join('+');
 }

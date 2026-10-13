@@ -24,7 +24,8 @@ import {
   mdiCog,
   mdiLayersOutline,
   mdiMapPlus,
-  mdiPencilOutline
+  mdiPencilOutline,
+  mdiCancel
 } from '@mdi/js';
 
 /**
@@ -134,6 +135,13 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     icon: mdiPencilOutline,
     keyCombination: { key: 'F2' },
     functionCall: ApiFunctions.renameLayerTreeNode
+  },
+  {
+    name: 'cancel_action',
+    description: 'Cancels the active operation, reverts tool, or clears selection',
+    icon: mdiCancel,
+    keyCombination: { key: 'Escape' },
+    functionCall: ApiFunctions.cancelAction
   }
 ];
 

@@ -113,6 +113,7 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };

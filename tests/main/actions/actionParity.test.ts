@@ -92,6 +92,9 @@ describe('actionParity', () => {
 
     const saveActiveLayerAs = actionsMap.get('save_active_layer_as');
     assert.deepEqual(saveActiveLayerAs?.keyCombination, { key: 's', ctrl: true, shift: true });
+
+    const cancelAction = actionsMap.get('cancel_action');
+    assert.deepEqual(cancelAction?.keyCombination, { key: 'Escape' });
   });
 
   it('ensures every BUILTIN_ACTION that defines a functionCall has a callable function', () => {

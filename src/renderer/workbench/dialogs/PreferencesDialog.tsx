@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-02
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -28,6 +28,7 @@ import {
   activeCategorySignal,
   updatePreference,
   closePreferencesDialog,
+  cancelPreferencesEdits,
 } from "@renderer/state/preferencesSignals";
 import { Dialog } from "./Dialog";
 import type { PreferenceItem } from "@shared/types";
@@ -56,7 +57,7 @@ const categories: CategoryTab[] = [
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-02
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -216,23 +217,22 @@ export const PreferencesDialog: React.FC = () => {
   };
 
   /**
-   * @description Keyboard event listener handling dialog Escape dismissal and flushing pending autosave edits.
+   * @description Cancels pending preference edits, discarding unsaved state, clearing timers, and closing dialog.
    * @author Cory Albrecht <cory@albrecht.name>
-   * @date 2026-09-24
-   * @updated 2026-09-30
+   * @date 2026-10-13
+   * @updated 2026-10-13
    * @since 0.1.0-dev
-   * @param {React.KeyboardEvent} e - Keyboard event object.
    * @returns {void}
    */
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      if (Object.keys(pendingChangesRef.current).length > 0) {
-        executeAutosave().then(() => closePreferencesDialog());
-      } else {
-        closePreferencesDialog();
-      }
+  const handleCancel = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
     }
+    pendingChangesRef.current = {};
+    draftPreferencesSignal.value = {};
+    saveStatusSignal.value = "idle";
+    cancelPreferencesEdits();
   };
 
   const savedW =
@@ -273,33 +273,57 @@ export const PreferencesDialog: React.FC = () => {
           closePreferencesDialog();
         }
       }}
+      onCancel={handleCancel}
       defaultWidth={savedW}
       defaultHeight={savedH}
       x={savedX}
       y={savedY}
       footer={
-        <div className='preferences-status-indicator'>
-          {saveStatus === "editing" && (
-            <Icon
-              path={mdiFileEditOutline}
-              size='1.25em'
-              title='Changes pending auto-save...'
-              style={{ color: "#64748b" }}
-            />
-          )}
-          {saveStatus === "saving" && (
-            <Icon
-              path={isSyncIcon ? mdiSync : mdiCached}
-              size='1.25em'
-              title='Auto-saving changes...'
-              style={{ color: "#1b446c" }}
-            />
-          )}
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
+          <div className='preferences-status-indicator'>
+            {saveStatus === "editing" && (
+              <Icon
+                path={mdiFileEditOutline}
+                size='1.25em'
+                title='Changes pending auto-save...'
+                style={{ color: "#64748b" }}
+              />
+            )}
+            {saveStatus === "saving" && (
+              <Icon
+                path={isSyncIcon ? mdiSync : mdiCached}
+                size='1.25em'
+                title='Auto-saving changes...'
+                style={{ color: "#1b446c" }}
+              />
+            )}
+          </div>
+          <button
+            type='button'
+            className='preferences-cancel-btn'
+            onClick={handleCancel}
+            style={{
+              padding: "6px 14px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: 500,
+              fontSize: "0.875rem",
+              color: "#334155",
+            }}>
+            Cancel
+          </button>
         </div>
       }>
       <div
         className='preferences-modal-container'
-        onKeyDown={handleKeyDown}
         style={{
           display: "flex",
           flexDirection: "column",

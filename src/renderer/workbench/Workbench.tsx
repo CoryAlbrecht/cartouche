@@ -73,15 +73,12 @@ import {
   triggerMapAction,
   toggleToolbar,
   registerTogglePanelHandler,
-  toggleLayersWidgetAction,
   openAddLayersDialog,
 } from "@renderer/state/gisSignals";
-import { requestRenameSelectedNode, editingNodeIdSignal } from "@renderer/state/projectSignals";
 import {
   loadActionsFromMain,
   getActionFormattedKey,
   getActionIcon,
-  registeredActionsSignal,
 } from "@renderer/state/actionSignals";
 import {
   openPreferencesDialog,
@@ -90,6 +87,7 @@ import {
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import { AddLayersDialog } from "./dialogs/AddLayersDialog";
+import { handleWorkbenchKeyDown } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
@@ -193,7 +191,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @returns {React.ReactElement} Main workbench window container.
  */
@@ -285,7 +283,7 @@ export const Workbench: React.FC = () => {
     openDockPanelsSignal.value = { attributes: hasAttr, layers: hasLayers };
   }, []);
 
-  // Close open dropdown on outside click
+  // Close open dropdown on outside click or Escape
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest(".menu-item-wrapper")) {
@@ -293,8 +291,21 @@ export const Workbench: React.FC = () => {
         activeMenubarSubmenuSignal.value = null;
       }
     };
+    const handleMenuEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && activeMenubarMenuSignal.value !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        activeMenubarMenuSignal.value = null;
+        activeMenubarSubmenuSignal.value = null;
+      }
+    };
     window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
+    window.addEventListener("keydown", handleMenuEscape);
+    return () => {
+      window.removeEventListener("click", handleOutsideClick);
+      window.removeEventListener("keydown", handleMenuEscape);
+    };
   }, []);
 
   // Monitor maximized state from Electron IPC
@@ -334,97 +345,9 @@ export const Workbench: React.FC = () => {
     loadPreferences();
     loadActionsFromMain();
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore global shortcut keystrokes when editing a node title or focused on editable input elements
-      if (editingNodeIdSignal.value !== null) {
-        return;
-      }
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const tagName = target.tagName;
-        if (
-          tagName === "INPUT"
-          || tagName === "TEXTAREA"
-          || tagName === "SELECT"
-          || target.isContentEditable
-        ) {
-          return;
-        }
-      }
-
-      const key = e.key.toLowerCase();
-      const ctrl = e.ctrlKey;
-      const alt = e.altKey;
-      const shift = e.shiftKey;
-      const meta = e.metaKey;
-
-      const shortcuts = registeredActionsSignal.value;
-      for (const s of shortcuts) {
-        const c = s.keyCombination;
-        if (
-          c
-          && c.key.toLowerCase() === key
-          && !!c.ctrl === ctrl
-          && !!c.alt === alt
-          && !!c.shift === shift
-          && !!c.meta === meta
-        ) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          // Trigger corresponding Renderer signal updates or execute Main action
-          switch (s.name) {
-            case "new_project":
-              newProjectAction();
-              break;
-            case "open_project":
-              openProjectAction();
-              break;
-            case "close_project":
-              if (hasProjectSignal.value) closeProjectAction();
-              break;
-            case "save_project":
-              if (hasProjectSignal.value && isProjectDirtySignal.value) saveProjectAction();
-              break;
-            case "save_as_project":
-              if (hasProjectSignal.value) saveAsProjectAction();
-              break;
-            case "save_active_layer":
-              if (activeLayerIdSignal.value) saveActiveLayerAction();
-              break;
-            case "save_active_layer_as":
-              if (activeLayerIdSignal.value) saveActiveLayerAsAction();
-              break;
-            case "undo_action":
-              if (undoStackSignal.value.length > 0) undoAction();
-              break;
-            case "redo_action":
-              if (redoStackSignal.value.length > 0) redoAction();
-              break;
-            case "open_preferences":
-              openPreferencesDialog();
-              break;
-            case "add_layers":
-              openAddLayersDialog();
-              break;
-            case "toggle_layers_widget":
-              toggleLayersWidgetAction();
-              break;
-            case "rename_layer_tree_node":
-              requestRenameSelectedNode();
-              break;
-            default:
-              window.electronAPI?.executeAction(s.name);
-              break;
-          }
-          break;
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleWorkbenchKeyDown);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleWorkbenchKeyDown);
     };
   }, []);
 
@@ -883,10 +806,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("new_project")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("new_project")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("new_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -903,10 +823,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("open_project")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("open_project")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("open_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -924,10 +841,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("close_project")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("close_project")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("close_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -939,18 +853,16 @@ export const Workbench: React.FC = () => {
 
                 {/* * Save $$ (greyed out if no project or clean) */}
                 <div
-                  className={`menu-dropdown-item ${(!hasProject || !isProjectDirty) ? "disabled" : ""}`}
+                  className={`menu-dropdown-item ${!hasProject || !isProjectDirty ? "disabled" : ""}`}
                   onClick={() =>
-                    (hasProject && isProjectDirty)
+                    hasProject
+                    && isProjectDirty
                     && handleMenuClick(() => {
                       saveProjectAction();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("save_project")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("save_project")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("save_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -968,12 +880,11 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("save_as_project")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("save_as_project")} size='14px' />
                   </span>
-                  <span className='menu-item-label'>{t("save_as_project")}</span>
+                  <span className='menu-item-label'>
+                    {t("save_as_project")}
+                  </span>
                   <span className='menu-shortcut-slot'>
                     {getActionFormattedKey("save_as_project")}
                   </span>
@@ -997,7 +908,9 @@ export const Workbench: React.FC = () => {
                       size='14px'
                     />
                   </span>
-                  <span className='menu-item-label'>{t("save_active_layer")}</span>
+                  <span className='menu-item-label'>
+                    {t("save_active_layer")}
+                  </span>
                   <span className='menu-shortcut-slot'>
                     {getActionFormattedKey("save_active_layer")}
                   </span>
@@ -1019,7 +932,9 @@ export const Workbench: React.FC = () => {
                       size='14px'
                     />
                   </span>
-                  <span className='menu-item-label'>{t("save_active_layer_as")}</span>
+                  <span className='menu-item-label'>
+                    {t("save_active_layer_as")}
+                  </span>
                   <span className='menu-shortcut-slot'>
                     {getActionFormattedKey("save_active_layer_as")}
                   </span>
@@ -1056,10 +971,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("undo_action")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("undo_action")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("undo_action")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1078,10 +990,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("redo_action")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("redo_action")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("redo_action")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1139,7 +1048,9 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiTableEdit} size='14px' />
                   </span>
-                  <span className='menu-item-label'>{t("edit_layer_attributes")}</span>
+                  <span className='menu-item-label'>
+                    {t("edit_layer_attributes")}
+                  </span>
                   <span className='menu-shortcut-slot' />
                 </div>
 
@@ -1159,7 +1070,9 @@ export const Workbench: React.FC = () => {
                       size='14px'
                     />
                   </span>
-                  <span className='menu-item-label'>{t("open_preferences")}</span>
+                  <span className='menu-item-label'>
+                    {t("open_preferences")}
+                  </span>
                   <span className='menu-shortcut-slot'>
                     {getActionFormattedKey("open_preferences")}
                   </span>
@@ -1206,10 +1119,7 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon
-                      path={getActionIcon("new_map_view")}
-                      size='14px'
-                    />
+                    <Icon path={getActionIcon("new_map_view")} size='14px' />
                   </span>
                   <span className='menu-item-label'>{t("new_map_view")}</span>
                   <span className='menu-shortcut-slot' />
@@ -1454,7 +1364,7 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon name="file:layers-plus-outline.svg" size={14} />
+                    <Icon name='file:layers-plus-outline.svg' size={14} />
                   </span>
                   <span className='menu-item-label'>{t("add_layers")}</span>
                   <span className='menu-shortcut-slot'>

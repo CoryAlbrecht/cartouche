@@ -40,7 +40,8 @@ import {
   isProjectDirtySignal,
   isDirtySignal,
   projectTreeSignal,
-  projectTreeStatsSignal
+  projectTreeStatsSignal,
+  clearNodeSelection
 } from './projectSignals';
 
 export {
@@ -1319,5 +1320,27 @@ export function openAddLayersDialog(): void {
 export function closeAddLayersDialog(): void {
   isAddLayersOpenSignal.value = false;
   addConsoleLog('info', 'Add Layers dialog closed.', 'Layers');
+}
+
+/**
+ * @description Action handler for cancelling active operations, reverting tools to pan, clearing feature selections, and clearing layer tree selections.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function cancelAction(): void {
+  if (activeToolSignal.value !== 'pan') {
+    activeToolSignal.value = 'pan';
+  }
+  if (selectedFeatureIdsSignal.value.size > 0) {
+    selectedFeatureIdsSignal.value = new Set();
+  }
+  clearNodeSelection();
+  if (typeof window !== 'undefined' && window.electronAPI?.executeAction) {
+    window.electronAPI.executeAction('cancel_action');
+  }
+  addConsoleLog('info', 'Cancelled active operation.', 'Workbench');
 }
 

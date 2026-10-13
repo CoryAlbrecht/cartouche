@@ -12,6 +12,7 @@
     <string name="save_active_layer">Enregistrer la Couche Active</string>
     <string name="save_active_layer_as">Enregistrer la Couche Active Sous...</string>
     <string name="add_layers">Ajouter des Couches...</string>
+    <string name="cancel_action">Annuler</string>
     <string name="quit">Quitter</string>
     <string name="hello_name">Bonjour {name}</string>
     <string name="shortcut_save">Appuyez sur <kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer.</string>
