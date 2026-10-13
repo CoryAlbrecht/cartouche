@@ -691,11 +691,6 @@
   background-color: #f1f5f9;
 }
 
-.tree-node-row.active {
-  background-color: #e0f2fe;
-  color: #0369a1;
-}
-
 .tree-node-row.selected {
   background-color: #e0f2fe;
   color: #0369a1;

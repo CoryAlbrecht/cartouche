@@ -4,7 +4,7 @@
  * @description Central IPC broadcast dispatcher for transmitting serialized Cartouche project state updates to active Renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
@@ -79,7 +79,7 @@ export function serializeProjectLayersTree(): Array<ProjectLayerItem | ProjectGr
  * @description Broadcasts the updated project layer hierarchy tree over IPC to all active BrowserWindow instances.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -98,7 +98,7 @@ export function broadcastProjectLayersTree(): void {
  * @description Stub broadcaster for sending updated project metadata over IPC to active windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @param {ProjectMetadata} [metadata] - Optional project metadata payload.
  * @returns {void}
@@ -106,9 +106,11 @@ export function broadcastProjectLayersTree(): void {
 export function broadcastProjectMetadata(metadata?: ProjectMetadata): void {
   const meta = metadata || projectStore.getProject()?.metadata;
   if (!meta) return;
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('project:metadata-updated', meta);
+  if (typeof BrowserWindow !== 'undefined' && BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('project:metadata-updated', meta);
+      }
     }
   }
 }
@@ -117,7 +119,7 @@ export function broadcastProjectMetadata(metadata?: ProjectMetadata): void {
  * @description Stub broadcaster for sending updated project viewport configuration over IPC to active windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @param {ProjectViewport} [viewport] - Optional project viewport payload.
  * @returns {void}
@@ -125,9 +127,11 @@ export function broadcastProjectMetadata(metadata?: ProjectMetadata): void {
 export function broadcastProjectViewport(viewport?: ProjectViewport): void {
   const vp = viewport || projectStore.getProject()?.viewport;
   if (!vp) return;
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('project:viewport-updated', vp);
+  if (typeof BrowserWindow !== 'undefined' && BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('project:viewport-updated', vp);
+      }
     }
   }
 }
@@ -136,7 +140,7 @@ export function broadcastProjectViewport(viewport?: ProjectViewport): void {
  * @description Stub broadcaster for sending full project model over IPC to active windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @param {ProjectModel} [project] - Optional project model payload.
  * @returns {void}
@@ -144,9 +148,11 @@ export function broadcastProjectViewport(viewport?: ProjectViewport): void {
 export function broadcastFullProject(project?: ProjectModel): void {
   const proj = project || projectStore.getProject();
   if (!proj) return;
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('project:loaded', proj);
+  if (typeof BrowserWindow !== 'undefined' && BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('project:loaded', proj);
+      }
     }
   }
 }

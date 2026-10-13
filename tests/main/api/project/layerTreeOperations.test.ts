@@ -104,6 +104,9 @@ describe('layerTreeOperations', () => {
     assert.equal(groupChildren.length, 2);
     assert.equal(groupChildren[0].id, 'l-1');
     assert.equal(groupChildren[1].id, 'l-3');
+    assert.equal(newGroup.selected, true);
+    assert.equal(groupChildren[0].selected, false);
+    assert.equal(groupChildren[1].selected, false);
   });
 
   it('reorderNodes reorders nodes before target and prevents cycles', () => {

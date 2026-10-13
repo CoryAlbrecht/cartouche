@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -29,6 +29,7 @@ import {
   mdiChevronRight,
   mdiTrashCanOutline,
   mdiFolderPlusOutline,
+  mdiPencilOutline,
 } from "@mdi/js";
 import {
   projectTreeSignal,
@@ -39,6 +40,8 @@ import {
   projectTreeStatsSignal,
   selectedNodeIdsSignal,
   layerTreeContextMenuHooksSignal,
+  editingNodeIdSignal,
+  requestRenameSelectedNode,
   toggleProjectVisibility,
   toggleNodeVisibility,
   toggleGroupExpanded,
@@ -152,6 +155,138 @@ function isDescendantNode(candidateParent: ProjectGroupItem, candidateId: string
 }
 
 /**
+ * Movement tolerance threshold in pixels before an interaction is considered a drag gesture rather than a click.
+ * @constant {number}
+ */
+const MOUSE_DRAG_MOVE_THRESHOLD_PX = 5;
+
+/**
+ * Maximum dwell hold time in milliseconds for click-and-hold without movement to be treated as a click gesture.
+ * @constant {number}
+ */
+const MOUSE_CLICK_HOLD_TIMEOUT_MS = 800;
+
+/**
+ * @typedef {Object} InlineRenameInputProps
+ * @property {string} initialValue - Initial name to populate in the text field.
+ * @property {(trimmedName: string) => void} onSave - Callback invoked when the user commits an edit.
+ * @property {() => void} onCancel - Callback invoked when the user cancels editing.
+ * @property {string} [className] - Optional custom CSS class name.
+ * @property {React.MutableRefObject<(() => void) | null>} [commitRef] - Optional ref to receive imperative commit handler.
+ * @property {React.RefObject<HTMLInputElement | null>} [inputRef] - Optional external ref bound to the text input DOM node.
+ */
+export interface InlineRenameInputProps {
+  initialValue: string;
+  onSave: (trimmedName: string) => void;
+  onCancel: () => void;
+  className?: string;
+  commitRef?: React.MutableRefObject<(() => void) | null>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+/**
+ * @component InlineRenameInput
+ * @description Single-line text input control for inline renaming of layer tree nodes and project root with keyboard event suppression and lifecycle management.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-12
+ * @updated 2026-10-12
+ * @since 0.1.0-dev
+ * @param {InlineRenameInputProps} props - Component properties.
+ * @returns {React.ReactElement} Inline input element.
+ */
+export const InlineRenameInput: React.FC<InlineRenameInputProps> = ({
+  initialValue,
+  onSave,
+  onCancel,
+  className = 'tree-inline-input',
+  commitRef,
+  inputRef: externalInputRef
+}) => {
+  const isCancelledRef = useRef(false);
+  const localInputRef = useRef<HTMLInputElement>(null);
+  const actualInputRef = externalInputRef || localInputRef;
+
+  const handleCommit = useCallback(
+    (rawVal: string) => {
+      if (isCancelledRef.current) return;
+      isCancelledRef.current = true;
+      const sanitized = rawVal.replace(/[\r\n]+/g, ' ').trim();
+      if (sanitized && sanitized !== initialValue) {
+        onSave(sanitized);
+      } else {
+        onCancel();
+      }
+    },
+    [initialValue, onSave, onCancel]
+  );
+
+  React.useEffect(() => {
+    if (commitRef) {
+      commitRef.current = () => {
+        if (actualInputRef.current) {
+          handleCommit(actualInputRef.current.value);
+        } else {
+          onCancel();
+        }
+      };
+    }
+    return () => {
+      if (commitRef) {
+        commitRef.current = null;
+      }
+    };
+  }, [commitRef, handleCommit, onCancel, actualInputRef]);
+
+  return (
+    <input
+      ref={actualInputRef}
+      type='text'
+      className={className}
+      defaultValue={initialValue}
+      autoFocus
+      onFocus={(e) => e.target.select()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleCommit(e.currentTarget.value);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          isCancelledRef.current = true;
+          e.currentTarget.value = initialValue;
+          onCancel();
+        }
+      }}
+      onKeyUp={(e) => e.stopPropagation()}
+      onKeyPress={(e) => e.stopPropagation()}
+      onPaste={(e) => {
+        e.stopPropagation();
+        const text = e.clipboardData.getData('text');
+        if (/[\r\n]/.test(text)) {
+          e.preventDefault();
+          const sanitized = text.replace(/[\r\n]+/g, ' ');
+          const target = e.currentTarget;
+          const start = target.selectionStart ?? 0;
+          const end = target.selectionEnd ?? 0;
+          const currentVal = target.value;
+          target.value = currentVal.substring(0, start) + sanitized + currentVal.substring(end);
+          target.selectionStart = target.selectionEnd = start + sanitized.length;
+        }
+      }}
+      onBlur={(e) => {
+        if (!isCancelledRef.current) {
+          handleCommit(e.currentTarget.value);
+        }
+      }}
+    />
+  );
+};
+
+/**
  * @typedef {Object} LayerTreeWidgetProps
  * @property {() => void} [onClose] - Callback when widget is closed.
  * @property {() => void} [onUndock] - Callback when widget is undocked.
@@ -166,7 +301,7 @@ export interface LayerTreeWidgetProps extends Partial<IDockviewPanelProps> {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -193,8 +328,33 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     indentLevel: number;
   } | null>(null);
 
-  // Inline group rename editing state
-  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  // Inline rename editing state driven by signal
+  const editingNodeId = editingNodeIdSignal.value;
+  const setEditingNodeId = useCallback((id: string | null) => {
+    editingNodeIdSignal.value = id;
+  }, []);
+
+  // Pointer down state tracking for click vs hold vs drag accessibility gesture discrimination
+  const rowPointerDownRef = useRef<{
+    nodeId: string;
+    isLayer: boolean;
+    startX: number;
+    startY: number;
+    startTime: number;
+    button: number;
+  } | null>(null);
+
+  // Imperative commit handler ref and input DOM node ref for active inline edit
+  const commitInlineEditRef = useRef<(() => void) | null>(null);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
+
+  const commitInlineEdit = useCallback(() => {
+    if (commitInlineEditRef.current) {
+      commitInlineEditRef.current();
+    } else {
+      setEditingNodeId(null);
+    }
+  }, [setEditingNodeId]);
 
   // Popup Menu state
   const [contextMenuState, setContextMenuState] = useState<{
@@ -222,6 +382,20 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   // Keyboard navigation handler
   const handleTreeKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Ignore tree keyboard shortcuts when editing a node title or when focused on editable input elements
+      if (editingNodeIdSignal.value !== null) {
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       const flatNodes = flattenVisibleTree(tree);
       if (flatNodes.length === 0) return;
 
@@ -285,8 +459,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           }
           break;
         }
-        case "Delete":
-        case "Backspace": {
+        case "Delete": {
           e.preventDefault();
           if (currentSelectedIds.length > 0) {
             const nodes = collectNodesByIds(tree, currentSelectedIds);
@@ -297,6 +470,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               });
             }
           }
+          break;
+        }
+        case "F2": {
+          e.preventDefault();
+          requestRenameSelectedNode();
           break;
         }
       }
@@ -324,7 +502,77 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
     if (isLayer) {
       setActiveLayer(nodeId);
+    } else {
+      setActiveLayer(null);
     }
+  };
+
+  /**
+   * @description Handles mousedown on a layer tree row, preventing focus steal and premature cancellation of active inline edits while tracking coordinates for click vs hold vs drag gesture discrimination.
+   * @param {React.MouseEvent} e - Mouse event.
+   * @param {string} nodeId - Target node identifier.
+   * @param {boolean} isLayer - True if target node is a leaf layer.
+   */
+  const handleRowMouseDown = (
+    e: React.MouseEvent,
+    nodeId: string,
+    isLayer: boolean
+  ) => {
+    if (editingNodeId !== null) {
+      // Prevent focus steal and premature cancellation on mousedown:
+      // wait for mouseup / release to distinguish click vs hold vs drag.
+      e.preventDefault();
+    }
+    rowPointerDownRef.current = {
+      nodeId,
+      isLayer,
+      startX: e.clientX,
+      startY: e.clientY,
+      startTime: Date.now(),
+      button: e.button,
+    };
+  };
+
+  /**
+   * @description Handles row click with gesture validation and edit state synchronization, ensuring accessibility compliance for click-and-hold vs drag.
+   * @param {React.MouseEvent} e - Mouse event.
+   * @param {string} nodeId - Target node identifier.
+   * @param {boolean} isLayer - True if target node is a leaf layer.
+   */
+  const handleRowClickWithEditCheck = (
+    e: React.MouseEvent,
+    nodeId: string,
+    isLayer: boolean
+  ) => {
+    const downInfo = rowPointerDownRef.current;
+    rowPointerDownRef.current = null;
+
+    if (downInfo) {
+      const dx = Math.abs(e.clientX - downInfo.startX);
+      const dy = Math.abs(e.clientY - downInfo.startY);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const duration = Date.now() - downInfo.startTime;
+
+      // Pointer cancellation & accessibility gesture discrimination:
+      // If the mouse moved more than MOUSE_DRAG_MOVE_THRESHOLD_PX (5px)
+      // or was held longer than MOUSE_CLICK_HOLD_TIMEOUT_MS (800ms),
+      // it is a drag/hold gesture rather than a click gesture.
+      if (dist > MOUSE_DRAG_MOVE_THRESHOLD_PX || duration > MOUSE_CLICK_HOLD_TIMEOUT_MS) {
+        return;
+      }
+    }
+
+    if (editingNodeId !== null) {
+      if (nodeId === editingNodeId) {
+        // Clicking row currently being edited keeps editing intact
+        inlineInputRef.current?.focus();
+        return;
+      }
+      // Commit active edit cleanly before switching selection to new row
+      commitInlineEdit();
+    }
+
+    handleRowClick(e, nodeId, isLayer);
   };
 
   // Secondary click (right-click) context menu handler
@@ -334,6 +582,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   ) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (editingNodeId !== null) {
+      commitInlineEdit();
+    }
 
     let actionable: Array<ProjectLayerItem | ProjectGroupItem>;
     if (node.id && selectedNodeIds.includes(node.id)) {
@@ -351,10 +603,40 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     });
   };
 
+  // Secondary click (right-click) context menu handler on project root
+  const handleProjectContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (editingNodeId !== null) {
+      commitInlineEdit();
+    }
+
+    const projectNode = { id: 'project', name: projectName } as ProjectLayerItem;
+    setContextMenuState({
+      position: { x: e.clientX, y: e.clientY },
+      actionableNodes: [projectNode],
+      targetNode: projectNode,
+    });
+  };
+
   // Build context menu items
   const buildContextMenuItems = (): PopupMenuItem[] => {
     const { actionableNodes, targetNode } = contextMenuState;
     if (actionableNodes.length === 0 || !targetNode) return [];
+
+    if (targetNode.id === 'project') {
+      return [
+        {
+          id: 'rename_layer_tree_node',
+          label: t('rename_layer_tree_node') || 'Rename',
+          icon: mdiPencilOutline,
+          onClick: () => {
+            setEditingNodeId('project');
+          },
+        },
+      ];
+    }
 
     const isMultiple = actionableNodes.length > 1;
     const isSingleGroup = !isMultiple && 'children' in actionableNodes[0];
@@ -368,7 +650,21 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       removeLabel = t('remove_layer') || 'Remove Layer';
     }
 
-    const items: PopupMenuItem[] = [
+    const items: PopupMenuItem[] = [];
+
+    if (!isMultiple && targetNode.id) {
+      const targetId = targetNode.id;
+      items.push({
+        id: 'rename_layer_tree_node',
+        label: t('rename_layer_tree_node') || 'Rename',
+        icon: mdiPencilOutline,
+        onClick: () => {
+          setEditingNodeId(targetId);
+        },
+      });
+    }
+
+    items.push(
       {
         id: 'create-group',
         label: t('create_group') || 'Create Group',
@@ -380,6 +676,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             if (window.electronAPI?.createGroup) {
               window.electronAPI.createGroup("New Group", targetNode.id, childIds, newGroupId);
             }
+            selectSingleNode(newGroupId);
+            setActiveLayer(null);
             setEditingNodeId(newGroupId);
           }
         },
@@ -394,8 +692,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             actionableNodes,
           });
         },
-      },
-    ];
+      }
+    );
 
     // External hooks contributions
     const externalHooks = layerTreeContextMenuHooksSignal.value;
@@ -418,7 +716,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     e: React.DragEvent,
     node: ProjectLayerItem | ProjectGroupItem
   ) => {
-    if (!node.id) return;
+    if (editingNodeIdSignal.value !== null || !node.id) {
+      e.preventDefault();
+      return;
+    }
     if (selectedNodeIds.includes(node.id)) {
       draggedNodeIdsRef.current = selectedNodeIds;
     } else {
@@ -527,6 +828,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const iconPath = getLayerIcon(layer.geometryKind);
     const isDimmed = !projectVisible || !ancestorVisible || layer.visible === false;
     const isDropTarget = dragOverState?.targetId === layer.id;
+    const isEditing = Boolean(layer.id && editingNodeId === layer.id);
 
     return (
       <React.Fragment key={layer.id}>
@@ -539,12 +841,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         <div
           className={`tree-node-row tree-node-layer ${isActive ? "active" : ""} ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
           style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
-          draggable={true}
+          draggable={editingNodeId === null}
           onDragStart={(e) => handleDragStart(e, layer)}
           onDragEnd={handleDragEnd}
           onDragOver={(e) => handleDragOver(e, layer, indentLevel)}
           onDrop={(e) => handleDrop(e, layer)}
-          onClick={(e) => handleRowClick(e, layer.id, true)}
+          onMouseDown={(e) => handleRowMouseDown(e, layer.id, true)}
+          onClick={(e) => handleRowClickWithEditCheck(e, layer.id, true)}
           onContextMenu={(e) => handleContextMenu(e, layer)}>
           <span className='tree-indent' />
 
@@ -563,9 +866,35 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             <Icon path={iconPath} size='16px' />
           </span>
 
-          <span className='tree-node-title' title={resolvedName}>
-            {resolvedName}
-          </span>
+          {isEditing ? (
+            <InlineRenameInput
+              initialValue={resolvedName}
+              commitRef={commitInlineEditRef}
+              inputRef={inlineInputRef}
+              onSave={(val) => {
+                renameNode(layer.id, val);
+                setEditingNodeId(null);
+              }}
+              onCancel={() => setEditingNodeId(null)}
+            />
+          ) : (
+            <span
+              className='tree-node-title'
+              title={resolvedName}
+              onClick={(e) => {
+                if (isSelected) {
+                  e.stopPropagation();
+                }
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (layer.id) {
+                  setEditingNodeId(layer.id);
+                }
+              }}>
+              {resolvedName}
+            </span>
+          )}
         </div>
       </React.Fragment>
     );
@@ -596,12 +925,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         <div
           className={`tree-node-row tree-node-group ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
           style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
-          draggable={!isEditing}
+          draggable={editingNodeId === null}
           onDragStart={(e) => handleDragStart(e, group)}
           onDragEnd={handleDragEnd}
           onDragOver={(e) => handleDragOver(e, group, indentLevel)}
           onDrop={(e) => handleDrop(e, group)}
-          onClick={(e) => handleRowClick(e, groupId, false)}
+          onMouseDown={(e) => handleRowMouseDown(e, groupId, false)}
+          onClick={(e) => handleRowClickWithEditCheck(e, groupId, false)}
           onContextMenu={(e) => handleContextMenu(e, group)}>
           <span
             className='tree-chevron'
@@ -632,36 +962,30 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           </span>
 
           {isEditing ? (
-            <input
-              type='text'
-              className='tree-inline-input'
-              defaultValue={group.name}
-              autoFocus
-              onFocus={(e) => e.target.select()}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const val = e.currentTarget.value.trim();
-                  if (val && val !== group.name) {
-                    renameNode(groupId, val);
-                  }
-                  setEditingNodeId(null);
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  setEditingNodeId(null);
-                }
-              }}
-              onBlur={(e) => {
-                const val = e.currentTarget.value.trim();
-                if (val && val !== group.name) {
-                  renameNode(groupId, val);
-                }
+            <InlineRenameInput
+              initialValue={group.name}
+              commitRef={commitInlineEditRef}
+              inputRef={inlineInputRef}
+              onSave={(val) => {
+                renameNode(groupId, val);
                 setEditingNodeId(null);
               }}
+              onCancel={() => setEditingNodeId(null)}
             />
           ) : (
-            <span className='tree-node-title'>{group.name}</span>
+            <span
+              className='tree-node-title'
+              onClick={(e) => {
+                if (isSelected) {
+                  e.stopPropagation();
+                }
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setEditingNodeId(groupId);
+              }}>
+              {group.name}
+            </span>
           )}
         </div>
 
@@ -750,9 +1074,37 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         {/* Tree Control Content (Pure White Background) */}
         <div
           className='layer-tree-viewport'
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && editingNodeId !== null) {
+              e.preventDefault();
+              rowPointerDownRef.current = {
+                nodeId: 'empty',
+                isLayer: false,
+                startX: e.clientX,
+                startY: e.clientY,
+                startTime: Date.now(),
+                button: e.button,
+              };
+            }
+          }}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
+              const downInfo = rowPointerDownRef.current;
+              rowPointerDownRef.current = null;
+              if (downInfo) {
+                const dx = Math.abs(e.clientX - downInfo.startX);
+                const dy = Math.abs(e.clientY - downInfo.startY);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const duration = Date.now() - downInfo.startTime;
+                if (dist > MOUSE_DRAG_MOVE_THRESHOLD_PX || duration > MOUSE_CLICK_HOLD_TIMEOUT_MS) {
+                  return;
+                }
+              }
+              if (editingNodeId !== null) {
+                commitInlineEdit();
+              }
               clearNodeSelection();
+              setActiveLayer(null);
             }
           }}
           onDragOver={handleEmptyViewportDragOver}
@@ -766,12 +1118,17 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           {hasProject && (
             <div className='layer-tree-root'>
               {/* Top-Level Project Root Item */}
-              <div className='tree-node-row tree-node-project'>
+              <div
+                className={`tree-node-row tree-node-project ${selectedNodeIds.includes('project') ? "selected" : ""}`}
+                onMouseDown={(e) => handleRowMouseDown(e, 'project', false)}
+                onClick={(e) => handleRowClickWithEditCheck(e, 'project', false)}
+                onContextMenu={handleProjectContextMenu}>
                 <input
                   type='checkbox'
                   className='tree-checkbox'
                   checked={projectVisible}
                   onChange={toggleProjectVisibility}
+                  onClick={(e) => e.stopPropagation()}
                   title='Toggle project visibility'
                 />
                 <span className='tree-icon-slot project-icon'>
@@ -781,9 +1138,32 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                     style={{ width: 14, height: 14 }}
                   />
                 </span>
-                <span className='tree-node-title project-title'>
-                  {projectName}
-                </span>
+                {editingNodeId === 'project' ? (
+                  <InlineRenameInput
+                    initialValue={projectName}
+                    commitRef={commitInlineEditRef}
+                    inputRef={inlineInputRef}
+                    onSave={(val) => {
+                      renameNode('project', val);
+                      setEditingNodeId(null);
+                    }}
+                    onCancel={() => setEditingNodeId(null)}
+                  />
+                ) : (
+                  <span
+                    className='tree-node-title project-title'
+                    onClick={(e) => {
+                      if (selectedNodeIds.includes('project')) {
+                        e.stopPropagation();
+                      }
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setEditingNodeId('project');
+                    }}>
+                    {projectName}
+                  </span>
+                )}
               </div>
 
               {/* Children: Hierarchical Layer Tree */}

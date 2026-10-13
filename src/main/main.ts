@@ -26,9 +26,9 @@ import {
   setNodeSelection,
   removeNodes,
   createGroup,
-  renameNode,
   reorderNodes
 } from './api/project/layerTreeOperations';
+import { renameLayerTreeNode } from './api/project/renameLayerTreeNode';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -501,7 +501,11 @@ app.whenReady().then(async () => {
   });
 
   handleIpc('gis:rename-node', async (_event, nodeId: string, newName: string) => {
-    renameNode(nodeId, newName);
+    renameLayerTreeNode(nodeId, newName);
+  });
+
+  handleIpc('gis:rename-layer-tree-node', async (_event, nodeId: string, newName: string) => {
+    renameLayerTreeNode(nodeId, newName);
   });
 
   handleIpc('gis:reorder-nodes', async (_event, draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => {

@@ -22,7 +22,13 @@ import {
   selectRangeNodes,
   selectedNodeIdsSignal,
   registerLayerTreeContextMenuHook,
-  layerTreeContextMenuHooksSignal
+  layerTreeContextMenuHooksSignal,
+  projectNameSignal,
+  renameNode,
+  editingNodeIdSignal,
+  requestRenameSelectedNode,
+  activeLayerIdSignal,
+  setActiveLayer
 } from '../../../src/renderer/state/projectSignals';
 import type { ProjectLayerItem, ProjectGroupItem } from '../../../src/shared/types';
 
@@ -30,6 +36,8 @@ describe('projectSignals', () => {
   beforeEach(() => {
     projectVisibleSignal.value = true;
     projectTreeSignal.value = [];
+    projectNameSignal.value = 'Initial Project';
+    editingNodeIdSignal.value = null;
     clearNodeSelection();
   });
 
@@ -77,6 +85,30 @@ describe('projectSignals', () => {
     assert.deepEqual(selectedNodeIdsSignal.value, []);
   });
 
+  it('synchronizes activeLayerIdSignal with node selection', () => {
+    const l1: ProjectLayerItem = { id: 'l1', name: 'Layer 1', type: 'vector', source: '' };
+    const g1: ProjectGroupItem = { id: 'g1', name: 'Group 1', children: [] };
+    projectTreeSignal.value = [l1, g1];
+
+    // Select layer l1 and mark it active
+    selectSingleNode('l1');
+    setActiveLayer('l1');
+    assert.equal(activeLayerIdSignal.value, 'l1');
+
+    // Selecting group g1 clears active layer
+    selectSingleNode('g1');
+    assert.deepEqual(selectedNodeIdsSignal.value, ['g1']);
+    assert.equal(activeLayerIdSignal.value, null);
+
+    // Re-selecting l1 restores active layer
+    setNodeSelection(['l1']);
+    assert.equal(activeLayerIdSignal.value, 'l1');
+
+    // Deselecting all clears active layer
+    clearNodeSelection();
+    assert.equal(activeLayerIdSignal.value, null);
+  });
+
   it('registerLayerTreeContextMenuHook adds and removes menu contribution hooks', () => {
     layerTreeContextMenuHooksSignal.value = [];
     const unsubscribe = registerLayerTreeContextMenuHook(() => [
@@ -89,5 +121,60 @@ describe('projectSignals', () => {
 
     unsubscribe();
     assert.equal(layerTreeContextMenuHooksSignal.value.length, 0);
+  });
+
+  it('renameNode renames layer or group node and trims whitespace', () => {
+    const l1: ProjectLayerItem = { id: 'l1', name: 'Old Layer', type: 'vector', source: '' };
+    projectTreeSignal.value = [l1];
+
+    renameNode('l1', '  New Layer Name  ');
+    assert.equal(projectTreeSignal.value[0].name, 'New Layer Name');
+
+    // Sanitizes newlines and carriage returns
+    renameNode('l1', 'Boundary\r\nSurvey\nLines');
+    assert.equal(projectTreeSignal.value[0].name, 'Boundary Survey Lines');
+
+    // Blank name is ignored
+    renameNode('l1', '   ');
+    assert.equal(projectTreeSignal.value[0].name, 'Boundary Survey Lines');
+  });
+
+  it('renameNode updates projectNameSignal when nodeId is "project"', () => {
+    projectNameSignal.value = 'My Project';
+
+    renameNode('project', 'Renamed Project Title');
+    assert.equal(projectNameSignal.value, 'Renamed Project Title');
+
+    // Blank name is ignored
+    renameNode('project', '   ');
+    assert.equal(projectNameSignal.value, 'Renamed Project Title');
+  });
+
+  it('requestRenameSelectedNode sets editingNodeIdSignal only when exactly one node is selected', () => {
+    const l1: ProjectLayerItem = { id: 'node-1', name: 'Node 1', type: 'vector', source: '' };
+    const l2: ProjectLayerItem = { id: 'node-2', name: 'Node 2', type: 'vector', source: '' };
+    projectTreeSignal.value = [l1, l2];
+
+    // 0 nodes selected
+    clearNodeSelection();
+    requestRenameSelectedNode();
+    assert.equal(editingNodeIdSignal.value, null);
+
+    // 1 node selected
+    selectSingleNode('node-1');
+    requestRenameSelectedNode();
+    assert.equal(editingNodeIdSignal.value, 'node-1');
+
+    // Project root selected
+    selectSingleNode('project');
+    assert.deepEqual(selectedNodeIdsSignal.value, ['project']);
+    requestRenameSelectedNode();
+    assert.equal(editingNodeIdSignal.value, 'project');
+
+    // Multi-selection (more than 1) does nothing
+    editingNodeIdSignal.value = null;
+    setNodeSelection(['node-1', 'node-2']);
+    requestRenameSelectedNode();
+    assert.equal(editingNodeIdSignal.value, null);
   });
 });

@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -142,6 +142,17 @@ export const isDirtySignal = signal<boolean>(false);
 export const activeLayerIdSignal = signal<string | null>(null);
 
 /**
+ * @signal editingNodeIdSignal
+ * @description Reactive signal holding the identifier of the layer, group, or project root node currently in inline edit mode.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-12
+ * @updated 2026-10-12
+ * @since 0.1.0-dev
+ * @type {Signal<string | null>}
+ */
+export const editingNodeIdSignal = signal<string | null>(null);
+
+/**
  * @description Recursively counts total layers across the tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
@@ -234,16 +245,31 @@ function extractSelectedIds(items: Array<ProjectLayerItem | ProjectGroupItem>): 
 }
 
 /**
+ * @signal isProjectSelectedSignal
+ * @description Reactive signal indicating whether the project root row is selected.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-12
+ * @updated 2026-10-12
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isProjectSelectedSignal = signal<boolean>(false);
+
+/**
  * @signal selectedNodeIdsSignal
  * @description Computed signal deriving array of all currently selected node identifiers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @type {ReadonlySignal<string[]>}
  */
 export const selectedNodeIdsSignal = computed(() => {
-  return extractSelectedIds(projectTreeSignal.value);
+  const ids = extractSelectedIds(projectTreeSignal.value);
+  if (isProjectSelectedSignal.value) {
+    ids.unshift('project');
+  }
+  return ids;
 });
 
 /**
@@ -333,33 +359,62 @@ export function toggleGroupExpanded(groupId: string): void {
 }
 
 /**
- * @description Renames a layer or group node locally and dispatches update over IPC.
+ * @description Requests inline editing for the currently selected node if exactly one node (or the project root) is selected.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-12
+ * @updated 2026-10-12
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function requestRenameSelectedNode(): void {
+  const selected = selectedNodeIdsSignal.value;
+  if (selected.length === 1) {
+    editingNodeIdSignal.value = selected[0];
+  }
+}
+
+/**
+ * @description Renames a layer, group, or project document root locally and dispatches update over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
- * @param {string} nodeId - Target node identifier.
+ * @param {string} nodeId - Target node identifier or 'project' for root document.
  * @param {string} newName - New name string.
  * @returns {void}
  */
 export function renameNode(nodeId: string, newName: string): void {
-  function update(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
-    return items.map(item => {
-      if (item.id === nodeId) {
-        return { ...item, name: newName };
-      }
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
-        return {
-          ...item,
-          children: update((item as ProjectGroupItem).children)
-        };
-      }
-      return item;
-    });
+  const trimmed = newName.replace(/[\r\n]+/g, ' ').trim();
+  if (!trimmed) {
+    return;
   }
-  projectTreeSignal.value = update(projectTreeSignal.value);
-  if (typeof window !== 'undefined' && window.electronAPI?.renameNode) {
-    window.electronAPI.renameNode(nodeId, newName);
+
+  if (nodeId === 'project') {
+    projectNameSignal.value = trimmed;
+  } else {
+    function update(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
+      return items.map(item => {
+        if (item.id === nodeId) {
+          return { ...item, name: trimmed };
+        }
+        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+          return {
+            ...item,
+            children: update((item as ProjectGroupItem).children)
+          };
+        }
+        return item;
+      });
+    }
+    projectTreeSignal.value = update(projectTreeSignal.value);
+  }
+
+  if (typeof window !== 'undefined') {
+    if (window.electronAPI?.renameLayerTreeNode) {
+      window.electronAPI.renameLayerTreeNode(nodeId, trimmed);
+    } else if (window.electronAPI?.renameNode) {
+      window.electronAPI.renameNode(nodeId, trimmed);
+    }
   }
 }
 
@@ -367,12 +422,13 @@ export function renameNode(nodeId: string, newName: string): void {
  * @description Updates the selected node IDs across the local tree and sends IPC update to Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @param {string[]} selectedNodeIds - Node identifiers to select.
  * @returns {void}
  */
 export function setNodeSelection(selectedNodeIds: string[]): void {
+  isProjectSelectedSignal.value = selectedNodeIds.includes('project');
   const selectedSet = new Set(selectedNodeIds);
   function updateSelection(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
     return items.map(item => {
@@ -386,8 +442,24 @@ export function setNodeSelection(selectedNodeIds: string[]): void {
   }
   projectTreeSignal.value = updateSelection(projectTreeSignal.value);
 
+  // Synchronize activeLayerIdSignal with current selection
+  if (!activeLayerIdSignal.value || !selectedSet.has(activeLayerIdSignal.value)) {
+    const findFirstSelectedLayer = (items: Array<ProjectLayerItem | ProjectGroupItem>): string | null => {
+      for (const item of items) {
+        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+          const found = findFirstSelectedLayer((item as ProjectGroupItem).children);
+          if (found) return found;
+        } else if (item.id && selectedSet.has(item.id)) {
+          return item.id;
+        }
+      }
+      return null;
+    };
+    activeLayerIdSignal.value = findFirstSelectedLayer(projectTreeSignal.value);
+  }
+
   if (typeof window !== 'undefined' && window.electronAPI?.setNodeSelection) {
-    window.electronAPI.setNodeSelection(selectedNodeIds);
+    window.electronAPI.setNodeSelection(selectedNodeIds.filter(id => id !== 'project'));
   }
 }
 
@@ -502,3 +574,13 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
     }
   });
 }
+
+// Automatically subscribe to IPC metadata broadcasts from Electron Main process
+if (typeof window !== 'undefined' && window.electronAPI?.onProjectMetadataUpdated) {
+  window.electronAPI.onProjectMetadataUpdated((metadata: any) => {
+    if (metadata && typeof metadata.title === 'string') {
+      projectNameSignal.value = metadata.title;
+    }
+  });
+}
+

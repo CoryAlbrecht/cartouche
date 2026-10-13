@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { ElectronAPI } from '@shared/types';
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-03
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -84,6 +84,14 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('project:layers-tree-updated', handler);
     };
   },
+  /** @ipc project:metadata-updated */
+  onProjectMetadataUpdated: (callback: (metadata: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, metadata: any) => callback(metadata);
+    ipcRenderer.on('project:metadata-updated', handler);
+    return () => {
+      ipcRenderer.removeListener('project:metadata-updated', handler);
+    };
+  },
   /** @ipc gis:get-i18n-state */
   getI18nState: () => ipcRenderer.invoke('gis:get-i18n-state'),
   /** @ipc i18n:state-changed */
@@ -105,6 +113,9 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('gis:create-group', name, targetNodeId, childNodeIds, newGroupId),
   /** @ipc gis:rename-node */
   renameNode: (nodeId: string, newName: string) => ipcRenderer.invoke('gis:rename-node', nodeId, newName),
+  /** @ipc gis:rename-layer-tree-node */
+  renameLayerTreeNode: (nodeId: string, newName: string) =>
+    ipcRenderer.invoke('gis:rename-layer-tree-node', nodeId, newName),
   /** @ipc gis:reorder-nodes */
   reorderNodes: (draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') =>
     ipcRenderer.invoke('gis:reorder-nodes', draggedNodeIds, targetNodeId, position)

@@ -4,7 +4,7 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-04
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 
@@ -20,7 +20,8 @@ import {
   mdiRedo,
   mdiCog,
   mdiLayersOutline,
-  mdiMapPlus
+  mdiMapPlus,
+  mdiPencilOutline
 } from '@mdi/js';
 
 export const BUILTIN_ACTIONS: ActionDefinition[] = [
@@ -94,6 +95,13 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     description: 'Drag Map Canvas (Pan)',
     icon: mdiHandBackRightOutline,
     keyCombination: { key: 'h' }
+  },
+  {
+    name: 'rename_layer_tree_node',
+    description: 'Renames the active layer, group, or project in the layer tree',
+    icon: mdiPencilOutline,
+    keyCombination: { key: 'F2' },
+    functionCall: ApiFunctions.renameLayerTreeNode
   }
 ];
 

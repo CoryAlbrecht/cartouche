@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-03
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -71,6 +71,7 @@ import {
   toggleLayersWidgetAction,
   openAddLayersDialog,
 } from "@renderer/state/gisSignals";
+import { requestRenameSelectedNode, editingNodeIdSignal } from "@renderer/state/projectSignals";
 import {
   loadActionsFromMain,
   getActionFormattedKey,
@@ -329,7 +330,10 @@ export const Workbench: React.FC = () => {
     loadActionsFromMain();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore keystrokes when focused on editable input elements
+      // Ignore global shortcut keystrokes when editing a node title or focused on editable input elements
+      if (editingNodeIdSignal.value !== null) {
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (target) {
         const tagName = target.tagName;
@@ -394,6 +398,9 @@ export const Workbench: React.FC = () => {
               break;
             case "toggle_layers_widget":
               toggleLayersWidgetAction();
+              break;
+            case "rename_layer_tree_node":
+              requestRenameSelectedNode();
               break;
             default:
               break;

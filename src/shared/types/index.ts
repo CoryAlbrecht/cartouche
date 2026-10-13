@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 
@@ -261,7 +261,7 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {(options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -309,6 +309,8 @@ export interface ElectronAPI {
   onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
   /** @ipc project:layers-tree-updated */
   onProjectLayersTreeUpdated?: (callback: (tree: Array<import('./project').ProjectLayerItem | import('./project').ProjectGroupItem>) => void) => () => void;
+  /** @ipc project:metadata-updated */
+  onProjectMetadataUpdated?: (callback: (metadata: import('./project').ProjectMetadata) => void) => () => void;
   /** @ipc gis:get-i18n-state */
   getI18nState?: () => Promise<import('./i18n').I18nState>;
   /** @ipc i18n:state-changed */
@@ -327,6 +329,8 @@ export interface ElectronAPI {
   createGroup?: (name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) => Promise<void>;
   /** @ipc gis:rename-node */
   renameNode?: (nodeId: string, newName: string) => Promise<void>;
+  /** @ipc gis:rename-layer-tree-node */
+  renameLayerTreeNode?: (nodeId: string, newName: string) => Promise<void>;
   /** @ipc gis:reorder-nodes */
   reorderNodes?: (draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => Promise<void>;
 }

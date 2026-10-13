@@ -4,7 +4,7 @@
  * @description Main Process API functions for layer tree visibility, selection, deletion, group creation, and reordering operations on the authoritative ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link LayerGroup}
@@ -160,10 +160,10 @@ export function removeNodes(nodeIds: string[]): void {
 
 /**
  * @description Bundles actionable nodes into a new group, positioned immediately before the target node.
- * Automatically prunes redundant descendant nodes whose ancestor is already included.
+  * Automatically prunes redundant descendant nodes whose ancestor is already included.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @param {string} name - Display name for the newly created group.
  * @param {string} targetNodeId - Node identifier marking insertion point.
@@ -204,6 +204,7 @@ export function createGroup(
 
   const newGroup = new LayerGroup(name, newGroupId);
   newGroup.expanded = true;
+  newGroup.selected = true;
 
   // Calculate insertion index before targetNode
   let insertIndex = targetParent.getAllChildren().length;
@@ -217,11 +218,12 @@ export function createGroup(
   // Insert newGroup into targetParent
   targetParent.addChild(newGroup, insertIndex);
 
-  // Reparent filtered nodes into newGroup
+  // Reparent filtered nodes into newGroup and deselect them
   for (const node of filteredNodes) {
     if (node.parent) {
       node.parent.removeChild(node);
     }
+    node.selected = false;
     newGroup.addChild(node);
   }
 
