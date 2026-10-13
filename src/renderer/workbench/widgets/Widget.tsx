@@ -4,22 +4,27 @@
  * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-13
  * @since 0.1.0-dev
+ * @see {@link PopupMenu}
  */
 
 import React, { useRef, useEffect } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import type { DockviewPanelApi, DockviewApi } from "dockview-core";
+import { PopupMenu } from "@renderer/components/common/PopupMenu";
+import type { PopupMenuItem } from "@renderer/state/projectSignals";
 
 /**
  * @typedef {Object} WidgetContextMenuItem
  * @property {string} label - Context menu item display title.
  * @property {() => void} action - Callback executed on clicking menu item.
+ * @property {string} [id] - Optional unique identifier.
  * @property {string} [icon] - Optional MDI icon path.
  * @property {boolean} [checked] - True if checkmark icon is displayed.
  */
 export interface WidgetContextMenuItem {
+  id?: string;
   label: string;
   action: () => void;
   icon?: string;
@@ -73,7 +78,7 @@ export interface WidgetProps {
  * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-30
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {WidgetProps} props - Component properties.
  * @returns {React.ReactElement} Base widget container element.
@@ -102,7 +107,7 @@ export const Widget: React.FC<WidgetProps> = ({
    * @description Reactive signal holding mouse position coordinates (x, y) for widget secondary click context menu.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-22
-   * @updated 2026-10-01
+   * @updated 2026-10-13
    * @since 0.1.0-dev
    * @type {Signal<{ x: number; y: number } | null>}
    */
@@ -116,7 +121,7 @@ export const Widget: React.FC<WidgetProps> = ({
    * @description Reactive signal tracking whether widget container is undocked floating.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-22
-   * @updated 2026-10-01
+   * @updated 2026-10-13
    * @since 0.1.0-dev
    * @type {Signal<boolean>}
    */
@@ -128,7 +133,7 @@ export const Widget: React.FC<WidgetProps> = ({
    * @description Reactive signal tracking current observed widget width and height bounds.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-22
-   * @updated 2026-10-01
+   * @updated 2026-10-13
    * @since 0.1.0-dev
    * @type {Signal<{ width: number; height: number }>}
    */
@@ -155,28 +160,12 @@ export const Widget: React.FC<WidgetProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    widgetContextMenuPositionSignal.value = { x: e.clientX, y: e.clientY };
-  };
-
-  const closeContextMenu = () => {
-    widgetContextMenuPositionSignal.value = null;
-  };
-
-  useEffect(() => {
-    if (!contextMenuPos) return;
-    const handleOutsideClick = () => closeContextMenu();
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, [contextMenuPos]);
-
   const defaultMenu: WidgetContextMenuItem[] = [
-    ...(onClose ? [{ label: "Close", action: () => onClose() }] : []),
+    ...(onClose ? [{ id: "widget-close", label: "Close", action: () => onClose() }] : []),
     ...(onUndock ?
       [
         {
+          id: "widget-undock",
           label: "Undock to Floating Window",
           action: () => {
             isWidgetUndockedSignal.value = true;
@@ -189,6 +178,25 @@ export const Widget: React.FC<WidgetProps> = ({
 
   const menuItems =
     customContextMenuItems.length > 0 ? customContextMenuItems : defaultMenu;
+
+  const popupItems: PopupMenuItem[] = menuItems.map((item, idx) => ({
+    id: item.id || `widget-menu-item-${idx}`,
+    label: item.label,
+    icon: item.icon,
+    checked: item.checked,
+    onClick: item.action,
+  }));
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (popupItems.length === 0) return;
+    widgetContextMenuPositionSignal.value = { x: e.clientX, y: e.clientY };
+  };
+
+  const closeContextMenu = () => {
+    widgetContextMenuPositionSignal.value = null;
+  };
 
   return (
     <div
@@ -216,49 +224,14 @@ export const Widget: React.FC<WidgetProps> = ({
       }}>
       {children}
 
-      {/* Floating Widget Context Menu */}
-      {contextMenuPos && (
-        <div
-          className='widget-context-menu'
-          style={{
-            position: "fixed",
-            top: contextMenuPos.y,
-            left: contextMenuPos.x,
-            zIndex: 9999,
-            backgroundColor: "#ffffff",
-            border: "1px solid #cbd5e1",
-            borderRadius: "4px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            padding: "4px 0",
-            fontSize: "0.9167rem",
-            color: "#0f172a",
-            minWidth: "140px",
-          }}>
-          {menuItems.map((item, idx) => (
-            <div
-              key={idx}
-              className='widget-menu-item'
-              onClick={(e) => {
-                e.stopPropagation();
-                item.action();
-                closeContextMenu();
-              }}
-              style={{
-                padding: "6px 14px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                userSelect: "none",
-              }}>
-              <span>{item.label}</span>
-              {item.checked && (
-                <span style={{ marginLeft: "8px", color: "#1b446c" }}>✓</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Standardized Widget Background Context Menu */}
+      <PopupMenu
+        isOpen={Boolean(contextMenuPos && popupItems.length > 0)}
+        position={contextMenuPos}
+        items={popupItems}
+        onClose={closeContextMenu}
+        className='widget-popup-menu'
+      />
     </div>
   );
 };

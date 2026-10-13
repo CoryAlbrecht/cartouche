@@ -4,7 +4,7 @@
  * @description Main Process persistent preferences store manager, handling disk persistence, migrations, and default UI configurations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-02
+ * @updated 2026-10-12
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app } from 'electron';
 import type { PreferenceMap } from '@shared/types';
-import { BUILTIN_PREFERENCES } from '@shared/preferences';
+import { BUILTIN_PREFERENCES } from '../../../../shared/preferences/index';
 
 /**
  * @description Helper function to check if a preference key string represents a window/dialog location or geometry property.

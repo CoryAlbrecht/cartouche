@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -561,9 +561,11 @@ export function registerLayerTreeContextMenuHook(hook: LayerTreeContextMenuHook)
 if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpdated) {
   window.electronAPI.onProjectLayersTreeUpdated((tree: Array<ProjectLayerItem | ProjectGroupItem>) => {
     projectTreeSignal.value = tree;
-    hasProjectSignal.value = true;
-    if (!projectNameSignal.value) {
-      projectNameSignal.value = 'Untitled Project';
+    if (tree.length > 0 || hasProjectSignal.value) {
+      hasProjectSignal.value = true;
+      if (!projectNameSignal.value) {
+        projectNameSignal.value = 'Untitled Project';
+      }
     }
     // Select first layer if no active layer is currently selected
     if (!activeLayerIdSignal.value && tree.length > 0) {

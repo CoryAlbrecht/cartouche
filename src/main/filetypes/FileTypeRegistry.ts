@@ -11,7 +11,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { FileCategory, FileTypeDescriptor } from '@shared/types';
-import { BUILTIN_FILE_TYPES } from '@shared/filetypes';
+import { BUILTIN_FILE_TYPES } from '../../shared/filetypes/index';
 import { gdalVectorLoader, gdalRasterLoader } from './loaders/gdalLoaders';
 
 /**

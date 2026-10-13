@@ -4,7 +4,7 @@
  * @description Modeless floating context menu component rendered at cursor coordinates via React portal, supporting boundary collision avoidance, keyboard dismissal, and menubar submenu styling tokens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link PopupMenuItem}
  */
@@ -35,7 +35,7 @@ export interface PopupMenuProps {
  * @description Independent portal-based context popup menu component adhering to Cartouche design system tokens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {PopupMenuProps} props - Component properties.
  * @returns {React.ReactPortal | null} Portaled popup menu element or null when closed.
@@ -68,13 +68,22 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
 
       if (targetX + rect.width > viewportWidth - padding) {
         targetX = Math.max(padding, viewportWidth - rect.width - padding);
+      } else {
+        targetX = Math.max(padding, targetX);
       }
       if (targetY + rect.height > viewportHeight - padding) {
         targetY = Math.max(padding, viewportHeight - rect.height - padding);
+      } else {
+        targetY = Math.max(padding, targetY);
       }
     }
 
-    setAdjustedPos({ x: targetX, y: targetY });
+    setAdjustedPos((prev) => {
+      if (prev && prev.x === targetX && prev.y === targetY) {
+        return prev;
+      }
+      return { x: targetX, y: targetY };
+    });
   }, [isOpen, position, items]);
 
   // Click-outside and keyboard dismissal listeners
@@ -83,7 +92,21 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
 
     const handleOutsidePointer = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
+
+        const swallow = (evt: Event) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+        };
+
+        window.addEventListener('click', swallow, { capture: true, once: true });
+        window.addEventListener('mouseup', swallow, { capture: true, once: true });
+        setTimeout(() => {
+          window.removeEventListener('click', swallow, { capture: true });
+          window.removeEventListener('mouseup', swallow, { capture: true });
+        }, 300);
       }
     };
 
@@ -103,23 +126,67 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !position || !adjustedPos) {
+  const currentPos = adjustedPos ?? position;
+
+  if (!isOpen || !position || !currentPos) {
     return null;
   }
 
   return createPortal(
-    <div
-      ref={menuRef}
-      className={`menu-dropdown popup-menu ${className}`}
-      style={{
-        position: 'fixed',
-        left: `${adjustedPos.x}px`,
-        top: `${adjustedPos.y}px`,
-        zIndex: 10000
-      }}
-      onClick={e => e.stopPropagation()}
-      onContextMenu={e => e.preventDefault()}
-    >
+    <>
+      {/* Transparent full-viewport backdrop absorbing outside clicks and preventing underlying effector activation */}
+      <div
+        className='popup-backdrop'
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999,
+          backgroundColor: 'transparent',
+          cursor: 'default',
+        }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+        onMouseUp={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+      />
+
+      <div
+        ref={menuRef}
+        className={`menu-dropdown popup-menu ${className}`}
+        style={{
+          position: 'fixed',
+          left: `${currentPos.x}px`,
+          top: `${currentPos.y}px`,
+          zIndex: 10000,
+          visibility: adjustedPos ? 'visible' : 'hidden',
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
       {items.map(item => {
         if (item.separator) {
           return <div key={item.id} className='menu-dropdown-separator' />;
@@ -156,7 +223,8 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
           </div>
         );
       })}
-    </div>,
+      </div>
+    </>,
     document.body
   );
 };
