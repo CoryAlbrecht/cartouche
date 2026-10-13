@@ -4,7 +4,7 @@
  * @description Central IPC broadcast dispatcher for transmitting serialized Cartouche project state updates to active Renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
@@ -47,7 +47,7 @@ export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | 
   return {
     id: layer.id,
     name: layer.name,
-    type: layer.fileType?.id || '',
+    type: layer.type,
     source: layer.filePath,
     visible: layer.visible,
     selected: layer.selected,
@@ -156,4 +156,28 @@ export function broadcastFullProject(project?: ProjectModel): void {
     }
   }
 }
+
+/**
+ * @description Broadcasts the project dirty modification state over IPC to all active BrowserWindow instances.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @param {boolean} dirty - Current dirty state of the project.
+ * @returns {void}
+ */
+export function broadcastProjectDirtyState(dirty: boolean): void {
+  if (typeof BrowserWindow !== 'undefined' && BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('project:dirty-state-changed', dirty);
+      }
+    }
+  }
+}
+
+// Automatically subscribe to projectStore dirty transitions to broadcast across windows
+projectStore.onDirtyChange((dirty: boolean) => {
+  broadcastProjectDirtyState(dirty);
+});
 

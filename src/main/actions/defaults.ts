@@ -4,7 +4,7 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 
@@ -14,8 +14,11 @@ import {
   mdiHandBackRightOutline,
   mdiFileDocumentPlus,
   mdiFolderOpen,
+  mdiCloseCircleOutline,
   mdiContentSave,
   mdiContentSaveAll,
+  mdiContentSaveOutline,
+  mdiContentSaveAllOutline,
   mdiUndo,
   mdiRedo,
   mdiCog,
@@ -24,6 +27,14 @@ import {
   mdiPencilOutline
 } from '@mdi/js';
 
+/**
+ * @description Array of built-in action descriptors defining names, descriptions, icons, keyboard shortcuts, and API handlers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-04
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @type {ActionDefinition[]}
+ */
 export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: 'add_layers',
@@ -35,29 +46,50 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     name: 'new_project',
     description: 'Initializes a new blank project with default canvas',
     icon: mdiFileDocumentPlus,
-    keyCombination: { key: 'n', ctrl: true },
+    keyCombination: { key: 'n', ctrl: true, alt: true },
     functionCall: ApiFunctions.newProject
   },
   {
     name: 'open_project',
     description: 'Opens an existing Cartouche project file',
     icon: mdiFolderOpen,
-    keyCombination: { key: 'o', ctrl: true },
+    keyCombination: { key: 'o', ctrl: true, alt: true },
     functionCall: ApiFunctions.openProject
+  },
+  {
+    name: 'close_project',
+    description: 'Closes the current project and returns to a clean workspace',
+    icon: mdiCloseCircleOutline,
+    keyCombination: { key: 'w', ctrl: true },
+    functionCall: ApiFunctions.closeProject
   },
   {
     name: 'save_project',
     description: 'Saves current active project state',
     icon: mdiContentSave,
-    keyCombination: { key: 's', ctrl: true },
+    keyCombination: { key: 's', ctrl: true, alt: true },
     functionCall: ApiFunctions.saveProject
   },
   {
     name: 'save_as_project',
     description: 'Saves current active project state under a new file path',
     icon: mdiContentSaveAll,
-    keyCombination: { key: 's', ctrl: true, shift: true },
+    keyCombination: { key: 's', ctrl: true, alt: true, shift: true },
     functionCall: ApiFunctions.saveAsProject
+  },
+  {
+    name: 'save_active_layer',
+    description: 'Saves edits on the currently active layer to disk',
+    icon: mdiContentSaveOutline,
+    keyCombination: { key: 's', ctrl: true },
+    functionCall: ApiFunctions.saveActiveLayer
+  },
+  {
+    name: 'save_active_layer_as',
+    description: 'Exports or saves the active layer under a new file path',
+    icon: mdiContentSaveAllOutline,
+    keyCombination: { key: 's', ctrl: true, shift: true },
+    functionCall: ApiFunctions.saveActiveLayerAs
   },
   {
     name: 'undo_action',

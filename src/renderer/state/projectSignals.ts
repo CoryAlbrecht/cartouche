@@ -109,6 +109,17 @@ export const hasProjectSignal = signal<boolean>(false);
 export const projectNameSignal = signal<string | null>(null);
 
 /**
+ * @signal projectFilePathSignal
+ * @description Reactive signal holding the filesystem path of the currently open project document.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @type {Signal<string | null>}
+ */
+export const projectFilePathSignal = signal<string | null>(null);
+
+/**
  * @signal projectVisibleSignal
  * @description Reactive signal toggling global visibility of all project layers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -120,15 +131,26 @@ export const projectNameSignal = signal<string | null>(null);
 export const projectVisibleSignal = signal<boolean>(true);
 
 /**
- * @signal isDirtySignal
+ * @signal isProjectDirtySignal
  * @description Reactive signal indicating whether the current project has unsaved modifications.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
-export const isDirtySignal = signal<boolean>(false);
+export const isProjectDirtySignal = signal<boolean>(false);
+
+/**
+ * @signal isDirtySignal
+ * @description Backwards compatibility alias for isProjectDirtySignal.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-09
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isDirtySignal = isProjectDirtySignal;
 
 /**
  * @signal activeLayerIdSignal
@@ -324,6 +346,7 @@ export function toggleNodeVisibility(nodeId: string): void {
     });
   }
   projectTreeSignal.value = updateNode(projectTreeSignal.value);
+  isProjectDirtySignal.value = true;
 
   if (typeof window !== 'undefined' && window.electronAPI?.setNodeVisibility) {
     window.electronAPI.setNodeVisibility(nodeId, nextVisibility);
@@ -390,12 +413,20 @@ export function renameNode(nodeId: string, newName: string): void {
   }
 
   if (nodeId === 'project') {
-    projectNameSignal.value = trimmed;
+    if (projectNameSignal.value !== trimmed) {
+      projectNameSignal.value = trimmed;
+      isProjectDirtySignal.value = true;
+    }
   } else {
+    let changed = false;
     function update(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
       return items.map(item => {
         if (item.id === nodeId) {
-          return { ...item, name: trimmed };
+          if (item.name !== trimmed) {
+            changed = true;
+            return { ...item, name: trimmed };
+          }
+          return item;
         }
         if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
           return {
@@ -406,7 +437,11 @@ export function renameNode(nodeId: string, newName: string): void {
         return item;
       });
     }
-    projectTreeSignal.value = update(projectTreeSignal.value);
+    const nextTree = update(projectTreeSignal.value);
+    if (changed) {
+      projectTreeSignal.value = nextTree;
+      isProjectDirtySignal.value = true;
+    }
   }
 
   if (typeof window !== 'undefined') {
@@ -583,6 +618,13 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectMetadataUpdate
     if (metadata && typeof metadata.title === 'string') {
       projectNameSignal.value = metadata.title;
     }
+  });
+}
+
+// Automatically subscribe to IPC dirty state broadcasts from Electron Main process
+if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChanged) {
+  window.electronAPI.onProjectDirtyStateChanged((dirty: boolean) => {
+    isProjectDirtySignal.value = dirty;
   });
 }
 

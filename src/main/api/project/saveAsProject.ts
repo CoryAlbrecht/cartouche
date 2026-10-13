@@ -1,30 +1,28 @@
 /**
  * @file saveAsProject.ts
  * @module main/api/project/saveAsProject
- * @description Main Process API function for prompting for a target file path and saving active project state.
+ * @description Main Process API function for saving active project state under a newly selected destination file path.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-09-23
+ * @updated 2026-10-13
  * @since 0.1.0-dev
+ * @see {@link saveProject}
  */
+
+import saveProject from './saveProject';
+import type { ProjectViewport } from '@shared/types';
 
 /**
  * @description Saves current active Cartouche project state under a newly selected file path.
+ * Delegates to saveProject with target destination path and optional viewport.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-09-23
+ * @updated 2026-10-13
  * @since 0.1.0-dev
- * @returns {void}
+ * @param {string} [targetPath] - Target destination file path.
+ * @param {ProjectViewport} [viewport] - Optional viewport extent and camera configuration to persist.
+ * @returns {Promise<boolean>} True if project was saved successfully, false otherwise.
  */
-/**
- * @ipc gis:execute-shortcut (save_as_project)
- * @description Main Process API function executing action for 'save_as_project'.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-24
- * @updated 2026-09-24
- * @since 0.1.0-dev
- * @returns {void}
- */
-export default function saveAsProject(): void {
-  console.log('[Main Core API] saveAsProject executed.');
+export default async function saveAsProject(targetPath?: string, viewport?: ProjectViewport): Promise<boolean> {
+  return saveProject(targetPath, viewport);
 }

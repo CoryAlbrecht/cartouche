@@ -4,7 +4,7 @@
  * @description Central extensible registry maintaining registered project format loaders for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  */
@@ -17,7 +17,7 @@ import { CartoucheXmlLoader } from './CartoucheXmlLoader';
  * @description Central manager and dispatcher resolving project loaders by format identifier or file inspectability.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 export class ProjectLoaderRegistry {
@@ -90,6 +90,35 @@ export class ProjectLoaderRegistry {
   }
 
   /**
+   * @description Inspects a destination project file path and finds the first compatible loader capable of saving it.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {string} filePath - Path or destination target for saving the project.
+   * @returns {Promise<IProjectLoader | null>} Matching saver loader or null.
+   */
+  public async getSaverForFile(filePath: string): Promise<IProjectLoader | null> {
+    for (const loader of this.loaders.values()) {
+      if (typeof loader.save !== 'function') {
+        continue;
+      }
+      if (loader.canSave) {
+        const can = await loader.canSave(filePath);
+        if (can) {
+          return loader;
+        }
+      } else {
+        const can = await loader.canLoad(filePath);
+        if (can) {
+          return loader;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * @description Returns an array of all registered project loaders.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
@@ -102,4 +131,12 @@ export class ProjectLoaderRegistry {
   }
 }
 
+/**
+ * @description Singleton instance of ProjectLoaderRegistry for project format loader and saver resolution.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-03
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @type {ProjectLoaderRegistry}
+ */
 export const projectLoaderRegistry = ProjectLoaderRegistry.getInstance();

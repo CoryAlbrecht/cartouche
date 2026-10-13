@@ -1,10 +1,10 @@
 /**
  * @file CartoucheXmlLoader.ts
  * @module main/project/loaders/CartoucheXmlLoader
- * @description Project loader implementation deserializing unbundled XML project documents conforming to project.xsd.
+ * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -25,11 +25,33 @@ import type {
 } from '@shared/types';
 
 /**
+ * @description Escapes special XML characters in string values to prevent XML syntax errors.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @param {string} unsafe - Raw string value to escape.
+ * @returns {string} XML-safe escaped string.
+ */
+function escapeXml(unsafe: string): string {
+  return String(unsafe).replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+}
+
+/**
  * @class CartoucheXmlLoader
  * @description Extensible project loader for native unbundled Cartouche XML project documents.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 export class CartoucheXmlLoader implements IProjectLoader {
@@ -66,10 +88,24 @@ export class CartoucheXmlLoader implements IProjectLoader {
   }
 
   /**
+   * @description Checks whether a target file path can be serialized by this XML loader.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {string} target - Destination candidate path.
+   * @returns {boolean} True if target extension is .cproj, .cartouche, or .xml.
+   */
+  public canSave(target: string): boolean {
+    const ext = path.extname(target).toLowerCase();
+    return ext === '.cproj' || ext === '.cartouche' || ext === '.xml';
+  }
+
+  /**
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-10-13
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -81,7 +117,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       attributeNamePrefix: '@_',
       cdataPropName: '__cdata',
       trimValues: true,
-      isArray: (name) => ['layer', 'group', 'style'].includes(name)
+      isArray: (name) => ['layer', 'group', 'style', 'property'].includes(name)
     });
 
     const parsed = parser.parse(content);
@@ -140,6 +176,28 @@ export class CartoucheXmlLoader implements IProjectLoader {
       };
     }
 
+    // Helper for custom properties
+    const parseCustomProps = (rawProps: any): Record<string, unknown> | undefined => {
+      if (!rawProps || !rawProps.property) return undefined;
+      const propList = Array.isArray(rawProps.property) ? rawProps.property : [rawProps.property];
+      const result: Record<string, unknown> = {};
+      for (const p of propList) {
+        const key = p['@_key'];
+        if (key) {
+          const type = p['@_type'] || 'string';
+          const val = p['#text'] !== undefined ? p['#text'] : (typeof p === 'string' ? p : '');
+          if (type === 'number') {
+            result[key] = typeof val === 'number' ? val : parseFloat(val);
+          } else if (type === 'boolean') {
+            result[key] = val === true || val === 'true';
+          } else {
+            result[key] = String(val);
+          }
+        }
+      }
+      return Object.keys(result).length > 0 ? result : undefined;
+    };
+
     // Recursive Layer & Group parsers
     const parseLayer = (raw: any): ProjectLayerItem => {
       let style: string | { href?: string; content?: string } | undefined;
@@ -154,6 +212,17 @@ export class CartoucheXmlLoader implements IProjectLoader {
         }
       }
 
+      let layerCrs: ProjectCrs | undefined;
+      if (raw.crs) {
+        layerCrs = {
+          authId: raw.crs.authId || 'EPSG:4326',
+          srid: raw.crs.srid ? parseInt(raw.crs.srid, 10) : undefined,
+          description: raw.crs.description,
+          proj4: raw.crs.proj4,
+          wkt: raw.crs.wkt
+        };
+      }
+
       return {
         id: String(raw['@_id'] || `layer-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`),
         name: raw.name || 'Unnamed Layer',
@@ -162,19 +231,26 @@ export class CartoucheXmlLoader implements IProjectLoader {
         visible: raw['@_visible'] !== 'false' && raw['@_visible'] !== false,
         opacity: raw['@_opacity'] !== undefined ? parseFloat(raw['@_opacity']) : 1.0,
         selectable: raw['@_selectable'] !== 'false' && raw['@_selectable'] !== false,
-        style
+        readOnly: raw['@_readOnly'] === 'true' || raw['@_readOnly'] === true,
+        layerKind: raw['@_layerKind'] || undefined,
+        geometryKind: raw['@_geometryKind'] || undefined,
+        style,
+        crs: layerCrs,
+        customProperties: parseCustomProps(raw.customProperties)
       };
     };
 
     const parseGroup = (raw: any): ProjectGroupItem => {
       const children: Array<ProjectLayerItem | ProjectGroupItem> = [];
-      if (raw.layer && Array.isArray(raw.layer)) {
-        for (const l of raw.layer) {
+      if (raw.layer) {
+        const layerList = Array.isArray(raw.layer) ? raw.layer : [raw.layer];
+        for (const l of layerList) {
           children.push(parseLayer(l));
         }
       }
-      if (raw.group && Array.isArray(raw.group)) {
-        for (const g of raw.group) {
+      if (raw.group) {
+        const groupList = Array.isArray(raw.group) ? raw.group : [raw.group];
+        for (const g of groupList) {
           children.push(parseGroup(g));
         }
       }
@@ -189,13 +265,15 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     const layers: Array<ProjectLayerItem | ProjectGroupItem> = [];
     if (root.layers) {
-      if (root.layers.layer && Array.isArray(root.layers.layer)) {
-        for (const l of root.layers.layer) {
+      if (root.layers.layer) {
+        const layerList = Array.isArray(root.layers.layer) ? root.layers.layer : [root.layers.layer];
+        for (const l of layerList) {
           layers.push(parseLayer(l));
         }
       }
-      if (root.layers.group && Array.isArray(root.layers.group)) {
-        for (const g of root.layers.group) {
+      if (root.layers.group) {
+        const groupList = Array.isArray(root.layers.group) ? root.layers.group : [root.layers.group];
+        for (const g of groupList) {
           layers.push(parseGroup(g));
         }
       }
@@ -203,14 +281,17 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     // Parse Shared Styles (optional)
     const styles: ProjectStyleItem[] = [];
-    if (root.styles && root.styles.style && Array.isArray(root.styles.style)) {
-      for (const s of root.styles.style) {
+    if (root.styles && root.styles.style) {
+      const styleList = Array.isArray(root.styles.style) ? root.styles.style : [root.styles.style];
+      for (const s of styleList) {
         styles.push({
           id: String(s['@_id'] || ''),
           content: (s.__cdata || (typeof s === 'string' ? s : '')).trim()
         });
       }
     }
+
+    const customProperties = parseCustomProps(root.customProperties);
 
     return {
       format: this.id,
@@ -219,7 +300,249 @@ export class CartoucheXmlLoader implements IProjectLoader {
       crs,
       viewport,
       layers,
-      styles
+      styles,
+      customProperties
     };
+  }
+
+  /**
+   * @description Serializes an in-memory ProjectModel to an XML project document on disk conforming to project.xsd.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {ProjectModel} project - In-memory project model to serialize.
+   * @param {string} target - Destination file path.
+   * @returns {Promise<void>}
+   */
+  public async save(project: ProjectModel, target: string): Promise<void> {
+    const xmlContent = this.serializeToXml(project);
+    const resolvedPath = path.resolve(target);
+    await fs.promises.mkdir(path.dirname(resolvedPath), { recursive: true });
+    await fs.promises.writeFile(resolvedPath, xmlContent, 'utf-8');
+    project.filePath = resolvedPath;
+  }
+
+  /**
+   * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {ProjectModel} project - In-memory project model.
+   * @returns {string} XML project document string.
+   */
+  public serializeToXml(project: ProjectModel): string {
+    const lines: string[] = [];
+
+    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push('<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"');
+    lines.push('  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"');
+    lines.push('  xmlns:dc="http://purl.org/dc/elements/1.1/"');
+    lines.push('  xmlns:xlink="http://www.w3.org/1999/xlink">');
+
+    // 1. Metadata
+    lines.push('  <metadata>');
+    lines.push(`    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`);
+    if (project.metadata.creator) {
+      lines.push(`    <dc:creator>${escapeXml(project.metadata.creator)}</dc:creator>`);
+    }
+    if (project.metadata.description) {
+      lines.push(`    <dc:description>${escapeXml(project.metadata.description)}</dc:description>`);
+    }
+    if (project.metadata.date) {
+      lines.push(`    <dc:date>${escapeXml(project.metadata.date)}</dc:date>`);
+    }
+    if (project.metadata.createdAt) {
+      lines.push(`    <createdAt>${escapeXml(project.metadata.createdAt)}</createdAt>`);
+    }
+    const updatedAt = project.metadata.updatedAt || new Date().toISOString();
+    lines.push(`    <updatedAt>${escapeXml(updatedAt)}</updatedAt>`);
+    const appVersion = project.metadata.appVersion || '0.1.0-dev';
+    lines.push(`    <appVersion>${escapeXml(appVersion)}</appVersion>`);
+    lines.push('  </metadata>');
+
+    // 2. CRS (optional)
+    if (project.crs) {
+      lines.push('  <crs>');
+      lines.push(`    <authId>${escapeXml(project.crs.authId || 'EPSG:4326')}</authId>`);
+      if (project.crs.srid !== undefined) {
+        lines.push(`    <srid>${project.crs.srid}</srid>`);
+      }
+      if (project.crs.description) {
+        lines.push(`    <description>${escapeXml(project.crs.description)}</description>`);
+      }
+      if (project.crs.proj4) {
+        lines.push(`    <proj4>${escapeXml(project.crs.proj4)}</proj4>`);
+      }
+      if (project.crs.wkt) {
+        lines.push(`    <wkt>${escapeXml(project.crs.wkt)}</wkt>`);
+      }
+      lines.push('  </crs>');
+    }
+
+    // 3. Viewport (optional)
+    if (project.viewport) {
+      const vp = project.viewport;
+      lines.push('  <viewport>');
+      if (vp.extent) {
+        lines.push(`    <extent xmin="${vp.extent.xmin}" ymin="${vp.extent.ymin}" xmax="${vp.extent.xmax}" ymax="${vp.extent.ymax}" />`);
+      }
+      if (vp.center) {
+        lines.push(`    <center x="${vp.center.x}" y="${vp.center.y}" />`);
+      }
+      if (vp.zoom !== undefined) {
+        lines.push(`    <zoom>${vp.zoom}</zoom>`);
+      }
+      if (vp.scale !== undefined) {
+        lines.push(`    <scale>${vp.scale}</scale>`);
+      }
+      if (vp.rotation !== undefined) {
+        lines.push(`    <rotation>${vp.rotation}</rotation>`);
+      }
+      lines.push('  </viewport>');
+    }
+
+    // Helper to serialize item
+    const isGroupItem = (item: ProjectLayerItem | ProjectGroupItem): item is ProjectGroupItem => {
+      return 'children' in item && Array.isArray((item as ProjectGroupItem).children);
+    };
+
+    const serializeLayerItem = (layer: ProjectLayerItem, indent: number): string[] => {
+      const pad = ' '.repeat(indent);
+      const res: string[] = [];
+      const attrs: string[] = [`id="${escapeXml(layer.id)}"`];
+      if (layer.visible !== undefined) {
+        attrs.push(`visible="${layer.visible !== false}"`);
+      }
+      if (layer.readOnly !== undefined) {
+        attrs.push(`readOnly="${layer.readOnly === true}"`);
+      }
+      if (layer.layerKind) {
+        attrs.push(`layerKind="${escapeXml(layer.layerKind)}"`);
+      }
+      if (layer.geometryKind) {
+        attrs.push(`geometryKind="${escapeXml(layer.geometryKind)}"`);
+      }
+      if (layer.opacity !== undefined) {
+        attrs.push(`opacity="${layer.opacity}"`);
+      }
+      if (layer.selectable !== undefined) {
+        attrs.push(`selectable="${layer.selectable !== false}"`);
+      }
+
+      res.push(`${pad}<layer ${attrs.join(' ')}>`);
+      res.push(`${pad}  <name>${escapeXml(layer.name)}</name>`);
+      res.push(`${pad}  <type>${escapeXml(layer.type || 'vector')}</type>`);
+      res.push(`${pad}  <source>${escapeXml(layer.source || '')}</source>`);
+
+      if (layer.style) {
+        if (typeof layer.style === 'string') {
+          if (layer.style.startsWith('#')) {
+            res.push(`${pad}  <style xlink:href="${escapeXml(layer.style)}" />`);
+          } else {
+            res.push(`${pad}  <style><![CDATA[${layer.style}]]></style>`);
+          }
+        } else if (layer.style.href) {
+          res.push(`${pad}  <style xlink:href="${escapeXml(layer.style.href)}" />`);
+        } else if (layer.style.content) {
+          res.push(`${pad}  <style><![CDATA[${layer.style.content}]]></style>`);
+        }
+      }
+
+      if (layer.crs) {
+        res.push(`${pad}  <crs>`);
+        res.push(`${pad}    <authId>${escapeXml(layer.crs.authId || 'EPSG:4326')}</authId>`);
+        if (layer.crs.srid !== undefined) {
+          res.push(`${pad}    <srid>${layer.crs.srid}</srid>`);
+        }
+        if (layer.crs.description) {
+          res.push(`${pad}    <description>${escapeXml(layer.crs.description)}</description>`);
+        }
+        if (layer.crs.proj4) {
+          res.push(`${pad}    <proj4>${escapeXml(layer.crs.proj4)}</proj4>`);
+        }
+        if (layer.crs.wkt) {
+          res.push(`${pad}    <wkt>${escapeXml(layer.crs.wkt)}</wkt>`);
+        }
+        res.push(`${pad}  </crs>`);
+      }
+
+      if (layer.customProperties && Object.keys(layer.customProperties).length > 0) {
+        res.push(`${pad}  <customProperties>`);
+        for (const [key, val] of Object.entries(layer.customProperties)) {
+          const type = typeof val === 'number' ? 'number' : typeof val === 'boolean' ? 'boolean' : 'string';
+          res.push(`${pad}    <property key="${escapeXml(key)}" type="${type}">${escapeXml(String(val))}</property>`);
+        }
+        res.push(`${pad}  </customProperties>`);
+      }
+
+      res.push(`${pad}</layer>`);
+      return res;
+    };
+
+    const serializeGroupItem = (group: ProjectGroupItem, indent: number): string[] => {
+      const pad = ' '.repeat(indent);
+      const res: string[] = [];
+      const attrs: string[] = [];
+      if (group.id) {
+        attrs.push(`id="${escapeXml(group.id)}"`);
+      }
+      attrs.push(`name="${escapeXml(group.name)}"`);
+      if (group.visible !== undefined) {
+        attrs.push(`visible="${group.visible !== false}"`);
+      }
+      if (group.expanded !== undefined) {
+        attrs.push(`expanded="${group.expanded !== false}"`);
+      }
+
+      res.push(`${pad}<group ${attrs.join(' ')}>`);
+      res.push(`${pad}  <name>${escapeXml(group.name)}</name>`);
+      for (const child of group.children) {
+        if (isGroupItem(child)) {
+          res.push(...serializeGroupItem(child, indent + 2));
+        } else {
+          res.push(...serializeLayerItem(child, indent + 2));
+        }
+      }
+      res.push(`${pad}</group>`);
+      return res;
+    };
+
+    // 4. Layers
+    if (project.layers) {
+      lines.push('  <layers>');
+      for (const item of project.layers) {
+        if (isGroupItem(item)) {
+          lines.push(...serializeGroupItem(item, 4));
+        } else {
+          lines.push(...serializeLayerItem(item, 4));
+        }
+      }
+      lines.push('  </layers>');
+    }
+
+    // 5. Styles (optional)
+    if (project.styles && project.styles.length > 0) {
+      lines.push('  <styles>');
+      for (const style of project.styles) {
+        lines.push(`    <style id="${escapeXml(style.id)}"><![CDATA[${style.content}]]></style>`);
+      }
+      lines.push('  </styles>');
+    }
+
+    // 6. Custom Properties (optional)
+    if (project.customProperties && Object.keys(project.customProperties).length > 0) {
+      lines.push('  <customProperties>');
+      for (const [key, val] of Object.entries(project.customProperties)) {
+        const type = typeof val === 'number' ? 'number' : typeof val === 'boolean' ? 'boolean' : 'string';
+        lines.push(`    <property key="${escapeXml(key)}" type="${type}">${escapeXml(String(val))}</property>`);
+      }
+      lines.push('  </customProperties>');
+    }
+
+    lines.push('</cartouche:project>');
+    lines.push('');
+    return lines.join('\n');
   }
 }

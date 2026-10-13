@@ -4,7 +4,7 @@
  * @description Unit tests for Preact project signals, hierarchical visibility counting, selection manipulation, and context menu hooks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 
@@ -28,7 +28,8 @@ import {
   editingNodeIdSignal,
   requestRenameSelectedNode,
   activeLayerIdSignal,
-  setActiveLayer
+  setActiveLayer,
+  isProjectDirtySignal
 } from '../../../src/renderer/state/projectSignals';
 import type { ProjectLayerItem, ProjectGroupItem } from '../../../src/shared/types';
 
@@ -176,5 +177,18 @@ describe('projectSignals', () => {
     setNodeSelection(['node-1', 'node-2']);
     requestRenameSelectedNode();
     assert.equal(editingNodeIdSignal.value, null);
+  });
+
+  it('toggleNodeVisibility and renameNode mark isProjectDirtySignal true', () => {
+    isProjectDirtySignal.value = false;
+    const l1: ProjectLayerItem = { id: 'l1', name: 'Layer 1', type: 'vector', source: '', visible: true };
+    projectTreeSignal.value = [l1];
+
+    toggleNodeVisibility('l1');
+    assert.equal(isProjectDirtySignal.value, true);
+
+    isProjectDirtySignal.value = false;
+    renameNode('l1', 'New Name');
+    assert.equal(isProjectDirtySignal.value, true);
   });
 });

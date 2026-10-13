@@ -45,7 +45,7 @@ export function renameLayerTreeNode(nodeId?: string, newName?: string): void {
       return;
     }
     project.metadata.title = trimmed;
-    projectStore.setDirty(true);
+    projectStore.setProjectDirty(true);
     broadcastProjectMetadata();
     return;
   }
@@ -61,7 +61,7 @@ export function renameLayerTreeNode(nodeId?: string, newName?: string): void {
   }
 
   node.name = trimmed;
-  projectStore.setDirty(true);
+  projectStore.setProjectDirty(true);
   broadcastProjectLayersTree();
 }
 

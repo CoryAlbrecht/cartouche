@@ -52,6 +52,7 @@ import {
   selectRangeNodes,
   clearNodeSelection,
   renameNode,
+  isProjectDirtySignal,
   type PopupMenuItem,
 } from "@renderer/state/projectSignals";
 import type { ProjectLayerItem, ProjectGroupItem, GeometryKind } from "@shared/types";
@@ -556,6 +557,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           const newGroupId = `group-${Date.now()}`;
           const childIds = actionableNodes.map((n) => n.id).filter(Boolean) as string[];
           if (targetNode.id) {
+            isProjectDirtySignal.value = true;
             if (window.electronAPI?.createGroup) {
               window.electronAPI.createGroup("New Group", targetNode.id, childIds, newGroupId);
             }
@@ -667,6 +669,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     }
 
     const position = 'children' in node ? 'into' : 'before';
+    isProjectDirtySignal.value = true;
     if (window.electronAPI?.reorderNodes) {
       window.electronAPI.reorderNodes(draggedIds, node.id, position);
     }
@@ -692,8 +695,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   const handleEmptyViewportDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const draggedIds = draggedNodeIdsRef.current;
-    if (draggedIds.length > 0 && window.electronAPI?.reorderNodes) {
-      window.electronAPI.reorderNodes(draggedIds, 'root', 'append-root');
+    if (draggedIds.length > 0) {
+      isProjectDirtySignal.value = true;
+      if (window.electronAPI?.reorderNodes) {
+        window.electronAPI.reorderNodes(draggedIds, 'root', 'append-root');
+      }
     }
     draggedNodeIdsRef.current = [];
     setDragOverState(null);
@@ -1098,8 +1104,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               const nodeIds = removalModalState.actionableNodes
                 .map((n) => n.id)
                 .filter(Boolean) as string[];
-              if (window.electronAPI?.removeNodes) {
-                window.electronAPI.removeNodes(nodeIds);
+              if (nodeIds.length > 0) {
+                isProjectDirtySignal.value = true;
+                if (window.electronAPI?.removeNodes) {
+                  window.electronAPI.removeNodes(nodeIds);
+                }
               }
               setRemovalModalState({ isOpen: false, actionableNodes: [] });
             },

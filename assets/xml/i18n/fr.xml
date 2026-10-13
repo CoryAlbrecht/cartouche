@@ -6,8 +6,11 @@
     locale="fr">
     <string name="new_project">Nouveau Projet</string>
     <string name="open_project">Ouvrir le Projet...</string>
+    <string name="close_project">Fermer le Projet</string>
     <string name="save_project">Enregistrer le Projet</string>
-    <string name="save_project_as">Enregistrer le Projet Sous...</string>
+    <string name="save_as_project">Enregistrer le Projet Sous...</string>
+    <string name="save_active_layer">Enregistrer la Couche Active</string>
+    <string name="save_active_layer_as">Enregistrer la Couche Active Sous...</string>
     <string name="add_layers">Ajouter des Couches...</string>
     <string name="quit">Quitter</string>
     <string name="hello_name">Bonjour {name}</string>

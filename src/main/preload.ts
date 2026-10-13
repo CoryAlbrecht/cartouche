@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { ElectronAPI } from '@shared/types';
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -64,10 +64,14 @@ const electronAPI: ElectronAPI = {
   pathExists: (filePath: string) => ipcRenderer.invoke('gis:path-exists', filePath),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  /** @ipc dialog:save-file */
+  saveFile: (options?: any) => ipcRenderer.invoke('dialog:save-file', options),
   /** @ipc gis:open-project */
   openProject: (filePath?: string) => ipcRenderer.invoke('gis:open-project', filePath),
   /** @ipc gis:get-current-project */
   getCurrentProject: () => ipcRenderer.invoke('gis:get-current-project'),
+  /** @ipc gis:save-project */
+  saveProject: (filePath?: string, viewport?: any) => ipcRenderer.invoke('gis:save-project', filePath, viewport),
   /** @ipc project:loaded */
   onProjectLoaded: (callback: (project: any) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, project: any) => callback(project);
@@ -90,6 +94,14 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('project:metadata-updated', handler);
     return () => {
       ipcRenderer.removeListener('project:metadata-updated', handler);
+    };
+  },
+  /** @ipc project:dirty-state-changed */
+  onProjectDirtyStateChanged: (callback: (isDirty: boolean) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, isDirty: boolean) => callback(isDirty);
+    ipcRenderer.on('project:dirty-state-changed', handler);
+    return () => {
+      ipcRenderer.removeListener('project:dirty-state-changed', handler);
     };
   },
   /** @ipc gis:get-i18n-state */

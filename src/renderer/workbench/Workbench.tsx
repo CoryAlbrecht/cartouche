@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -47,6 +47,8 @@ import {
   selectedFeaturesCountSignal,
   selectedFeatureIdsSignal,
   hasProjectSignal,
+  isProjectDirtySignal,
+  activeLayerIdSignal,
   undoStackSignal,
   redoStackSignal,
   clipboardFeaturesSignal,
@@ -54,11 +56,14 @@ import {
   isWindowMaximizedSignal,
   openDockPanelsSignal,
   addConsoleLog,
-  createNewProject,
+  newProjectAction,
   openProjectAction,
+  closeProjectAction,
   loadProjectIntoSignals,
   saveProjectAction,
   saveAsProjectAction,
+  saveActiveLayerAction,
+  saveActiveLayerAsAction,
   undoAction,
   redoAction,
   cutAction,
@@ -367,22 +372,28 @@ export const Workbench: React.FC = () => {
           e.preventDefault();
           e.stopPropagation();
 
-          // Execute shortcut function in Main Process via IPC
-          window.electronAPI?.executeAction(s.name);
-
-          // Trigger corresponding Renderer signal updates
+          // Trigger corresponding Renderer signal updates or execute Main action
           switch (s.name) {
             case "new_project":
-              createNewProject();
+              newProjectAction();
               break;
             case "open_project":
               openProjectAction();
               break;
+            case "close_project":
+              if (hasProjectSignal.value) closeProjectAction();
+              break;
             case "save_project":
-              if (hasProjectSignal.value) saveProjectAction();
+              if (hasProjectSignal.value && isProjectDirtySignal.value) saveProjectAction();
               break;
             case "save_as_project":
               if (hasProjectSignal.value) saveAsProjectAction();
+              break;
+            case "save_active_layer":
+              if (activeLayerIdSignal.value) saveActiveLayerAction();
+              break;
+            case "save_active_layer_as":
+              if (activeLayerIdSignal.value) saveActiveLayerAsAction();
               break;
             case "undo_action":
               if (undoStackSignal.value.length > 0) undoAction();
@@ -403,6 +414,7 @@ export const Workbench: React.FC = () => {
               requestRenameSelectedNode();
               break;
             default:
+              window.electronAPI?.executeAction(s.name);
               break;
           }
           break;
@@ -818,6 +830,8 @@ export const Workbench: React.FC = () => {
 
   // State checks for conditional greyed-out / disabled states
   const hasProject = hasProjectSignal.value;
+  const isProjectDirty = isProjectDirtySignal.value;
+  const hasActiveLayer = activeLayerIdSignal.value !== null;
   const canUndo = undoStackSignal.value.length > 0;
   const canRedo = redoStackSignal.value.length > 0;
   const hasSelectedFeatures = selectedFeatureIdsSignal.value.size > 0;
@@ -865,8 +879,7 @@ export const Workbench: React.FC = () => {
                   className='menu-dropdown-item'
                   onClick={() =>
                     handleMenuClick(() => {
-                      window.electronAPI?.executeAction("new_project");
-                      createNewProject();
+                      newProjectAction();
                     })
                   }>
                   <span className='menu-item-icon-slot'>
@@ -901,13 +914,35 @@ export const Workbench: React.FC = () => {
                   </span>
                 </div>
 
-                {/* * Save $$ (greyed out if no project) */}
+                {/* * Close Project $$ (greyed out if no project) */}
                 <div
                   className={`menu-dropdown-item ${!hasProject ? "disabled" : ""}`}
                   onClick={() =>
                     hasProject
                     && handleMenuClick(() => {
-                      window.electronAPI?.executeAction("save_project");
+                      closeProjectAction();
+                    })
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon
+                      path={getActionIcon("close_project")}
+                      size='14px'
+                    />
+                  </span>
+                  <span className='menu-item-label'>{t("close_project")}</span>
+                  <span className='menu-shortcut-slot'>
+                    {getActionFormattedKey("close_project")}
+                  </span>
+                </div>
+
+                <div className='menu-dropdown-separator' />
+
+                {/* * Save $$ (greyed out if no project or clean) */}
+                <div
+                  className={`menu-dropdown-item ${(!hasProject || !isProjectDirty) ? "disabled" : ""}`}
+                  onClick={() =>
+                    (hasProject && isProjectDirty)
+                    && handleMenuClick(() => {
                       saveProjectAction();
                     })
                   }>
@@ -929,7 +964,6 @@ export const Workbench: React.FC = () => {
                   onClick={() =>
                     hasProject
                     && handleMenuClick(() => {
-                      window.electronAPI?.executeAction("save_as_project");
                       saveAsProjectAction();
                     })
                   }>
@@ -942,6 +976,52 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-label'>{t("save_as_project")}</span>
                   <span className='menu-shortcut-slot'>
                     {getActionFormattedKey("save_as_project")}
+                  </span>
+                </div>
+
+                <div className='menu-dropdown-separator' />
+
+                {/* * Save Active Layer $$ (greyed out if no active layer) */}
+                <div
+                  className={`menu-dropdown-item ${!hasActiveLayer ? "disabled" : ""}`}
+                  onClick={() =>
+                    hasActiveLayer
+                    && handleMenuClick(() => {
+                      window.electronAPI?.executeAction("save_active_layer");
+                      saveActiveLayerAction();
+                    })
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon
+                      path={getActionIcon("save_active_layer")}
+                      size='14px'
+                    />
+                  </span>
+                  <span className='menu-item-label'>{t("save_active_layer")}</span>
+                  <span className='menu-shortcut-slot'>
+                    {getActionFormattedKey("save_active_layer")}
+                  </span>
+                </div>
+
+                {/* * Save Active Layer As... $$ (greyed out if no active layer) */}
+                <div
+                  className={`menu-dropdown-item ${!hasActiveLayer ? "disabled" : ""}`}
+                  onClick={() =>
+                    hasActiveLayer
+                    && handleMenuClick(() => {
+                      window.electronAPI?.executeAction("save_active_layer_as");
+                      saveActiveLayerAsAction();
+                    })
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon
+                      path={getActionIcon("save_active_layer_as")}
+                      size='14px'
+                    />
+                  </span>
+                  <span className='menu-item-label'>{t("save_active_layer_as")}</span>
+                  <span className='menu-shortcut-slot'>
+                    {getActionFormattedKey("save_active_layer_as")}
                   </span>
                 </div>
               </div>

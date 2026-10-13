@@ -102,7 +102,7 @@ export function setNodeVisibility(nodeId: string, visible: boolean): void {
   const node = findNode(root, nodeId);
   if (node) {
     node.visible = visible;
-    projectStore.setDirty(true);
+    projectStore.setProjectDirty(true);
     broadcastProjectLayersTree();
   }
 }
@@ -156,7 +156,7 @@ export function removeNodes(nodeIds: string[]): void {
   }
 
   if (changed) {
-    projectStore.setDirty(true);
+    projectStore.setProjectDirty(true);
     broadcastProjectLayersTree();
   }
 }
@@ -230,7 +230,7 @@ export function createGroup(
     newGroup.addChild(node);
   }
 
-  projectStore.setDirty(true);
+  projectStore.setProjectDirty(true);
   broadcastProjectLayersTree();
 
   return newGroup;
@@ -251,7 +251,7 @@ export function renameNode(nodeId: string, newName: string): void {
   const node = findNode(root, nodeId);
   if (node && newName.trim().length > 0) {
     node.name = newName.trim();
-    projectStore.setDirty(true);
+    projectStore.setProjectDirty(true);
     broadcastProjectLayersTree();
   }
 }
@@ -305,7 +305,7 @@ export function reorderNodes(
       }
       root.addChild(node);
     }
-    projectStore.setDirty(true);
+    projectStore.setProjectDirty(true);
     broadcastProjectLayersTree();
     return;
   }
@@ -324,7 +324,7 @@ export function reorderNodes(
     for (let i = 0; i < draggedNodes.length; i++) {
       targetNode.addChild(draggedNodes[i], i);
     }
-    projectStore.setDirty(true);
+    projectStore.setProjectDirty(true);
     broadcastProjectLayersTree();
     return;
   }
@@ -344,6 +344,6 @@ export function reorderNodes(
     parent.addChild(draggedNodes[i], insertPos + i);
   }
 
-  projectStore.setDirty(true);
+  projectStore.setProjectDirty(true);
   broadcastProjectLayersTree();
 }

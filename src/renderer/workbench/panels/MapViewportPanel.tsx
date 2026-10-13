@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map canvas viewport panel, strictly insulated from React VDOM reconciliation loops.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-22
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link OpenLayersEngine}
  */
@@ -17,7 +17,7 @@ import VectorLayer from "ol/layer/Vector.js";
 import VectorSource from "ol/source/Vector.js";
 import Graticule from "ol/layer/Graticule.js";
 import Stroke from "ol/style/Stroke.js";
-import { fromLonLat, toLonLat } from "ol/proj.js";
+import { fromLonLat, toLonLat, transformExtent } from "ol/proj.js";
 import Feature from "ol/Feature.js";
 import Polygon from "ol/geom/Polygon.js";
 import LineString from "ol/geom/LineString.js";
@@ -25,15 +25,17 @@ import Point from "ol/geom/Point.js";
 import { ol as flatgeobufOl } from "flatgeobuf";
 import {
   cursorCoordsSignal,
+  viewportExtentSignal,
   zoomSignal,
   scaleDenominatorSignal,
   effectiveVisibleLayersSignal,
   featuresSignal,
   mapActionSignal,
+  currentProjectSignal,
   getDefaultOlFlatStyle,
   addConsoleLog,
 } from "@renderer/state/gisSignals";
-import type { GisLayer, GisFeature } from "@shared/types";
+import type { GisLayer, GisFeature, BoundingBox } from "@shared/types";
 import type { IDockviewPanelProps } from "dockview-react";
 import "ol/ol.css";
 
@@ -42,7 +44,7 @@ import "ol/ol.css";
  * @description Imperative OpenLayers map canvas engine operating directly on target DOM element, isolated from React VDOM reconciliation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-22
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 class OpenLayersEngine {
@@ -82,6 +84,38 @@ class OpenLayersEngine {
     );
   }
 
+  /**
+   * @description Synchronizes current map canvas bounding envelope and zoom metrics into reactive signals.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public updateViewportSignals(): void {
+    const size = this.map.getSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) return;
+    const view = this.map.getView();
+    const extent3857 = view.calculateExtent(size);
+    if (!extent3857 || extent3857.some((val) => !isFinite(val))) return;
+    const [minLon, minLat, maxLon, maxLat] = transformExtent(
+      extent3857,
+      "EPSG:3857",
+      "EPSG:4326"
+    );
+    viewportExtentSignal.value = [
+      Math.round(minLon * 100000) / 100000,
+      Math.round(minLat * 100000) / 100000,
+      Math.round(maxLon * 100000) / 100000,
+      Math.round(maxLat * 100000) / 100000,
+    ];
+    const zoom = view.getZoom();
+    if (zoom !== undefined && isFinite(zoom)) {
+      zoomSignal.value = Math.round(zoom * 10) / 10;
+      scaleDenominatorSignal.value = Math.round(500000000 / Math.pow(2, zoom));
+    }
+  }
+
   private bindEvents(): void {
     // Cursor location tracking
     this.map.on("pointermove", (evt) => {
@@ -101,6 +135,11 @@ class OpenLayersEngine {
       const zoom = this.map.getView().getZoom() || 3;
       zoomSignal.value = Math.round(zoom * 10) / 10;
       scaleDenominatorSignal.value = Math.round(500000000 / Math.pow(2, zoom));
+    });
+
+    // Viewport bounding box updates on movement completion
+    this.map.on("moveend", () => {
+      this.updateViewportSignals();
     });
   }
 
@@ -251,8 +290,53 @@ class OpenLayersEngine {
     view.animate({ center: fromLonLat([15, 35]), zoom: 3, duration: 300 });
   }
 
+  /**
+   * @description Fits or sets viewport center, extent, zoom, and rotation on the OpenLayers view.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {Object} payload - Viewport configuration parameters.
+   * @param {BoundingBox} [payload.extent] - Bounding envelope [minX, minY, maxX, maxY].
+   * @param {{ x: number; y: number }} [payload.center] - Center point coordinate.
+   * @param {number} [payload.zoom] - Zoom level.
+   * @param {number} [payload.rotation] - Camera rotation.
+   * @returns {void}
+   */
+  public setViewport(payload: {
+    extent?: BoundingBox;
+    center?: { x: number; y: number };
+    zoom?: number;
+    rotation?: number;
+  }): void {
+    const view = this.map.getView();
+    if (payload.rotation !== undefined) {
+      view.setRotation(payload.rotation);
+    }
+    if (payload.extent && payload.extent.length === 4) {
+      const extent3857 = transformExtent(payload.extent, "EPSG:4326", "EPSG:3857");
+      const size = this.map.getSize();
+      if (size && size[0] > 0 && size[1] > 0) {
+        view.fit(extent3857, { size, padding: [20, 20, 20, 20] });
+      } else {
+        view.fit(extent3857);
+      }
+      if (payload.zoom !== undefined) {
+        view.setZoom(payload.zoom);
+      }
+    } else if (payload.center) {
+      view.setCenter(fromLonLat([payload.center.x, payload.center.y]));
+      if (payload.zoom !== undefined) {
+        view.setZoom(payload.zoom);
+      }
+    } else if (payload.zoom !== undefined) {
+      view.setZoom(payload.zoom);
+    }
+  }
+
   public resize(): void {
     this.map.updateSize();
+    this.updateViewportSignals();
   }
 
   public destroy(): void {
@@ -265,7 +349,7 @@ class OpenLayersEngine {
  * @description Renders OpenLayers map viewport canvas inside Dockview layout with floating navigation controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-22
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {IDockviewPanelProps} props - Dockview panel properties.
  * @returns {React.ReactElement} Map viewport panel element.
@@ -281,6 +365,23 @@ export const MapViewportPanel: React.FC<IDockviewPanelProps | any> = React.memo(
       // Instantiate OpenLayers engine isolated from React VDOM
       const engine = new OpenLayersEngine(containerRef.current);
       engineRef.current = engine;
+
+      // If active project has a saved viewport prior to mount, apply it
+      const currentProject = currentProjectSignal.value;
+      if (currentProject?.viewport) {
+        engine.setViewport({
+          extent: currentProject.viewport.extent ? [
+            currentProject.viewport.extent.xmin,
+            currentProject.viewport.extent.ymin,
+            currentProject.viewport.extent.xmax,
+            currentProject.viewport.extent.ymax
+          ] : undefined,
+          center: currentProject.viewport.center,
+          zoom: currentProject.viewport.zoom,
+          rotation: currentProject.viewport.rotation
+        });
+      }
+      engine.updateViewportSignals();
 
       // Handle container resizing
       const observer = new ResizeObserver(() => {
@@ -305,6 +406,8 @@ export const MapViewportPanel: React.FC<IDockviewPanelProps | any> = React.memo(
           engine.zoomOut();
         } else if (mapAction.action === "reset") {
           engine.resetExtent();
+        } else if (mapAction.action === "setViewport") {
+          engine.setViewport(mapAction);
         }
       });
 

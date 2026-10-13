@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, and activating an existing project file.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -15,6 +15,7 @@ import { dialog, BrowserWindow } from 'electron';
 import { projectLoaderRegistry } from '../../project/loaders/ProjectLoaderRegistry';
 import { projectStore } from '../../project/ProjectStore';
 import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
+import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
 import type { ProjectModel } from '@shared/types';
 
 /**
@@ -60,6 +61,9 @@ export default async function openProject(filePath?: string): Promise<ProjectMod
   // Load into ProjectStore
   const project = await loader.load(targetPath);
   projectStore.setProject(project, targetPath);
+
+  // Broadcast loaded layer tree to all active windows
+  broadcastProjectLayersTree();
 
   // Broadcast loaded project to all active BrowserWindow instances
   for (const win of BrowserWindow.getAllWindows()) {

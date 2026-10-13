@@ -4,7 +4,7 @@
  * @description Runtime representation of a physical spatial dataset loaded in memory.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 
@@ -48,6 +48,14 @@ export class Layer extends LayerTreeNode implements Disposable {
     this.layerKind = layerKind;
     this.readOnly = false;
     this.fileType = null;
+  }
+
+  /**
+   * @description Gets the layer file type descriptor ID or defaults to layerKind.
+   * @returns {string} File format type string.
+   */
+  get type(): string {
+    return this.fileType?.id || (this.layerKind === 'raster' ? 'raster' : 'vector');
   }
 
   /**

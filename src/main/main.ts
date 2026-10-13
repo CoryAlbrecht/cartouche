@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -387,6 +387,42 @@ app.whenReady().then(async () => {
     }
   });
 
+  /**
+   * @description Handles dialog:save-file IPC invocation to present native file save dialog modal to calling window.
+   * Resolves target window via resolveDialogParent (prioritizing the focused child window, sender, or fallback mainWindow).
+   * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
+   * @param {Object} [options] - Dialog options including title, defaultPath, category, and filters.
+   * @returns {Promise<string | null>} Selected save file path or null if canceled.
+   */
+  handleIpc('dialog:save-file', async (_event, options?: { title?: string; defaultPath?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }> }) => {
+    if (isFileDialogOpen) {
+      return null;
+    }
+    isFileDialogOpen = true;
+    try {
+      const filters = options?.filters || fileTypeRegistry.getFileFilters(options?.category || 'project');
+      const dialogOptions: Electron.SaveDialogOptions = {
+        title: options?.title || 'Save Cartouche Project',
+        defaultPath: options?.defaultPath,
+        filters
+      };
+      const targetWindow = resolveDialogParent(_event.sender, mainWindow);
+      const res = targetWindow ? await dialog.showSaveDialog(targetWindow, dialogOptions) : await dialog.showSaveDialog(dialogOptions);
+      if (res.canceled || !res.filePath) return null;
+      return res.filePath;
+    } catch (err) {
+      console.error('[Main] dialog:save-file error:', err);
+      return null;
+    } finally {
+      isFileDialogOpen = false;
+    }
+  });
+
   // Project Management IPC Handlers
   handleIpc('gis:open-project', async (_event, filePath?: string) => {
     const { default: openProject } = await import('./api/project/openProject');
@@ -396,6 +432,11 @@ app.whenReady().then(async () => {
   handleIpc('gis:get-current-project', async () => {
     const { projectStore } = await import('./project/ProjectStore');
     return projectStore.getProject();
+  });
+
+  handleIpc('gis:save-project', async (_event, filePath?: string, viewport?: import('../shared/types/project').ProjectViewport) => {
+    const { default: saveProject } = await import('./api/project/saveProject');
+    return saveProject(filePath, viewport);
   });
 
   // Localization IPC Handlers

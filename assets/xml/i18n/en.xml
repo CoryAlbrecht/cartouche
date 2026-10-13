@@ -7,8 +7,11 @@
     <!-- File Menu -->
     <string name="new_project">New Project...</string>
     <string name="open_project">Open Project...</string>
+    <string name="close_project">Close Project</string>
     <string name="save_project">Save Project</string>
     <string name="save_as_project">Save Project As...</string>
+    <string name="save_active_layer">Save Active Layer</string>
+    <string name="save_active_layer_as">Save Active Layer As...</string>
     <string name="add_layers">Add Layers...</string>
     <string name="new_map_view">New Map View</string>
     <string name="pan_tool">Drag Map Canvas (Pan)</string>

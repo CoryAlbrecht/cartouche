@@ -4,7 +4,7 @@
  * @description Unit tests for Main process layer tree mutation API handlers (visibility, selection, deletion, group creation, reordering).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 
@@ -39,7 +39,7 @@ describe('layerTreeOperations', () => {
     assert.equal(layer.visible, true);
     setNodeVisibility('layer-roads', false);
     assert.equal(layer.visible, false);
-    assert.equal(projectStore.isDirty(), true);
+    assert.equal(projectStore.isProjectDirty(), true);
 
     setNodeVisibility('layer-roads', true);
     assert.equal(layer.visible, true);
@@ -79,7 +79,7 @@ describe('layerTreeOperations', () => {
     removeNodes(['l-1']);
     assert.equal(root.getChildCount(), 0);
     assert.equal(disposed, true);
-    assert.equal(projectStore.isDirty(), true);
+    assert.equal(projectStore.isProjectDirty(), true);
   });
 
   it('createGroup creates new group before target and reparents actionable nodes', () => {
@@ -107,6 +107,7 @@ describe('layerTreeOperations', () => {
     assert.equal(newGroup.selected, true);
     assert.equal(groupChildren[0].selected, false);
     assert.equal(groupChildren[1].selected, false);
+    assert.equal(projectStore.isProjectDirty(), true);
   });
 
   it('reorderNodes reorders nodes before target and prevents cycles', () => {
@@ -154,6 +155,29 @@ describe('layerTreeOperations', () => {
     const l5Index = rootChildren.findIndex((c) => c.id === 'l-5');
     const l7Index = rootChildren.findIndex((c) => c.id === 'l-7');
     assert.equal(l5Index + 1, l7Index); // l5 is immediately before l7
+    assert.equal(projectStore.isProjectDirty(), true);
+  });
+
+  it('notifies onDirtyChange listeners whenever project dirty state transitions', () => {
+    projectStore.setProjectDirty(false);
+    const notifications: boolean[] = [];
+    const unsubscribe = projectStore.onDirtyChange((dirty) => {
+      notifications.push(dirty);
+    });
+
+    projectStore.setProjectDirty(true);
+    assert.deepEqual(notifications, [true]);
+
+    // Redundant call with same state should not trigger
+    projectStore.setProjectDirty(true);
+    assert.deepEqual(notifications, [true]);
+
+    projectStore.setProjectDirty(false);
+    assert.deepEqual(notifications, [true, false]);
+
+    unsubscribe();
+    projectStore.setProjectDirty(true);
+    assert.deepEqual(notifications, [true, false]);
   });
 });
 

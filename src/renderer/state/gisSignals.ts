@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -20,10 +20,11 @@ import type {
   ConsoleLogEntry,
   BoundingBox,
   ProjectModel,
+  ProjectViewport,
   ProjectLayerItem,
   ProjectGroupItem
-} from '@shared/types';
-import { getDefaultLayerStyle } from '@shared/styles/defaultLayerStyles';
+} from '../../shared/types';
+import { getDefaultLayerStyle } from '../../shared/styles/defaultLayerStyles';
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
@@ -34,7 +35,9 @@ import {
   currentProjectSignal,
   hasProjectSignal,
   projectNameSignal,
+  projectFilePathSignal,
   projectVisibleSignal,
+  isProjectDirtySignal,
   isDirtySignal,
   projectTreeSignal,
   projectTreeStatsSignal
@@ -44,7 +47,9 @@ export {
   currentProjectSignal,
   hasProjectSignal,
   projectNameSignal,
+  projectFilePathSignal,
   projectVisibleSignal,
+  isProjectDirtySignal,
   isDirtySignal,
   projectTreeSignal,
   projectTreeStatsSignal
@@ -193,17 +198,41 @@ export const openDockPanelsSignal = signal<{ attributes: boolean; layers: boolea
   layers: true
 });
 
-// Map command action triggers (Zoom In, Zoom Out, Reset, etc.)
+// Map command action triggers (Zoom In, Zoom Out, Reset, Set Viewport, etc.)
+/**
+ * @typedef {'zoomIn' | 'zoomOut' | 'reset' | 'setViewport'} MapActionType
+ * @description Action trigger type for imperative map viewport commands.
+ */
+export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
+
+/**
+ * @typedef {Object} MapActionPayload
+ * @property {MapActionType} action - Viewport command type.
+ * @property {BoundingBox} [extent] - Geographic bounding box for setViewport command.
+ * @property {{ x: number; y: number }} [center] - Center point coordinates for setViewport command.
+ * @property {number} [zoom] - Zoom level for setViewport command.
+ * @property {number} [rotation] - Camera rotation for setViewport command.
+ * @property {number} timestamp - Epoch timestamp distinguishing repeated trigger invocations.
+ */
+export interface MapActionPayload {
+  action: MapActionType;
+  extent?: BoundingBox;
+  center?: { x: number; y: number };
+  zoom?: number;
+  rotation?: number;
+  timestamp: number;
+}
+
 /**
  * @signal mapActionSignal
- * @description Trigger signal for imperative map viewport actions (zoomIn, zoomOut, reset).
+ * @description Trigger signal for imperative map viewport actions (zoomIn, zoomOut, reset, setViewport).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-13
  * @since 0.1.0-dev
- * @type {Signal<{ action: 'zoomIn' | 'zoomOut' | 'reset'; timestamp: number } | null>}
+ * @type {Signal<MapActionPayload | null>}
  */
-export const mapActionSignal = signal<{ action: 'zoomIn' | 'zoomOut' | 'reset'; timestamp: number } | null>(null);
+export const mapActionSignal = signal<MapActionPayload | null>(null);
 
 // High-frequency map signals
 /**
@@ -596,22 +625,34 @@ export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?
  * @description Initializes a clean project state in Workbench shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {string} [name='New Project'] - Project name string.
  * @returns {void}
  */
 export function createNewProject(name: string = 'New Project') {
+  currentProjectSignal.value = {
+    format: 'cartouche-xml',
+    metadata: {
+      title: name,
+      appVersion: '0.1.0-dev'
+    },
+    layers: []
+  };
   hasProjectSignal.value = true;
   projectNameSignal.value = name;
+  projectFilePathSignal.value = null;
   projectVisibleSignal.value = true;
-  isDirtySignal.value = false;
+  isProjectDirtySignal.value = false;
   layerGroupsSignal.value = [];
   layersSignal.value = [];
+  projectTreeSignal.value = [];
   featuresSignal.value = [];
   selectedFeatureIdsSignal.value = new Set();
+  activeLayerIdSignal.value = null;
   undoStackSignal.value = [];
   redoStackSignal.value = [];
+  viewportExtentSignal.value = [-180, -90, 180, 90];
   addConsoleLog('info', `Project "${name}" initialized.`, 'Project');
 }
 
@@ -788,23 +829,77 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
   const { groups, layers } = projectToGisHierarchy(project);
   currentProjectSignal.value = project;
   hasProjectSignal.value = true;
-  projectNameSignal.value = project.metadata?.title || 'Untitled Project';
+  projectFilePathSignal.value = project.filePath || null;
+  projectNameSignal.value = project.metadata?.title || (project.filePath ? project.filePath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '') : null) || 'Untitled Project';
   projectVisibleSignal.value = true;
   projectTreeSignal.value = project.layers || [];
   layerGroupsSignal.value = groups;
   layersSignal.value = layers;
-  isDirtySignal.value = false;
+  isProjectDirtySignal.value = false;
   if (layers.length > 0) {
     activeLayerIdSignal.value = layers[0].id;
+  }
+  if (project.viewport) {
+    if (project.viewport.extent) {
+      viewportExtentSignal.value = [
+        project.viewport.extent.xmin,
+        project.viewport.extent.ymin,
+        project.viewport.extent.xmax,
+        project.viewport.extent.ymax
+      ];
+    }
+    if (project.viewport.zoom !== undefined) {
+      zoomSignal.value = project.viewport.zoom;
+    }
+    if (project.viewport.scale !== undefined) {
+      scaleDenominatorSignal.value = project.viewport.scale;
+    }
+    mapActionSignal.value = {
+      action: 'setViewport',
+      extent: project.viewport.extent ? [
+        project.viewport.extent.xmin,
+        project.viewport.extent.ymin,
+        project.viewport.extent.xmax,
+        project.viewport.extent.ymax
+      ] : undefined,
+      center: project.viewport.center,
+      zoom: project.viewport.zoom,
+      rotation: project.viewport.rotation,
+      timestamp: Date.now()
+    };
   }
   addConsoleLog('info', `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`, 'Project');
 }
 
 /**
- * @description Action handler requesting project file open flow, opening native file picker for 'project' category.
+ * @description Action handler requesting atomic project creation. If existing project is dirty,
+ * prompts to save first. If confirmed, closes previous project and initializes new blank project in Main and Renderer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @returns {Promise<boolean>} True if new project was initialized, false if canceled.
+ */
+export async function newProjectAction(): Promise<boolean> {
+  if (hasProjectSignal.value) {
+    const closed = await closeProjectAction();
+    if (!closed) return false;
+  }
+
+  if (window.electronAPI?.executeAction) {
+    await window.electronAPI.executeAction('new_project');
+  }
+
+  createNewProject('New Project');
+  return true;
+}
+
+/**
+ * @description Action handler requesting atomic project open flow. Prompts user for file first;
+ * if selected, closes existing project safely (saving if dirty) before opening the new project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-03
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @returns {Promise<void>}
  */
@@ -824,6 +919,16 @@ export async function openProjectAction(): Promise<void> {
       return;
     }
     const chosenPath = filePaths[0];
+
+    // If there is currently an open project, close it first (with pre-close dirty save check)
+    if (hasProjectSignal.value) {
+      const closed = await closeProjectAction();
+      if (!closed) {
+        addConsoleLog('info', 'Open project aborted: previous project close was canceled.', 'Project');
+        return;
+      }
+    }
+
     if (window.electronAPI?.openProject) {
       const project = await window.electronAPI.openProject(chosenPath);
       if (project) {
@@ -837,30 +942,204 @@ export async function openProjectAction(): Promise<void> {
 }
 
 /**
- * @description Action handler requesting project file save.
+ * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-13
  * @since 0.1.0-dev
- * @returns {void}
+ * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
-export function saveProjectAction() {
-  if (!hasProjectSignal.value) return;
-  isDirtySignal.value = false;
-  addConsoleLog('info', `Project "${projectNameSignal.value || 'Untitled'}" saved successfully.`, 'Project');
+export async function saveProjectAction(): Promise<boolean> {
+  if (!hasProjectSignal.value) return false;
+
+  let targetPath = projectFilePathSignal.value;
+
+  // If untitled / new project, prompt for path via saveFile dialog
+  if (!targetPath) {
+    if (!window.electronAPI?.saveFile) {
+      console.warn('[gisSignals] electronAPI.saveFile unavailable');
+      return false;
+    }
+    const defaultName = `${projectNameSignal.value || 'Untitled'}.cproj`;
+    const chosenPath = await window.electronAPI.saveFile({
+      title: 'Save Cartouche Project',
+      category: 'project',
+      defaultPath: defaultName
+    });
+
+    if (!chosenPath) {
+      addConsoleLog('info', 'Save project canceled.', 'Project');
+      return false;
+    }
+    targetPath = chosenPath;
+  }
+
+  try {
+    const [xmin, ymin, xmax, ymax] = viewportExtentSignal.value;
+    const viewport: ProjectViewport = {
+      extent: { xmin, ymin, xmax, ymax },
+      center: {
+        x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
+        y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
+      },
+      zoom: zoomSignal.value,
+      scale: scaleDenominatorSignal.value,
+      rotation: 0
+    };
+    if (currentProjectSignal.value) {
+      currentProjectSignal.value.viewport = viewport;
+    }
+    if (window.electronAPI?.saveProject) {
+      const success = await window.electronAPI.saveProject(targetPath, viewport);
+      if (!success) return false;
+    }
+    projectFilePathSignal.value = targetPath;
+    const baseName = targetPath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '');
+    if (baseName && (!projectNameSignal.value || projectNameSignal.value === 'Untitled Project' || projectNameSignal.value === 'New Project')) {
+      projectNameSignal.value = baseName;
+      if (currentProjectSignal.value?.metadata) {
+        currentProjectSignal.value.metadata.title = baseName;
+      }
+    }
+    isProjectDirtySignal.value = false;
+    addConsoleLog('info', `Project "${projectNameSignal.value || 'Untitled'}" saved successfully.`, 'Project');
+    return true;
+  } catch (err) {
+    console.error('[gisSignals] saveProjectAction error:', err);
+    addConsoleLog('error', `Failed to save project: ${String(err)}`, 'Project');
+    return false;
+  }
 }
 
 /**
- * @description Action handler requesting project file save as flow.
+ * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
+ */
+export async function saveAsProjectAction(): Promise<boolean> {
+  if (!hasProjectSignal.value) return false;
+
+  if (!window.electronAPI?.saveFile) {
+    console.warn('[gisSignals] electronAPI.saveFile unavailable');
+    return false;
+  }
+
+  const defaultPath = projectFilePathSignal.value || `${projectNameSignal.value || 'Untitled'}.cproj`;
+  const chosenPath = await window.electronAPI.saveFile({
+    title: 'Save Cartouche Project As...',
+    category: 'project',
+    defaultPath
+  });
+
+  if (!chosenPath) {
+    addConsoleLog('info', 'Save As project canceled.', 'Project');
+    return false;
+  }
+
+  try {
+    const [xmin, ymin, xmax, ymax] = viewportExtentSignal.value;
+    const viewport: ProjectViewport = {
+      extent: { xmin, ymin, xmax, ymax },
+      center: {
+        x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
+        y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
+      },
+      zoom: zoomSignal.value,
+      scale: scaleDenominatorSignal.value,
+      rotation: 0
+    };
+    if (currentProjectSignal.value) {
+      currentProjectSignal.value.viewport = viewport;
+    }
+    if (window.electronAPI?.saveProject) {
+      const success = await window.electronAPI.saveProject(chosenPath, viewport);
+      if (!success) return false;
+    }
+    projectFilePathSignal.value = chosenPath;
+    const baseName = chosenPath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '');
+    if (baseName) {
+      projectNameSignal.value = baseName;
+    }
+    isProjectDirtySignal.value = false;
+    addConsoleLog('info', `Project saved as "${projectNameSignal.value}" (${chosenPath}).`, 'Project');
+    return true;
+  } catch (err) {
+    console.error('[gisSignals] saveAsProjectAction error:', err);
+    addConsoleLog('error', `Failed to save project as: ${String(err)}`, 'Project');
+    return false;
+  }
+}
+
+/**
+ * @description Action handler requesting project close flow. If project is dirty, prompts to save first.
+ * If saved or clean, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @returns {Promise<boolean>} True if project closed, false if aborted.
+ */
+export async function closeProjectAction(): Promise<boolean> {
+  if (!hasProjectSignal.value) return true;
+
+  if (isProjectDirtySignal.value) {
+    const saved = await saveProjectAction();
+    if (!saved) {
+      addConsoleLog('info', 'Close project aborted: unsaved changes were not saved.', 'Project');
+      return false;
+    }
+  }
+
+  if (window.electronAPI?.executeAction) {
+    await window.electronAPI.executeAction('close_project');
+  }
+
+  hasProjectSignal.value = false;
+  projectNameSignal.value = null;
+  projectFilePathSignal.value = null;
+  currentProjectSignal.value = null;
+  isProjectDirtySignal.value = false;
+  layersSignal.value = [];
+  layerGroupsSignal.value = [];
+  projectTreeSignal.value = [];
+  activeLayerIdSignal.value = null;
+  featuresSignal.value = [];
+  selectedFeatureIdsSignal.value = new Set();
+  undoStackSignal.value = [];
+  redoStackSignal.value = [];
+  viewportExtentSignal.value = [-180, -90, 180, 90];
+
+  addConsoleLog('info', 'Project closed. Returned to blank slate.', 'Project');
+  return true;
+}
+
+/**
+ * @description Action handler saving active layer modifications to disk.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function saveAsProjectAction() {
-  if (!hasProjectSignal.value) return;
-  addConsoleLog('info', 'Save As project requested.', 'Project');
+export function saveActiveLayerAction(): void {
+  if (!activeLayerIdSignal.value) return;
+  addConsoleLog('info', `Save Active Layer requested for "${activeLayerIdSignal.value}".`, 'Layers');
+}
+
+/**
+ * @description Action handler saving active layer under a new destination path.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function saveActiveLayerAsAction(): void {
+  if (!activeLayerIdSignal.value) return;
+  addConsoleLog('info', `Save Active Layer As requested for "${activeLayerIdSignal.value}".`, 'Layers');
 }
 
 // Edit Actions

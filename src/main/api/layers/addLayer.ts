@@ -149,7 +149,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   }
 
   projectStore.getRootGroup().addChild(newLayer);
-  projectStore.setDirty(true);
+  projectStore.setProjectDirty(true);
 
   // 7. Broadcast updated layer hierarchy over IPC to Renderer
   broadcastProjectLayersTree();
