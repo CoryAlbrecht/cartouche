@@ -15,7 +15,8 @@ import { signal, computed } from '@preact/signals-react';
 import type {
   ProjectModel,
   ProjectLayerItem,
-  ProjectGroupItem
+  ProjectGroupItem,
+  LayerDescriptor
 } from '@shared/types';
 
 /**
@@ -74,6 +75,28 @@ export const layerTreeContextMenuHooksSignal = signal<LayerTreeContextMenuHook[]
  * @type {Signal<Array<ProjectLayerItem | ProjectGroupItem>>}
  */
 export const projectTreeSignal = signal<Array<ProjectLayerItem | ProjectGroupItem>>([]);
+
+/**
+ * @signal projectLayersSignal
+ * @description Reactive signal holding flat list of loaded layer descriptors.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @type {Signal<LayerDescriptor[]>}
+ */
+export const projectLayersSignal = signal<LayerDescriptor[]>([]);
+
+/**
+ * @signal layerStylesSignal
+ * @description Reactive signal holding OpenLayers flat style rules keyed by layer UUID.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @type {Signal<Record<string, Record<string, any>>>}
+ */
+export const layerStylesSignal = signal<Record<string, Record<string, any>>>({});
 
 /**
  * @signal currentProjectSignal
@@ -627,4 +650,75 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChan
     isProjectDirtySignal.value = dirty;
   });
 }
+
+/**
+ * @description Ingests a new LayerDescriptor into renderer state, updating projectLayersSignal, layerStylesSignal, and projectTreeSignal.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
+ * @returns {void}
+ */
+export function handleLayerAdded(descriptor: LayerDescriptor): void {
+  // Update projectLayersSignal (insert or replace in-place)
+  const existingIndex = projectLayersSignal.value.findIndex((l) => l.id === descriptor.id);
+  if (existingIndex >= 0) {
+    const updated = [...projectLayersSignal.value];
+    updated[existingIndex] = descriptor;
+    projectLayersSignal.value = updated;
+  } else {
+    projectLayersSignal.value = [...projectLayersSignal.value, descriptor];
+  }
+
+  // Parse and register style into layerStylesSignal
+  let resolvedStyle: Record<string, any> = {};
+  const rawStyle = descriptor.style;
+  if (typeof rawStyle === 'string') {
+    try {
+      resolvedStyle = JSON.parse(rawStyle);
+    } catch {
+      resolvedStyle = {};
+    }
+  } else if (rawStyle && typeof rawStyle === 'object') {
+    if ('content' in rawStyle && typeof rawStyle.content === 'string') {
+      try {
+        resolvedStyle = JSON.parse(rawStyle.content);
+      } catch {
+        resolvedStyle = {};
+      }
+    } else {
+      resolvedStyle = rawStyle as Record<string, any>;
+    }
+  }
+
+  layerStylesSignal.value = {
+    ...layerStylesSignal.value,
+    [descriptor.id]: resolvedStyle
+  };
+
+  // Ensure layer appears in projectTreeSignal if not already present
+  if (!projectTreeSignal.value.some((node) => node.id === descriptor.id)) {
+    projectTreeSignal.value = [...projectTreeSignal.value, descriptor];
+  }
+
+  // Ensure project state is marked open
+  hasProjectSignal.value = true;
+  if (!projectNameSignal.value) {
+    projectNameSignal.value = 'Untitled Project';
+  }
+
+  // Set active layer if not already set
+  if (!activeLayerIdSignal.value) {
+    activeLayerIdSignal.value = descriptor.id;
+  }
+}
+
+// Automatically subscribe to IPC layer added broadcasts from Electron Main process
+if (typeof window !== 'undefined' && window.electronAPI?.onLayerAdded) {
+  window.electronAPI.onLayerAdded((descriptor: LayerDescriptor) => {
+    handleLayerAdded(descriptor);
+  });
+}
+
 

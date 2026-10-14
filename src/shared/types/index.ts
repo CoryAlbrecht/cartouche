@@ -259,6 +259,7 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {() => Promise<FileTypeDescriptor[]>} [getFileTypes] - Fetches array of registered file type descriptors.
  * @property {(filePath: string) => Promise<FileTypeDescriptor | undefined>} [identifyFile] - Identifies file type descriptor for target file path.
  * @property {(options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
+ * @property {(callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void} [onLayerAdded] - Registers listener for newly added layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-13
@@ -318,6 +319,8 @@ export interface ElectronAPI {
   onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
   /** @ipc project:layers-tree-updated */
   onProjectLayersTreeUpdated?: (callback: (tree: Array<import('./project').ProjectLayerItem | import('./project').ProjectGroupItem>) => void) => () => void;
+  /** @ipc project:layer-added */
+  onLayerAdded?: (callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void;
   /** @ipc project:metadata-updated */
   onProjectMetadataUpdated?: (callback: (metadata: import('./project').ProjectMetadata) => void) => () => void;
   /** @ipc project:dirty-state-changed */

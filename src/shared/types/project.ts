@@ -86,12 +86,12 @@ export interface ProjectViewport {
  * @property {boolean} [readOnly] - Whether the layer should be strictly treated as read-only.
  * @property {string} [layerKind] - General GIS category (vector or raster).
  * @property {GeometryKind} [geometryKind] - Spatial geometry type for vector features.
- * @property {string | { href?: string; content?: string }} [style] - Layer style rule definition or reference.
+ * @property {string | { href?: string; content?: string } | Record<string, any>} [style] - Layer style rule definition or reference.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 import type { GeometryKind } from ".";
@@ -108,7 +108,7 @@ export interface ProjectLayerItem {
   readOnly?: boolean;
   layerKind?: 'vector' | 'raster';
   geometryKind?: GeometryKind;
-  style?: string | { href?: string; content?: string };
+  style?: string | { href?: string; content?: string } | Record<string, any>;
   crs?: ProjectCrs;
   customProperties?: Record<string, unknown>;
 }

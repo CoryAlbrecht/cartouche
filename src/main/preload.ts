@@ -88,6 +88,14 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('project:layers-tree-updated', handler);
     };
   },
+  /** @ipc project:layer-added */
+  onLayerAdded: (callback: (descriptor: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, descriptor: any) => callback(descriptor);
+    ipcRenderer.on('project:layer-added', handler);
+    return () => {
+      ipcRenderer.removeListener('project:layer-added', handler);
+    };
+  },
   /** @ipc project:metadata-updated */
   onProjectMetadataUpdated: (callback: (metadata: any) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, metadata: any) => callback(metadata);

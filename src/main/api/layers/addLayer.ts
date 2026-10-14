@@ -4,26 +4,29 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
  * @see {@link ProjectBroadcaster}
+ * @see {@link LayerSessionRegistry}
  */
 
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
-import type { AddLayerParams, GeometryKind } from '@shared/types';
+import type { AddLayerParams, GeometryKind, BoundingBox, LayerDescriptor } from '@shared/types';
 import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
 import { projectStore } from '../../project/ProjectStore';
 import { Layer } from '../../project/models/Layer';
-import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
+import { layerSessionRegistry } from '../../project/LayerSessionRegistry';
+import { getDefaultLayerStyle } from '../../../shared/styles/defaultLayerStyles';
+import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/ProjectBroadcaster';
 
 /**
  * @description Helper mapping GDAL geometry type integer constants to standard GeometryKind strings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {number} [geomType] - GDAL integer geometry type code.
  * @returns {GeometryKind} Canonical GeometryKind string.
@@ -32,7 +35,7 @@ function mapGdalGeometryKind(geomType?: number): GeometryKind {
   if (geomType === undefined) {
     return 'Polygon';
   }
-  const baseType = geomType & 0xff;
+  const baseType = (geomType & 0x7fffffff) % 1000;
   if (baseType === 1 || baseType === 4) {
     return 'Point';
   }
@@ -48,7 +51,7 @@ function mapGdalGeometryKind(geomType?: number): GeometryKind {
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.
@@ -117,6 +120,17 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     newLayer.geometryKind = 'Polygon';
   }
 
+  // Retain active native GDAL handles in LayerSessionRegistry
+  const gdalLayer = (nativeObj as any)?.features ? (nativeObj as any) : undefined;
+  const gdalDataset = (nativeObj as any)?.ds ?? ((nativeObj as any)?.layers ? nativeObj : undefined);
+  if (gdalDataset && gdalLayer) {
+    layerSessionRegistry.register(resolvedId, gdalDataset, gdalLayer);
+  }
+
+  // Attach default OpenLayers Flat Style rules
+  const defaultStyle = getDefaultLayerStyle(newLayer.geometryKind);
+  newLayer.style = defaultStyle;
+
   // Resolve CRS if available on native object
   const srs = (nativeObj as any)?.srs;
   if (srs && typeof srs.getAuthorityCode === 'function') {
@@ -136,6 +150,51 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     };
   }
 
+  // Extract spatial bounding extent and total feature count without serializing geometries
+  const extent: BoundingBox = [0, 0, 0, 0];
+  let featureCount = 0;
+
+  if (nativeObj && typeof (nativeObj as any).getExtent === 'function') {
+    try {
+      const env = (nativeObj as any).getExtent();
+      if (env) {
+        extent[0] = env.minX;
+        extent[1] = env.minY;
+        extent[2] = env.maxX;
+        extent[3] = env.maxY;
+      }
+    } catch (err) {
+      console.warn(`[addLayer] Failed to get extent for "${resolvedName}":`, err);
+    }
+  }
+
+  if (nativeObj && (nativeObj as any).features && typeof (nativeObj as any).features.count === 'function') {
+    try {
+      featureCount = (nativeObj as any).features.count();
+    } catch (err) {
+      console.warn(`[addLayer] Failed to get feature count for "${resolvedName}":`, err);
+    }
+  }
+
+  const layerDescriptor: LayerDescriptor = {
+    id: newLayer.id,
+    name: newLayer.name,
+    type: newLayer.type,
+    source: newLayer.filePath,
+    visible: newLayer.visible,
+    selected: newLayer.selected,
+    opacity: newLayer.opacity,
+    selectable: newLayer.selectable,
+    readOnly: newLayer.readOnly,
+    layerKind: newLayer.layerKind,
+    geometryKind: newLayer.geometryKind,
+    style: newLayer.style,
+    crs: newLayer.crs,
+    customProperties: newLayer.customProperties,
+    extent,
+    featureCount
+  };
+
   // 6. Append to ProjectStore singleton
   if (!projectStore.hasProject()) {
     projectStore.setProject({
@@ -151,7 +210,8 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   projectStore.getRootGroup().addChild(newLayer);
   projectStore.setProjectDirty(true);
 
-  // 7. Broadcast updated layer hierarchy over IPC to Renderer
+  // 7. Broadcast layer added event and updated hierarchy over IPC to Renderer
+  broadcastLayerAdded(layerDescriptor);
   broadcastProjectLayersTree();
 
   return newLayer;
@@ -162,7 +222,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
  * Unwraps the array and invokes addLayer sequentially for each layer parameter specification.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @param {AddLayerParams[]} layers - Array of layer creation specifications.
  * @returns {Promise<Layer[]>} Array of created runtime Layer instances.

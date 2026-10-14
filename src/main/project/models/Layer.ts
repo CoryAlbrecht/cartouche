@@ -30,7 +30,7 @@ export class Layer extends LayerTreeNode implements Disposable {
   public geometryKind?: GeometryKind;
   public opacity: number = 1.0;
   public selectable: boolean = true;
-  public style?: string | { href?: string; content?: string };
+  public style?: string | { href?: string; content?: string } | Record<string, any>;
   public crs?: import('@shared/types').ProjectCrs;
   public customProperties?: Record<string, unknown>;
 
@@ -85,12 +85,16 @@ export class Layer extends LayerTreeNode implements Disposable {
     layerSessionRegistry.remove(this.id);
     if (this.nativeObject) {
       const obj = this.nativeObject as any;
-      if (typeof obj.close === 'function') {
-        obj.close();
-      } else if (obj.ds && typeof obj.ds.close === 'function') {
-        obj.ds.close();
-      } else if (typeof obj.dispose === 'function') {
-        obj.dispose();
+      try {
+        if (typeof obj.close === 'function') {
+          obj.close();
+        } else if (obj.ds && typeof obj.ds.close === 'function') {
+          obj.ds.close();
+        } else if (typeof obj.dispose === 'function') {
+          obj.dispose();
+        }
+      } catch {
+        // Suppress errors if already closed or destroyed by LayerSessionRegistry
       }
       this.nativeObject = null;
     }
