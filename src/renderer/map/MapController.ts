@@ -34,9 +34,69 @@ import {
   projectLayersSignal,
   layerStylesSignal,
   currentProjectSignal,
+  projectTreeSignal,
+  projectVisibleSignal,
 } from '../state/projectSignals';
 import { getDefaultLayerStyle } from '../../shared/styles/defaultLayerStyles';
-import type { LayerDescriptor, BoundingBox } from '../../shared/types';
+import type {
+  LayerDescriptor,
+  BoundingBox,
+  ProjectLayerItem,
+  ProjectGroupItem,
+} from '../../shared/types';
+
+/**
+ * @typedef {Object} FlattenedTreeLayer
+ * @property {string} id - Layer identifier.
+ * @property {number} flatIndex - 0-based depth-first display index in layer tree.
+ * @property {boolean} effectiveVisible - Effective visibility taking parent group and project visibility into account.
+ * @property {number} opacity - Render opacity ranging from 0.0 to 1.0.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ */
+export interface FlattenedTreeLayer {
+  id: string;
+  flatIndex: number;
+  effectiveVisible: boolean;
+  opacity: number;
+}
+
+/**
+ * @description Recursively flattens the project layer tree into a sequential list of layers with effective visibility and visual stacking order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Hierarchical layer tree items.
+ * @param {boolean} [parentVisible=true] - Inherited parent container visibility.
+ * @param {FlattenedTreeLayer[]} [result=[]] - Accumulator array for flattened layers.
+ * @returns {FlattenedTreeLayer[]} Flattened array of layer items with calculated stacking indices.
+ */
+export function flattenTreeLayers(
+  items: Array<ProjectLayerItem | ProjectGroupItem>,
+  parentVisible: boolean = true,
+  result: FlattenedTreeLayer[] = []
+): FlattenedTreeLayer[] {
+  for (const item of items) {
+    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      const group = item as ProjectGroupItem;
+      const isGroupEffectiveVisible = parentVisible && group.visible !== false;
+      flattenTreeLayers(group.children, isGroupEffectiveVisible, result);
+    } else {
+      const layer = item as ProjectLayerItem;
+      const effectiveVisible = parentVisible && layer.visible !== false;
+      result.push({
+        id: layer.id,
+        flatIndex: result.length,
+        effectiveVisible,
+        opacity: layer.opacity ?? 1,
+      });
+    }
+  }
+  return result;
+}
 
 /**
  * @typedef {Object} VectorLayerEntry
@@ -203,6 +263,21 @@ export class MapController {
     });
     this.disposeSignals.push(disposeLayers);
 
+    // Synchronize visual stacking order (zIndex), visibility, and opacity from projectTreeSignal & projectVisibleSignal
+    const disposeTree = effect(() => {
+      const tree = projectTreeSignal.value;
+      const projectVisible = projectVisibleSignal.value;
+      this.syncTreeState(tree, projectVisible);
+    });
+    this.disposeSignals.push(disposeTree);
+
+    // Apply live dynamic Flat Style updates from layerStylesSignal at 60 FPS
+    const disposeStyles = effect(() => {
+      const styles = layerStylesSignal.value;
+      this.applyLayerStyles(styles);
+    });
+    this.disposeSignals.push(disposeStyles);
+
     // Map navigation action signal dispatcher
     const disposeActions = effect(() => {
       const mapAction = mapActionSignal.value;
@@ -260,6 +335,52 @@ export class MapController {
     }
 
     this.previousLayerCount = descriptors.length;
+
+    // 4. Synchronize stacking order (zIndex), visibility, opacity, and styles on current layers
+    this.syncTreeState(projectTreeSignal.value, projectVisibleSignal.value);
+    this.applyLayerStyles(layerStylesSignal.value);
+  }
+
+  /**
+   * @description Synchronizes layer visual stacking order (zIndex = 1000 - flatIndex), visibility, and opacity from the hierarchical layer tree.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {Array<ProjectLayerItem | ProjectGroupItem>} tree - Hierarchical layer and group tree items.
+   * @param {boolean} projectVisible - Global project visibility toggle.
+   * @returns {void}
+   */
+  public syncTreeState(
+    tree: Array<ProjectLayerItem | ProjectGroupItem>,
+    projectVisible: boolean
+  ): void {
+    const flattened = flattenTreeLayers(tree, projectVisible);
+    for (const item of flattened) {
+      const entry = this.vectorLayers.get(item.id);
+      if (entry) {
+        entry.layer.setZIndex(1000 - item.flatIndex);
+        entry.layer.setVisible(item.effectiveVisible);
+        entry.layer.setOpacity(item.opacity);
+      }
+    }
+  }
+
+  /**
+   * @description Applies dynamic OpenLayers Flat Style rules to registered vector layers at 60 FPS without modifying feature buffers.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {Record<string, Record<string, any>>} styles - OpenLayers flat style rules map keyed by layer UUID.
+   * @returns {void}
+   */
+  public applyLayerStyles(styles: Record<string, Record<string, any>>): void {
+    for (const [id, entry] of this.vectorLayers.entries()) {
+      if (styles[id]) {
+        entry.layer.setStyle(styles[id] as any);
+      }
+    }
   }
 
   /**
@@ -290,10 +411,15 @@ export class MapController {
         ? descriptor.style
         : getDefaultLayerStyle(descriptor.geometryKind));
 
+    const currentFlat = flattenTreeLayers(projectTreeSignal.value, projectVisibleSignal.value);
+    const treeMatch = currentFlat.find((item) => item.id === descriptor.id);
+
     const layer = new VectorLayer({
       source,
       style: styleRules as any,
-      opacity: descriptor.opacity ?? 1,
+      opacity: treeMatch ? treeMatch.opacity : (descriptor.opacity ?? 1),
+      visible: treeMatch ? treeMatch.effectiveVisible : (descriptor.visible ?? true),
+      zIndex: treeMatch ? 1000 - treeMatch.flatIndex : 0,
     });
 
     this.map.addLayer(layer);
