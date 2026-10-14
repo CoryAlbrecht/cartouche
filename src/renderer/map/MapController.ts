@@ -1,0 +1,650 @@
+/**
+ * @file MapController.ts
+ * @module renderer/map/MapController
+ * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ * @see {@link OlMap}
+ * @see {@link VectorLayer}
+ * @see {@link VectorSource}
+ */
+
+import { effect } from '@preact/signals-react';
+import OlMap from 'ol/Map.js';
+import View from 'ol/View.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import VectorSource from 'ol/source/Vector.js';
+import Graticule from 'ol/layer/Graticule.js';
+import Stroke from 'ol/style/Stroke.js';
+import WKB from 'ol/format/WKB.js';
+import { bbox as bboxStrategy } from 'ol/loadingstrategy.js';
+import { fromLonLat, toLonLat, transformExtent } from 'ol/proj.js';
+import Feature from 'ol/Feature.js';
+import {
+  cursorCoordsSignal,
+  viewportExtentSignal,
+  zoomSignal,
+  scaleDenominatorSignal,
+  mapActionSignal,
+  addConsoleLog,
+} from '../state/gisSignals';
+import {
+  projectLayersSignal,
+  layerStylesSignal,
+  currentProjectSignal,
+} from '../state/projectSignals';
+import { getDefaultLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import type { LayerDescriptor, BoundingBox } from '../../shared/types';
+
+/**
+ * @typedef {Object} VectorLayerEntry
+ * @property {VectorLayer<VectorSource>} layer - Native OpenLayers vector layer instance.
+ * @property {VectorSource} source - Native OpenLayers vector source backed by bbox strategy.
+ * @property {LayerDescriptor} descriptor - Serializable layer metadata descriptor.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ */
+export interface VectorLayerEntry {
+  layer: VectorLayer<VectorSource>;
+  source: VectorSource;
+  descriptor: LayerDescriptor;
+}
+
+/**
+ * @class MapController
+ * @description Imperative OpenLayers map canvas controller encapsulating native ol/Map and vector rendering completely insulated from React Virtual DOM.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ */
+export class MapController {
+  private map: OlMap;
+  private view: View;
+  private container: HTMLElement;
+  private vectorLayers = new Map<string, VectorLayerEntry>();
+  private wkbFormat = new WKB();
+  private disposeSignals: Array<() => void> = [];
+  private previousLayerCount = 0;
+
+  /**
+   * @constructor
+   * @description Initializes the isolated OpenLayers map instance, graticule, view, and reactive signal subscriptions.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {HTMLElement} container - Target unmanaged DOM container element.
+   * @param {Object} [options] - Optional map initialization options.
+   * @param {View} [options.view] - Custom OpenLayers View instance.
+   */
+  constructor(container: HTMLElement, options?: { view?: View }) {
+    this.container = container;
+
+    const graticule = new Graticule({
+      strokeStyle: new Stroke({
+        color: 'rgba(0, 0, 0, 0.2)',
+        width: 1,
+        lineDash: [4, 4],
+      }),
+      showLabels: true,
+      wrapX: true,
+    });
+
+    this.view =
+      options?.view ??
+      new View({
+        center: fromLonLat([15, 35]),
+        zoom: 3,
+        projection: 'EPSG:3857',
+      });
+
+    this.map = new OlMap({
+      target: container,
+      layers: [graticule],
+      view: this.view,
+      controls: [],
+    });
+
+    this.bindEvents();
+    this.initProjectViewport();
+    this.bindSignals();
+
+    addConsoleLog(
+      'info',
+      'MapController spatial canvas engine initialized.',
+      'OpenLayers'
+    );
+  }
+
+  /**
+   * @description Applies initial saved viewport from active project model if available.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
+  private initProjectViewport(): void {
+    const currentProject = currentProjectSignal.value;
+    if (currentProject?.viewport) {
+      this.setViewport({
+        extent: currentProject.viewport.extent
+          ? [
+              currentProject.viewport.extent.xmin,
+              currentProject.viewport.extent.ymin,
+              currentProject.viewport.extent.xmax,
+              currentProject.viewport.extent.ymax,
+            ]
+          : undefined,
+        center: currentProject.viewport.center,
+        zoom: currentProject.viewport.zoom,
+        rotation: currentProject.viewport.rotation,
+      });
+    }
+    this.updateViewportSignals();
+  }
+
+  /**
+   * @description Attaches native OpenLayers event listeners for cursor tracking, resolution changes, and moveend.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
+  private bindEvents(): void {
+    // Cursor location tracking
+    this.map.on('pointermove', (evt) => {
+      if (evt.coordinate) {
+        const [lon, lat] = toLonLat(evt.coordinate);
+        cursorCoordsSignal.value = {
+          lon: Math.round(lon * 100000) / 100000,
+          lat: Math.round(lat * 100000) / 100000,
+          x: Math.round(evt.pixel ? evt.pixel[0] : 0),
+          y: Math.round(evt.pixel ? evt.pixel[1] : 0),
+        };
+      }
+    });
+
+    // View resolution change signal updates
+    this.view.on('change:resolution', () => {
+      const zoom = this.view.getZoom() || 3;
+      zoomSignal.value = Math.round(zoom * 10) / 10;
+      scaleDenominatorSignal.value = Math.round(500000000 / Math.pow(2, zoom));
+    });
+
+    // Viewport bounding box updates on movement completion
+    this.map.on('moveend', () => {
+      this.updateViewportSignals();
+    });
+  }
+
+  /**
+   * @description Binds reactive signal listeners for project layers and map navigation actions.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
+  private bindSignals(): void {
+    // Synchronize loaded layer descriptors from projectLayersSignal
+    const disposeLayers = effect(() => {
+      const descriptors = projectLayersSignal.value;
+      this.syncLayers(descriptors);
+    });
+    this.disposeSignals.push(disposeLayers);
+
+    // Map navigation action signal dispatcher
+    const disposeActions = effect(() => {
+      const mapAction = mapActionSignal.value;
+      if (!mapAction) return;
+
+      if (mapAction.action === 'zoomIn') {
+        this.zoomIn();
+      } else if (mapAction.action === 'zoomOut') {
+        this.zoomOut();
+      } else if (mapAction.action === 'reset') {
+        this.resetExtent();
+      } else if (mapAction.action === 'setViewport') {
+        this.setViewport(mapAction);
+      }
+    });
+    this.disposeSignals.push(disposeActions);
+  }
+
+  /**
+   * @description Synchronizes OpenLayers vector layers with current layer descriptors in projectLayersSignal.
+   * Instantiates new vector layers, removes deleted layers, and auto-fits viewport on initial layer import.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor[]} descriptors - Flat collection of active layer descriptors.
+   * @returns {void}
+   */
+  public syncLayers(descriptors: LayerDescriptor[]): void {
+    const currentDescriptorIds = new Set(descriptors.map((d) => d.id));
+
+    // 1. Remove layers no longer registered in projectLayersSignal
+    for (const [id, entry] of this.vectorLayers.entries()) {
+      if (!currentDescriptorIds.has(id)) {
+        this.map.removeLayer(entry.layer);
+        entry.source.clear();
+        this.vectorLayers.delete(id);
+      }
+    }
+
+    // 2. Add newly registered layers
+    let newlyAddedFirstLayer: LayerDescriptor | null = null;
+    for (const descriptor of descriptors) {
+      if (!this.vectorLayers.has(descriptor.id)) {
+        this.createVectorLayer(descriptor);
+        if (this.previousLayerCount === 0 && !newlyAddedFirstLayer) {
+          newlyAddedFirstLayer = descriptor;
+        }
+      }
+    }
+
+    // 3. Auto-fit viewport to first imported layer if canvas was previously empty
+    if (newlyAddedFirstLayer && this.previousLayerCount === 0) {
+      this.fitLayerExtent(newlyAddedFirstLayer);
+    }
+
+    this.previousLayerCount = descriptors.length;
+  }
+
+  /**
+   * @description Creates and registers an OpenLayers VectorLayer and VectorSource backed by bboxStrategy and WKB loader.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
+   * @returns {VectorLayerEntry} Created layer and source tuple.
+   */
+  public createVectorLayer(descriptor: LayerDescriptor): VectorLayerEntry {
+    const source = new VectorSource({
+      strategy: bboxStrategy,
+      loader: async (extent, _resolution, projection, success, _failure) => {
+        const loaded = await this.loadFeaturesForExtent(descriptor, source, extent, projection);
+        if (success) {
+          success(loaded);
+        }
+        return loaded;
+      },
+    });
+
+    // Resolve Flat Style rules from layerStylesSignal, layer descriptor, or default geometry style
+    const styleRules =
+      layerStylesSignal.value[descriptor.id] ||
+      (typeof descriptor.style === 'object' && descriptor.style !== null
+        ? descriptor.style
+        : getDefaultLayerStyle(descriptor.geometryKind));
+
+    const layer = new VectorLayer({
+      source,
+      style: styleRules as any,
+      opacity: descriptor.opacity ?? 1,
+    });
+
+    this.map.addLayer(layer);
+    const entry: VectorLayerEntry = { layer, source, descriptor };
+    this.vectorLayers.set(descriptor.id, entry);
+
+    return entry;
+  }
+
+  /**
+   * @description Fetches visible feature slices via IPC layers:queryExtent and deserializes OGC WKB buffers into deduplicated features.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
+   * @param {VectorSource} source - Target vector source.
+   * @param {number[]} extent - Spatial query bounding box extent.
+   * @param {any} projection - Viewport projection instance or authority string.
+   * @returns {Promise<Feature[]>} Deserialized features loaded for extent.
+   */
+  public async loadFeaturesForExtent(
+    descriptor: LayerDescriptor,
+    source: VectorSource,
+    extent: number[],
+    projection: any
+  ): Promise<Feature[]> {
+    if (typeof window === 'undefined' || !window.electronAPI?.queryExtent) {
+      return [];
+    }
+
+    const projectionCode =
+      typeof projection === 'string'
+        ? projection
+        : projection?.getCode?.() || 'EPSG:3857';
+
+    const queryBox: BoundingBox = [extent[0], extent[1], extent[2], extent[3]];
+    const newFeatures: Feature[] = [];
+
+    try {
+      const result = await window.electronAPI.queryExtent(
+        descriptor.id,
+        queryBox,
+        projectionCode
+      );
+
+      if (!result || !Array.isArray(result.features)) {
+        return [];
+      }
+
+      const dataProjection = descriptor.crs?.authId || 'EPSG:4326';
+
+      for (const featRecord of result.features) {
+        // Deduplicate by ID to prevent duplicate entities during pan overlaps
+        if (source.getFeatureById(featRecord.id)) {
+          continue;
+        }
+
+        try {
+          const geometry = this.wkbFormat.readGeometry(featRecord.wkb, {
+            dataProjection,
+            featureProjection: projectionCode,
+          });
+
+          const feature = new Feature({
+            geometry,
+            ...(featRecord.properties || {}),
+          });
+          feature.setId(featRecord.id);
+
+          newFeatures.push(feature);
+        } catch (geomErr) {
+          console.warn(
+            `[MapController] Failed to parse WKB feature ${featRecord.id} for layer ${descriptor.id}:`,
+            geomErr
+          );
+        }
+      }
+
+      if (newFeatures.length > 0) {
+        source.addFeatures(newFeatures);
+      }
+    } catch (err) {
+      addConsoleLog(
+        'error',
+        `Failed to query features for layer "${descriptor.name || descriptor.id}": ${err}`,
+        'OpenLayers'
+      );
+    }
+
+    return newFeatures;
+  }
+
+  /**
+   * @description Centers and fits the viewport camera onto the geographic bounding envelope of a layer descriptor.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor containing extent.
+   * @returns {void}
+   */
+  public fitLayerExtent(descriptor: LayerDescriptor): void {
+    if (!descriptor.extent || !Array.isArray(descriptor.extent) || descriptor.extent.length !== 4) {
+      return;
+    }
+
+    const [minX, minY, maxX, maxY] = descriptor.extent;
+    if (minX === 0 && minY === 0 && maxX === 0 && maxY === 0) {
+      return;
+    }
+
+    try {
+      const sourceCrs = descriptor.crs?.authId || 'EPSG:4326';
+      const extent3857 = transformExtent(descriptor.extent, sourceCrs, 'EPSG:3857');
+
+      if (!extent3857 || extent3857.some((val) => !isFinite(val))) {
+        return;
+      }
+
+      const size = this.map.getSize();
+      if (size && size[0] > 0 && size[1] > 0) {
+        this.view.fit(extent3857, { size, padding: [40, 40, 40, 40], maxZoom: 16 });
+      } else {
+        this.view.fit(extent3857, { padding: [40, 40, 40, 40], maxZoom: 16 });
+      }
+    } catch (err) {
+      console.warn(`[MapController] Failed to fit extent for layer "${descriptor.id}":`, err);
+    }
+  }
+
+  /**
+   * @description Synchronizes current map canvas bounding envelope and zoom metrics into reactive signals.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public updateViewportSignals(): void {
+    const size = this.map.getSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) return;
+
+    const extent3857 = this.view.calculateExtent(size);
+    if (!extent3857 || extent3857.some((val) => !isFinite(val))) return;
+
+    const [minLon, minLat, maxLon, maxLat] = transformExtent(
+      extent3857,
+      'EPSG:3857',
+      'EPSG:4326'
+    );
+
+    viewportExtentSignal.value = [
+      Math.round(minLon * 100000) / 100000,
+      Math.round(minLat * 100000) / 100000,
+      Math.round(maxLon * 100000) / 100000,
+      Math.round(maxLat * 100000) / 100000,
+    ];
+
+    const zoom = this.view.getZoom();
+    if (zoom !== undefined && isFinite(zoom)) {
+      zoomSignal.value = Math.round(zoom * 10) / 10;
+      scaleDenominatorSignal.value = Math.round(500000000 / Math.pow(2, zoom));
+    }
+  }
+
+  /**
+   * @description Increases view zoom level by 1 step.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public zoomIn(): void {
+    this.view.animate({ zoom: (this.view.getZoom() || 3) + 1, duration: 200 });
+  }
+
+  /**
+   * @description Decreases view zoom level by 1 step.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public zoomOut(): void {
+    this.view.animate({ zoom: (this.view.getZoom() || 3) - 1, duration: 200 });
+  }
+
+  /**
+   * @description Resets view center and zoom to initial world default.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public resetExtent(): void {
+    this.view.animate({ center: fromLonLat([15, 35]), zoom: 3, duration: 300 });
+  }
+
+  /**
+   * @description Fits or sets viewport center, extent, zoom, and rotation on the OpenLayers view.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {Object} payload - Viewport configuration parameters.
+   * @param {BoundingBox} [payload.extent] - Bounding envelope [minX, minY, maxX, maxY].
+   * @param {{ x: number; y: number }} [payload.center] - Center point coordinate.
+   * @param {number} [payload.zoom] - Zoom level.
+   * @param {number} [payload.rotation] - Camera rotation.
+   * @returns {void}
+   */
+  public setViewport(payload: {
+    extent?: BoundingBox;
+    center?: { x: number; y: number };
+    zoom?: number;
+    rotation?: number;
+  }): void {
+    if (payload.rotation !== undefined) {
+      this.view.setRotation(payload.rotation);
+    }
+    if (payload.extent && payload.extent.length === 4) {
+      const extent3857 = transformExtent(payload.extent, 'EPSG:4326', 'EPSG:3857');
+      const size = this.map.getSize();
+      if (size && size[0] > 0 && size[1] > 0) {
+        this.view.fit(extent3857, { size, padding: [20, 20, 20, 20] });
+      } else {
+        this.view.fit(extent3857);
+      }
+      if (payload.zoom !== undefined) {
+        this.view.setZoom(payload.zoom);
+      }
+    } else if (payload.center) {
+      this.view.setCenter(fromLonLat([payload.center.x, payload.center.y]));
+      if (payload.zoom !== undefined) {
+        this.view.setZoom(payload.zoom);
+      }
+    } else if (payload.zoom !== undefined) {
+      this.view.setZoom(payload.zoom);
+    }
+  }
+
+  /**
+   * @description Updates map canvas dimensions after DOM container size changes.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public resize(): void {
+    this.map.updateSize();
+    this.updateViewportSignals();
+  }
+
+  /**
+   * @description Retrieves the unmanaged container DOM element hosting the map canvas.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {HTMLElement} Container DOM element.
+   */
+  public getContainer(): HTMLElement {
+    return this.container;
+  }
+
+  /**
+   * @description Retrieves the underlying native OpenLayers map instance.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {OlMap} Native OpenLayers Map instance.
+   */
+  public getMap(): OlMap {
+    return this.map;
+  }
+
+  /**
+   * @description Retrieves the underlying native OpenLayers View instance.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {View} Native OpenLayers View instance.
+   */
+  public getView(): View {
+    return this.view;
+  }
+
+  /**
+   * @description Retrieves the map of active vector layer entries keyed by layer ID.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {Map<string, VectorLayerEntry>} Active vector layers map.
+   */
+  public getVectorLayers(): Map<string, VectorLayerEntry> {
+    return this.vectorLayers;
+  }
+
+  /**
+   * @description Retrieves a single active vector layer entry by its layer ID.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @param {string} id - Layer unique identifier.
+   * @returns {VectorLayerEntry | undefined} Active layer entry or undefined if not registered.
+   */
+  public getLayer(id: string): VectorLayerEntry | undefined {
+    return this.vectorLayers.get(id);
+  }
+
+  /**
+   * @description Disposes all reactive signal subscriptions, clears layer sources, and detaches the map target.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-10-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public dispose(): void {
+    for (const dispose of this.disposeSignals) {
+      try {
+        dispose();
+      } catch {
+        // Suppress disposal errors
+      }
+    }
+    this.disposeSignals = [];
+
+    for (const entry of this.vectorLayers.values()) {
+      try {
+        this.map.removeLayer(entry.layer);
+        entry.source.clear();
+      } catch {
+        // Suppress layer cleanup errors
+      }
+    }
+    this.vectorLayers.clear();
+
+    try {
+      this.map.setTarget(undefined);
+    } catch {
+      // Suppress unmount errors
+    }
+  }
+}
