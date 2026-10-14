@@ -10,13 +10,14 @@
 
 import { LayerTreeNode } from './LayerTreeNode';
 import type { GeometryKind, FileTypeDescriptor } from '@shared/types';
+import { layerSessionRegistry } from '../LayerSessionRegistry';
 
 /**
  * @class Layer
  * @description Manages state and native lifecycle of a single spatial layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-07
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  * @extends LayerTreeNode
  * @implements Disposable
@@ -81,6 +82,7 @@ export class Layer extends LayerTreeNode implements Disposable {
    * @description Implements explicit resource management to dispose of the native object safely.
    */
   [Symbol.dispose](): void {
+    layerSessionRegistry.remove(this.id);
     if (this.nativeObject) {
       const obj = this.nativeObject as any;
       if (typeof obj.close === 'function') {

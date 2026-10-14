@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-09
+ * @updated 2026-10-13
  * @since 0.1.0-dev
  */
 
@@ -186,4 +186,48 @@ export interface AddLayerParams {
   filePath: string;
   layerName?: string;
   layerId?: string;
+}
+
+/**
+ * @typedef {Object} LayerDescriptor
+ * @property {BoundingBox} extent - Geographic bounding envelope [minX, minY, maxX, maxY].
+ * @property {number} featureCount - Total count of spatial features in the layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ */
+export interface LayerDescriptor extends ProjectLayerItem {
+  extent: import('.').BoundingBox;
+  featureCount: number;
+}
+
+/**
+ * @typedef {Object} QueryExtentFeature
+ * @property {number | string} id - Unique feature identifier.
+ * @property {Uint8Array} wkb - Raw OGC Well-Known Binary geometry buffer.
+ * @property {Record<string, unknown>} [properties] - Tabular attribute properties.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ */
+export interface QueryExtentFeature {
+  id: number | string;
+  wkb: Uint8Array;
+  properties?: Record<string, unknown>;
+}
+
+/**
+ * @typedef {Object} QueryExtentResult
+ * @property {string} layerId - Unique layer identifier.
+ * @property {QueryExtentFeature[]} features - Intersecting spatial features.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-10-13
+ * @since 0.1.0-dev
+ */
+export interface QueryExtentResult {
+  layerId: string;
+  features: QueryExtentFeature[];
 }
