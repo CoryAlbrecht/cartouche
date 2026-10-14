@@ -62,6 +62,9 @@ const electronAPI: ElectronAPI = {
   addLayers: (layers: any[]) => ipcRenderer.invoke('gis:add-layers', layers),
   /** @ipc gis:path-exists */
   pathExists: (filePath: string) => ipcRenderer.invoke('gis:path-exists', filePath),
+  /** @ipc layers:queryExtent */
+  queryExtent: (layerId: string, extent?: any, targetProjection?: string) =>
+    ipcRenderer.invoke('layers:queryExtent', layerId, extent, targetProjection),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc dialog:save-file */

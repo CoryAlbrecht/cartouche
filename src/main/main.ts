@@ -19,7 +19,7 @@ import type { FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
-import { pathExists, resolveDialogParent } from "./api/ApiFunctions";
+import { pathExists, resolveDialogParent, queryExtent } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
@@ -519,6 +519,10 @@ app.whenReady().then(async () => {
 
   handleIpc('gis:add-layers', async (_event, layers: any[]) => {
     await addLayers(layers);
+  });
+
+  handleIpc('layers:queryExtent', async (_event, layerId: string, extent?: any, targetProjection?: string) => {
+    return await queryExtent(layerId, extent, targetProjection);
   });
 
   handleIpc('gis:path-exists', async (_event, filePath: string) => {

@@ -260,6 +260,7 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {(filePath: string) => Promise<FileTypeDescriptor | undefined>} [identifyFile] - Identifies file type descriptor for target file path.
  * @property {(options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
  * @property {(callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void} [onLayerAdded] - Registers listener for newly added layer descriptors.
+ * @property {(layerId: string, extent?: BoundingBox, targetProjection?: string) => Promise<import('./project').QueryExtentResult>} [queryExtent] - Queries intersecting features within spatial extent and target projection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-13
@@ -321,6 +322,12 @@ export interface ElectronAPI {
   onProjectLayersTreeUpdated?: (callback: (tree: Array<import('./project').ProjectLayerItem | import('./project').ProjectGroupItem>) => void) => () => void;
   /** @ipc project:layer-added */
   onLayerAdded?: (callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void;
+  /** @ipc layers:queryExtent */
+  queryExtent?: (
+    layerId: string,
+    extent?: BoundingBox,
+    targetProjection?: string
+  ) => Promise<import('./project').QueryExtentResult>;
   /** @ipc project:metadata-updated */
   onProjectMetadataUpdated?: (callback: (metadata: import('./project').ProjectMetadata) => void) => () => void;
   /** @ipc project:dirty-state-changed */

@@ -32,5 +32,7 @@ export { default as redoAction } from './edit/redoAction';
 export { default as getPreferenceValue } from './ui/preferences/GetPreferenceValue';
 export { default as setPreferenceValue } from './ui/preferences/SetPreferenceValue';
 export { addLayer, addLayers } from './layers/addLayer';
+export { queryExtent } from './layers/queryExtent';
 export { pathExists } from './fs/pathExists';
 export { resolveDialogParent } from './dialog/resolveDialogParent';
+
