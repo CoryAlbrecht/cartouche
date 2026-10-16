@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -58,7 +58,7 @@ export interface GeospatialServiceOptions {
  * @description Manages the background geospatial utility process, dispatches correlated requests, and falls back to in-process execution in headless test environments.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 export class GeospatialService {
@@ -66,7 +66,9 @@ export class GeospatialService {
   private engine: GeospatialEngine | null = null;
   private pendingRequests = new Map<string, PendingRequestEntry>();
   private isDisposed = false;
+  private isReady = false;
   private options: GeospatialServiceOptions;
+  private readyPromise: Promise<void> | null = null;
 
   /**
    * @constructor
@@ -83,6 +85,7 @@ export class GeospatialService {
 
   /**
    * @description Resolves worker path and initializes either the background utility process, mock worker, or headless in-process engine.
+   * Defers utilityProcess.fork until app.whenReady() resolves if running inside Electron and app is not yet ready.
    * @private
    * @returns {void}
    */
@@ -90,6 +93,7 @@ export class GeospatialService {
     if (this.options.mockWorker) {
       this.worker = this.options.mockWorker;
       this.bindWorkerEvents(this.worker);
+      this.isReady = true;
       return;
     }
 
@@ -108,9 +112,21 @@ export class GeospatialService {
         this.options.workerPath ||
         path.join(appPath, 'dist-electron/worker/geospatialWorker.cjs');
 
-      this.spawnWorker(workerScriptPath);
+      if (typeof app !== 'undefined' && typeof app.isReady === 'function' && !app.isReady()) {
+        this.isReady = false;
+        this.readyPromise = app.whenReady().then(() => {
+          if (!this.isDisposed) {
+            this.spawnWorker(workerScriptPath);
+            this.isReady = true;
+          }
+        });
+      } else {
+        this.spawnWorker(workerScriptPath);
+        this.isReady = true;
+      }
     } else {
       this.engine = new GeospatialEngine();
+      this.isReady = true;
     }
   }
 
@@ -146,6 +162,7 @@ export class GeospatialService {
         serviceName: 'geospatial-worker'
       });
       this.bindWorkerEvents(this.worker);
+      console.log('[GeospatialService] Background geospatial worker process spawned successfully');
     } catch (err) {
       console.warn(
         '[GeospatialService] Failed to fork utility process; falling back to in-process GeospatialEngine:',
@@ -208,6 +225,10 @@ export class GeospatialService {
   private sendRequest<T>(req: WorkerRequestPayload, timeoutMs?: number): Promise<T> {
     if (this.isDisposed) {
       return Promise.reject(new Error('GeospatialService has been disposed'));
+    }
+
+    if (!this.isReady && this.readyPromise) {
+      return this.readyPromise.then(() => this.sendRequest<T>(req, timeoutMs));
     }
 
     // In-process headless fallback
@@ -425,7 +446,7 @@ export class GeospatialService {
  * @description Authoritative application-wide singleton instance of GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @type {GeospatialService}
  */

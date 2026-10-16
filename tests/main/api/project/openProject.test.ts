@@ -1,13 +1,13 @@
 /**
  * @file openProject.test.ts
  * @module tests/main/api/project/openProject.test
- * @description Integration tests for openProject API hydrating native GDAL layer sessions into LayerSessionRegistry and enriching layer descriptors.
+ * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link openProject}
- * @see {@link LayerSessionRegistry}
+ * @see {@link GeospatialService}
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
@@ -17,7 +17,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import openProject from '../../../../src/main/api/project/openProject';
 import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { layerSessionRegistry } from '../../../../src/main/project/LayerSessionRegistry';
+import { geospatialService } from '../../../../src/main/worker/GeospatialService';
 import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
 import type { ProjectLayerItem } from '../../../../src/shared/types';
 
@@ -28,14 +28,14 @@ const sampleShpPath = path.resolve(__dirname, '../../../../../test/files/ne_10m_
 describe('openProject Native Session Hydration', () => {
   const tempFiles: string[] = [];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     projectStore.closeProject();
-    layerSessionRegistry.clear();
+    await geospatialService.closeAll();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     projectStore.closeProject();
-    layerSessionRegistry.clear();
+    await geospatialService.closeAll();
     for (const f of tempFiles) {
       if (fs.existsSync(f)) {
         try {
@@ -48,7 +48,7 @@ describe('openProject Native Session Hydration', () => {
     tempFiles.length = 0;
   });
 
-  it('hydrates native GDAL layer sessions in LayerSessionRegistry and enriches layer extents when opening project XML', async () => {
+  it('hydrates native layer sessions in GeospatialService and enriches layer extents when opening project XML', async () => {
     const tempProjPath = path.resolve(__dirname, `temp_open_project_${Date.now()}.cproj`);
     tempFiles.push(tempProjPath);
 
@@ -71,16 +71,6 @@ describe('openProject Native Session Hydration', () => {
     assert.ok(project, 'Project must be loaded');
     assert.equal(project.metadata.title, 'Integration Test Project');
 
-    // Verify session hydration in LayerSessionRegistry
-    assert.ok(
-      layerSessionRegistry.has('test-lake-layer'),
-      'LayerSessionRegistry must contain session for test-lake-layer'
-    );
-    const session = layerSessionRegistry.get('test-lake-layer');
-    assert.ok(session, 'Session must be defined');
-    assert.ok(session.dataset, 'Native GDAL dataset must be attached');
-    assert.ok(session.layer, 'Native GDAL spatial layer must be attached');
-
     // Verify enriched layer metadata
     assert.ok(Array.isArray(project.layers));
     assert.equal(project.layers.length, 1);
@@ -92,10 +82,39 @@ describe('openProject Native Session Hydration', () => {
     assert.equal((layerItem as any).extent.length, 4);
     assert.ok((layerItem as any).featureCount > 0, 'Feature count must be enriched');
 
-    // Verify queryExtent works against the hydrated session
+    // Verify queryExtent works against the hydrated session in GeospatialService
     const extentResult = await queryExtent('test-lake-layer', [-100, 40, -80, 50]);
     assert.equal(extentResult.layerId, 'test-lake-layer');
     assert.equal(extentResult.features.length, 34);
     assert.ok(extentResult.features[0].wkb instanceof Uint8Array);
+  });
+
+  it('loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors', async () => {
+    const project4Path = path.resolve(__dirname, '../../../../../test/projects/project-1/project-4.cproj');
+    const project = await openProject(project4Path);
+
+    assert.ok(project, 'project-4.cproj must load successfully');
+    assert.equal(project.metadata.title, 'project-4');
+
+    // Query features from top-level layer (timeline_level_0_yaol has 0 features)
+    const l0Result = await queryExtent('timeline_level_0_yaol', [-180, -90, 180, 90]);
+    assert.equal(l0Result.layerId, 'timeline_level_0_yaol');
+    assert.equal(l0Result.features.length, 0, 'L0 has 0 features');
+
+    // Query features from nested group layers
+    const lakesResult = await queryExtent('ne_10m_lakes_9ssg', [-100, 40, -80, 50]);
+    assert.equal(lakesResult.layerId, 'ne_10m_lakes_9ssg');
+    assert.equal(lakesResult.features.length, 34);
+    assert.ok(lakesResult.features[0].wkb instanceof Uint8Array);
+
+    const riversResult = await queryExtent('ne_10m_rivers_lake_centerline_scale_rank_ggcu', [-100, 40, -80, 50]);
+    assert.equal(riversResult.layerId, 'ne_10m_rivers_lake_centerline_scale_rank_ggcu');
+    assert.ok(riversResult.features.length > 0);
+    assert.ok(riversResult.features[0].wkb instanceof Uint8Array);
+
+    const coastlinesResult = await queryExtent('ne_10m_coastline_w9bh');
+    assert.equal(coastlinesResult.layerId, 'ne_10m_coastline_w9bh');
+    assert.ok(coastlinesResult.features.length > 0);
+    assert.ok(coastlinesResult.features[0].wkb instanceof Uint8Array);
   });
 });

@@ -4,7 +4,7 @@
  * @description Integration tests for queryExtent spatial query pipeline, OGC WKB buffer extraction, projection transformations, and sequential concurrency.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 
@@ -14,7 +14,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WKB from 'ol/format/WKB.js';
 import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { layerSessionRegistry } from '../../../../src/main/project/LayerSessionRegistry';
+import { geospatialService } from '../../../../src/main/worker/GeospatialService';
 import { addLayer } from '../../../../src/main/api/layers/addLayer';
 import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
 import type { BoundingBox } from '../../../../src/shared/types';
@@ -28,7 +28,7 @@ describe('queryExtent Spatial Pipeline', () => {
 
   beforeEach(async () => {
     projectStore.closeProject();
-    layerSessionRegistry.clear();
+    await geospatialService.closeAll();
 
     const layer = await addLayer({
       sourceType: 'vector',
@@ -38,8 +38,8 @@ describe('queryExtent Spatial Pipeline', () => {
     layerId = layer.id;
   });
 
-  afterEach(() => {
-    layerSessionRegistry.clear();
+  afterEach(async () => {
+    await geospatialService.closeAll();
     projectStore.closeProject();
   });
 
@@ -102,7 +102,7 @@ describe('queryExtent Spatial Pipeline', () => {
     assert.equal(results[4].features.length, 34);
   });
 
-  it('throws descriptive error if layerId is not registered in LayerSessionRegistry', async () => {
+  it('throws descriptive error if layerId is not registered in GeospatialService', async () => {
     await assert.rejects(
       async () => {
         await queryExtent('non-existent-layer-id', [-100, 40, -80, 50]);

@@ -1,15 +1,15 @@
 /**
  * @file openProject.ts
  * @module main/api/project/openProject
- * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native GDAL layer sessions.
+ * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
  * @see {@link ProjectModel}
- * @see {@link LayerSessionRegistry}
+ * @see {@link GeospatialService}
  */
 
 import { dialog, BrowserWindow } from 'electron';
@@ -18,8 +18,7 @@ import { projectStore } from '../../project/ProjectStore';
 import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
 import { Layer } from '../../project/models/Layer';
 import { LayerGroup } from '../../project/models/LayerGroup';
-import { layerSessionRegistry } from '../../project/LayerSessionRegistry';
-import { mapGdalGeometryKind } from '../layers/addLayer';
+import { geospatialService } from '../../worker/GeospatialService';
 import { getDefaultLayerStyle } from '../../../shared/styles/defaultLayerStyles';
 import { broadcastProjectLayersTree, broadcastFullProject } from '../../project/ProjectBroadcaster';
 import type {
@@ -33,7 +32,7 @@ import type {
  * @description Recursively collects all leaf Layer instances from a root or group LayerTreeNode hierarchy.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @param {import('../../project/models/LayerTreeNode').LayerTreeNode} node - Tree node to traverse.
  * @returns {Layer[]} Flattened array of Layer instances.
@@ -54,7 +53,7 @@ function getAllLeafLayers(node: import('../../project/models/LayerTreeNode').Lay
  * @description Recursively enriches ProjectModel layer items with resolved native extents, feature counts, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Project hierarchy items.
  * @param {Map<string, { layer: Layer; extent: BoundingBox; featureCount: number }>} layersMap - Metadata map keyed by layer ID.
@@ -82,10 +81,10 @@ function enrichProjectLayers(
 }
 
 /**
- * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native GDAL sessions, and broadcasts to renderer windows.
+ * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional path to the project document; if omitted, displays the system file open dialog.
  * @returns {Promise<ProjectModel | null>} The loaded project model instance or null if canceled/failed.
@@ -125,7 +124,7 @@ export default async function openProject(filePath?: string): Promise<ProjectMod
   const project = await loader.load(targetPath);
   projectStore.setProject(project, targetPath);
 
-  // Open physical datasets for each layer and register sessions in LayerSessionRegistry
+  // Open physical datasets for each layer via GeospatialService in the background worker
   const leafLayers = getAllLeafLayers(projectStore.getRootGroup());
   const layersMap = new Map<string, { layer: Layer; extent: BoundingBox; featureCount: number }>();
 
@@ -140,71 +139,36 @@ export default async function openProject(filePath?: string): Promise<ProjectMod
 
       if (descriptor) {
         layer.fileType = descriptor;
-        try {
-          const nativeObj = await fileTypeRegistry.load(layer.filePath);
-          layer.attachNativeObject(nativeObj);
+        const isRaster = descriptor.category === 'raster' || layer.layerKind === 'raster';
 
+        if (!isRaster) {
+          try {
+            const metadata = await geospatialService.openDataset(layer.id, layer.filePath);
+
+            if (!layer.geometryKind) {
+              layer.geometryKind = metadata.geometryKind;
+            }
+
+            if (!layer.style) {
+              layer.style = getDefaultLayerStyle(layer.geometryKind || 'Polygon');
+            }
+
+            if (!layer.crs && metadata.crs) {
+              layer.crs = metadata.crs;
+            }
+
+            extent = metadata.extent;
+            featureCount = metadata.featureCount;
+          } catch (loadErr) {
+            console.warn(`[openProject] Failed to load dataset for layer "${layer.name}" (${layer.filePath}):`, loadErr);
+          }
+        } else {
           if (!layer.geometryKind) {
-            if (descriptor.category === 'raster' || layer.layerKind === 'raster') {
-              layer.geometryKind = 'Raster';
-            } else if (nativeObj && typeof (nativeObj as any).geomType === 'number') {
-              layer.geometryKind = mapGdalGeometryKind((nativeObj as any).geomType);
-            } else {
-              layer.geometryKind = 'Polygon';
-            }
+            layer.geometryKind = 'Raster';
           }
-
-          // Retain active native GDAL handles in LayerSessionRegistry
-          const gdalLayer = (nativeObj as any)?.features ? (nativeObj as any) : undefined;
-          const gdalDataset = (nativeObj as any)?.ds ?? ((nativeObj as any)?.layers ? nativeObj : undefined);
-          if (gdalDataset && gdalLayer) {
-            layerSessionRegistry.register(layer.id, gdalDataset, gdalLayer);
-          }
-
           if (!layer.style) {
-            layer.style = getDefaultLayerStyle(layer.geometryKind);
+            layer.style = getDefaultLayerStyle('Raster');
           }
-
-          if (!layer.crs) {
-            const srs = (nativeObj as any)?.srs;
-            if (srs && typeof srs.getAuthorityCode === 'function') {
-              const authCode =
-                srs.getAuthorityCode('PROJCS') ||
-                srs.getAuthorityCode('GEOGCS') ||
-                srs.getAuthorityCode(null);
-              const authName =
-                srs.getAuthorityName('PROJCS') ||
-                srs.getAuthorityName('GEOGCS') ||
-                'EPSG';
-
-              layer.crs = {
-                authId: authCode ? `${authName}:${authCode}` : 'EPSG:4326',
-                wkt: typeof srs.toWkt === 'function' ? srs.toWkt() : undefined,
-                proj4: typeof srs.toProj4 === 'function' ? srs.toProj4() : undefined
-              };
-            }
-          }
-
-          if (nativeObj && typeof (nativeObj as any).getExtent === 'function') {
-            try {
-              const env = (nativeObj as any).getExtent();
-              if (env) {
-                extent = [env.minX, env.minY, env.maxX, env.maxY];
-              }
-            } catch {
-              // Ignore extent read errors
-            }
-          }
-
-          if (nativeObj && (nativeObj as any).features && typeof (nativeObj as any).features.count === 'function') {
-            try {
-              featureCount = (nativeObj as any).features.count();
-            } catch {
-              // Ignore feature count read errors
-            }
-          }
-        } catch (loadErr) {
-          console.warn(`[openProject] Failed to load dataset for layer "${layer.name}" (${layer.filePath}):`, loadErr);
         }
       }
     }

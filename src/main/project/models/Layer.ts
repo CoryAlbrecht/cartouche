@@ -4,20 +4,21 @@
  * @description Runtime representation of a physical spatial dataset loaded in memory.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-13
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 
 import { LayerTreeNode } from './LayerTreeNode';
 import type { GeometryKind, FileTypeDescriptor } from '@shared/types';
 import { layerSessionRegistry } from '../LayerSessionRegistry';
+import { geospatialService } from '../../worker/GeospatialService';
 
 /**
  * @class Layer
  * @description Manages state and native lifecycle of a single spatial layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-13
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @extends LayerTreeNode
  * @implements Disposable
@@ -83,6 +84,7 @@ export class Layer extends LayerTreeNode implements Disposable {
    */
   [Symbol.dispose](): void {
     layerSessionRegistry.remove(this.id);
+    geospatialService.closeDataset(this.id).catch(() => {});
     if (this.nativeObject) {
       const obj = this.nativeObject as any;
       try {

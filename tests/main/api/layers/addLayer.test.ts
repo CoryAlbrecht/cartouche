@@ -1,10 +1,10 @@
 /**
  * @file addLayer.test.ts
  * @module tests/main/api/layers/addLayer.test
- * @description Integration tests for vector layer ingestion via gdal-async, LayerDescriptor extraction, LayerSessionRegistry registration, and IPC broadcasting.
+ * @description Integration tests for vector layer ingestion via GeospatialService, LayerDescriptor extraction, and IPC broadcasting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 
@@ -13,8 +13,9 @@ import assert from 'node:assert/strict';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { layerSessionRegistry } from '../../../../src/main/project/LayerSessionRegistry';
+import { geospatialService } from '../../../../src/main/worker/GeospatialService';
 import { addLayer, addLayers } from '../../../../src/main/api/layers/addLayer';
+import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
 import { onBroadcast } from '../../../../src/main/project/ProjectBroadcaster';
 import type { LayerDescriptor } from '../../../../src/shared/types';
 
@@ -26,9 +27,9 @@ describe('addLayer API & Ingestion Pipeline', () => {
   let sentEvents: Array<{ channel: string; payload: any }> = [];
   let unsubscribeBroadcast: (() => void) | null = null;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     projectStore.closeProject();
-    layerSessionRegistry.clear();
+    await geospatialService.closeAll();
     sentEvents = [];
 
     unsubscribeBroadcast = onBroadcast((channel: string, payload: any) => {
@@ -36,16 +37,16 @@ describe('addLayer API & Ingestion Pipeline', () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (unsubscribeBroadcast) {
       unsubscribeBroadcast();
       unsubscribeBroadcast = null;
     }
-    layerSessionRegistry.clear();
+    await geospatialService.closeAll();
     projectStore.closeProject();
   });
 
-  it('inspects vector files via gdal-async, registers in LayerSessionRegistry, and extracts LayerDescriptor', async () => {
+  it('inspects vector files via GeospatialService and extracts LayerDescriptor', async () => {
     const layer = await addLayer({
       sourceType: 'vector',
       filePath: sampleShpPath,
@@ -58,12 +59,10 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.equal(layer.geometryKind, 'Polygon');
     assert.equal(layer.crs?.authId, 'EPSG:4326');
 
-    // Verify session registered in LayerSessionRegistry
-    assert.equal(layerSessionRegistry.has(layer.id), true);
-    const session = layerSessionRegistry.get(layer.id);
-    assert.ok(session, 'LayerSession should exist in registry');
-    assert.ok(session.dataset, 'Native gdal.Dataset handle must be retained');
-    assert.ok(session.layer, 'Native gdal.Layer handle must be retained');
+    // Verify session registered in GeospatialService by querying extent
+    const queryRes = await queryExtent(layer.id, [-100, 40, -80, 50]);
+    assert.equal(queryRes.layerId, layer.id);
+    assert.equal(queryRes.features.length, 34);
 
     // Verify default styling attached
     assert.ok(layer.style, 'Default styling must be attached to layer');
@@ -91,7 +90,6 @@ describe('addLayer API & Ingestion Pipeline', () => {
 
     // Verify resource disposal
     layer[Symbol.dispose]();
-    assert.equal(layerSessionRegistry.has(layer.id), false, 'Layer disposal must remove session from registry');
   });
 
   it('addLayers sequentially ingests multiple layers and updates tree and registry', async () => {
@@ -109,8 +107,12 @@ describe('addLayer API & Ingestion Pipeline', () => {
     ]);
 
     assert.equal(layers.length, 2);
-    assert.equal(layerSessionRegistry.size, 2);
     assert.notEqual(layers[0].id, layers[1].id);
+
+    const q1 = await queryExtent(layers[0].id, [-100, 40, -80, 50]);
+    const q2 = await queryExtent(layers[1].id, [-100, 40, -80, 50]);
+    assert.equal(q1.features.length, 34);
+    assert.equal(q2.features.length, 34);
 
     const addedEvents = sentEvents.filter((e) => e.channel === 'project:layer-added');
     assert.equal(addedEvents.length, 2);
