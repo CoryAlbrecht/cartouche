@@ -134,6 +134,16 @@ export type WorkerRequest =
   | RehydrateRequest;
 
 /**
+ * Distributive omit helper creating request payload types without correlation identifier.
+ */
+export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+
+/**
+ * Request payload union before correlation identifier assignment.
+ */
+export type WorkerRequestPayload = DistributiveOmit<WorkerRequest, 'id'>;
+
+/**
  * @typedef {Object} WorkerResponse
  * @template T
  * @property {string} id - Correlation identifier matching the original request.
