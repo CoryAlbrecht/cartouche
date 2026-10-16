@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialService process lifecycle, correlated request-response message bridge, timeout handling, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  */
@@ -240,6 +240,187 @@ describe('GeospatialService Worker Process Bridge & IPC Routing', () => {
       service.openDataset('layer-after', '/path.shp'),
       /GeospatialService has been disposed/
     );
+  });
+});
+
+describe('GeospatialService Worker Crash Recovery, Rehydration & Circuit Breaker', () => {
+  it('auto-respawns worker, rehydrates active layers, and transparently retries in-flight query upon crash', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      defaultTimeoutMs: 1000
+    });
+
+    assert.equal(spawnedWorkers.length, 1);
+    const worker1 = spawnedWorkers[0];
+
+    // 1. Open layer-1 on worker 1
+    const openPromise = service.openDataset('layer-1', '/data/lake.shp');
+    assert.equal(worker1.messages.length, 1);
+    assert.equal(worker1.messages[0].type, 'openDataset');
+
+    worker1.replySuccess(worker1.messages[0].id, {
+      layerId: 'layer-1',
+      name: 'lake',
+      extent: [-100, 40, -80, 50],
+      featureCount: 50,
+      geometryKind: 'Polygon'
+    });
+
+    const meta = await openPromise;
+    assert.equal(meta.layerId, 'layer-1');
+    assert.deepEqual(service.getActiveLayerIds(), ['layer-1']);
+
+    // 2. Launch query on layer-1
+    const queryPromise = service.queryExtent('layer-1', [-100, 40, -80, 50]);
+    assert.equal(worker1.messages.length, 2);
+    assert.equal(worker1.messages[1].type, 'queryExtent');
+
+    // 3. Simulate unexpected crash on worker 1
+    worker1.emit('exit', 139);
+
+    // 4. Assert worker 2 was spawned automatically
+    assert.equal(spawnedWorkers.length, 2);
+    const worker2 = spawnedWorkers[1];
+
+    // Worker 2 should receive atomic rehydrate message first
+    const rehydrateMsg = worker2.messages.find((m) => m.type === 'rehydrate');
+    assert.ok(rehydrateMsg, 'Worker 2 must receive rehydrate message');
+    assert.deepEqual((rehydrateMsg as any).layers, [{ layerId: 'layer-1', filePath: '/data/lake.shp' }]);
+
+    // Worker 2 completes rehydration
+    worker2.replySuccess(rehydrateMsg.id, { rehydrated: ['layer-1'], failed: [] });
+
+    // Allow microtasks to complete rehydration and re-dispatch query
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // Worker 2 receives the retried queryExtent message
+    const retriedQueryMsg = worker2.messages.find((m) => m.type === 'queryExtent');
+    assert.ok(retriedQueryMsg, 'Worker 2 must receive retried queryExtent message');
+    assert.equal((retriedQueryMsg as any).layerId, 'layer-1');
+
+    // Worker 2 replies success with features
+    worker2.replySuccess(retriedQueryMsg.id, {
+      layerId: 'layer-1',
+      features: [{ id: 1, wkb: new Uint8Array([1, 2, 3]) }]
+    });
+
+    // Caller's queryPromise resolves transparently without UI error
+    const queryRes = await queryPromise;
+    assert.equal(queryRes.layerId, 'layer-1');
+    assert.equal(queryRes.features.length, 1);
+    assert.equal(service.getFailureCount('layer-1'), 0);
+
+    service.dispose();
+  });
+
+  it('aborts retries and trips circuit breaker after 3 consecutive failures on a specific layer', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveFailures: 3,
+      defaultTimeoutMs: 1000
+    });
+
+    // Launch query on poison-pill layer
+    const poisonPromise = service.queryExtent('poison-layer');
+    assert.equal(spawnedWorkers.length, 1);
+
+    // Crash 1
+    spawnedWorkers[0].emit('exit', 139);
+    assert.equal(service.getFailureCount('poison-layer'), 1);
+    assert.equal(spawnedWorkers.length, 2);
+
+    // Crash 2
+    spawnedWorkers[1].emit('exit', 139);
+    assert.equal(service.getFailureCount('poison-layer'), 2);
+    assert.equal(spawnedWorkers.length, 3);
+
+    // Crash 3 -> Trips circuit breaker!
+    spawnedWorkers[2].emit('exit', 139);
+    assert.equal(service.getFailureCount('poison-layer'), 3);
+
+    // Pending query must reject with explicit circuit breaker error
+    await assert.rejects(
+      poisonPromise,
+      /Query failed: circuit breaker tripped after 3 consecutive failures for layer "poison-layer"/
+    );
+
+    service.dispose();
+  });
+
+  it('resets consecutive failure count on a layer upon query success', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveFailures: 3,
+      defaultTimeoutMs: 1000
+    });
+
+    const queryPromise = service.queryExtent('recover-layer');
+
+    // Crash once -> count = 1
+    spawnedWorkers[0].emit('exit', 139);
+    assert.equal(service.getFailureCount('recover-layer'), 1);
+    assert.equal(spawnedWorkers.length, 2);
+
+    // Worker 2 answers retried query successfully
+    const retriedMsg = spawnedWorkers[1].messages.find((m) => m.type === 'queryExtent');
+    assert.ok(retriedMsg);
+    spawnedWorkers[1].replySuccess(retriedMsg.id, { layerId: 'recover-layer', features: [] });
+
+    await queryPromise;
+    // Failure count must be reset to 0
+    assert.equal(service.getFailureCount('recover-layer'), 0);
+
+    service.dispose();
+  });
+
+  it('tracks active layers and cleans up on closeDataset and closeAll', async () => {
+    const mockWorker = new MockWorker();
+    const service = new GeospatialService({ mockWorker });
+
+    const p1 = service.openDataset('l1', '/path/1.shp');
+    mockWorker.replySuccess(mockWorker.messages[0].id, { layerId: 'l1', name: '1', extent: [0, 0, 1, 1], featureCount: 1, geometryKind: 'Point' });
+    await p1;
+
+    const p2 = service.openDataset('l2', '/path/2.shp');
+    mockWorker.replySuccess(mockWorker.messages[1].id, { layerId: 'l2', name: '2', extent: [0, 0, 1, 1], featureCount: 1, geometryKind: 'Point' });
+    await p2;
+
+    assert.deepEqual(service.getActiveLayerIds().sort(), ['l1', 'l2'].sort());
+
+    const pClose1 = service.closeDataset('l1');
+    mockWorker.replySuccess(mockWorker.messages[2].id, { closed: true });
+    await pClose1;
+
+    assert.deepEqual(service.getActiveLayerIds(), ['l2']);
+
+    const pCloseAll = service.closeAll();
+    mockWorker.replySuccess(mockWorker.messages[3].id, { closed: true });
+    await pCloseAll;
+
+    assert.deepEqual(service.getActiveLayerIds(), []);
+
+    service.dispose();
   });
 });
 
