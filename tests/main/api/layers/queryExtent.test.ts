@@ -4,7 +4,7 @@
  * @description Integration tests for queryExtent spatial query pipeline, OGC WKB buffer extraction, projection transformations, and sequential concurrency.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 

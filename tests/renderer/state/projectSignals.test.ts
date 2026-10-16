@@ -4,7 +4,7 @@
  * @description Unit tests for Preact project signals, hierarchical visibility counting, selection manipulation, and context menu hooks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 
@@ -29,7 +29,8 @@ import {
   requestRenameSelectedNode,
   activeLayerIdSignal,
   setActiveLayer,
-  isProjectDirtySignal
+  isProjectDirtySignal,
+  extractLeafLayerIds
 } from '../../../src/renderer/state/projectSignals';
 import type { ProjectLayerItem, ProjectGroupItem } from '../../../src/shared/types';
 
@@ -190,5 +191,24 @@ describe('projectSignals', () => {
     isProjectDirtySignal.value = false;
     renameNode('l1', 'New Name');
     assert.equal(isProjectDirtySignal.value, true);
+  });
+
+  it('extractLeafLayerIds recursively collects leaf layer IDs excluding group nodes', () => {
+    const l1: ProjectLayerItem = { id: 'layer-1', name: 'Layer 1', type: 'vector', source: '' };
+    const l2: ProjectLayerItem = { id: 'layer-2', name: 'Layer 2', type: 'vector', source: '' };
+    const l3: ProjectLayerItem = { id: 'layer-3', name: 'Layer 3', type: 'vector', source: '' };
+    const nestedGroup: ProjectGroupItem = { id: 'group-nested', name: 'Nested', visible: true, children: [l3] };
+    const parentGroup: ProjectGroupItem = { id: 'group-parent', name: 'Parent', visible: true, children: [l2, nestedGroup] };
+
+    const tree = [l1, parentGroup];
+    const idSet = new Set<string>();
+    extractLeafLayerIds(tree, idSet);
+
+    assert.equal(idSet.size, 3);
+    assert.ok(idSet.has('layer-1'));
+    assert.ok(idSet.has('layer-2'));
+    assert.ok(idSet.has('layer-3'));
+    assert.ok(!idSet.has('group-parent'));
+    assert.ok(!idSet.has('group-nested'));
   });
 });

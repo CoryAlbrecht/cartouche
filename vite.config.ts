@@ -4,7 +4,7 @@
  * @description Vite configuration for Cartouche desktop GIS application, configuring Electron main, preload, and React renderer compilation with vendor chunk splitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-12
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 
@@ -59,6 +59,32 @@ export default defineConfig({
             },
             rollupOptions: {
               external: ['electron']
+            }
+          },
+          resolve: {
+            alias: {
+              '@main': path.resolve(__dirname, 'src/main'),
+              '@shared': path.resolve(__dirname, 'src/shared')
+            }
+          }
+        }
+      },
+      {
+        entry: path.resolve(__dirname, 'src/worker/geospatialWorker.ts'),
+        onstart(options) {
+          options.reload();
+        },
+        vite: {
+          build: {
+            outDir: 'dist-electron/worker',
+            sourcemap: true,
+            lib: {
+              entry: path.resolve(__dirname, 'src/worker/geospatialWorker.ts'),
+              formats: ['cjs'],
+              fileName: () => 'geospatialWorker.cjs'
+            },
+            rollupOptions: {
+              external: ['electron', 'gdal-async', 'better-sqlite3']
             }
           },
           resolve: {

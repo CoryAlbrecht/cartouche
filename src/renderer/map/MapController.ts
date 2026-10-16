@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -19,7 +19,8 @@ import VectorSource from 'ol/source/Vector.js';
 import Graticule from 'ol/layer/Graticule.js';
 import Stroke from 'ol/style/Stroke.js';
 import WKB from 'ol/format/WKB.js';
-import { bbox as bboxStrategy } from 'ol/loadingstrategy.js';
+import GeoJSON from 'ol/format/GeoJSON.js';
+import { all as allStrategy, bbox as bboxStrategy } from 'ol/loadingstrategy.js';
 import { fromLonLat, toLonLat, transformExtent } from 'ol/proj.js';
 import Feature from 'ol/Feature.js';
 import {
@@ -53,7 +54,7 @@ import type {
  * @property {number} opacity - Render opacity ranging from 0.0 to 1.0.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 export interface FlattenedTreeLayer {
@@ -128,6 +129,8 @@ export class MapController {
   private container: HTMLElement;
   private vectorLayers = new Map<string, VectorLayerEntry>();
   private wkbFormat = new WKB();
+  private geojsonFormat = new GeoJSON();
+  private inFlightQueries = new Map<string, Promise<Feature[]>>();
   private disposeSignals: Array<() => void> = [];
   private previousLayerCount = 0;
 
@@ -384,17 +387,23 @@ export class MapController {
   }
 
   /**
-   * @description Creates and registers an OpenLayers VectorLayer and VectorSource backed by bboxStrategy and WKB loader.
+   * @description Creates and registers an OpenLayers VectorLayer and VectorSource backed by allStrategy/bboxStrategy and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-15
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
    */
   public createVectorLayer(descriptor: LayerDescriptor): VectorLayerEntry {
+    const isLocalVector = descriptor.layerKind === 'vector' || !descriptor.layerKind;
+    const strategy =
+      isLocalVector && (descriptor.featureCount === undefined || descriptor.featureCount < 50000)
+        ? allStrategy
+        : bboxStrategy;
+
     const source = new VectorSource({
-      strategy: bboxStrategy,
+      strategy,
       loader: async (extent, _resolution, projection, success, _failure) => {
         const loaded = await this.loadFeaturesForExtent(descriptor, source, extent, projection);
         if (success) {
@@ -433,7 +442,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent and deserializes OGC WKB buffers into deduplicated features.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-15
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -451,66 +460,111 @@ export class MapController {
       return [];
     }
 
-    const projectionCode =
-      typeof projection === 'string'
-        ? projection
-        : projection?.getCode?.() || 'EPSG:3857';
-
-    const queryBox: BoundingBox = [extent[0], extent[1], extent[2], extent[3]];
-    const newFeatures: Feature[] = [];
-
-    try {
-      const result = await window.electronAPI.queryExtent(
-        descriptor.id,
-        queryBox,
-        projectionCode
-      );
-
-      if (!result || !Array.isArray(result.features)) {
-        return [];
-      }
-
-      const dataProjection = descriptor.crs?.authId || 'EPSG:4326';
-
-      for (const featRecord of result.features) {
-        // Deduplicate by ID to prevent duplicate entities during pan overlaps
-        if (source.getFeatureById(featRecord.id)) {
-          continue;
-        }
-
-        try {
-          const geometry = this.wkbFormat.readGeometry(featRecord.wkb, {
-            dataProjection,
-            featureProjection: projectionCode,
-          });
-
-          const feature = new Feature({
-            geometry,
-            ...(featRecord.properties || {}),
-          });
-          feature.setId(featRecord.id);
-
-          newFeatures.push(feature);
-        } catch (geomErr) {
-          console.warn(
-            `[MapController] Failed to parse WKB feature ${featRecord.id} for layer ${descriptor.id}:`,
-            geomErr
-          );
-        }
-      }
-
-      if (newFeatures.length > 0) {
-        source.addFeatures(newFeatures);
-      }
-    } catch (err) {
-      addConsoleLog(
-        'error',
-        `Failed to query features for layer "${descriptor.name || descriptor.id}": ${err}`,
-        'OpenLayers'
-      );
+    // Skip redundant IPC query if all features are already loaded into the vector source
+    if (
+      descriptor.featureCount &&
+      descriptor.featureCount > 0 &&
+      source.getFeatures().length >= descriptor.featureCount
+    ) {
+      return [];
     }
 
-    return newFeatures;
+    // Deduplicate in-flight queries for the same layer
+    const inFlight = this.inFlightQueries.get(descriptor.id);
+    if (inFlight) {
+      return await inFlight;
+    }
+
+    const queryPromise = (async (): Promise<Feature[]> => {
+      const projectionCode =
+        typeof projection === 'string'
+          ? projection
+          : projection?.getCode?.() || 'EPSG:3857';
+
+      const queryBox: BoundingBox = [extent[0], extent[1], extent[2], extent[3]];
+      const newFeatures: Feature[] = [];
+
+      try {
+        const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        if (!api?.queryExtent) {
+          return [];
+        }
+
+        const result = await api.queryExtent(
+          descriptor.id,
+          queryBox,
+          projectionCode
+        );
+
+        if (!result || !Array.isArray(result.features)) {
+          return [];
+        }
+
+        const dataProjection = descriptor.crs?.authId || 'EPSG:4326';
+
+        for (const featRecord of result.features) {
+          // Deduplicate by ID to prevent duplicate entities during pan overlaps
+          if (source.getFeatureById(featRecord.id)) {
+            continue;
+          }
+
+          try {
+            let geometry: any = null;
+            if (featRecord.wkb) {
+              geometry = this.wkbFormat.readGeometry(featRecord.wkb, {
+                dataProjection,
+                featureProjection: projectionCode,
+              });
+            } else if (featRecord.geojson) {
+              geometry = this.geojsonFormat.readGeometry(featRecord.geojson, {
+                dataProjection,
+                featureProjection: projectionCode,
+              });
+            }
+
+            if (!geometry) {
+              continue;
+            }
+
+            const feature = new Feature({
+              geometry,
+              ...(featRecord.properties || {}),
+            });
+            feature.setId(featRecord.id);
+
+            newFeatures.push(feature);
+          } catch (geomErr) {
+            console.warn(
+              `[MapController] Failed to parse feature ${featRecord.id} for layer ${descriptor.id}:`,
+              geomErr
+            );
+          }
+        }
+
+        if (newFeatures.length > 0) {
+          source.addFeatures(newFeatures);
+        }
+      } catch (err) {
+        console.error(
+          `[MapController] Failed to load features for layer ${descriptor.id}:`,
+          err
+        );
+        addConsoleLog(
+          'error',
+          `Failed to query features for layer "${descriptor.name || descriptor.id}": ${err}`,
+          'OpenLayers'
+        );
+      }
+
+      return newFeatures;
+    })();
+
+    this.inFlightQueries.set(descriptor.id, queryPromise);
+    try {
+      return await queryPromise;
+    } finally {
+      this.inFlightQueries.delete(descriptor.id);
+    }
   }
 
   /**

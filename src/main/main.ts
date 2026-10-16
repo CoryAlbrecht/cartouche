@@ -108,6 +108,28 @@ if (process.platform === 'linux') {
   setupLinuxDesktopIntegration();
 }
 
+if (process.argv.includes('--test-worker')) {
+  app.whenReady().then(async () => {
+    const { utilityProcess } = await import('electron');
+    const workerPath = path.resolve(__dirname, '../worker/worker_test.cjs');
+    console.log('[Test Worker] Forking:', workerPath);
+    const worker = utilityProcess.fork(workerPath);
+    worker.on('spawn', () => {
+      console.log('[Test Worker] Spawned, sending run');
+      worker.postMessage('run');
+    });
+    worker.on('message', (msg) => {
+      console.log('[Test Worker] Got message from worker:', msg);
+      worker.kill();
+      app.exit(0);
+    });
+    worker.on('exit', (code) => {
+      console.log('[Test Worker] Worker exited with code:', code);
+      if (code !== 0) app.exit(code);
+    });
+  });
+}
+
 /**
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -316,7 +338,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   PreferencesStore.loadFromDisk();
-  
+
   const { i18nStore } = await import('./i18n/I18nStore');
   i18nStore.loadSystemLocale();
 

@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -256,6 +256,55 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.ok(Math.abs(coords[1] - 5621521.4) < 1, 'Y coordinate must be reprojected to EPSG:3857');
   });
 
+  it('streams feature slices formatted as GeoJSON geometry and reprojects coordinates', async () => {
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string) => {
+        return {
+          layerId,
+          features: [
+            {
+              id: 201,
+              geojson: { type: 'Point', coordinates: [-85, 45] },
+              properties: { name: 'Lake Point' },
+            },
+          ],
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-geojson-test',
+      name: 'GeoJSON Test',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-geojson-test')!;
+    assert.ok(entry);
+
+    const loaded = await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-10000000, 4000000, -8000000, 6000000],
+      'EPSG:3857'
+    );
+
+    assert.equal(loaded.length, 1);
+    const feature = entry.source.getFeatureById(201);
+    assert.ok(feature);
+    assert.equal(feature.get('name'), 'Lake Point');
+    const geom = feature.getGeometry();
+    assert.ok(geom);
+    assert.equal(geom.getType(), 'Point');
+    const coords = (geom as any).getCoordinates();
+    assert.ok(Math.abs(coords[0] - -9462156.7) < 1, 'X coordinate must be reprojected to EPSG:3857');
+  });
+
   it('deduplicates features by ID on VectorSource during spatial pan overlaps', async () => {
     (globalThis as any).window.electronAPI = {
       queryExtent: async (layerId: string) => {
@@ -385,6 +434,45 @@ describe('MapController Isolated Canvas Engine', () => {
 
     assert.equal(controller.getVectorLayers().size, 0);
     assert.equal(controller.getMap().getTarget(), undefined);
+  });
+
+  it('skips redundant queryExtent IPC calls when all features are already loaded in VectorSource', async () => {
+    let callCount = 0;
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string) => {
+        callCount++;
+        return {
+          layerId,
+          features: [
+            { id: 401, wkb: pointWkb1, properties: { name: 'Lake Point 1' } },
+          ],
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-redundant-test',
+      name: 'Redundant Test',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-redundant-test')!;
+
+    // Initial load
+    await controller.loadFeaturesForExtent(descriptor, entry.source, [-1000, -1000, 1000, 1000], 'EPSG:3857');
+    assert.equal(callCount, 1);
+    assert.equal(entry.source.getFeatures().length, 1);
+
+    // Subsequent pan load with different extent
+    const secondLoaded = await controller.loadFeaturesForExtent(descriptor, entry.source, [-2000, -2000, 2000, 2000], 'EPSG:3857');
+    assert.equal(callCount, 1, 'queryExtent must NOT be called again when all features are already loaded');
+    assert.equal(secondLoaded.length, 0);
   });
 });
 

@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -26,12 +26,12 @@ import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/P
  * @description Helper mapping GDAL geometry type integer constants to standard GeometryKind strings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @param {number} [geomType] - GDAL integer geometry type code.
  * @returns {GeometryKind} Canonical GeometryKind string.
  */
-function mapGdalGeometryKind(geomType?: number): GeometryKind {
+export function mapGdalGeometryKind(geomType?: number): GeometryKind {
   if (geomType === undefined) {
     return 'Polygon';
   }
@@ -51,7 +51,7 @@ function mapGdalGeometryKind(geomType?: number): GeometryKind {
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.

@@ -4,9 +4,11 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
+
+import type { GeometryKind, BoundingBox } from '.';
 
 /**
  * @typedef {Object} ProjectMetadata
@@ -88,13 +90,14 @@ export interface ProjectViewport {
  * @property {GeometryKind} [geometryKind] - Spatial geometry type for vector features.
  * @property {string | { href?: string; content?: string } | Record<string, any>} [style] - Layer style rule definition or reference.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
+ * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
+ * @property {number} [featureCount] - Total number of features in the dataset.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
-import type { GeometryKind } from ".";
 
 export interface ProjectLayerItem {
   id: string;
@@ -111,6 +114,8 @@ export interface ProjectLayerItem {
   style?: string | { href?: string; content?: string } | Record<string, any>;
   crs?: ProjectCrs;
   customProperties?: Record<string, unknown>;
+  extent?: BoundingBox;
+  featureCount?: number;
 }
 
 /**
@@ -205,16 +210,18 @@ export interface LayerDescriptor extends ProjectLayerItem {
 /**
  * @typedef {Object} QueryExtentFeature
  * @property {number | string} id - Unique feature identifier.
- * @property {Uint8Array} wkb - Raw OGC Well-Known Binary geometry buffer.
+ * @property {Record<string, unknown>} [geojson] - GeoJSON geometry object representation.
+ * @property {Uint8Array} [wkb] - Optional raw OGC Well-Known Binary geometry buffer.
  * @property {Record<string, unknown>} [properties] - Tabular attribute properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 export interface QueryExtentFeature {
   id: number | string;
-  wkb: Uint8Array;
+  geojson?: Record<string, unknown>;
+  wkb?: Uint8Array;
   properties?: Record<string, unknown>;
 }
 

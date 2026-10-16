@@ -1,10 +1,10 @@
 /**
  * @file queryExtent.ts
  * @module main/api/layers/queryExtent
- * @description Main Process spatial query execution handler streaming visible vector feature slices (OGC WKB buffers and attributes) intersecting a bounding box extent.
+ * @description Main Process spatial query execution handler streaming visible vector feature slices (GeoJSON geometry objects and attributes) intersecting a bounding box extent.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link LayerSessionRegistry}
  * @see {@link QueryExtentResult}
@@ -97,7 +97,7 @@ function reprojectBoundingBox(
  * Executes within LayerSessionRegistry's sequential execution queue to protect native GDAL C++ filter state from concurrent mutation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier.
  * @param {BoundingBox} [extent] - Optional query bounding box [minX, minY, maxX, maxY].
@@ -124,7 +124,13 @@ export async function queryExtent(
 
       if (extent && Array.isArray(extent) && extent.length === 4) {
         const [minX, minY, maxX, maxY] = extent;
-        if (minX !== 0 || minY !== 0 || maxX !== 0 || maxY !== 0) {
+        if (
+          isFinite(minX) &&
+          isFinite(minY) &&
+          isFinite(maxX) &&
+          isFinite(maxY) &&
+          (minX !== 0 || minY !== 0 || maxX !== 0 || maxY !== 0)
+        ) {
           shouldFilter = true;
           filterExtent = [minX, minY, maxX, maxY];
 
@@ -145,14 +151,36 @@ export async function queryExtent(
 
       const features: QueryExtentFeature[] = [];
       layer.features.forEach((feature) => {
-        const geom = feature.getGeometry();
-        if (geom) {
-          const wkb = geom.toWKB();
-          features.push({
-            id: feature.fid,
-            wkb: new Uint8Array(wkb),
-            properties: feature.fields.toObject()
-          });
+        try {
+          const geom = feature.getGeometry();
+          if (geom) {
+            let wkb: Uint8Array | undefined;
+            try {
+              const rawWkb = geom.toWKB();
+              // Allocate a fresh Uint8Array inside V8's sandbox memory space and copy bytes
+              wkb = new Uint8Array(rawWkb.byteLength);
+              wkb.set(rawWkb);
+            } catch {
+              // WKB conversion fallback
+            }
+
+            if (wkb) {
+              features.push({
+                id: feature.fid,
+                wkb,
+                properties: feature.fields.toObject()
+              });
+            } else {
+              const jsonStr = geom.toJSON();
+              features.push({
+                id: feature.fid,
+                geojson: JSON.parse(jsonStr),
+                properties: feature.fields.toObject()
+              });
+            }
+          }
+        } catch (featErr) {
+          console.warn(`[queryExtent] Failed to extract geometry for feature ${feature.fid}:`, featErr);
         }
       });
 
@@ -169,4 +197,3 @@ export async function queryExtent(
     }
   });
 }
-

@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -51,7 +51,7 @@ function escapeXml(unsafe: string): string {
  * @description Extensible project loader for native unbundled Cartouche XML project documents.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 export class CartoucheXmlLoader implements IProjectLoader {
@@ -105,7 +105,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-13
+   * @updated 2026-10-15
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -223,11 +223,16 @@ export class CartoucheXmlLoader implements IProjectLoader {
         };
       }
 
+      let resolvedSource = raw.source || '';
+      if (resolvedSource && !path.isAbsolute(resolvedSource)) {
+        resolvedSource = path.resolve(path.dirname(filePath), resolvedSource);
+      }
+
       return {
         id: String(raw['@_id'] || `layer-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`),
         name: raw.name || 'Unnamed Layer',
         type: raw.type || 'vector',
-        source: raw.source || '',
+        source: resolvedSource,
         visible: raw['@_visible'] !== 'false' && raw['@_visible'] !== false,
         opacity: raw['@_opacity'] !== undefined ? parseFloat(raw['@_opacity']) : 1.0,
         selectable: raw['@_selectable'] !== 'false' && raw['@_selectable'] !== false,

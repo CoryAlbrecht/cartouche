@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-12
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -64,7 +64,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-03
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -78,6 +78,16 @@ export const AddLayersDialog: React.FC = () => {
   const invalidFilesSignal = useSignal<string[]>([]);
 
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Reset input fields whenever the dialog is opened to prevent residual chips
+  React.useEffect(() => {
+    if (isOpen) {
+      vectorFilesSignal.value = [];
+      vectorInputTextSignal.value = "";
+      filePathSignal.value = "";
+      invalidFilesSignal.value = [];
+    }
+  }, [isOpen]);
 
   const activeTab = activeTabSignal.value;
   const filePath = filePathSignal.value;
@@ -168,7 +178,7 @@ export const AddLayersDialog: React.FC = () => {
    * @description Confirms and attaches the selected layer dataset to the project state.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-01
-   * @updated 2026-10-09
+   * @updated 2026-10-15
    * @since 0.1.0-dev
    * @returns {Promise<void>}
    */
@@ -207,6 +217,10 @@ export const AddLayersDialog: React.FC = () => {
       }
       
       if (invalidFiles.length === 0) {
+        vectorFilesSignal.value = [];
+        vectorInputTextSignal.value = "";
+        filePathSignal.value = "";
+        invalidFilesSignal.value = [];
         closeAddLayersDialog();
       }
     } else {
@@ -215,6 +229,10 @@ export const AddLayersDialog: React.FC = () => {
           filePath.split(/[/\\]/).pop() || "New Layer"
         : `New ${activeTab.toUpperCase()} Layer`;
       addConsoleLog("info", `Adding ${activeTab} layer: "${name}"`, "Layers");
+      vectorFilesSignal.value = [];
+      vectorInputTextSignal.value = "";
+      filePathSignal.value = "";
+      invalidFilesSignal.value = [];
       closeAddLayersDialog();
     }
   };

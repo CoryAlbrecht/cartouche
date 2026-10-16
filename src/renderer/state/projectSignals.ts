@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -615,6 +615,29 @@ export function registerLayerTreeContextMenuHook(hook: LayerTreeContextMenuHook)
   };
 }
 
+/**
+ * @description Recursively extracts all active leaf layer IDs present in a project layers tree hierarchy.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-15
+ * @updated 2026-10-15
+ * @since 0.1.0-dev
+ * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Tree items to traverse.
+ * @param {Set<string>} idSet - Accumulator set collecting leaf layer identifiers.
+ * @returns {void}
+ */
+export function extractLeafLayerIds(
+  items: Array<ProjectLayerItem | ProjectGroupItem>,
+  idSet: Set<string>
+): void {
+  for (const item of items) {
+    if ('children' in item && Array.isArray((item as any).children)) {
+      extractLeafLayerIds((item as any).children, idSet);
+    } else if (item.id) {
+      idSet.add(item.id);
+    }
+  }
+}
+
 // Automatically subscribe to IPC tree broadcasts from Electron Main process
 if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpdated) {
   window.electronAPI.onProjectLayersTreeUpdated((tree: Array<ProjectLayerItem | ProjectGroupItem>) => {
@@ -625,12 +648,36 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
         projectNameSignal.value = 'Untitled Project';
       }
     }
-    // Select first layer if no active layer is currently selected
-    if (!activeLayerIdSignal.value && tree.length > 0) {
-      const firstLayer = tree.find(item => !('children' in item));
-      if (firstLayer && firstLayer.id) {
-        activeLayerIdSignal.value = firstLayer.id;
+
+    // Synchronize projectLayersSignal and layerStylesSignal to remove deleted layers
+    const activeLayerIds = new Set<string>();
+    extractLeafLayerIds(tree, activeLayerIds);
+
+    if (projectLayersSignal.value.length > 0) {
+      const remainingLayers = projectLayersSignal.value.filter((layer) => activeLayerIds.has(layer.id));
+      if (remainingLayers.length !== projectLayersSignal.value.length) {
+        projectLayersSignal.value = remainingLayers;
       }
+    }
+
+    const currentStyles = { ...layerStylesSignal.value };
+    let stylesPruned = false;
+    for (const styleId of Object.keys(currentStyles)) {
+      if (!activeLayerIds.has(styleId)) {
+        delete currentStyles[styleId];
+        stylesPruned = true;
+      }
+    }
+    if (stylesPruned) {
+      layerStylesSignal.value = currentStyles;
+    }
+
+    // Select first layer if no active layer is currently selected, or if active layer was deleted
+    if ((!activeLayerIdSignal.value || !activeLayerIds.has(activeLayerIdSignal.value)) && tree.length > 0) {
+      const firstLayer = tree.find(item => !('children' in item));
+      activeLayerIdSignal.value = (firstLayer && firstLayer.id) ? firstLayer.id : null;
+    } else if (tree.length === 0) {
+      activeLayerIdSignal.value = null;
     }
   });
 }

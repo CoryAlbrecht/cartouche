@@ -4,7 +4,7 @@
  * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-15
  * @since 0.1.0-dev
  */
 
@@ -29,7 +29,9 @@ import {
   saveProjectAction,
   saveAsProjectAction,
   closeProjectAction,
-  openProjectAction
+  openProjectAction,
+  projectLayersSignal,
+  layerStylesSignal
 } from '../../../src/renderer/state/gisSignals';
 import type { ProjectModel } from '../../../src/shared/types';
 
@@ -320,6 +322,38 @@ describe('Project Lifecycle Signals & Actions', () => {
     assert.deepEqual(mapActionSignal.value?.center, { x: -74.25, y: 40.75 });
     assert.equal(mapActionSignal.value?.zoom, 9);
     assert.equal(mapActionSignal.value?.rotation, 0.1);
+  });
+
+  it('loadProjectIntoSignals populates projectLayersSignal and layerStylesSignal for map viewport', () => {
+    loadProjectIntoSignals({
+      format: 'cartouche-xml',
+      metadata: { title: 'Viewport Layer Ingestion Project' },
+      layers: [
+        {
+          id: 'proj-layer-1',
+          name: 'Hydro Lake',
+          type: 'shp',
+          source: '/data/lakes.shp',
+          visible: true,
+          layerKind: 'vector',
+          geometryKind: 'Polygon',
+          style: JSON.stringify({ 'fill-color': '#00f' }),
+          featureCount: 42,
+          extent: [-100, 40, -80, 50]
+        }
+      ]
+    });
+
+    assert.equal(projectLayersSignal.value.length, 1);
+    const desc = projectLayersSignal.value[0];
+    assert.equal(desc.id, 'proj-layer-1');
+    assert.equal(desc.name, 'Hydro Lake');
+    assert.equal(desc.geometryKind, 'Polygon');
+    assert.deepEqual(desc.extent, [-100, 40, -80, 50]);
+    assert.equal(desc.featureCount, 42);
+
+    assert.ok(layerStylesSignal.value['proj-layer-1']);
+    assert.equal(layerStylesSignal.value['proj-layer-1']['fill-color'], '#00f');
   });
 
   it('newProjectAction initializes a new project in Main and Renderer and sets currentProjectSignal', async () => {
