@@ -4,11 +4,12 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 
 import type { BoundingBox, GeometryKind, ProjectCrs, QueryExtentFeature } from '@shared/types';
+
 
 /**
  * @typedef {Object} GeospatialLayerMetadata
@@ -123,7 +124,17 @@ export interface RehydrateRequest {
 }
 
 /**
- * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest} WorkerRequest
+ * @typedef {Object} PingRequest
+ * @property {string} id - Unique correlation identifier.
+ * @property {'ping'} type - Request message discriminator.
+ */
+export interface PingRequest {
+  id: string;
+  type: 'ping';
+}
+
+/**
+ * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest} WorkerRequest
  * Discriminated union of all request messages dispatched from Main to the Geospatial Worker.
  */
 export type WorkerRequest =
@@ -131,7 +142,8 @@ export type WorkerRequest =
   | QueryExtentRequest
   | CloseDatasetRequest
   | CloseAllRequest
-  | RehydrateRequest;
+  | RehydrateRequest
+  | PingRequest;
 
 /**
  * Distributive omit helper creating request payload types without correlation identifier.

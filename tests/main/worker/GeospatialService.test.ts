@@ -70,6 +70,11 @@ describe('GeospatialService In-Process Headless Fallback', () => {
     assert.equal(geospatialService.isInProcessFallback(), true);
   });
 
+  it('pings in-process engine and resolves with pong result', async () => {
+    const result = await service.ping();
+    assert.deepEqual(result, { pong: true });
+  });
+
   it('opens dataset and extracts layer metadata in-process', async () => {
     const metadata = await service.openDataset('lake-1', lakesGeoJsonPath);
 
@@ -169,6 +174,20 @@ describe('GeospatialService Worker Process Bridge & IPC Routing', () => {
 
     const result = await promise;
     assert.deepEqual(result, expectedMetadata);
+    assert.equal(service.getPendingCount(), 0);
+  });
+
+  it('pings worker process and resolves with pong result', async () => {
+    const pingPromise = service.ping();
+    assert.equal(service.getPendingCount(), 1);
+
+    const sent = mockWorker.messages[mockWorker.messages.length - 1];
+    assert.equal(sent.type, 'ping');
+
+    mockWorker.replySuccess(sent.id, { pong: true });
+
+    const result = await pingPromise;
+    assert.deepEqual(result, { pong: true });
     assert.equal(service.getPendingCount(), 0);
   });
 
@@ -422,5 +441,11 @@ describe('GeospatialService Worker Crash Recovery, Rehydration & Circuit Breaker
 
     service.dispose();
   });
-});
 
+  it('resolves valid worker candidate path in development and preview environments', () => {
+    const service = new GeospatialService({ forceInProcess: true });
+    const resolved = (service as any).resolveWorkerPath();
+    assert.ok(resolved.endsWith('geospatialWorker.cjs'), 'Must resolve to geospatialWorker.cjs');
+    service.dispose();
+  });
+});

@@ -11,6 +11,7 @@
  * @see {@link WorkerResponse}
  */
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
@@ -130,14 +131,7 @@ export class GeospatialService {
       typeof (utilityProcess as any)?.fork === 'function';
 
     if (hasUtilityProcess) {
-      const appPath =
-        typeof app !== 'undefined' && typeof app.getAppPath === 'function'
-          ? app.getAppPath()
-          : process.cwd();
-
-      this.resolvedWorkerPath =
-        this.options.workerPath ||
-        path.join(appPath, 'dist-electron/worker/geospatialWorker.cjs');
+      this.resolvedWorkerPath = this.resolveWorkerPath(this.options.workerPath);
 
       if (typeof app !== 'undefined' && typeof app.isReady === 'function' && !app.isReady()) {
         this.isReady = false;
@@ -155,6 +149,47 @@ export class GeospatialService {
       this.engine = new GeospatialEngine();
       this.isReady = true;
     }
+  }
+
+  /**
+   * @description Resolves the absolute path to the compiled geospatialWorker.cjs script by probing candidate locations across development, preview, and packaged runtime environments.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-16
+   * @updated 2026-10-16
+   * @since 0.1.0-dev
+   * @private
+   * @param {string} [customPath] - Optional custom path from options.
+   * @returns {string} Absolute path to worker script.
+   */
+  private resolveWorkerPath(customPath?: string): string {
+    if (customPath) {
+      return customPath;
+    }
+
+    const appPath =
+      typeof app !== 'undefined' && typeof app.getAppPath === 'function'
+        ? app.getAppPath()
+        : process.cwd();
+
+    const candidates = [
+      path.join(appPath, 'dist-electron/worker/geospatialWorker.cjs'),
+      path.join(appPath, '../worker/geospatialWorker.cjs'),
+      path.join(appPath, 'worker/geospatialWorker.cjs'),
+      path.join(process.cwd(), 'dist-electron/worker/geospatialWorker.cjs')
+    ];
+
+    if (typeof (process as any).resourcesPath === 'string') {
+      candidates.push(path.join((process as any).resourcesPath, 'dist-electron/worker/geospatialWorker.cjs'));
+      candidates.push(path.join((process as any).resourcesPath, 'app.asar/dist-electron/worker/geospatialWorker.cjs'));
+    }
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    return path.join(appPath, 'dist-electron/worker/geospatialWorker.cjs');
   }
 
   /**
@@ -189,6 +224,14 @@ export class GeospatialService {
       console.error('[GeospatialService] Geospatial worker error:', err);
     });
 
+    worker.stdout?.on('data', (data: any) => {
+      console.log(`[GeospatialService:WorkerStdout] ${data.toString().trimEnd()}`);
+    });
+
+    worker.stderr?.on('data', (data: any) => {
+      console.error(`[GeospatialService:WorkerStderr] ${data.toString().trimEnd()}`);
+    });
+
     worker.on('exit', (code: number) => {
       this.handleWorkerExit(code);
     });
@@ -203,7 +246,8 @@ export class GeospatialService {
   private spawnWorker(workerPath: string): void {
     try {
       this.worker = utilityProcess.fork(workerPath, [], {
-        serviceName: 'geospatial-worker'
+        serviceName: 'geospatial-worker',
+        stdio: 'pipe'
       });
       this.bindWorkerEvents(this.worker);
       console.log('[GeospatialService] Background geospatial worker process spawned successfully');
@@ -600,6 +644,10 @@ export class GeospatialService {
           break;
         }
 
+        case 'ping':
+          result = { pong: true };
+          break;
+
         default:
           throw new Error(`Unsupported in-process operation type: ${(req as any).type}`);
       }
@@ -709,6 +757,19 @@ export class GeospatialService {
       }
     }
     return res;
+  }
+
+  /**
+   * @description Pings the geospatial worker or in-process engine to verify responsiveness and operational health.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-16
+   * @updated 2026-10-16
+   * @since 0.1.0-dev
+   * @param {number} [timeoutMs] - Optional timeout override.
+   * @returns {Promise<{ pong: boolean }>} Promise resolving to pong result.
+   */
+  public async ping(timeoutMs?: number): Promise<{ pong: boolean }> {
+    return this.sendRequest<{ pong: boolean }>({ type: 'ping' }, timeoutMs);
   }
 
   /**
