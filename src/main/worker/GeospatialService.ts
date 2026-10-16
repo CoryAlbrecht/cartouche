@@ -58,6 +58,7 @@ interface PendingRequestEntry {
  * @property {any} [mockWorker] - Optional pre-constructed mock worker instance for testing.
  * @property {() => any} [mockWorkerFactory] - Optional factory function producing mock worker instances upon spawn and respawn.
  * @property {number} [maxConsecutiveFailures] - Consecutive query failures before circuit breaker trips (default: 3).
+ * @property {number} [maxConsecutiveWorkerCrashes] - Maximum consecutive worker crashes before auto-respawn aborts (default: 5).
  */
 export interface GeospatialServiceOptions {
   forceInProcess?: boolean;
@@ -66,6 +67,7 @@ export interface GeospatialServiceOptions {
   mockWorker?: any;
   mockWorkerFactory?: () => any;
   maxConsecutiveFailures?: number;
+  maxConsecutiveWorkerCrashes?: number;
 }
 
 /**
@@ -89,6 +91,7 @@ export class GeospatialService {
   private readyPromise: Promise<void> | null = null;
   private resolvedWorkerPath: string | null = null;
   private maxConsecutiveFailures: number;
+  private maxConsecutiveWorkerCrashes: number;
 
   /**
    * @constructor
@@ -101,6 +104,7 @@ export class GeospatialService {
       ...options
     };
     this.maxConsecutiveFailures = this.options.maxConsecutiveFailures ?? 3;
+    this.maxConsecutiveWorkerCrashes = this.options.maxConsecutiveWorkerCrashes ?? 5;
     this.init();
   }
 
@@ -123,6 +127,12 @@ export class GeospatialService {
       this.bindWorkerEvents(this.worker);
       this.isReady = true;
       return;
+    }
+
+    if (typeof app !== 'undefined' && typeof app.on === 'function') {
+      app.on('will-quit', () => {
+        this.dispose();
+      });
     }
 
     const hasUtilityProcess =
@@ -314,7 +324,7 @@ export class GeospatialService {
    * @returns {void}
    */
   private handleWorkerExit(code: number): void {
-    if (this.isDisposed) {
+    if (this.isDisposed || code === 0) {
       this.worker = null;
       return;
     }
@@ -327,6 +337,21 @@ export class GeospatialService {
       `[GeospatialService] Worker process exited unexpectedly (code ${code}); initiating auto-respawn...`
     );
 
+    // If excessive consecutive crashes occur before any successful recovery, abort to prevent infinite loops
+    if (this.consecutiveWorkerCrashes >= this.maxConsecutiveWorkerCrashes) {
+      console.error(
+        `[GeospatialService] Excessive consecutive worker crashes (${this.consecutiveWorkerCrashes}); aborting auto-respawn`
+      );
+      for (const pending of this.pendingRequests.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(
+          new Error(`Worker process crashed repeatedly (code ${code}) while executing "${pending.type}"`)
+        );
+      }
+      this.pendingRequests.clear();
+      return;
+    }
+
     const canRespawn =
       Boolean(this.options.mockWorkerFactory) ||
       Boolean(!this.options.forceInProcess && this.resolvedWorkerPath);
@@ -336,21 +361,6 @@ export class GeospatialService {
         clearTimeout(pending.timer);
         pending.reject(
           new Error(`Worker process exited unexpectedly (code ${code}) while executing "${pending.type}"`)
-        );
-      }
-      this.pendingRequests.clear();
-      return;
-    }
-
-    // If excessive consecutive crashes occur before any successful recovery, abort to prevent infinite loops
-    if (this.consecutiveWorkerCrashes > 5) {
-      console.error(
-        `[GeospatialService] Excessive consecutive worker crashes (${this.consecutiveWorkerCrashes}); aborting auto-respawn`
-      );
-      for (const pending of this.pendingRequests.values()) {
-        clearTimeout(pending.timer);
-        pending.reject(
-          new Error(`Worker process crashed repeatedly (code ${code}) while executing "${pending.type}"`)
         );
       }
       this.pendingRequests.clear();
@@ -450,7 +460,6 @@ export class GeospatialService {
       }
 
       this.isReady = true;
-      this.consecutiveWorkerCrashes = 0;
 
       // Transparently retry queued in-flight requests against the restarted worker
       for (const pending of toRetry) {
@@ -800,6 +809,30 @@ export class GeospatialService {
     } else {
       this.circuitBreaker.clear();
     }
+  }
+
+  /**
+   * @description Returns the consecutive crash count recorded for the worker process.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-16
+   * @updated 2026-10-16
+   * @since 0.1.0-dev
+   * @returns {number} Consecutive worker crash count.
+   */
+  public getConsecutiveWorkerCrashes(): number {
+    return this.consecutiveWorkerCrashes;
+  }
+
+  /**
+   * @description Resets the consecutive worker crash count to zero.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-16
+   * @updated 2026-10-16
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public resetConsecutiveWorkerCrashes(): void {
+    this.consecutiveWorkerCrashes = 0;
   }
 
   /**

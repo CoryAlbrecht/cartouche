@@ -448,4 +448,110 @@ describe('GeospatialService Worker Crash Recovery, Rehydration & Circuit Breaker
     assert.ok(resolved.endsWith('geospatialWorker.cjs'), 'Must resolve to geospatialWorker.cjs');
     service.dispose();
   });
+
+  it('enforces rapid crash threshold (5 consecutive crashes) at zero-layer startup and stops respawning', () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveWorkerCrashes: 5
+    });
+
+    // Zero layers are loaded: service.getActiveLayerIds() is empty []
+    assert.deepEqual(service.getActiveLayerIds(), []);
+    assert.equal(spawnedWorkers.length, 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 0);
+
+    // Crash 1
+    spawnedWorkers[0].emit('exit', 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 1);
+    assert.equal(spawnedWorkers.length, 2);
+
+    // Crash 2
+    spawnedWorkers[1].emit('exit', 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 2);
+    assert.equal(spawnedWorkers.length, 3);
+
+    // Crash 3
+    spawnedWorkers[2].emit('exit', 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 3);
+    assert.equal(spawnedWorkers.length, 4);
+
+    // Crash 4
+    spawnedWorkers[3].emit('exit', 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 4);
+    assert.equal(spawnedWorkers.length, 5);
+
+    // Crash 5 -> Threshold reached! Must abort auto-respawn and not spawn worker 6
+    spawnedWorkers[4].emit('exit', 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 5);
+    assert.equal(spawnedWorkers.length, 5);
+    assert.equal(service.isUtilityProcessActive(), false);
+
+    service.dispose();
+  });
+
+  it('resets consecutive crash counter only after worker demonstrates operational health via successful response', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveWorkerCrashes: 5
+    });
+
+    // Crash twice
+    spawnedWorkers[0].emit('exit', 1);
+    spawnedWorkers[1].emit('exit', 1);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 2);
+    assert.equal(spawnedWorkers.length, 3);
+
+    // Worker 3 demonstrates operational health by successfully answering a ping
+    const pingPromise = service.ping();
+    const currentWorker = spawnedWorkers[2];
+    const pingMsg = currentWorker.messages[currentWorker.messages.length - 1];
+    assert.equal(pingMsg.type, 'ping');
+
+    currentWorker.replySuccess(pingMsg.id, { pong: true });
+    await pingPromise;
+
+    // Consecutive crash counter must now be reset to 0!
+    assert.equal(service.getConsecutiveWorkerCrashes(), 0);
+
+    service.dispose();
+  });
+
+  it('does not initiate auto-respawn upon clean process termination with exit code 0', () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory
+    });
+
+    assert.equal(spawnedWorkers.length, 1);
+
+    // Emit clean exit code 0
+    spawnedWorkers[0].emit('exit', 0);
+
+    // Must not spawn a new worker
+    assert.equal(spawnedWorkers.length, 1);
+    assert.equal(service.isUtilityProcessActive(), false);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 0);
+
+    service.dispose();
+  });
 });
