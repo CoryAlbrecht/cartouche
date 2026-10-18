@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 
@@ -260,10 +260,10 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @property {(filePath: string) => Promise<FileTypeDescriptor | undefined>} [identifyFile] - Identifies file type descriptor for target file path.
  * @property {(options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => Promise<string[]>} [openFiles] - Opens native multi-select file dialog and returns selected file paths.
  * @property {(callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void} [onLayerAdded] - Registers listener for newly added layer descriptors.
- * @property {(layerId: string, extent?: BoundingBox, targetProjection?: string) => Promise<import('./project').QueryExtentResult>} [queryExtent] - Queries intersecting features within spatial extent and target projection.
+ * @property {(layerId: string, options?: import('./project').QueryExtentOptions | BoundingBox, targetProjection?: string) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>} [queryExtent] - Queries intersecting features within spatial extent and target projection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -325,9 +325,9 @@ export interface ElectronAPI {
   /** @ipc layers:queryExtent */
   queryExtent?: (
     layerId: string,
-    extent?: BoundingBox,
+    options?: import('./project').QueryExtentOptions | BoundingBox,
     targetProjection?: string
-  ) => Promise<import('./project').QueryExtentResult>;
+  ) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>;
   /** @ipc project:metadata-updated */
   onProjectMetadataUpdated?: (callback: (metadata: import('./project').ProjectMetadata) => void) => () => void;
   /** @ipc project:dirty-state-changed */

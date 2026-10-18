@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -39,11 +39,13 @@ import {
   projectVisibleSignal,
 } from '../state/projectSignals';
 import { getDefaultLayerStyle } from '../../shared/styles/defaultLayerStyles';
-import type {
-  LayerDescriptor,
-  BoundingBox,
-  ProjectLayerItem,
-  ProjectGroupItem,
+import {
+  WKB_PACKET_MAGIC,
+  type LayerDescriptor,
+  type BoundingBox,
+  type ProjectLayerItem,
+  type ProjectGroupItem,
+  type QueryExtentOptions,
 } from '../../shared/types';
 
 /**
@@ -97,6 +99,40 @@ export function flattenTreeLayers(
     }
   }
   return result;
+}
+
+/**
+ * @description Recursively extracts all property names referenced by `['get', '<property>']` expressions within an OpenLayers Flat Style definition.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ * @param {unknown} style - Flat style object, array of rules, or expression tree.
+ * @param {Set<string>} [fields=new Set()] - Accumulator for extracted attribute names.
+ * @returns {Set<string>} Set of unique attribute names referenced in the style.
+ */
+export function extractStyleAttributes(
+  style: unknown,
+  fields: Set<string> = new Set()
+): Set<string> {
+  if (!style || typeof style !== 'object') {
+    return fields;
+  }
+
+  if (Array.isArray(style)) {
+    if (style.length >= 2 && style[0] === 'get' && typeof style[1] === 'string') {
+      fields.add(style[1]);
+    }
+    for (const item of style) {
+      extractStyleAttributes(item, fields);
+    }
+  } else {
+    for (const value of Object.values(style)) {
+      extractStyleAttributes(value, fields);
+    }
+  }
+
+  return fields;
 }
 
 /**
@@ -439,10 +475,10 @@ export class MapController {
   }
 
   /**
-   * @description Fetches visible feature slices via IPC layers:queryExtent and deserializes OGC WKB buffers into deduplicated features.
+   * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style projection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-15
+   * @updated 2026-10-16
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -490,54 +526,161 @@ export class MapController {
           return [];
         }
 
+        const activeStyle =
+          layerStylesSignal.value[descriptor.id] ||
+          (typeof descriptor.style === 'object' && descriptor.style !== null
+            ? descriptor.style
+            : getDefaultLayerStyle(descriptor.geometryKind));
+
+        let fields: string[] | undefined;
+        if (typeof activeStyle === 'function') {
+          fields = undefined;
+        } else if (activeStyle) {
+          const extracted = extractStyleAttributes(activeStyle);
+          fields = Array.from(extracted);
+        } else {
+          fields = [];
+        }
+
+        const options: QueryExtentOptions = {
+          extent: queryBox,
+          targetProjection: projectionCode,
+          includeGeometry: true,
+          fields,
+        };
+
         const result = await api.queryExtent(
           descriptor.id,
-          queryBox,
+          options,
           projectionCode
         );
 
-        if (!result || !Array.isArray(result.features)) {
+        if (!result) {
           return [];
         }
 
         const dataProjection = descriptor.crs?.authId || 'EPSG:4326';
 
-        for (const featRecord of result.features) {
-          // Deduplicate by ID to prevent duplicate entities during pan overlaps
-          if (source.getFeatureById(featRecord.id)) {
-            continue;
+        let buffer: ArrayBuffer | null = null;
+        if ('buffer' in result && result.buffer) {
+          if (result.buffer instanceof ArrayBuffer) {
+            buffer = result.buffer;
+          } else if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(result.buffer)) {
+            const view = result.buffer as ArrayBufferView;
+            const copy = new Uint8Array(view.byteLength);
+            copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+            buffer = copy.buffer;
           }
+        }
 
-          try {
-            let geometry: any = null;
-            if (featRecord.wkb) {
-              geometry = this.wkbFormat.readGeometry(featRecord.wkb, {
-                dataProjection,
-                featureProjection: projectionCode,
-              });
-            } else if (featRecord.geojson) {
-              geometry = this.geojsonFormat.readGeometry(featRecord.geojson, {
-                dataProjection,
-                featureProjection: projectionCode,
-              });
+        if (buffer && buffer.byteLength >= 12) {
+          const view = new DataView(buffer);
+          const magic = view.getUint32(0, true);
+          if (magic === WKB_PACKET_MAGIC) {
+            const featureCount = view.getUint32(8, true);
+            let offset = 12;
+            const decoder = new TextDecoder();
+
+            for (let i = 0; i < featureCount; i++) {
+              if (offset + 12 > buffer.byteLength) {
+                break;
+              }
+
+              const fid = Number(view.getBigInt64(offset, true));
+              offset += 8;
+
+              const wkbLen = view.getUint32(offset, true);
+              offset += 4;
+
+              let geometry: any = null;
+              if (wkbLen > 0 && offset + wkbLen <= buffer.byteLength) {
+                const wkbSlice = new Uint8Array(buffer, offset, wkbLen);
+                offset += wkbLen;
+                try {
+                  geometry = this.wkbFormat.readGeometry(wkbSlice, {
+                    dataProjection,
+                    featureProjection: projectionCode,
+                  });
+                } catch (geomErr) {
+                  console.warn(
+                    `[MapController] Failed to parse WKB geometry for feature ${fid} in layer ${descriptor.id}:`,
+                    geomErr
+                  );
+                }
+              }
+
+              if (offset + 4 > buffer.byteLength) {
+                break;
+              }
+              const propsLen = view.getUint32(offset, true);
+              offset += 4;
+
+              let properties: Record<string, any> = {};
+              if (propsLen > 0 && offset + propsLen <= buffer.byteLength) {
+                try {
+                  const propsSlice = new Uint8Array(buffer, offset, propsLen);
+                  properties = JSON.parse(decoder.decode(propsSlice));
+                } catch (propsErr) {
+                  console.warn(
+                    `[MapController] Failed to parse properties for feature ${fid} in layer ${descriptor.id}:`,
+                    propsErr
+                  );
+                }
+                offset += propsLen;
+              }
+
+              // Deduplicate by ID to prevent duplicate entities during pan overlaps
+              if (geometry && !source.getFeatureById(fid)) {
+                const feature = new Feature({
+                  geometry,
+                  ...properties,
+                });
+                feature.setId(fid);
+                newFeatures.push(feature);
+              }
             }
-
-            if (!geometry) {
+          } else {
+            console.warn(`[MapController] Invalid WKB packet magic: 0x${magic.toString(16)}`);
+          }
+        } else if ('features' in result && Array.isArray(result.features)) {
+          // Legacy object array fallback
+          for (const featRecord of result.features) {
+            // Deduplicate by ID to prevent duplicate entities during pan overlaps
+            if (source.getFeatureById(featRecord.id)) {
               continue;
             }
 
-            const feature = new Feature({
-              geometry,
-              ...(featRecord.properties || {}),
-            });
-            feature.setId(featRecord.id);
+            try {
+              let geometry: any = null;
+              if (featRecord.wkb) {
+                geometry = this.wkbFormat.readGeometry(featRecord.wkb, {
+                  dataProjection,
+                  featureProjection: projectionCode,
+                });
+              } else if (featRecord.geojson) {
+                geometry = this.geojsonFormat.readGeometry(featRecord.geojson, {
+                  dataProjection,
+                  featureProjection: projectionCode,
+                });
+              }
 
-            newFeatures.push(feature);
-          } catch (geomErr) {
-            console.warn(
-              `[MapController] Failed to parse feature ${featRecord.id} for layer ${descriptor.id}:`,
-              geomErr
-            );
+              if (!geometry) {
+                continue;
+              }
+
+              const feature = new Feature({
+                geometry,
+                ...(featRecord.properties || {}),
+              });
+              feature.setId(featRecord.id);
+
+              newFeatures.push(feature);
+            } catch (geomErr) {
+              console.warn(
+                `[MapController] Failed to parse feature ${featRecord.id} for layer ${descriptor.id}:`,
+                geomErr
+              );
+            }
           }
         }
 

@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
-import type { BoundingBox } from '@shared/types';
+import type { BoundingBox, QueryExtentOptions } from '@shared/types';
 import { GeospatialEngine } from './GeospatialEngine';
 import { projectStore } from '../project/ProjectStore';
 import type {
@@ -210,7 +210,9 @@ export class GeospatialService {
   private spawnWorkerInstance(): void {
     if (this.options.mockWorkerFactory) {
       this.worker = this.options.mockWorkerFactory();
-      this.bindWorkerEvents(this.worker);
+      if (this.worker) {
+        this.bindWorkerEvents(this.worker);
+      }
       return;
     }
 
@@ -226,12 +228,22 @@ export class GeospatialService {
    * @returns {void}
    */
   private bindWorkerEvents(worker: any): void {
+    if (!worker || typeof worker.on !== 'function') {
+      return;
+    }
+
     worker.on('message', (response: WorkerResponse) => {
       this.handleWorkerResponse(response);
     });
 
     worker.on('error', (err: any) => {
-      console.error('[GeospatialService] Geospatial worker error:', err);
+      console.error('[GeospatialService] Geospatial worker error:', err?.message || err?.type || err);
+      if (err?.location) {
+        console.error(`[GeospatialService] Worker fatal error location: ${err.location}`);
+      }
+      if (err?.report) {
+        console.error(`[GeospatialService] Worker diagnostic report:\n${err.report}`);
+      }
     });
 
     worker.stdout?.on('data', (data: any) => {
@@ -295,7 +307,9 @@ export class GeospatialService {
       if (pending.layerId) {
         this.circuitBreaker.delete(pending.layerId);
       }
-      this.consecutiveWorkerCrashes = 0;
+      if (pending.type !== 'rehydrate') {
+        this.consecutiveWorkerCrashes = 0;
+      }
       pending.resolve(response.result);
     } else {
       if (pending.layerId) {
@@ -337,36 +351,6 @@ export class GeospatialService {
       `[GeospatialService] Worker process exited unexpectedly (code ${code}); initiating auto-respawn...`
     );
 
-    // If excessive consecutive crashes occur before any successful recovery, abort to prevent infinite loops
-    if (this.consecutiveWorkerCrashes >= this.maxConsecutiveWorkerCrashes) {
-      console.error(
-        `[GeospatialService] Excessive consecutive worker crashes (${this.consecutiveWorkerCrashes}); aborting auto-respawn`
-      );
-      for (const pending of this.pendingRequests.values()) {
-        clearTimeout(pending.timer);
-        pending.reject(
-          new Error(`Worker process crashed repeatedly (code ${code}) while executing "${pending.type}"`)
-        );
-      }
-      this.pendingRequests.clear();
-      return;
-    }
-
-    const canRespawn =
-      Boolean(this.options.mockWorkerFactory) ||
-      Boolean(!this.options.forceInProcess && this.resolvedWorkerPath);
-
-    if (!canRespawn) {
-      for (const pending of this.pendingRequests.values()) {
-        clearTimeout(pending.timer);
-        pending.reject(
-          new Error(`Worker process exited unexpectedly (code ${code}) while executing "${pending.type}"`)
-        );
-      }
-      this.pendingRequests.clear();
-      return;
-    }
-
     // Classify pending requests: track circuit breaker on layer queries and determine retries
     const toRetry: PendingRequestEntry[] = [];
 
@@ -378,13 +362,17 @@ export class GeospatialService {
         const failures = (this.circuitBreaker.get(pending.layerId) || 0) + 1;
         this.circuitBreaker.set(pending.layerId, failures);
 
+        console.warn(
+          `[GeospatialService] Failure ${failures}/${this.maxConsecutiveFailures} recorded for layer "${pending.layerId}" (Worker process exited unexpectedly with code ${code} during "${pending.type}")`
+        );
+
         if (failures >= this.maxConsecutiveFailures) {
           console.error(
-            `[GeospatialService] Circuit breaker tripped for layer "${pending.layerId}" after ${failures} consecutive failures`
+            `[GeospatialService] Circuit breaker tripped for layer "${pending.layerId}" after ${failures} consecutive failures (last error: exit code ${code} during "${pending.type}")`
           );
           pending.reject(
             new Error(
-              `Query failed: circuit breaker tripped after ${failures} consecutive failures for layer "${pending.layerId}"`
+              `Query failed: circuit breaker tripped after ${failures} consecutive failures for layer "${pending.layerId}" (Worker process exited unexpectedly with code ${code})`
             )
           );
           continue;
@@ -394,20 +382,129 @@ export class GeospatialService {
       toRetry.push(pending);
     }
 
-    // Spawn new worker synchronously so this.worker is immediately available
-    this.spawnWorkerInstance();
+    // If excessive consecutive crashes occur before any successful recovery, abort worker auto-respawn and activate in-process fallback
+    if (this.consecutiveWorkerCrashes >= this.maxConsecutiveWorkerCrashes) {
+      console.warn(
+        `[GeospatialService] Worker crash threshold reached (${this.consecutiveWorkerCrashes}/${this.maxConsecutiveWorkerCrashes}); aborting worker respawn and activating in-process GeospatialEngine fallback.`
+      );
+      this.readyPromise = this.activateInProcessFallback(toRetry);
+      return;
+    }
 
-    if (!this.worker) {
+    const canRespawn =
+      Boolean(this.options.mockWorkerFactory) ||
+      Boolean(!this.options.forceInProcess && this.resolvedWorkerPath);
+
+    if (!canRespawn) {
       for (const pending of toRetry) {
         pending.reject(
-          new Error(`Failed to respawn geospatial worker process after exit code ${code}`)
+          new Error(`Worker process exited unexpectedly (code ${code}) while executing "${pending.type}"`)
         );
       }
       return;
     }
 
+    // Spawn new worker synchronously so this.worker is immediately available
+    this.spawnWorkerInstance();
+
+    if (!this.worker) {
+      console.warn(
+        `[GeospatialService] Failed to respawn geospatial worker process after exit code ${code}; activating in-process GeospatialEngine fallback.`
+      );
+      this.readyPromise = this.activateInProcessFallback(toRetry);
+      return;
+    }
+
     // Auto-respawn worker, rehydrate open layers, and retry in-flight queries
     this.readyPromise = this.respawnAndRehydrate(toRetry, code);
+  }
+
+  /**
+   * @description Activates the in-process GeospatialEngine fallback when the background utility process repeatedly crashes or cannot be spawned. Rehydrates active layers into the in-process engine, transparently retries pending requests in-process, and restores service readiness.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-16
+   * @updated 2026-10-16
+   * @since 0.1.0-dev
+   * @private
+   * @param {PendingRequestEntry[]} [toRetry] - Optional list of in-flight requests interrupted by worker failure.
+   * @returns {Promise<void>}
+   */
+  private async activateInProcessFallback(toRetry: PendingRequestEntry[] = []): Promise<void> {
+    console.warn(
+      '[GeospatialService] Activating in-process GeospatialEngine fallback following worker process failure; Workbench operations will continue in-process.'
+    );
+
+    if (this.worker) {
+      try {
+        this.worker.kill();
+      } catch {
+        // Suppress process kill errors
+      }
+      this.worker = null;
+    }
+
+    if (!this.engine) {
+      this.engine = new GeospatialEngine();
+    }
+
+    // Consolidate active layer file paths from internal activeLayers map and ProjectStore
+    const layersToRehydrate = new Map<string, string>(this.activeLayers);
+
+    if (projectStore && typeof projectStore.hasProject === 'function' && projectStore.hasProject()) {
+      const root = projectStore.getRootGroup();
+      const collectLayers = (group: any) => {
+        if (!group || typeof group.getAllChildren !== 'function') return;
+        for (const child of group.getAllChildren()) {
+          if (child && child.filePath && child.id) {
+            layersToRehydrate.set(child.id, child.filePath);
+          }
+          if (child && typeof child.getAllChildren === 'function') {
+            collectLayers(child);
+          }
+        }
+      };
+      collectLayers(root);
+    }
+
+    if (layersToRehydrate.size > 0) {
+      const specs: RehydrateLayerSpec[] = Array.from(layersToRehydrate.entries()).map(
+        ([layerId, filePath]) => ({ layerId, filePath })
+      );
+      console.log(`[GeospatialService] Rehydrating ${specs.length} layer(s) into in-process fallback engine...`);
+      try {
+        const rehydrateRes = await this.engine.rehydrate(specs);
+        for (const spec of specs) {
+          if (rehydrateRes.rehydrated.includes(spec.layerId)) {
+            this.activeLayers.set(spec.layerId, spec.filePath);
+          }
+        }
+        if (rehydrateRes.failed && rehydrateRes.failed.length > 0) {
+          console.warn(
+            '[GeospatialService] Some layers failed to rehydrate into fallback engine:',
+            rehydrateRes.failed
+          );
+        }
+      } catch (rehydrateErr) {
+        console.warn('[GeospatialService] In-process layer rehydration error:', rehydrateErr);
+      }
+    }
+
+    this.isReady = true;
+
+    // Transparently execute pending requests against the in-process fallback engine
+    for (const pending of toRetry) {
+      if (this.isDisposed) {
+        pending.reject(new Error('GeospatialService has been disposed'));
+        continue;
+      }
+
+      try {
+        const result = await this.executeInProcess(pending.req);
+        pending.resolve(result);
+      } catch (err) {
+        pending.reject(err);
+      }
+    }
   }
 
   /**
@@ -485,11 +582,9 @@ export class GeospatialService {
         }
       }
     } catch (err: any) {
-      console.error('[GeospatialService] Worker recovery and rehydration failed:', err);
-      for (const pending of toRetry) {
-        this.pendingRequests.delete(pending.id);
-        pending.reject(err);
-      }
+      console.error('[GeospatialService] Worker recovery and rehydration failed; activating in-process fallback:', err);
+      this.readyPromise = this.activateInProcessFallback(toRetry);
+      await this.readyPromise;
     }
   }
 
@@ -617,13 +712,15 @@ export class GeospatialService {
           break;
 
         case 'queryExtent': {
+          const queryOptions = req.options ?? req.extent;
           const queryRes = await this.engine.queryExtent(
             req.layerId,
-            req.extent,
+            queryOptions,
             req.targetProjection
           );
           result = {
             layerId: queryRes.layerId,
+            buffer: queryRes.buffer,
             features: queryRes.features
           };
           break;
@@ -705,19 +802,21 @@ export class GeospatialService {
    * @description Queries spatial feature slices intersecting an extent bounding box.
    * Resets circuit breaker failure count on success.
    * @param {string} layerId - Unique layer identifier.
-   * @param {BoundingBox} [extent] - Geographic or projected query bounding box.
+   * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or bounding box [minX, minY, maxX, maxY].
    * @param {string} [targetProjection] - Input CRS authority (e.g. "EPSG:3857").
    * @param {number} [timeoutMs] - Optional timeout override.
    * @returns {Promise<GeospatialQueryResult>} Collection of intersecting features with WKB buffers.
    */
   public async queryExtent(
     layerId: string,
-    extent?: BoundingBox,
+    options?: QueryExtentOptions | BoundingBox,
     targetProjection?: string,
     timeoutMs?: number
   ): Promise<GeospatialQueryResult> {
+    const extent = Array.isArray(options) ? options : options?.extent;
+    const proj = Array.isArray(options) ? targetProjection : (options?.targetProjection ?? targetProjection);
     return this.sendRequest<GeospatialQueryResult>(
-      { type: 'queryExtent', layerId, extent, targetProjection },
+      { type: 'queryExtent', layerId, options, extent, targetProjection: proj },
       timeoutMs
     );
   }

@@ -10,24 +10,24 @@
  * @see {@link QueryExtentResult}
  */
 
-import type { BoundingBox, QueryExtentResult } from '@shared/types';
+import type { BoundingBox, QueryExtentOptions, QueryExtentBinaryResult, QueryExtentResult } from '@shared/types';
 import { geospatialService } from '../../worker/GeospatialService';
 
 /**
- * @description Executes a spatial query against a layer session via GeospatialService, streaming intersecting features as binary OGC WKB buffers.
+ * @description Executes a spatial query against a layer session via GeospatialService, streaming the contiguous binary WKB packet buffer across IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
  * @updated 2026-10-16
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier.
- * @param {BoundingBox} [extent] - Optional query bounding box [minX, minY, maxX, maxY].
+ * @param {QueryExtentOptions | BoundingBox} [options] - Optional query options or bounding box [minX, minY, maxX, maxY].
  * @param {string} [targetProjection] - Optional CRS authority of the input bounding box (e.g. "EPSG:3857").
- * @returns {Promise<QueryExtentResult>} Layer ID and collection of intersecting spatial feature records.
+ * @returns {Promise<QueryExtentBinaryResult | QueryExtentResult>} Layer ID and contiguous binary WKB feature packet buffer.
  */
 export async function queryExtent(
   layerId: string,
-  extent?: BoundingBox,
+  options?: QueryExtentOptions | BoundingBox,
   targetProjection?: string
-): Promise<QueryExtentResult> {
-  return await geospatialService.queryExtent(layerId, extent, targetProjection);
+): Promise<QueryExtentBinaryResult & QueryExtentResult> {
+  return (await geospatialService.queryExtent(layerId, options, targetProjection)) as any;
 }

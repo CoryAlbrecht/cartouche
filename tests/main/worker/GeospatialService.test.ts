@@ -555,3 +555,157 @@ describe('GeospatialService Worker Crash Recovery, Rehydration & Circuit Breaker
     service.dispose();
   });
 });
+
+describe('GeospatialService In-Process Engine Fallback on Repeated Crashes', () => {
+  it('activates in-process GeospatialEngine fallback upon exceeding maxConsecutiveWorkerCrashes and rehydrates open layers', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveWorkerCrashes: 2,
+      defaultTimeoutMs: 2000
+    });
+
+    assert.equal(spawnedWorkers.length, 1);
+    const worker1 = spawnedWorkers[0];
+
+    // Open real dataset on worker 1
+    const openPromise = service.openDataset('fallback-lake', lakesGeoJsonPath);
+    assert.equal(worker1.messages.length, 1);
+    worker1.replySuccess(worker1.messages[0].id, {
+      layerId: 'fallback-lake',
+      name: 'lakes',
+      extent: [-180, -90, 180, 90],
+      featureCount: 1200,
+      geometryKind: 'Polygon'
+    });
+    await openPromise;
+
+    assert.deepEqual(service.getActiveLayerIds(), ['fallback-lake']);
+    assert.equal(service.isInProcessFallback(), false);
+    assert.equal(service.isUtilityProcessActive(), true);
+
+    // Crash 1: Auto-respawn occurs (1 crash out of 2)
+    worker1.emit('exit', 139);
+    assert.equal(spawnedWorkers.length, 2);
+    assert.equal(service.getConsecutiveWorkerCrashes(), 1);
+
+    const worker2 = spawnedWorkers[1];
+    // Complete rehydrate on worker 2
+    const rehydrateMsg = worker2.messages.find((m) => m.type === 'rehydrate');
+    assert.ok(rehydrateMsg);
+    worker2.replySuccess(rehydrateMsg.id, { rehydrated: ['fallback-lake'], failed: [] });
+
+    // Allow microtasks to complete rehydration
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // Crash 2: Exceeds maxConsecutiveWorkerCrashes (2 >= 2) -> Activates in-process fallback!
+    worker2.emit('exit', 139);
+
+    // Ensure worker auto-respawn stopped
+    assert.equal(spawnedWorkers.length, 2);
+    assert.equal(service.isUtilityProcessActive(), false);
+    assert.equal(service.isInProcessFallback(), true);
+
+    // Verify active layer was rehydrated in-process and can be queried directly
+    const queryResult = await service.queryExtent('fallback-lake', [-100, 40, -80, 50]);
+    assert.equal(queryResult.layerId, 'fallback-lake');
+    assert.ok(queryResult.features.length > 0);
+
+    // Verify subsequent openDataset operates in-process seamlessly
+    const meta2 = await service.openDataset('fallback-shp', lakesShpPath);
+    assert.equal(meta2.layerId, 'fallback-shp');
+    assert.equal(meta2.geometryKind, 'Polygon');
+
+    service.dispose();
+  });
+
+  it('transparently executes in-flight pending queries against fallback engine when crash threshold is reached', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveWorkerCrashes: 1,
+      defaultTimeoutMs: 2000
+    });
+
+    // Seed active layer
+    const openP = service.openDataset('lake-inflight', lakesGeoJsonPath);
+    // Worker 1 replies
+    spawnedWorkers[0].replySuccess(spawnedWorkers[0].messages[0].id, {
+      layerId: 'lake-inflight',
+      name: 'lakes',
+      extent: [-180, -90, 180, 90],
+      featureCount: 1200,
+      geometryKind: 'Polygon'
+    });
+    await openP;
+
+    // Launch in-flight query
+    const inflightQueryPromise = service.queryExtent('lake-inflight', [-100, 40, -80, 50]);
+    assert.equal(service.getPendingCount(), 1);
+
+    // Crash 1: Immediately hits crash threshold (1 >= 1) -> Fallback executes inflight query
+    spawnedWorkers[0].emit('exit', 139);
+
+    const result = await inflightQueryPromise;
+    assert.equal(result.layerId, 'lake-inflight');
+    assert.ok(result.features.length > 0);
+    assert.equal(service.isInProcessFallback(), true);
+    assert.equal(service.isUtilityProcessActive(), false);
+
+    service.dispose();
+  });
+
+  it('activates in-process fallback when worker factory fails to produce a worker on respawn', async () => {
+    let spawnCount = 0;
+    const mockWorkerFactory = () => {
+      spawnCount++;
+      if (spawnCount > 1) {
+        return null;
+      }
+      return new MockWorker();
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      defaultTimeoutMs: 2000
+    });
+
+    // Open dataset
+    const pOpen = service.openDataset('lake-spawn-fail', lakesGeoJsonPath);
+    (service as any).worker.replySuccess((service as any).worker.messages[0].id, {
+      layerId: 'lake-spawn-fail',
+      name: 'lakes',
+      extent: [-180, -90, 180, 90],
+      featureCount: 1200,
+      geometryKind: 'Polygon'
+    });
+    await pOpen;
+
+    // Crash worker: respawn factory returns null
+    (service as any).worker.emit('exit', 1);
+
+    // Service falls back to in-process engine
+    assert.equal(service.isInProcessFallback(), true);
+    assert.equal(service.isUtilityProcessActive(), false);
+
+    // Query succeeds on fallback engine
+    const res = await service.queryExtent('lake-spawn-fail');
+    assert.equal(res.layerId, 'lake-spawn-fail');
+    assert.equal(res.features.length, 1200);
+
+    service.dispose();
+  });
+});
+

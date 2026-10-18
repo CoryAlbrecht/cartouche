@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -543,8 +543,8 @@ app.whenReady().then(async () => {
     await addLayers(layers);
   });
 
-  handleIpc('layers:queryExtent', async (_event, layerId: string, extent?: any, targetProjection?: string) => {
-    return await queryExtent(layerId, extent, targetProjection);
+  handleIpc('layers:queryExtent', async (_event, layerId: string, options?: any, targetProjection?: string) => {
+    return await queryExtent(layerId, options, targetProjection);
   });
 
   handleIpc('gis:path-exists', async (_event, filePath: string) => {

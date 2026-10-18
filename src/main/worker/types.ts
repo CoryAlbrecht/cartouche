@@ -8,7 +8,13 @@
  * @since 0.1.0-dev
  */
 
-import type { BoundingBox, GeometryKind, ProjectCrs, QueryExtentFeature } from '@shared/types';
+import type {
+  BoundingBox,
+  GeometryKind,
+  ProjectCrs,
+  QueryExtentFeature,
+  QueryExtentOptions
+} from '@shared/types';
 
 
 /**
@@ -33,10 +39,18 @@ export interface GeospatialLayerMetadata {
  * @typedef {Object} GeospatialQueryResult
  * @property {string} layerId - Unique layer identifier.
  * @property {QueryExtentFeature[]} features - Intersecting spatial feature records.
+ * @property {ArrayBuffer} [buffer] - Contiguous binary WKB feature packet buffer.
+ * @property {Uint8Array} [packedFeatures] - Legacy packed binary features buffer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-15
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
  */
 export interface GeospatialQueryResult {
   layerId: string;
   features: QueryExtentFeature[];
+  buffer?: ArrayBuffer;
+  packedFeatures?: Uint8Array;
 }
 
 /**
@@ -78,13 +92,19 @@ export interface OpenDatasetRequest {
  * @property {string} id - Unique correlation identifier.
  * @property {'queryExtent'} type - Request message discriminator.
  * @property {string} layerId - Target layer UUID.
- * @property {BoundingBox} [extent] - Spatial query bounding box extent.
+ * @property {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy bounding box extent.
+ * @property {BoundingBox} [extent] - Legacy spatial query bounding box extent.
  * @property {string} [targetProjection] - Coordinate reference system of input bounding box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-15
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
  */
 export interface QueryExtentRequest {
   id: string;
   type: 'queryExtent';
   layerId: string;
+  options?: QueryExtentOptions | BoundingBox;
   extent?: BoundingBox;
   targetProjection?: string;
 }

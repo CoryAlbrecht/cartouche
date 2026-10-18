@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  */
 
@@ -238,3 +238,76 @@ export interface QueryExtentResult {
   layerId: string;
   features: QueryExtentFeature[];
 }
+
+/**
+ * Magic 32-bit integer identifier for contiguous binary WKB feature packets (ASCII "CART" = 0x43415254).
+ * @constant {number}
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ */
+export const WKB_PACKET_MAGIC = 0x43415254;
+
+/**
+ * Binary WKB feature packet protocol specification version number.
+ * @constant {number}
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ */
+export const WKB_PACKET_VERSION = 1;
+
+/**
+ * Bitmask flag indicating that the binary feature packet contains geometry payloads.
+ * @constant {number}
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ */
+export const WKB_FLAG_HAS_GEOMETRY = 0x01;
+
+/**
+ * Bitmask flag indicating that the binary feature packet contains property attribute payloads.
+ * @constant {number}
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ */
+export const WKB_FLAG_HAS_PROPERTIES = 0x02;
+
+/**
+ * @typedef {Object} QueryExtentOptions
+ * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box filter.
+ * @property {string} [targetProjection] - Target coordinate reference system (e.g. "EPSG:3857").
+ * @property {boolean} [includeGeometry] - Whether to extract and include OGC WKB geometry bytes (defaults to true).
+ * @property {string[]} [fields] - Attribute column projection list: undefined for all, [] for none (FID only), or specific keys.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ */
+export interface QueryExtentOptions {
+  extent?: BoundingBox;
+  targetProjection?: string;
+  includeGeometry?: boolean;
+  fields?: string[];
+}
+
+/**
+ * @typedef {Object} QueryExtentBinaryResult
+ * @property {string} layerId - Unique layer identifier.
+ * @property {ArrayBuffer} buffer - Contiguous binary WKB feature packet buffer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ */
+export interface QueryExtentBinaryResult {
+  layerId: string;
+  buffer: ArrayBuffer;
+}
+

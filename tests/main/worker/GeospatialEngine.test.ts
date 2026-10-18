@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -20,7 +20,13 @@ import {
   getSrsAuthority,
   reprojectBoundingBox
 } from '../../../src/main/worker/GeospatialEngine';
-import type { BoundingBox } from '../../../src/shared/types';
+import type { BoundingBox, QueryExtentOptions } from '../../../src/shared/types';
+import {
+  WKB_PACKET_MAGIC,
+  WKB_PACKET_VERSION,
+  WKB_FLAG_HAS_GEOMETRY,
+  WKB_FLAG_HAS_PROPERTIES
+} from '../../../src/shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,12 +106,12 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     const result = await engine.queryExtent('lakes-shp-1');
     assert.equal(result.layerId, 'lakes-shp-1');
     assert.equal(result.features.length, 1353);
-    assert.equal(result.transferList.length, 1353);
+    assert.equal(result.transferList.length, 1, 'Transfer list must contain exactly 1 contiguous packet buffer');
+    assert.deepEqual(result.transferList, [result.buffer]);
 
     const first = result.features[0];
     assert.ok(first.wkb instanceof Uint8Array, 'Feature geometry must be a Uint8Array');
     assert.ok(first.wkb.byteLength > 0, 'WKB buffer must have non-zero length');
-    assert.ok(result.transferList.includes(first.wkb.buffer as ArrayBuffer), 'Transfer list must include backing ArrayBuffer');
 
     // Verify OpenLayers parses the WKB buffer into an OL geometry cleanly
     const olWkb = new WKB();
@@ -188,4 +194,153 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     assert.equal(engine.hasDataset('layer-bad'), false);
   });
 });
+
+describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
+  let engine: GeospatialEngine;
+  const wkbFormat = new WKB();
+
+  beforeEach(async () => {
+    engine = new GeospatialEngine();
+    await engine.openDataset('lakes-bin-test', lakesShpPath);
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+  });
+
+  it('formats spatial features into a compliant contiguous ArrayBuffer packet conforming to ADR 0004 header', async () => {
+    const queryBbox: BoundingBox = [-100, 40, -80, 50];
+    const result = await engine.queryExtent('lakes-bin-test', queryBbox);
+
+    assert.ok(result.buffer instanceof ArrayBuffer);
+    assert.ok(result.buffer.byteLength > 12);
+    assert.deepEqual(result.transferList, [result.buffer]);
+
+    const view = new DataView(result.buffer);
+    const magic = view.getUint32(0, true);
+    const version = view.getUint16(4, true);
+    const flags = view.getUint16(6, true);
+    const featureCount = view.getUint32(8, true);
+
+    assert.equal(magic, WKB_PACKET_MAGIC, 'Magic bytes must equal 0x43415254 (ASCII "CART")');
+    assert.equal(version, WKB_PACKET_VERSION, 'Version must equal 1');
+    assert.equal(flags, WKB_FLAG_HAS_GEOMETRY | WKB_FLAG_HAS_PROPERTIES);
+    assert.equal(featureCount, 34, 'Expected 34 features in bounding box');
+
+    // Parse sequential records
+    let offset = 12;
+    const decoder = new TextDecoder();
+    for (let i = 0; i < featureCount; i++) {
+      const fid = view.getBigInt64(offset, true);
+      assert.ok(fid >= 0n, 'FID must be non-negative BigInt');
+      offset += 8;
+
+      const wkbLen = view.getUint32(offset, true);
+      assert.ok(wkbLen > 0, 'Geometry WKB length must be positive');
+      offset += 4;
+
+      const wkbSlice = new Uint8Array(result.buffer, offset, wkbLen);
+      const geom = wkbFormat.readGeometry(wkbSlice);
+      assert.ok(geom, 'OpenLayers WKB reader must parse geometry');
+      assert.ok(geom.getType().includes('Polygon'), 'Geometry type should be Polygon or MultiPolygon');
+      offset += wkbLen;
+
+      const propsLen = view.getUint32(offset, true);
+      assert.ok(propsLen > 0, 'Properties length must be positive');
+      offset += 4;
+
+      const propsBytes = new Uint8Array(result.buffer, offset, propsLen);
+      const props = JSON.parse(decoder.decode(propsBytes));
+      assert.ok(typeof props === 'object' && props !== null);
+      assert.ok('name' in props || 'NAME' in props);
+      offset += propsLen;
+    }
+
+    assert.equal(offset, result.buffer.byteLength, 'Offset must match exact buffer byteLength');
+  });
+
+  it('omits geometry bytes when includeGeometry is false', async () => {
+    const options: QueryExtentOptions = {
+      extent: [-100, 40, -80, 50],
+      includeGeometry: false
+    };
+
+    const result = await engine.queryExtent('lakes-bin-test', options);
+    const view = new DataView(result.buffer);
+    const flags = view.getUint16(6, true);
+    const count = view.getUint32(8, true);
+
+    assert.equal(flags & WKB_FLAG_HAS_GEOMETRY, 0, 'FLAG_HAS_GEOMETRY must be unset');
+    assert.equal(count, 34);
+
+    let offset = 12;
+    for (let i = 0; i < count; i++) {
+      offset += 8; // fid
+      const wkbLen = view.getUint32(offset, true);
+      assert.equal(wkbLen, 0, 'wkbLength must be 0 when geometry is omitted');
+      offset += 4;
+      const propsLen = view.getUint32(offset, true);
+      assert.ok(propsLen > 0);
+      offset += 4 + propsLen;
+    }
+
+    assert.equal(offset, result.buffer.byteLength);
+  });
+
+  it('omits properties when fields is an empty array', async () => {
+    const options: QueryExtentOptions = {
+      extent: [-100, 40, -80, 50],
+      fields: []
+    };
+
+    const result = await engine.queryExtent('lakes-bin-test', options);
+    const view = new DataView(result.buffer);
+    const flags = view.getUint16(6, true);
+    const count = view.getUint32(8, true);
+
+    assert.equal(flags & WKB_FLAG_HAS_PROPERTIES, 0, 'FLAG_HAS_PROPERTIES must be unset');
+    assert.equal(count, 34);
+
+    let offset = 12;
+    for (let i = 0; i < count; i++) {
+      offset += 8; // fid
+      const wkbLen = view.getUint32(offset, true);
+      assert.ok(wkbLen > 0);
+      offset += 4 + wkbLen;
+      const propsLen = view.getUint32(offset, true);
+      assert.equal(propsLen, 0, 'propsLength must be 0 when fields is empty array');
+      offset += 4;
+    }
+
+    assert.equal(offset, result.buffer.byteLength);
+  });
+
+  it('projects only requested attribute keys when fields list is provided', async () => {
+    const options: QueryExtentOptions = {
+      extent: [-100, 40, -80, 50],
+      fields: ['name']
+    };
+
+    const result = await engine.queryExtent('lakes-bin-test', options);
+    const view = new DataView(result.buffer);
+    const count = view.getUint32(8, true);
+    const decoder = new TextDecoder();
+
+    let offset = 12;
+    for (let i = 0; i < count; i++) {
+      offset += 8; // fid
+      const wkbLen = view.getUint32(offset, true);
+      offset += 4 + wkbLen;
+
+      const propsLen = view.getUint32(offset, true);
+      offset += 4;
+      const propsBytes = new Uint8Array(result.buffer, offset, propsLen);
+      const props = JSON.parse(decoder.decode(propsBytes));
+
+      assert.deepEqual(Object.keys(props), ['name'], 'Properties must only contain requested field');
+      offset += propsLen;
+    }
+  });
+});
+
 

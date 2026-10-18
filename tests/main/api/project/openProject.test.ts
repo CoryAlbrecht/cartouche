@@ -87,6 +87,8 @@ describe('openProject Native Session Hydration', () => {
     assert.equal(extentResult.layerId, 'test-lake-layer');
     assert.equal(extentResult.features.length, 34);
     assert.ok(extentResult.features[0].wkb instanceof Uint8Array);
+    assert.ok(extentResult.buffer instanceof ArrayBuffer);
+    assert.equal(new DataView(extentResult.buffer).getUint32(0, true), 0x43415254);
   });
 
   it('loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors', async () => {
@@ -100,21 +102,29 @@ describe('openProject Native Session Hydration', () => {
     const l0Result = await queryExtent('timeline_level_0_yaol', [-180, -90, 180, 90]);
     assert.equal(l0Result.layerId, 'timeline_level_0_yaol');
     assert.equal(l0Result.features.length, 0, 'L0 has 0 features');
+    assert.ok(l0Result.buffer instanceof ArrayBuffer);
+    assert.equal(new DataView(l0Result.buffer).getUint32(0, true), 0x43415254);
 
     // Query features from nested group layers
     const lakesResult = await queryExtent('ne_10m_lakes_9ssg', [-100, 40, -80, 50]);
     assert.equal(lakesResult.layerId, 'ne_10m_lakes_9ssg');
     assert.equal(lakesResult.features.length, 34);
     assert.ok(lakesResult.features[0].wkb instanceof Uint8Array);
+    assert.ok(lakesResult.buffer instanceof ArrayBuffer);
+    assert.equal(new DataView(lakesResult.buffer).getUint32(0, true), 0x43415254);
 
     const riversResult = await queryExtent('ne_10m_rivers_lake_centerline_scale_rank_ggcu', [-100, 40, -80, 50]);
     assert.equal(riversResult.layerId, 'ne_10m_rivers_lake_centerline_scale_rank_ggcu');
     assert.ok(riversResult.features.length > 0);
     assert.ok(riversResult.features[0].wkb instanceof Uint8Array);
+    assert.ok(riversResult.buffer instanceof ArrayBuffer);
+    assert.equal(new DataView(riversResult.buffer).getUint32(0, true), 0x43415254);
 
     const coastlinesResult = await queryExtent('ne_10m_coastline_w9bh');
     assert.equal(coastlinesResult.layerId, 'ne_10m_coastline_w9bh');
     assert.ok(coastlinesResult.features.length > 0);
     assert.ok(coastlinesResult.features[0].wkb instanceof Uint8Array);
+    assert.ok(coastlinesResult.buffer instanceof ArrayBuffer);
+    assert.equal(new DataView(coastlinesResult.buffer).getUint32(0, true), 0x43415254);
   });
 });

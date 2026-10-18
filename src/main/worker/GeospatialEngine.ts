@@ -4,20 +4,32 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
  */
 
-import * as path from 'node:path';
-import gdal from 'gdal-async';
-import type { BoundingBox, GeometryKind, ProjectCrs, QueryExtentFeature } from '@shared/types';
+import * as path from "node:path";
+import gdal from "gdal-async";
+import type {
+  BoundingBox,
+  GeometryKind,
+  ProjectCrs,
+  QueryExtentFeature,
+  QueryExtentOptions,
+} from "../../shared/types";
+import {
+  WKB_PACKET_MAGIC,
+  WKB_PACKET_VERSION,
+  WKB_FLAG_HAS_GEOMETRY,
+  WKB_FLAG_HAS_PROPERTIES,
+} from "../../shared/types";
 import type {
   GeospatialLayerMetadata,
   RehydrateLayerSpec,
-  RehydrateResult
-} from './types';
+  RehydrateResult,
+} from "./types";
 
 /**
  * @typedef {Object} EngineSession
@@ -42,16 +54,16 @@ interface EngineSession {
  */
 export function mapGdalGeometryKind(geomType?: number): GeometryKind {
   if (geomType === undefined) {
-    return 'Polygon';
+    return "Polygon";
   }
   const baseType = (geomType & 0x7fffffff) % 1000;
   if (baseType === 1 || baseType === 4) {
-    return 'Point';
+    return "Point";
   }
   if (baseType === 2 || baseType === 5) {
-    return 'LineString';
+    return "LineString";
   }
-  return 'Polygon';
+  return "Polygon";
 }
 
 /**
@@ -68,13 +80,11 @@ export function getSrsAuthority(srs?: gdal.SpatialReference): string | null {
     return null;
   }
   const code =
-    srs.getAuthorityCode('PROJCS') ||
-    srs.getAuthorityCode('GEOGCS') ||
-    srs.getAuthorityCode(null);
+    srs.getAuthorityCode("PROJCS")
+    || srs.getAuthorityCode("GEOGCS")
+    || srs.getAuthorityCode(null);
   const name =
-    srs.getAuthorityName('PROJCS') ||
-    srs.getAuthorityName('GEOGCS') ||
-    'EPSG';
+    srs.getAuthorityName("PROJCS") || srs.getAuthorityName("GEOGCS") || "EPSG";
 
   return code ? `${name}:${code}`.toUpperCase() : null;
 }
@@ -100,7 +110,10 @@ export function reprojectBoundingBox(
   try {
     sourceSrs = gdal.SpatialReference.fromUserInput(sourceProjection);
   } catch (err) {
-    console.warn(`[GeospatialEngine] Invalid sourceProjection "${sourceProjection}", using extent as-is:`, err);
+    console.warn(
+      `[GeospatialEngine] Invalid sourceProjection "${sourceProjection}", using extent as-is:`,
+      err
+    );
     return extent;
   }
 
@@ -110,7 +123,7 @@ export function reprojectBoundingBox(
       transform.transformPoint(minX, minY),
       transform.transformPoint(maxX, minY),
       transform.transformPoint(maxX, maxY),
-      transform.transformPoint(minX, maxY)
+      transform.transformPoint(minX, maxY),
     ];
 
     const xs = corners.map((p) => p.x).filter((x) => !isNaN(x) && isFinite(x));
@@ -120,14 +133,12 @@ export function reprojectBoundingBox(
       return extent;
     }
 
-    return [
-      Math.min(...xs),
-      Math.min(...ys),
-      Math.max(...xs),
-      Math.max(...ys)
-    ];
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   } catch (err) {
-    console.warn(`[GeospatialEngine] Failed to transform extent from "${sourceProjection}":`, err);
+    console.warn(
+      `[GeospatialEngine] Failed to transform extent from "${sourceProjection}":`,
+      err
+    );
     return extent;
   }
 }
@@ -151,94 +162,135 @@ export class GeospatialEngine {
    * @returns {Promise<GeospatialLayerMetadata>} Extracted layer descriptor metadata.
    * @throws {Error} If dataset cannot be opened or contains no vector layers.
    */
-  public async openDataset(layerId: string, filePath: string): Promise<GeospatialLayerMetadata> {
+  public async openDataset(
+    layerId: string,
+    filePath: string
+  ): Promise<GeospatialLayerMetadata> {
     if (this.sessions.has(layerId)) {
       this.closeDataset(layerId);
     }
 
-    const dataset = await gdal.openAsync(filePath);
-    if (dataset.layers.count() === 0) {
-      dataset.close();
-      throw new Error(`Vector dataset contains no layers: "${filePath}"`);
+    let dataset: gdal.Dataset;
+    try {
+      dataset = await gdal.openAsync(filePath);
+    } catch (openErr: any) {
+      console.error(
+        `[GeospatialEngine] Failed to open dataset at "${filePath}":`,
+        openErr
+      );
+      throw openErr;
+    }
+
+    try {
+      if (dataset.layers.count() === 0) {
+        dataset.close();
+        throw new Error(`Vector dataset contains no layers: "${filePath}"`);
+      }
+    } catch (countErr: any) {
+      try {
+        dataset.close();
+      } catch {
+        // Suppress secondary close error
+      }
+      console.error(
+        `[GeospatialEngine] Error inspecting layers for "${filePath}":`,
+        countErr
+      );
+      throw countErr;
     }
 
     const layer = dataset.layers.get(0);
     this.sessions.set(layerId, { dataset, layer, filePath });
 
     const rawName = layer.name?.trim();
-    const name = rawName && rawName.length > 0 ? rawName : path.basename(filePath);
+    const name =
+      rawName && rawName.length > 0 ? rawName : path.basename(filePath);
 
     let featureCount = 0;
     try {
       featureCount = layer.features.count();
     } catch (err) {
-      console.warn(`[GeospatialEngine] Failed to read feature count for "${layerId}":`, err);
+      console.warn(
+        `[GeospatialEngine] Failed to read feature count for "${layerId}":`,
+        err
+      );
     }
 
     const extent: BoundingBox = [0, 0, 0, 0];
-    try {
-      const env = layer.getExtent();
-      if (env) {
-        extent[0] = env.minX;
-        extent[1] = env.minY;
-        extent[2] = env.maxX;
-        extent[3] = env.maxY;
+    if (featureCount > 0) {
+      try {
+        let env: any;
+        try {
+          env = layer.getExtent(false);
+        } catch {
+          // If bounding envelope is not pre-indexed in dataset header, force calculation across features
+          env = layer.getExtent(true);
+        }
+        if (env) {
+          extent[0] = env.minX;
+          extent[1] = env.minY;
+          extent[2] = env.maxX;
+          extent[3] = env.maxY;
+        }
+      } catch (err) {
+        console.warn(
+          `[GeospatialEngine] Failed to read or compute extent for "${layerId}":`,
+          err
+        );
       }
-    } catch (err) {
-      console.warn(`[GeospatialEngine] Failed to read extent for "${layerId}":`, err);
     }
 
     let crs: ProjectCrs | undefined;
     const srs = layer.srs;
-    if (srs && typeof srs.getAuthorityCode === 'function') {
+    if (srs && typeof srs.getAuthorityCode === "function") {
       const authCode =
-        srs.getAuthorityCode('PROJCS') ||
-        srs.getAuthorityCode('GEOGCS') ||
-        srs.getAuthorityCode(null);
+        srs.getAuthorityCode("PROJCS")
+        || srs.getAuthorityCode("GEOGCS")
+        || srs.getAuthorityCode(null);
       const authName =
-        srs.getAuthorityName('PROJCS') ||
-        srs.getAuthorityName('GEOGCS') ||
-        'EPSG';
+        srs.getAuthorityName("PROJCS")
+        || srs.getAuthorityName("GEOGCS")
+        || "EPSG";
 
       const wkt =
-        typeof (srs as any).toWKT === 'function'
-          ? (srs as any).toWKT()
-          : typeof (srs as any).toWkt === 'function'
-            ? (srs as any).toWkt()
-            : undefined;
+        typeof (srs as any).toWKT === "function" ? (srs as any).toWKT()
+        : typeof (srs as any).toWkt === "function" ? (srs as any).toWkt()
+        : undefined;
 
       crs = {
-        authId: authCode ? `${authName}:${authCode}` : 'EPSG:4326',
+        authId: authCode ? `${authName}:${authCode}` : "EPSG:4326",
         wkt,
-        proj4: typeof srs.toProj4 === 'function' ? srs.toProj4() : undefined
+        proj4: typeof srs.toProj4 === "function" ? srs.toProj4() : undefined,
       };
     }
 
     const geometryKind = mapGdalGeometryKind(layer.geomType);
 
-    return {
-      layerId,
-      name,
-      extent,
-      featureCount,
-      crs,
-      geometryKind
-    };
+    return { layerId, name, extent, featureCount, crs, geometryKind };
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, serializing features as OGC WKB buffers.
+   * @description Executes a spatial query against a cached layer session, serializing features as a contiguous binary WKB packet buffer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-15
+   * @updated 2026-10-16
+   * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
-   * @param {BoundingBox} [extent] - Query bounding box [minX, minY, maxX, maxY].
+   * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy bounding box [minX, minY, maxX, maxY].
    * @param {string} [targetProjection] - CRS authority of query bounding box (e.g. "EPSG:3857").
-   * @returns {Promise<{ layerId: string; features: QueryExtentFeature[]; transferList: ArrayBuffer[] }>} Query results and transferable ArrayBuffers.
+   * @returns {Promise<{ layerId: string; buffer: ArrayBuffer; features: QueryExtentFeature[]; transferList: ArrayBuffer[] }>} Query results, contiguous binary packet, and transferable ArrayBuffers.
    * @throws {Error} If no active session exists for the layer identifier.
    */
   public async queryExtent(
     layerId: string,
-    extent?: BoundingBox,
+    options?: QueryExtentOptions | BoundingBox,
     targetProjection?: string
-  ): Promise<{ layerId: string; features: QueryExtentFeature[]; transferList: ArrayBuffer[] }> {
+  ): Promise<{
+    layerId: string;
+    buffer: ArrayBuffer;
+    features: QueryExtentFeature[];
+    transferList: ArrayBuffer[];
+  }> {
     const session = this.sessions.get(layerId);
     if (!session) {
       throw new Error(`Layer session not found for layer UUID: "${layerId}"`);
@@ -252,78 +304,189 @@ export class GeospatialEngine {
 
       const { layer } = activeSession;
       try {
+        let extentBox: BoundingBox | undefined;
+        let proj: string | undefined = targetProjection;
+        let includeGeometry = true;
+        let fields: string[] | undefined = undefined;
+
+        if (Array.isArray(options)) {
+          extentBox = options;
+        } else if (options && typeof options === "object") {
+          extentBox = options.extent;
+          proj = options.targetProjection ?? targetProjection;
+          if (options.includeGeometry !== undefined) {
+            includeGeometry = options.includeGeometry;
+          }
+          fields = options.fields;
+        }
+
         let shouldFilter = false;
         let filterExtent: BoundingBox = [0, 0, 0, 0];
 
-        if (extent && Array.isArray(extent) && extent.length === 4) {
-          const [minX, minY, maxX, maxY] = extent;
+        if (extentBox && Array.isArray(extentBox) && extentBox.length === 4) {
+          const [minX, minY, maxX, maxY] = extentBox;
           if (
-            isFinite(minX) &&
-            isFinite(minY) &&
-            isFinite(maxX) &&
-            isFinite(maxY) &&
-            (minX !== 0 || minY !== 0 || maxX !== 0 || maxY !== 0)
+            isFinite(minX)
+            && isFinite(minY)
+            && isFinite(maxX)
+            && isFinite(maxY)
+            && (minX !== 0 || minY !== 0 || maxX !== 0 || maxY !== 0)
           ) {
             shouldFilter = true;
             filterExtent = [minX, minY, maxX, maxY];
 
-            if (targetProjection && layer.srs) {
+            if (proj && layer.srs) {
               const layerAuth = getSrsAuthority(layer.srs);
-              if (!layerAuth || targetProjection.toUpperCase() !== layerAuth) {
-                filterExtent = reprojectBoundingBox(filterExtent, targetProjection, layer.srs);
+              if (!layerAuth || proj.toUpperCase() !== layerAuth) {
+                filterExtent = reprojectBoundingBox(
+                  filterExtent,
+                  proj,
+                  layer.srs
+                );
               }
             }
           }
         }
 
         if (shouldFilter) {
-          layer.setSpatialFilter(filterExtent[0], filterExtent[1], filterExtent[2], filterExtent[3]);
+          layer.setSpatialFilter(
+            filterExtent[0],
+            filterExtent[1],
+            filterExtent[2],
+            filterExtent[3]
+          );
         } else {
           layer.setSpatialFilter(null);
         }
 
+        interface ExtractedRecord {
+          fid: bigint;
+          wkbBytes: Uint8Array | null;
+          propsBytes: Uint8Array | null;
+          properties: Record<string, unknown>;
+        }
+
+        const encoder = new TextEncoder();
+        const extracted: ExtractedRecord[] = [];
         const features: QueryExtentFeature[] = [];
-        const transferList: ArrayBuffer[] = [];
 
         layer.features.forEach((feature) => {
           try {
-            const geom = feature.getGeometry();
-            if (geom) {
-              let wkb: Uint8Array | undefined;
-              try {
-                const rawWkb = geom.toWKB();
-                const uint8 = new Uint8Array(rawWkb.byteLength);
-                uint8.set(rawWkb);
-                wkb = uint8;
-                transferList.push(uint8.buffer);
-              } catch {
-                // Conversion to WKB fallback
-              }
+            const fid = BigInt(feature.fid);
+            let wkbBytes: Uint8Array | null = null;
 
-              if (wkb) {
-                features.push({
-                  id: feature.fid,
-                  wkb,
-                  properties: feature.fields.toObject()
-                });
-              } else {
-                const jsonStr = geom.toJSON();
-                features.push({
-                  id: feature.fid,
-                  geojson: JSON.parse(jsonStr),
-                  properties: feature.fields.toObject()
-                });
+            if (includeGeometry) {
+              const geom = feature.getGeometry();
+              if (geom) {
+                try {
+                  const rawWkb = geom.toWKB();
+                  wkbBytes = new Uint8Array(
+                    rawWkb.buffer,
+                    rawWkb.byteOffset,
+                    rawWkb.byteLength
+                  );
+                } catch {
+                  // Fallback if WKB extraction fails
+                }
               }
             }
+
+            let propsBytes: Uint8Array | null = null;
+            let properties: Record<string, unknown> = {};
+
+            if (fields === undefined) {
+              properties = feature.fields.toObject();
+              propsBytes = encoder.encode(JSON.stringify(properties));
+            } else if (fields.length > 0) {
+              for (const f of fields) {
+                try {
+                  const val = feature.fields.get(f);
+                  if (val !== undefined) {
+                    properties[f] = val;
+                  }
+                } catch {
+                  // Field might not exist
+                }
+              }
+              propsBytes = encoder.encode(JSON.stringify(properties));
+            } else {
+              // fields === []: properties completely omitted
+              propsBytes = null;
+              properties = {};
+            }
+
+            extracted.push({ fid, wkbBytes, propsBytes, properties });
+
+            features.push({
+              id: feature.fid,
+              wkb: wkbBytes ?? undefined,
+              properties,
+            });
           } catch (featErr) {
-            console.warn(`[GeospatialEngine] Failed to extract geometry for feature ${feature.fid}:`, featErr);
+            console.warn(
+              `[GeospatialEngine] Failed to process feature ${feature.fid}:`,
+              featErr
+            );
           }
         });
 
+        let hasGeometry = false;
+        let hasProperties = false;
+        let totalSize = 12; // 12-byte header
+
+        for (const rec of extracted) {
+          const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
+          const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
+          if (wkbLen > 0) hasGeometry = true;
+          if (propsLen > 0) hasProperties = true;
+          // fid (8) + wkbLength (4) + W + propsLength (4) + P
+          totalSize += 8 + 4 + wkbLen + 4 + propsLen;
+        }
+
+        const flags =
+          (hasGeometry ? WKB_FLAG_HAS_GEOMETRY : 0)
+          | (hasProperties ? WKB_FLAG_HAS_PROPERTIES : 0);
+
+        const packetBuffer = new ArrayBuffer(totalSize);
+        const view = new DataView(packetBuffer);
+        const uint8View = new Uint8Array(packetBuffer);
+
+        // Header (12 bytes, Little-Endian)
+        view.setUint32(0, WKB_PACKET_MAGIC, true);
+        view.setUint16(4, WKB_PACKET_VERSION, true);
+        view.setUint16(6, flags, true);
+        view.setUint32(8, extracted.length, true);
+
+        let offset = 12;
+        for (const rec of extracted) {
+          // int64 fid (8 bytes)
+          view.setBigInt64(offset, rec.fid, true);
+          offset += 8;
+
+          // uint32 wkbLength (4 bytes)
+          const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
+          view.setUint32(offset, wkbLen, true);
+          offset += 4;
+          if (wkbLen > 0 && rec.wkbBytes) {
+            uint8View.set(rec.wkbBytes, offset);
+            offset += wkbLen;
+          }
+
+          // uint32 propsLength (4 bytes)
+          const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
+          view.setUint32(offset, propsLen, true);
+          offset += 4;
+          if (propsLen > 0 && rec.propsBytes) {
+            uint8View.set(rec.propsBytes, offset);
+            offset += propsLen;
+          }
+        }
+
         return {
           layerId,
+          buffer: packetBuffer,
           features,
-          transferList
+          transferList: [packetBuffer],
         };
       } finally {
         try {
@@ -350,11 +513,14 @@ export class GeospatialEngine {
     this.queues.delete(layerId);
 
     try {
-      if (session.dataset && typeof session.dataset.close === 'function') {
+      if (session.dataset && typeof session.dataset.close === "function") {
         session.dataset.close();
       }
     } catch (err) {
-      console.warn(`[GeospatialEngine] Failed to close dataset for "${layerId}":`, err);
+      console.warn(
+        `[GeospatialEngine] Failed to close dataset for "${layerId}":`,
+        err
+      );
     }
 
     return true;
@@ -377,7 +543,9 @@ export class GeospatialEngine {
    * @param {RehydrateLayerSpec[]} layers - Array of layer specifications to load.
    * @returns {Promise<RehydrateResult>} Collection of succeeded and failed layer IDs.
    */
-  public async rehydrate(layers: RehydrateLayerSpec[]): Promise<RehydrateResult> {
+  public async rehydrate(
+    layers: RehydrateLayerSpec[]
+  ): Promise<RehydrateResult> {
     const rehydrated: string[] = [];
     const failed: Array<{ layerId: string; error: string }> = [];
 
@@ -388,7 +556,7 @@ export class GeospatialEngine {
       } catch (err: any) {
         failed.push({
           layerId: item.layerId,
-          error: err?.message || String(err)
+          error: err?.message || String(err),
         });
       }
     }
@@ -429,10 +597,16 @@ export class GeospatialEngine {
    * @param {() => Promise<T>} task - Operation to execute.
    * @returns {Promise<T>} Task result promise.
    */
-  private async executeSequential<T>(layerId: string, task: () => Promise<T>): Promise<T> {
+  private async executeSequential<T>(
+    layerId: string,
+    task: () => Promise<T>
+  ): Promise<T> {
     const previousPromise = this.queues.get(layerId) || Promise.resolve();
     const currentPromise = previousPromise.then(() => task());
-    this.queues.set(layerId, currentPromise.catch(() => {}));
+    this.queues.set(
+      layerId,
+      currentPromise.catch(() => {})
+    );
     return currentPromise;
   }
 }

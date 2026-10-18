@@ -9,8 +9,8 @@
  * @see {@link GeospatialEngine}
  */
 
-import { GeospatialEngine } from '../main/worker/GeospatialEngine';
-import type { WorkerRequest, WorkerResponse } from '../main/worker/types';
+import { GeospatialEngine } from "../main/worker/GeospatialEngine";
+import type { WorkerRequest, WorkerResponse } from "../main/worker/types";
 
 /**
  * @function postResponse
@@ -24,12 +24,18 @@ import type { WorkerRequest, WorkerResponse } from '../main/worker/types';
  * @param {ArrayBuffer[]} [transferList] - Optional transferable ArrayBuffer instances.
  * @returns {void}
  */
-export function postResponse(port: any, response: WorkerResponse, transferList?: ArrayBuffer[]): void {
-  if (!port || typeof port.postMessage !== 'function') {
+export function postResponse(
+  port: any,
+  response: WorkerResponse,
+  transferList?: ArrayBuffer[]
+): void {
+  if (!port || typeof port.postMessage !== "function") {
     return;
   }
 
-  if (transferList && transferList.length > 0) {
+  // Chromium Blink MessagePort crashes with FatalError/SIGSEGV when transferList contains hundreds/thousands of ArrayBuffers.
+  // Standard structured-clone safely serializes large arrays of typed arrays without descriptor table exhaustion.
+  if (transferList && transferList.length > 0 && transferList.length <= 64) {
     try {
       port.postMessage(response, transferList);
       return;
@@ -53,11 +59,14 @@ export function postResponse(port: any, response: WorkerResponse, transferList?:
  * @returns {void}
  */
 export function handleWorkerUncaughtException(port: any, err: any): void {
-  console.error('[geospatialWorker] Uncaught exception in worker process:', err);
+  console.error(
+    "[geospatialWorker] Uncaught exception in worker process:",
+    err
+  );
   postResponse(port, {
-    id: 'worker-uncaught-exception',
+    id: "worker-uncaught-exception",
     success: false,
-    error: err?.message || String(err)
+    error: err?.message || String(err),
   });
 }
 
@@ -73,11 +82,14 @@ export function handleWorkerUncaughtException(port: any, err: any): void {
  * @returns {void}
  */
 export function handleWorkerUnhandledRejection(port: any, reason: any): void {
-  console.error('[geospatialWorker] Unhandled promise rejection in worker process:', reason);
+  console.error(
+    "[geospatialWorker] Unhandled promise rejection in worker process:",
+    reason
+  );
   postResponse(port, {
-    id: 'worker-unhandled-rejection',
+    id: "worker-unhandled-rejection",
     success: false,
-    error: reason?.message || String(reason)
+    error: reason?.message || String(reason),
   });
 }
 
@@ -99,10 +111,14 @@ export function initGeospatialWorker(
   const engine = customEngine ?? new GeospatialEngine();
 
   // Trap uncaught exceptions and forward formatted error notification across port
-  process.on('uncaughtException', (err: any) => handleWorkerUncaughtException(port, err));
+  process.on("uncaughtException", (err: any) =>
+    handleWorkerUncaughtException(port, err)
+  );
 
   // Trap unhandled promise rejections and forward formatted error notification across port
-  process.on('unhandledRejection', (reason: any) => handleWorkerUnhandledRejection(port, reason));
+  process.on("unhandledRejection", (reason: any) =>
+    handleWorkerUnhandledRejection(port, reason)
+  );
 
   const messageHandler = async (event: { data: WorkerRequest }) => {
     const request = event?.data;
@@ -112,82 +128,95 @@ export function initGeospatialWorker(
 
     try {
       switch (request.type) {
-        case 'ping': {
+        case "ping": {
           postResponse(port, {
             id: request.id,
             success: true,
-            result: { pong: true }
+            result: { pong: true },
           });
           break;
         }
 
-        case 'openDataset': {
-          const metadata = await engine.openDataset(request.layerId, request.filePath);
-          postResponse(port, {
-            id: request.id,
-            success: true,
-            result: metadata
-          });
-          break;
-        }
-
-        case 'queryExtent': {
-          const { layerId, features, transferList } = await engine.queryExtent(
+        case "openDataset": {
+          console.log(
+            `[geospatialWorker] Opening dataset: layer="${request.layerId}", path="${request.filePath}"`
+          );
+          const metadata = await engine.openDataset(
             request.layerId,
-            request.extent,
-            request.targetProjection
+            request.filePath
           );
-          postResponse(
-            port,
-            {
-              id: request.id,
-              success: true,
-              result: {
-                layerId,
-                features
-              }
-            },
-            transferList
+          console.log(
+            `[geospatialWorker] Successfully opened layer "${request.layerId}": featureCount=${metadata.featureCount}, geom=${metadata.geometryKind}`
           );
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: metadata,
+          });
           break;
         }
 
-        case 'closeDataset': {
+        case "queryExtent": {
+          try {
+            console.log(
+              `[geospatialWorker] Querying extent for layer "${request.layerId}"...`
+            );
+            const queryOptions = request.options ?? request.extent;
+            const { layerId, buffer, transferList } = await engine.queryExtent(
+              request.layerId,
+              queryOptions,
+              request.targetProjection
+            );
+            console.log(
+              `[geospatialWorker] Contiguous binary packet generated for layer "${layerId}" (${buffer.byteLength} bytes)`
+            );
+
+            postResponse(
+              port,
+              { id: request.id, success: true, result: { layerId, buffer } },
+              transferList
+            );
+            console.log(
+              `[geospatialWorker] Response dispatched for layer "${layerId}"`
+            );
+          } catch (error) {
+            console.warn(`Error with queryExtent: ${error}`);
+          }
+          break;
+        }
+
+        case "closeDataset": {
           const closed = engine.closeDataset(request.layerId);
           postResponse(port, {
             id: request.id,
             success: true,
-            result: { closed }
+            result: { closed },
           });
           break;
         }
 
-        case 'closeAll': {
+        case "closeAll": {
           engine.closeAll();
           postResponse(port, {
             id: request.id,
             success: true,
-            result: { closed: true }
+            result: { closed: true },
           });
           break;
         }
 
-        case 'rehydrate': {
+        case "rehydrate": {
           const result = await engine.rehydrate(request.layers);
-          postResponse(port, {
-            id: request.id,
-            success: true,
-            result
-          });
+          postResponse(port, { id: request.id, success: true, result });
           break;
         }
 
         default: {
-          const reqId = (request as any)?.id || 'unknown';
+          const reqId = (request as any)?.id || "unknown";
           postResponse(port, {
             id: reqId,
             success: false,
-            error: `Unknown worker request type: ${(request as any)?.type}`
+            error: `Unknown worker request type: ${(request as any)?.type}`,
           });
         }
       }
@@ -195,13 +224,13 @@ export function initGeospatialWorker(
       postResponse(port, {
         id: request.id,
         success: false,
-        error: err?.message || String(err)
+        error: err?.message || String(err),
       });
     }
   };
 
-  if (port && typeof port.on === 'function') {
-    port.on('message', messageHandler);
+  if (port && typeof port.on === "function") {
+    port.on("message", messageHandler);
   }
 
   return messageHandler;
@@ -212,6 +241,6 @@ if ((process as any).parentPort) {
   initGeospatialWorker((process as any).parentPort);
 } else {
   console.warn(
-    '[geospatialWorker] process.parentPort is undefined; worker must run inside an Electron UtilityProcess'
+    "[geospatialWorker] process.parentPort is undefined; worker must run inside an Electron UtilityProcess"
   );
 }

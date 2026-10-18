@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EventEmitter } from 'node:events';
+import { WKB_PACKET_MAGIC } from '../../../src/shared/types';
 import {
   initGeospatialWorker,
   postResponse,
@@ -151,10 +152,47 @@ describe('Geospatial Worker Process Message Bridge & Request Processing', () => 
 
     const queryResult = response.result as any;
     assert.equal(queryResult.layerId, 'layer-shp-lakes');
-    assert.equal(queryResult.features.length, 34);
+    assert.ok(queryResult.buffer instanceof ArrayBuffer);
 
     assert.ok(Array.isArray(transferList));
-    assert.ok(transferList.length > 0);
+    assert.equal(transferList.length, 1);
+    assert.equal(transferList[0], queryResult.buffer);
+
+    const view = new DataView(queryResult.buffer);
+    assert.equal(view.getUint32(0, true), WKB_PACKET_MAGIC);
+    assert.equal(view.getUint32(8, true), 34);
+  });
+
+  it('streams large feature sets as a single contiguous binary packet using 1 transfer handle to prevent Mojo overflow', async () => {
+    await port.dispatchAndAwait({
+      id: 'req-open-geojson',
+      type: 'openDataset',
+      layerId: 'layer-large-lakes',
+      filePath: lakesGeoJsonPath
+    });
+
+    const { response, transferList } = await port.dispatchAndAwait({
+      id: 'req-query-large',
+      type: 'queryExtent',
+      layerId: 'layer-large-lakes',
+      extent: [-180, -90, 180, 90]
+    });
+
+    assert.equal(response.id, 'req-query-large');
+    assert.equal(response.success, true);
+
+    const queryResult = response.result as any;
+    assert.equal(queryResult.layerId, 'layer-large-lakes');
+    assert.ok(queryResult.buffer instanceof ArrayBuffer);
+    assert.equal(queryResult.packedFeatures, undefined);
+
+    assert.ok(Array.isArray(transferList));
+    assert.equal(transferList.length, 1);
+    assert.equal(transferList[0], queryResult.buffer);
+
+    const view = new DataView(queryResult.buffer);
+    assert.equal(view.getUint32(0, true), WKB_PACKET_MAGIC);
+    assert.equal(view.getUint32(8, true), 1200);
   });
 
   it('processes closeDataset and closeAll requests', async () => {

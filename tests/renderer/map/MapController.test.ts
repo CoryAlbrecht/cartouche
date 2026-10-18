@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-15
+ * @updated 2026-10-16
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -16,7 +16,11 @@ import {
   layerStylesSignal,
   currentProjectSignal,
 } from '../../../src/renderer/state/projectSignals';
-import { MapController } from '../../../src/renderer/map/MapController';
+import {
+  MapController,
+  extractStyleAttributes,
+} from '../../../src/renderer/map/MapController';
+import { WKB_PACKET_MAGIC } from '../../../src/shared/types';
 import type { LayerDescriptor } from '../../../src/shared/types';
 
 // Setup headless mock browser/DOM environment for OpenLayers
@@ -111,6 +115,60 @@ const pointWkb1 = new Uint8Array(
 const pointWkb2 = new Uint8Array(
   Buffer.from('010100000000000000000055c00000000000004740', 'hex')
 );
+
+/**
+ * @description Helper utility constructing a contiguous binary WKB packet conforming to ADR 0004 for test mocks.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-16
+ * @updated 2026-10-16
+ * @since 0.1.0-dev
+ * @param {Array<{ fid: number | bigint; wkb?: Uint8Array; properties?: Record<string, any> }>} features - Feature records to serialize.
+ * @param {number} [magic=WKB_PACKET_MAGIC] - Header magic number.
+ * @returns {ArrayBuffer} Contiguous binary packet buffer.
+ */
+function createMockBinaryPacket(
+  features: Array<{ fid: number | bigint; wkb?: Uint8Array; properties?: Record<string, any> }>,
+  magic: number = WKB_PACKET_MAGIC
+): ArrayBuffer {
+  const encoder = new TextEncoder();
+  let totalSize = 12;
+  const records = features.map((f) => {
+    const fid = BigInt(f.fid);
+    const wkbBytes = f.wkb || null;
+    const wkbLen = wkbBytes ? wkbBytes.byteLength : 0;
+    const propsBytes = f.properties ? encoder.encode(JSON.stringify(f.properties)) : null;
+    const propsLen = propsBytes ? propsBytes.byteLength : 0;
+    totalSize += 8 + 4 + wkbLen + 4 + propsLen;
+    return { fid, wkbBytes, wkbLen, propsBytes, propsLen };
+  });
+
+  const buffer = new ArrayBuffer(totalSize);
+  const view = new DataView(buffer);
+  view.setUint32(0, magic, true);
+  view.setUint16(4, 1, true);
+  view.setUint16(6, 0x03, true);
+  view.setUint32(8, features.length, true);
+
+  let offset = 12;
+  for (const r of records) {
+    view.setBigInt64(offset, r.fid, true);
+    offset += 8;
+    view.setUint32(offset, r.wkbLen, true);
+    offset += 4;
+    if (r.wkbBytes && r.wkbLen > 0) {
+      new Uint8Array(buffer, offset, r.wkbLen).set(r.wkbBytes);
+      offset += r.wkbLen;
+    }
+    view.setUint32(offset, r.propsLen, true);
+    offset += 4;
+    if (r.propsBytes && r.propsLen > 0) {
+      new Uint8Array(buffer, offset, r.propsLen).set(r.propsBytes);
+      offset += r.propsLen;
+    }
+  }
+
+  return buffer;
+}
 
 describe('MapController Isolated Canvas Engine', () => {
   let container: any;
@@ -473,6 +531,322 @@ describe('MapController Isolated Canvas Engine', () => {
     const secondLoaded = await controller.loadFeaturesForExtent(descriptor, entry.source, [-2000, -2000, 2000, 2000], 'EPSG:3857');
     assert.equal(callCount, 1, 'queryExtent must NOT be called again when all features are already loaded');
     assert.equal(secondLoaded.length, 0);
+  });
+
+  it('streams feature slices via contiguous binary WKB packet and decodes zero-copy geometries', async () => {
+    const binaryPacket = createMockBinaryPacket([
+      {
+        fid: 501,
+        wkb: pointWkb1,
+        properties: { name: 'Zero Copy Point', depth: 42 },
+      },
+    ]);
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string) => {
+        return {
+          layerId,
+          buffer: binaryPacket,
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-binary-test',
+      name: 'Binary Test',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-binary-test')!;
+    assert.ok(entry);
+
+    const loaded = await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-10000000, 4000000, -8000000, 6000000],
+      'EPSG:3857'
+    );
+
+    assert.equal(loaded.length, 1);
+    const feature = entry.source.getFeatureById(501);
+    assert.ok(feature);
+    assert.equal(feature.getId(), 501);
+    assert.equal(feature.get('name'), 'Zero Copy Point');
+    assert.equal(feature.get('depth'), 42);
+
+    const geom = feature.getGeometry();
+    assert.ok(geom);
+    assert.equal(geom.getType(), 'Point');
+    const coords = (geom as any).getCoordinates();
+    assert.ok(Math.abs(coords[0] - -9462156.7) < 1, 'X coordinate must be reprojected to EPSG:3857');
+    assert.ok(Math.abs(coords[1] - 5621521.4) < 1, 'Y coordinate must be reprojected to EPSG:3857');
+  });
+
+  it('dynamically projects fields: [] when active layer style does not reference attributes', async () => {
+    let capturedOptions: any = null;
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, options: any) => {
+        capturedOptions = options;
+        return {
+          layerId: 'layer-no-attr-style',
+          buffer: createMockBinaryPacket([
+            { fid: 502, wkb: pointWkb1 },
+          ]),
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-no-attr-style',
+      name: 'No Attr Style Layer',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-no-attr-style')!;
+
+    await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-10000000, 4000000, -8000000, 6000000],
+      'EPSG:3857'
+    );
+
+    assert.ok(capturedOptions, 'QueryExtentOptions must be passed to queryExtent');
+    assert.deepEqual(capturedOptions.fields, [], 'fields must be an empty array when style has no attribute references');
+    assert.equal(capturedOptions.includeGeometry, true);
+  });
+
+  it('dynamically extracts and requests only attributes referenced in layer style', async () => {
+    let capturedOptions: any = null;
+
+    layerStylesSignal.value = {
+      'layer-attr-style': {
+        'circle-radius': ['get', 'scalerank'],
+        'circle-fill-color': ['get', 'color_code'],
+      },
+    };
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, options: any) => {
+        capturedOptions = options;
+        return {
+          layerId: 'layer-attr-style',
+          buffer: createMockBinaryPacket([
+            { fid: 503, wkb: pointWkb1, properties: { scalerank: 5, color_code: '#ff00ff' } },
+          ]),
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-attr-style',
+      name: 'Attr Style Layer',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-attr-style')!;
+
+    await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-10000000, 4000000, -8000000, 6000000],
+      'EPSG:3857'
+    );
+
+    assert.ok(capturedOptions);
+    assert.ok(Array.isArray(capturedOptions.fields));
+    assert.equal(capturedOptions.fields.length, 2);
+    assert.ok(capturedOptions.fields.includes('scalerank'));
+    assert.ok(capturedOptions.fields.includes('color_code'));
+
+    const feature = entry.source.getFeatureById(503);
+    assert.ok(feature);
+    assert.equal(feature.get('scalerank'), 5);
+    assert.equal(feature.get('color_code'), '#ff00ff');
+  });
+
+  it('deduplicates binary packet features by 64-bit FID during overlapping pan queries', async () => {
+    let queryCount = 0;
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string) => {
+        queryCount++;
+        if (queryCount === 1) {
+          return {
+            layerId,
+            buffer: createMockBinaryPacket([
+              { fid: 601, wkb: pointWkb1, properties: { name: 'P1' } },
+              { fid: 602, wkb: pointWkb2, properties: { name: 'P2' } },
+            ]),
+          };
+        }
+        return {
+          layerId,
+          buffer: createMockBinaryPacket([
+            { fid: 601, wkb: pointWkb1, properties: { name: 'P1' } },
+            { fid: 602, wkb: pointWkb2, properties: { name: 'P2' } },
+            { fid: 603, wkb: pointWkb1, properties: { name: 'P3' } },
+          ]),
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-binary-dedup',
+      name: 'Binary Dedup',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 3,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-binary-dedup')!;
+
+    await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-10000000, 4000000, -8000000, 6000000],
+      'EPSG:3857'
+    );
+    assert.equal(entry.source.getFeatures().length, 2);
+
+    await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-9000000, 4500000, -7000000, 6500000],
+      'EPSG:3857'
+    );
+    assert.equal(entry.source.getFeatures().length, 3, 'Must have exactly 3 features without duplicate FIDs 601 and 602');
+  });
+
+  it('safely handles invalid binary packet magic number without throwing', async () => {
+    const invalidBuffer = createMockBinaryPacket(
+      [{ fid: 701, wkb: pointWkb1 }],
+      0xdeadbeef // invalid magic
+    );
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string) => {
+        return {
+          layerId,
+          buffer: invalidBuffer,
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-invalid-magic',
+      name: 'Invalid Magic',
+      type: 'shp',
+      source: '/path/to/test.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-invalid-magic')!;
+
+    const loaded = await controller.loadFeaturesForExtent(
+      descriptor,
+      entry.source,
+      [-10000000, 4000000, -8000000, 6000000],
+      'EPSG:3857'
+    );
+
+    assert.equal(loaded.length, 0);
+    assert.equal(entry.source.getFeatures().length, 0);
+  });
+});
+
+describe('extractStyleAttributes', () => {
+  it('returns empty Set for null, undefined, primitives, or styles without attribute expressions', () => {
+    assert.equal(extractStyleAttributes(null).size, 0);
+    assert.equal(extractStyleAttributes(undefined).size, 0);
+    assert.equal(extractStyleAttributes('color').size, 0);
+    assert.equal(extractStyleAttributes(123).size, 0);
+    assert.equal(extractStyleAttributes({ 'fill-color': '#ff0000', 'stroke-width': 2 }).size, 0);
+  });
+
+  it('extracts attribute name from a single get expression', () => {
+    const style = {
+      'text-value': ['get', 'name'],
+    };
+    const extracted = extractStyleAttributes(style);
+    assert.equal(extracted.size, 1);
+    assert.ok(extracted.has('name'));
+  });
+
+  it('extracts all attribute names from nested conditional and interpolation expressions', () => {
+    const style = {
+      'fill-color': [
+        'case',
+        ['>', ['get', 'population'], 1000000],
+        '#ff0000',
+        ['<', ['get', 'population'], 10000],
+        '#00ff00',
+        ['get', 'default_color'],
+      ],
+      'circle-radius': [
+        'interpolate',
+        ['linear'],
+        ['get', 'elevation'],
+        0,
+        4,
+        5000,
+        20,
+      ],
+    };
+    const extracted = extractStyleAttributes(style);
+    assert.equal(extracted.size, 3);
+    assert.ok(extracted.has('population'));
+    assert.ok(extracted.has('default_color'));
+    assert.ok(extracted.has('elevation'));
+  });
+
+  it('extracts attribute names across array of rule objects with filters', () => {
+    const rules = [
+      {
+        filter: ['==', ['get', 'featureclass'], 'Lake'],
+        style: {
+          'fill-color': '#0000ff',
+          'stroke-width': ['get', 'boundary_width'],
+        },
+      },
+      {
+        filter: ['==', ['get', 'status'], 'active'],
+        style: {
+          'stroke-color': '#00ff00',
+        },
+      },
+    ];
+    const extracted = extractStyleAttributes(rules);
+    assert.equal(extracted.size, 3);
+    assert.ok(extracted.has('featureclass'));
+    assert.ok(extracted.has('boundary_width'));
+    assert.ok(extracted.has('status'));
   });
 });
 
