@@ -6,7 +6,8 @@
   "main": "dist-electron/main/main.js",
   "scripts": {
     "dev": "vite",
-    "rebuild": "node-gyp rebuild --directory=node_modules/better-sqlite3 --target=37.3.0 --arch=x64 --dist-url=https://electronjs.org/headers",
+    "rebuild:gdal": "electron-rebuild -f -w gdal-async",
+    "rebuild": "node-gyp rebuild --directory=node_modules/better-sqlite3 --target=37.3.0 --arch=x64 --dist-url=https://electronjs.org/headers && npm run rebuild:gdal",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "stylelint \"src/**/*.css\"",
@@ -121,7 +122,7 @@
     "dockview-react": "^8.3.1",
     "fast-xml-parser": "^5.11.1",
     "flatgeobuf": "^4.4.0",
-    "gdal-async": "^3.12.3",
+    "gdal-async": "github:CoryAlbrecht/node-gdal-async#fix/v8-sandbox-wkb",
     "geostyler": "^18.6.0",
     "geotiff": "^3.1.0-beta.0",
     "ol": "^10.10.0",

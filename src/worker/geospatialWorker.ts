@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-18
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -98,7 +98,7 @@ export function handleWorkerUnhandledRejection(port: any, reason: any): void {
  * @description Registers the message handler, lifecycle hooks, and error traps on the parent port for geospatial dataset requests.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-10-18
  * @since 0.1.0-dev
  * @param {any} [port] - Parent communication port (defaults to process.parentPort).
  * @param {GeospatialEngine} [customEngine] - Optional custom GeospatialEngine instance for testing or isolation.
@@ -157,31 +157,27 @@ export function initGeospatialWorker(
         }
 
         case "queryExtent": {
-          try {
-            console.log(
-              `[geospatialWorker] Querying extent for layer "${request.layerId}"...`
-            );
-            const queryOptions = request.options ?? request.extent;
-            const { layerId, buffer, transferList } = await engine.queryExtent(
-              request.layerId,
-              queryOptions,
-              request.targetProjection
-            );
-            console.log(
-              `[geospatialWorker] Contiguous binary packet generated for layer "${layerId}" (${buffer.byteLength} bytes)`
-            );
+          console.log(
+            `[geospatialWorker] Querying extent for layer "${request.layerId}"...`
+          );
+          const queryOptions = request.options ?? request.extent;
+          const { layerId, buffer, transferList } = await engine.queryExtent(
+            request.layerId,
+            queryOptions,
+            request.targetProjection
+          );
+          console.log(
+            `[geospatialWorker] Contiguous binary packet generated for layer "${layerId}" (${buffer.byteLength} bytes)`
+          );
 
-            postResponse(
-              port,
-              { id: request.id, success: true, result: { layerId, buffer } },
-              transferList
-            );
-            console.log(
-              `[geospatialWorker] Response dispatched for layer "${layerId}"`
-            );
-          } catch (error) {
-            console.warn(`Error with queryExtent: ${error}`);
-          }
+          postResponse(
+            port,
+            { id: request.id, success: true, result: { layerId, buffer } },
+            transferList
+          );
+          console.log(
+            `[geospatialWorker] Response dispatched for layer "${layerId}"`
+          );
           break;
         }
 
