@@ -4,17 +4,15 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-18
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
  * @see {@link ProjectModel}
  * @see {@link GeospatialService}
- * @see {@link resolveDialogParent}
  */
 
-import { dialog, BrowserWindow } from 'electron';
-import { resolveDialogParent } from '../dialog/resolveDialogParent';
+import { dialog } from 'electron';
 import { projectLoaderRegistry } from '../../project/loaders/ProjectLoaderRegistry';
 import { projectStore } from '../../project/ProjectStore';
 import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
@@ -86,33 +84,24 @@ function enrichProjectLayers(
  * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-18
+ * @updated 2026-10-19
  * @since 0.1.0-dev
- * @param {string} [filePath] - Optional path to the project document; if omitted, displays the system file open dialog.
- * @param {Electron.BrowserWindow | null} [parentWindow] - Optional parent BrowserWindow for the system file open dialog.
+ * @param {string} [filePath] - Optional path to the project document; if omitted, displays the non-modal system file open dialog.
  * @returns {Promise<ProjectModel | null>} The loaded project model instance or null if canceled/failed.
  */
 export default async function openProject(
-  filePath?: string,
-  parentWindow?: Electron.BrowserWindow | null
+  filePath?: string
 ): Promise<ProjectModel | null> {
   let targetPath = filePath;
 
-  // If no filePath was supplied (e.g. invoked directly via shortcut), open the system file picker
+  // If no filePath was supplied (e.g. invoked directly via shortcut), open the non-modal system file picker
   if (!targetPath) {
-    const dialogParent = resolveDialogParent(null, parentWindow ?? BrowserWindow.getFocusedWindow());
     const filters = fileTypeRegistry.getFileFilters('project');
-    const result = dialogParent
-      ? await dialog.showOpenDialog(dialogParent, {
-          title: 'Open Cartouche Project',
-          properties: ['openFile'],
-          filters
-        })
-      : await dialog.showOpenDialog({
-          title: 'Open Cartouche Project',
-          properties: ['openFile'],
-          filters
-        });
+    const result = await dialog.showOpenDialog({
+      title: 'Open Cartouche Project',
+      properties: ['openFile'],
+      filters
+    });
 
     if (result.canceled || result.filePaths.length === 0) {
       return null;

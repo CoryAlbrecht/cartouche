@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-18
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -19,7 +19,7 @@ import type { FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
-import { pathExists, resolveDialogParent, queryExtent } from "./api/ApiFunctions";
+import { pathExists, queryExtent } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
@@ -379,12 +379,12 @@ app.whenReady().then(async () => {
   let isFileDialogOpen = false;
 
   /**
-   * @description Handles dialog:open-files IPC invocation to present native file picker modal to calling window.
-   * Resolves target window via resolveDialogParent (prioritizing the focused child window, sender, or fallback mainWindow).
+   * @description Handles dialog:open-files IPC invocation to present native file picker non-modal to calling window.
+   * Native file chooser is non-modal and independently movable/resizable.
    * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-02
-   * @updated 2026-10-12
+   * @updated 2026-10-19
    * @since 0.1.0-dev
    * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
    * @param {Object} [options] - Dialog options including category, filters, and multiSelections.
@@ -406,8 +406,7 @@ app.whenReady().then(async () => {
         properties,
         filters
       };
-      const targetWindow = resolveDialogParent(_event.sender, mainWindow);
-      const res = targetWindow ? await dialog.showOpenDialog(targetWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions);
+      const res = await dialog.showOpenDialog(dialogOptions);
       if (res.canceled) return [];
       return res.filePaths;
     } catch (err) {
@@ -419,12 +418,12 @@ app.whenReady().then(async () => {
   });
 
   /**
-   * @description Handles dialog:save-file IPC invocation to present native file save dialog modal to calling window.
-   * Resolves target window via resolveDialogParent (prioritizing the focused child window, sender, or fallback mainWindow).
+   * @description Handles dialog:save-file IPC invocation to present native file save dialog non-modal to calling window.
+   * Native file chooser is non-modal and independently movable/resizable.
    * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-19
    * @since 0.1.0-dev
    * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
    * @param {Object} [options] - Dialog options including title, defaultPath, category, and filters.
@@ -442,8 +441,7 @@ app.whenReady().then(async () => {
         defaultPath: options?.defaultPath,
         filters
       };
-      const targetWindow = resolveDialogParent(_event.sender, mainWindow);
-      const res = targetWindow ? await dialog.showSaveDialog(targetWindow, dialogOptions) : await dialog.showSaveDialog(dialogOptions);
+      const res = await dialog.showSaveDialog(dialogOptions);
       if (res.canceled || !res.filePath) return null;
       return res.filePath;
     } catch (err) {
@@ -457,8 +455,7 @@ app.whenReady().then(async () => {
   // Project Management IPC Handlers
   handleIpc('gis:open-project', async (_event, filePath?: string) => {
     const { default: openProject } = await import('./api/project/openProject');
-    const targetWindow = resolveDialogParent(_event.sender, mainWindow);
-    return openProject(filePath, targetWindow);
+    return openProject(filePath);
   });
 
   handleIpc('gis:get-current-project', async () => {
