@@ -73,6 +73,9 @@ jobs:
           node_modules/gdal-async/node_modules/@mapbox/node-pre-gyp/bin/node-pre-gyp
           install --directory=node_modules/gdal-async
 
+      - name: Generate gdal-async TypeScript definitions
+        run: npm --prefix node_modules/gdal-async run yatag
+
       - name: Rebuild better-sqlite3 for Electron
         run:
           npx node-gyp rebuild --directory=node_modules/better-sqlite3
@@ -87,9 +90,7 @@ jobs:
           fi
 
       - name: Build & Package App
-        run: |
-          npm run build
-          npm run package:win
+        run: npm run build && npm run package:win
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
