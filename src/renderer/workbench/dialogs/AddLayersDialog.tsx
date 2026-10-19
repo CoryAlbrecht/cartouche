@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -64,7 +64,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -241,7 +241,7 @@ export const AddLayersDialog: React.FC = () => {
     <Dialog
       name='addLayersWindow'
       title='Add Layers'
-      icon={<Icon name="file:layers-plus-outline.svg" size={18} />}
+      icon={<Icon name="file:layers-plus-outline.svg" size={18} color="#ffffff" />}
       isOpen={isOpen}
       onClose={closeAddLayersDialog}
       defaultWidth={620}
@@ -279,7 +279,7 @@ export const AddLayersDialog: React.FC = () => {
               fontSize: "0.875rem",
               color: "#ffffff",
             }}>
-            <Icon name="file:layers-plus-outline.svg" size={16} />
+            <Icon name="file:layers-plus-outline.svg" size={16} color="#ffffff" />
             <span>Add Layers</span>
           </button>
         </>
