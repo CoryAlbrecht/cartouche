@@ -15,7 +15,7 @@ import { handleIpc, onIpc } from './ipc/registerIpcHandler';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FileCategory } from '@shared/types';
+import type { DropPosition, FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
@@ -582,7 +582,7 @@ app.whenReady().then(async () => {
     renameLayerTreeNode(nodeId, newName);
   });
 
-  handleIpc('gis:reorder-nodes', async (_event, draggedNodeIds: string[], targetNodeId: string, position: 'before' | 'into' | 'append-root') => {
+  handleIpc('gis:reorder-nodes', async (_event, draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => {
     reorderNodes(draggedNodeIds, targetNodeId, position);
   });
 

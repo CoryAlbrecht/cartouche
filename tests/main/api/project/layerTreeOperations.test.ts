@@ -4,7 +4,7 @@
  * @description Unit tests for Main process layer tree mutation API handlers (visibility, selection, deletion, group creation, reordering).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-13
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  */
 
@@ -158,6 +158,65 @@ describe('layerTreeOperations', () => {
     assert.equal(projectStore.isProjectDirty(), true);
   });
 
+  it('reorderNodes supports after insertion, before/after groups, root into index 0, auto-expanding collapsed groups, and pruning selected descendants', () => {
+    const root = projectStore.getRootGroup();
+    const water = new LayerGroup('Water', 'group-water');
+    const centrelines = new Layer('Centrelines', '/path/centrelines.geojson', 'vector', 'l-centrelines');
+    const lakes = new Layer('Lakes', '/path/lakes.shp', 'vector', 'l-lakes');
+    const coastlines = new Layer('Coastlines', '/path/coastlines.shp', 'vector', 'l-coastlines');
+    const l0 = new Layer('L0', '/path/timeline_level_0.fgb', 'vector', 'l-0');
+
+    water.addChild(centrelines);
+    water.addChild(lakes);
+    water.addChild(coastlines);
+    root.addChild(water);
+    root.addChild(l0);
+
+    // 1. Move L0 inside Water after Coastlines (last child of Water)
+    reorderNodes(['l-0'], 'l-coastlines', 'after');
+    assert.deepEqual(
+      water.getAllChildren().map((c) => c.id),
+      ['l-centrelines', 'l-lakes', 'l-coastlines', 'l-0']
+    );
+    assert.deepEqual(root.getAllChildren().map((c) => c.id), ['group-water']);
+
+    // 2. Move L0 before group Water at root level
+    reorderNodes(['l-0'], 'group-water', 'before');
+    assert.deepEqual(root.getAllChildren().map((c) => c.id), ['l-0', 'group-water']);
+    assert.deepEqual(
+      water.getAllChildren().map((c) => c.id),
+      ['l-centrelines', 'l-lakes', 'l-coastlines']
+    );
+
+    // 3. Move L0 after group Water at root level
+    reorderNodes(['l-0'], 'group-water', 'after');
+    assert.deepEqual(root.getAllChildren().map((c) => c.id), ['group-water', 'l-0']);
+
+    // 4. Move L0 into 'root' (inserts at index 0 of rootGroup)
+    reorderNodes(['l-0'], 'root', 'into');
+    assert.deepEqual(root.getAllChildren().map((c) => c.id), ['l-0', 'group-water']);
+
+    // 5. Dropping into a collapsed group inserts at index 0 and auto-expands the group
+    water.expanded = false;
+    reorderNodes(['l-0'], 'group-water', 'into');
+    assert.equal(water.expanded, true);
+    assert.deepEqual(
+      water.getAllChildren().map((c) => c.id),
+      ['l-0', 'l-centrelines', 'l-lakes', 'l-coastlines']
+    );
+
+    // 6. Multi-select dragging both an ancestor group ('group-water') and its child ('l-lakes')
+    // prunes the child so the group stays intact, and preserves top-to-bottom tree order
+    const extraLayer = new Layer('Extra', '/path/extra.shp', 'vector', 'l-extra');
+    root.addChild(extraLayer);
+    reorderNodes(['l-lakes', 'group-water'], 'l-extra', 'after');
+    assert.deepEqual(root.getAllChildren().map((c) => c.id), ['l-extra', 'group-water']);
+    assert.deepEqual(
+      water.getAllChildren().map((c) => c.id),
+      ['l-0', 'l-centrelines', 'l-lakes', 'l-coastlines']
+    );
+  });
+
   it('notifies onDirtyChange listeners whenever project dirty state transitions', () => {
     projectStore.setProjectDirty(false);
     const notifications: boolean[] = [];
@@ -180,4 +239,5 @@ describe('layerTreeOperations', () => {
     assert.deepEqual(notifications, [true, false]);
   });
 });
+
 

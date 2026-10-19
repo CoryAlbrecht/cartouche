@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-13
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -58,6 +58,23 @@ import {
 import type { ProjectLayerItem, ProjectGroupItem, GeometryKind } from "@shared/types";
 import logoSvg from "../../../../assets/svg/logo.svg";
 import type { IDockviewPanelProps } from "dockview-react";
+import {
+  collectNodesByIds,
+  getTreeNodeId,
+  isDescendantNode,
+  resolveNodeDropTarget,
+  type DropPosition,
+  type TreeDropTarget,
+} from "./layerTreeDropTarget";
+
+export {
+  collectNodesByIds,
+  getTreeNodeId,
+  isDescendantNode,
+  resolveNodeDropTarget,
+  type DropPosition,
+  type TreeDropTarget,
+};
 
 /**
  * @description Resolves Material Design Icon path corresponding to layer geometry kind.
@@ -104,59 +121,6 @@ function flattenVisibleTree(items: Array<ProjectLayerItem | ProjectGroupItem>): 
 }
 
 /**
- * @description Recursively searches for and collects nodes matching provided identifiers.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-09
- * @updated 2026-10-09
- * @since 0.1.0-dev
- * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Tree items.
- * @param {string[]} ids - Target identifiers.
- * @returns {Array<ProjectLayerItem | ProjectGroupItem>} Matched nodes.
- */
-function collectNodesByIds(
-  items: Array<ProjectLayerItem | ProjectGroupItem>,
-  ids: string[]
-): Array<ProjectLayerItem | ProjectGroupItem> {
-  const targetSet = new Set(ids);
-  const matched: Array<ProjectLayerItem | ProjectGroupItem> = [];
-
-  function traverse(list: Array<ProjectLayerItem | ProjectGroupItem>) {
-    for (const item of list) {
-      if (item.id && targetSet.has(item.id)) {
-        matched.push(item);
-      }
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
-        traverse((item as ProjectGroupItem).children);
-      }
-    }
-  }
-
-  traverse(items);
-  return matched;
-}
-
-/**
- * @description Checks whether candidateId is a descendant of the candidateParent group.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-09
- * @updated 2026-10-09
- * @since 0.1.0-dev
- * @param {ProjectGroupItem} candidateParent - Potential ancestor group.
- * @param {string} candidateId - Node ID to test.
- * @returns {boolean} True if candidateId is inside candidateParent.
- */
-function isDescendantNode(candidateParent: ProjectGroupItem, candidateId: string): boolean {
-  if (!Array.isArray(candidateParent.children)) return false;
-  for (const child of candidateParent.children) {
-    if (child.id === candidateId) return true;
-    if ('children' in child && isDescendantNode(child as ProjectGroupItem, candidateId)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * Movement tolerance threshold in pixels before an interaction is considered a drag gesture rather than a click.
  * @constant {number}
  */
@@ -185,7 +149,7 @@ export interface LayerTreeWidgetProps extends Partial<IDockviewPanelProps> {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-12
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -206,11 +170,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
   // Drag and drop state
   const draggedNodeIdsRef = useRef<string[]>([]);
-  const [dragOverState, setDragOverState] = useState<{
-    targetId: string;
-    position: 'before' | 'into' | 'append-root';
-    indentLevel: number;
-  } | null>(null);
+  const [dragOverState, setDragOverState] = useState<TreeDropTarget | null>(null);
 
   // Inline rename editing state driven by signal
   const editingNodeId = editingNodeIdSignal.value;
@@ -616,34 +576,33 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
   const handleDragOver = (
     e: React.DragEvent,
-    node: ProjectLayerItem | ProjectGroupItem,
-    indentLevel: number
+    node: ProjectLayerItem | ProjectGroupItem
   ) => {
     e.preventDefault();
     e.stopPropagation();
 
+    const nodeId = getTreeNodeId(node);
     const draggedIds = draggedNodeIdsRef.current;
-    if (draggedIds.length === 0 || !node.id) return;
+    if (draggedIds.length === 0 || !nodeId) return;
 
-    // Check cycles: no dragged group can drop into itself or its descendants
-    const draggedNodes = collectNodesByIds(tree, draggedIds);
-    for (const dragged of draggedNodes) {
-      if (dragged.id === node.id) {
-        e.dataTransfer.dropEffect = "none";
-        return;
-      }
-      if ('children' in dragged && isDescendantNode(dragged as ProjectGroupItem, node.id)) {
-        e.dataTransfer.dropEffect = "none";
-        return;
-      }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const resolved = resolveNodeDropTarget({
+      tree,
+      draggedIds,
+      hoveredNodeId: nodeId,
+      offsetY: e.clientY - rect.top,
+      rowHeight: rect.height || 24,
+      offsetX: e.clientX - rect.left,
+    });
+
+    if (!resolved) {
+      e.dataTransfer.dropEffect = "none";
+      setDragOverState(null);
+      return;
     }
 
-    const position = 'children' in node ? 'into' : 'before';
-    setDragOverState({
-      targetId: node.id,
-      position,
-      indentLevel,
-    });
+    e.dataTransfer.dropEffect = "move";
+    setDragOverState(resolved);
   };
 
   const handleDrop = (
@@ -653,25 +612,29 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     e.preventDefault();
     e.stopPropagation();
 
+    const nodeId = getTreeNodeId(node);
     const draggedIds = draggedNodeIdsRef.current;
-    if (draggedIds.length === 0 || !node.id) {
+    if (draggedIds.length === 0 || !nodeId) {
       setDragOverState(null);
       return;
     }
 
-    // Abort if dropping into self or descendant
-    const draggedNodes = collectNodesByIds(tree, draggedIds);
-    for (const dragged of draggedNodes) {
-      if (dragged.id === node.id || ('children' in dragged && isDescendantNode(dragged as ProjectGroupItem, node.id))) {
-        setDragOverState(null);
-        return;
-      }
-    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const resolved =
+      resolveNodeDropTarget({
+        tree,
+        draggedIds,
+        hoveredNodeId: nodeId,
+        offsetY: e.clientY - rect.top,
+        rowHeight: rect.height || 24,
+        offsetX: e.clientX - rect.left,
+      }) || dragOverState;
 
-    const position = 'children' in node ? 'into' : 'before';
-    isProjectDirtySignal.value = true;
-    if (window.electronAPI?.reorderNodes) {
-      window.electronAPI.reorderNodes(draggedIds, node.id, position);
+    if (resolved) {
+      isProjectDirtySignal.value = true;
+      if (window.electronAPI?.reorderNodes) {
+        window.electronAPI.reorderNodes(draggedIds, resolved.targetId, resolved.position);
+      }
     }
 
     draggedNodeIdsRef.current = [];
@@ -683,8 +646,46 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     setDragOverState(null);
   };
 
+  const handleProjectRootDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedIds = draggedNodeIdsRef.current;
+    if (draggedIds.length === 0) return;
+
+    const resolved = resolveNodeDropTarget({
+      tree,
+      draggedIds,
+      hoveredNodeId: 'root',
+      offsetY: 0,
+      rowHeight: 24,
+      offsetX: 0,
+    });
+    if (!resolved) {
+      e.dataTransfer.dropEffect = "none";
+      setDragOverState(null);
+      return;
+    }
+    e.dataTransfer.dropEffect = "move";
+    setDragOverState(resolved);
+  };
+
+  const handleProjectRootDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedIds = draggedNodeIdsRef.current;
+    if (draggedIds.length > 0) {
+      isProjectDirtySignal.value = true;
+      if (window.electronAPI?.reorderNodes) {
+        window.electronAPI.reorderNodes(draggedIds, 'root', 'into');
+      }
+    }
+    draggedNodeIdsRef.current = [];
+    setDragOverState(null);
+  };
+
   const handleEmptyViewportDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (draggedNodeIdsRef.current.length === 0) return;
     setDragOverState({
       targetId: 'root',
       position: 'append-root',
@@ -733,7 +734,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           draggable={editingNodeId === null}
           onDragStart={(e) => handleDragStart(e, layer)}
           onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, layer, indentLevel)}
+          onDragOver={(e) => handleDragOver(e, layer)}
           onDrop={(e) => handleDrop(e, layer)}
           onMouseDown={(e) => handleRowMouseDown(e, layer.id, true)}
           onClick={(e) => handleRowClickWithEditCheck(e, layer.id, true)}
@@ -785,6 +786,12 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             </span>
           )}
         </div>
+        {isDropTarget && dragOverState?.position === 'after' && (
+          <div
+            className='tree-drop-marker'
+            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
+          />
+        )}
       </React.Fragment>
     );
   };
@@ -796,7 +803,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     ancestorVisible: boolean = true
   ) => {
     const isExpanded = group.expanded !== false;
-    const groupId = group.id || `group-${group.name}`;
+    const groupId = getTreeNodeId(group);
     const isSelected = group.id ? selectedNodeIds.includes(group.id) : false;
     const isGroupEffectiveVisible = ancestorVisible && group.visible !== false;
     const isDimmed = !projectVisible || !ancestorVisible || group.visible === false;
@@ -817,7 +824,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           draggable={editingNodeId === null}
           onDragStart={(e) => handleDragStart(e, group)}
           onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, group, indentLevel)}
+          onDragOver={(e) => handleDragOver(e, group)}
           onDrop={(e) => handleDrop(e, group)}
           onMouseDown={(e) => handleRowMouseDown(e, groupId, false)}
           onClick={(e) => handleRowClickWithEditCheck(e, groupId, false)}
@@ -881,7 +888,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         {isDropTarget && dragOverState?.position === 'into' && (
           <div
             className='tree-drop-marker'
-            style={{ marginLeft: `${(indentLevel + 1) * 18 + 6}px` }}
+            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
           />
         )}
 
@@ -891,6 +898,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               renderTreeNode(child, indentLevel + 1, isGroupEffectiveVisible)
             )}
           </div>
+        )}
+
+        {isDropTarget && dragOverState?.position === 'after' && (
+          <div
+            className='tree-drop-marker'
+            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
+          />
         )}
       </React.Fragment>
     );
@@ -1011,6 +1025,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               {/* Top-Level Project Root Item */}
               <div
                 className={`tree-node-row tree-node-project ${selectedNodeIds.includes('project') ? "selected" : ""}`}
+                onDragOver={handleProjectRootDragOver}
+                onDrop={handleProjectRootDrop}
                 onMouseDown={(e) => handleRowMouseDown(e, 'project', false)}
                 onClick={(e) => handleRowClickWithEditCheck(e, 'project', false)}
                 onContextMenu={handleProjectContextMenu}>
@@ -1056,6 +1072,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                   </span>
                 )}
               </div>
+
+              {dragOverState?.targetId === 'root' && dragOverState?.position === 'into' && (
+                <div
+                  className='tree-drop-marker'
+                  style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
+                />
+              )}
 
               {/* Children: Hierarchical Layer Tree */}
               <div className='tree-project-children'>

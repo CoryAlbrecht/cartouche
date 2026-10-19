@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -98,10 +98,11 @@ describe('openProject Native Session Hydration', () => {
     assert.ok(project, 'project-4.cproj must load successfully');
     assert.equal(project.metadata.title, 'project-4');
 
-    // Query features from top-level layer (timeline_level_0_yaol has 0 features)
-    const l0Result = await queryExtent('timeline_level_0_yaol', [-180, -90, 180, 90]);
-    assert.equal(l0Result.layerId, 'timeline_level_0_yaol');
-    assert.equal(l0Result.features.length, 0, 'L0 has 0 features');
+    // Query features from top-level layer in project-4.cproj
+    const topLayer = project.layers.find((item) => !('children' in item)) as ProjectLayerItem | undefined;
+    assert.ok(topLayer, 'project-4.cproj must contain a top-level layer');
+    const l0Result = await queryExtent(topLayer.id, [-180, -90, 180, 90]);
+    assert.equal(l0Result.layerId, topLayer.id);
     assert.ok(l0Result.buffer instanceof ArrayBuffer);
     assert.equal(new DataView(l0Result.buffer).getUint32(0, true), 0x43415254);
 

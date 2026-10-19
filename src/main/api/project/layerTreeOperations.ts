@@ -4,7 +4,7 @@
  * @description Main Process API functions for layer tree visibility, selection, deletion, group creation, and reordering operations on the authoritative ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-13
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link LayerGroup}
@@ -257,93 +257,104 @@ export function renameNode(nodeId: string, newName: string): void {
 }
 
 /**
- * @description Reorders nodes in the hierarchy, enforcing cycle checks and updating parent linkage.
+ * @description Reorders nodes in the hierarchy, preserving top-to-bottom tree order, pruning redundant selected descendants, enforcing cycle checks, and updating parent linkage.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {string[]} draggedNodeIds - Array of dragged node identifiers.
- * @param {string} targetNodeId - Target node identifier for drop action.
- * @param {'before' | 'into' | 'append-root'} position - Relative insertion position.
+ * @param {string} targetNodeId - Target node identifier for drop action (or 'root' for project root).
+ * @param {import('@shared/types').DropPosition} position - Relative insertion position.
  * @returns {void}
  */
 export function reorderNodes(
   draggedNodeIds: string[],
   targetNodeId: string,
-  position: 'before' | 'into' | 'append-root'
+  position: import('@shared/types').DropPosition
 ): void {
   const root = projectStore.getRootGroup();
 
-  // Resolve dragged nodes
-  const draggedNodes: LayerTreeNode[] = [];
-  for (const id of draggedNodeIds) {
-    const node = findNode(root, id);
-    if (node && node !== root) {
-      draggedNodes.push(node);
+  // Resolve dragged nodes in canonical top-to-bottom tree order
+  const draggedIdSet = new Set(draggedNodeIds);
+  const rawDraggedNodes = collectAllNodes(root).filter(
+    (node) => node !== root && draggedIdSet.has(node.id)
+  );
+
+  // Prune descendants whose ancestor group is also in the dragged set
+  const draggedNodes = rawDraggedNodes.filter((node) => {
+    let curr = node.parent;
+    while (curr && curr !== root) {
+      if (rawDraggedNodes.includes(curr)) {
+        return false;
+      }
+      curr = curr.parent;
     }
-  }
+    return true;
+  });
 
   if (draggedNodes.length === 0) {
     return;
   }
 
-  // Cycle prevention: no dragged node can be an ancestor of targetNode
-  if (position !== 'append-root') {
+  // Cycle and self-drop prevention
+  if (position !== 'append-root' && targetNodeId !== 'root') {
     for (const dragged of draggedNodes) {
-      if (dragged instanceof LayerGroup) {
-        if (dragged.id === targetNodeId || isDescendant(dragged, targetNodeId)) {
-          return; // Abort invalid cyclical move
-        }
+      if (dragged.id === targetNodeId) {
+        return;
+      }
+      if (dragged instanceof LayerGroup && isDescendant(dragged, targetNodeId)) {
+        return; // Abort invalid cyclical move
       }
     }
   }
 
-  if (position === 'append-root') {
-    for (const node of draggedNodes) {
-      if (node.parent) {
-        node.parent.removeChild(node);
-      }
-      root.addChild(node);
-    }
-    projectStore.setProjectDirty(true);
-    broadcastProjectLayersTree();
+  const targetNode =
+    position === 'append-root' || (targetNodeId === 'root' && position === 'into')
+      ? root
+      : findNode(root, targetNodeId);
+
+  if (!targetNode || (targetNode === root && position !== 'append-root' && position !== 'into')) {
     return;
   }
 
-  const targetNode = findNode(root, targetNodeId);
-  if (!targetNode) {
-    return;
-  }
-
-  if (position === 'into' && targetNode instanceof LayerGroup) {
-    for (const node of draggedNodes) {
-      if (node.parent) {
-        node.parent.removeChild(node);
-      }
-    }
-    for (let i = 0; i < draggedNodes.length; i++) {
-      targetNode.addChild(draggedNodes[i], i);
-    }
-    projectStore.setProjectDirty(true);
-    broadcastProjectLayersTree();
-    return;
-  }
-
-  // position === 'before'
+  // Detach dragged nodes from their current parents before re-insertion
   for (const node of draggedNodes) {
     if (node.parent) {
       node.parent.removeChild(node);
     }
   }
 
-  const parent = targetNode.parent || root;
-  const targetIndex = parent.getAllChildren().indexOf(targetNode);
-  const insertPos = targetIndex !== -1 ? targetIndex : parent.getAllChildren().length;
+  if (position === 'append-root') {
+    for (const node of draggedNodes) {
+      root.addChild(node);
+    }
+  } else if (targetNodeId === 'root' && position === 'into') {
+    for (let i = 0; i < draggedNodes.length; i++) {
+      root.addChild(draggedNodes[i], i);
+    }
+  } else if (position === 'into' && targetNode instanceof LayerGroup) {
+    targetNode.expanded = true;
+    for (let i = 0; i < draggedNodes.length; i++) {
+      targetNode.addChild(draggedNodes[i], i);
+    }
+  } else {
+    // position === 'before' or position === 'after'
+    const parent = targetNode.parent || root;
+    const targetIndex = parent.getAllChildren().indexOf(targetNode);
+    const insertPos =
+      targetIndex !== -1
+        ? position === 'after'
+          ? targetIndex + 1
+          : targetIndex
+        : parent.getAllChildren().length;
 
-  for (let i = 0; i < draggedNodes.length; i++) {
-    parent.addChild(draggedNodes[i], insertPos + i);
+    for (let i = 0; i < draggedNodes.length; i++) {
+      parent.addChild(draggedNodes[i], insertPos + i);
+    }
   }
 
   projectStore.setProjectDirty(true);
   broadcastProjectLayersTree();
 }
+
+

@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  */
 
@@ -347,6 +347,86 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(loaded.customProperties?.projectAuthorEmail, 'cory@albrecht.name');
     assert.equal(loaded.customProperties?.versionCode, 42);
     assert.equal(loaded.customProperties?.isPublic, false);
+  });
+
+  it('preserves interleaved <group> and <layer> sibling order across save() and load() at root and nested levels', async () => {
+    const loader = new CartoucheXmlLoader();
+    const tempPath = path.resolve('./temp-interleaved-order-test.cproj');
+    tempFiles.push(tempPath);
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'Interleaved Order Test',
+        appVersion: '0.1.0-dev'
+      },
+      layers: [
+        {
+          id: 'group-water',
+          name: 'Water',
+          visible: true,
+          expanded: true,
+          children: [
+            {
+              id: 'subgroup-rivers',
+              name: 'Rivers Subgroup',
+              visible: true,
+              expanded: true,
+              children: []
+            },
+            {
+              id: 'layer-lakes',
+              name: 'Lakes',
+              type: 'esri-shapefile',
+              source: '/data/lakes.shp',
+              visible: true,
+              opacity: 1,
+              selectable: true
+            },
+            {
+              id: 'subgroup-marine',
+              name: 'Marine Subgroup',
+              visible: true,
+              expanded: false,
+              children: []
+            }
+          ]
+        },
+        {
+          id: 'layer-l0',
+          name: 'timeline_level_0',
+          type: 'geopackage-vector',
+          source: '/data/timeline_level_0.gpkg',
+          visible: true,
+          opacity: 1,
+          selectable: true
+        },
+        {
+          id: 'group-land',
+          name: 'Land',
+          visible: true,
+          expanded: true,
+          children: []
+        }
+      ]
+    };
+
+    await loader.save(model, tempPath);
+    const rawXml = fs.readFileSync(tempPath, 'utf-8');
+    const validation = validateXmlAgainstSchema(rawXml);
+    assert.equal(validation.valid, true, `Saved XML did not validate: ${validation.error}`);
+
+    const loaded = await loader.load(tempPath);
+    assert.deepEqual(
+      loaded.layers.map((item) => item.id),
+      ['group-water', 'layer-l0', 'group-land']
+    );
+
+    const waterGroup = loaded.layers[0] as import('../../../src/shared/types').ProjectGroupItem;
+    assert.deepEqual(
+      waterGroup.children.map((item) => item.id),
+      ['subgroup-rivers', 'layer-lakes', 'subgroup-marine']
+    );
   });
 });
 

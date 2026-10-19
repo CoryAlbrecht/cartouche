@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -51,7 +51,7 @@ function escapeXml(unsafe: string): string {
  * @description Extensible project loader for native unbundled Cartouche XML project documents.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  */
 export class CartoucheXmlLoader implements IProjectLoader {
@@ -105,7 +105,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-15
+   * @updated 2026-10-19
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -245,20 +245,63 @@ export class CartoucheXmlLoader implements IProjectLoader {
       };
     };
 
-    const parseGroup = (raw: any): ProjectGroupItem => {
+    const orderedParser = new XMLParser({ preserveOrder: true });
+    const orderedParsed = orderedParser.parse(content);
+    const orderedRootObj = Array.isArray(orderedParsed)
+      ? orderedParsed.find((el: any) => el && ('cartouche:project' in el || 'project' in el))
+      : undefined;
+    const orderedRootChildren: any[] = orderedRootObj?.['cartouche:project'] || orderedRootObj?.['project'] || [];
+    const orderedLayersObj = Array.isArray(orderedRootChildren)
+      ? orderedRootChildren.find((el: any) => el && 'layers' in el)
+      : undefined;
+    const orderedRootLayerNodes: any[] | undefined = Array.isArray(orderedLayersObj?.layers)
+      ? orderedLayersObj.layers
+      : undefined;
+
+    const parseContainerChildren = (
+      rawContainer: any,
+      orderedChildNodes?: any[]
+    ): Array<ProjectLayerItem | ProjectGroupItem> => {
       const children: Array<ProjectLayerItem | ProjectGroupItem> = [];
-      if (raw.layer) {
-        const layerList = Array.isArray(raw.layer) ? raw.layer : [raw.layer];
+      if (!rawContainer) return children;
+      const layerList = rawContainer.layer
+        ? (Array.isArray(rawContainer.layer) ? rawContainer.layer : [rawContainer.layer])
+        : [];
+      const groupList = rawContainer.group
+        ? (Array.isArray(rawContainer.group) ? rawContainer.group : [rawContainer.group])
+        : [];
+
+      if (Array.isArray(orderedChildNodes)) {
+        let layerIdx = 0;
+        let groupIdx = 0;
+        for (const childNode of orderedChildNodes) {
+          if (!childNode || typeof childNode !== 'object') continue;
+          if ('layer' in childNode && layerIdx < layerList.length) {
+            children.push(parseLayer(layerList[layerIdx++]));
+          } else if ('group' in childNode && groupIdx < groupList.length) {
+            const orderedSubNodes = Array.isArray(childNode.group) ? childNode.group : undefined;
+            children.push(parseGroup(groupList[groupIdx++], orderedSubNodes));
+          }
+        }
+        while (layerIdx < layerList.length) {
+          children.push(parseLayer(layerList[layerIdx++]));
+        }
+        while (groupIdx < groupList.length) {
+          children.push(parseGroup(groupList[groupIdx++]));
+        }
+      } else {
         for (const l of layerList) {
           children.push(parseLayer(l));
         }
-      }
-      if (raw.group) {
-        const groupList = Array.isArray(raw.group) ? raw.group : [raw.group];
         for (const g of groupList) {
           children.push(parseGroup(g));
         }
       }
+      return children;
+    };
+
+    const parseGroup = (raw: any, orderedChildNodes?: any[]): ProjectGroupItem => {
+      const children = parseContainerChildren(raw, orderedChildNodes);
       return {
         id: raw['@_id'],
         name: raw.name || raw['@_name'] || 'Unnamed Group',
@@ -268,21 +311,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
       };
     };
 
-    const layers: Array<ProjectLayerItem | ProjectGroupItem> = [];
-    if (root.layers) {
-      if (root.layers.layer) {
-        const layerList = Array.isArray(root.layers.layer) ? root.layers.layer : [root.layers.layer];
-        for (const l of layerList) {
-          layers.push(parseLayer(l));
-        }
-      }
-      if (root.layers.group) {
-        const groupList = Array.isArray(root.layers.group) ? root.layers.group : [root.layers.group];
-        for (const g of groupList) {
-          layers.push(parseGroup(g));
-        }
-      }
-    }
+    const layers: Array<ProjectLayerItem | ProjectGroupItem> = parseContainerChildren(
+      root.layers,
+      orderedRootLayerNodes
+    );
 
     // Parse Shared Styles (optional)
     const styles: ProjectStyleItem[] = [];
