@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-16
+ * @updated 2026-10-18
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -88,7 +88,7 @@ Name=Cartouche
 Exec=${process.execPath} ${path.join(__dirname, 'main.js')} %U
 Terminal=false
 Type=Application
-Icon=cartouche
+Icon=${srcIcon}
 StartupWMClass=cartouche
 Comment=Cartouche Desktop GIS Application
 Categories=Graphics;Science;Geoscience;
@@ -105,6 +105,9 @@ if (process.platform === 'linux') {
     app.commandLine.appendSwitch('no-sandbox');
   }
   app.setName('cartouche');
+  if (typeof (app as any).setDesktopName === 'function') {
+    (app as any).setDesktopName('cartouche.desktop');
+  }
   setupLinuxDesktopIntegration();
 }
 
@@ -134,7 +137,7 @@ if (process.argv.includes('--test-worker')) {
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-10-18
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -165,8 +168,9 @@ function createWindow() {
     title: 'Cartouche',
     backgroundColor: '#ffffff',
     frame: false, // Frameless window with custom menubar & window controls
+    roundedCorners: false, // Prevent Linux CSD border distortion and clipping on Electron 44
     show: false, // Hide until Cartouche preferences bounds are explicitly set
-    icon: iconImage,
+    icon: iconImage.isEmpty() ? iconPath : iconImage,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.cjs'),
       contextIsolation: true,
@@ -217,8 +221,8 @@ function createWindow() {
   mainWindow.on('moved', saveWorkbenchBounds);
   mainWindow.on('close', saveWorkbenchBounds);
 
-  if (process.platform === 'linux' && !iconImage.isEmpty()) {
-    mainWindow.setIcon(iconImage);
+  if (process.platform === 'linux') {
+    mainWindow.setIcon(iconImage.isEmpty() ? iconPath : iconImage);
   }
 
   // Handle URL loading in Vite dev vs production build
@@ -260,10 +264,11 @@ function createWindow() {
         minHeight: minH,
         autoHideMenuBar: true,
         frame: false, // Frameless child dialog window with custom title bar
+        roundedCorners: false, // Prevent Linux CSD border distortion and clipping on Electron 44
         resizable: true,
         show: true,
         parent: mainWindow || undefined,
-        icon: iconImage,
+        icon: iconImage.isEmpty() ? iconPath : iconImage,
         webPreferences: {
           preload: path.join(__dirname, '../preload/preload.cjs'),
           contextIsolation: true,
@@ -310,6 +315,10 @@ function createWindow() {
 
   mainWindow.webContents.on('did-finish-load', () => {
     console.log('[Main] Window loaded successfully');
+    if (process.argv.includes('--test-boot')) {
+      console.log('[Test Boot] Verification passed, exiting cleanly');
+      app.exit(0);
+    }
   });
 
   mainWindow.webContents.on('did-fail-load', (_event: any, errorCode: any, errorDescription: any, validatedURL: any) => {
@@ -448,7 +457,8 @@ app.whenReady().then(async () => {
   // Project Management IPC Handlers
   handleIpc('gis:open-project', async (_event, filePath?: string) => {
     const { default: openProject } = await import('./api/project/openProject');
-    return openProject(filePath);
+    const targetWindow = resolveDialogParent(_event.sender, mainWindow);
+    return openProject(filePath, targetWindow);
   });
 
   handleIpc('gis:get-current-project', async () => {
