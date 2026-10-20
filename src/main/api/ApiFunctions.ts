@@ -4,7 +4,7 @@
  * @description Master aggregation barrel module re-exporting main process core API actions for project management, editing, layers, and preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-13
+ * @updated 2026-10-20
  * @since 0.1.0-dev
  * @see {@link newProject}
  * @see {@link openProject}
@@ -14,6 +14,8 @@
  * @see {@link saveActiveLayer}
  * @see {@link saveActiveLayerAs}
  * @see {@link resolveDialogParent}
+ * @see {@link resolveDialogDefaultPath}
+ * @see {@link updateDialogLocation}
  * @see {@link renameLayerTreeNode}
  * @see {@link cancelAction}
  */
@@ -35,4 +37,5 @@ export { addLayer, addLayers } from './layers/addLayer';
 export { queryExtent } from './layers/queryExtent';
 export { pathExists } from './fs/pathExists';
 export { resolveDialogParent } from './dialog/resolveDialogParent';
+export { resolveDialogDefaultPath, updateDialogLocation } from './dialog/dialogLocation';
 

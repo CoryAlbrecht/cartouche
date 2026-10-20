@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-08
+ * @updated 2026-10-20
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -15,7 +15,7 @@ import type { PreferenceMap } from '../types';
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-08
+ * @updated 2026-10-20
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -202,6 +202,26 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: true,
     category: 'ui',
     type: 'number'
+  },
+  'ui.systemDialogs.openFile.location': {
+    displayName: 'Open File Dialog Location',
+    value: ':Recent',
+    defaultValue: ':Recent',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    description: 'Last-used directory or named location token for system file open dialogs',
+    type: 'string'
+  },
+  'ui.systemDialogs.saveFile.location': {
+    displayName: 'Save File Dialog Location',
+    value: ':Recent',
+    defaultValue: ':Recent',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    description: 'Last-used directory or named location token for system file save dialogs',
+    type: 'string'
   },
   'rendering.simplification.threshold': {
     displayName: 'Simplification Threshold',

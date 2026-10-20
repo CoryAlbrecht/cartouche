@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-19
+ * @updated 2026-10-20
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -13,6 +13,7 @@
  */
 
 import { dialog } from 'electron';
+import { resolveDialogDefaultPath, updateDialogLocation } from '../dialog/dialogLocation';
 import { projectLoaderRegistry } from '../../project/loaders/ProjectLoaderRegistry';
 import { projectStore } from '../../project/ProjectStore';
 import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
@@ -81,24 +82,36 @@ function enrichProjectLayers(
 }
 
 /**
+ * @typedef {Object} OpenProjectDialogInvoker
+ * @property {(options: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>} showOpenDialog - Function invoking system open dialog.
+ */
+export interface OpenProjectDialogInvoker {
+  showOpenDialog: (options: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>;
+}
+
+/**
  * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-19
+ * @updated 2026-10-20
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional path to the project document; if omitted, displays the non-modal system file open dialog.
+ * @param {OpenProjectDialogInvoker} [dialogInvoker=dialog] - Optional dialog invoker override for testing.
  * @returns {Promise<ProjectModel | null>} The loaded project model instance or null if canceled/failed.
  */
 export default async function openProject(
-  filePath?: string
+  filePath?: string,
+  dialogInvoker: OpenProjectDialogInvoker = dialog
 ): Promise<ProjectModel | null> {
   let targetPath = filePath;
 
   // If no filePath was supplied (e.g. invoked directly via shortcut), open the non-modal system file picker
   if (!targetPath) {
     const filters = fileTypeRegistry.getFileFilters('project');
-    const result = await dialog.showOpenDialog({
+    const defaultPath = resolveDialogDefaultPath('open');
+    const result = await dialogInvoker.showOpenDialog({
       title: 'Open Cartouche Project',
+      ...(defaultPath ? { defaultPath } : {}),
       properties: ['openFile'],
       filters
     });
@@ -107,6 +120,7 @@ export default async function openProject(
       return null;
     }
     targetPath = result.filePaths[0];
+    updateDialogLocation('open', targetPath);
   }
 
   // Find compatible loader

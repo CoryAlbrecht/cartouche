@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-20
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -19,7 +19,7 @@ import type { DropPosition, FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
-import { pathExists, queryExtent } from "./api/ApiFunctions";
+import { pathExists, queryExtent, resolveDialogDefaultPath, updateDialogLocation } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
@@ -384,13 +384,13 @@ app.whenReady().then(async () => {
    * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-02
-   * @updated 2026-10-19
+   * @updated 2026-10-20
    * @since 0.1.0-dev
    * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
-   * @param {Object} [options] - Dialog options including category, filters, and multiSelections.
+   * @param {Object} [options] - Dialog options including category, filters, defaultPath, and multiSelections.
    * @returns {Promise<string[]>} Selected file paths or empty array if canceled.
    */
-  handleIpc('dialog:open-files', async (_event, options?: { title?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
+  handleIpc('dialog:open-files', async (_event, options?: { title?: string; defaultPath?: string; category?: FileCategory; filters?: Array<{ name: string; extensions: string[] }>; multiSelections?: boolean }) => {
     if (isFileDialogOpen) {
       return [];
     }
@@ -401,13 +401,16 @@ app.whenReady().then(async () => {
         properties.push('multiSelections');
       }
       const filters = options?.filters || fileTypeRegistry.getFileFilters(options?.category);
+      const defaultPath = resolveDialogDefaultPath('open', options?.defaultPath);
       const dialogOptions: Electron.OpenDialogOptions = {
         title: options?.title || 'Select Data Files',
+        ...(defaultPath ? { defaultPath } : {}),
         properties,
         filters
       };
       const res = await dialog.showOpenDialog(dialogOptions);
-      if (res.canceled) return [];
+      if (res.canceled || res.filePaths.length === 0) return [];
+      updateDialogLocation('open', res.filePaths[0]);
       return res.filePaths;
     } catch (err) {
       console.error('[Main] dialog:open-files error:', err);
@@ -423,7 +426,7 @@ app.whenReady().then(async () => {
    * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-19
+   * @updated 2026-10-20
    * @since 0.1.0-dev
    * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
    * @param {Object} [options] - Dialog options including title, defaultPath, category, and filters.
@@ -436,13 +439,15 @@ app.whenReady().then(async () => {
     isFileDialogOpen = true;
     try {
       const filters = options?.filters || fileTypeRegistry.getFileFilters(options?.category || 'project');
+      const defaultPath = resolveDialogDefaultPath('save', options?.defaultPath);
       const dialogOptions: Electron.SaveDialogOptions = {
         title: options?.title || 'Save Cartouche Project',
-        defaultPath: options?.defaultPath,
+        ...(defaultPath ? { defaultPath } : {}),
         filters
       };
       const res = await dialog.showSaveDialog(dialogOptions);
       if (res.canceled || !res.filePath) return null;
+      updateDialogLocation('save', res.filePath);
       return res.filePath;
     } catch (err) {
       console.error('[Main] dialog:save-file error:', err);
