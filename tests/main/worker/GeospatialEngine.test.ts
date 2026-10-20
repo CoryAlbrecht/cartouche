@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -17,6 +17,7 @@ import WKB from 'ol/format/WKB.js';
 import {
   GeospatialEngine,
   mapGdalGeometryKind,
+  resolveLayerGeometryKind,
   getSrsAuthority,
   reprojectBoundingBox
 } from '../../../src/main/worker/GeospatialEngine';
@@ -32,10 +33,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const lakesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes_north_america.geojson');
 const lakesShpPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes.shp');
+const centrelinesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson');
 
 describe('GeospatialEngine Helper Functions', () => {
   it('mapGdalGeometryKind correctly maps GDAL geometry types', () => {
-    assert.equal(mapGdalGeometryKind(undefined), 'Polygon');
+    assert.equal(mapGdalGeometryKind(undefined), 'Unknown');
+    assert.equal(mapGdalGeometryKind(0), 'Unknown');
+    assert.equal(mapGdalGeometryKind(7), 'Unknown');
+    assert.equal(mapGdalGeometryKind(100), 'Unknown');
     assert.equal(mapGdalGeometryKind(1), 'Point');
     assert.equal(mapGdalGeometryKind(4), 'Point');
     assert.equal(mapGdalGeometryKind(2), 'LineString');
@@ -46,6 +51,59 @@ describe('GeospatialEngine Helper Functions', () => {
     assert.equal(mapGdalGeometryKind(1001), 'Point');
     assert.equal(mapGdalGeometryKind(1002), 'LineString');
     assert.equal(mapGdalGeometryKind(1003), 'Polygon');
+  });
+
+  it('resolveLayerGeometryKind resolves homogeneous single+multi feature layers and returns Unknown for mixed geometry families', () => {
+    // Mock layer with geomType = 0 (wkbUnknown) and LineString (2) + MultiLineString (5) features
+    const lineLayer: any = {
+      geomType: 0,
+      features: {
+        forEach(cb: (f: any) => void) {
+          cb({ getGeometry: () => ({ wkbType: 2 }) });
+          cb({ getGeometry: () => ({ wkbType: 5 }) });
+        }
+      }
+    };
+    assert.equal(resolveLayerGeometryKind(lineLayer), 'LineString');
+
+    // Mock layer with geomType = 0 and mixed Point (1) + Polygon (3) features
+    let visitedCount = 0;
+    const mixedFeatures = [
+      { getGeometry: () => ({ wkbType: 1 }) },
+      { getGeometry: () => ({ wkbType: 3 }) },
+      { getGeometry: () => ({ wkbType: 3 }) }
+    ];
+    let idx = 0;
+    const mixedLayer: any = {
+      geomType: 0,
+      features: {
+        first() {
+          idx = 0;
+          visitedCount++;
+          return mixedFeatures[idx];
+        },
+        next() {
+          idx++;
+          if (idx < mixedFeatures.length) {
+            visitedCount++;
+            return mixedFeatures[idx];
+          }
+          return null;
+        }
+      }
+    };
+    assert.equal(resolveLayerGeometryKind(mixedLayer), 'Unknown');
+    assert.equal(visitedCount, 2, 'Should short-circuit immediately upon encountering mixed geometry families');
+
+    // Empty unknown layer
+    const emptyUnknownLayer: any = {
+      geomType: 0,
+      features: {
+        first: () => null,
+        next: () => null
+      }
+    };
+    assert.equal(resolveLayerGeometryKind(emptyUnknownLayer), 'Unknown');
   });
 
   it('getSrsAuthority handles null or undefined SRS safely', () => {
@@ -89,6 +147,13 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     assert.equal(engine.hasDataset('lakes-na-1'), true);
     assert.equal(engine.size, 1);
     assert.deepEqual(engine.getLoadedLayerIds(), ['lakes-na-1']);
+  });
+
+  it('resolves LineString geometryKind for GeoJSON dataset mixing LineString and MultiLineString (wkbUnknown)', async () => {
+    const metadata = await engine.openDataset('centrelines-1', centrelinesGeoJsonPath);
+    assert.equal(metadata.layerId, 'centrelines-1');
+    assert.equal(metadata.featureCount, 4176);
+    assert.equal(metadata.geometryKind, 'LineString');
   });
 
   it('throws descriptive error on invalid or non-existent dataset file', async () => {

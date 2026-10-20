@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-16
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -19,31 +19,11 @@ import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
 import { projectStore } from '../../project/ProjectStore';
 import { Layer } from '../../project/models/Layer';
 import { geospatialService } from '../../worker/GeospatialService';
+import { mapGdalGeometryKind } from '../../worker/GeospatialEngine';
 import { getDefaultLayerStyle } from '../../../shared/styles/defaultLayerStyles';
 import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/ProjectBroadcaster';
 
-/**
- * @description Helper mapping GDAL geometry type integer constants to standard GeometryKind strings.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-09
- * @updated 2026-10-16
- * @since 0.1.0-dev
- * @param {number} [geomType] - GDAL integer geometry type code.
- * @returns {GeometryKind} Canonical GeometryKind string.
- */
-export function mapGdalGeometryKind(geomType?: number): GeometryKind {
-  if (geomType === undefined) {
-    return 'Polygon';
-  }
-  const baseType = (geomType & 0x7fffffff) % 1000;
-  if (baseType === 1 || baseType === 4) {
-    return 'Point';
-  }
-  if (baseType === 2 || baseType === 5) {
-    return 'LineString';
-  }
-  return 'Polygon';
-}
+export { mapGdalGeometryKind };
 
 /**
  * @description Main process handler for registering a new spatial layer in active project state.
@@ -51,7 +31,7 @@ export function mapGdalGeometryKind(geomType?: number): GeometryKind {
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-16
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.
@@ -120,7 +100,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
 
   const newLayer = new Layer(resolvedName, params.filePath, layerKind, resolvedId);
   newLayer.fileType = descriptor;
-  newLayer.geometryKind = isRaster ? 'Raster' : (metadata.geometryKind || 'Polygon');
+  newLayer.geometryKind = isRaster ? 'Raster' : (metadata.geometryKind || 'Unknown');
   newLayer.crs = metadata.crs;
 
   // Attach default OpenLayers Flat Style rules

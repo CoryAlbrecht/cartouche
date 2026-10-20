@@ -26,6 +26,7 @@ import {
   mdiVectorPolyline,
   mdiVectorPoint,
   mdiCheckerboard,
+  mdiHelpCircleOutline,
   mdiChevronDown,
   mdiChevronRight,
   mdiTrashCanOutline,
@@ -80,7 +81,7 @@ export {
  * @description Resolves Material Design Icon path corresponding to layer geometry kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-09
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {GeometryKind} [geometryKind] - Layer geometry kind string.
  * @returns {string} MDI icon SVG path string.
@@ -95,8 +96,9 @@ function getLayerIcon(geometryKind?: GeometryKind): string {
       return mdiVectorPolygon;
     case "Raster":
       return mdiCheckerboard;
+    case "Unknown":
     default:
-      return mdiVectorPolygon;
+      return mdiHelpCircleOutline;
   }
 }
 

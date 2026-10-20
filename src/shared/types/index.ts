@@ -62,10 +62,10 @@ export interface CRS {
  * @description Enumeration of supported GIS spatial geometry and dataset kinds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-08
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  */
-export type GeometryKind = 'Point' | 'LineString' | 'Polygon' | 'Raster';
+export type GeometryKind = 'Point' | 'LineString' | 'Polygon' | 'Raster' | 'Unknown';
 
 /**
  * @typedef {Record<string, any>} OlFlatStyle

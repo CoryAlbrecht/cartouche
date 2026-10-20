@@ -1,10 +1,10 @@
 /**
  * @file defaultLayerStyles.test.ts
  * @module tests/shared/styles/defaultLayerStyles.test
- * @description Unit tests verifying OpenLayers Flat Style definitions for Polygon, LineString, and Point vector layers.
+ * @description Unit tests verifying OpenLayers Flat Style definitions for Polygon, LineString, Point, and Unknown vector layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  */
 
@@ -38,9 +38,17 @@ describe('defaultLayerStyles', () => {
     });
   });
 
-  it('falls back to Point style for unrecognized geometry kinds', () => {
-    const style = getDefaultLayerStyle('UnknownKind');
-    assert.deepEqual(style, defaultLayerStyles.Point);
+  it('defines the combined OpenLayers Flat Style rules for Unknown and falls back to Unknown for unrecognized geometry kinds', () => {
+    const unknownStyle = getDefaultLayerStyle('Unknown');
+    assert.deepEqual(unknownStyle, {
+      'fill-color': '#1e293b',
+      'stroke-color': '#0284c7',
+      'stroke-width': 2,
+      'circle-radius': 8,
+      'circle-fill-color': '#0369a1'
+    });
+    assert.deepEqual(getDefaultLayerStyle('UnknownKind'), defaultLayerStyles.Unknown);
+    assert.deepEqual(getDefaultLayerStyle(undefined), defaultLayerStyles.Unknown);
   });
 });
 

@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -47,23 +47,161 @@ interface EngineSession {
  * @description Maps GDAL geometry type integer codes to canonical GeometryKind strings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {number} [geomType] - GDAL integer geometry type code.
  * @returns {GeometryKind} Canonical GeometryKind string.
  */
 export function mapGdalGeometryKind(geomType?: number): GeometryKind {
   if (geomType === undefined) {
-    return "Polygon";
+    return "Unknown";
   }
   const baseType = (geomType & 0x7fffffff) % 1000;
   if (baseType === 1 || baseType === 4) {
     return "Point";
   }
-  if (baseType === 2 || baseType === 5) {
+  if (
+    baseType === 2
+    || baseType === 5
+    || baseType === 8
+    || baseType === 9
+    || baseType === 11
+  ) {
     return "LineString";
   }
-  return "Polygon";
+  if (
+    baseType === 3
+    || baseType === 6
+    || baseType === 10
+    || baseType === 12
+    || baseType === 15
+    || baseType === 16
+    || baseType === 17
+  ) {
+    return "Polygon";
+  }
+  return "Unknown";
+}
+
+/**
+ * @description Resolves the canonical GeometryKind for an individual GDAL Geometry instance, recursively inspecting GeometryCollection children if necessary.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-19
+ * @updated 2026-10-19
+ * @since 0.1.0-dev
+ * @param {gdal.Geometry | null} [geom] - Native GDAL geometry instance.
+ * @returns {GeometryKind | null} Resolved GeometryKind, 'Unknown' if heterogeneous, or null if geometry is null/empty.
+ */
+export function resolveGeometryKindFromGeometry(
+  geom?: gdal.Geometry | null
+): GeometryKind | null {
+  if (!geom) {
+    return null;
+  }
+  const kind = mapGdalGeometryKind(geom.wkbType);
+  if (kind !== "Unknown") {
+    return kind;
+  }
+
+  const children = (geom as any).children;
+  if (children && typeof children.count === "function") {
+    let count = 0;
+    try {
+      count = children.count();
+    } catch {
+      return "Unknown";
+    }
+    let commonChildKind: GeometryKind | null = null;
+    for (let i = 0; i < count; i++) {
+      let childGeom: gdal.Geometry | null = null;
+      try {
+        childGeom = children.get(i);
+      } catch {
+        return "Unknown";
+      }
+      const childKind = resolveGeometryKindFromGeometry(childGeom);
+      if (childKind === "Unknown") {
+        return "Unknown";
+      }
+      if (childKind !== null) {
+        if (commonChildKind === null) {
+          commonChildKind = childKind;
+        } else if (commonChildKind !== childKind) {
+          return "Unknown";
+        }
+      }
+    }
+    return commonChildKind;
+  }
+
+  return "Unknown";
+}
+
+/**
+ * @description Determines the canonical GeometryKind for a GDAL Layer. Uses layer.geomType when concrete, and otherwise scans layer features with early exit if mixed geometry families are encountered.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-19
+ * @updated 2026-10-19
+ * @since 0.1.0-dev
+ * @param {gdal.Layer} layer - Native GDAL vector layer handle.
+ * @returns {GeometryKind} Resolved GeometryKind ('Point' | 'LineString' | 'Polygon' | 'Unknown').
+ */
+export function resolveLayerGeometryKind(layer: gdal.Layer): GeometryKind {
+  const directKind = mapGdalGeometryKind(layer.geomType);
+  if (directKind !== "Unknown") {
+    return directKind;
+  }
+
+  let detectedKind: GeometryKind | null = null;
+  if (layer.features && typeof layer.features.first === "function" && typeof layer.features.next === "function") {
+    try {
+      let feature = layer.features.first();
+      while (feature) {
+        const geom = typeof feature.getGeometry === "function" ? feature.getGeometry() : null;
+        const featKind = resolveGeometryKindFromGeometry(geom);
+        if (featKind === "Unknown") {
+          return "Unknown";
+        }
+        if (featKind !== null) {
+          if (detectedKind === null) {
+            detectedKind = featKind;
+          } else if (detectedKind !== featKind) {
+            return "Unknown";
+          }
+        }
+        feature = layer.features.next();
+      }
+    } catch {
+      return detectedKind ?? "Unknown";
+    }
+  } else if (layer.features && typeof layer.features.forEach === "function") {
+    let mixed = false;
+    try {
+      layer.features.forEach((feature) => {
+        if (mixed) return;
+        const geom = typeof feature.getGeometry === "function" ? feature.getGeometry() : null;
+        const featKind = resolveGeometryKindFromGeometry(geom);
+        if (featKind === "Unknown") {
+          mixed = true;
+          return;
+        }
+        if (featKind !== null) {
+          if (detectedKind === null) {
+            detectedKind = featKind;
+          } else if (detectedKind !== featKind) {
+            mixed = true;
+          }
+        }
+      });
+    } catch {
+      return mixed ? "Unknown" : (detectedKind ?? "Unknown");
+    }
+    if (mixed) {
+      return "Unknown";
+    }
+  }
+
+  return detectedKind ?? "Unknown";
 }
 
 /**
@@ -148,7 +286,7 @@ export function reprojectBoundingBox(
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  */
 export class GeospatialEngine {
@@ -157,6 +295,10 @@ export class GeospatialEngine {
 
   /**
    * @description Opens a spatial dataset from disk, extracts metadata, and registers the session.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-15
+   * @updated 2026-10-19
+   * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @param {string} filePath - Absolute path to dataset file.
    * @returns {Promise<GeospatialLayerMetadata>} Extracted layer descriptor metadata.
@@ -264,7 +406,7 @@ export class GeospatialEngine {
       };
     }
 
-    const geometryKind = mapGdalGeometryKind(layer.geomType);
+    const geometryKind = resolveLayerGeometryKind(layer);
 
     return { layerId, name, extent, featureCount, crs, geometryKind };
   }

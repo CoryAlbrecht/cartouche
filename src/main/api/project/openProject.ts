@@ -140,12 +140,14 @@ export default async function openProject(
           try {
             const metadata = await geospatialService.openDataset(layer.id, layer.filePath);
 
-            if (!layer.geometryKind) {
+            if (metadata.geometryKind) {
               layer.geometryKind = metadata.geometryKind;
+            } else if (!layer.geometryKind) {
+              layer.geometryKind = 'Unknown';
             }
 
             if (!layer.style) {
-              layer.style = getDefaultLayerStyle(layer.geometryKind || 'Polygon');
+              layer.style = getDefaultLayerStyle(layer.geometryKind || 'Unknown');
             }
 
             if (!layer.crs && metadata.crs) {
@@ -156,6 +158,12 @@ export default async function openProject(
             featureCount = metadata.featureCount;
           } catch (loadErr) {
             console.warn(`[openProject] Failed to load dataset for layer "${layer.name}" (${layer.filePath}):`, loadErr);
+            if (!layer.geometryKind) {
+              layer.geometryKind = 'Unknown';
+            }
+            if (!layer.style) {
+              layer.style = getDefaultLayerStyle(layer.geometryKind || 'Unknown');
+            }
           }
         } else {
           if (!layer.geometryKind) {

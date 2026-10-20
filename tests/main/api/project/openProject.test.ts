@@ -91,6 +91,41 @@ describe('openProject Native Session Hydration', () => {
     assert.equal(new DataView(extentResult.buffer).getUint32(0, true), 0x43415254);
   });
 
+  it('updates non-matching <layer geometryKind> from authoritative dataset on openProject while keeping project clean', async () => {
+    const centrelinesPath = path.resolve(
+      __dirname,
+      '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+    );
+    const tempProjPath = path.resolve(__dirname, `temp_mismatch_project_${Date.now()}.cproj`);
+    tempFiles.push(tempProjPath);
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
+  <metadata>
+    <title>Mismatched GeometryKind Project</title>
+  </metadata>
+  <layers>
+    <layer id="centrelines-mismatch" visible="true" layerKind="vector" geometryKind="Polygon" type="geojson">
+      <name>Centrelines</name>
+      <source>${centrelinesPath}</source>
+    </layer>
+  </layers>
+</project>`;
+
+    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+
+    const project = await openProject(tempProjPath);
+    assert.ok(project, 'Project must be loaded');
+    const layerItem = project.layers[0] as ProjectLayerItem;
+    assert.equal(layerItem.id, 'centrelines-mismatch');
+    assert.equal(layerItem.geometryKind, 'LineString', 'Authoritative dataset geometryKind must overwrite mismatched XML attribute');
+    assert.deepEqual(layerItem.style, {
+      'stroke-color': '#0284c7',
+      'stroke-width': 2
+    });
+    assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
+  });
+
   it('loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors', async () => {
     const project4Path = path.resolve(__dirname, '../../../../../test/projects/project-1/project-4.cproj');
     const project = await openProject(project4Path);

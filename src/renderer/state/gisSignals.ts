@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -678,9 +678,9 @@ export function toggleProjectVisibility() {
  * @description Generates default OpenLayers flat styling expression based on geometry type.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-19
  * @since 0.1.0-dev
- * @param {string} [geometryKind] - Optional geometry kind string ('Point' | 'LineString' | 'Polygon' | 'Raster').
+ * @param {string} [geometryKind] - Optional geometry kind string ('Point' | 'LineString' | 'Polygon' | 'Raster' | 'Unknown').
  * @returns {Record<string, any>} Flat style object definition.
  */
 export function getDefaultOlFlatStyle(geometryKind?: string): Record<string, any> {
@@ -774,7 +774,7 @@ export function toggleLayerGroupExpanded(groupId: string) {
  * @description Converts a hierarchical ProjectModel layer and group tree into flat GisLayerGroup[] and GisLayer[] arrays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-03
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The source ProjectModel to convert.
  * @returns {{ groups: GisLayerGroup[]; layers: GisLayer[] }} Flattened groups and layers arrays.
@@ -806,7 +806,7 @@ export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayer
           dataName: item.source,
           groupId: parentId,
           kind: 'vector',
-          geometryKind: 'Polygon',
+          geometryKind: item.geometryKind || 'Unknown',
           visible: item.visible !== false,
           opacity: item.opacity ?? 1.0,
           color: '#2563eb',
@@ -826,7 +826,7 @@ export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayer
  * @description Recursively extracts flat LayerDescriptor array and resolved style map from project hierarchy items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-10-19
  * @since 0.1.0-dev
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Project tree items.
  * @returns {{ descriptors: LayerDescriptor[]; styles: Record<string, Record<string, any>> }} Extracted descriptors and styles.
@@ -855,7 +855,7 @@ function extractDescriptorsAndStyles(items: Array<ProjectLayerItem | ProjectGrou
           selectable: item.selectable !== false,
           readOnly: item.readOnly === true,
           layerKind: item.layerKind || (item.type === 'raster' ? 'raster' : 'vector'),
-          geometryKind: item.geometryKind || 'Polygon',
+          geometryKind: item.geometryKind || 'Unknown',
           style: item.style,
           crs: item.crs,
           customProperties: item.customProperties,
