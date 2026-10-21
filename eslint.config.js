@@ -37,9 +37,13 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "warn",
 
       // General code quality rules
-      "no-console": "off",
+      "no-console": "error",
       "prefer-const": "warn",
     },
+  },
+  {
+    files: ["src/shared/logging/**", "tests/**", "test/**"],
+    rules: { "no-console": "off" },
   },
   {
     files: ["**/*.cjs"],

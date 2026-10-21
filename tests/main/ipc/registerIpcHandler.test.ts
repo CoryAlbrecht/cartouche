@@ -4,7 +4,7 @@
  * @description Unit tests for handleIpc and onIpc telemetry, timing, and error logging utilities.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-12
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { IpcMainInvokeEvent, IpcMainEvent } from 'electron';
 import { handleIpc, onIpc, type IpcMainBridge } from '../../../src/main/ipc/registerIpcHandler';
+import { setLogSink, resetLogSink, type LogPayload } from '../../../src/shared/logging';
 
 describe('registerIpcHandler', () => {
   it('handleIpc registers invoke handler and returns result', async () => {
@@ -26,9 +27,8 @@ describe('registerIpcHandler', () => {
       on: () => {}
     };
 
-    const logs: string[] = [];
-    const originalLog = console.log;
-    console.log = (...args: any[]) => logs.push(args.join(' '));
+    const payloads: LogPayload[] = [];
+    setLogSink((p) => payloads.push(p));
 
     try {
       handleIpc('test:channel', async (_event: IpcMainInvokeEvent, arg: string) => `echo:${arg}`, mockBridge, false);
@@ -37,10 +37,10 @@ describe('registerIpcHandler', () => {
       assert.ok(typeof invokeFn === 'function');
       const result = await invokeFn!({} as any, 'hello');
       assert.equal(result, 'echo:hello');
-      assert.ok(logs.some((l) => l.includes('[IPC:Request] test:channel')));
-      assert.ok(logs.some((l) => l.includes('[IPC:Response] test:channel')));
+      assert.ok(payloads.some((p) => p.level === 'debug' && p.message === 'IPC request dispatched'));
+      assert.ok(payloads.some((p) => p.level === 'debug' && p.message === 'IPC response handled'));
     } finally {
-      console.log = originalLog;
+      resetLogSink();
     }
   });
 
@@ -54,9 +54,8 @@ describe('registerIpcHandler', () => {
       on: () => {}
     };
 
-    const errors: string[] = [];
-    const originalError = console.error;
-    console.error = (...args: any[]) => errors.push(args.join(' '));
+    const payloads: LogPayload[] = [];
+    setLogSink((p) => payloads.push(p));
 
     try {
       handleIpc('test:fail', async () => {
@@ -70,9 +69,9 @@ describe('registerIpcHandler', () => {
         },
         /Boom/
       );
-      assert.ok(errors.some((e) => e.includes('[IPC:Error] test:fail:')));
+      assert.ok(payloads.some((p) => p.level === 'error' && p.message === 'IPC handler invocation failed'));
     } finally {
-      console.error = originalError;
+      resetLogSink();
     }
   });
 
@@ -88,9 +87,8 @@ describe('registerIpcHandler', () => {
       }
     };
 
-    const errors: string[] = [];
-    const originalError = console.error;
-    console.error = (...args: any[]) => errors.push(args.join(' '));
+    const payloads: LogPayload[] = [];
+    setLogSink((p) => payloads.push(p));
 
     try {
       onIpc('test:event-error', () => {
@@ -101,9 +99,9 @@ describe('registerIpcHandler', () => {
       // Should not throw, should log to error
       assert.ok(typeof listenerFn === 'function');
       listenerFn!({} as any);
-      assert.ok(errors.some((e) => e.includes('[IPC:Error] test:event-error:')));
+      assert.ok(payloads.some((p) => p.level === 'error' && p.message === 'IPC event listener failed'));
     } finally {
-      console.error = originalError;
+      resetLogSink();
     }
   });
 
@@ -117,18 +115,17 @@ describe('registerIpcHandler', () => {
       on: () => {}
     };
 
-    const logs: string[] = [];
-    const originalLog = console.log;
-    console.log = (...args: any[]) => logs.push(args.join(' '));
+    const payloads: LogPayload[] = [];
+    setLogSink((p) => payloads.push(p));
 
     try {
       handleIpc('test:packaged', async () => 'ok', mockBridge, true);
       assert.ok(typeof invokeFn === 'function');
       const res = await invokeFn!({} as any);
       assert.equal(res, 'ok');
-      assert.equal(logs.length, 0);
+      assert.equal(payloads.length, 0);
     } finally {
-      console.log = originalLog;
+      resetLogSink();
     }
   });
 });

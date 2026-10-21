@@ -4,7 +4,7 @@
  * @description Main process authoritative store for the localization subsystem. Loads XML language files and maintains the active dictionary.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-04
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { XMLParser } from 'fast-xml-parser';
 import type { I18nDictionary, I18nState } from '@shared/types';
+import { logging } from '../../shared/logging';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,7 +78,7 @@ class I18nStore {
     }
 
     if (!matchedFile) {
-      console.warn('[I18nStore] No localization file found. Using empty dictionary.');
+      logging.warn('No localization file found, using empty dictionary', { scope: 'I18nStore' });
       this.activeLocale = 'en';
       this.dictionary = {};
       return;
@@ -119,13 +120,18 @@ class I18nStore {
       }
 
       this.dictionary = newDict;
-      console.log(`[I18nStore] Loaded locale '${this.activeLocale}' from ${path.basename(matchedFile)} (${Object.keys(newDict).length} keys)`);
+      logging.info('Loaded locale dictionary', {
+        locale: this.activeLocale,
+        file: path.basename(matchedFile),
+        keyCount: Object.keys(newDict).length,
+        scope: 'I18nStore'
+      });
       this.broadcastState();
 
     } catch (err) {
-      console.error(`[I18nStore] Failed to load locale file ${matchedFile}:`, err);
+      logging.warn('Failed to load locale file', err, { file: matchedFile, scope: 'I18nStore' });
       if (matchedFile !== path.join(i18nDir, 'en.xml')) {
-         console.log('[I18nStore] Falling back to en.xml');
+        logging.warn('Falling back to default English locale (en.xml)', { scope: 'I18nStore' });
       }
     }
   }

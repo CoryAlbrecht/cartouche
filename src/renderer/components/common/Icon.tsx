@@ -4,11 +4,12 @@
  * @description Standardized Material Design Icons (MDI) and custom SVG file icon renderer component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
 import React, { useState, useEffect } from "react";
+import { logging } from "../../../shared/logging";
 
 /**
  * @typedef {Object} IconProps
@@ -185,7 +186,7 @@ export const Icon: React.FC<IconProps> = ({
         }
       })
       .catch((err) => {
-        console.error(`[Icon] Failed to load custom icon: ${basename}.svg`, err);
+        logging.warn('Failed to load custom icon', err, { icon: `${basename}.svg`, scope: 'Icon' });
       });
   }, [isFileIcon, basename]);
 

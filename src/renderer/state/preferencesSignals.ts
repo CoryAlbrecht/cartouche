@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -12,6 +12,7 @@
 import { signal, type Signal } from '@preact/signals-react';
 import type { PreferenceMap } from '@shared/types';
 import { addConsoleLog } from './gisSignals';
+import { logging } from '../../shared/logging';
 
 /**
  * @signal isPreferencesOpenSignal
@@ -121,7 +122,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
       return prefs;
     }
   } catch (err) {
-    console.error('[PreferencesSignal] Error loading preferences:', err);
+    logging.error('Error loading preferences from Main Process', err, { scope: 'preferencesSignals' });
   }
   return preferencesMapSignal.value;
 }
@@ -130,7 +131,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
  * @description Saves a single preference value via IPC and updates preferencesMapSignal reactively.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-30
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @param {string} name - Preference key identifier.
  * @param {any} value - New preference value to set.
@@ -149,7 +150,7 @@ export async function updatePreference(name: string, value: any): Promise<void> 
       addConsoleLog('info', `Preference updated: "${name}" = ${JSON.stringify(value)}`, 'Preferences');
     }
   } catch (err) {
-    console.error(`[PreferencesSignal] Error setting preference "${name}":`, err);
+    logging.error('Error setting preference value', err, { preference: name, scope: 'preferencesSignals' });
     addConsoleLog('error', `Failed to update preference: ${name}`, 'Preferences');
   }
 }

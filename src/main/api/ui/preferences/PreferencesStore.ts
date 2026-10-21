@@ -14,6 +14,7 @@ import path from 'node:path';
 import { app } from 'electron';
 import type { PreferenceMap } from '@shared/types';
 import { BUILTIN_PREFERENCES } from '../../../../shared/preferences/index';
+import { logging } from '../../../../shared/logging';
 
 /**
  * @description Helper function to check if a preference key string represents a window/dialog location or geometry property.
@@ -126,7 +127,7 @@ class PreferencesStoreManager {
         const data = fs.readFileSync(targetPath, 'utf-8');
         parsed = JSON.parse(data);
       } catch (err) {
-        console.warn('[PreferencesStore] Failed to load preferences from disk:', err);
+        logging.warn('Failed to load preferences from disk', err, { scope: 'PreferencesStore' });
       }
     }
 
@@ -205,7 +206,7 @@ class PreferencesStoreManager {
       fs.mkdirSync(path.dirname(targetPath), { recursive: true });
       fs.writeFileSync(targetPath, JSON.stringify(toSave, null, 2), 'utf-8');
     } catch (err) {
-      console.error('[PreferencesStore] Failed to save preferences to disk:', err);
+      logging.error('Failed to save preferences to disk', err, { scope: 'PreferencesStore' });
     }
   }
 
@@ -265,7 +266,7 @@ class PreferencesStoreManager {
       try {
         listener(key, value);
       } catch (err) {
-        console.error('[PreferencesStore] Error in change listener:', err);
+        logging.error('Error in preferences change listener', err, { scope: 'PreferencesStore', preference: key });
       }
     }
     return { [key]: { ...this.preferences[key] } };

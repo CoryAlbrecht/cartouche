@@ -4,7 +4,7 @@
  * @description Central in-memory store maintaining authoritative active Cartouche project state in the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  */
@@ -14,6 +14,7 @@ import { LayerGroup } from './models/LayerGroup';
 import { Layer } from './models/Layer';
 import { LayerTreeNode } from './models/LayerTreeNode';
 import { fileTypeRegistry } from '../filetypes/FileTypeRegistry';
+import { logging } from '../../shared/logging';
 
 /**
  * @class ProjectStore
@@ -246,7 +247,7 @@ export class ProjectStore {
    * @description Sets the unsaved project dirty modification flag and notifies registered listeners.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-13
+   * @updated 2026-10-21
    * @since 0.1.0-dev
    * @param {boolean} dirty - True if unsaved project changes exist.
    * @returns {void}
@@ -259,7 +260,7 @@ export class ProjectStore {
         try {
           listener(dirty);
         } catch (err) {
-          console.error('[ProjectStore] onDirtyChange listener error:', err);
+          logging.error('Error in onDirtyChange listener', err, { scope: 'ProjectStore', isDirty: dirty });
         }
       }
     }

@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -12,6 +12,7 @@
  */
 
 import { signal, computed } from '@preact/signals-react';
+import { logging } from '../../shared/logging';
 import type {
   CRS,
   GisLayer,
@@ -981,7 +982,7 @@ export async function newProjectAction(): Promise<boolean> {
  * if selected, closes existing project safely (saving if dirty) before opening the new project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @returns {Promise<void>}
  */
@@ -989,7 +990,7 @@ export async function openProjectAction(): Promise<void> {
   addConsoleLog('info', 'Open project requested.', 'Project');
   try {
     if (!window.electronAPI?.openFiles) {
-      console.warn('[gisSignals] electronAPI.openFiles unavailable');
+      logging.warn('Electron openFiles API is unavailable', { scope: 'gisSignals' });
       return;
     }
     const filePaths = await window.electronAPI.openFiles({
@@ -1018,7 +1019,7 @@ export async function openProjectAction(): Promise<void> {
       }
     }
   } catch (err) {
-    console.error('[gisSignals] Failed to open project:', err);
+    logging.error('Failed to open project', err, { scope: 'gisSignals' });
     addConsoleLog('error', `Failed to open project: ${err}`, 'Project');
   }
 }
@@ -1027,7 +1028,7 @@ export async function openProjectAction(): Promise<void> {
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -1039,7 +1040,7 @@ export async function saveProjectAction(): Promise<boolean> {
   // If untitled / new project, prompt for path via saveFile dialog
   if (!targetPath) {
     if (!window.electronAPI?.saveFile) {
-      console.warn('[gisSignals] electronAPI.saveFile unavailable');
+      logging.warn('Electron saveFile API is unavailable', { scope: 'gisSignals' });
       return false;
     }
     const defaultName = `${projectNameSignal.value || 'Untitled'}.cproj`;
@@ -1087,7 +1088,7 @@ export async function saveProjectAction(): Promise<boolean> {
     addConsoleLog('info', `Project "${projectNameSignal.value || 'Untitled'}" saved successfully.`, 'Project');
     return true;
   } catch (err) {
-    console.error('[gisSignals] saveProjectAction error:', err);
+    logging.error('Failed to save project', err, { scope: 'gisSignals', targetPath });
     addConsoleLog('error', `Failed to save project: ${String(err)}`, 'Project');
     return false;
   }
@@ -1097,7 +1098,7 @@ export async function saveProjectAction(): Promise<boolean> {
  * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -1105,7 +1106,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
   if (!hasProjectSignal.value) return false;
 
   if (!window.electronAPI?.saveFile) {
-    console.warn('[gisSignals] electronAPI.saveFile unavailable');
+    logging.warn('Electron saveFile API is unavailable', { scope: 'gisSignals' });
     return false;
   }
 
@@ -1149,7 +1150,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
     addConsoleLog('info', `Project saved as "${projectNameSignal.value}" (${chosenPath}).`, 'Project');
     return true;
   } catch (err) {
-    console.error('[gisSignals] saveAsProjectAction error:', err);
+    logging.error('Failed to save project as', err, { scope: 'gisSignals', chosenPath });
     addConsoleLog('error', `Failed to save project as: ${String(err)}`, 'Project');
     return false;
   }

@@ -20,6 +20,7 @@ import type { BoundingBox, QueryExtentOptions } from '@shared/types';
 import { GeospatialEngine } from './GeospatialEngine';
 import { projectStore } from '../project/ProjectStore';
 import { LoggingHub, loggingHub as defaultLoggingHub } from '../logging/LoggingHub';
+import { logging } from '../../shared/logging';
 import type {
   GeospatialLayerMetadata,
   GeospatialQueryResult,
@@ -320,11 +321,12 @@ export class GeospatialService {
         stdio: 'pipe'
       });
       this.bindWorkerEvents(this.worker);
-      console.log('[GeospatialService] Background geospatial worker process spawned successfully');
+      logging.info('Background geospatial worker process spawned successfully', { scope: 'GeospatialService' });
     } catch (err) {
-      console.warn(
-        '[GeospatialService] Failed to fork utility process; falling back to in-process GeospatialEngine:',
-        err
+      logging.warn(
+        'Failed to fork geospatial worker process; activating in-process fallback engine',
+        err,
+        { scope: 'GeospatialService' }
       );
       this.worker = null;
       this.engine = new GeospatialEngine();
@@ -364,9 +366,11 @@ export class GeospatialService {
         const failures = (this.circuitBreaker.get(pending.layerId) || 0) + 1;
         this.circuitBreaker.set(pending.layerId, failures);
         if (failures >= this.maxConsecutiveFailures) {
-          console.error(
-            `[GeospatialService] Circuit breaker tripped for layer "${pending.layerId}" after ${failures} consecutive failures`
-          );
+          logging.error('Circuit breaker tripped for layer after consecutive failures', {
+            scope: 'GeospatialService',
+            layerId: pending.layerId,
+            failures
+          });
           pending.reject(
             new Error(
               `Query failed: circuit breaker tripped after ${failures} consecutive failures for layer "${pending.layerId}"`
@@ -395,9 +399,10 @@ export class GeospatialService {
     this.worker = null;
     this.consecutiveWorkerCrashes++;
 
-    console.warn(
-      `[GeospatialService] Worker process exited unexpectedly (code ${code}); initiating auto-respawn...`
-    );
+    logging.warn('Worker process exited unexpectedly, initiating auto-respawn', {
+      scope: 'GeospatialService',
+      exitCode: code
+    });
 
     // Classify pending requests: track circuit breaker on layer queries and determine retries
     const toRetry: PendingRequestEntry[] = [];
@@ -410,14 +415,23 @@ export class GeospatialService {
         const failures = (this.circuitBreaker.get(pending.layerId) || 0) + 1;
         this.circuitBreaker.set(pending.layerId, failures);
 
-        console.warn(
-          `[GeospatialService] Failure ${failures}/${this.maxConsecutiveFailures} recorded for layer "${pending.layerId}" (Worker process exited unexpectedly with code ${code} during "${pending.type}")`
-        );
+        logging.warn('Failure recorded for layer query during worker exit', {
+          scope: 'GeospatialService',
+          layerId: pending.layerId,
+          failures,
+          maxFailures: this.maxConsecutiveFailures,
+          exitCode: code,
+          requestType: pending.type
+        });
 
         if (failures >= this.maxConsecutiveFailures) {
-          console.error(
-            `[GeospatialService] Circuit breaker tripped for layer "${pending.layerId}" after ${failures} consecutive failures (last error: exit code ${code} during "${pending.type}")`
-          );
+          logging.error('Circuit breaker tripped for layer following unexpected worker exit', {
+            scope: 'GeospatialService',
+            layerId: pending.layerId,
+            failures,
+            exitCode: code,
+            requestType: pending.type
+          });
           pending.reject(
             new Error(
               `Query failed: circuit breaker tripped after ${failures} consecutive failures for layer "${pending.layerId}" (Worker process exited unexpectedly with code ${code})`
@@ -432,9 +446,11 @@ export class GeospatialService {
 
     // If excessive consecutive crashes occur before any successful recovery, abort worker auto-respawn and activate in-process fallback
     if (this.consecutiveWorkerCrashes >= this.maxConsecutiveWorkerCrashes) {
-      console.warn(
-        `[GeospatialService] Worker crash threshold reached (${this.consecutiveWorkerCrashes}/${this.maxConsecutiveWorkerCrashes}); aborting worker respawn and activating in-process GeospatialEngine fallback.`
-      );
+      logging.warn('Worker crash threshold reached, activating in-process fallback engine', {
+        scope: 'GeospatialService',
+        crashes: this.consecutiveWorkerCrashes,
+        maxCrashes: this.maxConsecutiveWorkerCrashes
+      });
       this.readyPromise = this.activateInProcessFallback(toRetry);
       return;
     }
@@ -456,9 +472,10 @@ export class GeospatialService {
     this.spawnWorkerInstance();
 
     if (!this.worker) {
-      console.warn(
-        `[GeospatialService] Failed to respawn geospatial worker process after exit code ${code}; activating in-process GeospatialEngine fallback.`
-      );
+      logging.warn('Failed to respawn geospatial worker process, activating in-process fallback engine', {
+        scope: 'GeospatialService',
+        exitCode: code
+      });
       this.readyPromise = this.activateInProcessFallback(toRetry);
       return;
     }
@@ -471,16 +488,16 @@ export class GeospatialService {
    * @description Activates the in-process GeospatialEngine fallback when the background utility process repeatedly crashes or cannot be spawned. Rehydrates active layers into the in-process engine, transparently retries pending requests in-process, and restores service readiness.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-16
-   * @updated 2026-10-16
+   * @updated 2026-10-21
    * @since 0.1.0-dev
    * @private
    * @param {PendingRequestEntry[]} [toRetry] - Optional list of in-flight requests interrupted by worker failure.
    * @returns {Promise<void>}
    */
   private async activateInProcessFallback(toRetry: PendingRequestEntry[] = []): Promise<void> {
-    console.warn(
-      '[GeospatialService] Activating in-process GeospatialEngine fallback following worker process failure; Workbench operations will continue in-process.'
-    );
+    logging.warn('Activating in-process fallback engine following worker process failure', {
+      scope: 'GeospatialService'
+    });
 
     if (this.worker) {
       try {
@@ -518,7 +535,10 @@ export class GeospatialService {
       const specs: RehydrateLayerSpec[] = Array.from(layersToRehydrate.entries()).map(
         ([layerId, filePath]) => ({ layerId, filePath })
       );
-      console.log(`[GeospatialService] Rehydrating ${specs.length} layer(s) into in-process fallback engine...`);
+      logging.info('Rehydrating layers into in-process fallback engine', {
+        scope: 'GeospatialService',
+        layerCount: specs.length
+      });
       try {
         const rehydrateRes = await this.engine.rehydrate(specs);
         for (const spec of specs) {
@@ -527,13 +547,13 @@ export class GeospatialService {
           }
         }
         if (rehydrateRes.failed && rehydrateRes.failed.length > 0) {
-          console.warn(
-            '[GeospatialService] Some layers failed to rehydrate into fallback engine:',
-            rehydrateRes.failed
-          );
+          logging.warn('Some layers failed to rehydrate into fallback engine', {
+            scope: 'GeospatialService',
+            failedLayers: rehydrateRes.failed
+          });
         }
       } catch (rehydrateErr) {
-        console.warn('[GeospatialService] In-process layer rehydration error:', rehydrateErr);
+        logging.warn('In-process layer rehydration error', rehydrateErr, { scope: 'GeospatialService' });
       }
     }
 
@@ -594,13 +614,19 @@ export class GeospatialService {
         const specs: RehydrateLayerSpec[] = Array.from(layersToRehydrate.entries()).map(
           ([layerId, filePath]) => ({ layerId, filePath })
         );
-        console.log(`[GeospatialService] Atomically rehydrating ${specs.length} layer(s) on restarted worker...`);
+        logging.info('Atomically rehydrating layers on restarted worker', {
+          scope: 'GeospatialService',
+          layerCount: specs.length
+        });
         const rehydrateRes = await this.sendInternalRequest<RehydrateResult>({
           type: 'rehydrate',
           layers: specs
         });
         if (rehydrateRes.failed && rehydrateRes.failed.length > 0) {
-          console.warn('[GeospatialService] Some layers failed to rehydrate upon worker restart:', rehydrateRes.failed);
+          logging.warn('Some layers failed to rehydrate upon worker restart', {
+            scope: 'GeospatialService',
+            failedLayers: rehydrateRes.failed
+          });
         }
       }
 
@@ -630,7 +656,9 @@ export class GeospatialService {
         }
       }
     } catch (err: any) {
-      console.error('[GeospatialService] Worker recovery and rehydration failed; activating in-process fallback:', err);
+      logging.error('Worker recovery and rehydration failed; activating in-process fallback', err, {
+        scope: 'GeospatialService'
+      });
       this.readyPromise = this.activateInProcessFallback(toRetry);
       await this.readyPromise;
     }

@@ -4,19 +4,20 @@
  * @description Main Process API function for closing the active project, releasing C++ dataset resources, and notifying renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
 
 import { BrowserWindow } from 'electron';
 import { projectStore } from '../../project/ProjectStore';
+import { logging } from '../../../shared/logging';
 
 /**
  * @description Closes the active project document, disposes all in-memory layers via Symbol.dispose, and broadcasts project:closed to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -31,5 +32,5 @@ export default function closeProject(): void {
     }
   }
 
-  console.log('[Main Core API] closeProject executed.');
+  logging.info('Project closed successfully', { scope: 'closeProject' });
 }

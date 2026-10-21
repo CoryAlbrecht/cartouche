@@ -4,12 +4,13 @@
  * @description React Portal component rendering React child elements into an isolated detached browser window pop-out with React StrictMode DEV double-invoke resilience.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-10-01
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
 import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
+import { logging } from "../../../shared/logging";
 
 /**
  * @typedef {Object} DetachedWindowPortalProps
@@ -76,7 +77,11 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
         initialFeaturesRef.current
       );
       if (!childWindow) {
-        console.error("[DetachedWindowPortal] Failed to open child window");
+        logging.error('Failed to open child window in detached portal', {
+          scope: 'DetachedWindowPortal',
+          frameName: initialFrameNameRef.current,
+          title
+        });
         onCloseRef.current();
         return;
       }

@@ -62,7 +62,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Path to persistent application log file. If omitted or empty, logs are directed to stderr.',
-    type: 'string'
+    type: 'string',
+    controls: ['text'],
+    i18nId: 'prefs_general_logging_location',
+    group: 'logging',
+    groupOrder: 1,
+    order: 1
   },
   'general.logging.colours.console': {
     displayName: 'Console Colors',
@@ -72,7 +77,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Enables or disables ANSI colors when printing log messages to stderr.',
-    type: 'boolean'
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_general_logging_colours_console',
+    group: 'logging',
+    groupOrder: 1,
+    order: 2
   },
   'general.logging.colours.file': {
     displayName: 'File Colors',
@@ -82,7 +92,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Preserves ANSI color escape codes when writing log output to file.',
-    type: 'boolean'
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_general_logging_colours_file',
+    group: 'logging',
+    groupOrder: 1,
+    order: 3
   },
   'general.logging.colours.pattern': {
     displayName: 'Colorization Pattern',
@@ -93,6 +108,11 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'general',
     description: 'Determines which segments of each log line receive color styling.',
     type: 'select',
+    controls: ['dropdown'],
+    i18nId: 'prefs_general_logging_colours_pattern',
+    group: 'logging',
+    groupOrder: 1,
+    order: 4,
     options: LOG_PATTERN_OPTIONS
   },
   'general.logging.colours.level.critical': {
@@ -104,6 +124,11 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'general',
     description: 'Color styling for critical severity log messages (bold combined automatically).',
     type: 'select',
+    controls: ['text', 'colour'],
+    i18nId: 'prefs_general_logging_colours_level_critical',
+    group: 'logging_colours',
+    groupOrder: 2,
+    order: 1,
     options: LOG_COLOR_OPTIONS
   },
   'general.logging.colours.level.error': {
@@ -115,6 +140,11 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'general',
     description: 'Color styling for error severity log messages.',
     type: 'select',
+    controls: ['text', 'colour'],
+    i18nId: 'prefs_general_logging_colours_level_error',
+    group: 'logging_colours',
+    groupOrder: 2,
+    order: 2,
     options: LOG_COLOR_OPTIONS
   },
   'general.logging.colours.level.warn': {
@@ -126,6 +156,11 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'general',
     description: 'Color styling for warning severity log messages.',
     type: 'select',
+    controls: ['text', 'colour'],
+    i18nId: 'prefs_general_logging_colours_level_warn',
+    group: 'logging_colours',
+    groupOrder: 2,
+    order: 3,
     options: LOG_COLOR_OPTIONS
   },
   'general.logging.colours.level.info': {
@@ -137,6 +172,11 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'general',
     description: 'Color styling for informational operational log messages.',
     type: 'select',
+    controls: ['text', 'colour'],
+    i18nId: 'prefs_general_logging_colours_level_info',
+    group: 'logging_colours',
+    groupOrder: 2,
+    order: 4,
     options: LOG_COLOR_OPTIONS
   },
   'general.logging.colours.level.debug': {
@@ -148,6 +188,11 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'general',
     description: 'Color styling for verbose diagnostic log messages.',
     type: 'select',
+    controls: ['text', 'colour'],
+    i18nId: 'prefs_general_logging_colours_level_debug',
+    group: 'logging_colours',
+    groupOrder: 2,
+    order: 5,
     options: LOG_COLOR_OPTIONS
   },
   'general.autosave.preferences': {
@@ -162,7 +207,10 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Time in seconds to wait after editing a preference before automatically saving changes to disk.',
-    type: 'number'
+    type: 'number',
+    controls: ['spinner'],
+    i18nId: 'prefs_general_autosave_preferences',
+    order: 10
   },
   'general.paths.absolute': {
     displayName: 'Use Absolute Paths',
@@ -171,7 +219,10 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'When true save all external pathnames as absolute paths. Otherwise save as relative to the project file location.',
-    type: 'boolean'
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_general_paths_absolute',
+    order: 20
   },
   'general.project.defaults.author': {
     displayName: 'Default Project Author',
@@ -180,7 +231,10 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     ephemeral: false,
     hidden: false,
     category: 'general',
-    type: 'string'
+    type: 'string',
+    controls: ['text'],
+    i18nId: 'prefs_general_project_defaults_author',
+    order: 30
   },
   'ui.basefont.size': {
     displayName: 'Base Font Size',
@@ -194,7 +248,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'ui',
     description: 'Default workbench font size across panels and controls',
-    type: 'number'
+    type: 'number',
+    controls: ['spinner'],
+    i18nId: 'prefs_ui_basefont_size',
+    group: 'display',
+    groupOrder: 1,
+    order: 1
   },
   'ui.icon.size': {
     displayName: 'Toolbar Icon Size',
@@ -208,7 +267,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'ui',
     description: 'Dimensions for toolbar and panel action icons',
-    type: 'number'
+    type: 'number',
+    controls: ['spinner'],
+    i18nId: 'prefs_ui_icon_size',
+    group: 'display',
+    groupOrder: 1,
+    order: 2
   },
   'ui.workbench.location.x': {
     displayName: 'Workbench Window X Position',
@@ -364,7 +428,10 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'rendering',
     description: 'Tolerance threshold for rendering vector feature geometries',
-    type: 'number'
+    type: 'number',
+    controls: ['range', 'spinner'],
+    i18nId: 'prefs_rendering_simplification_threshold',
+    order: 1
   },
   'plugin.debug.enable': {
     displayName: 'Enable Plugin Debug Mode',
@@ -374,6 +441,9 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'plugins',
     description: 'Enable verbose logging for extension host execution and RPC channels',
-    type: 'boolean'
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_plugin_debug_enable',
+    order: 1
   }
 };

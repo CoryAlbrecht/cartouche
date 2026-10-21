@@ -11,10 +11,17 @@
 /**
  * @typedef {'none' | 'critical' | 'error' | 'warn' | 'info' | 'debug'} LogLevel
  * @description Canonical log level string identifiers ascending with verbosity.
+ * - 'none' (0): Suppresses all logging output.
+ * - 'critical' (1): Unrecoverable process crashes, fatal memory corruption, or fatal worker crashes.
+ * - 'error' (2): Failure of an intended user or system operation where the application remains stable.
+ * - 'warn' (3): Recoverable anomalies, transient issues, or fallback states where execution continues safely.
+ * - 'info' (4): Milestone lifecycle accomplishments (startup, project open/save, layer session registration, worker spawned).
+ * - 'debug' (5): High-frequency telemetry and internal diagnostic traces (IPC timings, action dispatches, coordinate calculations).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
  * @updated 2026-10-21
  * @since 0.1.0-dev
+ * @see {@link ../../../docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md}
  */
 export type LogLevel = 'none' | 'critical' | 'error' | 'warn' | 'info' | 'debug';
 
@@ -106,11 +113,11 @@ export type LogSink = (payload: LogPayload) => void;
 
 /**
  * @typedef {Object} LoggingMethodMap
- * @property {(message: string, ...meta: any[]) => void} critical - Emits critical level log.
- * @property {(message: string, ...meta: any[]) => void} error - Emits error level log.
- * @property {(message: string, ...meta: any[]) => void} warn - Emits warn level log.
- * @property {(message: string, ...meta: any[]) => void} info - Emits info level log.
- * @property {(message: string, ...meta: any[]) => void} debug - Emits debug level log.
+ * @property {(message: string, ...meta: any[]) => void} critical - Emits critical level log for fatal, unrecoverable crashes.
+ * @property {(message: string, ...meta: any[]) => void} error - Emits error level log for discrete operation or task failures.
+ * @property {(message: string, ...meta: any[]) => void} warn - Emits warn level log for recoverable anomalies and degraded fallback states.
+ * @property {(message: string, ...meta: any[]) => void} info - Emits info level log for milestone lifecycle accomplishments.
+ * @property {(message: string, ...meta: any[]) => void} debug - Emits debug level log for high-frequency telemetry and execution traces.
  * @property {(message: string, ...meta: any[]) => void} none - No-op silent log method.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21

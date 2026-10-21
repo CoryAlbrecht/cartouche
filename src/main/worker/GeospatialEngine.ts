@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -12,6 +12,7 @@
 
 import * as path from "node:path";
 import gdal from "gdal-async";
+import { logging } from "../../shared/logging";
 import type {
   BoundingBox,
   GeometryKind,
@@ -248,9 +249,10 @@ export function reprojectBoundingBox(
   try {
     sourceSrs = gdal.SpatialReference.fromUserInput(sourceProjection);
   } catch (err) {
-    console.warn(
-      `[GeospatialEngine] Invalid sourceProjection "${sourceProjection}", using extent as-is:`,
-      err
+    logging.warn(
+      'Invalid sourceProjection, using extent as-is',
+      err,
+      { sourceProjection, scope: 'GeospatialEngine' }
     );
     return extent;
   }
@@ -273,9 +275,10 @@ export function reprojectBoundingBox(
 
     return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   } catch (err) {
-    console.warn(
-      `[GeospatialEngine] Failed to transform extent from "${sourceProjection}":`,
-      err
+    logging.warn(
+      'Failed to transform extent from sourceProjection',
+      err,
+      { sourceProjection, scope: 'GeospatialEngine' }
     );
     return extent;
   }
@@ -316,9 +319,10 @@ export class GeospatialEngine {
     try {
       dataset = await gdal.openAsync(filePath);
     } catch (openErr: any) {
-      console.error(
-        `[GeospatialEngine] Failed to open dataset at "${filePath}":`,
-        openErr
+      logging.error(
+        'Failed to open dataset',
+        openErr,
+        { path: filePath, scope: 'GeospatialEngine' }
       );
       throw openErr;
     }
@@ -334,9 +338,10 @@ export class GeospatialEngine {
       } catch {
         // Suppress secondary close error
       }
-      console.error(
-        `[GeospatialEngine] Error inspecting layers for "${filePath}":`,
-        countErr
+      logging.error(
+        'Error inspecting layers for dataset',
+        countErr,
+        { path: filePath, scope: 'GeospatialEngine' }
       );
       throw countErr;
     }
@@ -352,9 +357,10 @@ export class GeospatialEngine {
     try {
       featureCount = layer.features.count();
     } catch (err) {
-      console.warn(
-        `[GeospatialEngine] Failed to read feature count for "${layerId}":`,
-        err
+      logging.warn(
+        'Failed to read feature count for layer',
+        err,
+        { layerId, scope: 'GeospatialEngine' }
       );
     }
 
@@ -375,9 +381,10 @@ export class GeospatialEngine {
           extent[3] = env.maxY;
         }
       } catch (err) {
-        console.warn(
-          `[GeospatialEngine] Failed to read or compute extent for "${layerId}":`,
-          err
+        logging.warn(
+          'Failed to read or compute extent for layer',
+          err,
+          { layerId, scope: 'GeospatialEngine' }
         );
       }
     }
@@ -565,10 +572,7 @@ export class GeospatialEngine {
               properties,
             });
           } catch (featErr) {
-            console.warn(
-              `[GeospatialEngine] Failed to process feature ${feature.fid}:`,
-              featErr
-            );
+            logging.warn('Failed to process feature', featErr, { fid: feature.fid, scope: 'GeospatialEngine' });
           }
         });
 
@@ -659,10 +663,7 @@ export class GeospatialEngine {
         session.dataset.close();
       }
     } catch (err) {
-      console.warn(
-        `[GeospatialEngine] Failed to close dataset for "${layerId}":`,
-        err
-      );
+      logging.warn('Failed to close dataset for layer', err, { layerId, scope: 'GeospatialEngine' });
     }
 
     return true;

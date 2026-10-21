@@ -4,12 +4,13 @@
  * @description In-memory session registry managing paired native GDAL dataset and layer handles, serializing spatial queries with per-layer queues, and enforcing deterministic resource deallocation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link Layer}
  */
 
 import type gdal from 'gdal-async';
+import { logging } from '../../shared/logging';
 
 /**
  * @typedef {Object} LayerSession
@@ -92,7 +93,7 @@ export class LayerSessionRegistry {
         (session.dataset as any).close();
       }
     } catch (err) {
-      console.warn(`[LayerSessionRegistry] Failed to close native dataset for layer "${layerId}":`, err);
+      logging.warn('Failed to close native dataset for layer', err, { layerId, scope: 'LayerSessionRegistry' });
     }
   }
 

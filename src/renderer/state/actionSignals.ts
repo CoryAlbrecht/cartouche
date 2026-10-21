@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing renderer-side action definitions synced from Main Process over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-04
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ActionDefinition}
  */
@@ -12,6 +12,7 @@
 import { signal, computed } from '@preact/signals-react';
 import type { ActionDefinition } from '@shared/types';
 import { addConsoleLog } from './gisSignals';
+import { logging } from '../../shared/logging';
 
 /**
  * @signal registeredActionsSignal
@@ -83,7 +84,7 @@ export async function loadActionsFromMain(): Promise<void> {
       registeredActionsSignal.value = actions || [];
       addConsoleLog('info', `Loaded ${actions.length} action(s) from Main Process.`, 'Actions');
     } catch (err) {
-      console.error('[Renderer] Failed to load actions from Main Process:', err);
+      logging.error('Failed to load actions from Main Process', err, { scope: 'actionSignals' });
     }
   }
 }

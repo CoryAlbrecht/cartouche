@@ -4,18 +4,19 @@
  * @description Main Process API function for initializing a new blank project document in ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
 
-import { projectStore } from '../../project/ProjectStore';
+import { projectStore } from "../../project/ProjectStore";
 import {
   broadcastFullProject,
   broadcastProjectLayersTree,
-  broadcastProjectMetadata
-} from '../../project/ProjectBroadcaster';
-import type { ProjectModel } from '@shared/types';
+  broadcastProjectMetadata,
+} from "../../project/ProjectBroadcaster";
+import type { ProjectModel } from "@shared/types";
+import { logging } from "../../../shared/logging";
 
 /**
  * @ipc gis:execute-shortcut (new_project)
@@ -24,26 +25,29 @@ import type { ProjectModel } from '@shared/types';
  * resets dirty state, and broadcasts project:loaded and layer hierarchy updates.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @returns {void}
  */
 export default function newProject(): void {
   projectStore.closeProject();
   const project: ProjectModel = {
-    format: 'cartouche-xml',
+    format: "cartouche-xml",
     metadata: {
-      title: 'New Project',
-      appVersion: '0.1.0-dev',
+      title: "New Project",
+      appVersion: "0.1.0-dev",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     },
-    layers: []
+    layers: [],
   };
   projectStore.setProject(project);
   projectStore.setProjectDirty(false);
   broadcastFullProject(project);
   broadcastProjectLayersTree();
   broadcastProjectMetadata(project.metadata);
-  console.log('[Main Core API] newProject executed and ProjectStore initialized.');
+  logging.info("New project initialized", {
+    title: project.metadata.title,
+    scope: "newProject",
+  });
 }

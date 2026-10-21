@@ -192,9 +192,34 @@ export interface ConsoleLogEntry {
 }
 
 /**
+ * @typedef {'text' | 'multiline-text' | 'colour' | 'color' | 'checkbox' | 'button' | 'toggle' | 'range' | 'spinner' | 'slider' | 'dropdown' | 'image' | 'radio-button' | 'button-group' | 'checkbox-group'} PreferenceControlType
+ * @description Canonical UI input control variants supported by the preferences subsystem.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-21
+ * @updated 2026-10-21
+ * @since 0.1.0-dev
+ */
+export type PreferenceControlType =
+  | 'text'
+  | 'multiline-text'
+  | 'colour'
+  | 'color'
+  | 'checkbox'
+  | 'button'
+  | 'toggle'
+  | 'range'
+  | 'spinner'
+  | 'slider'
+  | 'dropdown'
+  | 'image'
+  | 'radio-button'
+  | 'button-group'
+  | 'checkbox-group';
+
+/**
  * @typedef {Object} PreferenceItem
  * @template T
- * @property {string} displayName - Label shown in preferences editor.
+ * @property {string} displayName - Default label shown in preferences editor.
  * @property {T} value - Currently stored preference value.
  * @property {any} [defaultValue] - Default reset value.
  * @property {Signal<T>} [signal] - Optional Preact reactive signal instance bound to this preference.
@@ -206,11 +231,17 @@ export interface ConsoleLogEntry {
  * @property {string} [unit] - Measurement unit display string.
  * @property {'ui' | 'rendering' | 'plugins' | 'general'} [category] - UI organization tab category.
  * @property {string} [description] - Extended tooltip or helper text.
- * @property {'string' | 'number' | 'boolean' | 'select'} [type] - Preference input control widget type.
- * @property {Array<{ label: string; value: any }>} [options] - Select dropdown choices.
+ * @property {'string' | 'number' | 'boolean' | 'select'} [type] - Legacy preference input control widget type.
+ * @property {PreferenceControlType[]} [controls] - Array of UI controls to render for this preference value.
+ * @property {string} [i18nId] - Localization identifier key in i18n XML dictionary for title and `${i18nId}_descr` description.
+ * @property {string[]} [patterns] - Array of regex string patterns for format validation on text controls; at least one must match.
+ * @property {number} [order] - Sequential order index within its group or category.
+ * @property {string} [group] - Group identifier key grouping related preferences under a common box.
+ * @property {number} [groupOrder] - Sequential order index of the group relative to other groups in the category.
+ * @property {Array<{ label: string; value: any }>} [options] - Select or slider dropdown/choice options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-08
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 export interface PreferenceItem<T = any> {
@@ -227,6 +258,12 @@ export interface PreferenceItem<T = any> {
   category?: 'ui' | 'rendering' | 'plugins' | 'general';
   description?: string;
   type?: 'string' | 'number' | 'boolean' | 'select';
+  controls?: PreferenceControlType[];
+  i18nId?: string;
+  patterns?: string[];
+  order?: number;
+  group?: string;
+  groupOrder?: number;
   options?: Array<{ label: string; value: any }>;
 }
 

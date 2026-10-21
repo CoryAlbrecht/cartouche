@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -89,6 +89,7 @@ import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import { AddLayersDialog } from "./dialogs/AddLayersDialog";
 import { handleWorkbenchKeyDown } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
+import { logging } from "../../shared/logging";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 const SAVED_PANEL_STATES_KEY = "cartouche_workbench_panel_states_v1";
@@ -380,7 +381,7 @@ export const Workbench: React.FC = () => {
           savedPanelStatesRef.current.set(key, val);
         });
       } catch (err) {
-        console.warn("Failed to parse saved panel states:", err);
+        logging.warn("Failed to parse saved panel states", err, { scope: "Workbench" });
       }
     }
   }, []);
@@ -453,7 +454,7 @@ export const Workbench: React.FC = () => {
       );
       localStorage.setItem(SAVED_PANEL_STATES_KEY, JSON.stringify(obj));
     } catch (err) {
-      console.warn("Failed to persist saved panel states:", err);
+      logging.warn("Failed to persist saved panel states", err, { scope: "Workbench" });
     }
   }, []);
 
@@ -562,7 +563,7 @@ export const Workbench: React.FC = () => {
                 height: savedState?.height,
               });
             } catch (err) {
-              console.warn(`Failed to set size for panel ${id}:`, err);
+              logging.warn('Failed to set size for panel', err, { panelId: id, scope: 'Workbench' });
             }
           }, 0);
         }
@@ -615,10 +616,7 @@ export const Workbench: React.FC = () => {
             "Dockview"
           );
         } catch (err) {
-          console.warn(
-            "Failed to parse saved layout, resetting to default:",
-            err
-          );
+          logging.warn("Failed to parse saved layout, resetting to default", err, { scope: "Workbench" });
           loadDefaultLayout(api);
         }
       } else {
@@ -706,7 +704,7 @@ export const Workbench: React.FC = () => {
           const json = api.toJSON();
           localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(json));
         } catch (err) {
-          console.error("Failed to save layout:", err);
+          logging.error("Failed to save layout", err, { scope: "Workbench" });
         }
       });
 

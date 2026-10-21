@@ -4,12 +4,13 @@
  * @description Centralized Action registry for the Cartouche main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
 import type { KeyCombination, ActionDefinition } from '@shared/types';
 import { BUILTIN_ACTIONS } from './defaults';
+import { logging } from '../../shared/logging';
 
 /**
  * @description Formats a key combination object into a user-facing shortcut string (e.g. "Ctrl+Alt+V", "Escape").
@@ -72,10 +73,10 @@ class ActionRegistryClass {
   public executeAction(name: string): void {
     const action = this.actionsMap.get(name);
     if (action && typeof action.functionCall === 'function') {
-      console.log(`[Main Process] Executing action "${name}"...`);
+      logging.debug('Executing action', { action: name, scope: 'ActionRegistry' });
       action.functionCall();
     } else {
-      console.log(`[Main Process] Action "${name}" triggered (no backend functionCall mapping).`);
+      logging.debug('Action triggered without function mapping', { action: name, scope: 'ActionRegistry' });
     }
   }
 

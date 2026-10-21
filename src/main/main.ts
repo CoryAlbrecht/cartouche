@@ -33,6 +33,7 @@ import { renameLayerTreeNode } from './api/project/renameLayerTreeNode';
 import { parseLogArgs } from './logging/cliArgs';
 import { loggingHub } from './logging/LoggingHub';
 import { bindLoggingPreferences } from './logging/loggingPreferences';
+import { logging } from '../shared/logging';
 
 // Early logging hub initialization using CLI flags
 const cliLogConfig = parseLogArgs();
@@ -106,7 +107,7 @@ Categories=Graphics;Science;Geoscience;
 `;
     fs.writeFileSync(desktopPath, desktopContent);
   } catch (err) {
-    console.warn('[Main] Linux desktop integration setup warning:', err);
+    logging.warn('Linux desktop integration setup warning', err, { scope: 'Main' });
   }
 }
 
@@ -126,19 +127,19 @@ if (process.argv.includes('--test-worker')) {
   app.whenReady().then(async () => {
     const { utilityProcess } = await import('electron');
     const workerPath = path.resolve(__dirname, '../worker/worker_test.cjs');
-    console.log('[Test Worker] Forking:', workerPath);
+    logging.debug('Test worker forking', { workerPath, scope: 'TestWorker' });
     const worker = utilityProcess.fork(workerPath);
     worker.on('spawn', () => {
-      console.log('[Test Worker] Spawned, sending run');
+      logging.debug('Test worker spawned, sending run', { scope: 'TestWorker' });
       worker.postMessage('run');
     });
     worker.on('message', (msg) => {
-      console.log('[Test Worker] Got message from worker:', msg);
+      logging.debug('Test worker message received', { message: msg, scope: 'TestWorker' });
       worker.kill();
       app.exit(0);
     });
     worker.on('exit', (code) => {
-      console.log('[Test Worker] Worker exited with code:', code);
+      logging.debug('Test worker exited', { code, scope: 'TestWorker' });
       if (code !== 0) app.exit(code);
     });
   });
@@ -329,19 +330,26 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
-    console.log('[Main] Window loaded successfully');
+    logging.info('Main window loaded successfully', { scope: 'Main' });
     if (process.argv.includes('--test-boot')) {
-      console.log('[Test Boot] Verification passed, exiting cleanly');
+      logging.debug('Test boot verification passed, exiting cleanly', { scope: 'TestBoot' });
       app.exit(0);
     }
   });
 
   mainWindow.webContents.on('did-fail-load', (_event: any, errorCode: any, errorDescription: any, validatedURL: any) => {
-    console.error(`[Main] Page failed to load: ${errorCode} - ${errorDescription} (${validatedURL})`);
+    logging.error('Main window page failed to load', { errorCode, errorDescription, url: validatedURL, scope: 'Main' });
   });
 
   mainWindow.webContents.on('console-message', (_event: any, level: any, message: any, line: any, sourceId: any) => {
-    console.log(`[Renderer] [${level}] ${message} (${sourceId}:${line})`);
+    const meta = { sourceId, line, scope: 'RendererConsole' };
+    if (level === 2) {
+      logging.error(message, meta);
+    } else if (level === 1) {
+      logging.warn(message, meta);
+    } else {
+      logging.debug(message, meta);
+    }
   });
 
   mainWindow.on('maximize', () => {
@@ -428,7 +436,7 @@ app.whenReady().then(async () => {
       updateDialogLocation('open', res.filePaths[0]);
       return res.filePaths;
     } catch (err) {
-      console.error('[Main] dialog:open-files error:', err);
+      logging.error('Failed to show open files dialog', err, { scope: 'Main' });
       return [];
     } finally {
       isFileDialogOpen = false;
@@ -441,7 +449,7 @@ app.whenReady().then(async () => {
    * Concurrency is guarded via isFileDialogOpen to prevent re-entrant file chooser deadlocks.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-20
+   * @updated 2026-10-21
    * @since 0.1.0-dev
    * @param {Electron.IpcMainInvokeEvent} _event - IPC invoke event containing sender WebContents.
    * @param {Object} [options] - Dialog options including title, defaultPath, category, and filters.
@@ -465,7 +473,7 @@ app.whenReady().then(async () => {
       updateDialogLocation('save', res.filePath);
       return res.filePath;
     } catch (err) {
-      console.error('[Main] dialog:save-file error:', err);
+      logging.error('Failed to show save file dialog', err, { scope: 'Main' });
       return null;
     } finally {
       isFileDialogOpen = false;
@@ -553,7 +561,7 @@ app.whenReady().then(async () => {
       const uint8 = geojson.serialize(fc as any);
       return uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
     } catch (err) {
-      console.error('[Main] FlatGeobuf encoding error:', err);
+      logging.error('FlatGeobuf encoding failed', err, { scope: 'Main' });
       return new ArrayBuffer(0);
     }
   });

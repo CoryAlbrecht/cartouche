@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-16
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -12,6 +12,7 @@
  */
 
 import { effect } from '@preact/signals-react';
+import { logging } from '../../shared/logging';
 import OlMap from 'ol/Map.js';
 import View from 'ol/View.js';
 import VectorLayer from 'ol/layer/Vector.js';
@@ -602,9 +603,10 @@ export class MapController {
                     featureProjection: projectionCode,
                   });
                 } catch (geomErr) {
-                  console.warn(
-                    `[MapController] Failed to parse WKB geometry for feature ${fid} in layer ${descriptor.id}:`,
-                    geomErr
+                  logging.warn(
+                    'Failed to parse WKB geometry for feature',
+                    geomErr,
+                    { scope: 'MapController', fid, layerId: descriptor.id }
                   );
                 }
               }
@@ -621,9 +623,10 @@ export class MapController {
                   const propsSlice = new Uint8Array(buffer, offset, propsLen);
                   properties = JSON.parse(decoder.decode(propsSlice));
                 } catch (propsErr) {
-                  console.warn(
-                    `[MapController] Failed to parse properties for feature ${fid} in layer ${descriptor.id}:`,
-                    propsErr
+                  logging.warn(
+                    'Failed to parse properties for feature',
+                    propsErr,
+                    { scope: 'MapController', fid, layerId: descriptor.id }
                   );
                 }
                 offset += propsLen;
@@ -640,7 +643,11 @@ export class MapController {
               }
             }
           } else {
-            console.warn(`[MapController] Invalid WKB packet magic: 0x${magic.toString(16)}`);
+            logging.warn('Invalid WKB packet magic header', {
+              scope: 'MapController',
+              magic: `0x${magic.toString(16)}`,
+              layerId: descriptor.id
+            });
           }
         } else if ('features' in result && Array.isArray(result.features)) {
           // Legacy object array fallback
@@ -676,9 +683,10 @@ export class MapController {
 
               newFeatures.push(feature);
             } catch (geomErr) {
-              console.warn(
-                `[MapController] Failed to parse feature ${featRecord.id} for layer ${descriptor.id}:`,
-                geomErr
+              logging.warn(
+                'Failed to parse legacy feature record',
+                geomErr,
+                { scope: 'MapController', featureId: featRecord.id, layerId: descriptor.id }
               );
             }
           }
@@ -688,10 +696,10 @@ export class MapController {
           source.addFeatures(newFeatures);
         }
       } catch (err) {
-        console.error(
-          `[MapController] Failed to load features for layer ${descriptor.id}:`,
-          err
-        );
+        logging.error('Failed to load features for layer', err, {
+          scope: 'MapController',
+          layerId: descriptor.id
+        });
         addConsoleLog(
           'error',
           `Failed to query features for layer "${descriptor.name || descriptor.id}": ${err}`,
@@ -714,7 +722,7 @@ export class MapController {
    * @description Centers and fits the viewport camera onto the geographic bounding envelope of a layer descriptor.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-21
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor containing extent.
    * @returns {void}
@@ -744,7 +752,7 @@ export class MapController {
         this.view.fit(extent3857, { padding: [40, 40, 40, 40], maxZoom: 16 });
       }
     } catch (err) {
-      console.warn(`[MapController] Failed to fit extent for layer "${descriptor.id}":`, err);
+      logging.warn('Failed to fit extent for layer', err, { scope: 'MapController', layerId: descriptor.id });
     }
   }
 

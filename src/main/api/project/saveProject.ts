@@ -4,7 +4,7 @@
  * @description Main Process API function for serializing and saving the active project state to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -15,6 +15,7 @@ import { projectStore } from '../../project/ProjectStore';
 import { projectLoaderRegistry } from '../../project/loaders/ProjectLoaderRegistry';
 import { serializeProjectLayersTree, broadcastProjectMetadata } from '../../project/ProjectBroadcaster';
 import type { ProjectViewport } from '@shared/types';
+import { logging } from '../../../shared/logging';
 
 /**
  * @description Saves current active Cartouche project state to its destination file path.
@@ -22,7 +23,7 @@ import type { ProjectViewport } from '@shared/types';
  * Synchronizes runtime layer tree into ProjectModel, stamps updatedAt, updates viewport, and resets dirty state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @param {string} [targetPath] - Optional destination file path.
  * @param {ProjectViewport} [viewport] - Optional viewport extent and camera configuration to persist.
@@ -31,7 +32,7 @@ import type { ProjectViewport } from '@shared/types';
 export default async function saveProject(targetPath?: string, viewport?: ProjectViewport): Promise<boolean> {
   const destination = targetPath || projectStore.getFilePath();
   if (!destination) {
-    console.warn('[Main Core API] saveProject failed: No target file path specified for untitled project.');
+    logging.warn('Save project failed: no destination file path specified for untitled project', { scope: 'saveProject' });
     return false;
   }
 
@@ -78,6 +79,10 @@ export default async function saveProject(targetPath?: string, viewport?: Projec
   // Broadcast updated metadata if title or updatedAt changed
   broadcastProjectMetadata(project.metadata);
 
-  console.log(`[Main Core API] saveProject successfully saved "${project.metadata.title}" (${destination}).`);
+  logging.info('Project saved successfully', {
+    title: project.metadata.title,
+    path: destination,
+    scope: 'saveProject'
+  });
   return true;
 }

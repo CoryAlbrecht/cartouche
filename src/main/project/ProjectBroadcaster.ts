@@ -4,7 +4,7 @@
  * @description Central IPC broadcast dispatcher for transmitting serialized Cartouche project state updates to active Renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
@@ -22,6 +22,7 @@ import { projectStore } from './ProjectStore';
 import { LayerTreeNode } from './models/LayerTreeNode';
 import { LayerGroup } from './models/LayerGroup';
 import { Layer } from './models/Layer';
+import { logging } from '../../shared/logging';
 
 /**
  * @description Recursively serializes a LayerTreeNode instance into a clean IPC-safe project item DTO.
@@ -119,7 +120,7 @@ function emitToWindows(channel: string, payload: any): void {
     try {
       listener(channel, payload);
     } catch (err) {
-      console.warn(`[ProjectBroadcaster] Error in broadcast listener for "${channel}":`, err);
+      logging.warn('Error in broadcast listener', err, { scope: 'ProjectBroadcaster', channel });
     }
   }
 
