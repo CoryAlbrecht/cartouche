@@ -4,10 +4,11 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-20
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
+ * @see {@link loggingHub}
  */
 
 import { app, BrowserWindow, dialog, nativeImage } from 'electron';
@@ -29,6 +30,16 @@ import {
   reorderNodes
 } from './api/project/layerTreeOperations';
 import { renameLayerTreeNode } from './api/project/renameLayerTreeNode';
+import { parseLogArgs } from './logging/cliArgs';
+import { loggingHub } from './logging/LoggingHub';
+import { bindLoggingPreferences } from './logging/loggingPreferences';
+
+// Early logging hub initialization using CLI flags
+const cliLogConfig = parseLogArgs();
+loggingHub.configure({
+  level: cliLogConfig.level,
+  ...(cliLogConfig.logFile ? { logFile: cliLogConfig.logFile } : {})
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -147,6 +158,10 @@ function createWindow() {
   const iconImage = nativeImage.createFromPath(iconPath);
 
   PreferencesStore.loadFromDisk();
+  bindLoggingPreferences(loggingHub, PreferencesStore, {
+    cliLogFile: cliLogConfig.logFile,
+    cliLevel: cliLogConfig.level
+  });
   const wbPrefs = PreferencesStore.get();
   const savedWbX = wbPrefs['ui.workbench.location.x']?.value;
   const savedWbY = wbPrefs['ui.workbench.location.y']?.value;
@@ -591,6 +606,10 @@ app.whenReady().then(async () => {
     reorderNodes(draggedNodeIds, targetNodeId, position);
   });
 
+  onIpc('gis:log', (_event, payload: any) => {
+    loggingHub.handleLogPayload(payload);
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -602,4 +621,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  loggingHub.destroy();
 });

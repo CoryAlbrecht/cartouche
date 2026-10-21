@@ -4,11 +4,12 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
  * @see {@link WorkerResponse}
+ * @see {@link LoggingHub}
  */
 
 import * as fs from 'node:fs';
@@ -18,6 +19,7 @@ import { app, utilityProcess, type UtilityProcess } from 'electron';
 import type { BoundingBox, QueryExtentOptions } from '@shared/types';
 import { GeospatialEngine } from './GeospatialEngine';
 import { projectStore } from '../project/ProjectStore';
+import { LoggingHub, loggingHub as defaultLoggingHub } from '../logging/LoggingHub';
 import type {
   GeospatialLayerMetadata,
   GeospatialQueryResult,
@@ -68,6 +70,7 @@ export interface GeospatialServiceOptions {
   mockWorkerFactory?: () => any;
   maxConsecutiveFailures?: number;
   maxConsecutiveWorkerCrashes?: number;
+  loggingHub?: LoggingHub;
 }
 
 /**
@@ -75,7 +78,7 @@ export interface GeospatialServiceOptions {
  * @description Manages the background geospatial utility process, dispatches correlated requests, and falls back to in-process execution in headless test environments.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 export class GeospatialService {
@@ -92,6 +95,9 @@ export class GeospatialService {
   private resolvedWorkerPath: string | null = null;
   private maxConsecutiveFailures: number;
   private maxConsecutiveWorkerCrashes: number;
+  private loggingHub: LoggingHub;
+  private stdoutBuffer = '';
+  private stderrBuffer = '';
 
   /**
    * @constructor
@@ -103,6 +109,7 @@ export class GeospatialService {
       defaultTimeoutMs: 30000,
       ...options
     };
+    this.loggingHub = options.loggingHub || defaultLoggingHub;
     this.maxConsecutiveFailures = this.options.maxConsecutiveFailures ?? 3;
     this.maxConsecutiveWorkerCrashes = this.options.maxConsecutiveWorkerCrashes ?? 5;
     this.init();
@@ -222,6 +229,42 @@ export class GeospatialService {
   }
 
   /**
+   * @description Buffers incoming stream data chunks, extracts complete newline-delimited lines, and dispatches log payloads.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-21
+   * @updated 2026-10-21
+   * @since 0.1.0-dev
+   * @private
+   * @param {any} data - Stream data chunk buffer or string.
+   * @param {'stdout' | 'stderr'} streamKind - Stream origin identifying log severity.
+   * @returns {void}
+   */
+  private bufferStreamChunk(data: any, streamKind: 'stdout' | 'stderr'): void {
+    const isError = streamKind === 'stderr';
+    const currentBuffer = (isError ? this.stderrBuffer : this.stdoutBuffer) + data.toString();
+    const lines = currentBuffer.split('\n');
+    const remaining = lines.pop() || '';
+
+    if (isError) {
+      this.stderrBuffer = remaining;
+    } else {
+      this.stdoutBuffer = remaining;
+    }
+
+    for (const line of lines) {
+      if (line.trim() !== '') {
+        this.loggingHub.handleLogPayload({
+          timestamp: new Date().toISOString(),
+          source: 'GeospatialWorker',
+          level: isError ? 'error' : 'info',
+          numericLevel: isError ? 2 : 4,
+          message: line
+        });
+      }
+    }
+  }
+
+  /**
    * @description Binds event listeners to an active utility process worker.
    * @private
    * @param {any} worker - Worker instance.
@@ -233,25 +276,30 @@ export class GeospatialService {
     }
 
     worker.on('message', (response: WorkerResponse) => {
+      if (response && (response as any).type === 'log' && (response as any).payload) {
+        this.loggingHub.handleLogPayload((response as any).payload);
+        return;
+      }
       this.handleWorkerResponse(response);
     });
 
     worker.on('error', (err: any) => {
-      console.error('[GeospatialService] Geospatial worker error:', err?.message || err?.type || err);
-      if (err?.location) {
-        console.error(`[GeospatialService] Worker fatal error location: ${err.location}`);
-      }
-      if (err?.report) {
-        console.error(`[GeospatialService] Worker diagnostic report:\n${err.report}`);
-      }
+      this.loggingHub.handleLogPayload({
+        timestamp: new Date().toISOString(),
+        source: 'GeospatialWorker',
+        level: 'error',
+        numericLevel: 2,
+        message: `Geospatial worker error: ${err?.message || err?.type || err}`,
+        ...(err?.location || err?.report ? { meta: [{ location: err?.location, report: err?.report }] } : {})
+      });
     });
 
     worker.stdout?.on('data', (data: any) => {
-      console.log(`[GeospatialService:WorkerStdout] ${data.toString().trimEnd()}`);
+      this.bufferStreamChunk(data, 'stdout');
     });
 
     worker.stderr?.on('data', (data: any) => {
-      console.error(`[GeospatialService:WorkerStderr] ${data.toString().trimEnd()}`);
+      this.bufferStreamChunk(data, 'stderr');
     });
 
     worker.on('exit', (code: number) => {

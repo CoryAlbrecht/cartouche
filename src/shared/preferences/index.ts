@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-20
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -12,14 +12,144 @@
 import type { PreferenceMap } from '../types';
 
 /**
+ * @description Standard ANSI named color choices for log level preference dropdown menus.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-21
+ * @updated 2026-10-21
+ * @since 0.1.0-dev
+ * @type {Array<{ label: string; value: string }>}
+ */
+const LOG_COLOR_OPTIONS = [
+  { label: 'Black', value: 'black' },
+  { label: 'Red', value: 'red' },
+  { label: 'Green', value: 'green' },
+  { label: 'Yellow', value: 'yellow' },
+  { label: 'Blue', value: 'blue' },
+  { label: 'Magenta', value: 'magenta' },
+  { label: 'Cyan', value: 'cyan' },
+  { label: 'White', value: 'white' },
+  { label: 'Gray', value: 'gray' }
+];
+
+/**
+ * @description Dropdown options for log line colorization scope pattern preference.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-21
+ * @updated 2026-10-21
+ * @since 0.1.0-dev
+ * @type {Array<{ label: string; value: string }>}
+ */
+const LOG_PATTERN_OPTIONS = [
+  { label: 'Level Only', value: 'level-only' },
+  { label: 'Level and Message', value: 'level-and-message' },
+  { label: 'Full Line', value: 'full-line' }
+];
+
+/**
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-20
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
 export const BUILTIN_PREFERENCES: PreferenceMap = {
+  'general.logging.location': {
+    displayName: 'Log File Location',
+    value: '',
+    defaultValue: '',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Path to persistent application log file. If omitted or empty, logs are directed to stderr.',
+    type: 'string'
+  },
+  'general.logging.colours.console': {
+    displayName: 'Console Colors',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Enables or disables ANSI colors when printing log messages to stderr.',
+    type: 'boolean'
+  },
+  'general.logging.colours.file': {
+    displayName: 'File Colors',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Preserves ANSI color escape codes when writing log output to file.',
+    type: 'boolean'
+  },
+  'general.logging.colours.pattern': {
+    displayName: 'Colorization Pattern',
+    value: 'level-only',
+    defaultValue: 'level-only',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Determines which segments of each log line receive color styling.',
+    type: 'select',
+    options: LOG_PATTERN_OPTIONS
+  },
+  'general.logging.colours.level.critical': {
+    displayName: 'Critical Level Color',
+    value: 'red',
+    defaultValue: 'red',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Color styling for critical severity log messages (bold combined automatically).',
+    type: 'select',
+    options: LOG_COLOR_OPTIONS
+  },
+  'general.logging.colours.level.error': {
+    displayName: 'Error Level Color',
+    value: 'red',
+    defaultValue: 'red',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Color styling for error severity log messages.',
+    type: 'select',
+    options: LOG_COLOR_OPTIONS
+  },
+  'general.logging.colours.level.warn': {
+    displayName: 'Warning Level Color',
+    value: 'yellow',
+    defaultValue: 'yellow',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Color styling for warning severity log messages.',
+    type: 'select',
+    options: LOG_COLOR_OPTIONS
+  },
+  'general.logging.colours.level.info': {
+    displayName: 'Info Level Color',
+    value: 'cyan',
+    defaultValue: 'cyan',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Color styling for informational operational log messages.',
+    type: 'select',
+    options: LOG_COLOR_OPTIONS
+  },
+  'general.logging.colours.level.debug': {
+    displayName: 'Debug Level Color',
+    value: 'gray',
+    defaultValue: 'gray',
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Color styling for verbose diagnostic log messages.',
+    type: 'select',
+    options: LOG_COLOR_OPTIONS
+  },
   'general.autosave.preferences': {
     displayName: 'Preferences Autosave Timeout',
     value: 5,

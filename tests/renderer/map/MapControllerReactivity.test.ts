@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController visual reactivity: dynamic tree stacking order (zIndex = 1000 - flatIndex), 60 FPS live styling updates, layer/group visibility cascading, and opacity adjustments.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -84,6 +84,13 @@ function setupMockDom(): void {
       clientHeight: 600,
       offsetWidth: 800,
       offsetHeight: 600,
+      getContext: () => ({
+        fillStyle: '',
+        strokeStyle: '',
+        fillRect: () => {},
+        clearRect: () => {},
+        getImageData: () => ({ data: [0, 0, 0, 0] })
+      }),
     };
     el.ownerDocument = (globalThis as any).document;
     return el;

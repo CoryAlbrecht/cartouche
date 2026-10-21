@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -141,7 +141,9 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('gis:rename-layer-tree-node', nodeId, newName),
   /** @ipc gis:reorder-nodes */
   reorderNodes: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) =>
-    ipcRenderer.invoke('gis:reorder-nodes', draggedNodeIds, targetNodeId, position)
+    ipcRenderer.invoke('gis:reorder-nodes', draggedNodeIds, targetNodeId, position),
+  /** @ipc gis:log */
+  log: (payload: any) => ipcRenderer.send('gis:log', payload)
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

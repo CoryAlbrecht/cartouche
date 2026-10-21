@@ -4,7 +4,7 @@
  * @description Unit tests verifying OpenLayers Flat Style definitions for Polygon, LineString, Point, and Unknown vector layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
@@ -17,8 +17,8 @@ describe('defaultLayerStyles', () => {
     const style = getDefaultLayerStyle('Polygon');
     assert.deepEqual(style, {
       'fill-color': '#1e293b',
-      'stroke-color': '#1b446c',
-      'stroke-width': 4
+      'stroke-width': 0,
+      'stroke-color': 'transparent'
     });
   });
 
@@ -26,7 +26,7 @@ describe('defaultLayerStyles', () => {
     const style = getDefaultLayerStyle('LineString');
     assert.deepEqual(style, {
       'stroke-color': '#0284c7',
-      'stroke-width': 2
+      'stroke-width': 1
     });
   });
 

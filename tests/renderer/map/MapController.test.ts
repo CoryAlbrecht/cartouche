@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-16
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -81,6 +81,13 @@ function setupMockDom(): void {
       clientHeight: 600,
       offsetWidth: 800,
       offsetHeight: 600,
+      getContext: () => ({
+        fillStyle: '',
+        strokeStyle: '',
+        fillRect: () => {},
+        clearRect: () => {},
+        getImageData: () => ({ data: [0, 0, 0, 0] })
+      }),
     };
     el.ownerDocument = (globalThis as any).document;
     return el;

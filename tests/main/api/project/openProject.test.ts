@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -121,7 +121,7 @@ describe('openProject Native Session Hydration', () => {
     assert.equal(layerItem.geometryKind, 'LineString', 'Authoritative dataset geometryKind must overwrite mismatched XML attribute');
     assert.deepEqual(layerItem.style, {
       'stroke-color': '#0284c7',
-      'stroke-width': 2
+      'stroke-width': 1
     });
     assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
   });

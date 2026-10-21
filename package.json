@@ -106,6 +106,7 @@
     "@types/proj4": "^2.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/winston": "^2.4.4",
     "@vitejs/plugin-react": "^6.1.1",
     "electron": "44.7.0",
     "electron-builder": "^26.15.3",
@@ -122,6 +123,7 @@
     "@preact/signals-react": "^3.12.0",
     "@turf/turf": "^7.4.0",
     "better-sqlite3": "^13.0.3",
+    "colorette": "^2.0.20",
     "dockview-react": "^8.3.1",
     "fast-xml-parser": "^5.11.1",
     "flatgeobuf": "^4.4.0",
@@ -132,6 +134,7 @@
     "ol-ext": "^4.0.38",
     "proj4": "^2.22.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "winston": "^3.19.0"
   }
 }

@@ -4,13 +4,15 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-18
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
+ * @see {@link logging}
  */
 
 import { GeospatialEngine } from "../main/worker/GeospatialEngine";
 import type { WorkerRequest, WorkerResponse } from "../main/worker/types";
+import { logging } from "../shared/logging";
 
 /**
  * @function postResponse
@@ -59,10 +61,7 @@ export function postResponse(
  * @returns {void}
  */
 export function handleWorkerUncaughtException(port: any, err: any): void {
-  console.error(
-    "[geospatialWorker] Uncaught exception in worker process:",
-    err
-  );
+  logging.error("Uncaught exception in worker process:", err);
   postResponse(port, {
     id: "worker-uncaught-exception",
     success: false,
@@ -75,17 +74,14 @@ export function handleWorkerUncaughtException(port: any, err: any): void {
  * @description Traps an unhandled promise rejection in the worker and forwards a formatted error payload to the parent port.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @param {any} port - Parent message port.
  * @param {any} reason - Unhandled rejection error or reason.
  * @returns {void}
  */
 export function handleWorkerUnhandledRejection(port: any, reason: any): void {
-  console.error(
-    "[geospatialWorker] Unhandled promise rejection in worker process:",
-    reason
-  );
+  logging.error("Unhandled promise rejection in worker process:", reason);
   postResponse(port, {
     id: "worker-unhandled-rejection",
     success: false,
@@ -138,15 +134,15 @@ export function initGeospatialWorker(
         }
 
         case "openDataset": {
-          console.log(
-            `[geospatialWorker] Opening dataset: layer="${request.layerId}", path="${request.filePath}"`
+          logging.info(
+            `Opening dataset: layer="${request.layerId}", path="${request.filePath}"`
           );
           const metadata = await engine.openDataset(
             request.layerId,
             request.filePath
           );
-          console.log(
-            `[geospatialWorker] Successfully opened layer "${request.layerId}": featureCount=${metadata.featureCount}, geom=${metadata.geometryKind}`
+          logging.info(
+            `Successfully opened layer "${request.layerId}": featureCount=${metadata.featureCount}, geom=${metadata.geometryKind}`
           );
           postResponse(port, {
             id: request.id,
@@ -157,8 +153,8 @@ export function initGeospatialWorker(
         }
 
         case "queryExtent": {
-          console.log(
-            `[geospatialWorker] Querying extent for layer "${request.layerId}"...`
+          logging.debug(
+            `Querying extent for layer "${request.layerId}"...`
           );
           const queryOptions = request.options ?? request.extent;
           const { layerId, buffer, transferList } = await engine.queryExtent(
@@ -166,8 +162,8 @@ export function initGeospatialWorker(
             queryOptions,
             request.targetProjection
           );
-          console.log(
-            `[geospatialWorker] Contiguous binary packet generated for layer "${layerId}" (${buffer.byteLength} bytes)`
+          logging.debug(
+            `Contiguous binary packet generated for layer "${layerId}" (${buffer.byteLength} bytes)`
           );
 
           postResponse(
@@ -175,8 +171,8 @@ export function initGeospatialWorker(
             { id: request.id, success: true, result: { layerId, buffer } },
             transferList
           );
-          console.log(
-            `[geospatialWorker] Response dispatched for layer "${layerId}"`
+          logging.debug(
+            `Response dispatched for layer "${layerId}"`
           );
           break;
         }
@@ -236,7 +232,7 @@ export function initGeospatialWorker(
 if ((process as any).parentPort) {
   initGeospatialWorker((process as any).parentPort);
 } else {
-  console.warn(
-    "[geospatialWorker] process.parentPort is undefined; worker must run inside an Electron UtilityProcess"
+  logging.warn(
+    "process.parentPort is undefined; worker must run inside an Electron UtilityProcess"
   );
 }

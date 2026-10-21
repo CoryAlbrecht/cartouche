@@ -4,7 +4,7 @@
  * @description Integration tests for vector layer ingestion via GeospatialService, LayerDescriptor extraction, and IPC broadcasting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-16
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
@@ -68,8 +68,8 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.ok(layer.style, 'Default styling must be attached to layer');
     const styleObj = typeof layer.style === 'string' ? JSON.parse(layer.style) : layer.style;
     assert.equal(styleObj['fill-color'], '#1e293b');
-    assert.equal(styleObj['stroke-color'], '#1b446c');
-    assert.equal(styleObj['stroke-width'], 4);
+    assert.equal(styleObj['stroke-color'], 'transparent');
+    assert.equal(styleObj['stroke-width'], 0);
 
     // Verify IPC broadcasts dispatched
     const addedEvents = sentEvents.filter((e) => e.channel === 'project:layer-added');

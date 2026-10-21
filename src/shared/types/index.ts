@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 
@@ -62,7 +62,7 @@ export interface CRS {
  * @description Enumeration of supported GIS spatial geometry and dataset kinds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 export type GeometryKind = 'Point' | 'LineString' | 'Polygon' | 'Raster' | 'Unknown';
@@ -274,7 +274,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>} [reorderNodes] - Reorders layer tree nodes relative to target node.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -365,6 +365,8 @@ export interface ElectronAPI {
   renameLayerTreeNode?: (nodeId: string, newName: string) => Promise<void>;
   /** @ipc gis:reorder-nodes */
   reorderNodes?: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>;
+  /** @ipc gis:log */
+  log?: (payload: import('../logging').LogPayload) => void;
 }
 
 declare global {

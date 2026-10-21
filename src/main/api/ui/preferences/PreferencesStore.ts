@@ -4,7 +4,7 @@
  * @description Main Process persistent preferences store manager, handling disk persistence, migrations, and default UI configurations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-12
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -36,6 +36,23 @@ class PreferencesStoreManager {
   private preferences: PreferenceMap = JSON.parse(JSON.stringify(BUILTIN_PREFERENCES));
   private filePath: string | null = null;
   private isLoaded = false;
+  private changeListeners: Array<(key: string, value: any) => void> = [];
+
+  /**
+   * @description Registers a listener callback invoked whenever any preference value changes.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-21
+   * @updated 2026-10-21
+   * @since 0.1.0-dev
+   * @param {(key: string, value: any) => void} listener - Preference change listener callback.
+   * @returns {() => void} Unsubscribe function.
+   */
+  public onPreferenceChange(listener: (key: string, value: any) => void): () => void {
+    this.changeListeners.push(listener);
+    return () => {
+      this.changeListeners = this.changeListeners.filter((l) => l !== listener);
+    };
+  }
 
   /**
    * @description Initializes the preferences store manager instance and ensures disk preferences are loaded.
@@ -244,6 +261,13 @@ class PreferencesStoreManager {
       };
     }
     this.saveToDisk();
+    for (const listener of this.changeListeners) {
+      try {
+        listener(key, value);
+      } catch (err) {
+        console.error('[PreferencesStore] Error in change listener:', err);
+      }
+    }
     return { [key]: { ...this.preferences[key] } };
   }
 }
