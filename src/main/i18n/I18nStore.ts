@@ -1,11 +1,12 @@
 /**
  * @file I18nStore.ts
  * @module main/i18n/I18nStore
- * @description Main process authoritative store for the localization subsystem. Loads XML language files and maintains the active dictionary.
+ * @description Main process authoritative store for the localization subsystem. Loads XML language files, decodes character entities, and maintains the active dictionary.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
+ * @see {@link decodeXmlEntities}
  */
 
 import { app, BrowserWindow } from 'electron';
@@ -15,11 +16,20 @@ import { fileURLToPath } from 'node:url';
 import { XMLParser } from 'fast-xml-parser';
 import type { I18nDictionary, I18nState } from '@shared/types';
 import { logging } from '../../shared/logging';
+import { decodeXmlEntities } from './xmlEntityDecoder';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-class I18nStore {
+/**
+ * @class I18nStore
+ * @description Authoritative in-memory localization store managing locale resolution, XML parsing, and state broadcast.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-04
+ * @updated 2026-10-22
+ * @since 0.1.0-dev
+ */
+export class I18nStore {
   private activeLocale: string = 'en';
   private dictionary: I18nDictionary = {};
 
@@ -27,38 +37,92 @@ class I18nStore {
    * @description Gets the i18n directory path across dev and prod builds.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-04
-   * @updated 2026-10-04
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @returns {string} Absolute path to the i18n directory.
    */
   private getI18nDir(): string {
+    const electronApp = typeof app !== 'undefined' ? app : undefined;
+    const appPath = electronApp?.getAppPath ? electronApp.getAppPath() : process.cwd();
+    const resourcesPath = typeof process !== 'undefined' && process.resourcesPath ? process.resourcesPath : '';
+
     const candidates = [
       path.join(__dirname, '../../../assets/xml/i18n'), // dev
       path.join(__dirname, '../../assets/xml/i18n'), // dev alternative
-      path.join(app.getAppPath(), 'assets/xml/i18n'), // prod
-      path.join(process.resourcesPath, 'assets/xml/i18n') // prod unpackaged
+      path.join(appPath, 'assets/xml/i18n'), // prod
+      path.join(resourcesPath, 'assets/xml/i18n') // prod unpackaged
     ];
     for (const p of candidates) {
       if (fs.existsSync(p)) return p;
     }
-    return path.join(app.getAppPath(), 'assets/xml/i18n'); // fallback
+    return path.join(appPath, 'assets/xml/i18n'); // fallback
+  }
+
+  /**
+   * @description Parses raw XML localization content, decodes entities, and produces an i18n dictionary.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-22
+   * @updated 2026-10-22
+   * @since 0.1.0-dev
+   * @param {string} xmlContent - Raw XML string content.
+   * @param {string} [fallbackLocale='en'] - Fallback locale code if attribute is absent.
+   * @returns {{ locale: string; dictionary: I18nDictionary }} Parsed locale and decoded dictionary.
+   * @throws {Error} When XML root element is missing or invalid.
+   */
+  public parseLocalizationXml(
+    xmlContent: string,
+    fallbackLocale: string = 'en'
+  ): { locale: string; dictionary: I18nDictionary } {
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: '@_',
+      textNodeName: '#text',
+      processEntities: false,
+      stopNodes: ['*.string', 'ci18n:localization.string']
+    });
+
+    const parsed = parser.parse(xmlContent);
+    const rootKey = parsed['ci18n:localization'] ? 'ci18n:localization' : 'localization';
+    const root = parsed[rootKey];
+    if (!root) {
+      throw new Error('Invalid i18n XML root element.');
+    }
+
+    const locale = root['@_locale'] || fallbackLocale;
+    const strings = Array.isArray(root.string) ? root.string : root.string ? [root.string] : [];
+    const dictionary: I18nDictionary = {};
+
+    for (const strObj of strings) {
+      if (!strObj || !strObj['@_name']) continue;
+      const name = strObj['@_name'];
+      let val = '';
+      if (typeof strObj === 'string') {
+        val = strObj;
+      } else if (strObj['#text'] !== undefined) {
+        val = strObj['#text'];
+      }
+      dictionary[name] = decodeXmlEntities(val);
+    }
+
+    return { locale, dictionary };
   }
 
   /**
    * @description Loads the best matching locale file for the current system locale.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-04
-   * @updated 2026-10-04
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @returns {void}
    */
   public loadSystemLocale(): void {
-    const sysLocale = app.getLocale(); // e.g. "en-US", "fr-CA"
+    const electronApp = typeof app !== 'undefined' ? app : undefined;
+    const sysLocale = electronApp?.getLocale ? electronApp.getLocale() : 'en'; // e.g. "en-US", "fr-CA"
     const langOnly = sysLocale.split('-')[0]; // "en", "fr"
-    
+
     // We expect the XML file to define string elements. Fast XML parser will return an array or object.
     const i18nDir = this.getI18nDir();
-    
+
     // Try to find the best match
     const candidates = [
       `${sysLocale.replace('-', '_')}.UTF8.xml`,
@@ -86,48 +150,18 @@ class I18nStore {
 
     try {
       const xmlContent = fs.readFileSync(matchedFile, 'utf-8');
-      const parser = new XMLParser({
-        ignoreAttributes: false,
-        attributeNamePrefix: '@_',
-        textNodeName: '#text',
-        processEntities: false,
-        stopNodes: ["*.string", "ci18n:localization.string"]
-      });
-      
-      const parsed = parser.parse(xmlContent);
-      
-      const rootKey = parsed['ci18n:localization'] ? 'ci18n:localization' : 'localization';
-      const root = parsed[rootKey];
-      if (!root) {
-         throw new Error('Invalid i18n XML root element.');
-      }
+      const { locale, dictionary } = this.parseLocalizationXml(xmlContent, langOnly);
 
-      this.activeLocale = root['@_locale'] || langOnly;
-      
-      const strings = Array.isArray(root.string) ? root.string : (root.string ? [root.string] : []);
-      const newDict: I18nDictionary = {};
+      this.activeLocale = locale;
+      this.dictionary = dictionary;
 
-      for (const strObj of strings) {
-        if (!strObj || !strObj['@_name']) continue;
-        const name = strObj['@_name'];
-        let val = '';
-        if (typeof strObj === 'string') {
-          val = strObj;
-        } else if (strObj['#text'] !== undefined) {
-          val = strObj['#text'];
-        }
-        newDict[name] = val;
-      }
-
-      this.dictionary = newDict;
       logging.info('Loaded locale dictionary', {
         locale: this.activeLocale,
         file: path.basename(matchedFile),
-        keyCount: Object.keys(newDict).length,
+        keyCount: Object.keys(dictionary).length,
         scope: 'I18nStore'
       });
       this.broadcastState();
-
     } catch (err) {
       logging.warn('Failed to load locale file', err, { file: matchedFile, scope: 'I18nStore' });
       if (matchedFile !== path.join(i18nDir, 'en.xml')) {
@@ -155,14 +189,15 @@ class I18nStore {
    * @description Broadcasts the active i18n state to all browser windows.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-04
-   * @updated 2026-10-04
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @returns {void}
    */
   private broadcastState(): void {
-    const windows = BrowserWindow.getAllWindows();
+    const electronBrowserWindow = typeof BrowserWindow !== 'undefined' ? BrowserWindow : undefined;
+    const windows = electronBrowserWindow?.getAllWindows ? electronBrowserWindow.getAllWindows() : [];
     for (const win of windows) {
-      win.webContents.send('i18n:state-changed', this.getState());
+      win.webContents?.send('i18n:state-changed', this.getState());
     }
   }
 }
