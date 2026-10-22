@@ -22,6 +22,7 @@
     "clean:build": "rimraf dist dist-electron",
     "clean:package": "rimraf release",
     "clean": "npm run clean:build && npm run clean:rebuild && npm run clean:package",
+    "validate:tree": "node scripts/validate-directory-tree.js",
     "test": "node --import jiti/register --test \"tests/**/*.test.ts\""
   },
   "keywords": [
