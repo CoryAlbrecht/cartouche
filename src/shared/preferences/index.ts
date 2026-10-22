@@ -4,32 +4,12 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
 
 import type { PreferenceMap } from '../types';
-
-/**
- * @description Standard ANSI named color choices for log level preference dropdown menus.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-21
- * @updated 2026-10-21
- * @since 0.1.0-dev
- * @type {Array<{ label: string; value: string }>}
- */
-const LOG_COLOR_OPTIONS = [
-  { label: 'Black', value: 'black' },
-  { label: 'Red', value: 'red' },
-  { label: 'Green', value: 'green' },
-  { label: 'Yellow', value: 'yellow' },
-  { label: 'Blue', value: 'blue' },
-  { label: 'Magenta', value: 'magenta' },
-  { label: 'Cyan', value: 'cyan' },
-  { label: 'White', value: 'white' },
-  { label: 'Gray', value: 'gray' }
-];
 
 /**
  * @description Dropdown options for log line colorization scope pattern preference.
@@ -49,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -123,13 +103,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Color styling for critical severity log messages (bold combined automatically).',
-    type: 'select',
+    type: 'string',
     controls: ['text', 'colour'],
     i18nId: 'prefs_general_logging_colours_level_critical',
     group: 'logging_colours',
     groupOrder: 2,
-    order: 1,
-    options: LOG_COLOR_OPTIONS
+    order: 1
   },
   'general.logging.colours.level.error': {
     displayName: 'Error Level Color',
@@ -139,13 +118,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Color styling for error severity log messages.',
-    type: 'select',
+    type: 'string',
     controls: ['text', 'colour'],
     i18nId: 'prefs_general_logging_colours_level_error',
     group: 'logging_colours',
     groupOrder: 2,
-    order: 2,
-    options: LOG_COLOR_OPTIONS
+    order: 2
   },
   'general.logging.colours.level.warn': {
     displayName: 'Warning Level Color',
@@ -155,13 +133,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Color styling for warning severity log messages.',
-    type: 'select',
+    type: 'string',
     controls: ['text', 'colour'],
     i18nId: 'prefs_general_logging_colours_level_warn',
     group: 'logging_colours',
     groupOrder: 2,
-    order: 3,
-    options: LOG_COLOR_OPTIONS
+    order: 3
   },
   'general.logging.colours.level.info': {
     displayName: 'Info Level Color',
@@ -171,13 +148,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Color styling for informational operational log messages.',
-    type: 'select',
+    type: 'string',
     controls: ['text', 'colour'],
     i18nId: 'prefs_general_logging_colours_level_info',
     group: 'logging_colours',
     groupOrder: 2,
-    order: 4,
-    options: LOG_COLOR_OPTIONS
+    order: 4
   },
   'general.logging.colours.level.debug': {
     displayName: 'Debug Level Color',
@@ -187,13 +163,12 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: false,
     category: 'general',
     description: 'Color styling for verbose diagnostic log messages.',
-    type: 'select',
+    type: 'string',
     controls: ['text', 'colour'],
     i18nId: 'prefs_general_logging_colours_level_debug',
     group: 'logging_colours',
     groupOrder: 2,
-    order: 5,
-    options: LOG_COLOR_OPTIONS
+    order: 5
   },
   'general.autosave.preferences': {
     displayName: 'Preferences Autosave Timeout',

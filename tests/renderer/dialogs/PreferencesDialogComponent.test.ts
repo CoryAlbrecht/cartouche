@@ -416,4 +416,162 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(html.includes('class="preference-button-group"'), 'renders button-group');
     assert.ok(html.includes('class="preference-checkbox-group"'), 'renders checkbox-group');
   });
+
+  it('renders colour control as an accessible button with inner swatch, chevron icon, and hidden input (Ticket #56)', () => {
+    preferencesMapSignal.value = {
+      'general.logging.colours.level.warn': {
+        displayName: 'Warning Level Color',
+        value: '#eab308',
+        category: 'general',
+        controls: ['text', 'colour']
+      }
+    };
+
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    // Verify color button chrome
+    assert.ok(
+      html.includes('<button type="button" tabindex="0" aria-haspopup="dialog"'),
+      'Must render button element with tabIndex={0} and aria-haspopup="dialog"'
+    );
+    assert.ok(
+      html.includes('class="preference-color-button-wrapper"'),
+      'Button must have preference-color-button-wrapper class'
+    );
+    assert.ok(
+      html.includes('class="preference-color-swatch" style="background-color:#eab308"'),
+      'Must contain inner swatch with matching background color'
+    );
+    assert.ok(
+      html.includes('class="preference-color-chevron"'),
+      'Must contain dropdown chevron icon wrapper'
+    );
+
+    // Verify hidden input
+    assert.ok(
+      html.includes('type="color" tabindex="-1" aria-hidden="true" class="preference-hidden-color-input"'),
+      'Must include hidden native color input with tabIndex={-1} and aria-hidden="true"'
+    );
+  });
+
+  it('renders datalist containing all 148 standard CSS color names and attaches list attribute to color text inputs (Ticket #56)', () => {
+    preferencesMapSignal.value = {
+      'general.logging.colours.level.info': {
+        displayName: 'Info Level Color',
+        value: 'cornflowerblue',
+        category: 'general',
+        controls: ['text', 'colour']
+      }
+    };
+
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    assert.ok(
+      html.includes('<datalist id="css-colors-datalist">'),
+      'Must render datalist with id "css-colors-datalist"'
+    );
+    assert.ok(
+      html.includes('<option value="aliceblue"></option>'),
+      'Datalist must include standard CSS color options'
+    );
+    assert.ok(
+      html.includes('<option value="rebeccapurple"></option>'),
+      'Datalist must include rebeccapurple'
+    );
+
+    // Count options in datalist
+    const optionMatches = html.match(/<option value="[a-z]+"><\/option>/g);
+    assert.ok(optionMatches, 'Must match datalist options');
+    assert.equal(optionMatches.length, 148, 'Datalist must contain all 148 CSS color names');
+
+    // Verify text input list attribute
+    assert.ok(
+      html.includes('list="css-colors-datalist"'),
+      'Text input paired with colour control must have list="css-colors-datalist"'
+    );
+  });
+
+  it('displays error styling and alert-rhombus icon on invalid CSS color text input (Ticket #56)', () => {
+    preferencesMapSignal.value = {
+      'general.logging.colours.level.error': {
+        displayName: 'Error Level Color',
+        value: 'blurg',
+        category: 'general',
+        controls: ['text', 'colour']
+      }
+    };
+
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    assert.ok(
+      html.includes('preference-input-invalid'),
+      'Must apply preference-input-invalid class on invalid color string'
+    );
+    assert.ok(
+      html.includes('aria-invalid="true"'),
+      'Must apply aria-invalid="true" on invalid color input'
+    );
+    assert.ok(
+      html.includes('color:#ef4444'),
+      'Must color invalid text red (#ef4444)'
+    );
+    assert.ok(
+      html.includes('class="preference-input-error-icon"'),
+      'Must render error icon container'
+    );
+    assert.ok(
+      html.includes('tabindex="0" class="preference-input-error-icon"'),
+      'Error icon container must have tabIndex={0} for keyboard accessibility'
+    );
+    assert.ok(
+      html.includes('title="Invalid CSS color name or hex format"'),
+      'Must include tooltip explaining invalid color format'
+    );
+  });
+
+  it('ensures all interactive controls have accessible aria-labels derived from display name (Ticket #56)', () => {
+    preferencesMapSignal.value = {
+      'general.text.pref': { displayName: 'Text Setting', value: 'sample', controls: ['text'], category: 'general' },
+      'general.toggle.pref': { displayName: 'Toggle Setting', value: true, controls: ['toggle'], category: 'general' },
+      'general.btn.pref': { displayName: 'Button Setting', value: false, controls: ['button'], category: 'general' },
+      'general.chk.pref': { displayName: 'Checkbox Setting', value: true, controls: ['checkbox'], category: 'general' }
+    };
+
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    assert.ok(html.includes('aria-label="Text Setting"'), 'Text input must have aria-label');
+    assert.ok(html.includes('aria-label="Toggle Setting"'), 'Toggle must have aria-label');
+    assert.ok(html.includes('aria-label="Button Setting"'), 'Button must have aria-label');
+    assert.ok(html.includes('aria-label="Checkbox Setting"'), 'Checkbox must have aria-label');
+  });
+
+  it('preserves last valid color swatch preview when invalid color string is entered (Ticket #56)', () => {
+    preferencesMapSignal.value = {
+      'general.logging.colours.level.warn': {
+        displayName: 'Warning Level Color',
+        value: '#eab308',
+        category: 'general',
+        controls: ['text', 'colour']
+      }
+    };
+
+    let html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+    assert.ok(html.includes('style="background-color:#eab308"'));
+
+    preferencesMapSignal.value = {
+      'general.logging.colours.level.warn': {
+        displayName: 'Warning Level Color',
+        value: 'blurg',
+        defaultValue: '#eab308',
+        category: 'general',
+        controls: ['text', 'colour']
+      }
+    };
+
+    html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+    assert.ok(
+      html.includes('style="background-color:#eab308"'),
+      'Must preserve last valid color on swatch when invalid value is present'
+    );
+  });
 });

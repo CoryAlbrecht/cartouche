@@ -4,7 +4,7 @@
  * @description Centralized Main process Logging Hub wrapping Winston and Colorette, managing dynamic transports, ANSI styling, and sequentialized log routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link LogPayload}
  * @see {@link LogLevel}
@@ -20,6 +20,10 @@ import {
   normalizeLogLevel,
   setLogSink
 } from '../../shared/logging';
+import {
+  resolveColorToRgb,
+  findClosestAnsi16Color
+} from '../../shared/colors/cssColors';
 
 /**
  * @description Custom Winston log level severity mapping ascending with verbosity.
@@ -91,50 +95,45 @@ export interface LoggingHubOptions {
 const activeColors = colorette.createColors({ useColor: true });
 
 /**
- * @description Colorette instances with ANSI color formatting explicitly disabled.
+ * @description Resolves an ANSI styling function for a configured color, emitting 24-bit truecolor when supported or downsampling to the closest standard 16 ANSI color.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
- */
-const disabledColors = colorette.createColors({ useColor: false });
-
-/**
- * @description Resolves a Colorette color styling function for a named color identifier.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-21
- * @updated 2026-10-21
- * @since 0.1.0-dev
- * @param {string} [colorName] - Named color string ('red', 'yellow', 'cyan', 'gray', etc.).
+ * @param {string} [colorName] - Configured color string (CSS named color or HTML hex).
  * @param {boolean} [useColor=true] - Whether ANSI color codes are emitted.
- * @returns {(str: string) => string} Colorette styling function.
+ * @param {boolean} [isFile=false] - Whether output is intended for file transport.
+ * @returns {(str: string) => string} Text styling function.
  */
-function resolveColorFunction(colorName?: string, useColor = true): (str: string) => string {
-  const colors = useColor ? activeColors : disabledColors;
-  const name = (colorName || '').toLowerCase().trim();
-  switch (name) {
-    case 'red':
-      return colors.red;
-    case 'yellow':
-      return colors.yellow;
-    case 'cyan':
-      return colors.cyan;
-    case 'green':
-      return colors.green;
-    case 'blue':
-      return colors.blue;
-    case 'magenta':
-      return colors.magenta;
-    case 'white':
-      return colors.white;
-    case 'gray':
-    case 'grey':
-      return colors.gray;
-    case 'black':
-      return colors.black;
-    default:
-      return (str: string) => str;
+function resolveColorFunction(
+  colorName?: string,
+  useColor = true,
+  isFile = false
+): (str: string) => string {
+  if (!useColor || !colorName) {
+    return (str: string) => str;
   }
+
+  const rgb = resolveColorToRgb(colorName);
+  if (!rgb) {
+    return (str: string) => str;
+  }
+
+  const isTruecolor =
+    isFile ||
+    (typeof process !== 'undefined' &&
+      (process.env.COLORTERM === 'truecolor' || process.env.COLORTERM === '24bit'));
+
+  if (isTruecolor) {
+    return (str: string) => `\x1b[38;2;${rgb.r};${rgb.g};${rgb.b}m${str}\x1b[39m`;
+  }
+
+  const closest = findClosestAnsi16Color(rgb);
+  const colorFn = activeColors[closest.colorFnName];
+  if (typeof colorFn === 'function') {
+    return colorFn;
+  }
+  return activeColors.gray;
 }
 
 /**
@@ -193,17 +192,18 @@ export class LoggingHub {
   }
 
   /**
-   * @description Formats a log payload into a single or multi-line formatted string with optional Colorette ANSI styling.
+   * @description Formats a log payload into a single or multi-line formatted string with optional ANSI truecolor styling or 16-color downsampling.
    * Format: YYYY-MM-DDTHH:mm:ss.sssZ [Process] LEVEL: message [metadata]
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {LogPayload} payload - Structured log payload.
    * @param {boolean} enableColor - True if ANSI color escape codes should be applied.
+   * @param {boolean} [isFile=false] - True if formatting for persistent log file transport.
    * @returns {string} Formatted log line with trailing newline.
    */
-  public formatLogLine(payload: LogPayload, enableColor: boolean): string {
+  public formatLogLine(payload: LogPayload, enableColor: boolean, isFile = false): string {
     const timestamp = payload.timestamp || new Date().toISOString();
     const source = payload.source || 'Main';
     const levelUpper = (payload.level || 'error').toUpperCase();
@@ -214,7 +214,7 @@ export class LoggingHub {
       formattedLevelAndMessage = `${timestamp} [${source}] ${levelUpper}: ${message}`;
     } else {
       const configuredColor = this.options.coloursLevels[payload.level] || 'gray';
-      const colorFn = resolveColorFunction(configuredColor, true);
+      const colorFn = resolveColorFunction(configuredColor, true, isFile);
       const applyStyle = (text: string) => {
         if (payload.level === 'critical') {
           return activeColors.bold(colorFn(text));
@@ -300,7 +300,7 @@ export class LoggingHub {
       stderrLevels: ['critical', 'error', 'warn', 'info', 'debug'],
       format: winston.format.printf((info) => {
         const payload = (info as any).payload as LogPayload;
-        return this.formatLogLine(payload, this.options.enableColors);
+        return this.formatLogLine(payload, this.options.enableColors, false);
       })
     });
   }
@@ -332,7 +332,7 @@ export class LoggingHub {
           ...(!this.options.enableFileColors ? [winston.format.uncolorize()] : []),
           winston.format.printf((info) => {
             const payload = (info as any).payload as LogPayload;
-            return this.formatLogLine(payload, this.options.enableFileColors);
+            return this.formatLogLine(payload, this.options.enableFileColors, true);
           })
         ];
 

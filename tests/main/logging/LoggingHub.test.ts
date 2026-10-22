@@ -4,7 +4,7 @@
  * @description Unit tests verifying Logging Hub Winston configuration, transport routing, directory auto-creation, formatting, and colorization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link LoggingHub}
  */
@@ -169,6 +169,154 @@ describe('LoggingHub Transports and Formatting', () => {
       hub.destroy();
     } finally {
       process.stderr.write = originalStderrWrite;
+    }
+  });
+
+  it('formats custom CSS named colors and hex codes with 24-bit ANSI truecolor escape codes', () => {
+    const hub = new LoggingHub();
+    const originalColorTerm = process.env.COLORTERM;
+    process.env.COLORTERM = 'truecolor';
+
+    try {
+      hub.configure({
+        coloursPattern: 'level-only',
+        enableColors: true,
+        coloursLevels: {
+          info: 'cornflowerblue',
+          warn: '#ff8800'
+        }
+      });
+
+      const infoLine = hub.formatLogLine({
+        timestamp: '2026-10-22T18:00:00.000Z',
+        source: 'Workbench',
+        level: 'info',
+        numericLevel: 4,
+        message: 'Layer loaded'
+      }, true);
+
+      // Must contain 24-bit ANSI escape code: \x1b[38;2;100;149;237m
+      assert.ok(
+        infoLine.includes('\u001b[38;2;100;149;237m'),
+        'Expected 24-bit truecolor escape code for cornflowerblue'
+      );
+      assert.ok(
+        infoLine.includes('\u001b[39m'),
+        'Expected foreground color reset escape code'
+      );
+
+      const warnLine = hub.formatLogLine({
+        timestamp: '2026-10-22T18:00:00.000Z',
+        source: 'Main',
+        level: 'warn',
+        numericLevel: 3,
+        message: 'Memory threshold reached'
+      }, true);
+
+      // Must contain 24-bit ANSI escape code: \x1b[38;2;255;136;0m
+      assert.ok(
+        warnLine.includes('\u001b[38;2;255;136;0m'),
+        'Expected 24-bit truecolor escape code for #ff8800'
+      );
+    } finally {
+      if (originalColorTerm !== undefined) {
+        process.env.COLORTERM = originalColorTerm;
+      } else {
+        delete process.env.COLORTERM;
+      }
+      hub.destroy();
+    }
+  });
+
+  it('downsamples custom CSS and hex colors to closest 16 ANSI color when truecolor is unsupported', () => {
+    const hub = new LoggingHub();
+    const originalColorTerm = process.env.COLORTERM;
+    delete process.env.COLORTERM;
+
+    try {
+      hub.configure({
+        coloursPattern: 'level-only',
+        enableColors: true,
+        coloursLevels: {
+          info: 'navy',
+          error: 'darkred'
+        }
+      });
+
+      const infoLine = hub.formatLogLine({
+        timestamp: '2026-10-22T18:00:00.000Z',
+        source: 'Workbench',
+        level: 'info',
+        numericLevel: 4,
+        message: 'Downsampling test'
+      }, true);
+
+      // In 16-color ANSI, standard blue is \u001b[34m
+      assert.ok(
+        infoLine.includes('\u001b[34m'),
+        'Expected 16-color ANSI blue code for navy'
+      );
+      assert.ok(
+        !infoLine.includes('\u001b[38;2;'),
+        'Should not emit truecolor escape codes when COLORTERM lacks truecolor'
+      );
+
+      const errorLine = hub.formatLogLine({
+        timestamp: '2026-10-22T18:00:00.000Z',
+        source: 'Main',
+        level: 'error',
+        numericLevel: 2,
+        message: 'Downsampled error'
+      }, true);
+
+      // In 16-color ANSI, standard red is \u001b[31m
+      assert.ok(
+        errorLine.includes('\u001b[31m'),
+        'Expected 16-color ANSI red code for darkred'
+      );
+    } finally {
+      if (originalColorTerm !== undefined) {
+        process.env.COLORTERM = originalColorTerm;
+      } else {
+        delete process.env.COLORTERM;
+      }
+      hub.destroy();
+    }
+  });
+
+  it('preserves 24-bit truecolor when writing to log file with file colors enabled', () => {
+    const hub = new LoggingHub();
+    const originalColorTerm = process.env.COLORTERM;
+    delete process.env.COLORTERM; // Terminal lacks truecolor
+
+    try {
+      hub.configure({
+        coloursPattern: 'level-only',
+        enableFileColors: true,
+        coloursLevels: {
+          info: 'salmon'
+        }
+      });
+
+      const fileLine = hub.formatLogLine({
+        timestamp: '2026-10-22T18:00:00.000Z',
+        source: 'Main',
+        level: 'info',
+        numericLevel: 4,
+        message: 'Writing colored log to disk'
+      }, true, true);
+
+      assert.ok(
+        fileLine.includes('\u001b[38;2;250;128;114m'),
+        'Expected 24-bit truecolor escape code in file output even when terminal lacks truecolor'
+      );
+    } finally {
+      if (originalColorTerm !== undefined) {
+        process.env.COLORTERM = originalColorTerm;
+      } else {
+        delete process.env.COLORTERM;
+      }
+      hub.destroy();
     }
   });
 });

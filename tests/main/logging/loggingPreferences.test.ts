@@ -4,7 +4,7 @@
  * @description Unit tests verifying general.logging.* preference definitions, default values, and dynamic transport hot-reconfiguration.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferencesStore}
@@ -74,7 +74,7 @@ describe('Logging Preferences and Dynamic Hot-Reconfiguration', () => {
     for (const [key, defaultVal] of levelColors) {
       const item = BUILTIN_PREFERENCES[key];
       assert.ok(item, `${key} should be registered`);
-      assert.equal(item.type, 'select');
+      assert.equal(item.type, 'string');
       assert.equal(item.defaultValue, defaultVal);
       assert.equal(item.category, 'general');
     }

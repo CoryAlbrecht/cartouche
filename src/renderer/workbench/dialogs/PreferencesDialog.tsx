@@ -21,6 +21,8 @@ import {
   mdiFileEditOutline,
   mdiSync,
   mdiCached,
+  mdiMenuDown,
+  mdiAlertRhombus,
 } from "@mdi/js";
 import {
   isPreferencesOpenSignal,
@@ -34,6 +36,11 @@ import { t } from "@renderer/state/i18nSignals";
 import { Dialog } from "./Dialog";
 import type { PreferenceItem, PreferenceControlType } from "@shared/types";
 import { logging } from "../../../shared/logging";
+import {
+  CSS_COLOR_NAMES,
+  isValidCssColor,
+  resolveColorToHex,
+} from "../../../shared/colors/cssColors";
 
 /**
  * @typedef {Object} CategoryTab
@@ -61,58 +68,6 @@ const categories: CategoryTab[] = [
   { id: "rendering", label: "Rendering", icon: mdiVectorTriangle },
   { id: "plugins", label: "Plugins & Extensions", icon: mdiPuzzleOutline },
 ];
-
-/**
- * @description Named color map resolving standard color strings to 6-digit HTML hex codes.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-21
- * @updated 2026-10-22
- * @since 0.1.0-dev
- * @type {Record<string, string>}
- */
-const COLOR_NAME_TO_HEX: Record<string, string> = {
-  black: "#000000",
-  red: "#ef4444",
-  green: "#22c55e",
-  yellow: "#eab308",
-  blue: "#3b82f6",
-  magenta: "#d946ef",
-  cyan: "#06b6d4",
-  white: "#ffffff",
-  gray: "#64748b",
-  grey: "#64748b",
-};
-
-/**
- * @description Converts a named ANSI/CSS color or loose hex string into a valid 6-digit HTML hex color string.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-21
- * @updated 2026-10-22
- * @since 0.1.0-dev
- * @param {any} val - Input color value.
- * @returns {string} Normalized #rrggbb hex color string.
- */
-function toHexColor(val: any): string {
-  if (!val || typeof val !== "string") return "#000000";
-  const trimmed = val.trim().toLowerCase();
-  if (trimmed.startsWith("#")) {
-    if (trimmed.length === 4) {
-      return (
-        "#" +
-        trimmed[1] +
-        trimmed[1] +
-        trimmed[2] +
-        trimmed[2] +
-        trimmed[3] +
-        trimmed[3]
-      );
-    }
-    if (trimmed.length === 7) {
-      return trimmed;
-    }
-  }
-  return COLOR_NAME_TO_HEX[trimmed] || "#000000";
-}
 
 /**
  * @description Resolves the canonical list of control types to render for a preference item.
@@ -255,6 +210,8 @@ export const PreferencesDialog: React.FC = () => {
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const animIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingChangesRef = useRef<Record<string, any>>({});
+  const colorInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const lastValidColorsRef = useRef<Record<string, string>>({});
 
   const allPrefs = preferencesMapSignal.value;
 
@@ -310,8 +267,19 @@ export const PreferencesDialog: React.FC = () => {
       const initial: Record<string, any> = {};
       for (const [key, item] of Object.entries(allPrefs)) {
         initial[key] = item.value;
+        if (
+          item.controls?.includes("colour") ||
+          item.controls?.includes("color")
+        ) {
+          lastValidColorsRef.current[key] =
+            resolveColorToHex(item.value) || "#000000";
+        }
       }
       draftPreferencesSignal.value = initial;
+      pendingChangesRef.current = {};
+      saveStatusSignal.value = "idle";
+    } else {
+      draftPreferencesSignal.value = {};
       pendingChangesRef.current = {};
       saveStatusSignal.value = "idle";
     }
@@ -325,7 +293,7 @@ export const PreferencesDialog: React.FC = () => {
       if (animIntervalRef.current) {
         clearInterval(animIntervalRef.current);
       }
-      // Flush any remaining un-saved changes on unmount
+      // Flush any remaining valid un-saved changes on unmount
       const remaining = { ...pendingChangesRef.current };
       if (Object.keys(remaining).length > 0) {
         pendingChangesRef.current = {};
@@ -333,6 +301,7 @@ export const PreferencesDialog: React.FC = () => {
           updatePreference(k, v);
         }
       }
+      draftPreferencesSignal.value = {};
     };
   }, []);
 
@@ -411,6 +380,8 @@ export const PreferencesDialog: React.FC = () => {
     pendingChangesRef.current = {};
     draftPreferencesSignal.value = {};
     saveStatusSignal.value = "idle";
+    colorInputRefs.current = {};
+    lastValidColorsRef.current = {};
     cancelPreferencesEdits();
   };
 
@@ -548,7 +519,7 @@ export const PreferencesDialog: React.FC = () => {
   };
 
   /**
-   * @description Renders a specific control variant for a given preference row.
+   * @description Renders a specific control variant for a given preference row with keyboard accessibility and ARIA semantics.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
    * @updated 2026-10-22
@@ -557,35 +528,85 @@ export const PreferencesDialog: React.FC = () => {
    * @param {string} key - Preference descriptor key.
    * @param {PreferenceItem} item - Preference item definition.
    * @param {any} currentValue - Currently active draft or saved value.
+   * @param {string} displayName - Localized user-visible preference title.
    * @returns {React.ReactNode}
    */
   const renderControl = (
     ctrlType: PreferenceControlType,
     key: string,
     item: PreferenceItem,
-    currentValue: any
+    currentValue: any,
+    displayName: string
   ): React.ReactNode => {
     switch (ctrlType) {
       case "text": {
-        const isValid = validateTextPattern(
-          String(currentValue ?? ""),
-          item.patterns
-        );
+        const isColorControl =
+          item.controls?.includes("colour") || item.controls?.includes("color");
+        const textVal = currentValue !== undefined ? String(currentValue) : "";
+        const isValid =
+          isColorControl ?
+            isValidCssColor(textVal)
+          : validateTextPattern(textVal, item.patterns);
+
+        if (isColorControl && isValid) {
+          const resolvedHex = resolveColorToHex(textVal);
+          if (resolvedHex) {
+            lastValidColorsRef.current[key] = resolvedHex;
+          }
+        }
+
         return (
-          <input
-            key={`${key}-text`}
-            type='text'
-            value={currentValue !== undefined ? currentValue : ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              const valid = validateTextPattern(val, item.patterns);
-              handleFieldChange(key, val, valid);
-            }}
-            className={`preference-input-text ${!isValid ? "preference-input-invalid" : ""}`}
-            title={
-              !isValid ? "Value does not match required format" : undefined
-            }
-          />
+          <div
+            key={`${key}-text-container`}
+            className='preference-text-wrapper'>
+            <input
+              key={`${key}-text`}
+              type='text'
+              tabIndex={0}
+              aria-label={displayName}
+              aria-invalid={!isValid}
+              list={isColorControl ? "css-colors-datalist" : undefined}
+              value={currentValue !== undefined ? currentValue : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                const valid =
+                  isColorControl ?
+                    isValidCssColor(val)
+                  : validateTextPattern(val, item.patterns);
+                if (isColorControl && valid) {
+                  const resolvedHex = resolveColorToHex(val);
+                  if (resolvedHex) {
+                    lastValidColorsRef.current[key] = resolvedHex;
+                  }
+                }
+                handleFieldChange(key, val, valid);
+              }}
+              className={`preference-input-text ${!isValid ? "preference-input-invalid" : ""}`}
+              style={
+                !isValid && isColorControl ? { color: "#ef4444" } : undefined
+              }
+              title={
+                !isValid ?
+                  isColorControl ?
+                    "Invalid CSS color name or hex format"
+                  : "Value does not match required format"
+                : undefined
+              }
+            />
+            {!isValid && isColorControl && (
+              <span
+                tabIndex={0}
+                className='preference-input-error-icon'
+                title='Invalid CSS color name or hex format'
+                aria-label='Invalid CSS color name or hex format'>
+                <Icon
+                  path={mdiAlertRhombus}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  title='Invalid CSS color name or hex format'
+                />
+              </span>
+            )}
+          </div>
         );
       }
       case "multiline-text": {
@@ -593,6 +614,8 @@ export const PreferencesDialog: React.FC = () => {
           <textarea
             key={`${key}-multiline`}
             rows={3}
+            tabIndex={0}
+            aria-label={displayName}
             value={currentValue !== undefined ? currentValue : ""}
             onChange={(e) => handleFieldChange(key, e.target.value)}
             className='preference-textarea'
@@ -601,23 +624,74 @@ export const PreferencesDialog: React.FC = () => {
       }
       case "colour":
       case "color": {
+        const resolvedCurrent = resolveColorToHex(currentValue);
+        const resolvedSaved =
+          resolveColorToHex(item.value) ||
+          resolveColorToHex(item.defaultValue);
+
+        if (resolvedCurrent) {
+          lastValidColorsRef.current[key] = resolvedCurrent;
+        } else if (!lastValidColorsRef.current[key] && resolvedSaved) {
+          lastValidColorsRef.current[key] = resolvedSaved;
+        }
+
+        const swatchColor =
+          lastValidColorsRef.current[key] ||
+          resolvedCurrent ||
+          resolvedSaved ||
+          "#000000";
+
         return (
-          <label
+          <div
             key={`${key}-color`}
-            className='preference-color-button-wrapper'
-            title='Pick colour'>
-            <span
-              className='preference-color-swatch'
-              style={{ backgroundColor: toHexColor(currentValue) }}
-            />
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              position: "relative",
+            }}>
+            <button
+              key={`${key}-color-btn`}
+              type='button'
+              tabIndex={0}
+              aria-haspopup='dialog'
+              aria-label={`Pick colour for ${displayName}`}
+              className='preference-color-button-wrapper'
+              title='Pick colour'
+              onClick={() => colorInputRefs.current[key]?.click()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  colorInputRefs.current[key]?.click();
+                }
+              }}>
+              <span
+                className='preference-color-swatch'
+                style={{ backgroundColor: swatchColor }}
+              />
+              <span className='preference-color-chevron'>
+                <Icon
+                  path={mdiMenuDown}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  title='Open colour palette'
+                />
+              </span>
+            </button>
             <input
+              ref={(el) => {
+                colorInputRefs.current[key] = el;
+              }}
               type='color'
-              aria-label='Pick colour'
+              tabIndex={-1}
+              aria-hidden='true'
               className='preference-hidden-color-input'
-              value={toHexColor(currentValue)}
-              onChange={(e) => handleFieldChange(key, e.target.value)}
+              value={swatchColor}
+              onChange={(e) => {
+                const hex = e.target.value;
+                lastValidColorsRef.current[key] = hex;
+                handleFieldChange(key, hex, true);
+              }}
             />
-          </label>
+          </div>
         );
       }
       case "checkbox": {
@@ -625,8 +699,16 @@ export const PreferencesDialog: React.FC = () => {
           <label key={`${key}-checkbox`} className='preference-checkbox-label'>
             <input
               type='checkbox'
+              tabIndex={0}
+              aria-label={displayName}
               checked={!!currentValue}
               onChange={(e) => handleFieldChange(key, e.target.checked)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleFieldChange(key, !currentValue);
+                }
+              }}
               className='preference-checkbox'
             />
             <span>{currentValue ? "Enabled" : "Disabled"}</span>
@@ -638,9 +720,17 @@ export const PreferencesDialog: React.FC = () => {
           <button
             key={`${key}-btn`}
             type='button'
+            tabIndex={0}
+            aria-label={displayName}
             aria-pressed={!!currentValue}
             className={`preference-btn-toggle ${currentValue ? "active" : ""}`}
-            onClick={() => handleFieldChange(key, !currentValue)}>
+            onClick={() => handleFieldChange(key, !currentValue)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleFieldChange(key, !currentValue);
+              }
+            }}>
             {currentValue ? "Enabled" : "Disabled"}
           </button>
         );
@@ -651,9 +741,17 @@ export const PreferencesDialog: React.FC = () => {
             key={`${key}-toggle`}
             type='button'
             role='switch'
+            tabIndex={0}
+            aria-label={displayName}
             aria-checked={!!currentValue}
             className={`preference-switch-toggle ${currentValue ? "active" : ""}`}
-            onClick={() => handleFieldChange(key, !currentValue)}>
+            onClick={() => handleFieldChange(key, !currentValue)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleFieldChange(key, !currentValue);
+              }
+            }}>
             <span className='preference-switch-track'>
               <span className='preference-switch-thumb' />
             </span>
@@ -669,6 +767,8 @@ export const PreferencesDialog: React.FC = () => {
           <div key={`${key}-range`} className='preference-range-wrapper'>
             <input
               type='range'
+              tabIndex={0}
+              aria-label={displayName}
               min={min}
               max={max}
               step={step}
@@ -690,6 +790,8 @@ export const PreferencesDialog: React.FC = () => {
           <div key={`${key}-spinner`} className='preference-number-wrapper'>
             <input
               type='number'
+              tabIndex={0}
+              aria-label={displayName}
               min={item.minimum}
               max={item.maximum}
               step={item.step !== undefined ? item.step : "any"}
@@ -723,6 +825,8 @@ export const PreferencesDialog: React.FC = () => {
             className='preference-slider-discrete-wrapper'>
             <input
               type='range'
+              tabIndex={0}
+              aria-label={displayName}
               min={0}
               max={Math.max(0, opts.length - 1)}
               step={1}
@@ -743,6 +847,8 @@ export const PreferencesDialog: React.FC = () => {
         return (
           <select
             key={`${key}-dropdown`}
+            tabIndex={0}
+            aria-label={displayName}
             value={String(currentValue)}
             onChange={(e) => handleFieldChange(key, e.target.value)}
             className='preference-select'>
@@ -759,7 +865,15 @@ export const PreferencesDialog: React.FC = () => {
           <button
             key={`${key}-image`}
             type='button'
+            tabIndex={0}
+            aria-label={displayName}
             className='preference-image-picker-btn'
+            onKeyDown={async (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                (e.currentTarget as HTMLButtonElement).click();
+              }
+            }}
             onClick={async () => {
               if (window.electronAPI?.openFiles) {
                 const paths = await window.electronAPI.openFiles({
@@ -794,6 +908,8 @@ export const PreferencesDialog: React.FC = () => {
               <label key={String(opt.value)} className='preference-radio-label'>
                 <input
                   type='radio'
+                  tabIndex={0}
+                  aria-label={`${displayName} - ${opt.label}`}
                   name={`pref_${key}`}
                   value={String(opt.value)}
                   checked={String(currentValue) === String(opt.value)}
@@ -813,10 +929,18 @@ export const PreferencesDialog: React.FC = () => {
               <button
                 key={String(opt.value)}
                 type='button'
+                tabIndex={0}
+                aria-label={`${displayName} - ${opt.label}`}
                 className={`preference-btn-group-item ${
                   String(currentValue) === String(opt.value) ? "active" : ""
                 }`}
-                onClick={() => handleFieldChange(key, opt.value)}>
+                onClick={() => handleFieldChange(key, opt.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleFieldChange(key, opt.value);
+                  }
+                }}>
                 {opt.label}
               </button>
             ))}
@@ -835,12 +959,23 @@ export const PreferencesDialog: React.FC = () => {
                 className='preference-checkbox-label'>
                 <input
                   type='checkbox'
+                  tabIndex={0}
+                  aria-label={`${displayName} - ${opt.label}`}
                   checked={selectedSet.has(opt.value)}
                   onChange={(e) => {
                     const next = new Set(selectedSet);
                     if (e.target.checked) next.add(opt.value);
                     else next.delete(opt.value);
                     handleFieldChange(key, Array.from(next));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const next = new Set(selectedSet);
+                      if (selectedSet.has(opt.value)) next.delete(opt.value);
+                      else next.add(opt.value);
+                      handleFieldChange(key, Array.from(next));
+                    }
                   }}
                   className='preference-checkbox'
                 />
@@ -894,7 +1029,7 @@ export const PreferencesDialog: React.FC = () => {
 
         <div className='preference-item-control'>
           {controlsToRender.map((ctrl) =>
-            renderControl(ctrl, key, item, currentValue)
+            renderControl(ctrl, key, item, currentValue, displayName)
           )}
         </div>
       </div>
@@ -972,6 +1107,11 @@ export const PreferencesDialog: React.FC = () => {
           height: "100%",
           overflow: "hidden",
         }}>
+        <datalist id='css-colors-datalist'>
+          {CSS_COLOR_NAMES.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
         {/* Modal Body: Left Sidebar + Right Content */}
         <div className='preferences-modal-body'>
           {/* Left Category Navigation */}
