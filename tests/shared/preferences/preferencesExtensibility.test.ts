@@ -1,10 +1,10 @@
 /**
  * @file preferencesExtensibility.test.ts
  * @module tests/shared/preferences/preferencesExtensibility.test
- * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity.
+ * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -24,22 +24,34 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe('Extensible Preferences Subsystem Contracts', () => {
-  const enXmlPath = path.join(__dirname, '../../../assets/xml/i18n/en.xml');
-  const xmlContent = fs.readFileSync(enXmlPath, 'utf-8');
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
     textNodeName: '#text'
   });
-  const parsed = parser.parse(xmlContent);
-  const root = parsed['ci18n:localization'] || parsed.localization;
-  const rawStrings = Array.isArray(root.string) ? root.string : [root.string];
-  const enDict = new Set<string>();
-  for (const item of rawStrings) {
-    if (item && item['@_name']) {
-      enDict.add(item['@_name']);
+
+  /**
+   * @description Loads and parses an i18n XML localization dictionary into a set of string keys.
+   * @param {string} filename - Localization dictionary filename.
+   * @returns {Set<string>} Set of localized string keys.
+   */
+  const loadDict = (filename: string): Set<string> => {
+    const xmlPath = path.join(__dirname, '../../../assets/xml/i18n', filename);
+    const xmlContent = fs.readFileSync(xmlPath, 'utf-8');
+    const parsed = parser.parse(xmlContent);
+    const root = parsed['ci18n:localization'] || parsed.localization;
+    const rawStrings = Array.isArray(root.string) ? root.string : [root.string];
+    const dict = new Set<string>();
+    for (const item of rawStrings) {
+      if (item && item['@_name']) {
+        dict.add(item['@_name']);
+      }
     }
-  }
+    return dict;
+  };
+
+  const enDict = loadDict('en.xml');
+  const frDict = loadDict('fr.xml');
 
   it('ensures all visible built-in preferences define valid i18nId matching en.xml entries for title and description', () => {
     for (const [key, item] of Object.entries(BUILTIN_PREFERENCES)) {
@@ -70,6 +82,36 @@ describe('Extensible Preferences Subsystem Contracts', () => {
     for (const grp of expectedGroups) {
       const grpKey = `prefs_group_${grp}`;
       assert.ok(enDict.has(grpKey), `en.xml must define preference group header '${grpKey}'`);
+    }
+  });
+
+  it('ensures all visible built-in preferences, tabs, and groups have localized entries in fr.xml', () => {
+    for (const [key, item] of Object.entries(BUILTIN_PREFERENCES)) {
+      if (item.hidden) continue;
+
+      assert.ok(item.i18nId, `Visible preference '${key}' must define an explicit i18nId`);
+      assert.ok(
+        frDict.has(item.i18nId!),
+        `fr.xml must contain localized string entry for i18nId '${item.i18nId}' (preference '${key}')`
+      );
+
+      const descrKey = `${item.i18nId}_descr`;
+      assert.ok(
+        frDict.has(descrKey),
+        `fr.xml must contain localized string entry for description '${descrKey}' (preference '${key}')`
+      );
+    }
+
+    const expectedTabs = ['general', 'ui', 'rendering', 'plugins'];
+    for (const tab of expectedTabs) {
+      const tabKey = `prefs_tab_${tab}_name`;
+      assert.ok(frDict.has(tabKey), `fr.xml must define category tab entry '${tabKey}'`);
+    }
+
+    const expectedGroups = ['logging', 'logging_colours', 'display'];
+    for (const grp of expectedGroups) {
+      const grpKey = `prefs_group_${grp}`;
+      assert.ok(frDict.has(grpKey), `fr.xml must define preference group header '${grpKey}'`);
     }
   });
 

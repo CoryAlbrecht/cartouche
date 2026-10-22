@@ -16,4 +16,46 @@
     <string name="quit">Quitter</string>
     <string name="hello_name">Bonjour {name}</string>
     <string name="shortcut_save">Appuyez sur <kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer.</string>
+
+    <string name="prefs_tab_general_name">Général</string>
+    <string name="prefs_tab_ui_name">Interface et Affichage</string>
+    <string name="prefs_tab_rendering_name">Rendu</string>
+    <string name="prefs_tab_plugins_name">Extensions et Modules</string>
+
+    <string name="prefs_group_logging">Journalisation</string>
+    <string name="prefs_group_logging_colours">Couleurs des Journaux</string>
+    <string name="prefs_group_display">Affichage</string>
+
+    <string name="prefs_general_logging_location">Emplacement du Fichier Journal</string>
+    <string name="prefs_general_logging_location_descr">Chemin du fichier journal persistant de l'application. Si omis ou vide, les journaux sont dirigés vers stderr.</string>
+    <string name="prefs_general_logging_colours_console">Couleurs de la Console</string>
+    <string name="prefs_general_logging_colours_console_descr">Active ou désactive les couleurs ANSI lors de l'impression des messages de journal sur stderr.</string>
+    <string name="prefs_general_logging_colours_file">Couleurs de Fichier</string>
+    <string name="prefs_general_logging_colours_file_descr">Préserve les codes d'échappement de couleur ANSI lors de l'écriture des journaux dans un fichier.</string>
+    <string name="prefs_general_logging_colours_pattern">Motif de Coloration</string>
+    <string name="prefs_general_logging_colours_pattern_descr">Détermine quels segments de chaque ligne de journal reçoivent un style de couleur.</string>
+    <string name="prefs_general_logging_colours_level_critical">Couleur du Niveau Critique</string>
+    <string name="prefs_general_logging_colours_level_critical_descr">Style de couleur pour les messages de journalisation de gravité critique (gras combiné automatiquement).</string>
+    <string name="prefs_general_logging_colours_level_error">Couleur du Niveau Erreur</string>
+    <string name="prefs_general_logging_colours_level_error_descr">Style de couleur pour les messages de journalisation de niveau d'erreur.</string>
+    <string name="prefs_general_logging_colours_level_warn">Couleur du Niveau Avertissement</string>
+    <string name="prefs_general_logging_colours_level_warn_descr">Style de couleur pour les messages de journalisation d'avertissement.</string>
+    <string name="prefs_general_logging_colours_level_info">Couleur du Niveau Info</string>
+    <string name="prefs_general_logging_colours_level_info_descr">Style de couleur pour les messages de journalisation opérationnels d'information.</string>
+    <string name="prefs_general_logging_colours_level_debug">Couleur du Niveau Débogage</string>
+    <string name="prefs_general_logging_colours_level_debug_descr">Style de couleur pour les messages de journalisation de diagnostic détaillés.</string>
+    <string name="prefs_general_autosave_preferences">Délai d'Enregistrement Automatique des Préférences</string>
+    <string name="prefs_general_autosave_preferences_descr">Temps en secondes à attendre après avoir modifié une préférence avant d'enregistrer automatiquement les modifications sur le disque.</string>
+    <string name="prefs_general_paths_absolute">Utiliser des Chemins Absolus</string>
+    <string name="prefs_general_paths_absolute_descr">Quand activé, enregistre tous les chemins externes sous forme de chemins absolus. Sinon, enregistre relativement à l'emplacement du fichier de projet.</string>
+    <string name="prefs_general_project_defaults_author">Auteur de Projet par Défaut</string>
+    <string name="prefs_general_project_defaults_author_descr">Le champ « auteur » dans les métadonnées du projet est défini sur cette valeur pour les nouveaux projets.</string>
+    <string name="prefs_ui_basefont_size">Taille de Police de Base</string>
+    <string name="prefs_ui_basefont_size_descr">Taille de police par défaut de l'établi sur l'ensemble des panneaux et des commandes</string>
+    <string name="prefs_ui_icon_size">Taille des Icônes de Barre d'Outils</string>
+    <string name="prefs_ui_icon_size_descr">Dimensions des icônes d'action des panneaux et barres d'outils</string>
+    <string name="prefs_rendering_simplification_threshold">Seuil de Simplification</string>
+    <string name="prefs_rendering_simplification_threshold_descr">Seuil de tolérance pour le rendu des géométries d'entités vectorielles</string>
+    <string name="prefs_plugin_debug_enable">Activer le Mode Débogage des Extensions</string>
+    <string name="prefs_plugin_debug_enable_descr">Activer la journalisation détaillée pour l'hôte d'extension et les canaux RPC</string>
 </ci18n:localization>

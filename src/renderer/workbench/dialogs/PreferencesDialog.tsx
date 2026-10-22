@@ -47,6 +47,14 @@ interface CategoryTab {
   icon: string;
 }
 
+/**
+ * @description Standard category tab items for preferences dialog navigation.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-24
+ * @updated 2026-10-22
+ * @since 0.1.0-dev
+ * @type {CategoryTab[]}
+ */
 const categories: CategoryTab[] = [
   { id: "general", label: "General", icon: mdiCogOutline },
   { id: "ui", label: "UI & Display", icon: mdiPaletteOutline },
@@ -54,6 +62,14 @@ const categories: CategoryTab[] = [
   { id: "plugins", label: "Plugins & Extensions", icon: mdiPuzzleOutline },
 ];
 
+/**
+ * @description Named color map resolving standard color strings to 6-digit HTML hex codes.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-21
+ * @updated 2026-10-22
+ * @since 0.1.0-dev
+ * @type {Record<string, string>}
+ */
 const COLOR_NAME_TO_HEX: Record<string, string> = {
   black: "#000000",
   red: "#ef4444",
@@ -99,7 +115,7 @@ function toHexColor(val: any): string {
 }
 
 /**
- * @description Normalizes legacy type definition or controls array into a canonical list of control variants.
+ * @description Resolves the canonical list of control types to render for a preference item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
  * @updated 2026-10-22
@@ -108,13 +124,7 @@ function toHexColor(val: any): string {
  * @returns {PreferenceControlType[]} Canonical list of control types to render.
  */
 function resolveControls(item: PreferenceItem): PreferenceControlType[] {
-  if (item.controls && item.controls.length > 0) {
-    return item.controls;
-  }
-  if (item.type === "boolean") return ["checkbox"];
-  if (item.type === "select") return ["dropdown"];
-  if (item.type === "number") return ["spinner"];
-  return ["text"];
+  return item.controls || [];
 }
 
 /**
@@ -139,6 +149,65 @@ function validateTextPattern(value: string, patterns?: string[]): boolean {
 }
 
 /**
+ * @description Resolves localized preference string with 4-tier fallback: explicit i18nId -> derived key -> item fallback -> default value.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-22
+ * @updated 2026-10-22
+ * @since 0.1.0-dev
+ * @param {string} key - Preference descriptor key.
+ * @param {PreferenceItem} item - Preference item definition.
+ * @param {string} suffix - Optional descriptor suffix (e.g. "_descr").
+ * @param {string} finalFallback - Ultimate fallback string if all prior resolutions fail.
+ * @returns {string} Resolved localized or fallback text.
+ */
+function resolvePreferenceText(
+  key: string,
+  item: PreferenceItem,
+  suffix: string,
+  finalFallback: string
+): string {
+  if (item.i18nId) {
+    const idWithSuffix = `${item.i18nId}${suffix}`;
+    const direct = t(idWithSuffix);
+    if (direct !== idWithSuffix) return direct;
+  }
+  const derivedKey = `prefs_${key.replace(/\./g, "_")}${suffix}`;
+  const derived = t(derivedKey);
+  if (derived !== derivedKey) return derived;
+  const itemFallback = suffix === "" ? item.displayName : item.description;
+  if (itemFallback) return itemFallback;
+  return finalFallback;
+}
+
+/**
+ * @description Resolves display label for a preference item using 4-step fallback sequence.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-22
+ * @updated 2026-10-22
+ * @since 0.1.0-dev
+ * @param {string} key - Preference descriptor key.
+ * @param {PreferenceItem} item - Preference item definition.
+ * @returns {string} Resolved display name.
+ */
+function resolveDisplayName(key: string, item: PreferenceItem): string {
+  return resolvePreferenceText(key, item, "", key);
+}
+
+/**
+ * @description Resolves description helper text for a preference item using 4-step fallback sequence.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-22
+ * @updated 2026-10-22
+ * @since 0.1.0-dev
+ * @param {string} key - Preference descriptor key.
+ * @param {PreferenceItem} item - Preference item definition.
+ * @returns {string} Resolved description text.
+ */
+function resolveDescription(key: string, item: PreferenceItem): string {
+  return resolvePreferenceText(key, item, "_descr", "");
+}
+
+/**
  * @component PreferencesDialog
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -159,7 +228,25 @@ export const PreferencesDialog: React.FC = () => {
    * @type {Signal<Record<string, any>>}
    */
   const draftPreferencesSignal = useSignal<Record<string, any>>({});
+  /**
+   * @signal saveStatusSignal
+   * @description Reactive signal tracking current autosave lifecycle status.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-30
+   * @updated 2026-10-22
+   * @since 0.1.0-dev
+   * @type {Signal<"idle" | "editing" | "saving">}
+   */
   const saveStatusSignal = useSignal<"idle" | "editing" | "saving">("idle");
+  /**
+   * @signal isSyncIconSignal
+   * @description Reactive signal driving autosave indicator toggle icon animation.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-09-30
+   * @updated 2026-10-22
+   * @since 0.1.0-dev
+   * @type {Signal<boolean>}
+   */
   const isSyncIconSignal = useSignal<boolean>(true);
 
   const saveStatus = saveStatusSignal.value;
@@ -274,6 +361,14 @@ export const PreferencesDialog: React.FC = () => {
     };
 
     if (!isValid) {
+      delete pendingChangesRef.current[key];
+      if (Object.keys(pendingChangesRef.current).length === 0) {
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = null;
+        }
+        saveStatusSignal.value = "idle";
+      }
       return;
     }
 
@@ -384,15 +479,8 @@ export const PreferencesDialog: React.FC = () => {
       gData.minGroupOrder = item.groupOrder;
     }
 
-    const i18nId = item.i18nId || `prefs_${key.replace(/\./g, "_")}`;
-    const translatedName = t(i18nId);
-    const displayName =
-      translatedName !== i18nId ? translatedName : (item.displayName || key);
-
-    const descKey = `${i18nId}_descr`;
-    const translatedDesc = t(descKey);
-    const description =
-      translatedDesc !== descKey ? translatedDesc : (item.description || "");
+    const displayName = resolveDisplayName(key, item);
+    const description = resolveDescription(key, item);
 
     gData.items.push({ key, item, displayName, description });
   }
@@ -524,6 +612,7 @@ export const PreferencesDialog: React.FC = () => {
             />
             <input
               type='color'
+              aria-label='Pick colour'
               className='preference-hidden-color-input'
               value={toHexColor(currentValue)}
               onChange={(e) => handleFieldChange(key, e.target.value)}
@@ -549,6 +638,7 @@ export const PreferencesDialog: React.FC = () => {
           <button
             key={`${key}-btn`}
             type='button'
+            aria-pressed={!!currentValue}
             className={`preference-btn-toggle ${currentValue ? "active" : ""}`}
             onClick={() => handleFieldChange(key, !currentValue)}>
             {currentValue ? "Enabled" : "Disabled"}
