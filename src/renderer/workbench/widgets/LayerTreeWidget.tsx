@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -147,11 +147,24 @@ export interface LayerTreeWidgetProps extends Partial<IDockviewPanelProps> {
 }
 
 /**
+ * @description Standard CSS style applied to LayerTreeWidget node line icons (layer geometry, group chevrons, folder outlines, and project logo) scaling width to 80% of --cartouche-ui-icon-size with a 1:1 aspect ratio.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-21
+ * @updated 2026-10-21
+ * @since 0.1.0-dev
+ * @type {React.CSSProperties}
+ */
+const TREE_NODE_ICON_STYLE: React.CSSProperties = {
+  width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.8)",
+  aspectRatio: "1",
+};
+
+/**
  * @component LayerTreeWidget
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-19
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -755,7 +768,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           <span
             className='tree-icon-slot'
             style={{ color: "#2563eb" }}>
-            <Icon path={iconPath} size='16px' />
+            <Icon path={iconPath} style={TREE_NODE_ICON_STYLE} />
           </span>
 
           {isEditing ? (
@@ -839,7 +852,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             }}>
             <Icon
               path={isExpanded ? mdiChevronDown : mdiChevronRight}
-              size='16px'
+              style={TREE_NODE_ICON_STYLE}
             />
           </span>
 
@@ -855,7 +868,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           <span className='tree-icon-slot group-icon'>
             <Icon
               path={isExpanded ? mdiFolderOpenOutline : mdiFolderOutline}
-              size='16px'
+              style={TREE_NODE_ICON_STYLE}
             />
           </span>
 
@@ -1044,7 +1057,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                   <img
                     src={logoSvg}
                     alt='Cartouche'
-                    style={{ width: 14, height: 14 }}
+                    style={TREE_NODE_ICON_STYLE}
                   />
                 </span>
                 {editingNodeId === 'project' ? (

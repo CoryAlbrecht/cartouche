@@ -754,19 +754,20 @@
 }
 
 .tree-indent {
-  width: 14px;
+  width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   display: inline-block;
   flex-shrink: 0;
 }
 
 .tree-chevron {
-  width: 14px;
-  height: 14px;
+  width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
+  height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #64748b;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .tree-checkbox {
@@ -775,14 +776,15 @@
   accent-color: #1b446c;
   cursor: pointer;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .tree-icon-slot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
+  height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   flex-shrink: 0;
 }
 
