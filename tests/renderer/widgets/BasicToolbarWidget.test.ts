@@ -4,7 +4,7 @@
  * @description Unit tests for BasicToolbarWidget Save Project button disabled state and double-duty click dispatching.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link BasicToolbarWidget}
  * @see {@link isBasicToolbarSaveDisabled}
@@ -156,6 +156,25 @@ describe('BasicToolbarWidget Save Button Logic', () => {
 
     // Save button immediately enables!
     assert.equal(isBasicToolbarSaveDisabled(hasProjectSignal.value, projectFilePathSignal.value, isProjectDirtySignal.value), false);
+  });
+
+  it('renders all toolbar action icons using var(--cartouche-ui-icon-size, 24px)', () => {
+    const React = jiti('react');
+    const { renderToStaticMarkup } = jiti('react-dom/server');
+    const { BasicToolbarWidget } = jiti('../../../src/renderer/workbench/widgets/toolbars/BasicToolbarWidget');
+
+    const html = renderToStaticMarkup(React.createElement(BasicToolbarWidget, { zone: 'top' }));
+    assert.ok(html.includes('id="toolbar-widget-basic"'), 'Expected BasicToolbarWidget to render container');
+
+    // All toolbar buttons must render SVGs with --cartouche-ui-icon-size
+    const svgMatches = html.match(/<svg[^>]*>/g) || [];
+    assert.ok(svgMatches.length >= 4, `Expected at least 4 SVG icons in basic toolbar, found ${svgMatches.length}`);
+    for (const svgTag of svgMatches) {
+      assert.ok(
+        svgTag.includes('var(--cartouche-ui-icon-size') || svgTag.includes('width="var(--cartouche-ui-icon-size'),
+        `Expected toolbar icon SVG to use --cartouche-ui-icon-size, got: ${svgTag}`
+      );
+    }
   });
 });
 

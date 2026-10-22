@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -71,7 +71,7 @@ const COLOR_NAME_TO_HEX: Record<string, string> = {
  * @description Converts a named ANSI/CSS color or loose hex string into a valid 6-digit HTML hex color string.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {any} val - Input color value.
  * @returns {string} Normalized #rrggbb hex color string.
@@ -102,7 +102,7 @@ function toHexColor(val: any): string {
  * @description Normalizes legacy type definition or controls array into a canonical list of control variants.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {PreferenceItem} item - Preference item definition.
  * @returns {PreferenceControlType[]} Canonical list of control types to render.
@@ -121,7 +121,7 @@ function resolveControls(item: PreferenceItem): PreferenceControlType[] {
  * @description Validates text input value against preference format regex pattern specifiers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {string} value - User-entered text value.
  * @param {string[]} [patterns] - Optional array of regular expression strings.
@@ -143,7 +143,7 @@ function validateTextPattern(value: string, patterns?: string[]): boolean {
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -260,7 +260,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Handles control input changes by updating local draft signal and resetting debounced autosave timer.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-30
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} key - Preference descriptor key.
    * @param {any} newValue - Modified preference value.
@@ -353,7 +353,7 @@ export const PreferencesDialog: React.FC = () => {
    * @property {Array<{ key: string; item: PreferenceItem; displayName: string; description: string }>} items - Group items.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    */
   interface PreferenceGroupData {
@@ -439,7 +439,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Resolves the localized display header for a named preference group.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} groupKey - Group string identifier.
    * @returns {string} Localized or formatted group title string.
@@ -463,7 +463,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a specific control variant for a given preference row.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {PreferenceControlType} ctrlType - Canonical control type.
    * @param {string} key - Preference descriptor key.
@@ -769,7 +769,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a single preference item row inside a group container.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {Object} entry - Preference row entry data.
    * @returns {React.ReactNode}
@@ -841,7 +841,7 @@ export const PreferencesDialog: React.FC = () => {
             {saveStatus === "editing" && (
               <Icon
                 path={mdiFileEditOutline}
-                size='1.25em'
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.83)'
                 title='Changes pending auto-save...'
                 style={{ color: "#64748b" }}
               />
@@ -849,7 +849,7 @@ export const PreferencesDialog: React.FC = () => {
             {saveStatus === "saving" && (
               <Icon
                 path={isSyncIcon ? mdiSync : mdiCached}
-                size='1.25em'
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.83)'
                 title='Auto-saving changes...'
                 style={{ color: "#1b446c" }}
               />
@@ -899,7 +899,7 @@ export const PreferencesDialog: React.FC = () => {
                   onClick={() => {
                     activeCategorySignal.value = cat.id;
                   }}>
-                  <Icon path={cat.icon} size='1.125em' />
+                  <Icon path={cat.icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)' />
                   <span>{tabLabel}</span>
                 </button>
               );

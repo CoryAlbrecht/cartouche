@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying BasicWidget header bar control icons (minimize/restore and close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and react to prefsUiIconSize signal changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link prefsUiIconSize}
@@ -26,7 +26,7 @@ import createJiti from 'jiti';
  * @description Lightweight mock DOM Element representation for headless React 19 testing in Node.js.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  */
 class MockElement {
@@ -50,7 +50,7 @@ class MockElement {
    * @description Constructs a new MockElement with the given tag name.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} [tag='div'] - HTML element tag name.
    */
@@ -75,7 +75,7 @@ class MockElement {
    * @description Sets an attribute value and updates className when key is 'class'.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} k - Attribute key.
    * @param {string} v - Attribute value.
@@ -92,7 +92,7 @@ class MockElement {
    * @description Retrieves an attribute value by key.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} k - Attribute key.
    * @returns {string | undefined} Attribute value string or undefined.
@@ -105,7 +105,7 @@ class MockElement {
    * @description Appends a child node to childNodes and updates parentNode.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {any} child - Child node to append.
    * @returns {any} The appended child node.
@@ -120,7 +120,7 @@ class MockElement {
    * @description Removes a child node from childNodes and clears its parentNode.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {any} child - Child node to remove.
    * @returns {any} The removed child node.
@@ -135,7 +135,7 @@ class MockElement {
    * @description Inserts a child node before reference child node.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {any} newChild - New node to insert.
    * @param {any} refChild - Reference child node.
@@ -156,7 +156,7 @@ class MockElement {
    * @description Registers an event listener callback on this element.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} type - Event type string.
    * @param {(e: any) => void} cb - Listener callback function.
@@ -174,7 +174,7 @@ class MockElement {
    * @description Removes a registered event listener callback from this element.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {string} type - Event type string.
    * @param {(e: any) => void} cb - Listener callback function to remove.
@@ -189,7 +189,7 @@ class MockElement {
    * @description Dispatches an event on this element and bubbles up parent chain.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {any} event - Event object to dispatch.
    * @returns {boolean} Whether default action was prevented.
@@ -216,7 +216,7 @@ class MockElement {
    * @description Checks if a target node is this element or contained within children.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @param {any} node - Candidate node to check.
    * @returns {boolean} True if candidate node is contained.
@@ -233,7 +233,7 @@ class MockElement {
    * @description Computes mock bounding client rect dimensions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-21
+   * @updated 2026-10-22
    * @since 0.1.0-dev
    * @returns {{ width: number, height: number, top: number, left: number, right: number, bottom: number }} Layout bounds.
    */
@@ -254,7 +254,7 @@ let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boole
  * @description Initializes mock window and document global objects for React DOM component testing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -341,7 +341,7 @@ function setupDom(): void {
  * @description Tears down mock window and document global objects.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -362,7 +362,7 @@ function tearDownDom(): void {
  * @description Traverses a MockElement DOM subtree and finds all elements matching a predicate.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {MockElement} rootNode - Root DOM node to traverse.
  * @param {(el: MockElement) => boolean} predicate - Match predicate function.
@@ -413,13 +413,12 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     );
   });
 
-  it('workbench.css propagates --cartouche-ui-icon-size on .workbench-container', () => {
+  it('theme.css defines --cartouche-ui-icon-size in :root and workbench.css avoids cyclic self-reference on .workbench-container', () => {
     const workbenchCssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
     const content = fs.readFileSync(workbenchCssPath, 'utf-8');
-    assert.match(
-      content,
-      /\.workbench-container\s*\{[^}]*--cartouche-ui-icon-size/s,
-      'workbench.css must define or propagate --cartouche-ui-icon-size on .workbench-container'
+    assert.ok(
+      !content.includes('--cartouche-ui-icon-size: var(--cartouche-ui-icon-size'),
+      'workbench.css must not cyclically redeclare --cartouche-ui-icon-size on .workbench-container'
     );
   });
 

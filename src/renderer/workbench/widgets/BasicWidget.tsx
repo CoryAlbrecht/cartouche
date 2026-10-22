@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 3-control header bar (label, minimize toggle, close button) and collapsable content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -40,14 +40,7 @@ function parsePxValue(
   return isNaN(parsed) ? defaultVal : parsed;
 }
 
-/**
- * Standard CSS style applied to BasicWidget header control icons (minimize/restore and close)
- * scaling width to 80% of --cartouche-ui-icon-size with a 1:1 aspect ratio.
- */
-const HEADER_CONTROL_ICON_STYLE: React.CSSProperties = {
-  width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.8)",
-  aspectRatio: "1",
-};
+
 
 /**
  * @typedef {Object} BasicWidgetProps
@@ -72,7 +65,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a collapsable panel container with a title header bar and minimize/close controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -245,8 +238,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           backgroundColor: "#faf8fc",
           padding: "4px 8px",
           borderBottom: isMinimized ? "none" : "1px solid #e2e8f0",
-          height: "1.625em",
-          minHeight: "1.625em",
+          minHeight: "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
           userSelect: "none",
           cursor: effectivePanelApi ? "grab" : "default",
         }}>
@@ -300,7 +292,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             }}>
             <Icon
               path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
-              style={HEADER_CONTROL_ICON_STYLE}
+              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
             />
           </button>
 
@@ -329,7 +321,10 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                 display: "flex",
                 alignItems: "center",
               }}>
-              <Icon path={mdiClose} style={HEADER_CONTROL_ICON_STYLE} />
+              <Icon
+                path={mdiClose}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+              />
             </button>
           )}
         </div>

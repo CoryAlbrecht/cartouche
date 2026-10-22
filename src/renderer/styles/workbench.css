@@ -10,7 +10,6 @@
   background-color: #ffffff;
   color: #000000;
   font-size: var(--cartouche-ui-basefont-size);
-  --cartouche-ui-icon-size: var(--cartouche-ui-icon-size, 24px);
 }
 
 /* =========================================================================
@@ -141,8 +140,10 @@
 }
 
 .menu-item-icon-slot {
-  width: 18px;
-  height: 18px;
+  width: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
+  height: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
+  min-width: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
+  min-height: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -151,8 +152,10 @@
 }
 
 .menu-item-check-slot {
-  width: 18px;
-  height: 18px;
+  width: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
+  height: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
+  min-width: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
+  min-height: calc(var(--cartouche-ui-icon-size, 24px) * 0.75);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -381,8 +384,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2em;
-  height: 2em;
+  width: calc(var(--cartouche-ui-icon-size, 24px) + 6px);
+  height: calc(var(--cartouche-ui-icon-size, 24px) + 6px);
+  min-width: calc(var(--cartouche-ui-icon-size, 24px) + 6px);
+  min-height: calc(var(--cartouche-ui-icon-size, 24px) + 6px);
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
@@ -1806,8 +1811,7 @@
   justify-content: space-between;
   background-color: var(--cartouche-menubar-bg, #1b446c);
   color: var(--cartouche-menubar-fg, #ffffff);
-  height: 2em;
-  min-height: 2em;
+  min-height: max(2em, calc(var(--cartouche-ui-icon-size, 24px) + 6px));
   padding: 0 10px;
   font-weight: 500;
   font-size: 0.9167rem;

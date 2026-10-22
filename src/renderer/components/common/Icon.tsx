@@ -4,7 +4,7 @@
  * @description Standardized Material Design Icons (MDI) and custom SVG file icon renderer component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  */
 
@@ -15,7 +15,7 @@ import { logging } from "../../../shared/logging";
  * @typedef {Object} IconProps
  * @property {string} [path] - MDI path data string (e.g. from `@mdi/js`) or `file:` icon identifier.
  * @property {string} [name] - Filename or identifier. If starts with 'file:', loads from assets/svg/icons/.
- * @property {string | number} [size='24px'] - Width and height dimension string or multiplier.
+ * @property {string | number} [size='var(--cartouche-ui-icon-size, 24px)'] - Width and height dimension string or multiplier.
  * @property {string} [color='currentColor'] - Fill color hex or CSS color string.
  * @property {string} [className] - Optional CSS class name.
  * @property {string} [title] - Accessibility title tag string for tooltips and screen readers.
@@ -138,7 +138,7 @@ function resolveCustomSvgIconSync(basename: string): ParsedSvgIcon | null {
  * @description Renders a Material Design Icon or custom `file:` SVG asset as an inline Scalable Vector Graphics (`<svg>`) element supporting `currentColor` and explicit `color` fills.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {IconProps} props - Component properties.
  * @returns {React.ReactElement} Scalable Vector Graphics (SVG) element.
@@ -146,7 +146,7 @@ function resolveCustomSvgIconSync(basename: string): ParsedSvgIcon | null {
 export const Icon: React.FC<IconProps> = ({
   path,
   name,
-  size = "24px",
+  size = "var(--cartouche-ui-icon-size, 24px)",
   color = "currentColor",
   className,
   title,
@@ -157,7 +157,7 @@ export const Icon: React.FC<IconProps> = ({
       size <= 4 ?
         `${size * 24}px`
       : `${size}px`
-    : size;
+    : size || "var(--cartouche-ui-icon-size, 24px)";
 
   // Determine if we should use name or path. The Action Registry might send 'file:...' into the 'path' prop.
   const targetStr = name || path || "";
@@ -190,10 +190,17 @@ export const Icon: React.FC<IconProps> = ({
       });
   }, [isFileIcon, basename]);
 
+  const isCssExpression =
+    typeof dimension === "string" &&
+    (dimension.includes("var(") || dimension.includes("calc("));
+
   const baseStyle: React.CSSProperties = {
     display: "inline-block",
     verticalAlign: "middle",
     flexShrink: 0,
+    width: dimension,
+    height: dimension,
+    aspectRatio: "1",
     ...style,
   };
 
@@ -203,8 +210,8 @@ export const Icon: React.FC<IconProps> = ({
     return (
       <svg
         viewBox={parsedSvg?.viewBox || "0 0 24 24"}
-        width={dimension}
-        height={dimension}
+        width={isCssExpression ? undefined : dimension}
+        height={isCssExpression ? undefined : dimension}
         fill={color}
         className={className}
         style={baseStyle}
@@ -220,8 +227,8 @@ export const Icon: React.FC<IconProps> = ({
   return (
     <svg
       viewBox='0 0 24 24'
-      width={dimension}
-      height={dimension}
+      width={isCssExpression ? undefined : dimension}
+      height={isCssExpression ? undefined : dimension}
       fill={color}
       className={className}
       style={baseStyle}

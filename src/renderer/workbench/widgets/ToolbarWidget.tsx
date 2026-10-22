@@ -4,7 +4,7 @@
  * @description Dockable toolbar widget subclass of Widget featuring MDI grabber drag handles and divider icons.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-24
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -32,7 +32,7 @@ export interface ToolbarWidgetProps {
  * @description Individual toolbar container widget rendered inside outer panel zones with drag handles and orientation awareness.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-24
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {ToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Rendered toolbar widget element.
@@ -67,8 +67,8 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
       border={1}
       borderColor='#e2e8f0'
       location={zone}
-      minWidth={isHorizontal ? "auto" : 36}
-      minHeight={isHorizontal ? 36 : "auto"}
+      minWidth={isHorizontal ? "auto" : "calc(var(--cartouche-ui-icon-size, 24px) + 12px)"}
+      minHeight={isHorizontal ? "calc(var(--cartouche-ui-icon-size, 24px) + 12px)" : "auto"}
       style={{
         display: "inline-flex",
         flexDirection: isHorizontal ? "row" : "column",
@@ -93,7 +93,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
           userSelect: "none",
           padding: isHorizontal ? "0 2px" : "2px 0",
         }}>
-        <Icon path={isHorizontal ? mdiDrag : mdiDragHorizontal} size='24px' />
+        <Icon path={isHorizontal ? mdiDrag : mdiDragHorizontal} />
       </span>
 
       {/* Child Controls */}
@@ -110,7 +110,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
           padding: isHorizontal ? "0 2px" : "2px 0",
           userSelect: "none",
         }}>
-        <Icon path={isHorizontal ? mdiPowerOn : mdiMinus} size='24px' />
+        <Icon path={isHorizontal ? mdiPowerOn : mdiMinus} />
       </span>
     </Widget>
   );

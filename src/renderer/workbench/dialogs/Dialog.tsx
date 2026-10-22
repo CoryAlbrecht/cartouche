@@ -4,7 +4,7 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-13
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
@@ -58,7 +58,7 @@ export interface DialogProps {
  * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, and Escape key dismissal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-13
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {DialogProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered detached portal dialog window or null if closed.
@@ -132,7 +132,7 @@ export const Dialog: React.FC<DialogProps> = ({
           <div className='cartouche-dialog-title-container'>
             {icon
               && (typeof icon === "string" ?
-                <Icon path={icon} size='1.125em' style={{ flexShrink: 0 }} />
+                <Icon path={icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)' style={{ flexShrink: 0 }} />
               : icon)}
             <span className='cartouche-dialog-title'>{title}</span>
           </div>
@@ -144,7 +144,7 @@ export const Dialog: React.FC<DialogProps> = ({
               className='cartouche-dialog-close-btn'
               onClick={() => onClose()}
               title='Close (Esc)'>
-              <Icon path={mdiClose} size='1.125em' />
+              <Icon path={mdiClose} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)' />
             </button>
           </div>
         </div>

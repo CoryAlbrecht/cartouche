@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -94,6 +94,7 @@ import { logging } from "../../shared/logging";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 const SAVED_PANEL_STATES_KEY = "cartouche_workbench_panel_states_v1";
+const MENU_ITEM_ICON_SIZE = "calc(var(--cartouche-ui-icon-size, 24px) * 0.58)";
 
 /**
  * @typedef {Object} SavedPanelState
@@ -193,7 +194,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @returns {React.ReactElement} Main workbench window container.
  */
@@ -823,7 +824,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("new_project")} size='14px' />
+                    <Icon path={getActionIcon("new_project")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("new_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -840,7 +841,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("open_project")} size='14px' />
+                    <Icon path={getActionIcon("open_project")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("open_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -858,7 +859,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("close_project")} size='14px' />
+                    <Icon path={getActionIcon("close_project")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("close_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -879,7 +880,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("save_project")} size='14px' />
+                    <Icon path={getActionIcon("save_project")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("save_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -897,7 +898,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("save_as_project")} size='14px' />
+                    <Icon path={getActionIcon("save_as_project")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>
                     {t("save_as_project")}
@@ -922,7 +923,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon
                       path={getActionIcon("save_active_layer")}
-                      size='14px'
+                      size={MENU_ITEM_ICON_SIZE}
                     />
                   </span>
                   <span className='menu-item-label'>
@@ -946,7 +947,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon
                       path={getActionIcon("save_active_layer_as")}
-                      size='14px'
+                      size={MENU_ITEM_ICON_SIZE}
                     />
                   </span>
                   <span className='menu-item-label'>
@@ -988,7 +989,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("undo_action")} size='14px' />
+                    <Icon path={getActionIcon("undo_action")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("undo_action")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1007,7 +1008,7 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("redo_action")} size='14px' />
+                    <Icon path={getActionIcon("redo_action")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("redo_action")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1024,7 +1025,7 @@ export const Workbench: React.FC = () => {
                     hasSelectedFeatures && handleMenuClick(cutAction)
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiContentCut} size='14px' />
+                    <Icon path={mdiContentCut} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("cut")}</span>
                   <span className='menu-shortcut-slot' />
@@ -1037,7 +1038,7 @@ export const Workbench: React.FC = () => {
                     hasSelectedFeatures && handleMenuClick(copyAction)
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiContentCopy} size='14px' />
+                    <Icon path={mdiContentCopy} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("copy")}</span>
                   <span className='menu-shortcut-slot' />
@@ -1048,7 +1049,7 @@ export const Workbench: React.FC = () => {
                   className={`menu-dropdown-item ${!hasClipboard ? "disabled" : ""}`}
                   onClick={() => hasClipboard && handleMenuClick(pasteAction)}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiContentPaste} size='14px' />
+                    <Icon path={mdiContentPaste} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("paste")}</span>
                   <span className='menu-shortcut-slot' />
@@ -1063,7 +1064,7 @@ export const Workbench: React.FC = () => {
                     hasSelectedFeatures && handleMenuClick(editAttributesAction)
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiTableEdit} size='14px' />
+                    <Icon path={mdiTableEdit} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>
                     {t("edit_layer_attributes")}
@@ -1084,7 +1085,7 @@ export const Workbench: React.FC = () => {
                   <span className='menu-item-icon-slot'>
                     <Icon
                       path={getActionIcon("open_preferences")}
-                      size='14px'
+                      size={MENU_ITEM_ICON_SIZE}
                     />
                   </span>
                   <span className='menu-item-label'>
@@ -1136,7 +1137,7 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("new_map_view")} size='14px' />
+                    <Icon path={getActionIcon("new_map_view")} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("new_map_view")}</span>
                   <span className='menu-shortcut-slot' />
@@ -1150,7 +1151,7 @@ export const Workbench: React.FC = () => {
                     handleMenuClick(() => triggerMapAction("zoomIn"))
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiMagnifyPlusOutline} size='14px' />
+                    <Icon path={mdiMagnifyPlusOutline} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>Zoom In</span>
                   <span className='menu-shortcut-slot' />
@@ -1164,7 +1165,7 @@ export const Workbench: React.FC = () => {
                     handleMenuClick(() => triggerMapAction("zoomOut"))
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiMagnifyMinusOutline} size='14px' />
+                    <Icon path={mdiMagnifyMinusOutline} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>Zoom Out</span>
                   <span className='menu-shortcut-slot' />
@@ -1188,7 +1189,7 @@ export const Workbench: React.FC = () => {
                     <span className='menu-item-label'>Panels</span>
                     <Icon
                       path={mdiChevronRight}
-                      size='14px'
+                      size={MENU_ITEM_ICON_SIZE}
                       className='menu-arrow'
                     />
                   </div>
@@ -1210,7 +1211,7 @@ export const Workbench: React.FC = () => {
                         }}>
                         <span className='menu-item-check-slot'>
                           {openPanels.attributes && (
-                            <Icon path={mdiCheck} size='14px' />
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
                         <span className='menu-item-label'>Attributes</span>
@@ -1231,7 +1232,7 @@ export const Workbench: React.FC = () => {
                         }}>
                         <span className='menu-item-check-slot'>
                           {openPanels.layers && (
-                            <Icon path={mdiCheck} size='14px' />
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
                         <span className='menu-item-label'>Layers</span>
@@ -1259,7 +1260,7 @@ export const Workbench: React.FC = () => {
                     <span className='menu-item-label'>Toolbars</span>
                     <Icon
                       path={mdiChevronRight}
-                      size='14px'
+                      size={MENU_ITEM_ICON_SIZE}
                       className='menu-arrow'
                     />
                   </div>
@@ -1276,7 +1277,7 @@ export const Workbench: React.FC = () => {
                         }}>
                         <span className='menu-item-check-slot'>
                           {visibleToolbars.basic && (
-                            <Icon path={mdiCheck} size='14px' />
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
                         <span className='menu-item-label'>Basic</span>
@@ -1292,7 +1293,7 @@ export const Workbench: React.FC = () => {
                         }}>
                         <span className='menu-item-check-slot'>
                           {visibleToolbars.layer && (
-                            <Icon path={mdiCheck} size='14px' />
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
                         <span className='menu-item-label'>Layer</span>
@@ -1308,7 +1309,7 @@ export const Workbench: React.FC = () => {
                         }}>
                         <span className='menu-item-check-slot'>
                           {visibleToolbars.digitizing && (
-                            <Icon path={mdiCheck} size='14px' />
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
                         <span className='menu-item-label'>Digitizing</span>
@@ -1324,7 +1325,7 @@ export const Workbench: React.FC = () => {
                         }}>
                         <span className='menu-item-check-slot'>
                           {visibleToolbars.snapping && (
-                            <Icon path={mdiCheck} size='14px' />
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
                         <span className='menu-item-label'>Snapping</span>
@@ -1381,7 +1382,7 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon name='file:layers-plus-outline.svg' size={14} />
+                    <Icon name='file:layers-plus-outline.svg' size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>{t("add_layers")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1402,7 +1403,7 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiPlusBoxOutline} size='14px' />
+                    <Icon path={mdiPlusBoxOutline} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>Create Layer...</span>
                   <span className='menu-shortcut-slot' />
@@ -1435,7 +1436,7 @@ export const Workbench: React.FC = () => {
                     handleMenuClick(() => setShowAboutModal(true));
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiInformationOutline} size='14px' />
+                    <Icon path={mdiInformationOutline} size={MENU_ITEM_ICON_SIZE} />
                   </span>
                   <span className='menu-item-label'>About</span>
                   <span className='menu-shortcut-slot' />

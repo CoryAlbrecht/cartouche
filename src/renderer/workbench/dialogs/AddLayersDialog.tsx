@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-19
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -64,7 +64,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-19
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -241,7 +241,7 @@ export const AddLayersDialog: React.FC = () => {
     <Dialog
       name='addLayersWindow'
       title='Add Layers'
-      icon={<Icon name="file:layers-plus-outline.svg" size={18} color="#ffffff" />}
+      icon={<Icon name="file:layers-plus-outline.svg" size="calc(var(--cartouche-ui-icon-size, 24px) * 0.75)" color="#ffffff" />}
       isOpen={isOpen}
       onClose={closeAddLayersDialog}
       defaultWidth={620}
@@ -279,7 +279,7 @@ export const AddLayersDialog: React.FC = () => {
               fontSize: "0.875rem",
               color: "#ffffff",
             }}>
-            <Icon name="file:layers-plus-outline.svg" size={16} color="#ffffff" />
+            <Icon name="file:layers-plus-outline.svg" size="calc(var(--cartouche-ui-icon-size, 24px) * 0.67)" color="#ffffff" />
             <span>Add Layers</span>
           </button>
         </>
@@ -325,7 +325,7 @@ export const AddLayersDialog: React.FC = () => {
                   userSelect: "none",
                   transition: "color 0.15s ease",
                 }}>
-                <Icon path={tab.icon} size='1em' />
+                <Icon path={tab.icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 <span>{tab.label}</span>
               </div>
             );
@@ -420,11 +420,13 @@ export const AddLayersDialog: React.FC = () => {
                             cursor: "pointer",
                             color: "#64748b",
                             borderRadius: "50%",
-                            width: "14px",
-                            height: "14px",
+                            width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
+                            height: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
+                            minWidth: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
+                            minHeight: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
                             lineHeight: 1,
                           }}>
-                          <Icon path={mdiClose} size='0.75em' />
+                          <Icon path={mdiClose} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)' />
                         </button>
                       </span>
                     );
@@ -508,7 +510,7 @@ export const AddLayersDialog: React.FC = () => {
                   color: "#334155",
                   height: "38px",
                 }}>
-                <Icon path={mdiFolderOpenOutline} size='1em' />
+                <Icon path={mdiFolderOpenOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 <span>Browse...</span>
               </button>
             </div>

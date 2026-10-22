@@ -4,7 +4,7 @@
  * @description Toolbar widget providing vector feature digitizing tools (Point, Line, Polygon) and editing state toggles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-24
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -34,7 +34,7 @@ export interface DigitizingToolbarWidgetProps {
  * @description Renders spatial digitizing buttons for drawing new Point, Line, or Polygon features.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-09-24
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {DigitizingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} DigitizingToolbarWidget instance.
@@ -50,7 +50,7 @@ export const DigitizingToolbarWidget: React.FC<
         title='Toggle Editing'
         onClick={() => {}}
         aria-label='Toggle Editing'>
-        <Icon path={mdiPencilOutline} size='24px' />
+        <Icon path={mdiPencilOutline} />
       </button>
       <button
         className='toolbar-btn'
@@ -59,7 +59,7 @@ export const DigitizingToolbarWidget: React.FC<
           activeToolSignal.value = "point";
         }}
         aria-label='Add Point Feature'>
-        <Icon path={mdiMapMarkerPlusOutline} size='24px' />
+        <Icon path={mdiMapMarkerPlusOutline} />
       </button>
       <button
         className='toolbar-btn'
@@ -68,7 +68,7 @@ export const DigitizingToolbarWidget: React.FC<
           activeToolSignal.value = "line";
         }}
         aria-label='Add Line Feature'>
-        <Icon path={mdiVectorPolyline} size='24px' />
+        <Icon path={mdiVectorPolyline} />
       </button>
       <button
         className='toolbar-btn'
@@ -77,7 +77,7 @@ export const DigitizingToolbarWidget: React.FC<
           activeToolSignal.value = "polygon";
         }}
         aria-label='Add Polygon Feature'>
-        <Icon path={mdiVectorPolygon} size='24px' />
+        <Icon path={mdiVectorPolygon} />
       </button>
     </ToolbarWidget>
   );

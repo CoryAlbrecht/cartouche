@@ -4,7 +4,7 @@
  * @description Toolbar widget providing layer management panel toggles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-03
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -38,7 +38,7 @@ export interface LayerToolbarWidgetProps {
  * @description Subclasses ToolbarWidget to render layer management and visibility toggle controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-03
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {LayerToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} LayerToolbarWidget instance.
@@ -67,14 +67,14 @@ export const LayerToolbarWidget: React.FC<LayerToolbarWidgetProps> = ({
         title={toggleLayersTitle}
         onClick={toggleLayersWidgetAction}
         aria-label={t("toggle_layers_widget")}>
-        <Icon path={getActionIcon("toggle_layers_widget")} size='24px' />
+        <Icon path={getActionIcon("toggle_layers_widget")} />
       </button>
       <button
         className='toolbar-btn'
         title={addLayersTitle}
         onClick={openAddLayersDialog}
         aria-label={t("add_layers")}>
-        <Icon path={getActionIcon("add_layers")} size='24px' />
+        <Icon path={getActionIcon("add_layers")} />
       </button>
     </ToolbarWidget>
   );

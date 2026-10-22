@@ -4,7 +4,7 @@
  * @description Toolbar widget rendering project actions (New, Open, Save) and default Pan canvas mode button.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-13
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -63,7 +63,7 @@ export function isBasicToolbarSaveDisabled(
  * @description Renders basic project file management buttons and canvas pan tool toggle.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-13
+ * @updated 2026-10-22
  * @since 0.1.0-dev
  * @param {BasicToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} BasicToolbarWidget instance.
@@ -116,14 +116,14 @@ export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
         title={newProjectTitle}
         onClick={() => newProjectAction()}
         aria-label={t("new_project")}>
-        <Icon path={getActionIcon("new_project")} size='24px' />
+        <Icon path={getActionIcon("new_project")} />
       </button>
       <button
         className='toolbar-btn'
         title={openProjectTitle}
         onClick={openProjectAction}
         aria-label={t("open_project")}>
-        <Icon path={getActionIcon("open_project")} size='24px' />
+        <Icon path={getActionIcon("open_project")} />
       </button>
       <button
         className={`toolbar-btn ${isSaveDisabled ? "disabled" : ""}`}
@@ -131,7 +131,7 @@ export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
         disabled={isSaveDisabled}
         onClick={handleSaveClick}
         aria-label={t("save_project")}>
-        <Icon path={getActionIcon("save_project")} size='24px' />
+        <Icon path={getActionIcon("save_project")} />
       </button>
       <button
         className={`toolbar-btn ${activeToolSignal.value === "pan" ? "active" : ""}`}
@@ -140,7 +140,7 @@ export const BasicToolbarWidget: React.FC<BasicToolbarWidgetProps> = ({
           activeToolSignal.value = "pan";
         }}
         aria-label={t("pan_tool")}>
-        <Icon path={getActionIcon("pan_tool")} size='24px' />
+        <Icon path={getActionIcon("pan_tool")} />
       </button>
     </ToolbarWidget>
   );
