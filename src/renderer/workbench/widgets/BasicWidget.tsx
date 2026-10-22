@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 3-control header bar (label, minimize toggle, close button) and collapsable content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-01
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -41,6 +41,15 @@ function parsePxValue(
 }
 
 /**
+ * Standard CSS style applied to BasicWidget header control icons (minimize/restore and close)
+ * scaling width to 80% of --cartouche-ui-icon-size with a 1:1 aspect ratio.
+ */
+const HEADER_CONTROL_ICON_STYLE: React.CSSProperties = {
+  width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.8)",
+  aspectRatio: "1",
+};
+
+/**
  * @typedef {Object} BasicWidgetProps
  * @extends WidgetProps
  * @property {string} [name='basic-widget'] - Widget identifier string.
@@ -63,7 +72,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a collapsable panel container with a title header bar and minimize/close controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-01
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -93,7 +102,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
 
   useSignals();
   const baseFontSizePt = prefsUiBaseFontSize.value ?? 12;
-  const iconSize = prefsUiIconSize.value ?? 14;
+  const iconSize = prefsUiIconSize.value ?? 24;
+  const headerIconSize = Math.round(iconSize * 0.8);
 
   /**
    * @signal isBasicWidgetMinimizedSignal
@@ -169,7 +179,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const titleMarginPx = 8; // 8px right margin on the title span
   const safetyBufferPx = 16; // Extra buffer to prevent cutoff from panel borders or scrollbars
   const buttonControlsWidth =
-    buttonCount * (iconSize + buttonPaddingPx)
+    buttonCount * (headerIconSize + buttonPaddingPx)
     + buttonGapPx
     + headerPaddingPx
     + titleMarginPx
@@ -290,7 +300,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             }}>
             <Icon
               path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
-              size={`${iconSize}px`}
+              style={HEADER_CONTROL_ICON_STYLE}
             />
           </button>
 
@@ -319,7 +329,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                 display: "flex",
                 alignItems: "center",
               }}>
-              <Icon path={mdiClose} size={`${iconSize}px`} />
+              <Icon path={mdiClose} style={HEADER_CONTROL_ICON_STYLE} />
             </button>
           )}
         </div>

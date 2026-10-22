@@ -7,6 +7,7 @@
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   --cartouche-ui-basefont-size: 12pt;
+  --cartouche-ui-icon-size: 24px;
 
   /* Window / Menubar Palette */
   --cartouche-menubar-bg: #1b446c;

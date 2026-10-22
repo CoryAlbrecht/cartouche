@@ -84,6 +84,7 @@ import {
   openPreferencesDialog,
   loadPreferences,
   prefsUiBaseFontSize,
+  prefsUiIconSize,
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import { AddLayersDialog } from "./dialogs/AddLayersDialog";
@@ -192,7 +193,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-10-21
  * @since 0.1.0-dev
  * @returns {React.ReactElement} Main workbench window container.
  */
@@ -335,6 +336,24 @@ export const Workbench: React.FC = () => {
         document.documentElement.style.setProperty(
           "--cartouche-ui-basefont-size",
           `${fontSize}pt`
+        );
+      }
+    });
+    return () => dispose();
+  }, []);
+
+  // Synchronize icon size preference signal with CSS custom property on document root
+  useEffect(() => {
+    const dispose = effect(() => {
+      const iconSize = prefsUiIconSize.value;
+      if (iconSize) {
+        document.documentElement.style.setProperty(
+          "--cartouche-ui-icon-size",
+          `${iconSize}px`
+        );
+      } else {
+        document.documentElement.style.removeProperty(
+          "--cartouche-ui-icon-size"
         );
       }
     });
