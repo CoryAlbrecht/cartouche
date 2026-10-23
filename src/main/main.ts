@@ -9,6 +9,7 @@
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
  * @see {@link loggingHub}
+ * @see {@link handleCliHelp}
  */
 
 import { app, BrowserWindow, dialog, nativeImage } from 'electron';
@@ -30,17 +31,12 @@ import {
   reorderNodes
 } from './api/project/layerTreeOperations';
 import { renameLayerTreeNode } from './api/project/renameLayerTreeNode';
-import { parseLogArgs } from './logging/cliArgs';
+import { handleCliHelp, parseLogArgs, type LogCliConfig } from './cli/cliArgs';
 import { loggingHub } from './logging/LoggingHub';
 import { bindLoggingPreferences } from './logging/loggingPreferences';
 import { logging } from '../shared/logging';
 
-// Early logging hub initialization using CLI flags
-const cliLogConfig = parseLogArgs();
-loggingHub.configure({
-  level: cliLogConfig.level,
-  ...(cliLogConfig.logFile ? { logFile: cliLogConfig.logFile } : {})
-});
+let cliLogConfig: LogCliConfig;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,40 +105,6 @@ Categories=Graphics;Science;Geoscience;
   } catch (err) {
     logging.warn('Linux desktop integration setup warning', err, { scope: 'Main' });
   }
-}
-
-// Ensure Linux sandbox safety & desktop integration
-if (process.platform === 'linux') {
-  if (app?.commandLine) {
-    app.commandLine.appendSwitch('no-sandbox');
-  }
-  app.setName('cartouche');
-  if (typeof (app as any).setDesktopName === 'function') {
-    (app as any).setDesktopName('cartouche.desktop');
-  }
-  setupLinuxDesktopIntegration();
-}
-
-if (process.argv.includes('--test-worker')) {
-  app.whenReady().then(async () => {
-    const { utilityProcess } = await import('electron');
-    const workerPath = path.resolve(__dirname, '../worker/worker_test.cjs');
-    logging.debug('Test worker forking', { workerPath, scope: 'TestWorker' });
-    const worker = utilityProcess.fork(workerPath);
-    worker.on('spawn', () => {
-      logging.debug('Test worker spawned, sending run', { scope: 'TestWorker' });
-      worker.postMessage('run');
-    });
-    worker.on('message', (msg) => {
-      logging.debug('Test worker message received', { message: msg, scope: 'TestWorker' });
-      worker.kill();
-      app.exit(0);
-    });
-    worker.on('exit', (code) => {
-      logging.debug('Test worker exited', { code, scope: 'TestWorker' });
-      if (code !== 0) app.exit(code);
-    });
-  });
 }
 
 /**
@@ -370,7 +332,57 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(async () => {
+/**
+ * @description Initializes and boots the main application lifecycle, logging hub, and window managers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-23
+ * @updated 2026-10-23
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+function startApp(): void {
+  // Early logging hub initialization using CLI flags
+  cliLogConfig = parseLogArgs();
+  loggingHub.configure({
+    level: cliLogConfig.level,
+    ...(cliLogConfig.logFile ? { logFile: cliLogConfig.logFile } : {})
+  });
+
+  // Ensure Linux sandbox safety & desktop integration
+  if (process.platform === 'linux') {
+    if (app?.commandLine) {
+      app.commandLine.appendSwitch('no-sandbox');
+    }
+    app.setName('cartouche');
+    if (typeof (app as any).setDesktopName === 'function') {
+      (app as any).setDesktopName('cartouche.desktop');
+    }
+    setupLinuxDesktopIntegration();
+  }
+
+  if (process.argv.includes('--test-worker')) {
+    app.whenReady().then(async () => {
+      const { utilityProcess } = await import('electron');
+      const workerPath = path.resolve(__dirname, '../worker/worker_test.cjs');
+      logging.debug('Test worker forking', { workerPath, scope: 'TestWorker' });
+      const worker = utilityProcess.fork(workerPath);
+      worker.on('spawn', () => {
+        logging.debug('Test worker spawned, sending run', { scope: 'TestWorker' });
+        worker.postMessage('run');
+      });
+      worker.on('message', (msg) => {
+        logging.debug('Test worker message received', { message: msg, scope: 'TestWorker' });
+        worker.kill();
+        app.exit(0);
+      });
+      worker.on('exit', (code) => {
+        logging.debug('Test worker exited', { code, scope: 'TestWorker' });
+        if (code !== 0) app.exit(code);
+      });
+    });
+  }
+
+  app.whenReady().then(async () => {
   PreferencesStore.loadFromDisk();
 
   const { i18nStore } = await import('./i18n/I18nStore');
@@ -627,12 +639,28 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
 
-app.on('will-quit', () => {
-  loggingHub.destroy();
-});
+  app.on('will-quit', () => {
+    loggingHub.destroy();
+  });
+}
+
+// Handle -h / --help CLI options before logging hub initialization or window creation
+if (handleCliHelp(process.argv.slice(2), {
+  exitHandler: (code) => {
+    if (app?.exit) {
+      app.exit(code);
+    } else {
+      process.exit(code);
+    }
+  }
+})) {
+  // CLI help displayed; early exit initiated.
+} else {
+  startApp();
+}
