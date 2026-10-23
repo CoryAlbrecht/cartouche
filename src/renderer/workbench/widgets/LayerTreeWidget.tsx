@@ -4,11 +4,12 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
  * @see {@link ModalDialog}
+ * @see docs/adr/0010-layer-tree-horizontal-scroll-and-nodeline-layout.md (ADR 0010)
  */
 
 import React, { useState, useRef, useCallback } from "react";
@@ -722,6 +723,33 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     setDragOverState(null);
   };
 
+  /**
+   * Helper function to render a horizontal drag-and-drop indicator line.
+   * Constrains marker width to the visible viewport width (100cqw) minus its hierarchical indentation,
+   * with sticky positioning at left: 0 so it stays bounded within the visible pane when scrolled.
+   *
+   * @function renderDropMarker
+   * @description Renders a drag-and-drop indicator line at the specified hierarchical indentation level.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-23
+   * @updated 2026-10-23
+   * @since 0.1.0-dev
+   * @param {number} indentLevel - Hierarchical indentation level.
+   * @returns {React.ReactElement} Drop marker element.
+   */
+  const renderDropMarker = (indentLevel: number): React.ReactElement => {
+    const indentPx = indentLevel * 18 + 6;
+    return (
+      <div
+        className='tree-drop-marker'
+        style={{
+          marginLeft: `${indentPx}px`,
+          width: `calc(100cqw - ${indentPx}px)`,
+        }}
+      />
+    );
+  };
+
   // Render an individual layer tree node row
   const renderLayerRow = (
     layer: ProjectLayerItem,
@@ -739,10 +767,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     return (
       <React.Fragment key={layer.id}>
         {isDropTarget && dragOverState?.position === 'before' && (
-          <div
-            className='tree-drop-marker'
-            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
-          />
+          renderDropMarker(dragOverState.indentLevel)
         )}
         <div
           className={`tree-node-row tree-node-layer ${isActive ? "active" : ""} ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
@@ -806,10 +831,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           )}
         </div>
         {isDropTarget && dragOverState?.position === 'after' && (
-          <div
-            className='tree-drop-marker'
-            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
-          />
+          renderDropMarker(dragOverState.indentLevel)
         )}
       </React.Fragment>
     );
@@ -832,10 +854,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     return (
       <React.Fragment key={groupId}>
         {isDropTarget && dragOverState?.position === 'before' && (
-          <div
-            className='tree-drop-marker'
-            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
-          />
+          renderDropMarker(dragOverState.indentLevel)
         )}
         <div
           className={`tree-node-row tree-node-group ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
@@ -905,10 +924,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         </div>
 
         {isDropTarget && dragOverState?.position === 'into' && (
-          <div
-            className='tree-drop-marker'
-            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
-          />
+          renderDropMarker(dragOverState.indentLevel)
         )}
 
         {isExpanded && Array.isArray(group.children) && (
@@ -920,10 +936,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         )}
 
         {isDropTarget && dragOverState?.position === 'after' && (
-          <div
-            className='tree-drop-marker'
-            style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
-          />
+          renderDropMarker(dragOverState.indentLevel)
         )}
       </React.Fragment>
     );
@@ -1035,6 +1048,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           onDrop={handleEmptyViewportDrop}
           style={{
             flex: 1,
+            overflowX: "auto",
             overflowY: "auto",
             backgroundColor: "#ffffff",
             padding: "4px 0",
@@ -1093,10 +1107,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               </div>
 
               {dragOverState?.targetId === 'root' && dragOverState?.position === 'into' && (
-                <div
-                  className='tree-drop-marker'
-                  style={{ marginLeft: `${dragOverState.indentLevel * 18 + 6}px` }}
-                />
+                renderDropMarker(dragOverState.indentLevel)
               )}
 
               {/* Children: Hierarchical Layer Tree */}
@@ -1105,10 +1116,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               </div>
 
               {dragOverState?.position === 'append-root' && (
-                <div
-                  className='tree-drop-marker'
-                  style={{ marginLeft: '24px' }}
-                />
+                renderDropMarker(1)
               )}
             </div>
           )}
