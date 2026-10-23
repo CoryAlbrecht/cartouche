@@ -4,13 +4,14 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-19
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 
-import { describe, it, afterEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { CartoucheXmlLoader } from '../../../src/main/project/loaders/CartoucheXmlLoader';
@@ -18,19 +19,20 @@ import { projectLoaderRegistry } from '../../../src/main/project/loaders/Project
 import type { ProjectModel } from '../../../src/shared/types';
 
 describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
-  const tempFiles: string[] = [];
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-test-'));
+  });
 
   afterEach(() => {
-    for (const f of tempFiles) {
-      if (fs.existsSync(f)) {
-        try {
-          fs.unlinkSync(f);
-        } catch {
-          // ignore cleanup errors
-        }
+    if (tempDir && fs.existsSync(tempDir)) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup errors
       }
     }
-    tempFiles.length = 0;
   });
 
   /**
@@ -170,8 +172,7 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 
   it('losslessly roundtrips metadata, viewport, CRS, nested layers, and styles through save() and load()', async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.resolve('./temp-roundtrip-test.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-roundtrip-test.cproj');
 
     const model: ProjectModel = {
       format: 'cartouche-xml',
@@ -351,8 +352,7 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 
   it('preserves interleaved <group> and <layer> sibling order across save() and load() at root and nested levels', async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.resolve('./temp-interleaved-order-test.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-interleaved-order-test.cproj');
 
     const model: ProjectModel = {
       format: 'cartouche-xml',

@@ -4,13 +4,14 @@
  * @description Unit tests for Main process project persistence API functions (saveProject, saveAsProject, closeProject).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { projectStore } from '../../../../src/main/project/ProjectStore';
 import { Layer } from '../../../../src/main/project/models/Layer';
@@ -23,23 +24,21 @@ import { serializeProjectLayersTree } from '../../../../src/main/project/Project
 import { CartoucheXmlLoader } from '../../../../src/main/project/loaders/CartoucheXmlLoader';
 
 describe('saveProject, saveAsProject, closeProject Main API', () => {
-  const tempFiles: string[] = [];
+  let tempDir: string;
 
   beforeEach(() => {
     projectStore.closeProject();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-test-'));
   });
 
   afterEach(() => {
-    for (const f of tempFiles) {
-      if (fs.existsSync(f)) {
-        try {
-          fs.unlinkSync(f);
-        } catch {
-          // ignore cleanup errors
-        }
+    if (tempDir && fs.existsSync(tempDir)) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup errors
       }
     }
-    tempFiles.length = 0;
   });
 
   it('saveProject returns false when no project is open', async () => {
@@ -62,8 +61,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('saveProject saves an existing project back to its disk path and resets dirty state', async () => {
-    const tempPath = path.resolve('./temp-save-existing.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-save-existing.cproj');
 
     projectStore.setProject(
       {
@@ -90,8 +88,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('saveProject with targetPath updates destination path and resets dirty state', async () => {
-    const tempPath = path.resolve('./temp-save-as.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-save-as.cproj');
 
     projectStore.setProject({
       format: 'cartouche-xml',
@@ -108,8 +105,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('saveAsProject delegates to saveProject and saves to specified path', async () => {
-    const tempPath = path.resolve('./temp-save-as-delegated.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-save-as-delegated.cproj');
 
     projectStore.setProject({
       format: 'cartouche-xml',
@@ -142,8 +138,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('preserves layers and does not clear them when selecting a layer and saving project', async () => {
-    const tempPath = path.resolve('./temp-repro-layers.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-repro-layers.cproj');
 
     projectStore.setProject(
       {
@@ -188,8 +183,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('preserves nested groups and multiple layers when selecting nodes and saving', async () => {
-    const tempPath = path.resolve('./temp-nested-groups.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-nested-groups.cproj');
 
     projectStore.setProject(
       {
@@ -257,8 +251,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('serializes viewport extent and camera configuration when viewport is provided on saveProject', async () => {
-    const tempPath = path.resolve('./temp-save-viewport.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-save-viewport.cproj');
 
     projectStore.setProject({
       format: 'cartouche-xml',
@@ -302,8 +295,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('preserves existing project.viewport when saveProject is invoked without explicit viewport override', async () => {
-    const tempPath = path.resolve('./temp-preserve-viewport.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-preserve-viewport.cproj');
 
     projectStore.setProject(
       {
@@ -328,8 +320,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('newProject initializes empty project model in projectStore and saves empty <layers> element', async () => {
-    const tempPath = path.resolve('./temp-save-new-empty.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-save-new-empty.cproj');
 
     newProject();
     assert.equal(projectStore.hasProject(), true);
@@ -347,8 +338,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
   });
 
   it('saveProject with targetPath creates and saves empty project even if projectStore was uninitialized', async () => {
-    const tempPath = path.resolve('./temp-save-uninitialized.cproj');
-    tempFiles.push(tempPath);
+    const tempPath = path.join(tempDir, 'temp-save-uninitialized.cproj');
 
     assert.equal(projectStore.hasProject(), false);
 

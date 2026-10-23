@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -13,6 +13,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
+import os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import openProject from '../../../../src/main/api/project/openProject';
@@ -26,31 +27,28 @@ const __dirname = path.dirname(__filename);
 const sampleShpPath = path.resolve(__dirname, '../../../../../test/files/ne_10m_lakes.shp');
 
 describe('openProject Native Session Hydration', () => {
-  const tempFiles: string[] = [];
+  let tempDir: string;
 
   beforeEach(async () => {
     projectStore.closeProject();
     await geospatialService.closeAll();
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-test-'));
   });
 
   afterEach(async () => {
     projectStore.closeProject();
     await geospatialService.closeAll();
-    for (const f of tempFiles) {
-      if (fs.existsSync(f)) {
-        try {
-          fs.unlinkSync(f);
-        } catch {
-          // ignore cleanup errors
-        }
+    if (tempDir && fs.existsSync(tempDir)) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // ignore cleanup errors
       }
     }
-    tempFiles.length = 0;
   });
 
   it('hydrates native layer sessions in GeospatialService and enriches layer extents when opening project XML', async () => {
-    const tempProjPath = path.resolve(__dirname, `temp_open_project_${Date.now()}.cproj`);
-    tempFiles.push(tempProjPath);
+    const tempProjPath = path.join(tempDir, `temp_open_project_${Date.now()}.cproj`);
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
@@ -96,8 +94,7 @@ describe('openProject Native Session Hydration', () => {
       __dirname,
       '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
     );
-    const tempProjPath = path.resolve(__dirname, `temp_mismatch_project_${Date.now()}.cproj`);
-    tempFiles.push(tempProjPath);
+    const tempProjPath = path.join(tempDir, `temp_mismatch_project_${Date.now()}.cproj`);
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
