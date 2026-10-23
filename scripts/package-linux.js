@@ -4,7 +4,7 @@
  * @description Linux packaging automation script assembling staging directories and invoking fpm to build Debian (.deb) and Red Hat (.rpm) installer packages.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-27
- * @updated 2026-10-18
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link formatRpmVersionAndRelease}
  */

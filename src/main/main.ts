@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -341,11 +341,13 @@ function createWindow() {
     logging.error('Main window page failed to load', { errorCode, errorDescription, url: validatedURL, scope: 'Main' });
   });
 
-  mainWindow.webContents.on('console-message', (_event: any, level: any, message: any, line: any, sourceId: any) => {
-    const meta = { sourceId, line, scope: 'RendererConsole' };
-    if (level === 2) {
+  mainWindow.webContents.on('console-message', (event: any) => {
+    const meta = { sourceId: event?.sourceId, line: event?.line, scope: 'RendererConsole' };
+    const level = event?.level;
+    const message = event?.message;
+    if (level === 'error' || level === 2) {
       logging.error(message, meta);
-    } else if (level === 1) {
+    } else if (level === 'warning' || level === 1) {
       logging.warn(message, meta);
     } else {
       logging.debug(message, meta);

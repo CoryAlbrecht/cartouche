@@ -79,14 +79,14 @@ jobs:
       - name: Rebuild better-sqlite3 for Electron
         run:
           npx node-gyp rebuild --directory=node_modules/better-sqlite3
-          --target=44.7.0 --arch=x64 --dist-url=https://electronjs.org/headers
+          --target=45.0.0 --arch=x64 --dist-url=https://electronjs.org/headers
 
-      - name: Ensure gdal-async binding for Electron 44
+      - name: Ensure gdal-async binding for Electron 45
         shell: bash
         run: |
           GDAL_DIR="node_modules/gdal-async/lib/binding"
-          if [ -d "$GDAL_DIR/node-v137-win32-x64" ] && [ ! -d "$GDAL_DIR/electron-v44.7-win32-x64" ]; then
-            cp -r "$GDAL_DIR/node-v137-win32-x64" "$GDAL_DIR/electron-v44.7-win32-x64"
+          if [ -d "$GDAL_DIR/node-v137-win32-x64" ] && [ ! -d "$GDAL_DIR/electron-v45.0-win32-x64" ]; then
+            cp -r "$GDAL_DIR/node-v137-win32-x64" "$GDAL_DIR/electron-v45.0-win32-x64"
           fi
 
       - name: Build & Package App
