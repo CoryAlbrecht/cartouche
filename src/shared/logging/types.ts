@@ -4,7 +4,7 @@
  * @description Type definitions, interfaces, and constants for centralized application logging across Main, Workbench, and Geospatial Worker processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 
@@ -19,9 +19,9 @@
  * - 'debug' (5): High-frequency telemetry and internal diagnostic traces (IPC timings, action dispatches, coordinate calculations).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
- * @see {@link ../../../docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md}
+ * @see docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md (ADR 0008)
  */
 export type LogLevel = 'none' | 'critical' | 'error' | 'warn' | 'info' | 'debug';
 
@@ -29,7 +29,7 @@ export type LogLevel = 'none' | 'critical' | 'error' | 'warn' | 'info' | 'debug'
  * @description Mapping of numeric log levels (0-5) to canonical textual log level names.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @type {Record<number, LogLevel>}
  */
@@ -46,7 +46,7 @@ export const LOG_LEVEL_NAMES: Record<number, LogLevel> = {
  * @description Reverse mapping of canonical textual log level names to numeric log levels (0-5).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @type {Record<LogLevel, number>}
  */
@@ -67,7 +67,7 @@ export const LOG_LEVEL_VALUES: Record<LogLevel, number> = {
  * @property {any} [key: string] - Any additional custom error properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 export interface SerializedError {
@@ -87,7 +87,7 @@ export interface SerializedError {
  * @property {string} source - Originating process identifier ('Main' | 'Workbench' | 'GeospatialWorker').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 export interface LogPayload {
@@ -104,7 +104,7 @@ export interface LogPayload {
  * @description Callback function receiving normalized log payloads for local dispatch or transport routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {LogPayload} payload - Structured log payload.
  * @returns {void}
@@ -121,7 +121,7 @@ export type LogSink = (payload: LogPayload) => void;
  * @property {(message: string, ...meta: any[]) => void} none - No-op silent log method.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 export interface LoggingMethodMap {
@@ -138,7 +138,7 @@ export interface LoggingMethodMap {
  * @description Callable logging function with level helper methods.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  */
 export type LoggingFunction = ((level: LogLevel | number, message: string, ...meta: any[]) => void) & LoggingMethodMap;

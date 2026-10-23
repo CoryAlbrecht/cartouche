@@ -4,9 +4,9 @@
  * @description Static audit and regression test verifying that all application source files under src/ use the universal logging facade and do not contain raw console calls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
- * @see {@link ../../../docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md}
+ * @see docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md (ADR 0008)
  */
 
 import { describe, it } from 'node:test';

@@ -4,9 +4,9 @@
  * @description Validates that Section 3 ("Directory Layout" tree) of .agents/memory/state.md accurately reflects existing workspace subsystems and directories on disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
- * @see {@link ../tests/shared/metadata/stateDirectoryTree.test.ts}
+ * @see tests/shared/metadata/stateDirectoryTree.test.ts
  */
 
 import * as fs from 'node:fs';
@@ -63,7 +63,7 @@ export const DEFAULT_REQUIRED_SUBSYSTEMS = Object.freeze([
  *
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {string} markdownContent - Full markdown content of state.md.
  * @returns {string} The raw tree content inside the code fence.
@@ -84,7 +84,7 @@ export function extractTreeBlock(markdownContent) {
  *
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {string} treeText - ASCII / Unicode directory tree text.
  * @param {string} defaultRoot - Fallback absolute path for the root node.
@@ -147,7 +147,7 @@ export function parseDirectoryTree(treeText, defaultRoot) {
  *
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {ValidateDirectoryTreeOptions} [options={}] - Validation options.
  * @returns {ValidationResult} Result of the directory tree validation.

@@ -1,5 +1,6 @@
 {
   "name": "cartouche",
+  "private": true,
   "desktopName": "cartouche.desktop",
   "version": "0.1.0-dev",
   "type": "module",
@@ -12,7 +13,9 @@
     "rebuild": "npm run rebuild:sqlite && npm run rebuild:gdal",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
-    "lint": "stylelint \"src/**/*.css\"",
+    "lint:jsdoc": "node scripts/lint-jsdoc-links.js",
+    "lint:glossary": "node scripts/lint-glossary.js",
+    "lint": "stylelint \"src/**/*.css\" && npm run lint:jsdoc && npm run lint:glossary",
     "start": "vite",
     "preview": "vite build && electron dist-electron/main/main.js --no-sandbox",
     "package:linux": "node scripts/package-linux.js",

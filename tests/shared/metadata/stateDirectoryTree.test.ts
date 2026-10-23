@@ -4,9 +4,9 @@
  * @description Unit tests verifying that Section 3 of state.md accurately reflects the workspace directory structure without missing paths.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
- * @see {@link ../../../scripts/validate-directory-tree.js}
+ * @see scripts/validate-directory-tree.js
  */
 
 import { describe, it } from 'node:test';

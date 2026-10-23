@@ -4,9 +4,9 @@
  * @description TypeScript type declarations for validate-directory-tree.js utility script.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
- * @see {@link ./validate-directory-tree.js}
+ * @see scripts/validate-directory-tree.js
  */
 
 /**
@@ -20,7 +20,7 @@ export const DEFAULT_REQUIRED_SUBSYSTEMS: readonly string[];
  * @interface DirectoryTreeEntry
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @property {string} rawLine - Original line text from the markdown tree.
  * @property {number} depth - Nesting depth level (0 for workspace root).
@@ -42,7 +42,7 @@ export interface DirectoryTreeEntry {
  * @interface ValidationResult
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @property {boolean} isValid - Whether all paths and required subsystems exist on disk.
  * @property {number} totalEntries - Total number of directory and file entries parsed.
@@ -64,7 +64,7 @@ export interface ValidationResult {
  * @interface ValidateDirectoryTreeOptions
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @property {string} [workspaceRoot] - Workspace root directory path.
  * @property {string} [statePath] - Path to state.md file.
@@ -86,7 +86,7 @@ export interface ValidateDirectoryTreeOptions {
  * @function extractTreeBlock
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {string} markdownContent - Full markdown content of state.md.
  * @returns {string} The raw tree content inside the code fence.
@@ -100,7 +100,7 @@ export function extractTreeBlock(markdownContent: string): string;
  * @function parseDirectoryTree
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {string} treeText - ASCII / Unicode directory tree text.
  * @param {string} defaultRoot - Fallback absolute path for the root node.
@@ -114,7 +114,7 @@ export function parseDirectoryTree(treeText: string, defaultRoot: string): Direc
  * @function validateDirectoryTree
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @param {ValidateDirectoryTreeOptions} [options] - Validation options.
  * @returns {ValidationResult} Result of the directory tree validation.
