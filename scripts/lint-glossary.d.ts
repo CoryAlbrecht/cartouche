@@ -4,7 +4,7 @@
  * @description TypeScript type declarations for lint-glossary.js utility script.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see scripts/lint-glossary.js
  */
@@ -32,8 +32,19 @@ export interface CheckGitDiffOptions {
   rules?: ProhibitedTermRule[];
 }
 
-export function parseGlossaryRules(glossaryPath: string): ProhibitedTermRule[];
+export function parseGlossaryRules(glossaryPath: string): ProhibitedTermRule[] & { canonicalTerms?: string[] };
 export function resolveGlossaryPath(startDir?: string): string;
-export function checkLineForViolations(line: string, rules: ProhibitedTermRule[]): { matchedTerm: string; canonicalTerm: string } | null;
+export function isMatchCoveredByCanonical(
+  line: string,
+  matchIndex: number,
+  matchLength: number,
+  avoidTerm: string,
+  canonicalTerms?: readonly string[]
+): boolean;
+export function checkLineForViolations(
+  line: string,
+  rules: ProhibitedTermRule[] & { canonicalTerms?: string[] },
+  canonicalTerms?: readonly string[]
+): { matchedTerm: string; canonicalTerm: string } | null;
 export function checkGitDiff(options?: CheckGitDiffOptions): GlossaryViolation[];
 

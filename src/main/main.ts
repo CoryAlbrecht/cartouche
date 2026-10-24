@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { DropPosition, FileCategory } from '@shared/types';
+import { DIALOG_WINDOW_SPECS, type DialogWindowName } from '@shared/dialogs';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
@@ -215,33 +216,26 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    const frameName = details.frameName;
-    if (frameName && (frameName.endsWith('Window') || frameName.endsWith('Dialog') || frameName === 'preferencesWindow')) {
+    const frameName = details.frameName as DialogWindowName;
+    const spec = DIALOG_WINDOW_SPECS[frameName];
+    if (spec) {
       PreferencesStore.loadFromDisk();
       const prefs = PreferencesStore.get();
-      let dialogKey = frameName.replace(/(?:Window|Dialog)$/, '');
-      dialogKey = dialogKey.charAt(0).toLowerCase() + dialogKey.slice(1);
-      const locationKeyPrefix = frameName === 'preferencesWindow' ? 'ui.preferencesDialog.location' : `ui.${dialogKey}.location`;
+      const locationKeyPrefix = spec.locationKeyPrefix;
 
       const savedX = prefs[`${locationKeyPrefix}.x`]?.value;
       const savedY = prefs[`${locationKeyPrefix}.y`]?.value;
       const savedWidth = prefs[`${locationKeyPrefix}.width`]?.value;
       const savedHeight = prefs[`${locationKeyPrefix}.height`]?.value;
 
-      const isLayerProperties = dialogKey === 'layerProperties';
-      const defaultW = frameName === 'addLayersWindow' ? 640 : (frameName === 'preferencesWindow' ? 720 : (isLayerProperties ? 860 : 640));
-      const defaultH = frameName === 'addLayersWindow' ? 480 : (frameName === 'preferencesWindow' ? 520 : (isLayerProperties ? 620 : 480));
-      const minW = frameName === 'addLayersWindow' ? 400 : (isLayerProperties ? 600 : 360);
-      const minH = frameName === 'addLayersWindow' ? 300 : (isLayerProperties ? 400 : 280);
-
-      const width = typeof savedWidth === 'number' && savedWidth >= minW ? Math.floor(savedWidth) : defaultW;
-      const height = typeof savedHeight === 'number' && savedHeight >= minH ? Math.floor(savedHeight) : defaultH;
+      const width = typeof savedWidth === 'number' && savedWidth >= spec.minWidth ? Math.floor(savedWidth) : spec.defaultWidth;
+      const height = typeof savedHeight === 'number' && savedHeight >= spec.minHeight ? Math.floor(savedHeight) : spec.defaultHeight;
 
       const windowOptions: Electron.BrowserWindowConstructorOptions = {
         width,
         height,
-        minWidth: minW,
-        minHeight: minH,
+        minWidth: spec.minWidth,
+        minHeight: spec.minHeight,
         autoHideMenuBar: true,
         frame: false, // Frameless child dialog window with custom title bar
         roundedCorners: false, // Prevent Linux CSD border distortion and clipping on Electron 44
@@ -271,11 +265,10 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('did-create-window', (childWindow, details) => {
-    const frameName = details.frameName;
-    if (frameName && (frameName.endsWith('Window') || frameName.endsWith('Dialog') || frameName === 'preferencesWindow')) {
-      let dialogKey = frameName.replace(/(?:Window|Dialog)$/, '');
-      dialogKey = dialogKey.charAt(0).toLowerCase() + dialogKey.slice(1);
-      const locationKeyPrefix = frameName === 'preferencesWindow' ? 'ui.preferencesDialog.location' : `ui.${dialogKey}.location`;
+    const frameName = details.frameName as DialogWindowName;
+    const spec = DIALOG_WINDOW_SPECS[frameName];
+    if (spec) {
+      const locationKeyPrefix = spec.locationKeyPrefix;
       const saveChildBounds = () => {
         if (childWindow && !childWindow.isDestroyed()) {
           const bounds = childWindow.getBounds();

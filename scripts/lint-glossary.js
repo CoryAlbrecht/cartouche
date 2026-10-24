@@ -4,7 +4,7 @@
  * @description Linter and pre-commit validator that parses prohibited domain terms from GLOSSARY.md and enforces canonical domain lexicon across staged diffs and source files.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 
@@ -68,10 +68,10 @@ export const CHECKED_EXTENSIONS = Object.freeze([
  * @description Extracts Avoid terms and their canonical counterparts from markdown tables and bullet definitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @param {string} glossaryPath - Absolute or relative path to GLOSSARY.md.
- * @returns {ProhibitedTermRule[]} List of compiled terminology rules.
+ * @returns {ProhibitedTermRule[] & { canonicalTerms?: string[] }} List of compiled terminology rules.
  */
 export function parseGlossaryRules(glossaryPath) {
   if (!fs.existsSync(glossaryPath)) {
@@ -83,13 +83,20 @@ export function parseGlossaryRules(glossaryPath) {
 
   // Match: * **`Canonical`**: ... \n * `Avoid:` term1, term2, ...
   const entryRegex = /\*\s+\*\*(?:`?)([^`*]+)(?:`?)\*\*:[\s\S]*?\n\s+\*\s+`Avoid:`\s+([^\n]+)/g;
+  const entries = [];
   let match;
 
   while ((match = entryRegex.exec(content)) !== null) {
-    const canonical = match[1].trim();
-    const rawAvoid = match[2];
+    entries.push({
+      canonical: match[1].trim(),
+      rawAvoid: match[2]
+    });
+  }
 
-    const rawTerms = rawAvoid.split(',').map((s) => s.trim().replace(/\.$/, ''));
+  const canonicalTerms = entries.map((e) => e.canonical);
+
+  for (const entry of entries) {
+    const rawTerms = entry.rawAvoid.split(',').map((s) => s.trim().replace(/\.$/, ''));
     for (const raw of rawTerms) {
       if (!raw) continue;
       // Strip parenthesized contextual qualifiers: e.g. "Panel (when referring specifically to non-map tools)"
@@ -101,18 +108,28 @@ export function parseGlossaryRules(glossaryPath) {
         continue;
       }
 
+      // If the raw avoid term has a parenthetical qualifier and cleanTerm is itself an
+      // established canonical domain term (e.g. "Dropdown (when referring specifically to popup menus)"),
+      // skip generating a blanket whole-word ban for that canonical term.
+      const hasParenthetical = raw.includes('(');
+      const isCanonical = canonicalTerms.some((c) => c.toLowerCase() === cleanTerm.toLowerCase());
+      if (hasParenthetical && isCanonical) {
+        continue;
+      }
+
       // Escape special regex characters in the term
       const escaped = cleanTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\b${escaped}\\b`, 'i');
 
       rules.push({
-        canonical,
+        canonical: entry.canonical,
         avoid: cleanTerm,
         regex
       });
     }
   }
 
+  rules.canonicalTerms = canonicalTerms;
   return rules;
 }
 
@@ -146,25 +163,86 @@ export function resolveGlossaryPath(startDir) {
 }
 
 /**
+ * Determines whether a matched avoid substring in a line is completely enclosed
+ * within an occurrence of a legitimate longer canonical domain term.
+ *
+ * @function isMatchCoveredByCanonical
+ * @description Validates whether an avoid match is contained within an allowed canonical term.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-24
+ * @updated 2026-10-24
+ * @since 0.1.0-dev
+ * @param {string} line - Full text of the line.
+ * @param {number} matchIndex - Starting index of the matched avoid term.
+ * @param {number} matchLength - Length of the matched avoid term.
+ * @param {string} avoidTerm - The avoid term string.
+ * @param {readonly string[]} canonicalTerms - All known canonical terms from GLOSSARY.md.
+ * @returns {boolean} True if the match is part of an allowed canonical term.
+ */
+export function isMatchCoveredByCanonical(line, matchIndex, matchLength, avoidTerm, canonicalTerms) {
+  if (!canonicalTerms || canonicalTerms.length === 0) return false;
+
+  const matchEnd = matchIndex + matchLength;
+  const lowerAvoid = avoidTerm.toLowerCase();
+
+  // Find canonical terms that strictly contain avoidTerm and are longer
+  const candidates = canonicalTerms.filter(
+    (c) => c.length > matchLength && c.toLowerCase().includes(lowerAvoid)
+  );
+
+  if (candidates.length === 0) return false;
+
+  const lowerLine = line.toLowerCase();
+
+  for (const candidate of candidates) {
+    const lowerCandidate = candidate.toLowerCase();
+    let searchStart = 0;
+    while (searchStart < line.length) {
+      const idx = lowerLine.indexOf(lowerCandidate, searchStart);
+      if (idx === -1) break;
+      const endIdx = idx + candidate.length;
+      if (matchIndex >= idx && matchEnd <= endIdx) {
+        return true;
+      }
+      searchStart = idx + 1;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Checks a single line of text against prohibited glossary rules.
  *
  * @function checkLineForViolations
- * @description Tests a line against all compiled avoid rules.
+ * @description Tests a line against all compiled avoid rules, respecting containing canonical terms.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @param {string} line - Line text.
- * @param {ProhibitedTermRule[]} rules - List of terminology rules.
+ * @param {ProhibitedTermRule[] & { canonicalTerms?: string[] }} rules - List of terminology rules.
+ * @param {readonly string[]} [canonicalTerms] - Optional list of canonical terms for enclosure verification.
  * @returns {{ matchedTerm: string, canonicalTerm: string } | null} Violation if matched, or null.
  */
-export function checkLineForViolations(line, rules) {
+export function checkLineForViolations(line, rules, canonicalTerms = rules.canonicalTerms || []) {
   for (const rule of rules) {
-    if (rule.regex.test(line)) {
-      return {
-        matchedTerm: rule.avoid,
-        canonicalTerm: rule.canonical
-      };
+    const globalRegex = new RegExp(rule.regex.source, 'gi');
+    let m;
+    while ((m = globalRegex.exec(line)) !== null) {
+      const isCovered = isMatchCoveredByCanonical(
+        line,
+        m.index,
+        m[0].length,
+        rule.avoid,
+        canonicalTerms
+      );
+      if (!isCovered) {
+        return {
+          matchedTerm: m[0],
+          canonicalTerm: rule.canonical
+        };
+      }
     }
   }
   return null;

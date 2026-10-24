@@ -17,10 +17,11 @@ import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/Icon";
 import { mdiClose } from "@mdi/js";
 import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindowPortal";
+import type { DialogWindowName } from "@shared/types";
 
 /**
  * @typedef {Object} DialogProps
- * @property {string} name - Unique frame name identifier for the detached window.
+ * @property {DialogWindowName} name - Unique frame name identifier for the detached window.
  * @property {string} title - Title text displayed in OS window frame and dialog header bar.
  * @property {string | React.ReactNode} [icon] - Optional MDI SVG path string or custom icon node for title bar branding icon.
  * @property {boolean} isOpen - Signal or boolean flag controlling dialog window visibility.
@@ -37,7 +38,7 @@ import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindow
  * @property {React.CSSProperties} [style] - Inline style overrides for dialog body container.
  */
 export interface DialogProps {
-  name: string;
+  name: DialogWindowName;
   title: string;
   icon?: string | React.ReactNode;
   isOpen: boolean;

@@ -17,6 +17,7 @@ export * from './filetypes';
 export * from './project';
 export * from './i18n';
 export * from './layers';
+export * from '../dialogs';
 
 /**
  * @typedef {Object} Coordinate
