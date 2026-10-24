@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 
@@ -16,6 +16,7 @@ export * from './actions';
 export * from './filetypes';
 export * from './project';
 export * from './i18n';
+export * from './layers';
 
 /**
  * @typedef {Object} Coordinate
@@ -402,6 +403,10 @@ export interface ElectronAPI {
   renameLayerTreeNode?: (nodeId: string, newName: string) => Promise<void>;
   /** @ipc gis:reorder-nodes */
   reorderNodes?: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>;
+  /** @ipc layers:getLayerInfo */
+  getLayerInfo?: (layerId: string) => Promise<import('./layers').LayerDetailedInfo>;
+  /** @ipc layers:rekeyLayer */
+  rekeyLayer?: (oldLayerId: string, newLayerId: string) => Promise<{ success: boolean; layerId: string }>;
   /** @ipc gis:log */
   log?: (payload: import('../logging').LogPayload) => void;
 }

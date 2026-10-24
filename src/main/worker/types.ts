@@ -4,7 +4,7 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 
@@ -43,7 +43,7 @@ export interface GeospatialLayerMetadata {
  * @property {Uint8Array} [packedFeatures] - Legacy packed binary features buffer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 export interface GeospatialQueryResult {
@@ -97,7 +97,7 @@ export interface OpenDatasetRequest {
  * @property {string} [targetProjection] - Coordinate reference system of input bounding box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 export interface QueryExtentRequest {
@@ -144,6 +144,40 @@ export interface RehydrateRequest {
 }
 
 /**
+ * @typedef {Object} GetLayerInfoRequest
+ * @property {string} id - Unique correlation identifier.
+ * @property {'getLayerInfo'} type - Request message discriminator.
+ * @property {string} layerId - Target layer UUID.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-23
+ * @updated 2026-10-23
+ * @since 0.1.0-dev
+ */
+export interface GetLayerInfoRequest {
+  id: string;
+  type: 'getLayerInfo';
+  layerId: string;
+}
+
+/**
+ * @typedef {Object} RekeySessionRequest
+ * @property {string} id - Unique correlation identifier.
+ * @property {'rekeySession'} type - Request message discriminator.
+ * @property {string} oldLayerId - Existing registered layer UUID.
+ * @property {string} newLayerId - Target layer UUID.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-24
+ * @updated 2026-10-24
+ * @since 0.1.0-dev
+ */
+export interface RekeySessionRequest {
+  id: string;
+  type: 'rekeySession';
+  oldLayerId: string;
+  newLayerId: string;
+}
+
+/**
  * @typedef {Object} PingRequest
  * @property {string} id - Unique correlation identifier.
  * @property {'ping'} type - Request message discriminator.
@@ -154,12 +188,14 @@ export interface PingRequest {
 }
 
 /**
- * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest} WorkerRequest
+ * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest} WorkerRequest
  * Discriminated union of all request messages dispatched from Main to the Geospatial Worker.
  */
 export type WorkerRequest =
   | OpenDatasetRequest
   | QueryExtentRequest
+  | GetLayerInfoRequest
+  | RekeySessionRequest
   | CloseDatasetRequest
   | CloseAllRequest
   | RehydrateRequest

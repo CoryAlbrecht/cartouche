@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-22
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-22
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -367,6 +367,44 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     value: 480,
     defaultValue: 480,
     minimum: 300,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.layerProperties.location.x': {
+    displayName: 'Layer Properties Dialog X Position',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.layerProperties.location.y': {
+    displayName: 'Layer Properties Dialog Y Position',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.layerProperties.location.width': {
+    displayName: 'Layer Properties Dialog Width',
+    value: 860,
+    defaultValue: 860,
+    minimum: 600,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.layerProperties.location.height': {
+    displayName: 'Layer Properties Dialog Height',
+    value: 620,
+    defaultValue: 620,
+    minimum: 400,
     ephemeral: false,
     hidden: true,
     category: 'ui',

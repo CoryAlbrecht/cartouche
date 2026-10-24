@@ -4,7 +4,7 @@
  * @description In-memory session registry managing paired native GDAL dataset and layer handles, serializing spatial queries with per-layer queues, and enforcing deterministic resource deallocation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link Layer}
  */
@@ -94,6 +94,37 @@ export class LayerSessionRegistry {
       }
     } catch (err) {
       logging.warn('Failed to close native dataset for layer', err, { layerId, scope: 'LayerSessionRegistry' });
+    }
+  }
+
+  /**
+   * @description Atomically re-keys an active layer session identifier without closing native dataset handles.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-24
+   * @updated 2026-10-24
+   * @since 0.1.0-dev
+   * @param {string} oldLayerId - Existing registered layer UUID.
+   * @param {string} newLayerId - Target layer UUID.
+   * @returns {void}
+   * @throws {Error} If destination session ID is already registered.
+   */
+  public rekey(oldLayerId: string, newLayerId: string): void {
+    if (!oldLayerId || !newLayerId || oldLayerId === newLayerId) {
+      return;
+    }
+    const session = this.sessions.get(oldLayerId);
+    if (!session) {
+      return;
+    }
+    if (this.sessions.has(newLayerId)) {
+      throw new Error(`Cannot re-key layer: destination session ID "${newLayerId}" already exists.`);
+    }
+    const queue = this.queues.get(oldLayerId);
+    this.sessions.delete(oldLayerId);
+    this.queues.delete(oldLayerId);
+    this.sessions.set(newLayerId, session);
+    if (queue) {
+      this.queues.set(newLayerId, queue);
     }
   }
 

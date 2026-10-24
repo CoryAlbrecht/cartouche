@@ -4,11 +4,12 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-22
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
  * @see {@link AddLayersDialog}
+ * @see {@link LayerPropertiesDialog}
  */
 
 import React, { useEffect } from "react";
@@ -58,7 +59,7 @@ export interface DialogProps {
  * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, and Escape key dismissal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-22
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @param {DialogProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered detached portal dialog window or null if closed.
@@ -115,6 +116,7 @@ export const Dialog: React.FC<DialogProps> = ({
       onClose={onClose}>
       <div
         className={`cartouche-dialog-window ${className}`}
+        data-dialog-name={name}
         style={{
           display: "flex",
           flexDirection: "column",

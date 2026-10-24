@@ -4,11 +4,12 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-22
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link PreferencesDialog}
+ * @see {@link LayerPropertiesDialog}
  */
 
 import React, { useCallback, useEffect, useRef } from "react";
@@ -88,6 +89,7 @@ import {
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import { AddLayersDialog } from "./dialogs/AddLayersDialog";
+import { LayerPropertiesDialog } from "./dialogs/LayerPropertiesDialog";
 import { handleWorkbenchKeyDown } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
@@ -1629,6 +1631,9 @@ export const Workbench: React.FC = () => {
 
       {/* Add Layers Non-Modal Dialog */}
       <AddLayersDialog />
+
+      {/* Layer Properties Modeless Dialog */}
+      <LayerPropertiesDialog />
     </div>
   );
 };

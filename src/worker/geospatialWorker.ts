@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link logging}
@@ -200,6 +200,18 @@ export function initGeospatialWorker(
         case "rehydrate": {
           const result = await engine.rehydrate(request.layers);
           postResponse(port, { id: request.id, success: true, result });
+          break;
+        }
+
+        case "getLayerInfo": {
+          const info = await engine.getLayerInfo(request.layerId);
+          postResponse(port, { id: request.id, success: true, result: info });
+          break;
+        }
+
+        case "rekeySession": {
+          engine.rekeySession(request.oldLayerId, request.newLayerId);
+          postResponse(port, { id: request.id, success: true, result: { success: true } });
           break;
         }
 

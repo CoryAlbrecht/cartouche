@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -785,6 +785,41 @@ describe('MapController Isolated Canvas Engine', () => {
 
     assert.equal(loaded.length, 0);
     assert.equal(entry.source.getFeatures().length, 0);
+  });
+
+  it('rekeyLayer rekeys active vector layer entry without disposing source or recreating layer', () => {
+    const container = (globalThis as any).document.createElement('div');
+    const controller = new MapController(container);
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-old-id',
+      name: 'Test Vector Layer',
+      type: 'shp',
+      source: '/data/test.shp',
+      layerKind: 'vector',
+      geometryKind: 'Polygon',
+      featureCount: 50,
+      crs: { authId: 'EPSG:4326', description: 'WGS 84' },
+      extent: [-10, -10, 10, 10],
+    };
+
+    projectLayersSignal.value = [descriptor];
+    controller.syncLayers([descriptor]);
+
+    const oldEntry = controller.getLayer('layer-old-id');
+    assert.ok(oldEntry, 'Layer entry must be registered');
+
+    // Rekey layer
+    controller.rekeyLayer('layer-old-id', 'layer-new-id');
+
+    assert.equal(controller.getLayer('layer-old-id'), undefined);
+    const newEntry = controller.getLayer('layer-new-id');
+    assert.ok(newEntry, 'Layer entry must be registered under new ID');
+    assert.equal(newEntry.layer, oldEntry.layer, 'OpenLayers VectorLayer instance must be preserved');
+    assert.equal(newEntry.source, oldEntry.source, 'VectorSource instance must be preserved');
+    assert.equal(newEntry.descriptor.id, 'layer-new-id', 'Descriptor ID must be updated');
+
+    controller.dispose();
   });
 });
 

@@ -4,7 +4,7 @@
  * @description Abstract base class for the ProjectStore runtime layer hierarchy.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-09
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 
@@ -16,7 +16,7 @@ import type { LayerGroup } from './LayerGroup';
  * @description Abstract base class representing a generic node in the project layer hierarchy.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-09
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @property {string} id - Unique identifier.
  * @property {LayerGroup | null} parent - Parent group container.
@@ -24,7 +24,7 @@ import type { LayerGroup } from './LayerGroup';
  * @property {boolean} selected - Whether the node is selected in the UI.
  */
 export abstract class LayerTreeNode {
-  public readonly id: string;
+  protected _id: string;
   protected _name: string;
   public parent: LayerGroup | null = null;
   public visible: boolean = true;
@@ -36,8 +36,29 @@ export abstract class LayerTreeNode {
    * @param {string} [id] - Optional ID. If not provided, a UUID is generated.
    */
   constructor(name: string, id?: string) {
-    this.id = id || randomUUID();
+    this._id = id || randomUUID();
     this._name = name;
+  }
+
+  /**
+   * @description Gets the node's unique identifier.
+   * @returns {string} Node unique identifier.
+   */
+  get id(): string {
+    return this._id;
+  }
+
+  /**
+   * @description Atomically updates the node's unique identifier.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-24
+   * @updated 2026-10-24
+   * @since 0.1.0-dev
+   * @param {string} newId - New unique identifier.
+   * @returns {void}
+   */
+  public rekey(newId: string): void {
+    this._id = newId;
   }
 
   /**

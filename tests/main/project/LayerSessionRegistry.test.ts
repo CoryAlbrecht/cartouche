@@ -4,7 +4,7 @@
  * @description Unit tests verifying in-memory native GDAL dataset session lifecycle management, sequential query queues, and deterministic disposal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  */
 
@@ -114,6 +114,50 @@ describe('LayerSessionRegistry', () => {
 
     assert.equal(layerSessionRegistry.has(layer.id), false);
     assert.equal(datasetClosed, true);
+  });
+
+  it('rekeys registered session to a new identifier without closing native dataset', async () => {
+    let closed = false;
+    const fakeDataset = {
+      close: () => {
+        closed = true;
+      }
+    } as any;
+    const fakeLayer = { name: 'Fake' } as any;
+    const oldId = 'old-layer-id';
+    const newId = 'new-layer-id';
+
+    layerSessionRegistry.register(oldId, fakeDataset, fakeLayer);
+    assert.equal(layerSessionRegistry.has(oldId), true);
+    assert.equal(layerSessionRegistry.has(newId), false);
+
+    layerSessionRegistry.rekey(oldId, newId);
+
+    assert.equal(layerSessionRegistry.has(oldId), false);
+    assert.equal(layerSessionRegistry.has(newId), true);
+    assert.equal(closed, false, 'Native dataset must not be closed during re-key');
+
+    const session = layerSessionRegistry.get(newId);
+    assert.ok(session);
+    assert.equal(session.dataset, fakeDataset);
+    assert.equal(session.layer, fakeLayer);
+  });
+
+  it('throws descriptive error when rekeying to an already registered identifier', async () => {
+    const ds1 = { close: () => {} } as any;
+    const ds2 = { close: () => {} } as any;
+
+    layerSessionRegistry.register('id-1', ds1, {} as any);
+    layerSessionRegistry.register('id-2', ds2, {} as any);
+
+    assert.throws(
+      () => {
+        layerSessionRegistry.rekey('id-1', 'id-2');
+      },
+      (err: any) => {
+        return err.message.includes('already exists');
+      }
+    );
   });
 });
 

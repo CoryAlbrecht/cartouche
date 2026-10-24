@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-19
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -21,6 +21,7 @@ import {
   getSrsAuthority,
   reprojectBoundingBox
 } from '../../../src/main/worker/GeospatialEngine';
+import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
 import type { BoundingBox, QueryExtentOptions } from '../../../src/shared/types';
 import {
   WKB_PACKET_MAGIC,
@@ -407,5 +408,89 @@ describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
     }
   });
 });
+
+describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)', () => {
+  let engine: GeospatialEngine;
+
+  beforeEach(() => {
+    engine = new GeospatialEngine();
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+  });
+
+  it('classifies provider driver dialects correctly across all 4 tiers', () => {
+    assert.equal(classifyDriverDialect('ESRI Shapefile'), 'ogr_sql');
+    assert.equal(classifyDriverDialect('GeoJSON'), 'ogr_sql');
+    assert.equal(classifyDriverDialect('FlatGeobuf'), 'ogr_sql');
+    assert.equal(classifyDriverDialect('KML'), 'ogr_sql');
+    assert.equal(classifyDriverDialect('CSV'), 'ogr_sql');
+
+    assert.equal(classifyDriverDialect('GPKG'), 'native_sql');
+    assert.equal(classifyDriverDialect('SQLite / Spatialite'), 'native_sql');
+    assert.equal(classifyDriverDialect('PostgreSQL'), 'native_sql');
+    assert.equal(classifyDriverDialect('PostGIS'), 'native_sql');
+
+    assert.equal(classifyDriverDialect('MongoDB'), 'nosql');
+    assert.equal(classifyDriverDialect('Elasticsearch'), 'nosql');
+
+    assert.equal(classifyDriverDialect('UnknownCustomDriver'), 'generic');
+    assert.equal(classifyDriverDialect(undefined), 'generic');
+  });
+
+  it('retrieves detailed layer info, OGR schema fields, and provider descriptors for a shapefile', async () => {
+    await engine.openDataset('lakes-info-test', lakesShpPath);
+    const info = await engine.getLayerInfo('lakes-info-test');
+
+    assert.equal(info.layerId, 'lakes-info-test');
+    assert.equal(info.driverName, 'ESRI Shapefile');
+    assert.equal(info.driverDialect, 'ogr_sql');
+    assert.equal(info.geometryKind, 'Polygon');
+    assert(info.featureCount > 0, 'Feature count should be greater than 0');
+    assert(info.crsDescription.includes('EPSG:4326'), 'CRS should include EPSG:4326');
+    assert.equal(info.source, lakesShpPath);
+    assert(info.extent[0] !== 0 || info.extent[2] !== 0, 'Extent should be calculated');
+
+    assert(Array.isArray(info.fields), 'Fields must be an array');
+    assert(info.fields.length > 0, 'Fields count should be positive');
+
+    const nameField = info.fields.find((f) => f.name === 'name');
+    assert(nameField, 'name field should exist');
+    assert.equal(nameField.nativeType, 'string');
+    assert.equal(nameField.mappedType, 'string');
+    assert.equal(nameField.nullable, true);
+
+    const rankField = info.fields.find((f) => f.name === 'scalerank');
+    assert(rankField, 'scalerank field should exist');
+    assert.equal(rankField.mappedType, 'number');
+  });
+
+  it('throws descriptive error when getLayerInfo is called for unregistered layerId', async () => {
+    await assert.rejects(
+      async () => {
+        await engine.getLayerInfo('nonexistent-layer');
+      },
+      /Layer session not found for layerId: "nonexistent-layer"/
+    );
+  });
+
+  it('rekeys session to new layer identifier without dropping open dataset', async () => {
+    await engine.openDataset('old-layer-id', lakesShpPath);
+    engine.rekeySession('old-layer-id', 'new-layer-id');
+
+    await assert.rejects(
+      async () => {
+        await engine.getLayerInfo('old-layer-id');
+      },
+      /Layer session not found/
+    );
+
+    const info = await engine.getLayerInfo('new-layer-id');
+    assert.equal(info.layerId, 'new-layer-id');
+    assert.equal(info.driverName, 'ESRI Shapefile');
+  });
+});
+
 
 

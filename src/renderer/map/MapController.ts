@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -942,6 +942,32 @@ export class MapController {
    */
   public getLayer(id: string): VectorLayerEntry | undefined {
     return this.vectorLayers.get(id);
+  }
+
+  /**
+   * @description Atomically re-keys a vector layer entry in the active layers map without recreating the OpenLayers layer or dropping cached features.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-24
+   * @updated 2026-10-24
+   * @since 0.1.0-dev
+   * @param {string} oldLayerId - Existing registered layer identifier.
+   * @param {string} newLayerId - Target layer identifier.
+   * @returns {void}
+   */
+  public rekeyLayer(oldLayerId: string, newLayerId: string): void {
+    if (!oldLayerId || !newLayerId || oldLayerId === newLayerId) {
+      return;
+    }
+    const entry = this.vectorLayers.get(oldLayerId);
+    if (!entry) {
+      return;
+    }
+    this.vectorLayers.delete(oldLayerId);
+    entry.descriptor = {
+      ...entry.descriptor,
+      id: newLayerId,
+    };
+    this.vectorLayers.set(newLayerId, entry);
   }
 
   /**

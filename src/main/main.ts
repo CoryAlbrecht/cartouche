@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-23
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -21,7 +21,7 @@ import type { DropPosition, FileCategory } from '@shared/types';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
-import { pathExists, queryExtent, resolveDialogDefaultPath, updateDialogLocation } from "./api/ApiFunctions";
+import { getLayerInfo, pathExists, queryExtent, rekeyLayer, resolveDialogDefaultPath, updateDialogLocation } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
@@ -216,10 +216,11 @@ function createWindow() {
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     const frameName = details.frameName;
-    if (frameName && (frameName.endsWith('Window') || frameName === 'preferencesWindow')) {
+    if (frameName && (frameName.endsWith('Window') || frameName.endsWith('Dialog') || frameName === 'preferencesWindow')) {
       PreferencesStore.loadFromDisk();
       const prefs = PreferencesStore.get();
-      const dialogKey = frameName.replace(/Window$/, '');
+      let dialogKey = frameName.replace(/(?:Window|Dialog)$/, '');
+      dialogKey = dialogKey.charAt(0).toLowerCase() + dialogKey.slice(1);
       const locationKeyPrefix = frameName === 'preferencesWindow' ? 'ui.preferencesDialog.location' : `ui.${dialogKey}.location`;
 
       const savedX = prefs[`${locationKeyPrefix}.x`]?.value;
@@ -227,10 +228,11 @@ function createWindow() {
       const savedWidth = prefs[`${locationKeyPrefix}.width`]?.value;
       const savedHeight = prefs[`${locationKeyPrefix}.height`]?.value;
 
-      const defaultW = frameName === 'addLayersWindow' ? 640 : (frameName === 'preferencesWindow' ? 720 : 640);
-      const defaultH = frameName === 'addLayersWindow' ? 480 : (frameName === 'preferencesWindow' ? 520 : 480);
-      const minW = frameName === 'addLayersWindow' ? 400 : 360;
-      const minH = frameName === 'addLayersWindow' ? 300 : 280;
+      const isLayerProperties = dialogKey === 'layerProperties';
+      const defaultW = frameName === 'addLayersWindow' ? 640 : (frameName === 'preferencesWindow' ? 720 : (isLayerProperties ? 860 : 640));
+      const defaultH = frameName === 'addLayersWindow' ? 480 : (frameName === 'preferencesWindow' ? 520 : (isLayerProperties ? 620 : 480));
+      const minW = frameName === 'addLayersWindow' ? 400 : (isLayerProperties ? 600 : 360);
+      const minH = frameName === 'addLayersWindow' ? 300 : (isLayerProperties ? 400 : 280);
 
       const width = typeof savedWidth === 'number' && savedWidth >= minW ? Math.floor(savedWidth) : defaultW;
       const height = typeof savedHeight === 'number' && savedHeight >= minH ? Math.floor(savedHeight) : defaultH;
@@ -270,8 +272,9 @@ function createWindow() {
 
   mainWindow.webContents.on('did-create-window', (childWindow, details) => {
     const frameName = details.frameName;
-    if (frameName && (frameName.endsWith('Window') || frameName === 'preferencesWindow')) {
-      const dialogKey = frameName.replace(/Window$/, '');
+    if (frameName && (frameName.endsWith('Window') || frameName.endsWith('Dialog') || frameName === 'preferencesWindow')) {
+      let dialogKey = frameName.replace(/(?:Window|Dialog)$/, '');
+      dialogKey = dialogKey.charAt(0).toLowerCase() + dialogKey.slice(1);
       const locationKeyPrefix = frameName === 'preferencesWindow' ? 'ui.preferencesDialog.location' : `ui.${dialogKey}.location`;
       const saveChildBounds = () => {
         if (childWindow && !childWindow.isDestroyed()) {
@@ -594,6 +597,14 @@ function startApp(): void {
 
   handleIpc('layers:queryExtent', async (_event, layerId: string, options?: any, targetProjection?: string) => {
     return await queryExtent(layerId, options, targetProjection);
+  });
+
+  handleIpc('layers:getLayerInfo', async (_event, layerId: string) => {
+    return await getLayerInfo(layerId);
+  });
+
+  handleIpc('layers:rekeyLayer', async (_event, oldLayerId: string, newLayerId: string) => {
+    return await rekeyLayer(oldLayerId, newLayerId);
   });
 
   handleIpc('gis:path-exists', async (_event, filePath: string) => {

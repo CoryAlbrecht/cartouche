@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { DropPosition, ElectronAPI } from '@shared/types';
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-19
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -65,6 +65,12 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:queryExtent */
   queryExtent: (layerId: string, options?: any, targetProjection?: string) =>
     ipcRenderer.invoke('layers:queryExtent', layerId, options, targetProjection),
+  /** @ipc layers:getLayerInfo */
+  getLayerInfo: (layerId: string) =>
+    ipcRenderer.invoke('layers:getLayerInfo', layerId),
+  /** @ipc layers:rekeyLayer */
+  rekeyLayer: (oldLayerId: string, newLayerId: string) =>
+    ipcRenderer.invoke('layers:rekeyLayer', oldLayerId, newLayerId),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc dialog:save-file */

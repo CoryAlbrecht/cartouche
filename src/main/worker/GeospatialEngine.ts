@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-21
+ * @updated 2026-10-23
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -16,10 +16,13 @@ import { logging } from "../../shared/logging";
 import type {
   BoundingBox,
   GeometryKind,
+  LayerDetailedInfo,
+  LayerFieldInfo,
   ProjectCrs,
   QueryExtentFeature,
   QueryExtentOptions,
 } from "../../shared/types";
+import { classifyDriverDialect } from "../../shared/layers/queryDialect";
 import {
   WKB_PACKET_MAGIC,
   WKB_PACKET_VERSION,
@@ -154,11 +157,18 @@ export function resolveLayerGeometryKind(layer: gdal.Layer): GeometryKind {
   }
 
   let detectedKind: GeometryKind | null = null;
-  if (layer.features && typeof layer.features.first === "function" && typeof layer.features.next === "function") {
+  if (
+    layer.features
+    && typeof layer.features.first === "function"
+    && typeof layer.features.next === "function"
+  ) {
     try {
       let feature = layer.features.first();
       while (feature) {
-        const geom = typeof feature.getGeometry === "function" ? feature.getGeometry() : null;
+        const geom =
+          typeof feature.getGeometry === "function" ?
+            feature.getGeometry()
+          : null;
         const featKind = resolveGeometryKindFromGeometry(geom);
         if (featKind === "Unknown") {
           return "Unknown";
@@ -180,7 +190,10 @@ export function resolveLayerGeometryKind(layer: gdal.Layer): GeometryKind {
     try {
       layer.features.forEach((feature) => {
         if (mixed) return;
-        const geom = typeof feature.getGeometry === "function" ? feature.getGeometry() : null;
+        const geom =
+          typeof feature.getGeometry === "function" ?
+            feature.getGeometry()
+          : null;
         const featKind = resolveGeometryKindFromGeometry(geom);
         if (featKind === "Unknown") {
           mixed = true;
@@ -249,11 +262,10 @@ export function reprojectBoundingBox(
   try {
     sourceSrs = gdal.SpatialReference.fromUserInput(sourceProjection);
   } catch (err) {
-    logging.warn(
-      'Invalid sourceProjection, using extent as-is',
-      err,
-      { sourceProjection, scope: 'GeospatialEngine' }
-    );
+    logging.warn("Invalid sourceProjection, using extent as-is", err, {
+      sourceProjection,
+      scope: "GeospatialEngine",
+    });
     return extent;
   }
 
@@ -275,11 +287,10 @@ export function reprojectBoundingBox(
 
     return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   } catch (err) {
-    logging.warn(
-      'Failed to transform extent from sourceProjection',
-      err,
-      { sourceProjection, scope: 'GeospatialEngine' }
-    );
+    logging.warn("Failed to transform extent from sourceProjection", err, {
+      sourceProjection,
+      scope: "GeospatialEngine",
+    });
     return extent;
   }
 }
@@ -319,11 +330,10 @@ export class GeospatialEngine {
     try {
       dataset = await gdal.openAsync(filePath);
     } catch (openErr: any) {
-      logging.error(
-        'Failed to open dataset',
-        openErr,
-        { path: filePath, scope: 'GeospatialEngine' }
-      );
+      logging.error("Failed to open dataset", openErr, {
+        path: filePath,
+        scope: "GeospatialEngine",
+      });
       throw openErr;
     }
 
@@ -338,11 +348,10 @@ export class GeospatialEngine {
       } catch {
         // Suppress secondary close error
       }
-      logging.error(
-        'Error inspecting layers for dataset',
-        countErr,
-        { path: filePath, scope: 'GeospatialEngine' }
-      );
+      logging.error("Error inspecting layers for dataset", countErr, {
+        path: filePath,
+        scope: "GeospatialEngine",
+      });
       throw countErr;
     }
 
@@ -357,11 +366,10 @@ export class GeospatialEngine {
     try {
       featureCount = layer.features.count();
     } catch (err) {
-      logging.warn(
-        'Failed to read feature count for layer',
-        err,
-        { layerId, scope: 'GeospatialEngine' }
-      );
+      logging.warn("Failed to read feature count for layer", err, {
+        layerId,
+        scope: "GeospatialEngine",
+      });
     }
 
     const extent: BoundingBox = [0, 0, 0, 0];
@@ -381,11 +389,10 @@ export class GeospatialEngine {
           extent[3] = env.maxY;
         }
       } catch (err) {
-        logging.warn(
-          'Failed to read or compute extent for layer',
-          err,
-          { layerId, scope: 'GeospatialEngine' }
-        );
+        logging.warn("Failed to read or compute extent for layer", err, {
+          layerId,
+          scope: "GeospatialEngine",
+        });
       }
     }
 
@@ -416,6 +423,160 @@ export class GeospatialEngine {
     const geometryKind = resolveLayerGeometryKind(layer);
 
     return { layerId, name, extent, featureCount, crs, geometryKind };
+  }
+
+  /**
+   * @description Retrieves comprehensive read-only layer metadata, schema field definitions, driver properties, and query dialect tier.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-23
+   * @updated 2026-10-23
+   * @since 0.1.0-dev
+   * @param {string} layerId - Unique layer identifier.
+   * @returns {Promise<LayerDetailedInfo>} Detailed layer metadata and schema fields.
+   * @throws {Error} If layer session is not found.
+   */
+  public async getLayerInfo(layerId: string): Promise<LayerDetailedInfo> {
+    const session = this.sessions.get(layerId);
+    if (!session) {
+      throw new Error(`Layer session not found for layerId: "${layerId}"`);
+    }
+
+    const { dataset, layer, filePath } = session;
+    const driverName = dataset.driver?.description || "Unknown";
+    const driverDialect = classifyDriverDialect(driverName);
+    const geometryKind = resolveLayerGeometryKind(layer);
+
+    let featureCount = 0;
+    try {
+      featureCount = layer.features.count();
+    } catch (err) {
+      logging.warn("Failed to read feature count for layer info", err, {
+        layerId,
+        scope: "GeospatialEngine",
+      });
+    }
+
+    const extent: BoundingBox = [0, 0, 0, 0];
+    if (featureCount > 0) {
+      try {
+        let env: any;
+        try {
+          env = layer.getExtent(false);
+        } catch {
+          env = layer.getExtent(true);
+        }
+        if (env) {
+          extent[0] = env.minX;
+          extent[1] = env.minY;
+          extent[2] = env.maxX;
+          extent[3] = env.maxY;
+        }
+      } catch (err) {
+        logging.warn("Failed to read extent for layer info", err, {
+          layerId,
+          scope: "GeospatialEngine",
+        });
+      }
+    }
+
+    let crsDescription = "EPSG:4326 - WGS 84";
+    const srs = layer.srs;
+    if (srs && typeof srs.getAuthorityCode === "function") {
+      const authCode =
+        srs.getAuthorityCode("PROJCS")
+        || srs.getAuthorityCode("GEOGCS")
+        || srs.getAuthorityCode(null);
+      const authName =
+        srs.getAuthorityName("PROJCS")
+        || srs.getAuthorityName("GEOGCS")
+        || "EPSG";
+      const authId = authCode ? `${authName}:${authCode}` : "";
+      const projName =
+        (srs as any).getAttrValue?.("PROJCS")
+        || (srs as any).getAttrValue?.("GEOGCS")
+        || "";
+      crsDescription =
+        authId && projName ?
+          `${authId} - ${projName}`
+        : authId || projName || "Unknown CRS";
+    }
+
+    const rawName = layer.name?.trim();
+    const name =
+      rawName && rawName.length > 0 ? rawName : path.basename(filePath);
+
+    const fields: LayerFieldInfo[] = [];
+    const fieldCount = layer.fields ? layer.fields.count() : 0;
+    for (let i = 0; i < fieldCount; i++) {
+      const f = layer.fields.get(i);
+      const nativeType = String(f.type || "unknown");
+      let mappedType: "string" | "number" | "boolean" | "Date" | "unknown" =
+        "unknown";
+
+      switch (nativeType.toLowerCase()) {
+        case "integer":
+        case "integer64":
+        case "real":
+          mappedType = "number";
+          break;
+        case "string":
+          mappedType = "string";
+          break;
+        case "date":
+        case "time":
+        case "datetime":
+          mappedType = "Date";
+          break;
+        case "binary":
+        default:
+          mappedType = "unknown";
+          break;
+      }
+
+      fields.push({
+        name: f.name,
+        nativeType,
+        width: typeof f.width === "number" && f.width > 0 ? f.width : undefined,
+        precision:
+          typeof f.precision === "number" && f.precision > 0 ?
+            f.precision
+          : undefined,
+        mappedType,
+        nullable: (f as any).nullable !== false,
+      });
+    }
+
+    return {
+      layerId,
+      name,
+      source: filePath,
+      driverName,
+      driverDialect,
+      geometryKind,
+      featureCount,
+      crsDescription,
+      extent,
+      fields,
+    };
+  }
+
+  /**
+   * @description Atomically re-keys an active layer session identifier without closing underlying dataset handles.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-23
+   * @updated 2026-10-23
+   * @since 0.1.0-dev
+   * @param {string} oldLayerId - Existing layer UUID.
+   * @param {string} newLayerId - New target layer UUID.
+   * @returns {void}
+   */
+  public rekeySession(oldLayerId: string, newLayerId: string): void {
+    const session = this.sessions.get(oldLayerId);
+    if (!session) {
+      return;
+    }
+    this.sessions.delete(oldLayerId);
+    this.sessions.set(newLayerId, session);
   }
 
   /**
@@ -572,7 +733,10 @@ export class GeospatialEngine {
               properties,
             });
           } catch (featErr) {
-            logging.warn('Failed to process feature', featErr, { fid: feature.fid, scope: 'GeospatialEngine' });
+            logging.warn("Failed to process feature", featErr, {
+              fid: feature.fid,
+              scope: "GeospatialEngine",
+            });
           }
         });
 
@@ -663,7 +827,10 @@ export class GeospatialEngine {
         session.dataset.close();
       }
     } catch (err) {
-      logging.warn('Failed to close dataset for layer', err, { layerId, scope: 'GeospatialEngine' });
+      logging.warn("Failed to close dataset for layer", err, {
+        layerId,
+        scope: "GeospatialEngine",
+      });
     }
 
     return true;

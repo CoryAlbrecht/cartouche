@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-21
+ * @updated 2026-10-24
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
-import type { BoundingBox, QueryExtentOptions } from '@shared/types';
+import type { BoundingBox, LayerDetailedInfo, QueryExtentOptions } from '@shared/types';
 import { GeospatialEngine } from './GeospatialEngine';
 import { projectStore } from '../project/ProjectStore';
 import { LoggingHub, loggingHub as defaultLoggingHub } from '../logging/LoggingHub';
@@ -787,6 +787,15 @@ export class GeospatialService {
           this.activeLayers.set(req.layerId, req.filePath);
           break;
 
+        case 'getLayerInfo':
+          result = await this.engine.getLayerInfo(req.layerId);
+          break;
+
+        case 'rekeySession':
+          this.engine.rekeySession(req.oldLayerId, req.newLayerId);
+          result = { success: true };
+          break;
+
         case 'queryExtent': {
           const queryOptions = req.options ?? req.extent;
           const queryRes = await this.engine.queryExtent(
@@ -872,6 +881,47 @@ export class GeospatialService {
     this.activeLayers.set(layerId, filePath);
     this.circuitBreaker.delete(layerId);
     return meta;
+  }
+
+  /**
+   * @description Queries comprehensive read-only layer metadata, schema field definitions, and driver details.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-23
+   * @updated 2026-10-23
+   * @since 0.1.0-dev
+   * @param {string} layerId - Unique layer identifier.
+   * @param {number} [timeoutMs] - Optional timeout override.
+   * @returns {Promise<LayerDetailedInfo>} Detailed layer metadata and attribute schema fields.
+   */
+  public async getLayerInfo(layerId: string, timeoutMs?: number): Promise<LayerDetailedInfo> {
+    return this.sendRequest<LayerDetailedInfo>(
+      { type: 'getLayerInfo', layerId },
+      timeoutMs
+    );
+  }
+
+  /**
+   * @description Atomically re-keys an active layer session identifier without closing underlying dataset handles.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-23
+   * @updated 2026-10-24
+   * @since 0.1.0-dev
+   * @param {string} oldLayerId - Existing layer UUID.
+   * @param {string} newLayerId - Target layer UUID.
+   * @returns {Promise<void>}
+   */
+  public async rekeySession(oldLayerId: string, newLayerId: string): Promise<void> {
+    const path = this.activeLayers.get(oldLayerId);
+    if (path) {
+      this.activeLayers.delete(oldLayerId);
+      this.activeLayers.set(newLayerId, path);
+    }
+    const cb = this.circuitBreaker.get(oldLayerId);
+    if (cb) {
+      this.circuitBreaker.delete(oldLayerId);
+      this.circuitBreaker.set(newLayerId, cb);
+    }
+    await this.sendRequest({ type: 'rekeySession', oldLayerId, newLayerId });
   }
 
   /**

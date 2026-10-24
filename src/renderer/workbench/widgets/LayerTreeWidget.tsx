@@ -33,7 +33,9 @@ import {
   mdiTrashCanOutline,
   mdiFolderPlusOutline,
   mdiPencilOutline,
+  mdiLayersOutline,
 } from "@mdi/js";
+import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
 import {
   projectTreeSignal,
   hasProjectSignal,
@@ -501,6 +503,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
     const isMultiple = actionableNodes.length > 1;
     const isSingleGroup = !isMultiple && 'children' in actionableNodes[0];
+    const isSingleLayer = !isMultiple && !isSingleGroup;
 
     let removeLabel: string;
     if (isMultiple) {
@@ -521,6 +524,18 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         icon: mdiPencilOutline,
         onClick: () => {
           setEditingNodeId(targetId);
+        },
+      });
+    }
+
+    if (isSingleLayer && targetNode.id) {
+      const layerId = targetNode.id;
+      items.push({
+        id: 'layer_properties',
+        label: t('layer_properties_menu_item') || 'Layer Properties...',
+        icon: mdiLayersOutline,
+        onClick: () => {
+          openLayerPropertiesDialog(layerId);
         },
       });
     }
@@ -779,6 +794,12 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           onDrop={(e) => handleDrop(e, layer)}
           onMouseDown={(e) => handleRowMouseDown(e, layer.id, true)}
           onClick={(e) => handleRowClickWithEditCheck(e, layer.id, true)}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (layer.id) {
+              openLayerPropertiesDialog(layer.id);
+            }
+          }}
           onContextMenu={(e) => handleContextMenu(e, layer)}>
           <span className='tree-indent' />
 
