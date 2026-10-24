@@ -26,6 +26,7 @@ const jiti = createJiti(import.meta.url, {
 const React = jiti('react');
 const ReactDOM = jiti('react-dom');
 const { renderToStaticMarkup } = jiti('react-dom/server');
+const { mdiTablePlus } = jiti('@mdi/js');
 const { LayerPropertiesDialog } = jiti('../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx');
 const {
   activeLayerPropertiesIdSignal,
@@ -409,5 +410,49 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     const markup = renderToStaticMarkup(element);
     assert.ok(markup.includes('cartouche-dialog-window'), 'Must render dialog container');
     assert.ok(markup.includes('data-dialog-name="layerPropertiesWindow"'), 'Dialog frame name must be layerPropertiesWindow');
+  });
+
+  it('renders Layer Identifier and Spatial Extent without monospace font override on Information tab (Ticket #75)', async () => {
+    await openLayerPropertiesDialog('layer-lakes-1');
+    activeLayerPropertiesTabSignal.value = 'information';
+    const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+    assert(html.includes('layer-lakes-1'), 'Should display layer identifier');
+    assert(html.includes('-125.0000, 25.0000, -65.0000, 50.0000'), 'Should display extent');
+
+    // Neither layer identifier nor extent should have monospace font styling
+    assert(
+      !html.includes('font-family:monospace;flex:1;color:#000000">layer-lakes-1') &&
+      !html.includes('font-family:monospace">layer-lakes-1'),
+      'Layer Identifier value must not have monospace font override'
+    );
+    assert(
+      !html.includes('font-family:monospace;flex:1;color:#000000">[-125.0000') &&
+      !html.includes('font-family:monospace">[-125.0000'),
+      'Spatial Extent value must not have monospace font override'
+    );
+  });
+
+  it('renders Layer ID input field without monospace font override on Source tab (Ticket #76)', async () => {
+    await openLayerPropertiesDialog('layer-lakes-1');
+    activeLayerPropertiesTabSignal.value = 'source';
+    const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+    assert(html.includes('id="layer-prop-id"'), 'Should render Layer ID input');
+    assert(html.includes('id="layer-prop-name"'), 'Should render Display Name input');
+    assert(!html.includes('font-family:monospace" value="layer-lakes-1"'), 'Layer ID input must not have monospace font override');
+    assert(
+      html.includes('id="layer-prop-id" type="text" style="padding:6px 10px;border-radius:4px;border:1px solid #cbd5e1;font-size:0.875rem" value="layer-lakes-1"'),
+      'Layer ID input should match Display Name font style without monospace'
+    );
+  });
+
+  it('renders New Field toolbar button using mdiTablePlus icon on Fields tab (Ticket #77)', async () => {
+    await openLayerPropertiesDialog('layer-lakes-1');
+    activeLayerPropertiesTabSignal.value = 'fields';
+    const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+    assert(html.includes('class="layer-prop-toolbar-btn new-field"'), 'Should render New Field button');
+    assert(html.includes(mdiTablePlus), 'New Field toolbar button must render mdiTablePlus SVG path');
   });
 });
