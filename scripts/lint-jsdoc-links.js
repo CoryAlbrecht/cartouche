@@ -4,13 +4,14 @@
  * @description Linter and validator verifying that JSDoc {@link} tags reference only valid code symbols and do not contain file paths or document extensions (.md, .ts, .js, slashes).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatBlockerText } from './terminal-style.js';
 
 /**
  * Regular expression matching invalid JSDoc {@link ...} constructs that reference filesystem paths or document extensions.
@@ -194,11 +195,17 @@ const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === 
 if (isDirectExecution) {
   const result = runJsdocLinkLinter();
   if (result.violations.length > 0) {
-    console.error(`[lint:jsdoc] Found ${result.violations.length} JSDoc link violation(s) across ${result.totalFiles} files:\n`);
+    const banner = formatBlockerText(
+      `[LINT:JSDOC] COMMIT BLOCKED: FOUND ${result.violations.length} JSDOC LINK VIOLATION(S) ACROSS ${result.totalFiles} FILES:`
+    );
+    console.error(`\n${banner}\n`);
     for (const v of result.violations) {
       console.error(`  ${v.filePath}:${v.lineNumber}: ${v.message}`);
     }
-    console.error('\nFix: Replace {@' + 'link path/to/file} with plain text or standard markdown links [text](path).\n');
+    const fixNotice = formatBlockerText(
+      'FIX: REPLACE {@LINK PATH/TO/FILE} WITH PLAIN TEXT OR STANDARD MARKDOWN LINKS [TEXT](PATH).'
+    );
+    console.error(`\n${fixNotice}\n`);
     process.exit(1);
   } else {
     console.log(`[lint:jsdoc] All JSDoc link symbols verified (${result.totalFiles} files scanned, 0 errors).`);

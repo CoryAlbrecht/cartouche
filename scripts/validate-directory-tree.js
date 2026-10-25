@@ -4,7 +4,7 @@
  * @description Validates that Section 3 ("Directory Layout" tree) of .agents/memory/state.md accurately reflects existing workspace subsystems and directories on disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-23
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see tests/shared/metadata/stateDirectoryTree.test.ts
  */
@@ -12,6 +12,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatBlockerText } from './terminal-style.js';
 
 /**
  * Canonical list of required high-level architectural subsystems expected in Section 3 of state.md.
@@ -222,10 +223,17 @@ if (isDirectCli) {
   });
 
   if (!result.isValid) {
+    const errorCount = result.missingPaths.length + result.missingSubsystems.length;
+    const banner = formatBlockerText(
+      `[VALIDATE:TREE] COMMIT BLOCKED: FOUND ${errorCount} DIRECTORY TREE VALIDATION ISSUE(S) IN STATE.MD:`
+    );
+    // eslint-disable-next-line no-console
+    console.error(`\n${banner}\n`);
+
     if (result.missingPaths.length > 0) {
       // eslint-disable-next-line no-console
       console.error(
-        `\n[ERROR] Found ${result.missingPaths.length} missing paths in directory tree:`
+        `Found ${result.missingPaths.length} missing paths in directory tree:`
       );
       for (const missing of result.missingPaths) {
         // eslint-disable-next-line no-console
@@ -235,7 +243,7 @@ if (isDirectCli) {
     if (result.missingSubsystems.length > 0) {
       // eslint-disable-next-line no-console
       console.error(
-        `\n[ERROR] Found ${result.missingSubsystems.length} missing required subsystems:`
+        `Found ${result.missingSubsystems.length} missing required subsystems:`
       );
       for (const missing of result.missingSubsystems) {
         // eslint-disable-next-line no-console

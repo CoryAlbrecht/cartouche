@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -e
+
+on_failure() {
+  local exit_code=$?
+  if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
+    printf "\n\033[30;41m COMMIT ABORTED: PRE-COMMIT CHECKS FAILED \033[0m\n\n" >&2
+  else
+    printf "\nCOMMIT ABORTED: PRE-COMMIT CHECKS FAILED\n\n" >&2
+  fi
+  exit "$exit_code"
+}
+
+trap on_failure ERR
+
 .git/hooks/update-version.sh
 npm run lint:jsdoc
 npm run lint:glossary -- --staged
-

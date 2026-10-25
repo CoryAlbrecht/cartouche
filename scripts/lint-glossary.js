@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { formatBlockerText } from './terminal-style.js';
 
 /**
  * Common architectural or programming language keywords that appear as single-word generic terms
@@ -554,7 +555,11 @@ if (isDirectExecution) {
   }
 
   if (violations.length > 0) {
-    console.error(`\n[lint:glossary] Found ${violations.length} prohibited terminology violation(s) in ${isStaged ? 'staged changes' : 'working tree'}:\n`);
+    const scopeLabel = isStaged ? 'STAGED CHANGES' : 'WORKING TREE';
+    const banner = formatBlockerText(
+      `[LINT:GLOSSARY] COMMIT BLOCKED: FOUND ${violations.length} PROHIBITED TERMINOLOGY VIOLATION(S) IN ${scopeLabel}:`
+    );
+    console.error(`\n${banner}\n`);
     for (const v of violations) {
       console.error(`  ${v.filePath}:${v.lineNumber}: Prohibited term '${v.matchedTerm}' (Use canonical '${v.canonicalTerm}' instead per GLOSSARY.md)`);
       console.error(`    > ${v.lineText}\n`);
