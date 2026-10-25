@@ -17,7 +17,7 @@
     "lint:glossary": "node scripts/lint-glossary.js",
     "lint": "stylelint \"src/**/*.css\" && npm run lint:jsdoc && npm run lint:glossary",
     "start": "vite",
-    "preview": "vite build && electron dist-electron/main/main.js --no-sandbox",
+    "preview": "vite build && electron dist-electron/main/main.js --no-sandbox -l debug",
     "package:linux": "node scripts/package-linux.js",
     "package:win": "electron-builder build --win msi nsis",
     "postinstall": "electron-builder install-app-deps",
