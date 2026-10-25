@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-16
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 
@@ -88,14 +88,14 @@ export interface ProjectViewport {
  * @property {boolean} [readOnly] - Whether the layer should be strictly treated as read-only.
  * @property {string} [layerKind] - General GIS category (vector or raster).
  * @property {GeometryKind} [geometryKind] - Spatial geometry type for vector features.
- * @property {string | { href?: string; content?: string } | Record<string, any>} [style] - Layer style rule definition or reference.
+ * @property {string | { href?: string; content?: string; format?: 'openlayers' | 'sld' } | Record<string, any>} [style] - Layer style rule definition or reference.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
  * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
  * @property {number} [featureCount] - Total number of features in the dataset.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-15
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 
@@ -111,7 +111,7 @@ export interface ProjectLayerItem {
   readOnly?: boolean;
   layerKind?: 'vector' | 'raster';
   geometryKind?: GeometryKind;
-  style?: string | { href?: string; content?: string } | Record<string, any>;
+  style?: string | { href?: string; content?: string; format?: 'openlayers' | 'sld' } | Record<string, any>;
   crs?: ProjectCrs;
   customProperties?: Record<string, unknown>;
   extent?: BoundingBox;
@@ -143,14 +143,16 @@ export interface ProjectGroupItem {
 /**
  * @typedef {Object} ProjectStyleItem
  * @property {string} id - Style identifier referenced by layers (e.g. "coastline-style").
- * @property {string} content - Serialized OpenLayers flat styles JSON rules string.
+ * @property {'openlayers' | 'sld'} [format] - Styling dialect format ("openlayers" or "sld").
+ * @property {string} content - Serialized OpenLayers flat styles JSON rules or SLD XML string.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 export interface ProjectStyleItem {
   id: string;
+  format?: 'openlayers' | 'sld';
   content: string;
 }
 

@@ -4,7 +4,6 @@
   xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
   xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
   xmlns:dc="http://purl.org/dc/elements/1.1/"
-  xmlns:xlink="http://www.w3.org/1999/xlink"
   elementFormDefault="qualified"
   attributeFormDefault="unqualified"
   version="1.0">
@@ -18,7 +17,6 @@
   </xs:annotation>
 
   <xs:import namespace="http://purl.org/dc/elements/1.1/" schemaLocation="dc.xsd" />
-  <xs:import namespace="http://www.w3.org/1999/xlink" schemaLocation="xlink.xsd" />
 
   <!-- Root Element -->
   <xs:element name="project" type="ProjectType" />
@@ -173,21 +171,39 @@
     </xs:restriction>
   </xs:simpleType>
 
-  <!-- Style Type (supports inline OpenLayers flat styles JSON CDATA or xlink:href reference) -->
+  <!-- Style Type (supports inline OpenLayers flat styles or SLD CDATA, or href reference) -->
   <xs:complexType name="StyleType">
     <xs:simpleContent>
       <xs:extension base="xs:string">
         <xs:attribute name="id" type="xs:string" />
-        <xs:attribute ref="xlink:href" />
-        <xs:attribute ref="xlink:type" />
+        <xs:attribute name="href" type="xs:anyURI" />
+        <xs:attribute name="format" type="StyleFormatType" default="openlayers" />
       </xs:extension>
     </xs:simpleContent>
   </xs:complexType>
 
+  <!-- Shared Style Type (requires an id attribute and contains CDATA styling rules) -->
+  <xs:complexType name="SharedStyleType">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="id" type="xs:string" use="required" />
+        <xs:attribute name="format" type="StyleFormatType" default="openlayers" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <!-- Style Format Enumeration: OpenLayers Flat Style JSON or OGC SLD XML -->
+  <xs:simpleType name="StyleFormatType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="openlayers" />
+      <xs:enumeration value="sld" />
+    </xs:restriction>
+  </xs:simpleType>
+
   <!-- Shared Styles Collection -->
   <xs:complexType name="StylesType">
     <xs:sequence>
-      <xs:element name="style" type="StyleType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="style" type="SharedStyleType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 

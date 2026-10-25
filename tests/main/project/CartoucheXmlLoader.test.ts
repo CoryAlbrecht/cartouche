@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-23
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 
@@ -310,7 +310,7 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(l1.geometryKind, 'LineString');
     assert.equal(l1.opacity, 0.85);
     assert.equal(l1.selectable, false);
-    assert.deepEqual(l1.style, { content: '{"stroke": "cyan"}' });
+    assert.deepEqual(l1.style, { content: '{"stroke": "cyan"}', format: 'openlayers' });
     assert.equal(l1.crs?.authId, 'EPSG:4326');
     assert.equal(l1.customProperties?.sourceUrl, 'https://example.com/rivers');
     assert.equal(l1.customProperties?.maxFeatureCount, 500);
@@ -337,11 +337,12 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(lProvinces.visible, false);
     assert.equal(lProvinces.opacity, 0.5);
     assert.equal(lProvinces.selectable, true);
-    assert.deepEqual(lProvinces.style, { href: '#admin-style' });
+    assert.deepEqual(lProvinces.style, { href: '#admin-style', format: 'openlayers' });
 
     // Assert Styles
     assert.equal(loaded.styles?.length, 1);
     assert.equal(loaded.styles?.[0].id, 'admin-style');
+    assert.equal(loaded.styles?.[0].format, 'openlayers');
     assert.equal(loaded.styles?.[0].content, '{"stroke": "#333", "fill": "rgba(200, 200, 200, 0.5)"}');
 
     // Assert Custom Properties
@@ -427,6 +428,158 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
       waterGroup.children.map((item) => item.id),
       ['subgroup-rivers', 'layer-lakes', 'subgroup-marine']
     );
+  });
+
+  it('supports backward-compatible reading of legacy xlink:href on <style>', async () => {
+    const loader = new CartoucheXmlLoader();
+    const tempPath = path.join(tempDir, 'legacy-xlink-test.cproj');
+    const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <metadata>
+    <dc:title>Legacy XLink Project</dc:title>
+  </metadata>
+  <layers>
+    <layer id="legacy-layer">
+      <name>Legacy Layer</name>
+      <type>vector</type>
+      <source>/data/legacy.shp</source>
+      <style xlink:href="#shared-legacy" />
+    </layer>
+  </layers>
+  <styles>
+    <style id="shared-legacy"><![CDATA[{"stroke-color": "#ff0000"}]]></style>
+  </styles>
+</cartouche:project>`;
+
+    fs.writeFileSync(tempPath, legacyXml, 'utf-8');
+    const loaded = await loader.load(tempPath);
+    assert.equal(loaded.layers.length, 1);
+    const layer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(layer.style, { href: '#shared-legacy', format: 'openlayers' });
+    assert.equal(loaded.styles?.length, 1);
+    assert.equal(loaded.styles?.[0].id, 'shared-legacy');
+  });
+
+  it('parses and serializes format attribute ("openlayers" and "sld") with schema validation', async () => {
+    const loader = new CartoucheXmlLoader();
+    const tempPath = path.join(tempDir, 'format-attribute-test.cproj');
+
+    const sldXmlPayload = '<StyledLayerDescriptor version="1.1.0"><NamedLayer><Name>Test</Name></NamedLayer></StyledLayerDescriptor>';
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'SLD and OpenLayers Styles Test',
+        appVersion: '0.1.0-dev'
+      },
+      layers: [
+        {
+          id: 'layer-sld',
+          name: 'SLD Layer',
+          type: 'geojson',
+          source: '/data/sld.geojson',
+          style: {
+            content: sldXmlPayload,
+            format: 'sld'
+          }
+        },
+        {
+          id: 'layer-ref',
+          name: 'Referenced Style Layer',
+          type: 'geojson',
+          source: '/data/ref.geojson',
+          style: {
+            href: '#shared-sld',
+            format: 'sld'
+          }
+        }
+      ],
+      styles: [
+        {
+          id: 'shared-sld',
+          format: 'sld',
+          content: sldXmlPayload
+        }
+      ]
+    };
+
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('format="sld"'), 'Serialized XML must include format="sld"');
+    assert.ok(xml.includes('href="#shared-sld"'), 'Serialized XML must include standard href attribute');
+    assert.ok(!xml.includes('xmlns:xlink'), 'Serialized XML must not include xlink namespace');
+
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, `Schema validation error for format attribute: ${validation.error}`);
+
+    await loader.save(model, tempPath);
+    const loaded = await loader.load(tempPath);
+
+    const lSld = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(lSld.style, { content: sldXmlPayload, format: 'sld' });
+
+    const lRef = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(lRef.style, { href: '#shared-sld', format: 'sld' });
+
+    assert.equal(loaded.styles?.length, 1);
+    assert.equal(loaded.styles?.[0].format, 'sld');
+    assert.equal(loaded.styles?.[0].content, sldXmlPayload);
+  });
+
+  it('enforces non-redirection constraint and rejects shared styles or references with chained href', async () => {
+    const loader = new CartoucheXmlLoader();
+
+    // Case 1: Shared style in <styles> specifies an href attribute
+    const invalidSharedStyleXml = `<?xml version="1.0" encoding="UTF-8"?>
+<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata><dc:title>Invalid Shared Style</dc:title></metadata>
+  <layers />
+  <styles>
+    <style id="redirecting-style" href="#another-style" />
+  </styles>
+</cartouche:project>`;
+
+    const path1 = path.join(tempDir, 'invalid-shared-style.cproj');
+    fs.writeFileSync(path1, invalidSharedStyleXml, 'utf-8');
+
+    await assert.rejects(
+      async () => loader.load(path1),
+      (err: Error) => {
+        assert.match(err.message, /shared styles in <styles> cannot reference another style via href/);
+        return true;
+      }
+    );
+  });
+
+  it('always serializes <styles /> collection following <layers> and validates against project.xsd', () => {
+    const loader = new CartoucheXmlLoader();
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'Project Without Shared Styles',
+        appVersion: '0.1.0-dev'
+      },
+      layers: [
+        {
+          id: 'layer-solo',
+          name: 'Solo Layer',
+          type: 'geojson',
+          source: '/data/solo.geojson'
+        }
+      ]
+    };
+
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('<styles />'), 'XML must serialize empty <styles /> element');
+    const layersIdx = xml.indexOf('</layers>');
+    const stylesIdx = xml.indexOf('<styles />');
+    assert.ok(layersIdx > 0 && stylesIdx > layersIdx, '<styles /> must follow immediately after <layers>');
+
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, `Schema validation error for empty <styles />: ${validation.error}`);
   });
 });
 
