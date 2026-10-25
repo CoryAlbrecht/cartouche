@@ -26,6 +26,7 @@
     "clean:package": "rimraf release",
     "clean": "npm run clean:build && npm run clean:rebuild && npm run clean:package",
     "validate:tree": "node scripts/validate-directory-tree.js",
+    "archive:milestones": "node scripts/archive-milestones.js",
     "test": "node --import jiti/register --test \"tests/**/*.test.ts\"",
     "test:main": "node --import jiti/register --test \"tests/main/**/*.test.ts\"",
     "test:renderer": "node --import jiti/register --test \"tests/renderer/**/*.test.ts\"",
