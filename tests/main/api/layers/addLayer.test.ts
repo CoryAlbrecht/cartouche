@@ -4,7 +4,7 @@
  * @description Integration tests for vector layer ingestion via GeospatialService, LayerDescriptor extraction, and IPC broadcasting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-21
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 
@@ -64,12 +64,23 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.equal(queryRes.layerId, layer.id);
     assert.equal(queryRes.features.length, 34);
 
-    // Verify default styling attached
+    // Verify default multi-geometry styling attached
     assert.ok(layer.style, 'Default styling must be attached to layer');
-    const styleObj = typeof layer.style === 'string' ? JSON.parse(layer.style) : layer.style;
-    assert.equal(styleObj['fill-color'], '#1e293b');
-    assert.equal(styleObj['stroke-color'], 'transparent');
-    assert.equal(styleObj['stroke-width'], 0);
+    assert.equal(typeof layer.style, 'object');
+    assert.equal((layer.style as any).format, 'openlayers');
+    const styleRules = JSON.parse((layer.style as any).content);
+    assert.equal(Array.isArray(styleRules), true);
+    assert.equal(styleRules.length, 3);
+    assert.equal(styleRules[0].filter[2], 'Polygon');
+    assert.equal(styleRules[1].filter[2], 'LineString');
+    assert.equal(styleRules[2].filter[2], 'Point');
+
+    const colors = [
+      styleRules[0].style['fill-color'],
+      styleRules[1].style['stroke-color'],
+      styleRules[2].style['circle-fill-color']
+    ];
+    assert.equal(new Set(colors).size, 3, 'Sampled colors must be distinct');
 
     // Verify IPC broadcasts dispatched
     const addedEvents = sentEvents.filter((e) => e.channel === 'project:layer-added');
@@ -118,5 +129,41 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.equal(addedEvents.length, 2);
     assert.equal(addedEvents[0].payload.name, 'Lakes Batch 1');
     assert.equal(addedEvents[1].payload.name, 'Lakes Batch 2');
+  });
+
+  it('excludes raster layers from vector style template generation', async () => {
+    const layer = await addLayer({
+      sourceType: 'raster',
+      filePath: '/path/to/elevation.tif',
+      layerName: 'Elevation Raster'
+    });
+
+    assert.equal(layer.layerKind, 'raster');
+    assert.equal(layer.geometryKind, 'Raster');
+    assert.equal(layer.style, undefined, 'Raster layer must not receive vector style template');
+  });
+
+  it('assigns independent random color sets across consecutively added vector layers', async () => {
+    const l1 = await addLayer({
+      sourceType: 'vector',
+      filePath: sampleShpPath,
+      layerName: 'Lakes One'
+    });
+    const l2 = await addLayer({
+      sourceType: 'vector',
+      filePath: sampleShpPath,
+      layerName: 'Lakes Two'
+    });
+
+    assert.ok(l1.style && typeof l1.style === 'object');
+    assert.ok(l2.style && typeof l2.style === 'object');
+
+    const rules1 = JSON.parse((l1.style as any).content);
+    const rules2 = JSON.parse((l2.style as any).content);
+    assert.equal(rules1.length, 3);
+    assert.equal(rules2.length, 3);
+
+    l1[Symbol.dispose]();
+    l2[Symbol.dispose]();
   });
 });

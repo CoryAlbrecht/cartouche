@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-23
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -116,10 +116,11 @@ describe('openProject Native Session Hydration', () => {
     const layerItem = project.layers[0] as ProjectLayerItem;
     assert.equal(layerItem.id, 'centrelines-mismatch');
     assert.equal(layerItem.geometryKind, 'LineString', 'Authoritative dataset geometryKind must overwrite mismatched XML attribute');
-    assert.deepEqual(layerItem.style, {
-      'stroke-color': '#0284c7',
-      'stroke-width': 1
-    });
+    assert.equal(typeof layerItem.style, 'object');
+    assert.equal((layerItem.style as any).format, 'openlayers');
+    const styleRules = JSON.parse((layerItem.style as any).content);
+    assert.equal(Array.isArray(styleRules), true);
+    assert.equal(styleRules.length, 3);
     assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
   });
 
@@ -159,5 +160,66 @@ describe('openProject Native Session Hydration', () => {
     assert.ok(coastlinesResult.features[0].wkb instanceof Uint8Array);
     assert.ok(coastlinesResult.buffer instanceof ArrayBuffer);
     assert.equal(new DataView(coastlinesResult.buffer).getUint32(0, true), 0x43415254);
+  });
+
+  it('initializes empty project.styles = [] if absent and assigns distinct colors across multiple unstyled vector layers, excluding raster layers', async () => {
+    const riversPath = path.resolve(
+      __dirname,
+      '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+    );
+    const tempProjPath = path.join(tempDir, `temp_styles_init_project_${Date.now()}.cproj`);
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
+  <metadata>
+    <title>Styles Init and Colorization Project</title>
+  </metadata>
+  <layers>
+    <layer id="vec-1" visible="true" layerKind="vector" type="shp">
+      <name>Vector Layer 1</name>
+      <source>${sampleShpPath}</source>
+    </layer>
+    <layer id="vec-2" visible="true" layerKind="vector" type="geojson">
+      <name>Vector Layer 2</name>
+      <source>${riversPath}</source>
+    </layer>
+    <layer id="raster-1" visible="true" layerKind="raster" type="geotiff">
+      <name>Raster Layer 1</name>
+      <source>/data/elevation.tif</source>
+    </layer>
+  </layers>
+</project>`;
+
+    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+
+    const project = await openProject(tempProjPath);
+    assert.ok(project);
+
+    // Verify project.styles is initialized to empty array
+    assert.ok(Array.isArray(project.styles), 'project.styles must be initialized to an array');
+    assert.equal(project.styles.length, 0);
+
+    // Verify vector layers receive multi-geometry template
+    const v1 = project.layers[0] as ProjectLayerItem;
+    const v2 = project.layers[1] as ProjectLayerItem;
+    const r1 = project.layers[2] as ProjectLayerItem;
+
+    assert.ok(v1.style && typeof v1.style === 'object');
+    assert.ok(v2.style && typeof v2.style === 'object');
+    assert.equal((v1.style as any).format, 'openlayers');
+    assert.equal((v2.style as any).format, 'openlayers');
+
+    const rules1 = JSON.parse((v1.style as any).content);
+    const rules2 = JSON.parse((v2.style as any).content);
+    assert.equal(rules1.length, 3);
+    assert.equal(rules2.length, 3);
+
+    const colors1 = [rules1[0].style['fill-color'], rules1[1].style['stroke-color'], rules1[2].style['circle-fill-color']];
+    const colors2 = [rules2[0].style['fill-color'], rules2[1].style['stroke-color'], rules2[2].style['circle-fill-color']];
+    assert.equal(new Set(colors1).size, 3, 'Layer 1 must have 3 distinct colors');
+    assert.equal(new Set(colors2).size, 3, 'Layer 2 must have 3 distinct colors');
+
+    // Verify raster layer is excluded from vector style generation
+    assert.equal(r1.style, undefined, 'Raster layer must not receive vector style template');
   });
 });

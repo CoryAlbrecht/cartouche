@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-19
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -20,7 +20,7 @@ import { projectStore } from '../../project/ProjectStore';
 import { Layer } from '../../project/models/Layer';
 import { geospatialService } from '../../worker/GeospatialService';
 import { mapGdalGeometryKind } from '../../worker/GeospatialEngine';
-import { getDefaultLayerStyle } from '../../../shared/styles/defaultLayerStyles';
+import { generateDefaultVectorStyleJson } from '../../../shared/styles/defaultLayerStyles';
 import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/ProjectBroadcaster';
 
 export { mapGdalGeometryKind };
@@ -31,7 +31,7 @@ export { mapGdalGeometryKind };
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-19
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.
@@ -103,9 +103,13 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   newLayer.geometryKind = isRaster ? 'Raster' : (metadata.geometryKind || 'Unknown');
   newLayer.crs = metadata.crs;
 
-  // Attach default OpenLayers Flat Style rules
-  const defaultStyle = getDefaultLayerStyle(newLayer.geometryKind);
-  newLayer.style = defaultStyle;
+  // Attach default multi-geometry OpenLayers Flat Style rules to vector layers (exclude raster)
+  if (!isRaster) {
+    newLayer.style = {
+      content: generateDefaultVectorStyleJson(),
+      format: 'openlayers'
+    };
+  }
 
   const extent = metadata.extent;
   const featureCount = metadata.featureCount;
@@ -137,7 +141,8 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
         title: 'Untitled Project',
         appVersion: '0.1.0-dev'
       },
-      layers: []
+      layers: [],
+      styles: []
     });
   }
 

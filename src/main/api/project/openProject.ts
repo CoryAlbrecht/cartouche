@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-21
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -23,7 +23,7 @@ import { fileTypeRegistry } from "../../filetypes/FileTypeRegistry";
 import { Layer } from "../../project/models/Layer";
 import { LayerGroup } from "../../project/models/LayerGroup";
 import { geospatialService } from "../../worker/GeospatialService";
-import { getDefaultLayerStyle } from "../../../shared/styles/defaultLayerStyles";
+import { generateDefaultVectorStyleJson } from "../../../shared/styles/defaultLayerStyles";
 import {
   broadcastProjectLayersTree,
   broadcastFullProject,
@@ -107,7 +107,7 @@ export interface OpenProjectDialogInvoker {
  * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-21
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional path to the project document; if omitted, displays the non-modal system file open dialog.
  * @param {OpenProjectDialogInvoker} [dialogInvoker=dialog] - Optional dialog invoker override for testing.
@@ -147,6 +147,9 @@ export default async function openProject(
 
   // Load into ProjectStore
   const project = await loader.load(targetPath);
+  if (!project.styles) {
+    project.styles = [];
+  }
   projectStore.setProject(project, targetPath);
 
   // Open physical datasets for each layer via GeospatialService in the background worker
@@ -184,9 +187,10 @@ export default async function openProject(
             }
 
             if (!layer.style) {
-              layer.style = getDefaultLayerStyle(
-                layer.geometryKind || "Unknown"
-              );
+              layer.style = {
+                content: generateDefaultVectorStyleJson(),
+                format: "openlayers"
+              };
             }
 
             if (!layer.crs && metadata.crs) {
@@ -209,20 +213,26 @@ export default async function openProject(
               layer.geometryKind = "Unknown";
             }
             if (!layer.style) {
-              layer.style = getDefaultLayerStyle(
-                layer.geometryKind || "Unknown"
-              );
+              layer.style = {
+                content: generateDefaultVectorStyleJson(),
+                format: "openlayers"
+              };
             }
           }
         } else {
           if (!layer.geometryKind) {
             layer.geometryKind = "Raster";
           }
-          if (!layer.style) {
-            layer.style = getDefaultLayerStyle("Raster");
-          }
+          // Raster layers remain unstyled
         }
       }
+    }
+
+    if (layer.layerKind !== "raster" && !layer.style) {
+      layer.style = {
+        content: generateDefaultVectorStyleJson(),
+        format: "openlayers"
+      };
     }
 
     layersMap.set(layer.id, { layer, extent, featureCount });
