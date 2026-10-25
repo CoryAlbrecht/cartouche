@@ -968,7 +968,7 @@
 }
 
 .cell-id {
-  font-family: monospace;
+  font-family: var(--cartouche-theme-font-family-mono);
   color: #1b446c;
 }
 
@@ -997,7 +997,7 @@
   flex-direction: column;
   height: 100%;
   background-color: #ffffff;
-  font-family: Consolas, "Courier New", monospace;
+  font-family: var(--cartouche-theme-font-family-mono);
 }
 
 .console-log-list {

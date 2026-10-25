@@ -89,7 +89,7 @@ export const ConsolePanel: React.FC<Partial<IDockviewPanelProps>> = (props) => {
             flex: 1,
             overflow: "auto",
             padding: "8px",
-            fontFamily: "monospace",
+            fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
             fontSize: "0.8333rem",
           }}>
           {logs.length === 0 ?

@@ -548,7 +548,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                             <td
                               style={{
                                 padding: "6px 10px",
-                                fontFamily: "monospace",
+                                fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
                                 color: "#0f766e",
                               }}>
                               {field.mappedType}
@@ -724,7 +724,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                       borderRadius: "4px",
                       border: "1px solid #cbd5e1",
                       fontSize: "0.8125rem",
-                      fontFamily: "monospace",
+                      fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
                       resize: "vertical",
                       lineHeight: 1.4,
                     }}
