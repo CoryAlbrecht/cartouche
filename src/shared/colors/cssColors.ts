@@ -1,15 +1,19 @@
 /**
  * @file cssColors.ts
  * @module shared/colors/cssColors
- * @description W3C CSS named color registry, hex normalization, validation, and Euclidean distance ANSI 16-color downsampling.
+ * @description W3C CSS named color registry, hex normalization, validation, WCAG contrast calculation, and curated map color sampling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link isValidCssColor}
  * @see {@link resolveColorToHex}
  * @see {@link resolveColorToRgb}
  * @see {@link findClosestAnsi16Color}
+ * @see {@link getRelativeLuminance}
+ * @see {@link getContrastRatioAgainstWhite}
+ * @see {@link CONTRAST_FILTERED_CSS_COLORS}
+ * @see {@link getRandomCssColors}
  */
 
 /**
@@ -251,6 +255,86 @@ export const W3C_CSS_COLOR_RGB: Record<string, RgbTriplet> = Object.freeze(
  * @type {readonly string[]}
  */
 export const CSS_COLOR_NAMES: readonly string[] = Object.keys(W3C_CSS_COLORS);
+
+/**
+ * @description Computes standard WCAG 2.1 relative luminance for an sRGB triplet (0.0 to 1.0).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-25
+ * @since 0.1.0-dev
+ * @param {RgbTriplet} rgb - Input RGB color triplet.
+ * @returns {number} Relative luminance value in range [0, 1].
+ */
+export function getRelativeLuminance(rgb: RgbTriplet): number {
+  const toLinear = (c: number): number => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const r = toLinear(rgb.r);
+  const g = toLinear(rgb.g);
+  const b = toLinear(rgb.b);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * @description Calculates the WCAG 2.1 contrast ratio of an sRGB color against a pure white background (#ffffff).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-25
+ * @since 0.1.0-dev
+ * @param {RgbTriplet} rgb - Input RGB color triplet.
+ * @returns {number} Contrast ratio relative to white in range [1.0, 21.0].
+ */
+export function getContrastRatioAgainstWhite(rgb: RgbTriplet): number {
+  const l = getRelativeLuminance(rgb);
+  return 1.05 / (l + 0.05);
+}
+
+/**
+ * @description Curated array of W3C CSS named color identifiers filtered to exclude near-whites (contrast ratio < 2.0:1 against #ffffff) and pure black (#000000).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-25
+ * @since 0.1.0-dev
+ * @type {readonly string[]}
+ */
+export const CONTRAST_FILTERED_CSS_COLORS: readonly string[] = Object.freeze(
+  CSS_COLOR_NAMES.filter((name) => {
+    if (name === 'black' || W3C_CSS_COLORS[name] === '#000000') {
+      return false;
+    }
+    const rgb = W3C_CSS_COLOR_RGB[name];
+    if (!rgb) return false;
+    return getContrastRatioAgainstWhite(rgb) >= 2.0;
+  })
+);
+
+/**
+ * @description Randomly samples a specified number of distinct CSS named colors from a palette without replacement.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-25
+ * @since 0.1.0-dev
+ * @param {number} count - Number of unique colors to sample.
+ * @param {readonly string[]} [palette=CONTRAST_FILTERED_CSS_COLORS] - Source color pool.
+ * @returns {string[]} Array of distinct color names.
+ */
+export function getRandomCssColors(
+  count: number,
+  palette: readonly string[] = CONTRAST_FILTERED_CSS_COLORS
+): string[] {
+  if (count <= 0) return [];
+  const pool = [...palette];
+  if (count >= pool.length) return pool;
+
+  const result: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    result.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  return result;
+}
 
 /**
  * @description Standard 16 ANSI terminal color definitions with RGB coordinates and Colorette function names.
