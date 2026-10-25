@@ -4,19 +4,23 @@
  * @description Unit tests verifying domain glossary parsing, prohibited term detection, and git diff inspection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see scripts/lint-glossary.js
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   resolveGlossaryPath,
   parseGlossaryRules,
   checkLineForViolations,
   isMatchCoveredByCanonical,
+  isMatchCoveredByAllowedPhrase,
   checkGitDiff,
+  ALLOWED_COMPOUND_PHRASES,
   type ProhibitedTermRule
 } from '../../../scripts/lint-glossary.js';
 
@@ -120,6 +124,74 @@ describe('Domain Glossary Terminology Linter (scripts/lint-glossary.js)', () => 
       isMatchCoveredByCanonical('A dropdown menu', 2, 'dropdown menu'.length, 'dropdown menu', ['Dropdown']),
       false
     );
+  });
+
+  it('allows legitimate technical compound phrases in non-domain CLI, filesystem, and font fallback contexts', () => {
+    // CLI commands permitted
+    assert.strictEqual(checkLineForViolations('// Execute command-line utility', rules), null);
+    assert.strictEqual(checkLineForViolations('const cli = "parse command line args";', rules), null);
+    assert.strictEqual(checkLineForViolations('const run = app.commandLine.appendSwitch;', rules), null);
+
+    // Standalone prohibited Command flagged
+    const commandViolation = checkLineForViolations('const cmd = "Run ' + 'Command";', rules);
+    assert.ok(commandViolation);
+    assert.strictEqual(commandViolation.matchedTerm.toLowerCase(), 'command');
+    assert.strictEqual(commandViolation.canonicalTerm, 'Action');
+
+    // Filesystem directory/folder phrases permitted
+    assert.strictEqual(checkLineForViolations('// resolve folder path on disk', rules), null);
+    assert.strictEqual(checkLineForViolations('// Find boundaries of memory folder entries', rules), null);
+    assert.strictEqual(checkLineForViolations('const cacheDir = getTemp' + 'Folder();', rules), null);
+
+    // Standalone prohibited Folder flagged
+    const folderViolation = checkLineForViolations('const group = "Layer ' + 'folder";', rules);
+    assert.ok(folderViolation);
+    assert.strictEqual(folderViolation.canonicalTerm, 'LayerGroup');
+
+    // Font fallback phrases permitted
+    assert.strictEqual(checkLineForViolations('/* monospace system fonts fallback */', rules), null);
+    assert.strictEqual(checkLineForViolations('const stack = "operating system fonts";', rules), null);
+
+    // Standalone prohibited System fonts flagged
+    const fontViolation = checkLineForViolations('const font = "system ' + 'fonts";', rules);
+    assert.ok(fontViolation);
+    assert.strictEqual(fontViolation.canonicalTerm, 'Bundled Fonts');
+  });
+
+  it('verifies isMatchCoveredByAllowedPhrase compound protection', () => {
+    const line = '/* CLI command-line argument */';
+    const idx = line.indexOf('command');
+    assert.strictEqual(
+      isMatchCoveredByAllowedPhrase(line, idx, 'command'.length, 'Command', ALLOWED_COMPOUND_PHRASES),
+      true
+    );
+
+    const bareLine = '/* Execute command now */';
+    const bareIdx = bareLine.indexOf('command');
+    assert.strictEqual(
+      isMatchCoveredByAllowedPhrase(bareLine, bareIdx, 'command'.length, 'Command', ALLOWED_COMPOUND_PHRASES),
+      false
+    );
+  });
+
+  it('inspects untracked files in working tree diff check when not staged', () => {
+    const cwd = process.cwd();
+    const tempFile = path.resolve(cwd, 'temp-untracked-lint-test.ts');
+
+    try {
+      // Write a temporary untracked file with a prohibited term
+      fs.writeFileSync(tempFile, 'const item = "nodeline";\n', 'utf8');
+
+      const violations = checkGitDiff({ staged: false, cwd, rules, includeUntracked: true });
+      const found = violations.find((v) => v.filePath.includes('temp-untracked-lint-test.ts'));
+      assert.ok(found, 'Must detect prohibited term in untracked file');
+      assert.strictEqual(found.matchedTerm, 'nodeline');
+      assert.strictEqual(found.canonicalTerm, 'Tree Node Row');
+    } finally {
+      if (fs.existsSync(tempFile)) {
+        fs.unlinkSync(tempFile);
+      }
+    }
   });
 
   it('verifies that current git working tree is clean of prohibited terms', () => {

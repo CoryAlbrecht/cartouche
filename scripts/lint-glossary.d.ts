@@ -4,13 +4,20 @@
  * @description TypeScript type declarations for lint-glossary.js utility script.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see scripts/lint-glossary.js
  */
 
 export const GENERIC_EXCLUDED_TERMS: readonly string[];
 export const CHECKED_EXTENSIONS: readonly string[];
+
+export interface AllowedCompoundPhraseRule {
+  avoid: string;
+  allowedPhrases: readonly string[];
+}
+
+export const ALLOWED_COMPOUND_PHRASES: readonly AllowedCompoundPhraseRule[];
 
 export interface ProhibitedTermRule {
   canonical: string;
@@ -28,6 +35,7 @@ export interface GlossaryViolation {
 
 export interface CheckGitDiffOptions {
   staged?: boolean;
+  includeUntracked?: boolean;
   cwd?: string;
   rules?: ProhibitedTermRule[];
 }
@@ -41,10 +49,18 @@ export function isMatchCoveredByCanonical(
   avoidTerm: string,
   canonicalTerms?: readonly string[]
 ): boolean;
+export function isMatchCoveredByAllowedPhrase(
+  line: string,
+  matchIndex: number,
+  matchLength: number,
+  avoidTerm: string,
+  allowedRules?: readonly AllowedCompoundPhraseRule[]
+): boolean;
 export function checkLineForViolations(
   line: string,
   rules: ProhibitedTermRule[] & { canonicalTerms?: string[] },
-  canonicalTerms?: readonly string[]
+  canonicalTerms?: readonly string[],
+  allowedRules?: readonly AllowedCompoundPhraseRule[]
 ): { matchedTerm: string; canonicalTerm: string } | null;
 export function checkGitDiff(options?: CheckGitDiffOptions): GlossaryViolation[];
 

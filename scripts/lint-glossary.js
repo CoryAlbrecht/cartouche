@@ -4,7 +4,7 @@
  * @description Linter and pre-commit validator that parses prohibited domain terms from GLOSSARY.md and enforces canonical domain lexicon across staged diffs and source files.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  */
 
@@ -29,6 +29,74 @@ export const GENERIC_EXCLUDED_TERMS = Object.freeze([
   'Section',
   'thread',
   'Prompt'
+]);
+
+/**
+ * @typedef {Object} AllowedCompoundPhraseRule
+ * @property {string} avoid - The prohibited word or phrase.
+ * @property {readonly string[]} allowedPhrases - Legitimate technical phrases enclosing the avoid term.
+ */
+
+/**
+ * Contextual technical phrases or compound terms that contain prohibited single words
+ * (e.g. "Command", "Folder", "System font") in legitimate non-domain, CLI, or filesystem contexts.
+ *
+ * @type {readonly AllowedCompoundPhraseRule[]}
+ */
+export const ALLOWED_COMPOUND_PHRASES = Object.freeze([
+  Object.freeze({
+    avoid: 'Command',
+    allowedPhrases: Object.freeze([
+      'command-line',
+      'command line',
+      'commandline',
+      'CommandLine',
+      'git command',
+      'shell command',
+      'npm command',
+      'cli command',
+      'terminal command'
+    ])
+  }),
+  Object.freeze({
+    avoid: 'Folder',
+    allowedPhrases: Object.freeze([
+      'folder entry',
+      'folder entries',
+      'folder path',
+      'folder paths',
+      'root folder',
+      'temp folder',
+      'cache folder',
+      'parent folder',
+      'subfolder',
+      'sub-folder',
+      'destination folder',
+      'source folder',
+      'output folder'
+    ])
+  }),
+  Object.freeze({
+    avoid: 'System fonts',
+    allowedPhrases: Object.freeze([
+      'monospace system fonts',
+      'system fonts fallback',
+      'system fonts fallbacks',
+      'fallback system fonts',
+      'operating system fonts',
+      'os system fonts'
+    ])
+  }),
+  Object.freeze({
+    avoid: 'System font',
+    allowedPhrases: Object.freeze([
+      'operating system font',
+      'system font stack',
+      'system font fallback',
+      'system font fallbacks',
+      'monospace system font'
+    ])
+  })
 ]);
 
 /**
@@ -212,37 +280,107 @@ export function isMatchCoveredByCanonical(line, matchIndex, matchLength, avoidTe
 }
 
 /**
+ * Determines whether a matched avoid substring in a line is completely enclosed
+ * within an allowed technical compound phrase (e.g. "command-line", "folder path", "operating system fonts").
+ *
+ * @function isMatchCoveredByAllowedPhrase
+ * @description Validates whether an avoid match is contained within an allowable technical compound phrase.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-25
+ * @since 0.1.0-dev
+ * @param {string} line - Full text of the line.
+ * @param {number} matchIndex - Starting index of the matched avoid term.
+ * @param {number} matchLength - Length of the matched avoid term.
+ * @param {string} avoidTerm - The avoid term string.
+ * @param {readonly AllowedCompoundPhraseRule[]} [allowedRules=ALLOWED_COMPOUND_PHRASES] - Allowed compound rules.
+ * @returns {boolean} True if the match is part of an allowed technical compound phrase.
+ */
+export function isMatchCoveredByAllowedPhrase(
+  line,
+  matchIndex,
+  matchLength,
+  avoidTerm,
+  allowedRules = ALLOWED_COMPOUND_PHRASES
+) {
+  if (!allowedRules || allowedRules.length === 0) return false;
+
+  const matchEnd = matchIndex + matchLength;
+  const lowerAvoid = avoidTerm.toLowerCase();
+
+  const rule = allowedRules.find((r) => r.avoid.toLowerCase() === lowerAvoid);
+  if (!rule || !rule.allowedPhrases || rule.allowedPhrases.length === 0) return false;
+
+  const lowerLine = line.toLowerCase();
+
+  for (const phrase of rule.allowedPhrases) {
+    const lowerPhrase = phrase.toLowerCase();
+    let searchStart = 0;
+    while (searchStart < line.length) {
+      const idx = lowerLine.indexOf(lowerPhrase, searchStart);
+      if (idx === -1) break;
+      const endIdx = idx + phrase.length;
+      if (matchIndex >= idx && matchEnd <= endIdx) {
+        return true;
+      }
+      searchStart = idx + 1;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Checks a single line of text against prohibited glossary rules.
  *
  * @function checkLineForViolations
- * @description Tests a line against all compiled avoid rules, respecting containing canonical terms.
+ * @description Tests a line against all compiled avoid rules, respecting containing canonical terms and allowed phrases.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {string} line - Line text.
  * @param {ProhibitedTermRule[] & { canonicalTerms?: string[] }} rules - List of terminology rules.
  * @param {readonly string[]} [canonicalTerms] - Optional list of canonical terms for enclosure verification.
+ * @param {readonly AllowedCompoundPhraseRule[]} [allowedRules=ALLOWED_COMPOUND_PHRASES] - Allowed compound phrase rules.
  * @returns {{ matchedTerm: string, canonicalTerm: string } | null} Violation if matched, or null.
  */
-export function checkLineForViolations(line, rules, canonicalTerms = rules.canonicalTerms || []) {
+export function checkLineForViolations(
+  line,
+  rules,
+  canonicalTerms = rules.canonicalTerms || [],
+  allowedRules = ALLOWED_COMPOUND_PHRASES
+) {
   for (const rule of rules) {
     const globalRegex = new RegExp(rule.regex.source, 'gi');
     let m;
     while ((m = globalRegex.exec(line)) !== null) {
-      const isCovered = isMatchCoveredByCanonical(
+      const isCoveredCanonical = isMatchCoveredByCanonical(
         line,
         m.index,
         m[0].length,
         rule.avoid,
         canonicalTerms
       );
-      if (!isCovered) {
-        return {
-          matchedTerm: m[0],
-          canonicalTerm: rule.canonical
-        };
+      if (isCoveredCanonical) {
+        continue;
       }
+
+      const isCoveredAllowed = isMatchCoveredByAllowedPhrase(
+        line,
+        m.index,
+        m[0].length,
+        rule.avoid,
+        allowedRules
+      );
+      if (isCoveredAllowed) {
+        continue;
+      }
+
+      return {
+        matchedTerm: m[0],
+        canonicalTerm: rule.canonical
+      };
     }
   }
   return null;
@@ -252,13 +390,14 @@ export function checkLineForViolations(line, rules, canonicalTerms = rules.canon
  * Checks staged or working tree git diff for newly introduced prohibited glossary terms.
  *
  * @function checkGitDiff
- * @description Parses git diff output and checks added lines (+).
+ * @description Parses git diff output and checks added lines (+), optionally including untracked files.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {Object} [options] - Check options.
  * @param {boolean} [options.staged=false] - Whether to check staged changes (--cached).
+ * @param {boolean} [options.includeUntracked=true] - Whether to inspect untracked files when staged is false.
  * @param {string} [options.cwd] - Working directory for git command.
  * @param {ProhibitedTermRule[]} [options.rules] - Preparsed rules.
  * @returns {GlossaryViolation[]} List of violations detected in the diff.
@@ -331,6 +470,65 @@ export function checkGitDiff(options = {}) {
       }
     } else if (!line.startsWith('-')) {
       currentLineNumber++;
+    }
+  }
+
+  // When checking the working tree (not staged), also inspect untracked files with checked extensions
+  if (!options.staged && options.includeUntracked !== false) {
+    let untrackedOutput = '';
+    try {
+      untrackedOutput = execSync('git ls-files --others --exclude-standard', {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      });
+    } catch {
+      untrackedOutput = '';
+    }
+
+    if (untrackedOutput.trim()) {
+      const untrackedFiles = untrackedOutput.split('\n').map((f) => f.trim()).filter(Boolean);
+      for (const relFile of untrackedFiles) {
+        const ext = path.extname(relFile);
+        if (!CHECKED_EXTENSIONS.includes(ext)) {
+          continue;
+        }
+
+        if (
+          relFile.endsWith('GLOSSARY.md') ||
+          relFile.includes('lint-glossary') ||
+          relFile.includes('lintGlossary')
+        ) {
+          continue;
+        }
+
+        const fullPath = path.resolve(cwd, relFile);
+        if (!fs.existsSync(fullPath)) {
+          continue;
+        }
+
+        let content = '';
+        try {
+          content = fs.readFileSync(fullPath, 'utf8');
+        } catch {
+          continue;
+        }
+
+        const fileLines = content.split('\n');
+        for (let idx = 0; idx < fileLines.length; idx++) {
+          const fileLine = fileLines[idx];
+          const match = checkLineForViolations(fileLine, rules);
+          if (match) {
+            violations.push({
+              filePath: relFile,
+              lineNumber: idx + 1,
+              lineText: fileLine.trim(),
+              matchedTerm: match.matchedTerm,
+              canonicalTerm: match.canonicalTerm
+            });
+          }
+        }
+      }
     }
   }
 

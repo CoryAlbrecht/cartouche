@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+.git/hooks/update-version.sh
+npm run lint:jsdoc
+npm run lint:glossary -- --staged
+
