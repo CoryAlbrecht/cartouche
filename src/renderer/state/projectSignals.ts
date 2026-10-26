@@ -4,14 +4,14 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
  * @see {@link ProjectGroupItem}
  */
 
-import { signal, computed } from '@preact/signals-react';
+import { signal, computed, batch } from '@preact/signals-react';
 import type {
   ProjectModel,
   ProjectLayerItem,
@@ -703,49 +703,51 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChan
  * @description Ingests a new LayerDescriptor into renderer state, updating layerStylesSignal, projectLayersSignal, and projectTreeSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
  * @returns {void}
  */
 export function handleLayerAdded(descriptor: LayerDescriptor): void {
-  // 1. Parse and register style into layerStylesSignal FIRST before projectLayersSignal triggers MapController sync
-  const resolvedStyle = resolveLayerStyle(
-    descriptor.style,
-    currentProjectSignal.value?.styles,
-    descriptor.geometryKind || 'Unknown'
-  );
+  batch(() => {
+    // 1. Parse and register style into layerStylesSignal FIRST before projectLayersSignal triggers MapController sync
+    const resolvedStyle = resolveLayerStyle(
+      descriptor.style,
+      currentProjectSignal.value?.styles,
+      descriptor.geometryKind || 'Unknown'
+    );
 
-  layerStylesSignal.value = {
-    ...layerStylesSignal.value,
-    [descriptor.id]: resolvedStyle
-  };
+    layerStylesSignal.value = {
+      ...layerStylesSignal.value,
+      [descriptor.id]: resolvedStyle
+    };
 
-  // 2. Update projectLayersSignal (insert or replace in-place)
-  const existingIndex = projectLayersSignal.value.findIndex((l) => l.id === descriptor.id);
-  if (existingIndex >= 0) {
-    const updated = [...projectLayersSignal.value];
-    updated[existingIndex] = descriptor;
-    projectLayersSignal.value = updated;
-  } else {
-    projectLayersSignal.value = [...projectLayersSignal.value, descriptor];
-  }
+    // 2. Update projectLayersSignal (insert or replace in-place)
+    const existingIndex = projectLayersSignal.value.findIndex((l) => l.id === descriptor.id);
+    if (existingIndex >= 0) {
+      const updated = [...projectLayersSignal.value];
+      updated[existingIndex] = descriptor;
+      projectLayersSignal.value = updated;
+    } else {
+      projectLayersSignal.value = [...projectLayersSignal.value, descriptor];
+    }
 
-  // 3. Ensure layer appears in projectTreeSignal if not already present
-  if (!projectTreeSignal.value.some((node) => node.id === descriptor.id)) {
-    projectTreeSignal.value = [...projectTreeSignal.value, descriptor];
-  }
+    // 3. Ensure layer appears in projectTreeSignal if not already present
+    if (!projectTreeSignal.value.some((node) => node.id === descriptor.id)) {
+      projectTreeSignal.value = [...projectTreeSignal.value, descriptor];
+    }
 
-  // Ensure project state is marked open
-  hasProjectSignal.value = true;
-  if (!projectNameSignal.value) {
-    projectNameSignal.value = 'Untitled Project';
-  }
+    // Ensure project state is marked open
+    hasProjectSignal.value = true;
+    if (!projectNameSignal.value) {
+      projectNameSignal.value = 'Untitled Project';
+    }
 
-  // Set active layer if not already set
-  if (!activeLayerIdSignal.value) {
-    activeLayerIdSignal.value = descriptor.id;
-  }
+    // Set active layer if not already set
+    if (!activeLayerIdSignal.value) {
+      activeLayerIdSignal.value = descriptor.id;
+    }
+  });
 }
 
 // Automatically subscribe to IPC layer added broadcasts from Electron Main process

@@ -4,14 +4,14 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
  * @see {@link GisLayerGroup}
  */
 
-import { signal, computed } from '@preact/signals-react';
+import { signal, computed, batch } from '@preact/signals-react';
 import { logging } from '../../shared/logging';
 import type {
   CRS,
@@ -884,60 +884,62 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
  */
 export function loadProjectIntoSignals(project: ProjectModel): void {
   const { groups, layers } = projectToGisHierarchy(project);
-  currentProjectSignal.value = project;
-  hasProjectSignal.value = true;
-  projectFilePathSignal.value = project.filePath || null;
-  projectNameSignal.value = project.metadata?.title || (project.filePath ? project.filePath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '') : null) || 'Untitled Project';
-  projectVisibleSignal.value = true;
-  projectTreeSignal.value = project.layers || [];
-  layerGroupsSignal.value = groups;
-  layersSignal.value = layers;
+  batch(() => {
+    currentProjectSignal.value = project;
+    hasProjectSignal.value = true;
+    projectFilePathSignal.value = project.filePath || null;
+    projectNameSignal.value = project.metadata?.title || (project.filePath ? project.filePath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '') : null) || 'Untitled Project';
+    projectVisibleSignal.value = true;
+    projectTreeSignal.value = project.layers || [];
+    layerGroupsSignal.value = groups;
+    layersSignal.value = layers;
 
-  // Populate layerStylesSignal before projectLayersSignal so vector layers have active styles upon instantiation
-  const { descriptors, styles } = extractDescriptorsAndStyles(project.layers || [], project.styles);
-  layerStylesSignal.value = styles;
-  projectLayersSignal.value = descriptors;
+    // Populate layerStylesSignal before projectLayersSignal so vector layers have active styles upon instantiation
+    const { descriptors, styles } = extractDescriptorsAndStyles(project.layers || [], project.styles);
+    layerStylesSignal.value = styles;
+    projectLayersSignal.value = descriptors;
 
-  isProjectDirtySignal.value = false;
-  if (layers.length > 0) {
-    activeLayerIdSignal.value = layers[0].id;
-  }
-  if (project.viewport) {
-    if (project.viewport.extent) {
-      viewportExtentSignal.value = [
-        project.viewport.extent.xmin,
-        project.viewport.extent.ymin,
-        project.viewport.extent.xmax,
-        project.viewport.extent.ymax
-      ];
+    isProjectDirtySignal.value = false;
+    if (layers.length > 0) {
+      activeLayerIdSignal.value = layers[0].id;
     }
-    if (project.viewport.zoom !== undefined) {
-      zoomSignal.value = project.viewport.zoom;
+    if (project.viewport) {
+      if (project.viewport.extent) {
+        viewportExtentSignal.value = [
+          project.viewport.extent.xmin,
+          project.viewport.extent.ymin,
+          project.viewport.extent.xmax,
+          project.viewport.extent.ymax
+        ];
+      }
+      if (project.viewport.zoom !== undefined) {
+        zoomSignal.value = project.viewport.zoom;
+      }
+      if (project.viewport.scale !== undefined) {
+        scaleDenominatorSignal.value = project.viewport.scale;
+      }
+      mapActionSignal.value = {
+        action: 'setViewport',
+        extent: project.viewport.extent ? [
+          project.viewport.extent.xmin,
+          project.viewport.extent.ymin,
+          project.viewport.extent.xmax,
+          project.viewport.extent.ymax
+        ] : undefined,
+        center: project.viewport.center,
+        zoom: project.viewport.zoom,
+        rotation: project.viewport.rotation,
+        timestamp: Date.now()
+      };
     }
-    if (project.viewport.scale !== undefined) {
-      scaleDenominatorSignal.value = project.viewport.scale;
-    }
-    mapActionSignal.value = {
-      action: 'setViewport',
-      extent: project.viewport.extent ? [
-        project.viewport.extent.xmin,
-        project.viewport.extent.ymin,
-        project.viewport.extent.xmax,
-        project.viewport.extent.ymax
-      ] : undefined,
-      center: project.viewport.center,
-      zoom: project.viewport.zoom,
-      rotation: project.viewport.rotation,
-      timestamp: Date.now()
-    };
-  }
+  });
   addConsoleLog('info', `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`, 'Project');
 }
 
