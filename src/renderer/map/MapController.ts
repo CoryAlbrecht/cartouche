@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-24
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -39,7 +39,7 @@ import {
   projectTreeSignal,
   projectVisibleSignal,
 } from '../state/projectSignals';
-import { getDefaultLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 import {
   WKB_PACKET_MAGIC,
   type LayerDescriptor,
@@ -410,12 +410,12 @@ export class MapController {
    * @description Applies dynamic OpenLayers Flat Style rules to registered vector layers at 60 FPS without modifying feature buffers.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-25
    * @since 0.1.0-dev
-   * @param {Record<string, Record<string, any>>} styles - OpenLayers flat style rules map keyed by layer UUID.
+   * @param {Record<string, any>} styles - OpenLayers flat style rules map keyed by layer UUID.
    * @returns {void}
    */
-  public applyLayerStyles(styles: Record<string, Record<string, any>>): void {
+  public applyLayerStyles(styles: Record<string, any>): void {
     for (const [id, entry] of this.vectorLayers.entries()) {
       if (styles[id]) {
         entry.layer.setStyle(styles[id] as any);
@@ -427,7 +427,7 @@ export class MapController {
    * @description Creates and registers an OpenLayers VectorLayer and VectorSource backed by allStrategy/bboxStrategy and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-15
+   * @updated 2026-10-25
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
@@ -453,9 +453,7 @@ export class MapController {
     // Resolve Flat Style rules from layerStylesSignal, layer descriptor, or default geometry style
     const styleRules =
       layerStylesSignal.value[descriptor.id] ||
-      (typeof descriptor.style === 'object' && descriptor.style !== null
-        ? descriptor.style
-        : getDefaultLayerStyle(descriptor.geometryKind));
+      resolveLayerStyle(descriptor.style, currentProjectSignal.value?.styles, descriptor.geometryKind);
 
     const currentFlat = flattenTreeLayers(projectTreeSignal.value, projectVisibleSignal.value);
     const treeMatch = currentFlat.find((item) => item.id === descriptor.id);
@@ -479,7 +477,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style projection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-16
+   * @updated 2026-10-25
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -529,9 +527,7 @@ export class MapController {
 
         const activeStyle =
           layerStylesSignal.value[descriptor.id] ||
-          (typeof descriptor.style === 'object' && descriptor.style !== null
-            ? descriptor.style
-            : getDefaultLayerStyle(descriptor.geometryKind));
+          resolveLayerStyle(descriptor.style, currentProjectSignal.value?.styles, descriptor.geometryKind);
 
         let fields: string[] | undefined;
         if (typeof activeStyle === 'function') {

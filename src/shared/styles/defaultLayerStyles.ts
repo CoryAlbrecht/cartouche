@@ -9,6 +9,7 @@
  * @see {@link createDefaultVectorLayerStyle}
  * @see {@link generateDefaultVectorStyleJson}
  * @see {@link getDefaultLayerStyle}
+ * @see {@link resolveLayerStyle}
  * @see {@link defaultLayerStyles}
  */
 
@@ -135,3 +136,104 @@ export function getDefaultLayerStyle(
   }
   return defaultLayerStyles.Unknown;
 }
+
+/**
+ * @description Resolves OpenLayers Flat Style rules from various raw representations (JSON string, metadata object with content or href, or raw rules object/array), falling back to default geometry style rules.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-25
+ * @since 0.1.0-dev
+ * @param {unknown} style - Raw style descriptor (string, object with content/href, or rule definition).
+ * @param {Array<{ id: string; content: string; format?: string }>} [sharedStyles] - Optional collection of shared project styles to resolve href references against.
+ * @param {string} [fallbackGeometryKind='Unknown'] - Fallback geometry kind when style cannot be resolved.
+ * @returns {Record<string, any> | Array<Record<string, any>>} Valid OpenLayers Flat Style rules array or object.
+ */
+export function resolveLayerStyle(
+  style: unknown,
+  sharedStyles?: Array<{ id: string; content: string; format?: string }>,
+  fallbackGeometryKind: string = 'Unknown'
+): Record<string, any> | Array<Record<string, any>> {
+  if (!style) {
+    return getDefaultLayerStyle(fallbackGeometryKind);
+  }
+
+  // 1. If style is already an array of rules (e.g. OlFlatStyleRule[])
+  if (Array.isArray(style)) {
+    if (style.length > 0) {
+      return style;
+    }
+    return getDefaultLayerStyle(fallbackGeometryKind);
+  }
+
+  // 2. If style is a JSON string
+  if (typeof style === 'string') {
+    const trimmed = style.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
+          return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
+        }
+      } catch {
+        // Fall through to fallback
+      }
+    }
+    return getDefaultLayerStyle(fallbackGeometryKind);
+  }
+
+  // 3. If style is an object
+  if (typeof style === 'object' && style !== null) {
+    const obj = style as Record<string, any>;
+
+    // 3a. Check for 'href' reference to shared style
+    if ('href' in obj && typeof obj.href === 'string') {
+      const targetId = obj.href.replace(/^#/, '');
+      if (sharedStyles && sharedStyles.length > 0) {
+        const matched = sharedStyles.find((s) => s.id === targetId);
+        if (matched && matched.content) {
+          try {
+            const parsed = JSON.parse(matched.content);
+            if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
+              return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
+            }
+          } catch {
+            // Fall through to fallback
+          }
+        }
+      }
+      return getDefaultLayerStyle(fallbackGeometryKind);
+    }
+
+    // 3b. Check for 'content' wrapper property
+    if ('content' in obj && typeof obj.content === 'string') {
+      try {
+        const parsed = JSON.parse(obj.content);
+        if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
+          return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
+        }
+      } catch {
+        // Fall through to fallback
+      }
+      return getDefaultLayerStyle(fallbackGeometryKind);
+    }
+
+    // 3c. If it's a Flat Style rule object or dictionary of flat styles (has style keys or filter)
+    const keys = Object.keys(obj);
+    const hasSymbolizerProps = keys.some((k) =>
+      k.includes('fill') ||
+      k.includes('stroke') ||
+      k.includes('circle') ||
+      k.includes('icon') ||
+      k.includes('text') ||
+      k === 'filter' ||
+      k === 'style'
+    );
+
+    if (hasSymbolizerProps) {
+      return obj;
+    }
+  }
+
+  return getDefaultLayerStyle(fallbackGeometryKind);
+}
+

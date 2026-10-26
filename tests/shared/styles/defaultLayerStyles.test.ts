@@ -14,7 +14,8 @@ import {
   defaultLayerStyles,
   getDefaultLayerStyle,
   createDefaultVectorLayerStyle,
-  generateDefaultVectorStyleJson
+  generateDefaultVectorStyleJson,
+  resolveLayerStyle
 } from '../../../src/shared/styles/defaultLayerStyles';
 import {
   CONTRAST_FILTERED_CSS_COLORS,
@@ -171,5 +172,59 @@ describe('defaultLayerStyles', () => {
     assert.equal(parsed[1].style['stroke-color'], 'dodgerblue');
     assert.equal(parsed[2].style['circle-fill-color'], 'forestgreen');
   });
+
+  describe('resolveLayerStyle', () => {
+    it('returns raw rule array if already provided as an array', () => {
+      const rules = [{ filter: ['==', ['geometry-type'], 'Polygon'], style: { 'fill-color': 'red' } }];
+      const resolved = resolveLayerStyle(rules);
+      assert.deepEqual(resolved, rules);
+    });
+
+    it('parses JSON string into rule array or object', () => {
+      const rules = [{ filter: ['==', ['geometry-type'], 'LineString'], style: { 'stroke-color': 'blue' } }];
+      const resolved = resolveLayerStyle(JSON.stringify(rules));
+      assert.deepEqual(resolved, rules);
+    });
+
+    it('resolves style from wrapper object with content string', () => {
+      const rules = [{ filter: ['==', ['geometry-type'], 'Point'], style: { 'circle-radius': 5 } }];
+      const wrapper = {
+        content: JSON.stringify(rules),
+        format: 'openlayers'
+      };
+      const resolved = resolveLayerStyle(wrapper);
+      assert.deepEqual(resolved, rules);
+    });
+
+    it('resolves shared style from wrapper object with href matching sharedStyles', () => {
+      const sharedRules = [{ filter: ['==', ['geometry-type'], 'Polygon'], style: { 'fill-color': 'gold' } }];
+      const sharedStyles = [
+        { id: 'poly-style', content: JSON.stringify(sharedRules), format: 'openlayers' as const }
+      ];
+      const wrapperWithHash = { href: '#poly-style', format: 'openlayers' as const };
+      const resolved1 = resolveLayerStyle(wrapperWithHash, sharedStyles);
+      assert.deepEqual(resolved1, sharedRules);
+
+      const wrapperWithoutHash = { href: 'poly-style', format: 'openlayers' as const };
+      const resolved2 = resolveLayerStyle(wrapperWithoutHash, sharedStyles);
+      assert.deepEqual(resolved2, sharedRules);
+    });
+
+    it('returns raw Flat Style dictionary when containing symbolizer properties', () => {
+      const dict = { 'stroke-color': '#00ff00', 'stroke-width': 3 };
+      const resolved = resolveLayerStyle(dict);
+      assert.deepEqual(resolved, dict);
+    });
+
+    it('falls back to default geometry style when style is null, undefined, invalid, or unresolvable', () => {
+      assert.deepEqual(resolveLayerStyle(null, undefined, 'Polygon'), defaultLayerStyles.Polygon);
+      assert.deepEqual(resolveLayerStyle(undefined, undefined, 'LineString'), defaultLayerStyles.LineString);
+      assert.deepEqual(resolveLayerStyle([], undefined, 'Point'), defaultLayerStyles.Point);
+      assert.deepEqual(resolveLayerStyle('invalid json', undefined, 'Polygon'), defaultLayerStyles.Polygon);
+      assert.deepEqual(resolveLayerStyle({ format: 'openlayers' }, undefined, 'Unknown'), defaultLayerStyles.Unknown);
+      assert.deepEqual(resolveLayerStyle({ href: '#missing' }, [], 'LineString'), defaultLayerStyles.LineString);
+    });
+  });
 });
+
 

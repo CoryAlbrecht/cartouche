@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-24
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -20,6 +20,7 @@ import {
   MapController,
   extractStyleAttributes,
 } from '../../../src/renderer/map/MapController';
+import { generateDefaultVectorStyleJson } from '../../../src/shared/styles/defaultLayerStyles';
 import { WKB_PACKET_MAGIC } from '../../../src/shared/types';
 import type { LayerDescriptor } from '../../../src/shared/types';
 
@@ -255,6 +256,69 @@ describe('MapController Isolated Canvas Engine', () => {
     const entry = controller.getLayer('layer-styled-1');
     assert.ok(entry);
     assert.deepEqual(entry.layer.getStyle(), customStyle);
+  });
+
+  it('instantiates VectorLayer without error when descriptor has style with { content, format: "openlayers" } (Ticket #87 regression)', () => {
+    const defaultJson = generateDefaultVectorStyleJson(['firebrick', 'cornflowerblue', 'limegreen']);
+    const descriptor: LayerDescriptor = {
+      id: 'layer-unwrapped-1',
+      name: 'Unwrapped Style Layer',
+      type: 'geojson',
+      source: '/path/to/layer.geojson',
+      geometryKind: 'Polygon',
+      layerKind: 'vector',
+      style: {
+        content: defaultJson,
+        format: 'openlayers'
+      },
+      extent: [-90, 40, -80, 50],
+      featureCount: 5,
+    };
+
+    // Setting projectLayersSignal triggers syncLayers -> createVectorLayer synchronously
+    projectLayersSignal.value = [descriptor];
+
+    const entry = controller.getLayer('layer-unwrapped-1');
+    assert.ok(entry, 'Vector layer entry must be created successfully without symbolizer errors');
+    assert.ok(entry.layer, 'OpenLayers VectorLayer must exist');
+    assert.deepEqual(entry.layer.getStyle(), JSON.parse(defaultJson));
+  });
+
+  it('instantiates VectorLayer and resolves shared style when descriptor has { href: "#shared-style", format: "openlayers" }', () => {
+    const sharedRules = [{ filter: ['==', ['geometry-type'], 'Polygon'], style: { 'fill-color': 'teal' } }];
+    currentProjectSignal.value = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Test Project' },
+      layers: [],
+      styles: [
+        {
+          id: 'shared-style-1',
+          format: 'openlayers',
+          content: JSON.stringify(sharedRules)
+        }
+      ]
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-shared-1',
+      name: 'Shared Style Layer',
+      type: 'geojson',
+      source: '/path/to/shared.geojson',
+      geometryKind: 'Polygon',
+      layerKind: 'vector',
+      style: {
+        href: '#shared-style-1',
+        format: 'openlayers'
+      },
+      extent: [-90, 40, -80, 50],
+      featureCount: 5,
+    };
+
+    projectLayersSignal.value = [descriptor];
+
+    const entry = controller.getLayer('layer-shared-1');
+    assert.ok(entry, 'Vector layer entry must resolve shared style');
+    assert.deepEqual(entry.layer.getStyle(), sharedRules);
   });
 
   it('streams feature slices via window.electronAPI.queryExtent and deserializes OGC WKB buffers', async () => {

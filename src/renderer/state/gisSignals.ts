@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -24,9 +24,10 @@ import type {
   ProjectViewport,
   ProjectLayerItem,
   ProjectGroupItem,
+  ProjectStyleItem,
   LayerDescriptor
 } from '../../shared/types';
-import { getDefaultLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import { getDefaultLayerStyle, resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
@@ -827,17 +828,21 @@ export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayer
  * @description Recursively extracts flat LayerDescriptor array and resolved style map from project hierarchy items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-19
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Project tree items.
- * @returns {{ descriptors: LayerDescriptor[]; styles: Record<string, Record<string, any>> }} Extracted descriptors and styles.
+ * @param {ProjectStyleItem[]} [sharedStyles] - Optional project shared style definitions.
+ * @returns {{ descriptors: LayerDescriptor[]; styles: Record<string, any> }} Extracted descriptors and styles.
  */
-function extractDescriptorsAndStyles(items: Array<ProjectLayerItem | ProjectGroupItem>): {
+function extractDescriptorsAndStyles(
+  items: Array<ProjectLayerItem | ProjectGroupItem>,
+  sharedStyles?: ProjectStyleItem[]
+): {
   descriptors: LayerDescriptor[];
-  styles: Record<string, Record<string, any>>;
+  styles: Record<string, any>;
 } {
   const descriptors: LayerDescriptor[] = [];
-  const styles: Record<string, Record<string, any>> = {};
+  const styles: Record<string, any> = {};
 
   function walk(nodes: Array<ProjectLayerItem | ProjectGroupItem>) {
     for (const node of nodes) {
@@ -865,25 +870,7 @@ function extractDescriptorsAndStyles(items: Array<ProjectLayerItem | ProjectGrou
         };
         descriptors.push(descriptor);
 
-        let resolvedStyle: Record<string, any> = {};
-        const rawStyle = item.style;
-        if (typeof rawStyle === 'string') {
-          try {
-            resolvedStyle = JSON.parse(rawStyle);
-          } catch {
-            resolvedStyle = {};
-          }
-        } else if (rawStyle && typeof rawStyle === 'object') {
-          if ('content' in rawStyle && typeof rawStyle.content === 'string') {
-            try {
-              resolvedStyle = JSON.parse(rawStyle.content);
-            } catch {
-              resolvedStyle = {};
-            }
-          } else {
-            resolvedStyle = rawStyle as Record<string, any>;
-          }
-        }
+        const resolvedStyle = resolveLayerStyle(item.style, sharedStyles, item.geometryKind || 'Unknown');
         styles[item.id] = resolvedStyle;
       }
     }
@@ -897,7 +884,7 @@ function extractDescriptorsAndStyles(items: Array<ProjectLayerItem | ProjectGrou
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-15
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
@@ -913,10 +900,10 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
   layerGroupsSignal.value = groups;
   layersSignal.value = layers;
 
-  // Populate projectLayersSignal and layerStylesSignal to instantiate map viewport vector layers
-  const { descriptors, styles } = extractDescriptorsAndStyles(project.layers || []);
-  projectLayersSignal.value = descriptors;
+  // Populate layerStylesSignal before projectLayersSignal so vector layers have active styles upon instantiation
+  const { descriptors, styles } = extractDescriptorsAndStyles(project.layers || [], project.styles);
   layerStylesSignal.value = styles;
+  projectLayersSignal.value = descriptors;
 
   isProjectDirtySignal.value = false;
   if (layers.length > 0) {

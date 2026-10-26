@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-15
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -18,6 +18,7 @@ import type {
   ProjectGroupItem,
   LayerDescriptor
 } from '@shared/types';
+import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -699,16 +700,28 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChan
 }
 
 /**
- * @description Ingests a new LayerDescriptor into renderer state, updating projectLayersSignal, layerStylesSignal, and projectTreeSignal.
+ * @description Ingests a new LayerDescriptor into renderer state, updating layerStylesSignal, projectLayersSignal, and projectTreeSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-25
  * @since 0.1.0-dev
  * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
  * @returns {void}
  */
 export function handleLayerAdded(descriptor: LayerDescriptor): void {
-  // Update projectLayersSignal (insert or replace in-place)
+  // 1. Parse and register style into layerStylesSignal FIRST before projectLayersSignal triggers MapController sync
+  const resolvedStyle = resolveLayerStyle(
+    descriptor.style,
+    currentProjectSignal.value?.styles,
+    descriptor.geometryKind || 'Unknown'
+  );
+
+  layerStylesSignal.value = {
+    ...layerStylesSignal.value,
+    [descriptor.id]: resolvedStyle
+  };
+
+  // 2. Update projectLayersSignal (insert or replace in-place)
   const existingIndex = projectLayersSignal.value.findIndex((l) => l.id === descriptor.id);
   if (existingIndex >= 0) {
     const updated = [...projectLayersSignal.value];
@@ -718,33 +731,7 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
     projectLayersSignal.value = [...projectLayersSignal.value, descriptor];
   }
 
-  // Parse and register style into layerStylesSignal
-  let resolvedStyle: Record<string, any> = {};
-  const rawStyle = descriptor.style;
-  if (typeof rawStyle === 'string') {
-    try {
-      resolvedStyle = JSON.parse(rawStyle);
-    } catch {
-      resolvedStyle = {};
-    }
-  } else if (rawStyle && typeof rawStyle === 'object') {
-    if ('content' in rawStyle && typeof rawStyle.content === 'string') {
-      try {
-        resolvedStyle = JSON.parse(rawStyle.content);
-      } catch {
-        resolvedStyle = {};
-      }
-    } else {
-      resolvedStyle = rawStyle as Record<string, any>;
-    }
-  }
-
-  layerStylesSignal.value = {
-    ...layerStylesSignal.value,
-    [descriptor.id]: resolvedStyle
-  };
-
-  // Ensure layer appears in projectTreeSignal if not already present
+  // 3. Ensure layer appears in projectTreeSignal if not already present
   if (!projectTreeSignal.value.some((node) => node.id === descriptor.id)) {
     projectTreeSignal.value = [...projectTreeSignal.value, descriptor];
   }
