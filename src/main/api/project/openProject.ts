@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -29,12 +29,13 @@ import {
   broadcastFullProject,
 } from "../../project/ProjectBroadcaster";
 import { logging } from "../../../shared/logging";
-import type {
-  ProjectModel,
-  BoundingBox,
-  ProjectLayerItem,
-  ProjectGroupItem,
-} from "@shared/types";
+import {
+  isProjectLayerStyleWrapper,
+  type ProjectModel,
+  type BoundingBox,
+  type ProjectLayerItem,
+  type ProjectGroupItem,
+} from "../../../shared/types";
 
 /**
  * @description Recursively collects all leaf Layer instances from a root or group LayerTreeNode hierarchy.
@@ -94,6 +95,27 @@ function enrichProjectLayers(
 }
 
 /**
+ * @description Ensures that non-raster vector layers receive a valid ProjectLayerStyleItem wrapper.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ * @param {Layer} layer - Target layer instance.
+ * @returns {void}
+ */
+function ensureVectorLayerStyle(layer: Layer): void {
+  if (
+    layer.layerKind !== "raster"
+    && (!layer.style || !isProjectLayerStyleWrapper(layer.style))
+  ) {
+    layer.style = {
+      content: generateDefaultVectorStyleJson(),
+      format: "openlayers"
+    };
+  }
+}
+
+/**
  * @typedef {Object} OpenProjectDialogInvoker
  * @property {(options: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>} showOpenDialog - Function invoking system open dialog.
  */
@@ -107,7 +129,7 @@ export interface OpenProjectDialogInvoker {
  * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional path to the project document; if omitted, displays the non-modal system file open dialog.
  * @param {OpenProjectDialogInvoker} [dialogInvoker=dialog] - Optional dialog invoker override for testing.
@@ -186,12 +208,7 @@ export default async function openProject(
               layer.geometryKind = "Unknown";
             }
 
-            if (!layer.style) {
-              layer.style = {
-                content: generateDefaultVectorStyleJson(),
-                format: "openlayers"
-              };
-            }
+            ensureVectorLayerStyle(layer);
 
             if (!layer.crs && metadata.crs) {
               layer.crs = metadata.crs;
@@ -212,12 +229,7 @@ export default async function openProject(
             if (!layer.geometryKind) {
               layer.geometryKind = "Unknown";
             }
-            if (!layer.style) {
-              layer.style = {
-                content: generateDefaultVectorStyleJson(),
-                format: "openlayers"
-              };
-            }
+            ensureVectorLayerStyle(layer);
           }
         } else {
           if (!layer.geometryKind) {
@@ -228,12 +240,7 @@ export default async function openProject(
       }
     }
 
-    if (layer.layerKind !== "raster" && !layer.style) {
-      layer.style = {
-        content: generateDefaultVectorStyleJson(),
-        format: "openlayers"
-      };
-    }
+    ensureVectorLayerStyle(layer);
 
     layersMap.set(layer.id, { layer, extent, featureCount });
   }

@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 
@@ -76,6 +76,68 @@ export interface ProjectViewport {
 }
 
 /**
+ * @typedef {Object} ProjectLayerStyleItem
+ * @property {string} [href] - URI or internal reference (e.g. "#style-id") to a shared project style.
+ * @property {string} [content] - Serialized OpenLayers flat styles JSON rules or SLD XML string content.
+ * @property {'openlayers' | 'sld'} [format] - Style specification format dialect ("openlayers" or "sld").
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ */
+export interface ProjectLayerStyleItem {
+  href?: string;
+  content?: string;
+  format?: 'openlayers' | 'sld';
+}
+
+/**
+ * @typedef {Object} OlFlatStyleRule
+ * @property {any[]} filter - OpenLayers expression filter.
+ * @property {Record<string, any>} style - Flat style property definitions.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ */
+export interface OlFlatStyleRule {
+  filter: any[];
+  style: Record<string, any>;
+}
+
+/**
+ * Runtime OpenLayers Flat Style definition consisting of a single flat style property dictionary or an array of filtered flat style rules.
+ * @typedef {Record<string, any> | OlFlatStyleRule[]} OlLayerStyle
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ */
+export type OlLayerStyle = Record<string, any> | OlFlatStyleRule[];
+
+/**
+ * Validates whether a given style descriptor is a ProjectLayerStyleItem serialized XML container.
+ *
+ * @description Type guard determining if a style descriptor is a ProjectLayerStyleItem wrapper object with href or content.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ * @param {unknown} style - Value to test.
+ * @returns {style is ProjectLayerStyleItem} True if style is a ProjectLayerStyleItem wrapper object.
+ */
+export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLayerStyleItem {
+  if (typeof style !== 'object' || style === null || Array.isArray(style)) {
+    return false;
+  }
+  const candidate = style as Record<string, unknown>;
+  return (
+    ('href' in candidate && typeof candidate.href === 'string') ||
+    ('content' in candidate && typeof candidate.content === 'string')
+  );
+}
+
+/**
  * @typedef {Object} ProjectLayerItem
  * @property {string} id - Unique layer identifier.
  * @property {string} name - User-visible layer title.
@@ -88,14 +150,14 @@ export interface ProjectViewport {
  * @property {boolean} [readOnly] - Whether the layer should be strictly treated as read-only.
  * @property {string} [layerKind] - General GIS category (vector or raster).
  * @property {GeometryKind} [geometryKind] - Spatial geometry type for vector features.
- * @property {string | { href?: string; content?: string; format?: 'openlayers' | 'sld' } | Record<string, any>} [style] - Layer style rule definition or reference.
+ * @property {string | ProjectLayerStyleItem | OlLayerStyle} [style] - Layer style rule definition, serialized wrapper, or reference.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
  * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
  * @property {number} [featureCount] - Total number of features in the dataset.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 
@@ -111,7 +173,7 @@ export interface ProjectLayerItem {
   readOnly?: boolean;
   layerKind?: 'vector' | 'raster';
   geometryKind?: GeometryKind;
-  style?: string | { href?: string; content?: string; format?: 'openlayers' | 'sld' } | Record<string, any>;
+  style?: string | ProjectLayerStyleItem | OlLayerStyle;
   crs?: ProjectCrs;
   customProperties?: Record<string, unknown>;
   extent?: BoundingBox;

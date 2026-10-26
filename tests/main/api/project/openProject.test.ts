@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -20,7 +20,7 @@ import openProject from '../../../../src/main/api/project/openProject';
 import { projectStore } from '../../../../src/main/project/ProjectStore';
 import { geospatialService } from '../../../../src/main/worker/GeospatialService';
 import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
-import type { ProjectLayerItem } from '../../../../src/shared/types';
+import { isProjectLayerStyleWrapper, type ProjectLayerItem } from '../../../../src/shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,9 +116,9 @@ describe('openProject Native Session Hydration', () => {
     const layerItem = project.layers[0] as ProjectLayerItem;
     assert.equal(layerItem.id, 'centrelines-mismatch');
     assert.equal(layerItem.geometryKind, 'LineString', 'Authoritative dataset geometryKind must overwrite mismatched XML attribute');
-    assert.equal(typeof layerItem.style, 'object');
-    assert.equal((layerItem.style as any).format, 'openlayers');
-    const styleRules = JSON.parse((layerItem.style as any).content);
+    assert.ok(isProjectLayerStyleWrapper(layerItem.style));
+    assert.equal(layerItem.style.format, 'openlayers');
+    const styleRules = JSON.parse(layerItem.style.content || '');
     assert.equal(Array.isArray(styleRules), true);
     assert.equal(styleRules.length, 3);
     assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
@@ -204,13 +204,13 @@ describe('openProject Native Session Hydration', () => {
     const v2 = project.layers[1] as ProjectLayerItem;
     const r1 = project.layers[2] as ProjectLayerItem;
 
-    assert.ok(v1.style && typeof v1.style === 'object');
-    assert.ok(v2.style && typeof v2.style === 'object');
-    assert.equal((v1.style as any).format, 'openlayers');
-    assert.equal((v2.style as any).format, 'openlayers');
+    assert.ok(isProjectLayerStyleWrapper(v1.style));
+    assert.ok(isProjectLayerStyleWrapper(v2.style));
+    assert.equal(v1.style.format, 'openlayers');
+    assert.equal(v2.style.format, 'openlayers');
 
-    const rules1 = JSON.parse((v1.style as any).content);
-    const rules2 = JSON.parse((v2.style as any).content);
+    const rules1 = JSON.parse(v1.style.content || '');
+    const rules2 = JSON.parse(v2.style.content || '');
     assert.equal(rules1.length, 3);
     assert.equal(rules2.length, 3);
 

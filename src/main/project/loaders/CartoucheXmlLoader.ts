@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -14,15 +14,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import type { IProjectLoader } from "./IProjectLoader";
-import type {
-  ProjectModel,
-  ProjectMetadata,
-  ProjectCrs,
-  ProjectViewport,
-  ProjectLayerItem,
-  ProjectGroupItem,
-  ProjectStyleItem,
-} from "@shared/types";
+import {
+  isProjectLayerStyleWrapper,
+  type ProjectModel,
+  type ProjectMetadata,
+  type ProjectCrs,
+  type ProjectViewport,
+  type ProjectLayerItem,
+  type ProjectGroupItem,
+  type ProjectStyleItem,
+  type ProjectLayerStyleItem,
+} from "../../../shared/types";
 
 /**
  * @description Escapes special XML characters in string values to prevent XML syntax errors.
@@ -57,7 +59,7 @@ function escapeXml(unsafe: string): string {
  * @description Extensible project loader for native unbundled Cartouche XML project documents.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 export class CartoucheXmlLoader implements IProjectLoader {
@@ -113,7 +115,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-25
+   * @updated 2026-10-26
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -224,10 +226,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     // Recursive Layer & Group parsers
     const parseLayer = (raw: any): ProjectLayerItem => {
-      let style:
-        | string
-        | { href?: string; content?: string; format?: "openlayers" | "sld" }
-        | undefined;
+      let style: ProjectLayerStyleItem | undefined;
       if (raw.style) {
         const s = Array.isArray(raw.style) ? raw.style[0] : raw.style;
         // legacy xlink:href support
@@ -424,7 +423,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
           validateNonRedirection((item as ProjectGroupItem).children);
         } else {
           const l = item as ProjectLayerItem;
-          if (l.style && typeof l.style === "object" && l.style.href) {
+          if (l.style && isProjectLayerStyleWrapper(l.style) && l.style.href) {
             const rawHref = l.style.href;
             const targetId =
               rawHref.startsWith("#") ? rawHref.slice(1) : rawHref;
@@ -476,7 +475,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-25
+   * @updated 2026-10-26
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
    * @returns {string} XML project document string.
@@ -616,19 +615,25 @@ export class CartoucheXmlLoader implements IProjectLoader {
               `${pad}  <style format="openlayers"><![CDATA[${layer.style}]]></style>`
             );
           }
-        } else if (layer.style.href) {
-          const formatAttr =
-            layer.style.format ? ` format="${layer.style.format}"` : "";
+        } else if (isProjectLayerStyleWrapper(layer.style)) {
+          if (layer.style.href) {
+            const formatAttr =
+              layer.style.format ? ` format="${layer.style.format}"` : "";
+            res.push(
+              `${pad}  <style href="${escapeXml(layer.style.href)}"${formatAttr} />`
+            );
+          } else if (layer.style.content) {
+            const formatAttr =
+              layer.style.format ?
+                ` format="${layer.style.format}"`
+              : ' format="openlayers"';
+            res.push(
+              `${pad}  <style${formatAttr}><![CDATA[${layer.style.content}]]></style>`
+            );
+          }
+        } else if (typeof layer.style === "object" && layer.style !== null) {
           res.push(
-            `${pad}  <style href="${escapeXml(layer.style.href)}"${formatAttr} />`
-          );
-        } else if (layer.style.content) {
-          const formatAttr =
-            layer.style.format ?
-              ` format="${layer.style.format}"`
-            : ' format="openlayers"';
-          res.push(
-            `${pad}  <style${formatAttr}><![CDATA[${layer.style.content}]]></style>`
+            `${pad}  <style format="openlayers"><![CDATA[${JSON.stringify(layer.style, null, 2)}]]></style>`
           );
         }
       }

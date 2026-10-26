@@ -4,26 +4,30 @@
  * @description Shared default OpenLayers vector layer styling rules and lookup helpers for Polygon, LineString, Point, and multi-geometry feature layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link createDefaultVectorLayerStyle}
  * @see {@link generateDefaultVectorStyleJson}
  * @see {@link getDefaultLayerStyle}
  * @see {@link resolveLayerStyle}
+ * @see {@link isProjectLayerStyleWrapper}
  * @see {@link defaultLayerStyles}
  */
 
 import { getRandomCssColors } from "../colors/cssColors";
+import {
+  isProjectLayerStyleWrapper,
+  type ProjectLayerStyleItem,
+  type OlFlatStyleRule,
+  type OlLayerStyle,
+} from "../types/project";
 
-/**
- * @typedef {Object} OlFlatStyleRule
- * @property {any[]} filter - OpenLayers expression filter.
- * @property {Record<string, any>} style - Flat style property definitions.
- */
-export interface OlFlatStyleRule {
-  filter: any[];
-  style: Record<string, any>;
-}
+export {
+  isProjectLayerStyleWrapper,
+  type ProjectLayerStyleItem,
+  type OlFlatStyleRule,
+  type OlLayerStyle,
+};
 
 /**
  * @description Generates a 3-rule OpenLayers Flat Style array for Polygon, LineString, and Point geometries with distinct colors.
@@ -142,7 +146,7 @@ export function getDefaultLayerStyle(
  * @description Resolves OpenLayers Flat Style rules from various raw representations (JSON string, metadata object with content or href, or raw rules object/array), falling back to default geometry style rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-25
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {unknown} style - Raw style descriptor (string, object with content/href, or rule definition).
  * @param {Array<{ id: string; content: string; format?: string }>} [sharedStyles] - Optional collection of shared project styles to resolve href references against.
@@ -182,13 +186,11 @@ export function resolveLayerStyle(
     return getDefaultLayerStyle(fallbackGeometryKind);
   }
 
-  // 3. If style is an object
-  if (typeof style === "object" && style !== null) {
-    const obj = style as Record<string, any>;
-
+  // 3. If style is a ProjectLayerStyleItem container
+  if (isProjectLayerStyleWrapper(style)) {
     // 3a. Check for 'href' reference to shared style
-    if ("href" in obj && typeof obj.href === "string") {
-      const targetId = obj.href.replace(/^#/, "");
+    if (style.href) {
+      const targetId = style.href.replace(/^#/, "");
       if (sharedStyles && sharedStyles.length > 0) {
         const matched = sharedStyles.find((s) => s.id === targetId);
         if (matched && matched.content) {
@@ -213,9 +215,9 @@ export function resolveLayerStyle(
     }
 
     // 3b. Check for 'content' wrapper property
-    if ("content" in obj && typeof obj.content === "string") {
+    if (style.content) {
       try {
-        const parsed = JSON.parse(obj.content);
+        const parsed = JSON.parse(style.content);
         if (parsed && (typeof parsed === "object" || Array.isArray(parsed))) {
           return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
         }
@@ -224,8 +226,11 @@ export function resolveLayerStyle(
       }
       return getDefaultLayerStyle(fallbackGeometryKind);
     }
+  }
 
-    // 3c. If it's a Flat Style rule object or dictionary of flat styles (has style keys or filter)
+  // 4. If style is an object (Flat Style rule object or dictionary of flat styles)
+  if (typeof style === "object" && style !== null) {
+    const obj = style as Record<string, any>;
     const keys = Object.keys(obj);
     const hasSymbolizerProps = keys.some(
       (k) =>

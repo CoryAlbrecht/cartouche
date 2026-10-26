@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -42,6 +42,7 @@ import {
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 import {
   WKB_PACKET_MAGIC,
+  isProjectLayerStyleWrapper,
   type LayerDescriptor,
   type BoundingBox,
   type ProjectLayerItem,
@@ -103,12 +104,12 @@ export function flattenTreeLayers(
 }
 
 /**
- * @description Recursively extracts all property names referenced by `['get', '<property>']` expressions within an OpenLayers Flat Style definition.
+ * @description Recursively extracts all property names referenced by `['get', '<property>']` expressions within an OpenLayers Flat Style definition or serialized style wrapper.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-10-26
  * @since 0.1.0-dev
- * @param {unknown} style - Flat style object, array of rules, or expression tree.
+ * @param {unknown} style - Flat style object, array of rules, serialized style wrapper, or expression tree.
  * @param {Set<string>} [fields=new Set()] - Accumulator for extracted attribute names.
  * @returns {Set<string>} Set of unique attribute names referenced in the style.
  */
@@ -116,7 +117,23 @@ export function extractStyleAttributes(
   style: unknown,
   fields: Set<string> = new Set()
 ): Set<string> {
-  if (!style || typeof style !== 'object') {
+  if (!style) {
+    return fields;
+  }
+
+  if (isProjectLayerStyleWrapper(style)) {
+    if (style.content) {
+      try {
+        const parsed = JSON.parse(style.content);
+        return extractStyleAttributes(parsed, fields);
+      } catch {
+        return fields;
+      }
+    }
+    return fields;
+  }
+
+  if (typeof style !== 'object') {
     return fields;
   }
 

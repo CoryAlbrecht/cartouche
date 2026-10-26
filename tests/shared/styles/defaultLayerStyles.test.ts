@@ -16,6 +16,7 @@ import {
   createDefaultVectorLayerStyle,
   generateDefaultVectorStyleJson,
   resolveLayerStyle,
+  isProjectLayerStyleWrapper,
 } from "../../../src/shared/styles/defaultLayerStyles";
 import {
   CONTRAST_FILTERED_CSS_COLORS,
@@ -338,6 +339,66 @@ describe("defaultLayerStyles", () => {
         resolveLayerStyle({ href: "#missing" }, [], "LineString"),
         defaultLayerStyles.LineString
       );
+    });
+  });
+
+  describe("isProjectLayerStyleWrapper", () => {
+    it("returns true for valid ProjectLayerStyleItem containers with href", () => {
+      assert.equal(isProjectLayerStyleWrapper({ href: "#shared-style" }), true);
+      assert.equal(
+        isProjectLayerStyleWrapper({
+          href: "styles/layer.sld",
+          format: "sld",
+        }),
+        true
+      );
+    });
+
+    it("returns true for valid ProjectLayerStyleItem containers with content string", () => {
+      assert.equal(
+        isProjectLayerStyleWrapper({
+          content: '{"fill-color": "red"}',
+        }),
+        true
+      );
+      assert.equal(
+        isProjectLayerStyleWrapper({
+          content: "<StyledLayerDescriptor></StyledLayerDescriptor>",
+          format: "sld",
+        }),
+        true
+      );
+    });
+
+    it("returns false for runtime OpenLayers Flat Style rules dictionaries or arrays", () => {
+      assert.equal(
+        isProjectLayerStyleWrapper({
+          "fill-color": "#ff0000",
+          "stroke-width": 2,
+        }),
+        false
+      );
+      assert.equal(
+        isProjectLayerStyleWrapper([
+          {
+            filter: ["==", ["geometry-type"], "Polygon"],
+            style: { "fill-color": "blue" },
+          },
+        ]),
+        false
+      );
+    });
+
+    it("returns false for primitives, null, undefined, or empty objects", () => {
+      assert.equal(isProjectLayerStyleWrapper(null), false);
+      assert.equal(isProjectLayerStyleWrapper(undefined), false);
+      assert.equal(isProjectLayerStyleWrapper(""), false);
+      assert.equal(isProjectLayerStyleWrapper("#some-href-string"), false);
+      assert.equal(isProjectLayerStyleWrapper(12345), false);
+      assert.equal(isProjectLayerStyleWrapper(true), false);
+      assert.equal(isProjectLayerStyleWrapper({}), false);
+      assert.equal(isProjectLayerStyleWrapper({ format: "openlayers" }), false);
+      assert.equal(isProjectLayerStyleWrapper({ otherProp: "value" }), false);
     });
   });
 });

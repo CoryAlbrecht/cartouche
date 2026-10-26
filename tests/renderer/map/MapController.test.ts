@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -953,6 +953,28 @@ describe('extractStyleAttributes', () => {
     assert.ok(extracted.has('featureclass'));
     assert.ok(extracted.has('boundary_width'));
     assert.ok(extracted.has('status'));
+  });
+
+  it('extracts attribute names from ProjectLayerStyleItem container with content JSON', () => {
+    const wrapper = {
+      content: JSON.stringify({
+        'stroke-color': ['get', 'road_color'],
+        'stroke-width': ['get', 'road_lanes'],
+      }),
+      format: 'openlayers' as const,
+    };
+    const extracted = extractStyleAttributes(wrapper);
+    assert.equal(extracted.size, 2);
+    assert.ok(extracted.has('road_color'));
+    assert.ok(extracted.has('road_lanes'));
+  });
+
+  it('returns empty Set for ProjectLayerStyleItem with href reference or invalid JSON', () => {
+    const hrefWrapper = { href: '#external-style', format: 'openlayers' as const };
+    assert.equal(extractStyleAttributes(hrefWrapper).size, 0);
+
+    const invalidWrapper = { content: 'not valid json', format: 'openlayers' as const };
+    assert.equal(extractStyleAttributes(invalidWrapper).size, 0);
   });
 });
 
