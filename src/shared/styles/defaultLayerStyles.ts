@@ -13,7 +13,7 @@
  * @see {@link defaultLayerStyles}
  */
 
-import { getRandomCssColors } from '../colors/cssColors';
+import { getRandomCssColors } from "../colors/cssColors";
 
 /**
  * @typedef {Object} OlFlatStyleRule
@@ -37,38 +37,39 @@ export interface OlFlatStyleRule {
 export function createDefaultVectorLayerStyle(
   colors?: [string, string, string]
 ): OlFlatStyleRule[] {
-  const [polygonColor, lineColor, pointColor] = colors || (getRandomCssColors(3) as [string, string, string]);
+  const [polygonColor, lineColor, pointColor] =
+    colors || (getRandomCssColors(3) as [string, string, string]);
 
   return [
     // 1. Polygons
     {
-      filter: ['==', ['geometry-type'], 'Polygon'],
+      filter: ["==", ["geometry-type"], "Polygon"],
       style: {
-        'fill-color': polygonColor,
-        'stroke-color': '#000000',
-        'stroke-width': 2
-      }
+        "fill-color": polygonColor,
+        "stroke-color": "#000000",
+        "stroke-width": 1,
+      },
     },
     // 2. Lines
     {
-      filter: ['==', ['geometry-type'], 'LineString'],
+      filter: ["==", ["geometry-type"], "LineString"],
       style: {
-        'stroke-color': lineColor,
-        'stroke-width': 4,
-        'stroke-line-cap': 'round',
-        'stroke-line-join': 'round'
-      }
+        "stroke-color": lineColor,
+        "stroke-width": 1,
+        "stroke-line-cap": "round",
+        "stroke-line-join": "round",
+      },
     },
     // 3. Points
     {
-      filter: ['==', ['geometry-type'], 'Point'],
+      filter: ["==", ["geometry-type"], "Point"],
       style: {
-        'circle-radius': 6,
-        'circle-fill-color': pointColor,
-        'circle-stroke-color': '#000000',
-        'circle-stroke-width': 1
-      }
-    }
+        "circle-radius": 6,
+        "circle-fill-color": pointColor,
+        "circle-stroke-color": "#000000",
+        "circle-stroke-width": 1,
+      },
+    },
   ];
 }
 
@@ -151,7 +152,7 @@ export function getDefaultLayerStyle(
 export function resolveLayerStyle(
   style: unknown,
   sharedStyles?: Array<{ id: string; content: string; format?: string }>,
-  fallbackGeometryKind: string = 'Unknown'
+  fallbackGeometryKind: string = "Unknown"
 ): Record<string, any> | Array<Record<string, any>> {
   if (!style) {
     return getDefaultLayerStyle(fallbackGeometryKind);
@@ -166,12 +167,12 @@ export function resolveLayerStyle(
   }
 
   // 2. If style is a JSON string
-  if (typeof style === 'string') {
+  if (typeof style === "string") {
     const trimmed = style.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
+        if (parsed && (typeof parsed === "object" || Array.isArray(parsed))) {
           return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
         }
       } catch {
@@ -182,19 +183,26 @@ export function resolveLayerStyle(
   }
 
   // 3. If style is an object
-  if (typeof style === 'object' && style !== null) {
+  if (typeof style === "object" && style !== null) {
     const obj = style as Record<string, any>;
 
     // 3a. Check for 'href' reference to shared style
-    if ('href' in obj && typeof obj.href === 'string') {
-      const targetId = obj.href.replace(/^#/, '');
+    if ("href" in obj && typeof obj.href === "string") {
+      const targetId = obj.href.replace(/^#/, "");
       if (sharedStyles && sharedStyles.length > 0) {
         const matched = sharedStyles.find((s) => s.id === targetId);
         if (matched && matched.content) {
           try {
             const parsed = JSON.parse(matched.content);
-            if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
-              return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
+            if (
+              parsed
+              && (typeof parsed === "object" || Array.isArray(parsed))
+            ) {
+              return resolveLayerStyle(
+                parsed,
+                sharedStyles,
+                fallbackGeometryKind
+              );
             }
           } catch {
             // Fall through to fallback
@@ -205,10 +213,10 @@ export function resolveLayerStyle(
     }
 
     // 3b. Check for 'content' wrapper property
-    if ('content' in obj && typeof obj.content === 'string') {
+    if ("content" in obj && typeof obj.content === "string") {
       try {
         const parsed = JSON.parse(obj.content);
-        if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
+        if (parsed && (typeof parsed === "object" || Array.isArray(parsed))) {
           return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
         }
       } catch {
@@ -219,14 +227,15 @@ export function resolveLayerStyle(
 
     // 3c. If it's a Flat Style rule object or dictionary of flat styles (has style keys or filter)
     const keys = Object.keys(obj);
-    const hasSymbolizerProps = keys.some((k) =>
-      k.includes('fill') ||
-      k.includes('stroke') ||
-      k.includes('circle') ||
-      k.includes('icon') ||
-      k.includes('text') ||
-      k === 'filter' ||
-      k === 'style'
+    const hasSymbolizerProps = keys.some(
+      (k) =>
+        k.includes("fill")
+        || k.includes("stroke")
+        || k.includes("circle")
+        || k.includes("icon")
+        || k.includes("text")
+        || k === "filter"
+        || k === "style"
     );
 
     if (hasSymbolizerProps) {
@@ -236,4 +245,3 @@ export function resolveLayerStyle(
 
   return getDefaultLayerStyle(fallbackGeometryKind);
 }
-
