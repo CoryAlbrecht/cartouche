@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -31,7 +31,7 @@ export { mapGdalGeometryKind };
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.
@@ -113,6 +113,9 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
 
   const extent = metadata.extent;
   const featureCount = metadata.featureCount;
+
+  newLayer.extent = extent;
+  newLayer.featureCount = featureCount;
 
   const layerDescriptor: LayerDescriptor = {
     id: newLayer.id,

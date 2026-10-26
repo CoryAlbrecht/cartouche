@@ -430,7 +430,7 @@ describe("Project Lifecycle Signals & Actions", () => {
 
       if (projLayers.length > 0) {
         for (const l of projLayers) {
-          if (!styles[l.id] || !activeId || !hasProj || tree.length === 0) {
+          if (!styles[l.id] || activeId !== null || !hasProj || tree.length === 0) {
             seenWithIncompleteState++;
           }
         }

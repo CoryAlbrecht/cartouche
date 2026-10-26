@@ -4,12 +4,13 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-23
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
  * @see {@link ModalDialog}
  * @see docs/adr/0010-layer-tree-horizontal-scroll-and-nodeline-layout.md (ADR 0010)
+ * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
  */
 
 import React, { useState, useRef, useCallback } from "react";
@@ -38,6 +39,7 @@ import {
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
 import {
   projectTreeSignal,
+  projectLayersSignal,
   hasProjectSignal,
   projectNameSignal,
   projectVisibleSignal,
@@ -276,6 +278,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             selectionAnchorRef.current = nextNode.id;
             if (!('children' in nextNode)) {
               setActiveLayer(nextNode.id);
+            } else {
+              setActiveLayer(null);
             }
           }
           break;
@@ -289,6 +293,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             selectionAnchorRef.current = prevNode.id;
             if (!('children' in prevNode)) {
               setActiveLayer(prevNode.id);
+            } else {
+              setActiveLayer(null);
             }
           }
           break;
@@ -778,6 +784,9 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const isDimmed = !projectVisible || !ancestorVisible || layer.visible === false;
     const isDropTarget = dragOverState?.targetId === layer.id;
     const isEditing = Boolean(layer.id && editingNodeId === layer.id);
+    const isVector = layer.type === 'vector' || (layer.geometryKind && layer.geometryKind !== 'Raster');
+    const layerDesc = layer.id ? projectLayersSignal.value.find((l) => l.id === layer.id) : undefined;
+    const resolvedFeatureCount = layer.featureCount ?? layerDesc?.featureCount;
 
     return (
       <React.Fragment key={layer.id}>
@@ -821,35 +830,54 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             />
           </span>
 
-          {isEditing ? (
-            <InlineRenameInput
-              initialValue={resolvedName}
-              commitRef={commitInlineEditRef}
-              inputRef={inlineInputRef}
-              onSave={(val) => {
-                renameNode(layer.id, val);
-                setEditingNodeId(null);
-              }}
-              onCancel={() => setEditingNodeId(null)}
-            />
-          ) : (
-            <span
-              className='tree-node-title'
-              title={resolvedName}
-              onClick={(e) => {
-                if (isSelected) {
-                  e.stopPropagation();
-                }
-              }}
-              onDoubleClick={(e) => {
+          <span
+            className='tree-node-title'
+            title={resolvedName}
+            onClick={(e) => {
+              if (layer.id) {
+                setActiveLayer(layer.id);
+              }
+              if (isSelected) {
                 e.stopPropagation();
-                if (layer.id) {
-                  setEditingNodeId(layer.id);
-                }
-              }}>
-              {resolvedName}
-            </span>
-          )}
+              }
+            }}
+            onDoubleClick={(e) => {
+              if (layer.id) {
+                setActiveLayer(layer.id);
+              }
+              const target = e.target as HTMLElement | null;
+              if (target && typeof target.className === 'string' && target.className.includes('tree-node-count')) {
+                return;
+              }
+              e.stopPropagation();
+              if (layer.id && !isEditing) {
+                setEditingNodeId(layer.id);
+              }
+            }}>
+            {isEditing ? (
+              <InlineRenameInput
+                initialValue={resolvedName}
+                commitRef={commitInlineEditRef}
+                inputRef={inlineInputRef}
+                onSave={(val) => {
+                  renameNode(layer.id, val);
+                  setEditingNodeId(null);
+                }}
+                onCancel={() => setEditingNodeId(null)}
+              />
+            ) : (
+              <span className='tree-node-name'>
+                {resolvedName}
+              </span>
+            )}
+            {isVector && (
+              <span className='tree-node-count'>
+                {resolvedFeatureCount !== undefined && resolvedFeatureCount >= 0
+                  ? ` (${resolvedFeatureCount.toLocaleString()})`
+                  : ' (...)'}
+              </span>
+            )}
+          </span>
         </div>
         {isDropTarget && dragOverState?.position === 'after' && (
           renderDropMarker(dragOverState.indentLevel)
@@ -916,32 +944,39 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             />
           </span>
 
-          {isEditing ? (
-            <InlineRenameInput
-              initialValue={group.name}
-              commitRef={commitInlineEditRef}
-              inputRef={inlineInputRef}
-              onSave={(val) => {
-                renameNode(groupId, val);
-                setEditingNodeId(null);
-              }}
-              onCancel={() => setEditingNodeId(null)}
-            />
-          ) : (
-            <span
-              className='tree-node-title'
-              onClick={(e) => {
-                if (isSelected) {
-                  e.stopPropagation();
-                }
-              }}
-              onDoubleClick={(e) => {
+          <span
+            className='tree-node-title'
+            title={group.name}
+            onClick={(e) => {
+              setActiveLayer(null);
+              if (isSelected) {
                 e.stopPropagation();
+              }
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setActiveLayer(null);
+              if (groupId && !isEditing) {
                 setEditingNodeId(groupId);
-              }}>
-              {group.name}
-            </span>
-          )}
+              }
+            }}>
+            {isEditing ? (
+              <InlineRenameInput
+                initialValue={group.name}
+                commitRef={commitInlineEditRef}
+                inputRef={inlineInputRef}
+                onSave={(val) => {
+                  renameNode(groupId, val);
+                  setEditingNodeId(null);
+                }}
+                onCancel={() => setEditingNodeId(null)}
+              />
+            ) : (
+              <span className='tree-node-name'>
+                {group.name}
+              </span>
+            )}
+          </span>
         </div>
 
         {isDropTarget && dragOverState?.position === 'into' && (
@@ -1099,32 +1134,39 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                     style={TREE_NODE_ICON_STYLE}
                   />
                 </span>
-                {editingNodeId === 'project' ? (
-                  <InlineRenameInput
-                    initialValue={projectName}
-                    commitRef={commitInlineEditRef}
-                    inputRef={inlineInputRef}
-                    onSave={(val) => {
-                      renameNode('project', val);
-                      setEditingNodeId(null);
-                    }}
-                    onCancel={() => setEditingNodeId(null)}
-                  />
-                ) : (
-                  <span
-                    className='tree-node-title project-title'
-                    onClick={(e) => {
-                      if (selectedNodeIds.includes('project')) {
-                        e.stopPropagation();
-                      }
-                    }}
-                    onDoubleClick={(e) => {
+                <span
+                  className='tree-node-title project-title'
+                  title={projectName}
+                  onClick={(e) => {
+                    setActiveLayer(null);
+                    if (selectedNodeIds.includes('project')) {
                       e.stopPropagation();
+                    }
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setActiveLayer(null);
+                    if (editingNodeId !== 'project') {
                       setEditingNodeId('project');
-                    }}>
-                    {projectName}
-                  </span>
-                )}
+                    }
+                  }}>
+                  {editingNodeId === 'project' ? (
+                    <InlineRenameInput
+                      initialValue={projectName}
+                      commitRef={commitInlineEditRef}
+                      inputRef={inlineInputRef}
+                      onSave={(val) => {
+                        renameNode('project', val);
+                        setEditingNodeId(null);
+                      }}
+                      onCancel={() => setEditingNodeId(null)}
+                    />
+                  ) : (
+                    <span className='tree-node-name'>
+                      {projectName}
+                    </span>
+                  )}
+                </span>
               </div>
 
               {dragOverState?.targetId === 'root' && dragOverState?.position === 'into' && (

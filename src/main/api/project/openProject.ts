@@ -241,6 +241,8 @@ export default async function openProject(
     }
 
     ensureVectorLayerStyle(layer);
+    layer.extent = extent;
+    layer.featureCount = featureCount;
 
     layersMap.set(layer.id, { layer, extent, featureCount });
   }

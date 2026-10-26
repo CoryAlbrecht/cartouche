@@ -4,7 +4,7 @@
  * @description Integration tests for vector layer ingestion via GeospatialService, LayerDescriptor extraction, and IPC broadcasting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 
@@ -98,6 +98,10 @@ describe('addLayer API & Ingestion Pipeline', () => {
 
     const treeEvents = sentEvents.filter((e) => e.channel === 'project:layers-tree-updated');
     assert.ok(treeEvents.length >= 1, 'project:layers-tree-updated must be broadcast');
+    const treeLayer = treeEvents[treeEvents.length - 1].payload.find((node: any) => node.id === layer.id);
+    assert.ok(treeLayer, 'Layer must be in broadcast tree');
+    assert.equal(treeLayer.featureCount, 1353, 'Broadcast tree layer must include featureCount');
+    assert.ok(Array.isArray(treeLayer.extent), 'Broadcast tree layer must include extent');
 
     // Verify resource disposal
     layer[Symbol.dispose]();

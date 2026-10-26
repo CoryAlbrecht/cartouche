@@ -4,7 +4,7 @@
  * @description Central IPC broadcast dispatcher for transmitting serialized Cartouche project state updates to active Renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-21
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
@@ -28,7 +28,7 @@ import { logging } from '../../shared/logging';
  * @description Recursively serializes a LayerTreeNode instance into a clean IPC-safe project item DTO.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {LayerTreeNode} node - Layer or group node to serialize.
  * @returns {ProjectLayerItem | ProjectGroupItem} Serialized layer or group DTO.
@@ -60,7 +60,9 @@ export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | 
     geometryKind: layer.geometryKind,
     style: layer.style,
     crs: layer.crs,
-    customProperties: layer.customProperties
+    customProperties: layer.customProperties,
+    extent: layer.extent,
+    featureCount: layer.featureCount
   };
 }
 
@@ -68,7 +70,7 @@ export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | 
  * @description Serializes the entire ProjectStore layer hierarchy into an array of project items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @returns {Array<ProjectLayerItem | ProjectGroupItem>} Serialized layer tree items.
  */

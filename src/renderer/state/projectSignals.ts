@@ -192,7 +192,7 @@ export const activeLayerIdSignal = signal<string | null>(null);
  * @description Reactive signal holding the identifier of the layer, group, or project root node currently in inline edit mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-12
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @type {Signal<string | null>}
  */
@@ -295,7 +295,7 @@ function extractSelectedIds(items: Array<ProjectLayerItem | ProjectGroupItem>): 
  * @description Reactive signal indicating whether the project root row is selected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-12
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
@@ -306,7 +306,7 @@ export const isProjectSelectedSignal = signal<boolean>(false);
  * @description Computed signal deriving array of all currently selected node identifiers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @type {ReadonlySignal<string[]>}
  */
@@ -409,7 +409,7 @@ export function toggleGroupExpanded(groupId: string): void {
  * @description Requests inline editing for the currently selected node if exactly one node (or the project root) is selected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-12
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -424,7 +424,7 @@ export function requestRenameSelectedNode(): void {
  * @description Renames a layer, group, or project document root locally and dispatches update over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {string} nodeId - Target node identifier or 'project' for root document.
  * @param {string} newName - New name string.
@@ -481,7 +481,7 @@ export function renameNode(nodeId: string, newName: string): void {
  * @description Updates the selected node IDs across the local tree and sends IPC update to Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-12
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {string[]} selectedNodeIds - Node identifiers to select.
  * @returns {void}
@@ -500,22 +500,6 @@ export function setNodeSelection(selectedNodeIds: string[]): void {
     });
   }
   projectTreeSignal.value = updateSelection(projectTreeSignal.value);
-
-  // Synchronize activeLayerIdSignal with current selection
-  if (!activeLayerIdSignal.value || !selectedSet.has(activeLayerIdSignal.value)) {
-    const findFirstSelectedLayer = (items: Array<ProjectLayerItem | ProjectGroupItem>): string | null => {
-      for (const item of items) {
-        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
-          const found = findFirstSelectedLayer((item as ProjectGroupItem).children);
-          if (found) return found;
-        } else if (item.id && selectedSet.has(item.id)) {
-          return item.id;
-        }
-      }
-      return null;
-    };
-    activeLayerIdSignal.value = findFirstSelectedLayer(projectTreeSignal.value);
-  }
 
   if (typeof window !== 'undefined' && window.electronAPI?.setNodeSelection) {
     window.electronAPI.setNodeSelection(selectedNodeIds.filter(id => id !== 'project'));
@@ -639,11 +623,77 @@ export function extractLeafLayerIds(
   }
 }
 
+/**
+ * @function findItemInTree
+ * @description Recursively searches for a LayerTreeNode by its identifier.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Tree items to search.
+ * @param {string} id - Target identifier.
+ * @returns {ProjectLayerItem | ProjectGroupItem | null} Matching item, or null if not found.
+ */
+export function findItemInTree(
+  items: Array<ProjectLayerItem | ProjectGroupItem>,
+  id: string
+): ProjectLayerItem | ProjectGroupItem | null {
+  for (const item of items) {
+    if (item.id === id) {
+      return item;
+    }
+    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      const found = findItemInTree((item as ProjectGroupItem).children, id);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  return null;
+}
+
+// Automatically subscribe to projectTreeSignal changes to reset activeLayerIdSignal if active layer is removed
+projectTreeSignal.subscribe((tree) => {
+  if (activeLayerIdSignal.value) {
+    const activeLayerIds = new Set<string>();
+    extractLeafLayerIds(tree, activeLayerIds);
+    if (!activeLayerIds.has(activeLayerIdSignal.value)) {
+      activeLayerIdSignal.value = null;
+    }
+  } else if (tree.length === 0) {
+    activeLayerIdSignal.value = null;
+  }
+});
+
 // Automatically subscribe to IPC tree broadcasts from Electron Main process
 if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpdated) {
   window.electronAPI.onProjectLayersTreeUpdated((tree: Array<ProjectLayerItem | ProjectGroupItem>) => {
-    projectTreeSignal.value = tree;
-    if (tree.length > 0 || hasProjectSignal.value) {
+    // Preserve featureCount from projectLayersSignal or previous tree if incoming item lacks it
+    const enrichTreeWithCounts = (
+      items: Array<ProjectLayerItem | ProjectGroupItem>
+    ): Array<ProjectLayerItem | ProjectGroupItem> => {
+      return items.map((item) => {
+        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+          return {
+            ...item,
+            children: enrichTreeWithCounts((item as ProjectGroupItem).children)
+          };
+        }
+        if (item.id) {
+          const desc = projectLayersSignal.value.find((l) => l.id === item.id);
+          const currentInTree = findItemInTree(projectTreeSignal.value, item.id) as ProjectLayerItem | null;
+          const count = (item as ProjectLayerItem).featureCount ?? desc?.featureCount ?? currentInTree?.featureCount;
+          if (count !== undefined) {
+            return { ...item, featureCount: count };
+          }
+        }
+        return item;
+      });
+    };
+
+    const enrichedTree = enrichTreeWithCounts(tree);
+    projectTreeSignal.value = enrichedTree;
+    if (enrichedTree.length > 0 || hasProjectSignal.value) {
       hasProjectSignal.value = true;
       if (!projectNameSignal.value) {
         projectNameSignal.value = 'Untitled Project';
@@ -652,13 +702,17 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
 
     // Synchronize projectLayersSignal and layerStylesSignal to remove deleted layers
     const activeLayerIds = new Set<string>();
-    extractLeafLayerIds(tree, activeLayerIds);
+    extractLeafLayerIds(enrichedTree, activeLayerIds);
 
     if (projectLayersSignal.value.length > 0) {
       const remainingLayers = projectLayersSignal.value.filter((layer) => activeLayerIds.has(layer.id));
-      if (remainingLayers.length !== projectLayersSignal.value.length) {
-        projectLayersSignal.value = remainingLayers;
-      }
+      projectLayersSignal.value = remainingLayers.map((desc) => {
+        const treeItem = findItemInTree(enrichedTree, desc.id) as ProjectLayerItem | null;
+        if (treeItem && treeItem.featureCount !== undefined && desc.featureCount !== treeItem.featureCount) {
+          return { ...desc, featureCount: treeItem.featureCount };
+        }
+        return desc;
+      });
     }
 
     const currentStyles = { ...layerStylesSignal.value };
@@ -671,14 +725,6 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
     }
     if (stylesPruned) {
       layerStylesSignal.value = currentStyles;
-    }
-
-    // Select first layer if no active layer is currently selected, or if active layer was deleted
-    if ((!activeLayerIdSignal.value || !activeLayerIds.has(activeLayerIdSignal.value)) && tree.length > 0) {
-      const firstLayer = tree.find(item => !('children' in item));
-      activeLayerIdSignal.value = (firstLayer && firstLayer.id) ? firstLayer.id : null;
-    } else if (tree.length === 0) {
-      activeLayerIdSignal.value = null;
     }
   });
 }
@@ -732,9 +778,28 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
       projectLayersSignal.value = [...projectLayersSignal.value, descriptor];
     }
 
-    // 3. Ensure layer appears in projectTreeSignal if not already present
-    if (!projectTreeSignal.value.some((node) => node.id === descriptor.id)) {
+    // 3. Ensure layer appears in projectTreeSignal if not already present, or update its count
+    const existingTreeItem = findItemInTree(projectTreeSignal.value, descriptor.id);
+    if (!existingTreeItem) {
       projectTreeSignal.value = [...projectTreeSignal.value, descriptor];
+    } else {
+      const updateCountInTree = (
+        items: Array<ProjectLayerItem | ProjectGroupItem>
+      ): Array<ProjectLayerItem | ProjectGroupItem> => {
+        return items.map((item) => {
+          if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+            return {
+              ...item,
+              children: updateCountInTree((item as ProjectGroupItem).children)
+            };
+          }
+          if (item.id === descriptor.id) {
+            return { ...item, featureCount: descriptor.featureCount, extent: descriptor.extent };
+          }
+          return item;
+        });
+      };
+      projectTreeSignal.value = updateCountInTree(projectTreeSignal.value);
     }
 
     // Ensure project state is marked open
@@ -743,11 +808,44 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
       projectNameSignal.value = 'Untitled Project';
     }
 
-    // Set active layer if not already set
-    if (!activeLayerIdSignal.value) {
-      activeLayerIdSignal.value = descriptor.id;
-    }
+    // Newly added layer becomes active (in batch additions, the last added layer becomes active)
+    activeLayerIdSignal.value = descriptor.id;
   });
+}
+
+/**
+ * @function updateLayerFeatureCount
+ * @description Updates the spatial feature count for a specific layer across projectLayersSignal and projectTreeSignal.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ * @param {string} layerId - Unique identifier of the layer.
+ * @param {number} featureCount - New total feature count.
+ * @returns {void}
+ */
+export function updateLayerFeatureCount(layerId: string, featureCount: number): void {
+  projectLayersSignal.value = projectLayersSignal.value.map((l) =>
+    l.id === layerId ? { ...l, featureCount } : l
+  );
+
+  const updateTree = (
+    items: Array<ProjectLayerItem | ProjectGroupItem>
+  ): Array<ProjectLayerItem | ProjectGroupItem> => {
+    return items.map((item) => {
+      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+        return {
+          ...item,
+          children: updateTree((item as ProjectGroupItem).children)
+        };
+      }
+      if (item.id === layerId) {
+        return { ...item, featureCount };
+      }
+      return item;
+    });
+  };
+  projectTreeSignal.value = updateTree(projectTreeSignal.value);
 }
 
 // Automatically subscribe to IPC layer added broadcasts from Electron Main process

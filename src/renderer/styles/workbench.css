@@ -711,10 +711,14 @@
   background-color: #f1f5f9;
 }
 
-.tree-node-row.selected,
-.tree-node-row.active {
+.tree-node-row.selected {
   background-color: #e0f2fe;
   color: #0369a1;
+}
+
+.tree-node-row.active .tree-node-title {
+  font-weight: bold;
+  font-style: italic;
 }
 
 .tree-node-row.dimmed .tree-icon-slot,
@@ -821,6 +825,17 @@
   overflow: visible;
   text-overflow: clip;
   font-size: 0.9167rem;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.tree-node-name {
+  white-space: nowrap;
+}
+
+.tree-node-count {
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
 }
 
 .layer-tree-item {

@@ -4,10 +4,11 @@
  * @description Unit and component tests verifying LayerTreeWidget horizontal and vertical viewport scrolling, intrinsic display name sizing without ellipsis shortening, full-width row selection highlights, sticky visible-width drop markers, and inline rename sizing transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0010-layer-tree-horizontal-scroll-and-nodeline-layout.md (ADR 0010)
+ * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
@@ -79,6 +80,18 @@ class MockElement {
         return styleProps[name] || '';
       }
     });
+  }
+
+  get textContent(): string {
+    if (this.childNodes.length > 0) {
+      return this.childNodes.map(c => c.textContent || c.nodeValue || '').join('');
+    }
+    return (this as any)._textContent || '';
+  }
+
+  set textContent(val: string) {
+    (this as any)._textContent = String(val);
+    this.childNodes = [];
   }
 
   /**
@@ -655,17 +668,25 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
     assert.strictEqual(layerRows.length, 2, 'Two layer rows must be rendered');
 
     const layer1Title = findAllNodes(layerRows[0], el => el.className.includes('tree-node-title'))[0];
-    const layer1Text = (layer1Title as any).textContent || layer1Title.childNodes[0]?.nodeValue;
+    const layer1Name = findAllNodes(layer1Title, el => el.className.includes('tree-node-name'))[0];
+    const layer1Text = (layer1Name as any).textContent || layer1Name.childNodes[0]?.nodeValue;
     assert.strictEqual(
       layer1Text,
       'gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered'
     );
+    assert.ok(
+      ((layer1Title as any).textContent || '').includes('gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered (...)')
+    );
 
     const layer2Title = findAllNodes(layerRows[1], el => el.className.includes('tree-node-title'))[0];
-    const layer2Text = (layer2Title as any).textContent || layer2Title.childNodes[0]?.nodeValue;
+    const layer2Name = findAllNodes(layer2Title, el => el.className.includes('tree-node-name'))[0];
+    const layer2Text = (layer2Name as any).textContent || layer2Name.childNodes[0]?.nodeValue;
     assert.strictEqual(
       layer2Text,
       'gis_osm_transport_p_free_1_station_points_and_intermodal_stops'
+    );
+    assert.ok(
+      ((layer2Title as any).textContent || '').includes('gis_osm_transport_p_free_1_station_points_and_intermodal_stops (...)')
     );
   });
 
@@ -685,7 +706,7 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
     assert.ok(layerRow.className.includes('selected'), 'Selected layer must have .selected class');
     assert.ok(layerRow.className.includes('active'), 'Active layer must have .active class');
 
-    // Both .selected and .active in CSS have full row background color #e0f2fe
+    // .selected in CSS has full row background color #e0f2fe, while .active has bold italic title (ADR 0016)
     assert.match(
       cssContent,
       /\.tree-node-row\.selected[^{]*\{[^}]*background-color:\s*#e0f2fe/s,
@@ -693,8 +714,8 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
     );
     assert.match(
       cssContent,
-      /\.tree-node-row\.active[^{]*\{[^}]*background-color:\s*#e0f2fe/s,
-      '.tree-node-row.active must have background-color #e0f2fe'
+      /\.tree-node-row\.active\s+\.tree-node-title[^{]*\{[^}]*font-weight:\s*bold/s,
+      '.tree-node-row.active .tree-node-title must declare font-weight: bold'
     );
   });
 

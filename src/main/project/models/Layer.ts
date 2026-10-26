@@ -9,7 +9,7 @@
  */
 
 import { LayerTreeNode } from './LayerTreeNode';
-import type { GeometryKind, FileTypeDescriptor, ProjectLayerStyleItem, OlLayerStyle } from '@shared/types';
+import type { GeometryKind, FileTypeDescriptor, ProjectLayerStyleItem, OlLayerStyle, BoundingBox } from '@shared/types';
 import { layerSessionRegistry } from '../LayerSessionRegistry';
 import { geospatialService } from '../../worker/GeospatialService';
 
@@ -34,6 +34,8 @@ export class Layer extends LayerTreeNode implements Disposable {
   public style?: string | ProjectLayerStyleItem | OlLayerStyle;
   public crs?: import('@shared/types').ProjectCrs;
   public customProperties?: Record<string, unknown>;
+  public extent?: BoundingBox;
+  public featureCount?: number;
 
   private nativeObject: unknown = null;
 

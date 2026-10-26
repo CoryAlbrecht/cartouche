@@ -4,7 +4,7 @@
  * @description Unit tests for Preact project signals, hierarchical visibility counting, selection manipulation, and context menu hooks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-15
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 
@@ -87,7 +87,7 @@ describe('projectSignals', () => {
     assert.deepEqual(selectedNodeIdsSignal.value, []);
   });
 
-  it('synchronizes activeLayerIdSignal with node selection', () => {
+  it('maintains activeLayerIdSignal independently from node selection', () => {
     const l1: ProjectLayerItem = { id: 'l1', name: 'Layer 1', type: 'vector', source: '' };
     const g1: ProjectGroupItem = { id: 'g1', name: 'Group 1', children: [] };
     projectTreeSignal.value = [l1, g1];
@@ -97,18 +97,14 @@ describe('projectSignals', () => {
     setActiveLayer('l1');
     assert.equal(activeLayerIdSignal.value, 'l1');
 
-    // Selecting group g1 clears active layer
+    // Selecting group g1 changes selection but does not overwrite active layer
     selectSingleNode('g1');
     assert.deepEqual(selectedNodeIdsSignal.value, ['g1']);
-    assert.equal(activeLayerIdSignal.value, null);
-
-    // Re-selecting l1 restores active layer
-    setNodeSelection(['l1']);
     assert.equal(activeLayerIdSignal.value, 'l1');
 
-    // Deselecting all clears active layer
+    // Deselecting all does not overwrite active layer
     clearNodeSelection();
-    assert.equal(activeLayerIdSignal.value, null);
+    assert.equal(activeLayerIdSignal.value, 'l1');
   });
 
   it('registerLayerTreeContextMenuHook adds and removes menu contribution hooks', () => {

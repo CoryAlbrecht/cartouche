@@ -46,6 +46,8 @@ import {
   projectTreeStatsSignal,
   projectLayersSignal,
   layerStylesSignal,
+  activeLayerIdSignal,
+  updateLayerFeatureCount,
   clearNodeSelection
 } from './projectSignals';
 
@@ -60,7 +62,9 @@ export {
   projectTreeSignal,
   projectTreeStatsSignal,
   projectLayersSignal,
-  layerStylesSignal
+  layerStylesSignal,
+  activeLayerIdSignal,
+  updateLayerFeatureCount
 };
 
 /**
@@ -102,11 +106,18 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
  * @description Active canvas interactive tool mode ('pan' | 'select' | 'point' | 'line' | 'polygon').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @type {Signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>}
  */
 export const activeToolSignal = signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>('pan');
+
+// Automatically revert activeToolSignal to 'pan' if active layer is cleared while digitizing
+activeLayerIdSignal.subscribe((activeId) => {
+  if (activeId === null && (activeToolSignal.value === 'point' || activeToolSignal.value === 'line' || activeToolSignal.value === 'polygon')) {
+    activeToolSignal.value = 'pan';
+  }
+});
 
 // Toolbar placement and visibility signals
 /**
@@ -325,17 +336,6 @@ export const layerGroupsSignal = signal<GisLayerGroup[]>(initialGroups);
  * @type {Signal<GisLayer[]>}
  */
 export const layersSignal = signal<GisLayer[]>(initialLayers);
-
-/**
- * @signal activeLayerIdSignal
- * @description Currently selected active GIS layer ID signal.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<string | null>}
- */
-export const activeLayerIdSignal = signal<string | null>(null);
 
 /**
  * @signal selectedFeatureIdsSignal
@@ -907,9 +907,7 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     projectLayersSignal.value = descriptors;
 
     isProjectDirtySignal.value = false;
-    if (layers.length > 0) {
-      activeLayerIdSignal.value = layers[0].id;
-    }
+    activeLayerIdSignal.value = null;
     if (project.viewport) {
       if (project.viewport.extent) {
         viewportExtentSignal.value = [
