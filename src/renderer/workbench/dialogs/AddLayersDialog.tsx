@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -64,7 +64,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -93,6 +93,22 @@ export const AddLayersDialog: React.FC = () => {
   const filePath = filePathSignal.value;
   const vectorFiles = vectorFilesSignal.value;
   const vectorInputText = vectorInputTextSignal.value;
+
+  /**
+   * @description Clears pending vector files, file path input, and draft state before closing Add Layers dialog.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-27
+   * @updated 2026-10-27
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const handleCancel = React.useCallback(() => {
+    vectorFilesSignal.value = [];
+    vectorInputTextSignal.value = "";
+    filePathSignal.value = "";
+    invalidFilesSignal.value = [];
+    closeAddLayersDialog();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -244,6 +260,7 @@ export const AddLayersDialog: React.FC = () => {
       icon={<Icon name="file:layers-plus-outline.svg" size="calc(var(--cartouche-ui-icon-size, 24px) * 0.75)" color="#ffffff" />}
       isOpen={isOpen}
       onClose={closeAddLayersDialog}
+      onCancel={handleCancel}
       defaultWidth={620}
       defaultHeight={460}
       footer={

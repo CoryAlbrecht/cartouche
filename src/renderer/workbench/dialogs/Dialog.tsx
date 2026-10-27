@@ -4,12 +4,13 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
  * @see {@link AddLayersDialog}
  * @see {@link LayerPropertiesDialog}
+ * @see {@link registerActiveDialog}
  */
 
 import React, { useEffect } from "react";
@@ -18,6 +19,7 @@ import Icon from "@renderer/components/common/Icon";
 import { mdiClose } from "@mdi/js";
 import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindowPortal";
 import type { DialogWindowName } from "@shared/types";
+import { registerActiveDialog, focusActiveDialog } from "@renderer/state/dialogSignals";
 
 /**
  * @typedef {Object} DialogProps
@@ -57,10 +59,10 @@ export interface DialogProps {
 
 /**
  * @component Dialog
- * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, and Escape key dismissal.
+ * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, active stack registration, and Escape key dismissal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @param {DialogProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered detached portal dialog window or null if closed.
@@ -84,23 +86,40 @@ export const Dialog: React.FC<DialogProps> = ({
 }) => {
   useSignals();
 
+  const dismissRef = React.useRef<() => void>(() => {});
+  dismissRef.current = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      onClose();
+    }
+  };
+
+  /**
+   * @description Handles keydown events captured in the detached child window, cancelling or closing on Escape.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-27
+   * @updated 2026-10-27
+   * @since 0.1.0-dev
+   * @param {KeyboardEvent} e - DOM keyboard event.
+   * @returns {void}
+   */
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.defaultPrevented) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      dismissRef.current();
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        if (onCancel) {
-          onCancel();
-        } else {
-          onClose();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, onCancel]);
+
+    return registerActiveDialog(name, () => {
+      dismissRef.current();
+    });
+  }, [isOpen, name]);
 
   if (!isOpen) return null;
 
@@ -114,7 +133,9 @@ export const Dialog: React.FC<DialogProps> = ({
       frameName={name}
       title={title}
       features={windowFeatures}
-      onClose={onClose}>
+      onClose={onClose}
+      onKeyDown={handleKeyDown}
+      onFocus={() => focusActiveDialog(name)}>
       <div
         className={`cartouche-dialog-window ${className}`}
         data-dialog-name={name}

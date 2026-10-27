@@ -4,10 +4,11 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link cancelAction}
+ * @see {@link cancelTopDialog}
  */
 
 import {
@@ -32,13 +33,15 @@ import {
 import { openPreferencesDialog } from '../state/preferencesSignals';
 import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
 import { registeredActionsSignal } from '../state/actionSignals';
+import { cancelTopDialog } from '../state/dialogSignals';
 
 /**
  * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
  * Bypasses dispatching when focused on text inputs, active inline rename editors, or modal dialogs.
+ * Prioritizes dismissing open modeless dialogs upon Escape keydown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
@@ -129,6 +132,9 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           requestRenameSelectedNode();
           break;
         case 'cancel_action':
+          if (cancelTopDialog()) {
+            break;
+          }
           cancelAction();
           break;
         default:

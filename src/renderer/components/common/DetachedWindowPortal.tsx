@@ -4,7 +4,7 @@
  * @description React Portal component rendering React child elements into an isolated detached browser window pop-out with React StrictMode DEV double-invoke resilience.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-10-21
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 
@@ -18,22 +18,26 @@ import { logging } from "../../../shared/logging";
  * @property {string} [frameName='preferencesWindow'] - Unique target frame window name identifier.
  * @property {string} [features='width=720,height=520'] - Native window features and initial geometry bounds.
  * @property {() => void} onClose - Callback function invoked when child window is closed.
+ * @property {((e: KeyboardEvent) => void)} [onKeyDown] - Optional callback invoked when keydown events occur on child window context.
+ * @property {(() => void)} [onFocus] - Optional callback invoked when child window receives focus.
  * @property {React.ReactNode} children - React elements rendered inside the detached window portal body.
  */
-interface DetachedWindowPortalProps {
+export interface DetachedWindowPortalProps {
   title?: string;
   frameName?: string;
   features?: string;
   onClose: () => void;
+  onKeyDown?: (e: KeyboardEvent) => void;
+  onFocus?: () => void;
   children: React.ReactNode;
 }
 
 /**
  * @component DetachedWindowPortal
- * @description Renders child components into an isolated secondary window using React Portals, synchronizing parent document CSS stylesheets and handling StrictMode re-mount cancellation.
+ * @description Renders child components into an isolated secondary window using React Portals, capturing child window keyboard and focus events, synchronizing parent document CSS stylesheets, and handling StrictMode re-mount cancellation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @param {DetachedWindowPortalProps} props - Component properties.
  * @returns {React.ReactElement} React Portal mounting container element into child window body.
@@ -43,6 +47,8 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
   frameName = "preferencesWindow",
   features = "width=720,height=520",
   onClose,
+  onKeyDown,
+  onFocus,
   children,
 }) => {
   const [containerEl] = useState(() => document.createElement("div"));
@@ -51,6 +57,10 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
   const isClosingRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const onKeyDownRef = useRef(onKeyDown);
+  onKeyDownRef.current = onKeyDown;
+  const onFocusRef = useRef(onFocus);
+  onFocusRef.current = onFocus;
 
   const initialFeaturesRef = useRef(features);
   const initialFrameNameRef = useRef(frameName);
@@ -145,12 +155,41 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
       }
     };
 
+    /**
+     * @description Routes keydown events captured on the detached child window to the optional onKeyDown callback.
+     * @author Cory Albrecht <cory@albrecht.name>
+     * @date 2026-10-27
+     * @updated 2026-10-27
+     * @since 0.1.0-dev
+     * @param {KeyboardEvent} e - Native DOM keyboard event.
+     * @returns {void}
+     */
+    const handleChildKeyDown = (e: KeyboardEvent) => {
+      onKeyDownRef.current?.(e);
+    };
+
+    /**
+     * @description Notifies consumer when the detached child window receives focus.
+     * @author Cory Albrecht <cory@albrecht.name>
+     * @date 2026-10-27
+     * @updated 2026-10-27
+     * @since 0.1.0-dev
+     * @returns {void}
+     */
+    const handleChildFocus = () => {
+      onFocusRef.current?.();
+    };
+
     childWindow.addEventListener("unload", handleUnload);
+    childWindow.addEventListener("keydown", handleChildKeyDown, true);
+    childWindow.addEventListener("focus", handleChildFocus);
 
     return () => {
       observer.disconnect();
       rootObserver.disconnect();
       childWindow?.removeEventListener("unload", handleUnload);
+      childWindow?.removeEventListener("keydown", handleChildKeyDown, true);
+      childWindow?.removeEventListener("focus", handleChildFocus);
 
       // Defer closing window briefly so React StrictMode DEV double-invoke can cancel it if component remains mounted
       closeTimerRef.current = setTimeout(() => {

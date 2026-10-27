@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  */
@@ -15,7 +15,8 @@ import path from 'node:path';
 import createJiti from 'jiti';
 import {
   activeToolSignal,
-  selectedFeatureIdsSignal
+  selectedFeatureIdsSignal,
+  isAddLayersOpenSignal
 } from '../../../src/renderer/state/gisSignals';
 import {
   editingNodeIdSignal,
@@ -23,6 +24,9 @@ import {
   selectedNodeIdsSignal,
   setNodeSelection
 } from '../../../src/renderer/state/projectSignals';
+import { isPreferencesOpenSignal } from '../../../src/renderer/state/preferencesSignals';
+import { activeLayerPropertiesIdSignal } from '../../../src/renderer/state/layerPropertiesSignals';
+import { activeDialogStackSignal } from '../../../src/renderer/state/dialogSignals';
 import { registeredActionsSignal } from '../../../src/renderer/state/actionSignals';
 
 const jiti = createJiti(import.meta.url, {
@@ -103,6 +107,11 @@ describe('Workbench Global Keyboard Listener', () => {
         keyCombination: { key: 'Escape' }
       }
     ];
+
+    isPreferencesOpenSignal.value = false;
+    isAddLayersOpenSignal.value = false;
+    activeLayerPropertiesIdSignal.value = null;
+    activeDialogStackSignal.value = [];
   });
 
   it('dispatches cancel_action when Escape is pressed and no input/modal captures focus', () => {
@@ -169,5 +178,43 @@ describe('Workbench Global Keyboard Listener', () => {
     handleWorkbenchKeyDown(event);
 
     assert.equal(activeToolSignal.value, 'polygon');
+  });
+
+  it('prioritizes dismissing PreferencesDialog when open without clearing GIS state', () => {
+    activeToolSignal.value = 'polygon';
+    setNodeSelection(['layer-roads']);
+    isPreferencesOpenSignal.value = true;
+
+    const event = createMockKeyEvent({ key: 'Escape' });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(isPreferencesOpenSignal.value, false, 'PreferencesDialog must be dismissed');
+    assert.equal(activeToolSignal.value, 'polygon', 'Active tool must NOT be reverted to pan');
+    assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads'], 'Node selection must NOT be cleared');
+  });
+
+  it('prioritizes closing AddLayersDialog when open without clearing GIS state', () => {
+    activeToolSignal.value = 'line';
+    isAddLayersOpenSignal.value = true;
+
+    const event = createMockKeyEvent({ key: 'Escape' });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(isAddLayersOpenSignal.value, false, 'AddLayersDialog must be closed');
+    assert.equal(activeToolSignal.value, 'line', 'Active tool must NOT be reverted');
+  });
+
+  it('prioritizes cancelling LayerPropertiesDialog when open without clearing GIS state', () => {
+    activeToolSignal.value = 'point';
+    activeLayerPropertiesIdSignal.value = 'layer-roads';
+
+    const event = createMockKeyEvent({ key: 'Escape' });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(activeLayerPropertiesIdSignal.value, null, 'LayerPropertiesDialog must be closed');
+    assert.equal(activeToolSignal.value, 'point', 'Active tool must NOT be reverted');
   });
 });
