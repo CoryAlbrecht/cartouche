@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-21
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -70,11 +70,23 @@ export const prefsUiBaseFontSize = signal<number | undefined>(undefined);
 export const prefsUiIconSize = signal<number | undefined>(undefined);
 
 /**
+ * @signal prefsGeneralMapViewportZoomAmount
+ * @description Signal holding map viewport zoom amount step factor.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-26
+ * @updated 2026-10-26
+ * @since 0.1.0-dev
+ * @type {Signal<number | undefined>}
+ */
+export const prefsGeneralMapViewportZoomAmount = signal<number | undefined>(undefined);
+
+/**
  * @description Lookup dictionary mapping preference key strings to exported Preact Signal instances.
  */
 const PREFERENCE_SIGNALS_MAP: Record<string, Signal<any>> = {
   'ui.basefont.size': prefsUiBaseFontSize,
-  'ui.icon.size': prefsUiIconSize
+  'ui.icon.size': prefsUiIconSize,
+  'general.mapViewport.zoomAmount': prefsGeneralMapViewportZoomAmount
 };
 
 /**
@@ -131,7 +143,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
  * @description Saves a single preference value via IPC and updates preferencesMapSignal reactively.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-21
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @param {string} name - Preference key identifier.
  * @param {any} value - New preference value to set.

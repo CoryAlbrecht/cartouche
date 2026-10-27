@@ -76,6 +76,8 @@
     <string name="prefs_general_paths_absolute_descr">When true save all external pathnames as absolute paths. Otherwise save as relative to the project file location.</string>
     <string name="prefs_general_project_defaults_author">Default Project Author</string>
     <string name="prefs_general_project_defaults_author_descr">The "author" field in project metadata is set to this for new projects.</string>
+    <string name="prefs_general_mapViewport_zoomAmount">Map Zoom Step Amount</string>
+    <string name="prefs_general_mapViewport_zoomAmount_descr">Factor used to scale map resolution during zoom-in and zoom-out operations.</string>
     <string name="prefs_ui_basefont_size">Base Font Size</string>
     <string name="prefs_ui_basefont_size_descr">Default workbench font size across panels and controls</string>
     <string name="prefs_ui_icon_size">Toolbar Icon Size</string>

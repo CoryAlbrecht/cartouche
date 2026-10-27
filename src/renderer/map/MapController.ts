@@ -38,6 +38,7 @@ import {
   projectTreeSignal,
   projectVisibleSignal,
 } from '../state/projectSignals';
+import { preferencesMapSignal } from '../state/preferencesSignals';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 import {
   WKB_PACKET_MAGIC,
@@ -828,27 +829,69 @@ export class MapController {
   }
 
   /**
-   * @description Increases view zoom level by 1 step.
+   * @description Retrieves the configured map zoom amount step factor from preferences.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-26
+   * @updated 2026-10-26
+   * @since 0.1.0-dev
+   * @returns {number} Zoom step factor (defaults to 1.0 if not configured or non-positive).
+   */
+  public getZoomAmount(): number {
+    const prefVal = preferencesMapSignal.value['general.mapViewport.zoomAmount']?.value;
+    if (typeof prefVal === 'number' && Number.isFinite(prefVal) && prefVal > 0) {
+      return prefVal;
+    }
+    return 1.0;
+  }
+
+  /**
+   * @description Steps map view resolution closer by the configured zoom amount preference.
+   * Steps view resolution by dividing by 2^zoomAmount.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-26
    * @since 0.1.0-dev
    * @returns {void}
    */
   public zoomIn(): void {
-    this.view.animate({ zoom: (this.view.getZoom() || 3) + 1, duration: 200 });
+    const zoomAmount = this.getZoomAmount();
+    const currentResolution = this.view.getResolution();
+    if (typeof currentResolution === 'number' && Number.isFinite(currentResolution)) {
+      this.view.animate({
+        resolution: currentResolution / Math.pow(2, zoomAmount),
+        duration: 200,
+      });
+    } else {
+      this.view.animate({
+        zoom: (this.view.getZoom() || 3) + zoomAmount,
+        duration: 200,
+      });
+    }
   }
 
   /**
-   * @description Decreases view zoom level by 1 step.
+   * @description Steps map view resolution farther by the configured zoom amount preference.
+   * Steps view resolution by multiplying by 2^zoomAmount.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-26
    * @since 0.1.0-dev
    * @returns {void}
    */
   public zoomOut(): void {
-    this.view.animate({ zoom: (this.view.getZoom() || 3) - 1, duration: 200 });
+    const zoomAmount = this.getZoomAmount();
+    const currentResolution = this.view.getResolution();
+    if (typeof currentResolution === 'number' && Number.isFinite(currentResolution)) {
+      this.view.animate({
+        resolution: currentResolution * Math.pow(2, zoomAmount),
+        duration: 200,
+      });
+    } else {
+      this.view.animate({
+        zoom: (this.view.getZoom() || 3) - zoomAmount,
+        duration: 200,
+      });
+    }
   }
 
   /**

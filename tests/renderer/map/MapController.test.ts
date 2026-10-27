@@ -16,6 +16,7 @@ import {
   layerStylesSignal,
   currentProjectSignal,
 } from '../../../src/renderer/state/projectSignals';
+import { preferencesMapSignal } from '../../../src/renderer/state/preferencesSignals';
 import {
   MapController,
   extractStyleAttributes,
@@ -889,6 +890,86 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.equal(newEntry.descriptor.id, 'layer-new-id', 'Descriptor ID must be updated');
 
     controller.dispose();
+  });
+
+  it('steps view resolution using default zoomAmount (1.0) on zoomIn and zoomOut', () => {
+    preferencesMapSignal.value = {};
+    const view = controller.getMap().getView();
+    view.setResolution(1000);
+    const initialRes = view.getResolution()!;
+    assert.equal(initialRes, 1000);
+
+    let animatedOptions: any = null;
+    view.animate = (options: any) => {
+      animatedOptions = options;
+    };
+
+    controller.zoomIn();
+    assert.ok(animatedOptions);
+    assert.equal(animatedOptions.resolution, initialRes / 2);
+
+    controller.zoomOut();
+    assert.ok(animatedOptions);
+    assert.equal(animatedOptions.resolution, initialRes * 2);
+  });
+
+  it('steps view resolution using configured general.mapViewport.zoomAmount preference', () => {
+    preferencesMapSignal.value = {
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 2.0,
+      } as any,
+    };
+
+    const view = controller.getMap().getView();
+    view.setResolution(1000);
+    const initialRes = view.getResolution()!;
+
+    let animatedOptions: any = null;
+    view.animate = (options: any) => {
+      animatedOptions = options;
+    };
+
+    controller.zoomIn();
+    assert.ok(animatedOptions);
+    // 2^2.0 = 4, so 1000 / 4 = 250
+    assert.equal(animatedOptions.resolution, initialRes / 4);
+
+    controller.zoomOut();
+    assert.ok(animatedOptions);
+    // 1000 * 4 = 4000
+    assert.equal(animatedOptions.resolution, initialRes * 4);
+
+    // Clean up
+    preferencesMapSignal.value = {};
+  });
+
+  it('falls back to 1.0 when zoomAmount preference is negative, zero, or non-number', () => {
+    preferencesMapSignal.value = {
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: -2.0,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.0);
+
+    preferencesMapSignal.value = {
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 0,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.0);
+
+    preferencesMapSignal.value = {
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 'invalid' as any,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.0);
+
+    preferencesMapSignal.value = {};
   });
 });
 

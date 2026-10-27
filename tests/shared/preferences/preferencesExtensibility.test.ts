@@ -4,7 +4,7 @@
  * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-22
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -122,6 +122,21 @@ describe('Extensible Preferences Subsystem Contracts', () => {
     assert.equal(warnPref.group, 'logging_colours');
     assert.equal(warnPref.groupOrder, 2);
     assert.equal(warnPref.order, 3);
+  });
+
+  it('validates schema, default values, and bounds constraints for general.mapViewport.zoomAmount', () => {
+    const pref = BUILTIN_PREFERENCES['general.mapViewport.zoomAmount'];
+    assert.ok(pref, 'general.mapViewport.zoomAmount must be registered in BUILTIN_PREFERENCES');
+    assert.equal(pref.category, 'general');
+    assert.equal(pref.type, 'number');
+    assert.deepEqual(pref.controls, ['spinner']);
+    assert.equal(pref.defaultValue, 1.0);
+    assert.equal(pref.value, 1.0);
+    assert.equal(pref.minimum, 0.1);
+    assert.equal(pref.maximum, 5.0);
+    assert.equal(pref.step, 0.1);
+    assert.equal(pref.i18nId, 'prefs_general_mapViewport_zoomAmount');
+    assert.equal(pref.order, 40);
   });
 
   it('validates canonical control types across all built-in preferences', () => {

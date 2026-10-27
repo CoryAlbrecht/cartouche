@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-24
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-24
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -210,6 +210,22 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     controls: ['text'],
     i18nId: 'prefs_general_project_defaults_author',
     order: 30
+  },
+  'general.mapViewport.zoomAmount': {
+    displayName: 'Map Zoom Step Amount',
+    value: 1.0,
+    defaultValue: 1.0,
+    minimum: 0.1,
+    maximum: 5.0,
+    step: 0.1,
+    ephemeral: false,
+    hidden: false,
+    category: 'general',
+    description: 'Factor used to scale map resolution during zoom-in and zoom-out operations.',
+    type: 'number',
+    controls: ['spinner'],
+    i18nId: 'prefs_general_mapViewport_zoomAmount',
+    order: 40
   },
   'ui.basefont.size': {
     displayName: 'Base Font Size',

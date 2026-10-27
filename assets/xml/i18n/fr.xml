@@ -50,6 +50,8 @@
     <string name="prefs_general_paths_absolute_descr">Quand activé, enregistre tous les chemins externes sous forme de chemins absolus. Sinon, enregistre relativement à l'emplacement du fichier de projet.</string>
     <string name="prefs_general_project_defaults_author">Auteur de Projet par Défaut</string>
     <string name="prefs_general_project_defaults_author_descr">Le champ « auteur » dans les métadonnées du projet est défini sur cette valeur pour les nouveaux projets.</string>
+    <string name="prefs_general_mapViewport_zoomAmount">Facteur de Zoom de la Carte</string>
+    <string name="prefs_general_mapViewport_zoomAmount_descr">Facteur utilisé pour modifier la résolution de la carte lors des opérations de zoom avant et arrière.</string>
     <string name="prefs_ui_basefont_size">Taille de Police de Base</string>
     <string name="prefs_ui_basefont_size_descr">Taille de police par défaut de l'établi sur l'ensemble des panneaux et des commandes</string>
     <string name="prefs_ui_icon_size">Taille des Icônes de Barre d'Outils</string>
