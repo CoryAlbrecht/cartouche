@@ -21,6 +21,7 @@ import {
   MapController,
   extractStyleAttributes,
 } from '../../../src/renderer/map/MapController';
+import { transformExtent } from 'ol/proj.js';
 import { generateDefaultVectorStyleJson } from '../../../src/shared/styles/defaultLayerStyles';
 import { WKB_PACKET_MAGIC } from '../../../src/shared/types';
 import type { LayerDescriptor } from '../../../src/shared/types';
@@ -970,6 +971,89 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.equal(controller.getZoomAmount(), 1.0);
 
     preferencesMapSignal.value = {};
+  });
+
+  it('fitExtent fits extent width on landscape viewports (W >= H), centers on midpoint, and clips height', () => {
+    const rawExtent: [number, number, number, number] = [-10, 10, 10, 40];
+    const [minX, minY, maxX, maxY] = transformExtent(rawExtent, 'EPSG:4326', 'EPSG:3857');
+    const deltaX = Math.abs(maxX - minX);
+    const deltaY = Math.abs(maxY - minY);
+    const expectedCenterX = (minX + maxX) / 2;
+    const expectedCenterY = (minY + maxY) / 2;
+    const landscapeSize: [number, number] = [1000, 500];
+    const expectedResolution = deltaX / 1000;
+
+    controller.fitExtent(rawExtent, landscapeSize);
+
+    const view = controller.getMap().getView();
+    const center = view.getCenter()!;
+    const res = view.getResolution()!;
+
+    assert.ok(Math.abs(center[0] - expectedCenterX) < 1e-4, 'Center X must match extent midpoint');
+    assert.ok(Math.abs(center[1] - expectedCenterY) < 1e-4, 'Center Y must match extent midpoint');
+    assert.ok(Math.abs(res - expectedResolution) < 1e-4, 'Resolution must equal deltaX / viewportWidth');
+
+    // Visible viewport width matches deltaX exactly
+    const visibleWidth = landscapeSize[0] * res;
+    assert.ok(Math.abs(visibleWidth - deltaX) < 1e-4, 'Visible width must match extent width');
+
+    // Visible viewport height is 500 * res = 0.5 * deltaX, which is less than deltaY (clipped)
+    const visibleHeight = landscapeSize[1] * res;
+    assert.ok(visibleHeight < deltaY, 'Extent height must be clipped when secondary axis exceeds viewport ratio');
+  });
+
+  it('fitExtent fits extent height on portrait viewports (H > W), centers on midpoint, and clips width', () => {
+    const rawExtent: [number, number, number, number] = [-20, 10, 20, 30];
+    const [minX, minY, maxX, maxY] = transformExtent(rawExtent, 'EPSG:4326', 'EPSG:3857');
+    const deltaX = Math.abs(maxX - minX);
+    const deltaY = Math.abs(maxY - minY);
+    const expectedCenterX = (minX + maxX) / 2;
+    const expectedCenterY = (minY + maxY) / 2;
+    const portraitSize: [number, number] = [500, 1000];
+    const expectedResolution = deltaY / 1000;
+
+    controller.fitExtent(rawExtent, portraitSize);
+
+    const view = controller.getMap().getView();
+    const center = view.getCenter()!;
+    const res = view.getResolution()!;
+
+    assert.ok(Math.abs(center[0] - expectedCenterX) < 1e-4, 'Center X must match extent midpoint');
+    assert.ok(Math.abs(center[1] - expectedCenterY) < 1e-4, 'Center Y must match extent midpoint');
+    assert.ok(Math.abs(res - expectedResolution) < 1e-4, 'Resolution must equal deltaY / viewportHeight');
+
+    // Visible viewport height matches deltaY exactly
+    const visibleHeight = portraitSize[1] * res;
+    assert.ok(Math.abs(visibleHeight - deltaY) < 1e-4, 'Visible height must match extent height');
+
+    // Visible viewport width is 500 * res = 0.5 * deltaY, which is less than deltaX (clipped)
+    const visibleWidth = portraitSize[0] * res;
+    assert.ok(visibleWidth < deltaX, 'Extent width must be clipped when secondary axis exceeds viewport ratio');
+  });
+
+  it('fitExtent fits width and centers on midpoint on square viewports (W == H)', () => {
+    const rawExtent: [number, number, number, number] = [-15, 20, 15, 50];
+    const [minX, , maxX] = transformExtent(rawExtent, 'EPSG:4326', 'EPSG:3857');
+    const deltaX = Math.abs(maxX - minX);
+    const squareSize: [number, number] = [800, 800];
+    const expectedResolution = deltaX / 800;
+
+    controller.fitExtent(rawExtent, squareSize);
+
+    const view = controller.getMap().getView();
+    const res = view.getResolution()!;
+    assert.ok(Math.abs(res - expectedResolution) < 1e-4, 'Square viewport must match width resolution deltaX / width');
+  });
+
+  it('setViewport delegates to fitExtent for extent payloads and sets center for point payloads', () => {
+    const rawExtent: [number, number, number, number] = [-10, -5, 10, 5];
+    controller.setViewport({ extent: rawExtent });
+
+    const view = controller.getMap().getView();
+    assert.ok(view.getResolution()! > 0, 'Resolution must be set via fitExtent');
+
+    controller.setViewport({ center: { x: 25, y: 35 }, rotation: 0.15 });
+    assert.equal(view.getRotation(), 0.15, 'Rotation must be applied');
   });
 });
 

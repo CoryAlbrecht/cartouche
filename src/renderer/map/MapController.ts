@@ -899,6 +899,50 @@ export class MapController {
   }
 
   /**
+   * @description Restores viewport camera by fitting a geographic extent according to the map viewport's dominant screen axis.
+   * On landscape viewports (W >= H), matches viewport width to extent width and centers on midpoint (clipping height if necessary).
+   * On portrait viewports (H > W), matches viewport height to extent height and centers on midpoint (clipping width if necessary).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-26
+   * @updated 2026-10-26
+   * @since 0.1.0-dev
+   * @param {BoundingBox} extent - Geographic bounding envelope [minLon, minLat, maxLon, maxLat] in EPSG:4326.
+   * @param {[number, number]} [customSize] - Optional explicit [width, height] dimensions overriding map DOM size.
+   * @returns {void}
+   */
+  public fitExtent(extent: BoundingBox, customSize?: [number, number]): void {
+    if (!extent || extent.length !== 4) return;
+
+    const viewCrs = this.view.getProjection() || 'EPSG:3857';
+    const projected = transformExtent(extent, 'EPSG:4326', viewCrs);
+    const [minX, minY, maxX, maxY] = projected;
+    const deltaX = Math.abs(maxX - minX);
+    const deltaY = Math.abs(maxY - minY);
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const size = customSize ?? this.map.getSize() ?? [this.container.clientWidth || 0, this.container.clientHeight || 0];
+    const width = size[0];
+    const height = size[1];
+
+    if (width > 0 && height > 0) {
+      if (width >= height) {
+        // Landscape or square: dominant axis is width
+        const targetResolution = deltaX / width;
+        this.view.setCenter([centerX, centerY]);
+        this.view.setResolution(targetResolution);
+      } else {
+        // Portrait: dominant axis is height
+        const targetResolution = deltaY / height;
+        this.view.setCenter([centerX, centerY]);
+        this.view.setResolution(targetResolution);
+      }
+    } else {
+      this.view.fit(projected);
+    }
+  }
+
+  /**
    * @description Fits or sets viewport center, extent, and rotation on the OpenLayers view.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
@@ -919,13 +963,7 @@ export class MapController {
       this.view.setRotation(payload.rotation);
     }
     if (payload.extent && payload.extent.length === 4) {
-      const extent3857 = transformExtent(payload.extent, 'EPSG:4326', 'EPSG:3857');
-      const size = this.map.getSize();
-      if (size && size[0] > 0 && size[1] > 0) {
-        this.view.fit(extent3857, { size, padding: [20, 20, 20, 20] });
-      } else {
-        this.view.fit(extent3857);
-      }
+      this.fitExtent(payload.extent);
     } else if (payload.center) {
       this.view.setCenter(fromLonLat([payload.center.x, payload.center.y]));
     }
