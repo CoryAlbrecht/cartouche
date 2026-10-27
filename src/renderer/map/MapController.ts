@@ -17,8 +17,6 @@ import OlMap from 'ol/Map.js';
 import View from 'ol/View.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
-import Graticule from 'ol/layer/Graticule.js';
-import Stroke from 'ol/style/Stroke.js';
 import WKB from 'ol/format/WKB.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { all as allStrategy, bbox as bboxStrategy } from 'ol/loadingstrategy.js';
@@ -190,10 +188,10 @@ export class MapController {
 
   /**
    * @constructor
-   * @description Initializes the isolated OpenLayers map instance, graticule, view, and reactive signal subscriptions.
+   * @description Initializes the isolated OpenLayers map instance, view, and reactive signal subscriptions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-26
    * @since 0.1.0-dev
    * @param {HTMLElement} container - Target unmanaged DOM container element.
    * @param {Object} [options] - Optional map initialization options.
@@ -201,16 +199,6 @@ export class MapController {
    */
   constructor(container: HTMLElement, options?: { view?: View }) {
     this.container = container;
-
-    const graticule = new Graticule({
-      strokeStyle: new Stroke({
-        color: 'rgba(0, 0, 0, 0.2)',
-        width: 1,
-        lineDash: [4, 4],
-      }),
-      showLabels: true,
-      wrapX: true,
-    });
 
     this.view =
       options?.view ??
@@ -222,7 +210,7 @@ export class MapController {
 
     this.map = new OlMap({
       target: container,
-      layers: [graticule],
+      layers: [],
       view: this.view,
       controls: [],
     });

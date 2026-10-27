@@ -1081,30 +1081,6 @@
   padding: 10px;
 }
 
-/* Map Floating Action Buttons */
-.map-action-btn {
-  width: 28px;
-  height: 28px;
-  background-color: rgba(255, 255, 255, 0.95);
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  color: #1f2937;
-  font-size: 1.25rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.15s ease;
-}
-
-.map-action-btn:hover {
-  background-color: #ffffff;
-  border-color: #94a3b8;
-  transform: scale(1.05);
-}
-
 /* Tab Close Button protection */
 .dv-tab .dv-default-tab.dv-tab-close-disabled .dv-default-tab-action {
   opacity: 0.25;

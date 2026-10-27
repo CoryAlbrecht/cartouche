@@ -199,9 +199,14 @@ describe('MapController Isolated Canvas Engine', () => {
     (globalThis as any).window.electronAPI = undefined;
   });
 
-  it('mounts OpenLayers map in unmanaged container with default EPSG:3857 view', () => {
+  it('mounts OpenLayers map in unmanaged container with default EPSG:3857 view and empty layers', () => {
     assert.equal(controller.getContainer(), container);
     assert.ok(controller.getMap(), 'Map instance must be initialized');
+    assert.equal(
+      controller.getMap().getLayers().getLength(),
+      0,
+      'Map must initialize with an empty layers array'
+    );
 
     const view = controller.getView();
     assert.ok(view, 'View instance must be initialized');
