@@ -26,7 +26,6 @@ import { getScale } from './getScale';
 import {
   cursorCoordsSignal,
   viewportExtentSignal,
-  zoomSignal,
   scaleDenominatorSignal,
   mapActionSignal,
   addConsoleLog,
@@ -253,7 +252,6 @@ export class MapController {
             ]
           : undefined,
         center: currentProject.viewport.center,
-        zoom: currentProject.viewport.zoom,
         rotation: currentProject.viewport.rotation,
       });
     }
@@ -285,8 +283,6 @@ export class MapController {
 
     // View resolution change signal updates
     this.view.on('change:resolution', () => {
-      const zoom = this.view.getZoom() || 3;
-      zoomSignal.value = Math.round(zoom * 10) / 10;
       this.updateScaleSignal(false);
     });
 
@@ -791,10 +787,6 @@ export class MapController {
       Math.round(maxLat * 100000) / 100000,
     ];
 
-    const zoom = this.view.getZoom();
-    if (zoom !== undefined && isFinite(zoom)) {
-      zoomSignal.value = Math.round(zoom * 10) / 10;
-    }
     this.updateScaleSignal(true);
   }
 
@@ -907,22 +899,20 @@ export class MapController {
   }
 
   /**
-   * @description Fits or sets viewport center, extent, zoom, and rotation on the OpenLayers view.
+   * @description Fits or sets viewport center, extent, and rotation on the OpenLayers view.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-26
    * @since 0.1.0-dev
    * @param {Object} payload - Viewport configuration parameters.
    * @param {BoundingBox} [payload.extent] - Bounding envelope [minX, minY, maxX, maxY].
    * @param {{ x: number; y: number }} [payload.center] - Center point coordinate.
-   * @param {number} [payload.zoom] - Zoom level.
    * @param {number} [payload.rotation] - Camera rotation.
    * @returns {void}
    */
   public setViewport(payload: {
     extent?: BoundingBox;
     center?: { x: number; y: number };
-    zoom?: number;
     rotation?: number;
   }): void {
     if (payload.rotation !== undefined) {
@@ -936,16 +926,8 @@ export class MapController {
       } else {
         this.view.fit(extent3857);
       }
-      if (payload.zoom !== undefined) {
-        this.view.setZoom(payload.zoom);
-      }
     } else if (payload.center) {
       this.view.setCenter(fromLonLat([payload.center.x, payload.center.y]));
-      if (payload.zoom !== undefined) {
-        this.view.setZoom(payload.zoom);
-      }
-    } else if (payload.zoom !== undefined) {
-      this.view.setZoom(payload.zoom);
     }
   }
 

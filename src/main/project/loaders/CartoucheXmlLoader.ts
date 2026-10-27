@@ -187,7 +187,6 @@ export class CartoucheXmlLoader implements IProjectLoader {
               y: parseFloat(rawVp.center["@_y"]),
             }
           : undefined,
-        zoom: rawVp.zoom !== undefined ? parseFloat(rawVp.zoom) : undefined,
         scale: rawVp.scale !== undefined ? parseFloat(rawVp.scale) : undefined,
         rotation:
           rawVp.rotation !== undefined ? parseFloat(rawVp.rotation) : undefined,
@@ -553,9 +552,6 @@ export class CartoucheXmlLoader implements IProjectLoader {
       }
       if (vp.center) {
         lines.push(`    <center x="${vp.center.x}" y="${vp.center.y}" />`);
-      }
-      if (vp.zoom !== undefined) {
-        lines.push(`    <zoom>${vp.zoom}</zoom>`);
       }
       if (vp.scale !== undefined) {
         lines.push(`    <scale>${vp.scale}</scale>`);

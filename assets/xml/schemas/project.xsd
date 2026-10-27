@@ -94,7 +94,6 @@
     <xs:sequence>
       <xs:element name="extent" type="EnvelopeType" minOccurs="0" />
       <xs:element name="center" type="Point2DType" minOccurs="0" />
-      <xs:element name="zoom" type="xs:double" minOccurs="0" />
       <xs:element name="scale" type="xs:double" minOccurs="0" />
       <xs:element name="rotation" type="xs:double" default="0.0" minOccurs="0" />
     </xs:sequence>

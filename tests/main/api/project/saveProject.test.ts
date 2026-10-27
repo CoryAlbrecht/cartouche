@@ -4,7 +4,7 @@
  * @description Unit tests for Main process project persistence API functions (saveProject, saveAsProject, closeProject).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-23
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 
@@ -262,7 +262,6 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     const viewport = {
       extent: { xmin: -122.5, ymin: 37.7, xmax: -122.3, ymax: 37.9 },
       center: { x: -122.4, y: 37.8 },
-      zoom: 12,
       scale: 25000,
       rotation: 0
     };
@@ -281,7 +280,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
       content.includes('<center x="-122.4" y="37.8" />'),
       'Saved XML must contain formatted <center> element'
     );
-    assert.ok(content.includes('<zoom>12</zoom>'), 'Saved XML must contain <zoom> element');
+    assert.ok(!content.includes('<zoom>'), 'Saved XML must not contain <zoom> element');
     assert.ok(content.includes('<scale>25000</scale>'), 'Saved XML must contain <scale> element');
 
     // Deserialization check via CartoucheXmlLoader
@@ -290,7 +289,6 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.ok(reloaded.viewport, 'Loaded project must contain viewport');
     assert.deepEqual(reloaded.viewport?.extent, { xmin: -122.5, ymin: 37.7, xmax: -122.3, ymax: 37.9 });
     assert.deepEqual(reloaded.viewport?.center, { x: -122.4, y: 37.8 });
-    assert.equal(reloaded.viewport?.zoom, 12);
     assert.equal(reloaded.viewport?.scale, 25000);
   });
 
@@ -303,8 +301,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
         metadata: { title: 'Preserve Viewport Project' },
         viewport: {
           extent: { xmin: 10, ymin: 20, xmax: 30, ymax: 40 },
-          center: { x: 20, y: 30 },
-          zoom: 5
+          center: { x: 20, y: 30 }
         },
         layers: []
       },
@@ -316,7 +313,7 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
 
     const content = fs.readFileSync(tempPath, 'utf-8');
     assert.ok(content.includes('<extent xmin="10" ymin="20" xmax="30" ymax="40" />'));
-    assert.ok(content.includes('<zoom>5</zoom>'));
+    assert.ok(!content.includes('<zoom>'), 'Saved XML must not contain <zoom> element');
   });
 
   it('newProject initializes empty project model in projectStore and saves empty <layers> element', async () => {

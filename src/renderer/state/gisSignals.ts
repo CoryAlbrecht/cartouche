@@ -229,7 +229,6 @@ export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
  * @property {MapActionType} action - Viewport command type.
  * @property {BoundingBox} [extent] - Geographic bounding box for setViewport command.
  * @property {{ x: number; y: number }} [center] - Center point coordinates for setViewport command.
- * @property {number} [zoom] - Zoom level for setViewport command.
  * @property {number} [rotation] - Camera rotation for setViewport command.
  * @property {number} timestamp - Epoch timestamp distinguishing repeated trigger invocations.
  */
@@ -237,7 +236,6 @@ export interface MapActionPayload {
   action: MapActionType;
   extent?: BoundingBox;
   center?: { x: number; y: number };
-  zoom?: number;
   rotation?: number;
   timestamp: number;
 }
@@ -275,17 +273,6 @@ export const cursorCoordsSignal = signal<{ lon: number; lat: number; x: number; 
  * @type {Signal<BoundingBox>}
  */
 export const viewportExtentSignal = signal<BoundingBox>([-180, -90, 180, 90]);
-
-/**
- * @signal zoomSignal
- * @description Active map zoom level numeric signal.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<number>}
- */
-export const zoomSignal = signal<number>(2.5);
 
 /**
  * @signal scaleDenominatorSignal
@@ -917,9 +904,6 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
           project.viewport.extent.ymax
         ];
       }
-      if (project.viewport.zoom !== undefined) {
-        zoomSignal.value = project.viewport.zoom;
-      }
       if (project.viewport.scale !== undefined) {
         scaleDenominatorSignal.value = project.viewport.scale;
       }
@@ -932,7 +916,6 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
           project.viewport.extent.ymax
         ] : undefined,
         center: project.viewport.center,
-        zoom: project.viewport.zoom,
         rotation: project.viewport.rotation,
         timestamp: Date.now()
       };
@@ -1052,7 +1035,6 @@ export async function saveProjectAction(): Promise<boolean> {
         x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
         y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
       },
-      zoom: zoomSignal.value,
       scale: scaleDenominatorSignal.value,
       rotation: 0
     };
@@ -1117,7 +1099,6 @@ export async function saveAsProjectAction(): Promise<boolean> {
         x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
         y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
       },
-      zoom: zoomSignal.value,
       scale: scaleDenominatorSignal.value,
       rotation: 0
     };

@@ -21,7 +21,6 @@ import {
   projectTreeSignal,
   activeLayerIdSignal,
   viewportExtentSignal,
-  zoomSignal,
   scaleDenominatorSignal,
   mapActionSignal,
   createNewProject,
@@ -57,7 +56,6 @@ describe("Project Lifecycle Signals & Actions", () => {
     layerStylesSignal.value = {};
     activeLayerIdSignal.value = null;
     viewportExtentSignal.value = [-180, -90, 180, 90];
-    zoomSignal.value = 2.5;
     scaleDenominatorSignal.value = 50000000;
     mapActionSignal.value = null;
 
@@ -256,7 +254,7 @@ describe("Project Lifecycle Signals & Actions", () => {
     assert.deepEqual(executedActions, ["close_project"]);
   });
 
-  it("saveProjectAction passes structured viewport extent, center, zoom, and scale to electronAPI.saveProject", async () => {
+  it("saveProjectAction passes structured viewport extent, center, and scale to electronAPI.saveProject", async () => {
     loadProjectIntoSignals({
       format: "cartouche-xml",
       filePath: "/path/viewport-test.cproj",
@@ -265,7 +263,6 @@ describe("Project Lifecycle Signals & Actions", () => {
     });
 
     viewportExtentSignal.value = [-122.5, 37.7, -122.3, 37.9];
-    zoomSignal.value = 14;
     scaleDenominatorSignal.value = 15000;
     isProjectDirtySignal.value = true;
 
@@ -283,11 +280,10 @@ describe("Project Lifecycle Signals & Actions", () => {
       ymax: 37.9,
     });
     assert.deepEqual(vp.center, { x: -122.4, y: 37.8 });
-    assert.equal(vp.zoom, 14);
     assert.equal(vp.scale, 15000);
   });
 
-  it("saveAsProjectAction passes structured viewport extent, center, zoom, and scale to electronAPI.saveProject", async () => {
+  it("saveAsProjectAction passes structured viewport extent, center, and scale to electronAPI.saveProject", async () => {
     loadProjectIntoSignals({
       format: "cartouche-xml",
       filePath: "/path/initial.cproj",
@@ -296,7 +292,6 @@ describe("Project Lifecycle Signals & Actions", () => {
     });
 
     viewportExtentSignal.value = [10.5, 45.2, 12.8, 46.9];
-    zoomSignal.value = 7.5;
     scaleDenominatorSignal.value = 250000;
     mockSaveFileResult = "/path/new-destination.cproj";
 
@@ -313,18 +308,16 @@ describe("Project Lifecycle Signals & Actions", () => {
       xmax: 12.8,
       ymax: 46.9,
     });
-    assert.equal(vp.zoom, 7.5);
     assert.equal(vp.scale, 250000);
   });
 
-  it("loadProjectIntoSignals restores viewport extent, zoom, and dispatches setViewport mapActionSignal", () => {
+  it("loadProjectIntoSignals restores viewport extent, scale, and dispatches setViewport mapActionSignal", () => {
     loadProjectIntoSignals({
       format: "cartouche-xml",
       metadata: { title: "Restored Viewport Project" },
       viewport: {
         extent: { xmin: -75.5, ymin: 40.0, xmax: -73.0, ymax: 41.5 },
         center: { x: -74.25, y: 40.75 },
-        zoom: 9,
         scale: 100000,
         rotation: 0.1,
       },
@@ -332,13 +325,11 @@ describe("Project Lifecycle Signals & Actions", () => {
     });
 
     assert.deepEqual(viewportExtentSignal.value, [-75.5, 40.0, -73.0, 41.5]);
-    assert.equal(zoomSignal.value, 9);
     assert.equal(scaleDenominatorSignal.value, 100000);
     assert.ok(mapActionSignal.value);
     assert.equal(mapActionSignal.value?.action, "setViewport");
     assert.deepEqual(mapActionSignal.value?.extent, [-75.5, 40.0, -73.0, 41.5]);
     assert.deepEqual(mapActionSignal.value?.center, { x: -74.25, y: 40.75 });
-    assert.equal(mapActionSignal.value?.zoom, 9);
     assert.equal(mapActionSignal.value?.rotation, 0.1);
   });
 

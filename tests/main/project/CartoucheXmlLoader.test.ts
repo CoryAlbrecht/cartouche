@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-25
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 
@@ -98,7 +98,6 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
       viewport: {
         extent: { xmin: -180, ymin: -90, xmax: 180, ymax: 90 },
         center: { x: 0, y: 0 },
-        zoom: 2,
         scale: 1000000,
         rotation: 0
       },
@@ -195,7 +194,6 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
       viewport: {
         extent: { xmin: -120, ymin: 30, xmax: -80, ymax: 60 },
         center: { x: -100, y: 45 },
-        zoom: 5,
         scale: 250000,
         rotation: 0.25
       },
@@ -262,6 +260,7 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 
     // Verify disk content passes XSD schema
     const rawXml = fs.readFileSync(tempPath, 'utf-8');
+    assert.ok(!rawXml.includes('<zoom>'), 'Serialized XML must not contain <zoom> element');
     const validation = validateXmlAgainstSchema(rawXml);
     assert.equal(validation.valid, true, `Saved XML did not validate: ${validation.error}`);
 
@@ -291,7 +290,7 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(loaded.viewport?.extent?.ymax, 60);
     assert.equal(loaded.viewport?.center?.x, -100);
     assert.equal(loaded.viewport?.center?.y, 45);
-    assert.equal(loaded.viewport?.zoom, 5);
+    assert.equal((loaded.viewport as any)?.zoom, undefined);
     assert.equal(loaded.viewport?.scale, 250000);
     assert.equal(loaded.viewport?.rotation, 0.25);
 
@@ -580,6 +579,35 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, `Schema validation error for empty <styles />: ${validation.error}`);
+  });
+
+  it('ignores legacy <zoom> elements in project XML when deserializing into ProjectModel', async () => {
+    const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://cartouche.org/schema/project" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0">
+  <metadata>
+    <title>Legacy Zoom Project</title>
+  </metadata>
+  <viewport>
+    <extent xmin="-10" ymin="-10" xmax="10" ymax="10" />
+    <center x="0" y="0" />
+    <zoom>4.5</zoom>
+    <scale>50000</scale>
+  </viewport>
+  <layers />
+  <styles />
+</project>`;
+
+    const tempPath = path.join(tempDir, 'legacy-zoom-test.cproj');
+    fs.writeFileSync(tempPath, legacyXml, 'utf-8');
+
+    const loader = new CartoucheXmlLoader();
+    const model = await loader.load(tempPath);
+
+    assert.ok(model.viewport, 'Viewport must be loaded');
+    assert.deepEqual(model.viewport?.extent, { xmin: -10, ymin: -10, xmax: 10, ymax: 10 });
+    assert.deepEqual(model.viewport?.center, { x: 0, y: 0 });
+    assert.equal(model.viewport?.scale, 50000);
+    assert.equal((model.viewport as any)?.zoom, undefined, 'Legacy zoom must be ignored and not present on model');
   });
 });
 

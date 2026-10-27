@@ -4,7 +4,7 @@
  * @description Unit tests verifying atomic layer identifier re-keying across ProjectStore, LayerSessionRegistry, and GeospatialService, with uniqueness and non-empty validation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link rekeyLayer}
  */
@@ -33,7 +33,6 @@ describe('rekeyLayer API & Atomic Re-keying Pipeline', () => {
       },
       viewport: {
         center: { x: 0, y: 0 },
-        zoom: 2,
       },
       layers: []
     };

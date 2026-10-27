@@ -59,18 +59,16 @@ export interface ProjectCrs {
  * @typedef {Object} ProjectViewport
  * @property {{ xmin: number; ymin: number; xmax: number; ymax: number }} [extent] - Initial map bounding envelope.
  * @property {{ x: number; y: number }} [center] - Center point coordinate.
- * @property {number} [zoom] - Initial camera zoom level.
  * @property {number} [scale] - Initial map scale denominator.
  * @property {number} [rotation] - Initial map view rotation in radians or degrees.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  */
 export interface ProjectViewport {
   extent?: { xmin: number; ymin: number; xmax: number; ymax: number };
   center?: { x: number; y: number };
-  zoom?: number;
   scale?: number;
   rotation?: number;
 }
