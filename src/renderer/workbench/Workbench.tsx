@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-23
+ * @updated 2026-10-26
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -44,7 +44,6 @@ import {
   cursorCoordsSignal,
   activeCrsSignal,
   scaleDenominatorSignal,
-  zoomSignal,
   selectedFeaturesCountSignal,
   selectedFeatureIdsSignal,
   hasProjectSignal,
@@ -785,7 +784,6 @@ export const Workbench: React.FC = () => {
   const coords = cursorCoordsSignal.value;
   const crs = activeCrsSignal.value;
   const scale = scaleDenominatorSignal.value;
-  const zoom = zoomSignal.value;
   const selectedCount = selectedFeaturesCountSignal.value;
 
   return (
@@ -1554,12 +1552,6 @@ export const Workbench: React.FC = () => {
 
         <div className='statusbar-item' title='Cartographic Scale'>
           Scale: 1 : {scale.toLocaleString()}
-        </div>
-
-        <div className='statusbar-separator' />
-
-        <div className='statusbar-item' title='Zoom Level'>
-          Zoom: {zoom}x
         </div>
 
         <div className='statusbar-separator' />

@@ -22,6 +22,7 @@ import GeoJSON from 'ol/format/GeoJSON.js';
 import { all as allStrategy, bbox as bboxStrategy } from 'ol/loadingstrategy.js';
 import { fromLonLat, toLonLat, transformExtent } from 'ol/proj.js';
 import Feature from 'ol/Feature.js';
+import { getScale } from './getScale';
 import {
   cursorCoordsSignal,
   viewportExtentSignal,
@@ -185,6 +186,8 @@ export class MapController {
   private inFlightQueries = new Map<string, Promise<Feature[]>>();
   private disposeSignals: Array<() => void> = [];
   private previousLayerCount = 0;
+  private scaleThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastScaleUpdateTime = 0;
 
   /**
    * @constructor
@@ -218,6 +221,7 @@ export class MapController {
     this.bindEvents();
     this.initProjectViewport();
     this.bindSignals();
+    this.updateScaleSignal(true);
 
     addConsoleLog(
       'info',
@@ -282,12 +286,13 @@ export class MapController {
     this.view.on('change:resolution', () => {
       const zoom = this.view.getZoom() || 3;
       zoomSignal.value = Math.round(zoom * 10) / 10;
-      scaleDenominatorSignal.value = Math.round(500000000 / Math.pow(2, zoom));
+      this.updateScaleSignal(false);
     });
 
     // Viewport bounding box updates on movement completion
     this.map.on('moveend', () => {
       this.updateViewportSignals();
+      this.updateScaleSignal(true);
     });
   }
 
@@ -788,7 +793,37 @@ export class MapController {
     const zoom = this.view.getZoom();
     if (zoom !== undefined && isFinite(zoom)) {
       zoomSignal.value = Math.round(zoom * 10) / 10;
-      scaleDenominatorSignal.value = Math.round(500000000 / Math.pow(2, zoom));
+    }
+    this.updateScaleSignal(true);
+  }
+
+  /**
+   * @description Updates the cartographic scale denominator signal from the active view, throttled to 250 ms during movement and flushed immediately on demand.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-26
+   * @updated 2026-10-26
+   * @since 0.1.0-dev
+   * @param {boolean} [immediate=false] - Whether to bypass throttling and update scale immediately.
+   * @private
+   * @returns {void}
+   */
+  private updateScaleSignal(immediate: boolean = false): void {
+    const now = Date.now();
+    const elapsed = now - this.lastScaleUpdateTime;
+
+    const doUpdate = () => {
+      this.lastScaleUpdateTime = Date.now();
+      if (this.scaleThrottleTimer !== null) {
+        clearTimeout(this.scaleThrottleTimer);
+        this.scaleThrottleTimer = null;
+      }
+      scaleDenominatorSignal.value = getScale(this.view);
+    };
+
+    if (immediate || elapsed >= 250) {
+      doUpdate();
+    } else if (this.scaleThrottleTimer === null) {
+      this.scaleThrottleTimer = setTimeout(doUpdate, 250 - elapsed);
     }
   }
 
@@ -988,6 +1023,11 @@ export class MapController {
       }
     }
     this.disposeSignals = [];
+
+    if (this.scaleThrottleTimer !== null) {
+      clearTimeout(this.scaleThrottleTimer);
+      this.scaleThrottleTimer = null;
+    }
 
     for (const entry of this.vectorLayers.values()) {
       try {
