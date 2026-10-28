@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -23,6 +23,7 @@ import {
   mdiCached,
   mdiMenuDown,
   mdiAlertRhombus,
+  mdiMapOutline,
 } from "@mdi/js";
 import {
   isPreferencesOpenSignal,
@@ -58,7 +59,7 @@ interface CategoryTab {
  * @description Standard category tab items for preferences dialog navigation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {CategoryTab[]}
  */
@@ -66,6 +67,7 @@ const categories: CategoryTab[] = [
   { id: "general", label: "General", icon: mdiCogOutline },
   { id: "ui", label: "UI & Display", icon: mdiPaletteOutline },
   { id: "rendering", label: "Rendering", icon: mdiVectorTriangle },
+  { id: "map_tools", label: "Map Tools", icon: mdiMapOutline },
   { id: "plugins", label: "Plugins & Extensions", icon: mdiPuzzleOutline },
 ];
 
@@ -167,7 +169,7 @@ function resolveDescription(key: string, item: PreferenceItem): string {
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -419,7 +421,7 @@ export const PreferencesDialog: React.FC = () => {
    * @property {Array<{ key: string; item: PreferenceItem; displayName: string; description: string }>} items - Group items.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-22
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    */
   interface PreferenceGroupData {
@@ -498,7 +500,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Resolves the localized display header for a named preference group.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-22
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @param {string} groupKey - Group string identifier.
    * @returns {string} Localized or formatted group title string.
@@ -522,7 +524,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a specific control variant for a given preference row with keyboard accessibility and ARIA semantics.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-22
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @param {PreferenceControlType} ctrlType - Canonical control type.
    * @param {string} key - Preference descriptor key.
@@ -759,8 +761,8 @@ export const PreferencesDialog: React.FC = () => {
         );
       }
       case "range": {
-        const min = item.minimum ?? 0;
-        const max = item.maximum ?? 100;
+        const min = item.minimum ?? item.min ?? 0;
+        const max = item.maximum ?? item.max ?? 100;
         const step = item.step ?? 1;
         const val = currentValue !== undefined ? Number(currentValue) : min;
         return (
@@ -785,24 +787,27 @@ export const PreferencesDialog: React.FC = () => {
           </div>
         );
       }
+      case "number":
       case "spinner": {
+        const min = item.minimum ?? item.min;
+        const max = item.maximum ?? item.max;
         return (
           <div key={`${key}-spinner`} className='preference-number-wrapper'>
             <input
               type='number'
               tabIndex={0}
               aria-label={displayName}
-              min={item.minimum}
-              max={item.maximum}
+              min={min}
+              max={max}
               step={item.step !== undefined ? item.step : "any"}
               value={currentValue !== undefined ? currentValue : ""}
               onChange={(e) => {
                 let val = parseFloat(e.target.value);
                 if (isNaN(val)) val = 0;
-                if (item.minimum !== undefined && val < item.minimum)
-                  val = item.minimum;
-                if (item.maximum !== undefined && val > item.maximum)
-                  val = item.maximum;
+                if (min !== undefined && val < min)
+                  val = min;
+                if (max !== undefined && val > max)
+                  val = max;
                 handleFieldChange(key, val);
               }}
               className='preference-input-number'
@@ -815,6 +820,33 @@ export const PreferencesDialog: React.FC = () => {
       }
       case "slider": {
         const opts = item.options || [];
+        if (opts.length === 0 && (item.minimum !== undefined || item.min !== undefined)) {
+          const min = item.minimum ?? item.min ?? 0;
+          const max = item.maximum ?? item.max ?? 100;
+          const step = item.step ?? 1;
+          const val = currentValue !== undefined ? Number(currentValue) : min;
+          return (
+            <div key={`${key}-slider`} className='preference-range-wrapper'>
+              <input
+                type='range'
+                tabIndex={0}
+                aria-label={displayName}
+                min={min}
+                max={max}
+                step={step}
+                value={val}
+                onChange={(e) =>
+                  handleFieldChange(key, parseFloat(e.target.value))
+                }
+                className='preference-range-slider'
+              />
+              <span className='preference-range-value'>
+                {val}
+                {item.unit ? ` ${item.unit}` : ""}
+              </span>
+            </div>
+          );
+        }
         const currIdx = Math.max(
           0,
           opts.findIndex((o) => String(o.value) === String(currentValue))
@@ -994,7 +1026,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a single preference item row inside a group container.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-22
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @param {Object} entry - Preference row entry data.
    * @returns {React.ReactNode}

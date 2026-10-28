@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -219,7 +219,7 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     maximum: 5.0,
     step: 0.1,
     ephemeral: false,
-    hidden: false,
+    hidden: true,
     category: 'general',
     description: 'Factor used to scale map resolution during zoom-in and zoom-out operations.',
     type: 'number',
@@ -473,6 +473,47 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     type: 'boolean',
     controls: ['checkbox'],
     i18nId: 'prefs_plugin_debug_enable',
+    order: 1
+  },
+  'mapTools.mapViewport.zoomAmount': {
+    displayName: 'Zoom Step Factor',
+    value: 1.0,
+    defaultValue: 1.0,
+    minimum: 0.1,
+    maximum: 5.0,
+    min: 0.1,
+    max: 5.0,
+    step: 0.1,
+    ephemeral: false,
+    hidden: false,
+    category: 'map_tools',
+    description: 'Factor determining viewport resolution scaling on zoom in or zoom out operations.',
+    type: 'number',
+    controls: ['slider', 'number'],
+    i18nId: 'prefs_mapTools_mapViewport_zoomAmount',
+    group: 'scaling',
+    groupOrder: 3,
+    order: 1
+  },
+  'mapTools.snapping.distance': {
+    displayName: 'Snapping Distance',
+    value: 10,
+    defaultValue: 10,
+    minimum: 0,
+    maximum: 256,
+    min: 0,
+    max: 256,
+    step: 1,
+    unit: 'px',
+    ephemeral: false,
+    hidden: false,
+    category: 'map_tools',
+    description: 'Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.',
+    type: 'number',
+    controls: ['number'],
+    i18nId: 'prefs_mapTools_snapping_distance',
+    group: 'snapping',
+    groupOrder: 2,
     order: 1
   }
 };

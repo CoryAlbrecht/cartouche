@@ -4,7 +4,7 @@
  * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -72,13 +72,13 @@ describe('Extensible Preferences Subsystem Contracts', () => {
   });
 
   it('ensures all category sidebar tab names and group headers exist in en.xml', () => {
-    const expectedTabs = ['general', 'ui', 'rendering', 'plugins'];
+    const expectedTabs = ['general', 'ui', 'rendering', 'map_tools', 'plugins'];
     for (const tab of expectedTabs) {
       const tabKey = `prefs_tab_${tab}_name`;
       assert.ok(enDict.has(tabKey), `en.xml must define category tab entry '${tabKey}'`);
     }
 
-    const expectedGroups = ['logging', 'logging_colours', 'display'];
+    const expectedGroups = ['logging', 'logging_colours', 'display', 'scaling', 'snapping'];
     for (const grp of expectedGroups) {
       const grpKey = `prefs_group_${grp}`;
       assert.ok(enDict.has(grpKey), `en.xml must define preference group header '${grpKey}'`);
@@ -102,13 +102,13 @@ describe('Extensible Preferences Subsystem Contracts', () => {
       );
     }
 
-    const expectedTabs = ['general', 'ui', 'rendering', 'plugins'];
+    const expectedTabs = ['general', 'ui', 'rendering', 'map_tools', 'plugins'];
     for (const tab of expectedTabs) {
       const tabKey = `prefs_tab_${tab}_name`;
       assert.ok(frDict.has(tabKey), `fr.xml must define category tab entry '${tabKey}'`);
     }
 
-    const expectedGroups = ['logging', 'logging_colours', 'display'];
+    const expectedGroups = ['logging', 'logging_colours', 'display', 'scaling', 'snapping'];
     for (const grp of expectedGroups) {
       const grpKey = `prefs_group_${grp}`;
       assert.ok(frDict.has(grpKey), `fr.xml must define preference group header '${grpKey}'`);
@@ -122,6 +122,39 @@ describe('Extensible Preferences Subsystem Contracts', () => {
     assert.equal(warnPref.group, 'logging_colours');
     assert.equal(warnPref.groupOrder, 2);
     assert.equal(warnPref.order, 3);
+  });
+
+  it('validates schema, default values, and bounds constraints for mapTools preferences', () => {
+    const zoomPref = BUILTIN_PREFERENCES['mapTools.mapViewport.zoomAmount'];
+    assert.ok(zoomPref, 'mapTools.mapViewport.zoomAmount must be registered in BUILTIN_PREFERENCES');
+    assert.equal(zoomPref.category, 'map_tools');
+    assert.equal(zoomPref.type, 'number');
+    assert.deepEqual(zoomPref.controls, ['slider', 'number']);
+    assert.equal(zoomPref.defaultValue, 1.0);
+    assert.equal(zoomPref.value, 1.0);
+    assert.equal(zoomPref.minimum, 0.1);
+    assert.equal(zoomPref.maximum, 5.0);
+    assert.equal(zoomPref.step, 0.1);
+    assert.equal(zoomPref.i18nId, 'prefs_mapTools_mapViewport_zoomAmount');
+    assert.equal(zoomPref.group, 'scaling');
+    assert.equal(zoomPref.groupOrder, 3);
+    assert.equal(zoomPref.order, 1);
+
+    const snapPref = BUILTIN_PREFERENCES['mapTools.snapping.distance'];
+    assert.ok(snapPref, 'mapTools.snapping.distance must be registered in BUILTIN_PREFERENCES');
+    assert.equal(snapPref.category, 'map_tools');
+    assert.equal(snapPref.type, 'number');
+    assert.deepEqual(snapPref.controls, ['number']);
+    assert.equal(snapPref.unit, 'px');
+    assert.equal(snapPref.defaultValue, 10);
+    assert.equal(snapPref.value, 10);
+    assert.equal(snapPref.minimum, 0);
+    assert.equal(snapPref.maximum, 256);
+    assert.equal(snapPref.step, 1);
+    assert.equal(snapPref.i18nId, 'prefs_mapTools_snapping_distance');
+    assert.equal(snapPref.group, 'snapping');
+    assert.equal(snapPref.groupOrder, 2);
+    assert.equal(snapPref.order, 1);
   });
 
   it('validates schema, default values, and bounds constraints for general.mapViewport.zoomAmount', () => {
@@ -150,6 +183,7 @@ describe('Extensible Preferences Subsystem Contracts', () => {
       'toggle',
       'range',
       'spinner',
+      'number',
       'slider',
       'dropdown',
       'image',

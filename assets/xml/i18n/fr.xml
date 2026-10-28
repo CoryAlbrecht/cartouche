@@ -46,11 +46,15 @@
     <string name="prefs_tab_general_name">Général</string>
     <string name="prefs_tab_ui_name">Interface et Affichage</string>
     <string name="prefs_tab_rendering_name">Rendu</string>
+    <string name="prefs_tab_map_tools_name">Outils de carte</string>
+    <string name="prefs_category_map_tools">Outils de carte</string>
     <string name="prefs_tab_plugins_name">Extensions et Modules</string>
 
     <string name="prefs_group_logging">Journalisation</string>
     <string name="prefs_group_logging_colours">Couleurs des Journaux</string>
     <string name="prefs_group_display">Affichage</string>
+    <string name="prefs_group_scaling">Échelle</string>
+    <string name="prefs_group_snapping">Accrochage</string>
 
     <string name="prefs_general_logging_location">Emplacement du Fichier Journal</string>
     <string name="prefs_general_logging_location_descr">Chemin du fichier journal persistant de l'application. Si omis ou vide, les journaux sont dirigés vers stderr.</string>
@@ -86,6 +90,10 @@
     <string name="prefs_rendering_simplification_threshold_descr">Seuil de tolérance pour le rendu des géométries d'entités vectorielles</string>
     <string name="prefs_plugin_debug_enable">Activer le Mode Débogage des Extensions</string>
     <string name="prefs_plugin_debug_enable_descr">Activer la journalisation détaillée pour l'hôte d'extension et les canaux RPC</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount">Facteur d'échelle de zoom</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Facteur déterminant la mise à l'échelle de la résolution de la vue lors des opérations de zoom avant ou arrière.</string>
+    <string name="prefs_mapTools_snapping_distance">Distance d'accrochage</string>
+    <string name="prefs_mapTools_snapping_distance_descr">Rayon de tolérance de recherche en pixels écran pour l'accrochage d'entités vectorielles aux sommets, milieux et segments.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Propriétés de la couche</string>
     <string name="layer_properties_tab_information">Information</string>

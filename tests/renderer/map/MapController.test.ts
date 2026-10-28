@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -971,6 +971,47 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.equal(controller.getZoomAmount(), 1.0);
 
     preferencesMapSignal.value = {};
+  });
+
+  it('retrieves zoomAmount from mapTools.mapViewport.zoomAmount with fallback to general.mapViewport.zoomAmount and default 1.0', () => {
+    // 1. Both defined: mapTools takes precedence
+    preferencesMapSignal.value = {
+      'mapTools.mapViewport.zoomAmount': {
+        displayName: 'Zoom Step Factor',
+        value: 2.5,
+      } as any,
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 1.5,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 2.5);
+
+    // 2. mapTools invalid: falls back to general
+    preferencesMapSignal.value = {
+      'mapTools.mapViewport.zoomAmount': {
+        displayName: 'Zoom Step Factor',
+        value: 0,
+      } as any,
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 1.5,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.5);
+
+    // 3. mapTools absent: falls back to general
+    preferencesMapSignal.value = {
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 1.75,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.75);
+
+    // 4. Both absent: defaults to 1.0
+    preferencesMapSignal.value = {};
+    assert.equal(controller.getZoomAmount(), 1.0);
   });
 
   it('fitExtent fits extent width on landscape viewports (W >= H), centers on midpoint, and clips height', () => {

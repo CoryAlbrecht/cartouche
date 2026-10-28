@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -822,13 +822,18 @@ export class MapController {
 
   /**
    * @description Retrieves the configured map zoom amount step factor from preferences.
+   * Priority: 'mapTools.mapViewport.zoomAmount' -> 'general.mapViewport.zoomAmount' -> 1.0.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-26
-   * @updated 2026-10-26
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @returns {number} Zoom step factor (defaults to 1.0 if not configured or non-positive).
    */
   public getZoomAmount(): number {
+    const mapToolVal = preferencesMapSignal.value['mapTools.mapViewport.zoomAmount']?.value;
+    if (typeof mapToolVal === 'number' && Number.isFinite(mapToolVal) && mapToolVal > 0) {
+      return mapToolVal;
+    }
     const prefVal = preferencesMapSignal.value['general.mapViewport.zoomAmount']?.value;
     if (typeof prefVal === 'number' && Number.isFinite(prefVal) && prefVal > 0) {
       return prefVal;

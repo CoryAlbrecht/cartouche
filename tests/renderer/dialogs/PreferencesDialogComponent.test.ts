@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -572,6 +572,73 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(
       html.includes('style="background-color:#eab308"'),
       'Must preserve last valid color on swatch when invalid value is present'
+    );
+  });
+
+  it('renders the map_tools category tab with label and displays its preferences (Ticket #101)', () => {
+    dictionarySignal.value = {
+      prefs_tab_map_tools_name: 'Map Tools',
+      prefs_group_scaling: 'Scaling',
+      prefs_group_snapping: 'Snapping',
+      prefs_mapTools_mapViewport_zoomAmount: 'Zoom Step Factor',
+      prefs_mapTools_snapping_distance: 'Snapping Distance'
+    };
+    preferencesMapSignal.value = {
+      'mapTools.mapViewport.zoomAmount': {
+        displayName: 'Zoom Step Factor',
+        value: 1.0,
+        defaultValue: 1.0,
+        minimum: 0.1,
+        maximum: 5.0,
+        step: 0.1,
+        category: 'map_tools',
+        controls: ['slider', 'number'],
+        group: 'scaling',
+        groupOrder: 3,
+        order: 1
+      },
+      'mapTools.snapping.distance': {
+        displayName: 'Snapping Distance',
+        value: 10,
+        defaultValue: 10,
+        minimum: 0,
+        maximum: 256,
+        step: 1,
+        unit: 'px',
+        category: 'map_tools',
+        controls: ['number'],
+        group: 'snapping',
+        groupOrder: 2,
+        order: 1
+      }
+    };
+
+    activeCategorySignal.value = 'map_tools';
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    assert.ok(
+      html.includes('<span>Map Tools</span>'),
+      'Must render Map Tools sidebar category tab'
+    );
+    assert.ok(
+      html.includes('Zoom Step Factor'),
+      'Must render Zoom Step Factor preference label'
+    );
+    assert.ok(
+      html.includes('Snapping Distance'),
+      'Must render Snapping Distance preference label'
+    );
+    assert.ok(
+      html.includes('preference-range-slider'),
+      'Must render slider control for zoomAmount'
+    );
+    assert.ok(
+      html.includes('preference-input-number'),
+      'Must render number control for snappingDistance'
+    );
+    assert.ok(
+      html.includes('preference-unit-badge'),
+      'Must render px unit badge for snappingDistance'
     );
   });
 });

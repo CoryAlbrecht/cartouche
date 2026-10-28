@@ -72,11 +72,15 @@
     <string name="prefs_tab_general_name">General</string>
     <string name="prefs_tab_ui_name">UI &amp; Display</string>
     <string name="prefs_tab_rendering_name">Rendering</string>
+    <string name="prefs_tab_map_tools_name">Map Tools</string>
+    <string name="prefs_category_map_tools">Map Tools</string>
     <string name="prefs_tab_plugins_name">Plugins &amp; Extensions</string>
     <!-- Preferences Groups -->
     <string name="prefs_group_logging">Logging</string>
     <string name="prefs_group_logging_colours">Log Colors</string>
     <string name="prefs_group_display">Display</string>
+    <string name="prefs_group_scaling">Scaling</string>
+    <string name="prefs_group_snapping">Snapping</string>
     <!-- Preferences Settings -->
     <string name="prefs_general_logging_location">Log File Location</string>
     <string name="prefs_general_logging_location_descr">Path to persistent application log file. If omitted or empty, logs are directed to stderr.</string>
@@ -112,6 +116,10 @@
     <string name="prefs_rendering_simplification_threshold_descr">Tolerance threshold for rendering vector feature geometries</string>
     <string name="prefs_plugin_debug_enable">Enable Plugin Debug Mode</string>
     <string name="prefs_plugin_debug_enable_descr">Enable verbose logging for extension host execution and RPC channels</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount">Zoom Step Factor</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Factor determining viewport resolution scaling on zoom in or zoom out operations.</string>
+    <string name="prefs_mapTools_snapping_distance">Snapping Distance</string>
+    <string name="prefs_mapTools_snapping_distance_descr">Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Layer Properties</string>
     <string name="layer_properties_tab_information">Information</string>
