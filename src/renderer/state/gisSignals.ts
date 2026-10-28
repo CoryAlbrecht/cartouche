@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -13,6 +13,7 @@
 
 import { signal, computed, batch } from '@preact/signals-react';
 import { logging } from '../../shared/logging';
+import { transformExtent } from 'ol/proj.js';
 import type {
   CRS,
   GisLayer,
@@ -28,6 +29,7 @@ import type {
   LayerDescriptor
 } from '../../shared/types';
 import { getDefaultLayerStyle, resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import { BUILTIN_PREFERENCES } from '../../shared/preferences/index';
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
@@ -48,8 +50,28 @@ import {
   layerStylesSignal,
   activeLayerIdSignal,
   updateLayerFeatureCount,
-  clearNodeSelection
+  clearNodeSelection,
+  findItemInTree
 } from './projectSignals';
+import {
+  getLayerToolbarPreference,
+  setLayerToolbarPreference,
+  captureLayerToolbarState,
+  restoreLayerToolbarState,
+  handleActiveLayerChange,
+  resetLayerToolbarMemoryState,
+  type LayerToolbarState
+} from './layerToolbarMemory';
+
+export {
+  getLayerToolbarPreference,
+  setLayerToolbarPreference,
+  captureLayerToolbarState,
+  restoreLayerToolbarState,
+  handleActiveLayerChange,
+  resetLayerToolbarMemoryState,
+  type LayerToolbarState
+};
 
 export {
   currentProjectSignal,
@@ -66,6 +88,8 @@ export {
   activeLayerIdSignal,
   updateLayerFeatureCount
 };
+
+export type { GeometryKind, GisLayer } from '../../shared/types';
 
 /**
  * @signal undoStackSignal
@@ -102,29 +126,79 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
- * @signal activeToolSignal
- * @description Active canvas interactive tool mode ('pan' | 'select' | 'point' | 'line' | 'polygon').
+ * @typedef {'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor'} ActiveTool
+ * @description Supported interactive canvas tool modes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
- * @type {Signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>}
  */
-export const activeToolSignal = signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>('pan');
+export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor';
+
+/**
+ * @signal activeToolSignal
+ * @description Active canvas interactive tool mode ('pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<ActiveTool>}
+ */
+export const activeToolSignal = signal<ActiveTool>('pan');
+
+/**
+ * @signal editableLayerIdsSignal
+ * @description Set of layer identifiers currently enabled for feature digitizing and editing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<Set<string>>}
+ */
+export const editableLayerIdsSignal = signal<Set<string>>(new Set());
+
+/**
+ * @typedef {'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand'} SelectionMode
+ * @description Discrete spatial feature selection mode identifiers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ */
+export type SelectionMode = 'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand';
+
+/**
+ * @signal activeSelectionModeSignal
+ * @description Currently active selection mode option for SplitToolButton ('select_feature' | 'select_features_by_drag' | 'select_features_by_freehand').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<SelectionMode>}
+ */
+export const activeSelectionModeSignal = signal<SelectionMode>('select_feature');
+
+export { activeSelectionModeSignal as selectionModeSignal };
 
 // Automatically revert activeToolSignal to 'pan' if active layer is cleared while digitizing
 activeLayerIdSignal.subscribe((activeId) => {
-  if (activeId === null && (activeToolSignal.value === 'point' || activeToolSignal.value === 'line' || activeToolSignal.value === 'polygon')) {
+  if (
+    activeId === null &&
+    (activeToolSignal.value === 'point' ||
+      activeToolSignal.value === 'line' ||
+      activeToolSignal.value === 'polygon' ||
+      activeToolSignal.value === 'vertex_editor')
+  ) {
     activeToolSignal.value = 'pan';
   }
 });
 
 // Toolbar placement and visibility signals
 /**
- * @typedef {'basic' | 'layer' | 'digitizing' | 'snapping'} ToolbarId
+ * @typedef {'project' | 'map_view' | 'selection' | 'digitizing' | 'snapping'} ToolbarId
  * @description Identifier string for registered toolbar widgets.
  */
-export type ToolbarId = 'basic' | 'layer' | 'digitizing' | 'snapping';
+export type ToolbarId = 'project' | 'map_view' | 'selection' | 'digitizing' | 'snapping';
 
 /**
  * @typedef {'top' | 'bottom' | 'left' | 'right'} ToolbarZone
@@ -137,13 +211,14 @@ export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
 export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
-  basic: true,
-  layer: true,
+  project: true,
+  map_view: false,
+  selection: false,
   digitizing: false,
   snapping: false
 });
@@ -153,13 +228,14 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
 export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
-  basic: 'top',
-  layer: 'top',
+  project: 'top',
+  map_view: 'top',
+  selection: 'top',
   digitizing: 'top',
   snapping: 'top'
 });
@@ -169,15 +245,86 @@ export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
 export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
-  top: ['basic', 'layer', 'digitizing', 'snapping'],
+  top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
   bottom: [],
   left: [],
   right: []
+});
+
+/**
+ * @function migrateToolbarLayout
+ * @description Migrates legacy stored toolbar layout configurations to the modular toolbar architecture.
+ * Converts legacy 'basic' to 'project' and purges deprecated 'layer'.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {Record<ToolbarZone, string[]>} storedOrder - Legacy or stored layout configuration.
+ * @returns {Record<ToolbarZone, ToolbarId[]>} Modernized toolbar layout order.
+ */
+export function migrateToolbarLayout(
+  storedOrder: Record<ToolbarZone, string[]>
+): Record<ToolbarZone, ToolbarId[]> {
+  const zones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  const result: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+
+  const seen = new Set<ToolbarId>();
+
+  for (const zone of zones) {
+    const list = storedOrder[zone] || [];
+    for (const item of list) {
+      let mapped: ToolbarId | null = null;
+      if (item === 'basic' || item === 'project') {
+        mapped = 'project';
+      } else if (item === 'layer') {
+        mapped = null;
+      } else if (
+        item === 'map_view' ||
+        item === 'selection' ||
+        item === 'digitizing' ||
+        item === 'snapping'
+      ) {
+        mapped = item;
+      }
+      if (mapped && !seen.has(mapped)) {
+        seen.add(mapped);
+        result[zone].push(mapped);
+      }
+    }
+  }
+
+  return result;
+}
+
+let isMigratingToolbarOrder = false;
+toolbarOrderSignal.subscribe((order) => {
+  if (isMigratingToolbarOrder || !order) return;
+  let hasLegacy = false;
+  for (const zone of ['top', 'bottom', 'left', 'right'] as ToolbarZone[]) {
+    const list = order[zone] as any[];
+    if (list && (list.includes('basic') || list.includes('layer'))) {
+      hasLegacy = true;
+      break;
+    }
+  }
+  if (hasLegacy) {
+    isMigratingToolbarOrder = true;
+    try {
+      toolbarOrderSignal.value = migrateToolbarLayout(order as any);
+    } finally {
+      isMigratingToolbarOrder = false;
+    }
+  }
 });
 
 /**
@@ -185,11 +332,123 @@ export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
  * @description Toggle signal for spatial vertex and segment snapping during digitizing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
 export const snappingEnabledSignal = signal<boolean>(false);
+
+/**
+ * Available snapping target scope options for spatial feature digitizing.
+ *
+ * @typedef {'snap_to_active' | 'snap_to_all' | 'snap_to_advanced'} SnappingScope
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ */
+export type SnappingScope = 'snap_to_active' | 'snap_to_all' | 'snap_to_advanced';
+
+/**
+ * @signal snappingScopeSignal
+ * @description Currently active snapping scope mode option ('snap_to_active' | 'snap_to_all' | 'snap_to_advanced').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<SnappingScope>}
+ */
+export const snappingScopeSignal = signal<SnappingScope>('snap_to_active');
+
+/**
+ * @signal snapToVerticesSignal
+ * @description Toggle signal for snapping to feature vertices.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const snapToVerticesSignal = signal<boolean>(true);
+
+/**
+ * @signal snapToMidpointSignal
+ * @description Toggle signal for snapping to segment midpoints.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const snapToMidpointSignal = signal<boolean>(false);
+
+/**
+ * @signal snapToSegmentSignal
+ * @description Toggle signal for snapping to feature segments.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const snapToSegmentSignal = signal<boolean>(false);
+
+const initialSnappingDistance =
+  typeof (globalThis as any).PreferencesStore?.get === 'function'
+    ? ((globalThis as any).PreferencesStore.get('mapTools.snapping.distance')?.['mapTools.snapping.distance']?.value ??
+       (globalThis as any).PreferencesStore.get('mapTools.snapping.distance') ??
+       10)
+    : ((BUILTIN_PREFERENCES['mapTools.snapping.distance']?.value as number) ?? 10);
+
+/**
+ * @signal snappingDistanceSignal
+ * @description Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<number>}
+ */
+export const snappingDistanceSignal = signal<number>(initialSnappingDistance);
+
+/**
+ * @signal isSnappingOptionsOpenSignal
+ * @description Modeless visibility toggle signal for the Snapping Options dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isSnappingOptionsOpenSignal = signal<boolean>(false);
+
+/**
+ * @function openSnappingOptionsDialog
+ * @description Opens modeless Snapping Options dialog window.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openSnappingOptionsDialog(): void {
+  isSnappingOptionsOpenSignal.value = true;
+  addConsoleLog('info', 'Snapping Options dialog opened.', 'Snapping');
+}
+
+/**
+ * @function closeSnappingOptionsDialog
+ * @description Closes modeless Snapping Options dialog window.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeSnappingOptionsDialog(): void {
+  isSnappingOptionsOpenSignal.value = false;
+  addConsoleLog('info', 'Snapping Options dialog closed.', 'Snapping');
+}
 
 // Workbench window geometry & panel layout signals
 /**
@@ -230,6 +489,8 @@ export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
  * @property {BoundingBox} [extent] - Geographic bounding box for setViewport command.
  * @property {{ x: number; y: number }} [center] - Center point coordinates for setViewport command.
  * @property {number} [rotation] - Camera rotation for setViewport command.
+ * @property {[number, number, number, number]} [padding] - Pixel padding [top, right, bottom, left].
+ * @property {number} [duration] - Animation duration in milliseconds.
  * @property {number} timestamp - Epoch timestamp distinguishing repeated trigger invocations.
  */
 export interface MapActionPayload {
@@ -237,7 +498,70 @@ export interface MapActionPayload {
   extent?: BoundingBox;
   center?: { x: number; y: number };
   rotation?: number;
+  padding?: [number, number, number, number];
+  duration?: number;
   timestamp: number;
+}
+
+/**
+ * @typedef {Object} ActiveMapController
+ * @property {(extent: BoundingBox, optionsOrSize?: { padding?: [number, number, number, number]; duration?: number; size?: [number, number] } | [number, number]) => void} fitExtent - Fits viewport to spatial extent.
+ * @property {() => void} zoomIn - Steps viewport resolution closer.
+ * @property {() => void} zoomOut - Steps viewport resolution farther.
+ * @property {() => void} resetExtent - Resets viewport camera.
+ * @property {(id: string) => any} getLayer - Retrieves vector layer entry by ID.
+ * @property {() => Map<string, any>} getVectorLayers - Returns all registered vector layer entries.
+ * @property {() => any} getMap - Returns underlying OpenLayers map instance.
+ * @property {() => any} getView - Returns OpenLayers view instance.
+ */
+export interface ActiveMapController {
+  fitExtent(
+    extent: BoundingBox,
+    optionsOrSize?:
+      | {
+          padding?: [number, number, number, number];
+          duration?: number;
+          size?: [number, number];
+        }
+      | [number, number]
+  ): void;
+  zoomIn(): void;
+  zoomOut(): void;
+  resetExtent(): void;
+  getLayer(id: string): any;
+  getVectorLayers(): Map<string, any>;
+  getMap(): any;
+  getView(): any;
+}
+
+/**
+ * @signal activeMapControllerSignal
+ * @description Reference signal holding the active imperative MapController instance mounted in the workbench canvas.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<ActiveMapController | null>}
+ */
+export const activeMapControllerSignal = signal<ActiveMapController | null>(null);
+
+/**
+ * @function isValidExtent
+ * @description Validates whether a spatial extent envelope is a valid, non-zero, non-inverted 4-tuple [minX, minY, maxX, maxY].
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {unknown} extent - Potential bounding envelope candidate.
+ * @returns {boolean} True if extent is valid, false otherwise.
+ */
+export function isValidExtent(extent: unknown): extent is BoundingBox {
+  if (!Array.isArray(extent) || extent.length !== 4) return false;
+  if (!extent.every((val) => typeof val === 'number' && Number.isFinite(val))) return false;
+  const [minX, minY, maxX, maxY] = extent;
+  if (minX === 0 && minY === 0 && maxX === 0 && maxY === 0) return false;
+  if (minX > maxX || minY > maxY) return false;
+  return true;
 }
 
 /**
@@ -386,15 +710,41 @@ export function getLayerDisplayName(layer: GisLayer): string {
 /**
  * @signal activeLayerSignal
  * @description Computed derivation returning active layer object corresponding to activeLayerIdSignal.
+ * Checks layersSignal first, then falls back to projectLayersSignal or projectTreeSignal item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
- * @type {ReadonlySignal<GisLayer | null>}
+ * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
-export const activeLayerSignal = computed(() => {
+export const activeLayerSignal = computed<GisLayer | ProjectLayerItem | null>(() => {
   const activeId = activeLayerIdSignal.value;
-  return layersSignal.value.find((l) => l.id === activeId) ?? null;
+  if (!activeId) return null;
+
+  const inLayers = layersSignal.value.find((l) => l.id === activeId);
+  if (inLayers) {
+    if (!inLayers.geometryKind) {
+      const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
+      if (inProjectLayers?.geometryKind) {
+        return { ...inLayers, geometryKind: inProjectLayers.geometryKind };
+      }
+      const inTree = findItemInTree(projectTreeSignal.value, activeId);
+      if (inTree && !('children' in inTree) && (inTree as ProjectLayerItem).geometryKind) {
+        return { ...inLayers, geometryKind: (inTree as ProjectLayerItem).geometryKind };
+      }
+    }
+    return inLayers;
+  }
+
+  const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
+  if (inProjectLayers) return inProjectLayers;
+
+  const inTree = findItemInTree(projectTreeSignal.value, activeId);
+  if (inTree && !('children' in inTree)) {
+    return inTree as ProjectLayerItem;
+  }
+
+  return null;
 });
 
 /**
@@ -1392,5 +1742,479 @@ export function cancelAction(): void {
     window.electronAPI.executeAction('cancel_action');
   }
   addConsoleLog('info', 'Cancelled active operation.', 'Workbench');
+}
+
+/**
+ * @description Triggers zoom-in map viewport step.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomInAction(): void {
+  if (activeMapControllerSignal.value) {
+    activeMapControllerSignal.value.zoomIn();
+  } else {
+    triggerMapAction('zoomIn');
+  }
+}
+
+/**
+ * @description Triggers zoom-out map viewport step.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomOutAction(): void {
+  if (activeMapControllerSignal.value) {
+    activeMapControllerSignal.value.zoomOut();
+  } else {
+    triggerMapAction('zoomOut');
+  }
+}
+
+/**
+ * @function computeCoordinatesExtent
+ * @description Computes 2D geographic bounding envelope [minX, minY, maxX, maxY] across nested geometry coordinate structures.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {unknown[]} coordinatesList - Array of geometry coordinate hierarchies.
+ * @returns {BoundingBox | null} Computed spatial extent envelope or null if no valid coordinates found.
+ */
+export function computeCoordinatesExtent(coordinatesList: unknown[]): BoundingBox | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let found = false;
+
+  const extractCoords = (coords: unknown): void => {
+    if (!coords) return;
+    if (Array.isArray(coords)) {
+      if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+        minX = Math.min(minX, coords[0]);
+        minY = Math.min(minY, coords[1]);
+        maxX = Math.max(maxX, coords[0]);
+        maxY = Math.max(maxY, coords[1]);
+        found = true;
+      } else {
+        for (const sub of coords) {
+          extractCoords(sub);
+        }
+      }
+    }
+  };
+
+  for (const coords of coordinatesList) {
+    extractCoords(coords);
+  }
+
+  if (found && minX <= maxX && minY <= maxY && isValidExtent([minX, minY, maxX, maxY])) {
+    return [minX, minY, maxX, maxY];
+  }
+  return null;
+}
+
+/**
+ * @description Triggers viewport fit to currently selected feature bounds with an 8px margin.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomToSelectionAction(): void {
+  const selectedIds = selectedFeatureIdsSignal.value;
+  if (!selectedIds || selectedIds.size === 0) {
+    return;
+  }
+
+  const activeId = activeLayerIdSignal.value;
+  let extent: BoundingBox | null = null;
+  const controller = activeMapControllerSignal.value;
+
+  if (controller) {
+    const layerEntry = activeId ? controller.getLayer(activeId) : undefined;
+    const sourcesToSearch = layerEntry
+      ? [layerEntry.source]
+      : Array.from(controller.getVectorLayers().values()).map((e: any) => e.source);
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let found = false;
+
+    for (const source of sourcesToSearch) {
+      if (!source) continue;
+      for (const id of selectedIds) {
+        const feat = source.getFeatureById?.(id);
+        if (feat) {
+          const geom = feat.getGeometry?.();
+          if (geom) {
+            const featExtent = geom.getExtent?.();
+            if (featExtent && featExtent.every((v: number) => Number.isFinite(v))) {
+              minX = Math.min(minX, featExtent[0]);
+              minY = Math.min(minY, featExtent[1]);
+              maxX = Math.max(maxX, featExtent[2]);
+              maxY = Math.max(maxY, featExtent[3]);
+              found = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (found && minX <= maxX && minY <= maxY) {
+      const view = controller.getView?.();
+      const viewCrs = view?.getProjection?.()?.getCode?.() || 'EPSG:3857';
+      try {
+        const [minLon, minLat, maxLon, maxLat] = transformExtent([minX, minY, maxX, maxY], viewCrs, 'EPSG:4326');
+        extent = [minLon, minLat, maxLon, maxLat];
+      } catch {
+        extent = [minX, minY, maxX, maxY];
+      }
+    }
+  }
+
+  if (!extent) {
+    const targetFeatures = featuresSignal.value.filter(
+      (f) => selectedIds.has(f.id) && (!activeId || f.layerId === activeId)
+    );
+    if (targetFeatures.length > 0) {
+      extent = computeCoordinatesExtent(targetFeatures.map((f) => f.coordinates));
+    }
+  }
+
+  if (extent && isValidExtent(extent)) {
+    if (controller) {
+      controller.fitExtent(extent, { padding: [8, 8, 8, 8], duration: 200 });
+    } else {
+      mapActionSignal.value = {
+        action: 'setViewport',
+        extent,
+        padding: [8, 8, 8, 8],
+        duration: 200,
+        timestamp: Date.now(),
+      };
+    }
+    addConsoleLog('info', 'Fitted viewport to selected features with 8px margin.', 'Map');
+  } else {
+    addConsoleLog('info', 'No spatial extent resolved for selected features.', 'Map');
+  }
+}
+
+/**
+ * @description Triggers viewport fit to active layer spatial extent with an 8px margin.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomToLayerAction(): void {
+  const activeId = activeLayerIdSignal.value;
+  if (!activeId) return;
+
+  const controller = activeMapControllerSignal.value;
+  let layerExtent: BoundingBox | null = null;
+
+  const descriptor = projectLayersSignal.value.find((l) => l.id === activeId);
+  if (descriptor && isValidExtent(descriptor.extent)) {
+    layerExtent = descriptor.extent;
+  }
+
+  if (!layerExtent && controller) {
+    const entry = controller.getLayer(activeId);
+    if (entry) {
+      if (isValidExtent(entry.descriptor?.extent)) {
+        layerExtent = entry.descriptor.extent;
+      } else if (entry.source?.getExtent) {
+        const sourceExtent = entry.source.getExtent();
+        if (sourceExtent && sourceExtent.every((v: number) => Number.isFinite(v))) {
+          const view = controller.getView?.();
+          const viewCrs = view?.getProjection?.()?.getCode?.() || 'EPSG:3857';
+          try {
+            const [minLon, minLat, maxLon, maxLat] = transformExtent(sourceExtent, viewCrs, 'EPSG:4326');
+            if (isValidExtent([minLon, minLat, maxLon, maxLat])) {
+              layerExtent = [minLon, minLat, maxLon, maxLat];
+            }
+          } catch {
+            if (isValidExtent(sourceExtent)) {
+              layerExtent = sourceExtent;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!layerExtent) {
+    const layerFeatures = featuresSignal.value.filter((f) => f.layerId === activeId);
+    if (layerFeatures.length > 0) {
+      layerExtent = computeCoordinatesExtent(layerFeatures.map((f) => f.coordinates));
+    }
+  }
+
+  if (layerExtent && isValidExtent(layerExtent)) {
+    if (controller) {
+      controller.fitExtent(layerExtent, { padding: [8, 8, 8, 8], duration: 200 });
+    } else {
+      mapActionSignal.value = {
+        action: 'setViewport',
+        extent: layerExtent,
+        padding: [8, 8, 8, 8],
+        duration: 200,
+        timestamp: Date.now(),
+      };
+    }
+    addConsoleLog('info', `Fitted viewport to active layer ${activeId} with 8px margin.`, 'Map');
+  } else {
+    addConsoleLog('warn', `Cannot zoom to layer ${activeId}: invalid or missing spatial bounds.`, 'Map');
+  }
+}
+
+/**
+ * @description Selects all features belonging to the active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function selectAllFeaturesAction(): void {
+  const activeId = activeLayerIdSignal.value;
+  const targetFeatures = activeId
+    ? featuresSignal.value.filter((f) => f.layerId === activeId)
+    : featuresSignal.value;
+  selectedFeatureIdsSignal.value = new Set(targetFeatures.map((f) => f.id));
+  addConsoleLog('info', `Selected ${targetFeatures.length} feature(s).`, 'Selection');
+}
+
+/**
+ * @description Deselects all currently selected spatial feature records.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function deselectAllFeaturesAction(): void {
+  selectedFeatureIdsSignal.value = new Set();
+  addConsoleLog('info', 'Deselected all features.', 'Selection');
+}
+
+/**
+ * @description Deletes selected spatial features from the active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function deleteSelectedFeaturesAction(): void {
+  if (selectedFeatureIdsSignal.value.size === 0) return;
+  const count = selectedFeatureIdsSignal.value.size;
+  featuresSignal.value = featuresSignal.value.filter((f) => !selectedFeatureIdsSignal.value.has(f.id));
+  selectedFeatureIdsSignal.value = new Set();
+  addConsoleLog('info', `Deleted ${count} selected feature(s).`, 'Edit');
+}
+
+/**
+ * @description Copies selected features to feature clipboard.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function copySelectedFeaturesAction(): void {
+  copyAction();
+}
+
+/**
+ * @description Cuts selected features to feature clipboard.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function cutSelectedFeaturesAction(): void {
+  cutAction();
+}
+
+/**
+ * @description Pastes features from clipboard into active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function pasteFeaturesAction(): void {
+  pasteAction();
+}
+
+/**
+ * @description Action handler toggling vector feature editing mode for the active or specified layer.
+ * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
+ * @returns {void}
+ */
+export function toggleLayerEditingAction(layerId?: string | null): void {
+  const targetId = layerId !== undefined ? layerId : activeLayerIdSignal.value;
+  if (!targetId) return;
+
+  const current = new Set(editableLayerIdsSignal.value);
+  if (current.has(targetId)) {
+    current.delete(targetId);
+    editableLayerIdsSignal.value = current;
+    if (
+      activeLayerIdSignal.value === targetId &&
+      (activeToolSignal.value === 'point' ||
+        activeToolSignal.value === 'line' ||
+        activeToolSignal.value === 'polygon' ||
+        activeToolSignal.value === 'vertex_editor')
+    ) {
+      captureLayerToolbarState(targetId);
+      activeToolSignal.value = 'pan';
+    }
+    addConsoleLog('info', `Layer editing disabled for "${targetId}".`, 'Digitizing');
+  } else {
+    current.add(targetId);
+    editableLayerIdsSignal.value = current;
+    if (activeLayerIdSignal.value === targetId && activeToolSignal.value === 'pan') {
+      const cached = getLayerToolbarPreference<ActiveTool>(targetId, 'digitizingTool');
+      if (cached) {
+        activeToolSignal.value = cached;
+      }
+    }
+    addConsoleLog('info', `Layer editing enabled for "${targetId}".`, 'Digitizing');
+  }
+}
+
+/**
+ * @description Action handler toggling interactive vertex and edge editing mode.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function vertexEditorAction(): void {
+  if (activeToolSignal.value === 'vertex_editor') {
+    activeToolSignal.value = 'pan';
+  } else {
+    activeToolSignal.value = 'vertex_editor';
+  }
+  addConsoleLog('info', 'Vertex editor toggled.', 'Digitizing');
+}
+
+/**
+ * @signal isSelectByValueOpenSignal
+ * @description Modeless visibility toggle signal for the Select Features by Value dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isSelectByValueOpenSignal = signal<boolean>(false);
+
+/**
+ * @description Opens modeless Select Features by Value dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openSelectByValueDialog(): void {
+  isSelectByValueOpenSignal.value = true;
+  addConsoleLog('info', 'Select Features by Value dialog opened.', 'Selection');
+}
+
+/**
+ * @description Closes modeless Select Features by Value dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeSelectByValueDialog(): void {
+  isSelectByValueOpenSignal.value = false;
+  addConsoleLog('info', 'Select Features by Value dialog closed.', 'Selection');
+}
+
+/**
+ * @description Opens Select Features by Value attribute query dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function selectFeaturesByValueAction(): void {
+  openSelectByValueDialog();
+}
+
+/**
+ * @signal isProjectPropertiesOpenSignal
+ * @description Modeless visibility toggle signal for the Project Properties dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isProjectPropertiesOpenSignal = signal<boolean>(false);
+
+/**
+ * @description Opens modeless Project Properties dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openProjectPropertiesDialog(): void {
+  isProjectPropertiesOpenSignal.value = true;
+  addConsoleLog('info', 'Project Properties dialog opened.', 'Project');
+}
+
+/**
+ * @description Closes modeless Project Properties dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeProjectPropertiesDialog(): void {
+  isProjectPropertiesOpenSignal.value = false;
+  addConsoleLog('info', 'Project Properties dialog closed.', 'Project');
+}
+
+/**
+ * @description Opens Project Properties dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function projectPropertiesAction(): void {
+  openProjectPropertiesDialog();
 }
 

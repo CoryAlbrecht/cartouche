@@ -13,7 +13,16 @@
 import { signal, Signal } from '@preact/signals-react';
 import type { DialogWindowName } from '@shared/types';
 import { isPreferencesOpenSignal, cancelPreferencesEdits } from './preferencesSignals';
-import { isAddLayersOpenSignal, closeAddLayersDialog } from './gisSignals';
+import {
+  isAddLayersOpenSignal,
+  closeAddLayersDialog,
+  isProjectPropertiesOpenSignal,
+  closeProjectPropertiesDialog,
+  isSelectByValueOpenSignal,
+  closeSelectByValueDialog,
+  isSnappingOptionsOpenSignal,
+  closeSnappingOptionsDialog
+} from './gisSignals';
 import { activeLayerPropertiesIdSignal, cancelLayerPropertiesEdits } from './layerPropertiesSignals';
 
 /**
@@ -109,6 +118,21 @@ export function cancelTopDialog(): boolean {
 
   if (isAddLayersOpenSignal.value) {
     closeAddLayersDialog();
+    return true;
+  }
+
+  if (isProjectPropertiesOpenSignal.value) {
+    closeProjectPropertiesDialog();
+    return true;
+  }
+
+  if (isSelectByValueOpenSignal.value) {
+    closeSelectByValueDialog();
+    return true;
+  }
+
+  if (isSnappingOptionsOpenSignal.value) {
+    closeSnappingOptionsDialog();
     return true;
   }
 

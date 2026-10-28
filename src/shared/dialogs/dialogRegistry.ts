@@ -4,7 +4,7 @@
  * @description Centralized registry and specifications for detached child dialog windows in Cartouche GIS.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link Dialog}
  */
@@ -12,16 +12,19 @@
 /**
  * Valid frame name identifiers for detached dialog windows.
  *
- * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow'} DialogWindowName
+ * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow' | 'snappingOptionsWindow'} DialogWindowName
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 export type DialogWindowName =
   | 'preferencesWindow'
   | 'addLayersWindow'
-  | 'layerPropertiesWindow';
+  | 'layerPropertiesWindow'
+  | 'projectPropertiesWindow'
+  | 'selectByValueWindow'
+  | 'snappingOptionsWindow';
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -48,11 +51,10 @@ export interface DialogWindowSpec {
 }
 
 /**
- * Central registry mapping dialog window frame names to their dimensional constraints and preference keys.
- *
+ * @description Central registry mapping dialog window frame names to their dimensional constraints and preference keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Readonly<Record<DialogWindowName, DialogWindowSpec>>}
  */
@@ -80,6 +82,30 @@ export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindow
     defaultHeight: 620,
     minWidth: 600,
     minHeight: 400
+  }),
+  projectPropertiesWindow: Object.freeze({
+    frameName: 'projectPropertiesWindow',
+    locationKeyPrefix: 'ui.projectProperties.location',
+    defaultWidth: 720,
+    defaultHeight: 520,
+    minWidth: 480,
+    minHeight: 360
+  }),
+  selectByValueWindow: Object.freeze({
+    frameName: 'selectByValueWindow',
+    locationKeyPrefix: 'ui.selectByValue.location',
+    defaultWidth: 640,
+    defaultHeight: 480,
+    minWidth: 400,
+    minHeight: 300
+  }),
+  snappingOptionsWindow: Object.freeze({
+    frameName: 'snappingOptionsWindow',
+    locationKeyPrefix: 'ui.snappingOptions.location',
+    defaultWidth: 600,
+    defaultHeight: 450,
+    minWidth: 400,
+    minHeight: 300
   })
 });
 

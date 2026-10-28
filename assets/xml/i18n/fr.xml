@@ -12,6 +12,32 @@
     <string name="save_active_layer">Enregistrer la Couche Active</string>
     <string name="save_active_layer_as">Enregistrer la Couche Active Sous...</string>
     <string name="add_layers">Ajouter des Couches...</string>
+    <!-- Modular Toolbars & Actions -->
+    <string name="project_properties">Propriétés du Projet...</string>
+    <string name="zoom_in">Zoom Avant</string>
+    <string name="zoom_out">Zoom Arrière</string>
+    <string name="zoom_to_selection">Zoom sur la Sélection</string>
+    <string name="zoom_to_layer">Zoom sur la Couche</string>
+    <string name="select_feature">Sélectionner une Entité</string>
+    <string name="select_features_by_drag">Sélectionner des Entités par Glissement</string>
+    <string name="select_features_by_freehand">Sélectionner des Entités à Main Levée</string>
+    <string name="select_features_by_value">Sélectionner des Entités par Valeur...</string>
+    <string name="select_all_features">Sélectionner Toutes les Entités</string>
+    <string name="deselect_all_features">Désélectionner Toutes les Entités</string>
+    <string name="toggle_layer_editing">Basculer l'Édition de la Couche</string>
+    <string name="vertex_editor">Éditeur de Sommets</string>
+    <string name="delete_selected_features">Supprimer les Entités Sélectionnées</string>
+    <string name="copy_selected_features">Copier les Entités Sélectionnées</string>
+    <string name="cut_selected_features">Couper les Entités Sélectionnées</string>
+    <string name="paste_features">Coller les Entités</string>
+    <string name="snapping">Activer l'Accrochage</string>
+    <string name="snap_to_active">Accrocher à la Couche Active</string>
+    <string name="snap_to_all">Accrocher à Toutes les Couches</string>
+    <string name="snap_to_advanced">Options d'Accrochage Avancées...</string>
+    <string name="snap_to_vertices">Accrocher aux Sommets</string>
+    <string name="snap_to_midpoint">Accrocher aux Milieux de Segment</string>
+    <string name="snap_to_segment">Accrocher aux Segments</string>
+    <string name="more_options">Plus d'options...</string>
     <string name="cancel_action">Annuler</string>
     <string name="quit">Quitter</string>
     <string name="hello_name">Bonjour {name}</string>
@@ -20,11 +46,15 @@
     <string name="prefs_tab_general_name">Général</string>
     <string name="prefs_tab_ui_name">Interface et Affichage</string>
     <string name="prefs_tab_rendering_name">Rendu</string>
+    <string name="prefs_tab_map_tools_name">Outils de carte</string>
+    <string name="prefs_category_map_tools">Outils de carte</string>
     <string name="prefs_tab_plugins_name">Extensions et Modules</string>
 
     <string name="prefs_group_logging">Journalisation</string>
     <string name="prefs_group_logging_colours">Couleurs des Journaux</string>
     <string name="prefs_group_display">Affichage</string>
+    <string name="prefs_group_scaling">Échelle</string>
+    <string name="prefs_group_snapping">Accrochage</string>
 
     <string name="prefs_general_logging_location">Emplacement du Fichier Journal</string>
     <string name="prefs_general_logging_location_descr">Chemin du fichier journal persistant de l'application. Si omis ou vide, les journaux sont dirigés vers stderr.</string>
@@ -60,6 +90,10 @@
     <string name="prefs_rendering_simplification_threshold_descr">Seuil de tolérance pour le rendu des géométries d'entités vectorielles</string>
     <string name="prefs_plugin_debug_enable">Activer le Mode Débogage des Extensions</string>
     <string name="prefs_plugin_debug_enable_descr">Activer la journalisation détaillée pour l'hôte d'extension et les canaux RPC</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount">Facteur d'échelle de zoom</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Facteur déterminant la mise à l'échelle de la résolution de la vue lors des opérations de zoom avant ou arrière.</string>
+    <string name="prefs_mapTools_snapping_distance">Distance d'accrochage</string>
+    <string name="prefs_mapTools_snapping_distance_descr">Rayon de tolérance de recherche en pixels écran pour l'accrochage d'entités vectorielles aux sommets, milieux et segments.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Propriétés de la couche</string>
     <string name="layer_properties_tab_information">Information</string>

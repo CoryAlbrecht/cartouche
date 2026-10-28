@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 
@@ -194,11 +194,11 @@ export interface ConsoleLogEntry {
 }
 
 /**
- * @typedef {'text' | 'multiline-text' | 'colour' | 'color' | 'checkbox' | 'button' | 'toggle' | 'range' | 'spinner' | 'slider' | 'dropdown' | 'image' | 'radio-button' | 'button-group' | 'checkbox-group'} PreferenceControlType
+ * @typedef {'text' | 'multiline-text' | 'colour' | 'color' | 'checkbox' | 'button' | 'toggle' | 'range' | 'spinner' | 'number' | 'slider' | 'dropdown' | 'image' | 'radio-button' | 'button-group' | 'checkbox-group'} PreferenceControlType
  * @description Canonical UI input control variants supported by the preferences subsystem.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 export type PreferenceControlType =
@@ -211,6 +211,7 @@ export type PreferenceControlType =
   | 'toggle'
   | 'range'
   | 'spinner'
+  | 'number'
   | 'slider'
   | 'dropdown'
   | 'image'
@@ -229,9 +230,11 @@ export type PreferenceControlType =
  * @property {boolean} [hidden] - If true, omitted from preferences dialog UI.
  * @property {number} [minimum] - Minimum numeric value constraint.
  * @property {number} [maximum] - Maximum numeric value constraint.
+ * @property {number} [min] - Minimum numeric value constraint alias.
+ * @property {number} [max] - Maximum numeric value constraint alias.
  * @property {number} [step] - Numeric slider step size.
  * @property {string} [unit] - Measurement unit display string.
- * @property {'ui' | 'rendering' | 'plugins' | 'general'} [category] - UI organization tab category.
+ * @property {'ui' | 'rendering' | 'plugins' | 'general' | 'map_tools'} [category] - UI organization tab category.
  * @property {string} [description] - Extended tooltip or helper text.
  * @property {'string' | 'number' | 'boolean' | 'select'} [type] - Legacy preference input control widget type.
  * @property {PreferenceControlType[]} [controls] - Array of UI controls to render for this preference value.
@@ -243,7 +246,7 @@ export type PreferenceControlType =
  * @property {Array<{ label: string; value: any }>} [options] - Select or slider dropdown/choice options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 export interface PreferenceItem<T = any> {
@@ -255,9 +258,11 @@ export interface PreferenceItem<T = any> {
   hidden?: boolean;
   minimum?: number;
   maximum?: number;
+  min?: number;
+  max?: number;
   step?: number;
   unit?: string;
-  category?: 'ui' | 'rendering' | 'plugins' | 'general';
+  category?: 'ui' | 'rendering' | 'plugins' | 'general' | 'map_tools';
   description?: string;
   type?: 'string' | 'number' | 'boolean' | 'select';
   controls?: PreferenceControlType[];

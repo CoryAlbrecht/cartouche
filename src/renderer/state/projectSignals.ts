@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -28,6 +28,7 @@ import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
  * @property {boolean} [disabled] - True if menu action is disabled.
  * @property {boolean} [separator] - True if item is a horizontal divider.
  * @property {boolean} [checked] - True if checkmark indicator is displayed.
+ * @property {string} [formattedKey] - Optional formatted key combination string.
  * @property {() => void} [onClick] - Action execution callback handler.
  */
 export interface PopupMenuItem {
@@ -37,6 +38,7 @@ export interface PopupMenuItem {
   disabled?: boolean;
   separator?: boolean;
   checked?: boolean;
+  formattedKey?: string;
   onClick?: () => void;
 }
 

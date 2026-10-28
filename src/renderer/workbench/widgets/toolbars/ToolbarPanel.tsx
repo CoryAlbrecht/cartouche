@@ -4,9 +4,12 @@
  * @description Panel widget router rendering active toolbars inside target outer dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link ToolbarContainerWidget}
+ * @see {@link ProjectToolbarWidget}
+ * @see {@link MapViewToolbarWidget}
+ * @see {@link SelectionToolbarWidget}
  */
 
 import React from "react";
@@ -18,17 +21,26 @@ import {
   toolbarOrderSignal,
 } from "@renderer/state/gisSignals";
 import { ToolbarContainerWidget } from "../ToolbarContainerWidget";
-import { BasicToolbarWidget } from "./BasicToolbarWidget";
-import { LayerToolbarWidget } from "./LayerToolbarWidget";
+import { ProjectToolbarWidget } from "./ProjectToolbarWidget";
+import { MapViewToolbarWidget } from "./MapViewToolbarWidget";
+import { SelectionToolbarWidget } from "./SelectionToolbarWidget";
 import { DigitizingToolbarWidget } from "./DigitizingToolbarWidget";
 import { SnappingToolbarWidget } from "./SnappingToolbarWidget";
 
-const toolbarComponentMap: Record<
-  ToolbarId,
-  React.FC<{ zone?: ToolbarZone }>
+/**
+ * @description Mapping from active toolbar identifier to its corresponding React functional component.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Partial<Record<ToolbarId, React.FC<{ zone?: ToolbarZone }>>>}
+ */
+const toolbarComponentMap: Partial<
+  Record<ToolbarId, React.FC<{ zone?: ToolbarZone }>>
 > = {
-  basic: BasicToolbarWidget,
-  layer: LayerToolbarWidget,
+  project: ProjectToolbarWidget,
+  map_view: MapViewToolbarWidget,
+  selection: SelectionToolbarWidget,
   digitizing: DigitizingToolbarWidget,
   snapping: SnappingToolbarWidget,
 };
@@ -46,10 +58,10 @@ interface ToolbarPanelProps {
  * @description Renders ordered active toolbar widgets corresponding to a specific outer container dock zone.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @param {ToolbarPanelProps} props - Component properties.
- * @returns {React.ReactElement} Outer toolbar container zone.
+ * @returns {JSX.Element} Outer toolbar container zone.
  */
 export const ToolbarPanel: React.FC<ToolbarPanelProps> = ({ zone }) => {
   useSignals();

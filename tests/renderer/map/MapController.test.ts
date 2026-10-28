@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -973,6 +973,47 @@ describe('MapController Isolated Canvas Engine', () => {
     preferencesMapSignal.value = {};
   });
 
+  it('retrieves zoomAmount from mapTools.mapViewport.zoomAmount with fallback to general.mapViewport.zoomAmount and default 1.0', () => {
+    // 1. Both defined: mapTools takes precedence
+    preferencesMapSignal.value = {
+      'mapTools.mapViewport.zoomAmount': {
+        displayName: 'Zoom Step Factor',
+        value: 2.5,
+      } as any,
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 1.5,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 2.5);
+
+    // 2. mapTools invalid: falls back to general
+    preferencesMapSignal.value = {
+      'mapTools.mapViewport.zoomAmount': {
+        displayName: 'Zoom Step Factor',
+        value: 0,
+      } as any,
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 1.5,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.5);
+
+    // 3. mapTools absent: falls back to general
+    preferencesMapSignal.value = {
+      'general.mapViewport.zoomAmount': {
+        displayName: 'Map Zoom Step Amount',
+        value: 1.75,
+      } as any,
+    };
+    assert.equal(controller.getZoomAmount(), 1.75);
+
+    // 4. Both absent: defaults to 1.0
+    preferencesMapSignal.value = {};
+    assert.equal(controller.getZoomAmount(), 1.0);
+  });
+
   it('fitExtent fits extent width on landscape viewports (W >= H), centers on midpoint, and clips height', () => {
     const rawExtent: [number, number, number, number] = [-10, 10, 10, 40];
     const [minX, minY, maxX, maxY] = transformExtent(rawExtent, 'EPSG:4326', 'EPSG:3857');
@@ -1054,6 +1095,24 @@ describe('MapController Isolated Canvas Engine', () => {
 
     controller.setViewport({ center: { x: 25, y: 35 }, rotation: 0.15 });
     assert.equal(view.getRotation(), 0.15, 'Rotation must be applied');
+  });
+
+  it('fitExtent delegates to view.fit with padding and duration options', () => {
+    const rawExtent: [number, number, number, number] = [-10, -5, 10, 5];
+    const view = controller.getMap().getView();
+
+    let fitOptions: any = null;
+    let fitExtentPassed: any = null;
+    view.fit = (ext: any, opts: any) => {
+      fitExtentPassed = ext;
+      fitOptions = opts;
+    };
+
+    controller.fitExtent(rawExtent, { padding: [8, 8, 8, 8], duration: 200 });
+    assert.ok(fitExtentPassed);
+    assert.ok(fitOptions);
+    assert.deepEqual(fitOptions.padding, [8, 8, 8, 8]);
+    assert.equal(fitOptions.duration, 200);
   });
 });
 

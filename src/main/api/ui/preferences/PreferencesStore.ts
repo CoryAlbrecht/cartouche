@@ -4,7 +4,7 @@
  * @description Main Process persistent preferences store manager, handling disk persistence, migrations, and default UI configurations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-21
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -26,11 +26,20 @@ function isLocationKey(key: string): boolean {
 }
 
 /**
+ * @description Helper function to check if a preference key string represents an ephemeral per-layer map tool property.
+ * @param {string} key - Preference key identifier.
+ * @returns {boolean} True if the key is a layer map tool preference.
+ */
+function isLayerPreference(key: string): boolean {
+  return key.startsWith('mapTools.layer.');
+}
+
+/**
  * @class PreferencesStoreManager
  * @description Manages persistent loading, setting, disk serialization, and legacy key migrations for application preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-02
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 class PreferencesStoreManager {
@@ -113,12 +122,13 @@ class PreferencesStoreManager {
    * @description Reads preferences JSON file from disk, applies schema migrations, and syncs internal preference map.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-24
-   * @updated 2026-10-02
+   * @updated 2026-10-27
    * @since 0.1.0-dev
+   * @param {string} [customPath] - Optional override file path for testing or alternative storage location.
    * @returns {void}
    */
-  public loadFromDisk(): void {
-    const targetPath = this.getStoreFilePath();
+  public loadFromDisk(customPath?: string): void {
+    const targetPath = customPath || this.getStoreFilePath();
     if (!targetPath) return;
 
     let parsed: Record<string, any> = {};
@@ -149,10 +159,11 @@ class PreferencesStoreManager {
     migrateKey('ui.preferencesDialog.width', 'ui.preferencesDialog.location.width');
     migrateKey('ui.preferencesDialog.height', 'ui.preferencesDialog.location.height');
     migrateKey('ui.workbench.maximized', 'ui.workbench.location.maximized');
+    migrateKey('general.mapViewport.zoomAmount', 'mapTools.mapViewport.zoomAmount');
 
     // Process known default preferences
     for (const [key, item] of Object.entries(this.preferences)) {
-      if (item.ephemeral) {
+      if (item.ephemeral || isLayerPreference(key)) {
         item.value = item.defaultValue !== undefined ? item.defaultValue : item.value;
       } else if (parsed[key] !== undefined) {
         const diskVal = parsed[key];
@@ -165,6 +176,7 @@ class PreferencesStoreManager {
     // Load any additional non-ephemeral preference items saved to disk
     for (const [key, val] of Object.entries(parsed)) {
       if (!this.preferences[key]) {
+        if (isLayerPreference(key)) continue;
         const itemVal = typeof val === 'object' && val !== null && 'value' in val ? (val as any).value : val;
         const isLoc = isLocationKey(key);
         this.preferences[key] = {
@@ -180,7 +192,7 @@ class PreferencesStoreManager {
     }
     this.isLoaded = true;
     if (didMigrate) {
-      this.saveToDisk();
+      this.saveToDisk(customPath);
     }
   }
 
@@ -188,18 +200,18 @@ class PreferencesStoreManager {
    * @description Serializes non-ephemeral preferences to disk in JSON format.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-24
-   * @updated 2026-09-28
+   * @updated 2026-10-27
    * @since 0.1.0-dev
-   * @private
+   * @param {string} [customPath] - Optional override file path for testing or export.
    * @returns {void}
    */
-  private saveToDisk(): void {
-    const targetPath = this.getStoreFilePath();
+  public saveToDisk(customPath?: string): void {
+    const targetPath = customPath || this.getStoreFilePath();
     if (!targetPath) return;
     try {
       const toSave: Record<string, any> = {};
       for (const [key, item] of Object.entries(this.preferences)) {
-        if (!item.ephemeral) {
+        if (!item.ephemeral && !isLayerPreference(key)) {
           toSave[key] = item.value;
         }
       }
@@ -235,7 +247,7 @@ class PreferencesStoreManager {
    * @description Updates a preference value by key name and persists changes to disk.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-09-24
-   * @updated 2026-10-02
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @param {string} name - Preference key identifier.
    * @param {any} value - New value to store for the preference.
@@ -244,10 +256,12 @@ class PreferencesStoreManager {
   public set(name: string, value: any): PreferenceMap {
     this.ensureLoaded();
     const key = name.trim();
+    const isMapToolLayer = isLayerPreference(key);
     if (this.preferences[key]) {
       this.preferences[key] = {
         ...this.preferences[key],
-        value
+        value,
+        ...(isMapToolLayer ? { ephemeral: true, hidden: true, category: 'map_tools' } : {})
       };
     } else {
       const isLoc = isLocationKey(key);
@@ -255,9 +269,9 @@ class PreferencesStoreManager {
         displayName: key,
         value,
         defaultValue: value,
-        ephemeral: false,
-        hidden: isLoc,
-        category: isLoc ? 'ui' : 'general',
+        ephemeral: isMapToolLayer,
+        hidden: isMapToolLayer || isLoc,
+        category: isMapToolLayer ? 'map_tools' : isLoc ? 'ui' : 'general',
         type: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
       };
     }
@@ -273,4 +287,5 @@ class PreferencesStoreManager {
   }
 }
 
+export { PreferencesStoreManager };
 export const PreferencesStore = new PreferencesStoreManager();

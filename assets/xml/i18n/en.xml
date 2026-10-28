@@ -26,6 +26,32 @@
     <string name="paste">Paste</string>
     <string name="edit_layer_attributes">Edit Layer Attributes...</string>
     <string name="open_preferences">Open Preferences...</string>
+    <!-- Modular Toolbars & Actions -->
+    <string name="project_properties">Project Properties...</string>
+    <string name="zoom_in">Zoom In</string>
+    <string name="zoom_out">Zoom Out</string>
+    <string name="zoom_to_selection">Zoom to Selection</string>
+    <string name="zoom_to_layer">Zoom to Layer</string>
+    <string name="select_feature">Select Feature</string>
+    <string name="select_features_by_drag">Select Features by Drag</string>
+    <string name="select_features_by_freehand">Select Features by Freehand</string>
+    <string name="select_features_by_value">Select Features by Value...</string>
+    <string name="select_all_features">Select All Features</string>
+    <string name="deselect_all_features">Deselect All Features</string>
+    <string name="toggle_layer_editing">Toggle Layer Editing</string>
+    <string name="vertex_editor">Vertex Editor</string>
+    <string name="delete_selected_features">Delete Selected Features</string>
+    <string name="copy_selected_features">Copy Selected Features</string>
+    <string name="cut_selected_features">Cut Selected Features</string>
+    <string name="paste_features">Paste Features</string>
+    <string name="snapping">Enable Snapping</string>
+    <string name="snap_to_active">Snap to Active Layer</string>
+    <string name="snap_to_all">Snap to All Layers</string>
+    <string name="snap_to_advanced">Advanced Snapping Options...</string>
+    <string name="snap_to_vertices">Snap to Vertices</string>
+    <string name="snap_to_midpoint">Snap to Segment Midpoints</string>
+    <string name="snap_to_segment">Snap to Segments</string>
+    <string name="more_options">More options...</string>
     <!-- Miscellaneous -->
     <string name="shortcut_save">Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.</string>
     <!-- Layer Tree & Modal Dialogs -->
@@ -46,11 +72,15 @@
     <string name="prefs_tab_general_name">General</string>
     <string name="prefs_tab_ui_name">UI &amp; Display</string>
     <string name="prefs_tab_rendering_name">Rendering</string>
+    <string name="prefs_tab_map_tools_name">Map Tools</string>
+    <string name="prefs_category_map_tools">Map Tools</string>
     <string name="prefs_tab_plugins_name">Plugins &amp; Extensions</string>
     <!-- Preferences Groups -->
     <string name="prefs_group_logging">Logging</string>
     <string name="prefs_group_logging_colours">Log Colors</string>
     <string name="prefs_group_display">Display</string>
+    <string name="prefs_group_scaling">Scaling</string>
+    <string name="prefs_group_snapping">Snapping</string>
     <!-- Preferences Settings -->
     <string name="prefs_general_logging_location">Log File Location</string>
     <string name="prefs_general_logging_location_descr">Path to persistent application log file. If omitted or empty, logs are directed to stderr.</string>
@@ -86,6 +116,10 @@
     <string name="prefs_rendering_simplification_threshold_descr">Tolerance threshold for rendering vector feature geometries</string>
     <string name="prefs_plugin_debug_enable">Enable Plugin Debug Mode</string>
     <string name="prefs_plugin_debug_enable_descr">Enable verbose logging for extension host execution and RPC channels</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount">Zoom Step Factor</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Factor determining viewport resolution scaling on zoom in or zoom out operations.</string>
+    <string name="prefs_mapTools_snapping_distance">Snapping Distance</string>
+    <string name="prefs_mapTools_snapping_distance_descr">Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Layer Properties</string>
     <string name="layer_properties_tab_information">Information</string>
