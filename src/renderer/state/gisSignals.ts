@@ -53,6 +53,25 @@ import {
   clearNodeSelection,
   findItemInTree
 } from './projectSignals';
+import {
+  getLayerToolbarPreference,
+  setLayerToolbarPreference,
+  captureLayerToolbarState,
+  restoreLayerToolbarState,
+  handleActiveLayerChange,
+  resetLayerToolbarMemoryState,
+  type LayerToolbarState
+} from './layerToolbarMemory';
+
+export {
+  getLayerToolbarPreference,
+  setLayerToolbarPreference,
+  captureLayerToolbarState,
+  restoreLayerToolbarState,
+  handleActiveLayerChange,
+  resetLayerToolbarMemoryState,
+  type LayerToolbarState
+};
 
 export {
   currentProjectSignal,
@@ -2067,12 +2086,19 @@ export function toggleLayerEditingAction(layerId?: string | null): void {
         activeToolSignal.value === 'polygon' ||
         activeToolSignal.value === 'vertex_editor')
     ) {
+      captureLayerToolbarState(targetId);
       activeToolSignal.value = 'pan';
     }
     addConsoleLog('info', `Layer editing disabled for "${targetId}".`, 'Digitizing');
   } else {
     current.add(targetId);
     editableLayerIdsSignal.value = current;
+    if (activeLayerIdSignal.value === targetId && activeToolSignal.value === 'pan') {
+      const cached = getLayerToolbarPreference<ActiveTool>(targetId, 'digitizingTool');
+      if (cached) {
+        activeToolSignal.value = cached;
+      }
+    }
     addConsoleLog('info', `Layer editing enabled for "${targetId}".`, 'Digitizing');
   }
 }
