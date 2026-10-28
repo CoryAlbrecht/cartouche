@@ -1096,6 +1096,24 @@ describe('MapController Isolated Canvas Engine', () => {
     controller.setViewport({ center: { x: 25, y: 35 }, rotation: 0.15 });
     assert.equal(view.getRotation(), 0.15, 'Rotation must be applied');
   });
+
+  it('fitExtent delegates to view.fit with padding and duration options', () => {
+    const rawExtent: [number, number, number, number] = [-10, -5, 10, 5];
+    const view = controller.getMap().getView();
+
+    let fitOptions: any = null;
+    let fitExtentPassed: any = null;
+    view.fit = (ext: any, opts: any) => {
+      fitExtentPassed = ext;
+      fitOptions = opts;
+    };
+
+    controller.fitExtent(rawExtent, { padding: [8, 8, 8, 8], duration: 200 });
+    assert.ok(fitExtentPassed);
+    assert.ok(fitOptions);
+    assert.deepEqual(fitOptions.padding, [8, 8, 8, 8]);
+    assert.equal(fitOptions.duration, 200);
+  });
 });
 
 describe('extractStyleAttributes', () => {

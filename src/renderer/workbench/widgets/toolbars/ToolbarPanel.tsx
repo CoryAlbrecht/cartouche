@@ -8,6 +8,7 @@
  * @since 0.1.0-dev
  * @see {@link ToolbarContainerWidget}
  * @see {@link ProjectToolbarWidget}
+ * @see {@link MapViewToolbarWidget}
  */
 
 import React from "react";
@@ -20,6 +21,7 @@ import {
 } from "@renderer/state/gisSignals";
 import { ToolbarContainerWidget } from "../ToolbarContainerWidget";
 import { ProjectToolbarWidget } from "./ProjectToolbarWidget";
+import { MapViewToolbarWidget } from "./MapViewToolbarWidget";
 import { DigitizingToolbarWidget } from "./DigitizingToolbarWidget";
 import { SnappingToolbarWidget } from "./SnappingToolbarWidget";
 
@@ -35,6 +37,7 @@ const toolbarComponentMap: Partial<
   Record<ToolbarId, React.FC<{ zone?: ToolbarZone }>>
 > = {
   project: ProjectToolbarWidget,
+  map_view: MapViewToolbarWidget,
   digitizing: DigitizingToolbarWidget,
   snapping: SnappingToolbarWidget,
 };

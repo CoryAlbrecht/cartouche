@@ -13,6 +13,7 @@
 
 import { signal, computed, batch } from '@preact/signals-react';
 import { logging } from '../../shared/logging';
+import { transformExtent } from 'ol/proj.js';
 import type {
   CRS,
   GisLayer,
@@ -303,6 +304,8 @@ export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
  * @property {BoundingBox} [extent] - Geographic bounding box for setViewport command.
  * @property {{ x: number; y: number }} [center] - Center point coordinates for setViewport command.
  * @property {number} [rotation] - Camera rotation for setViewport command.
+ * @property {[number, number, number, number]} [padding] - Pixel padding [top, right, bottom, left].
+ * @property {number} [duration] - Animation duration in milliseconds.
  * @property {number} timestamp - Epoch timestamp distinguishing repeated trigger invocations.
  */
 export interface MapActionPayload {
@@ -310,7 +313,70 @@ export interface MapActionPayload {
   extent?: BoundingBox;
   center?: { x: number; y: number };
   rotation?: number;
+  padding?: [number, number, number, number];
+  duration?: number;
   timestamp: number;
+}
+
+/**
+ * @typedef {Object} ActiveMapController
+ * @property {(extent: BoundingBox, optionsOrSize?: { padding?: [number, number, number, number]; duration?: number; size?: [number, number] } | [number, number]) => void} fitExtent - Fits viewport to spatial extent.
+ * @property {() => void} zoomIn - Steps viewport resolution closer.
+ * @property {() => void} zoomOut - Steps viewport resolution farther.
+ * @property {() => void} resetExtent - Resets viewport camera.
+ * @property {(id: string) => any} getLayer - Retrieves vector layer entry by ID.
+ * @property {() => Map<string, any>} getVectorLayers - Returns all registered vector layer entries.
+ * @property {() => any} getMap - Returns underlying OpenLayers map instance.
+ * @property {() => any} getView - Returns OpenLayers view instance.
+ */
+export interface ActiveMapController {
+  fitExtent(
+    extent: BoundingBox,
+    optionsOrSize?:
+      | {
+          padding?: [number, number, number, number];
+          duration?: number;
+          size?: [number, number];
+        }
+      | [number, number]
+  ): void;
+  zoomIn(): void;
+  zoomOut(): void;
+  resetExtent(): void;
+  getLayer(id: string): any;
+  getVectorLayers(): Map<string, any>;
+  getMap(): any;
+  getView(): any;
+}
+
+/**
+ * @signal activeMapControllerSignal
+ * @description Reference signal holding the active imperative MapController instance mounted in the workbench canvas.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<ActiveMapController | null>}
+ */
+export const activeMapControllerSignal = signal<ActiveMapController | null>(null);
+
+/**
+ * @function isValidExtent
+ * @description Validates whether a spatial extent envelope is a valid, non-zero, non-inverted 4-tuple [minX, minY, maxX, maxY].
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {unknown} extent - Potential bounding envelope candidate.
+ * @returns {boolean} True if extent is valid, false otherwise.
+ */
+export function isValidExtent(extent: unknown): extent is BoundingBox {
+  if (!Array.isArray(extent) || extent.length !== 4) return false;
+  if (!extent.every((val) => typeof val === 'number' && Number.isFinite(val))) return false;
+  const [minX, minY, maxX, maxY] = extent;
+  if (minX === 0 && minY === 0 && maxX === 0 && maxY === 0) return false;
+  if (minX > maxX || minY > maxY) return false;
+  return true;
 }
 
 /**
@@ -1476,7 +1542,11 @@ export function cancelAction(): void {
  * @returns {void}
  */
 export function zoomInAction(): void {
-  triggerMapAction('zoomIn');
+  if (activeMapControllerSignal.value) {
+    activeMapControllerSignal.value.zoomIn();
+  } else {
+    triggerMapAction('zoomIn');
+  }
 }
 
 /**
@@ -1488,11 +1558,59 @@ export function zoomInAction(): void {
  * @returns {void}
  */
 export function zoomOutAction(): void {
-  triggerMapAction('zoomOut');
+  if (activeMapControllerSignal.value) {
+    activeMapControllerSignal.value.zoomOut();
+  } else {
+    triggerMapAction('zoomOut');
+  }
 }
 
 /**
- * @description Triggers viewport fit to currently selected feature bounds.
+ * @function computeCoordinatesExtent
+ * @description Computes 2D geographic bounding envelope [minX, minY, maxX, maxY] across nested geometry coordinate structures.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {unknown[]} coordinatesList - Array of geometry coordinate hierarchies.
+ * @returns {BoundingBox | null} Computed spatial extent envelope or null if no valid coordinates found.
+ */
+export function computeCoordinatesExtent(coordinatesList: unknown[]): BoundingBox | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let found = false;
+
+  const extractCoords = (coords: unknown): void => {
+    if (!coords) return;
+    if (Array.isArray(coords)) {
+      if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+        minX = Math.min(minX, coords[0]);
+        minY = Math.min(minY, coords[1]);
+        maxX = Math.max(maxX, coords[0]);
+        maxY = Math.max(maxY, coords[1]);
+        found = true;
+      } else {
+        for (const sub of coords) {
+          extractCoords(sub);
+        }
+      }
+    }
+  };
+
+  for (const coords of coordinatesList) {
+    extractCoords(coords);
+  }
+
+  if (found && minX <= maxX && minY <= maxY && isValidExtent([minX, minY, maxX, maxY])) {
+    return [minX, minY, maxX, maxY];
+  }
+  return null;
+}
+
+/**
+ * @description Triggers viewport fit to currently selected feature bounds with an 8px margin.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-10-27
@@ -1500,11 +1618,88 @@ export function zoomOutAction(): void {
  * @returns {void}
  */
 export function zoomToSelectionAction(): void {
-  addConsoleLog('info', 'Zoom to selection requested.', 'Map');
+  const selectedIds = selectedFeatureIdsSignal.value;
+  if (!selectedIds || selectedIds.size === 0) {
+    return;
+  }
+
+  const activeId = activeLayerIdSignal.value;
+  let extent: BoundingBox | null = null;
+  const controller = activeMapControllerSignal.value;
+
+  if (controller) {
+    const layerEntry = activeId ? controller.getLayer(activeId) : undefined;
+    const sourcesToSearch = layerEntry
+      ? [layerEntry.source]
+      : Array.from(controller.getVectorLayers().values()).map((e: any) => e.source);
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let found = false;
+
+    for (const source of sourcesToSearch) {
+      if (!source) continue;
+      for (const id of selectedIds) {
+        const feat = source.getFeatureById?.(id);
+        if (feat) {
+          const geom = feat.getGeometry?.();
+          if (geom) {
+            const featExtent = geom.getExtent?.();
+            if (featExtent && featExtent.every((v: number) => Number.isFinite(v))) {
+              minX = Math.min(minX, featExtent[0]);
+              minY = Math.min(minY, featExtent[1]);
+              maxX = Math.max(maxX, featExtent[2]);
+              maxY = Math.max(maxY, featExtent[3]);
+              found = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (found && minX <= maxX && minY <= maxY) {
+      const view = controller.getView?.();
+      const viewCrs = view?.getProjection?.()?.getCode?.() || 'EPSG:3857';
+      try {
+        const [minLon, minLat, maxLon, maxLat] = transformExtent([minX, minY, maxX, maxY], viewCrs, 'EPSG:4326');
+        extent = [minLon, minLat, maxLon, maxLat];
+      } catch {
+        extent = [minX, minY, maxX, maxY];
+      }
+    }
+  }
+
+  if (!extent) {
+    const targetFeatures = featuresSignal.value.filter(
+      (f) => selectedIds.has(f.id) && (!activeId || f.layerId === activeId)
+    );
+    if (targetFeatures.length > 0) {
+      extent = computeCoordinatesExtent(targetFeatures.map((f) => f.coordinates));
+    }
+  }
+
+  if (extent && isValidExtent(extent)) {
+    if (controller) {
+      controller.fitExtent(extent, { padding: [8, 8, 8, 8], duration: 200 });
+    } else {
+      mapActionSignal.value = {
+        action: 'setViewport',
+        extent,
+        padding: [8, 8, 8, 8],
+        duration: 200,
+        timestamp: Date.now(),
+      };
+    }
+    addConsoleLog('info', 'Fitted viewport to selected features with 8px margin.', 'Map');
+  } else {
+    addConsoleLog('info', 'No spatial extent resolved for selected features.', 'Map');
+  }
 }
 
 /**
- * @description Triggers viewport fit to active layer spatial extent.
+ * @description Triggers viewport fit to active layer spatial extent with an 8px margin.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-10-27
@@ -1512,7 +1707,65 @@ export function zoomToSelectionAction(): void {
  * @returns {void}
  */
 export function zoomToLayerAction(): void {
-  addConsoleLog('info', 'Zoom to layer requested.', 'Map');
+  const activeId = activeLayerIdSignal.value;
+  if (!activeId) return;
+
+  const controller = activeMapControllerSignal.value;
+  let layerExtent: BoundingBox | null = null;
+
+  const descriptor = projectLayersSignal.value.find((l) => l.id === activeId);
+  if (descriptor && isValidExtent(descriptor.extent)) {
+    layerExtent = descriptor.extent;
+  }
+
+  if (!layerExtent && controller) {
+    const entry = controller.getLayer(activeId);
+    if (entry) {
+      if (isValidExtent(entry.descriptor?.extent)) {
+        layerExtent = entry.descriptor.extent;
+      } else if (entry.source?.getExtent) {
+        const sourceExtent = entry.source.getExtent();
+        if (sourceExtent && sourceExtent.every((v: number) => Number.isFinite(v))) {
+          const view = controller.getView?.();
+          const viewCrs = view?.getProjection?.()?.getCode?.() || 'EPSG:3857';
+          try {
+            const [minLon, minLat, maxLon, maxLat] = transformExtent(sourceExtent, viewCrs, 'EPSG:4326');
+            if (isValidExtent([minLon, minLat, maxLon, maxLat])) {
+              layerExtent = [minLon, minLat, maxLon, maxLat];
+            }
+          } catch {
+            if (isValidExtent(sourceExtent)) {
+              layerExtent = sourceExtent;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!layerExtent) {
+    const layerFeatures = featuresSignal.value.filter((f) => f.layerId === activeId);
+    if (layerFeatures.length > 0) {
+      layerExtent = computeCoordinatesExtent(layerFeatures.map((f) => f.coordinates));
+    }
+  }
+
+  if (layerExtent && isValidExtent(layerExtent)) {
+    if (controller) {
+      controller.fitExtent(layerExtent, { padding: [8, 8, 8, 8], duration: 200 });
+    } else {
+      mapActionSignal.value = {
+        action: 'setViewport',
+        extent: layerExtent,
+        padding: [8, 8, 8, 8],
+        duration: 200,
+        timestamp: Date.now(),
+      };
+    }
+    addConsoleLog('info', `Fitted viewport to active layer ${activeId} with 8px margin.`, 'Map');
+  } else {
+    addConsoleLog('warn', `Cannot zoom to layer ${activeId}: invalid or missing spatial bounds.`, 'Map');
+  }
 }
 
 /**

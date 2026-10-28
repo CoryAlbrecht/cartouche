@@ -28,6 +28,7 @@ import {
   viewportExtentSignal,
   scaleDenominatorSignal,
   mapActionSignal,
+  activeMapControllerSignal,
   addConsoleLog,
 } from '../state/gisSignals';
 import {
@@ -169,6 +170,22 @@ export interface VectorLayerEntry {
 }
 
 /**
+ * @typedef {Object} FitExtentOptions
+ * @property {[number, number, number, number]} [padding] - Pixel padding [top, right, bottom, left].
+ * @property {number} [duration] - Animation duration in milliseconds.
+ * @property {[number, number]} [size] - Explicit [width, height] dimensions overriding map DOM size.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ */
+export interface FitExtentOptions {
+  padding?: [number, number, number, number];
+  duration?: number;
+  size?: [number, number];
+}
+
+/**
  * @class MapController
  * @description Imperative OpenLayers map canvas controller encapsulating native ol/Map and vector rendering completely insulated from React Virtual DOM.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -222,6 +239,8 @@ export class MapController {
     this.initProjectViewport();
     this.bindSignals();
     this.updateScaleSignal(true);
+
+    activeMapControllerSignal.value = this;
 
     addConsoleLog(
       'info',
@@ -905,17 +924,21 @@ export class MapController {
 
   /**
    * @description Restores viewport camera by fitting a geographic extent according to the map viewport's dominant screen axis.
+   * Supports optional padding and animation duration.
    * On landscape viewports (W >= H), matches viewport width to extent width and centers on midpoint (clipping height if necessary).
    * On portrait viewports (H > W), matches viewport height to extent height and centers on midpoint (clipping width if necessary).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-26
-   * @updated 2026-10-26
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @param {BoundingBox} extent - Geographic bounding envelope [minLon, minLat, maxLon, maxLat] in EPSG:4326.
-   * @param {[number, number]} [customSize] - Optional explicit [width, height] dimensions overriding map DOM size.
+   * @param {FitExtentOptions | [number, number]} [optionsOrSize] - Optional explicit size [width, height] or fit configuration options.
    * @returns {void}
    */
-  public fitExtent(extent: BoundingBox, customSize?: [number, number]): void {
+  public fitExtent(
+    extent: BoundingBox,
+    optionsOrSize?: FitExtentOptions | [number, number]
+  ): void {
     if (!extent || extent.length !== 4) return;
 
     const viewCrs = this.view.getProjection() || 'EPSG:3857';
@@ -926,9 +949,40 @@ export class MapController {
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
 
-    const size = customSize ?? this.map.getSize() ?? [this.container.clientWidth || 0, this.container.clientHeight || 0];
+    if (Array.isArray(optionsOrSize)) {
+      const size = optionsOrSize;
+      const width = size[0];
+      const height = size[1];
+
+      if (width > 0 && height > 0) {
+        if (width >= height) {
+          // Landscape or square: dominant axis is width
+          const targetResolution = deltaX / width;
+          this.view.setCenter([centerX, centerY]);
+          this.view.setResolution(targetResolution);
+        } else {
+          // Portrait: dominant axis is height
+          const targetResolution = deltaY / height;
+          this.view.setCenter([centerX, centerY]);
+          this.view.setResolution(targetResolution);
+        }
+        return;
+      }
+    }
+
+    const options = (!Array.isArray(optionsOrSize) && optionsOrSize) ? optionsOrSize : {};
+    const size = options.size ?? this.map.getSize() ?? [this.container.clientWidth || 0, this.container.clientHeight || 0];
     const width = size[0];
     const height = size[1];
+
+    if (options.padding || options.duration !== undefined) {
+      this.view.fit(projected, {
+        size: width > 0 && height > 0 ? size : undefined,
+        padding: options.padding,
+        duration: options.duration,
+      });
+      return;
+    }
 
     if (width > 0 && height > 0) {
       if (width >= height) {
@@ -951,24 +1005,31 @@ export class MapController {
    * @description Fits or sets viewport center, extent, and rotation on the OpenLayers view.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-26
+   * @updated 2026-10-27
    * @since 0.1.0-dev
    * @param {Object} payload - Viewport configuration parameters.
    * @param {BoundingBox} [payload.extent] - Bounding envelope [minX, minY, maxX, maxY].
    * @param {{ x: number; y: number }} [payload.center] - Center point coordinate.
    * @param {number} [payload.rotation] - Camera rotation.
+   * @param {[number, number, number, number]} [payload.padding] - Viewport margin padding.
+   * @param {number} [payload.duration] - Animation duration.
    * @returns {void}
    */
   public setViewport(payload: {
     extent?: BoundingBox;
     center?: { x: number; y: number };
     rotation?: number;
+    padding?: [number, number, number, number];
+    duration?: number;
   }): void {
     if (payload.rotation !== undefined) {
       this.view.setRotation(payload.rotation);
     }
     if (payload.extent && payload.extent.length === 4) {
-      this.fitExtent(payload.extent);
+      this.fitExtent(payload.extent, {
+        padding: payload.padding,
+        duration: payload.duration,
+      });
     } else if (payload.center) {
       this.view.setCenter(fromLonLat([payload.center.x, payload.center.y]));
     }
@@ -1106,6 +1167,10 @@ export class MapController {
       }
     }
     this.vectorLayers.clear();
+
+    if (activeMapControllerSignal.value === this) {
+      activeMapControllerSignal.value = null;
+    }
 
     try {
       this.map.setTarget(undefined);
