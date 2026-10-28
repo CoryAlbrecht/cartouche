@@ -12,7 +12,7 @@
 /**
  * Valid frame name identifiers for detached dialog windows.
  *
- * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow'} DialogWindowName
+ * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow' | 'snappingOptionsWindow'} DialogWindowName
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
  * @updated 2026-10-27
@@ -23,7 +23,8 @@ export type DialogWindowName =
   | 'addLayersWindow'
   | 'layerPropertiesWindow'
   | 'projectPropertiesWindow'
-  | 'selectByValueWindow';
+  | 'selectByValueWindow'
+  | 'snappingOptionsWindow';
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -95,6 +96,14 @@ export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindow
     locationKeyPrefix: 'ui.selectByValue.location',
     defaultWidth: 640,
     defaultHeight: 480,
+    minWidth: 400,
+    minHeight: 300
+  }),
+  snappingOptionsWindow: Object.freeze({
+    frameName: 'snappingOptionsWindow',
+    locationKeyPrefix: 'ui.snappingOptions.location',
+    defaultWidth: 600,
+    defaultHeight: 450,
     minWidth: 400,
     minHeight: 300
   })

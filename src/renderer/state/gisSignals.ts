@@ -29,6 +29,7 @@ import type {
   LayerDescriptor
 } from '../../shared/types';
 import { getDefaultLayerStyle, resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import { BUILTIN_PREFERENCES } from '../../shared/preferences/index';
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
@@ -312,11 +313,123 @@ toolbarOrderSignal.subscribe((order) => {
  * @description Toggle signal for spatial vertex and segment snapping during digitizing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
 export const snappingEnabledSignal = signal<boolean>(false);
+
+/**
+ * Available snapping target scope options for spatial feature digitizing.
+ *
+ * @typedef {'snap_to_active' | 'snap_to_all' | 'snap_to_advanced'} SnappingScope
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ */
+export type SnappingScope = 'snap_to_active' | 'snap_to_all' | 'snap_to_advanced';
+
+/**
+ * @signal snappingScopeSignal
+ * @description Currently active snapping scope mode option ('snap_to_active' | 'snap_to_all' | 'snap_to_advanced').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<SnappingScope>}
+ */
+export const snappingScopeSignal = signal<SnappingScope>('snap_to_active');
+
+/**
+ * @signal snapToVerticesSignal
+ * @description Toggle signal for snapping to feature vertices.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const snapToVerticesSignal = signal<boolean>(true);
+
+/**
+ * @signal snapToMidpointSignal
+ * @description Toggle signal for snapping to segment midpoints.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const snapToMidpointSignal = signal<boolean>(false);
+
+/**
+ * @signal snapToSegmentSignal
+ * @description Toggle signal for snapping to feature segments.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const snapToSegmentSignal = signal<boolean>(false);
+
+const initialSnappingDistance =
+  typeof (globalThis as any).PreferencesStore?.get === 'function'
+    ? ((globalThis as any).PreferencesStore.get('mapTools.snapping.distance')?.['mapTools.snapping.distance']?.value ??
+       (globalThis as any).PreferencesStore.get('mapTools.snapping.distance') ??
+       10)
+    : ((BUILTIN_PREFERENCES['mapTools.snapping.distance']?.value as number) ?? 10);
+
+/**
+ * @signal snappingDistanceSignal
+ * @description Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<number>}
+ */
+export const snappingDistanceSignal = signal<number>(initialSnappingDistance);
+
+/**
+ * @signal isSnappingOptionsOpenSignal
+ * @description Modeless visibility toggle signal for the Snapping Options dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isSnappingOptionsOpenSignal = signal<boolean>(false);
+
+/**
+ * @function openSnappingOptionsDialog
+ * @description Opens modeless Snapping Options dialog window.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openSnappingOptionsDialog(): void {
+  isSnappingOptionsOpenSignal.value = true;
+  addConsoleLog('info', 'Snapping Options dialog opened.', 'Snapping');
+}
+
+/**
+ * @function closeSnappingOptionsDialog
+ * @description Closes modeless Snapping Options dialog window.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeSnappingOptionsDialog(): void {
+  isSnappingOptionsOpenSignal.value = false;
+  addConsoleLog('info', 'Snapping Options dialog closed.', 'Snapping');
+}
 
 // Workbench window geometry & panel layout signals
 /**

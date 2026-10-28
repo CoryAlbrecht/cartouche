@@ -12,6 +12,7 @@
  * @see {@link LayerPropertiesDialog}
  * @see {@link ProjectPropertiesDialog}
  * @see {@link SelectByValueDialog}
+ * @see {@link SnappingOptionsDialog}
  */
 
 import React, { useCallback, useEffect, useRef } from "react";
@@ -93,6 +94,7 @@ import { AddLayersDialog } from "./dialogs/AddLayersDialog";
 import { LayerPropertiesDialog } from "./dialogs/LayerPropertiesDialog";
 import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { SelectByValueDialog } from "./dialogs/SelectByValueDialog";
+import { SnappingOptionsDialog } from "./dialogs/SnappingOptionsDialog";
 import { handleWorkbenchKeyDown } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
@@ -1652,6 +1654,9 @@ export const Workbench: React.FC = () => {
 
       {/* Select Features by Value Modeless Dialog */}
       <SelectByValueDialog />
+
+      {/* Snapping Options Modeless Dialog */}
+      <SnappingOptionsDialog />
     </div>
   );
 };

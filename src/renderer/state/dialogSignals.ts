@@ -19,7 +19,9 @@ import {
   isProjectPropertiesOpenSignal,
   closeProjectPropertiesDialog,
   isSelectByValueOpenSignal,
-  closeSelectByValueDialog
+  closeSelectByValueDialog,
+  isSnappingOptionsOpenSignal,
+  closeSnappingOptionsDialog
 } from './gisSignals';
 import { activeLayerPropertiesIdSignal, cancelLayerPropertiesEdits } from './layerPropertiesSignals';
 
@@ -126,6 +128,11 @@ export function cancelTopDialog(): boolean {
 
   if (isSelectByValueOpenSignal.value) {
     closeSelectByValueDialog();
+    return true;
+  }
+
+  if (isSnappingOptionsOpenSignal.value) {
+    closeSnappingOptionsDialog();
     return true;
   }
 

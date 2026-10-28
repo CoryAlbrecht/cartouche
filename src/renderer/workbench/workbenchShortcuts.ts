@@ -44,7 +44,12 @@ import {
   pasteFeaturesAction,
   toggleLayerEditingAction,
   vertexEditorAction,
-  snappingEnabledSignal
+  snappingEnabledSignal,
+  snappingScopeSignal,
+  snapToVerticesSignal,
+  snapToMidpointSignal,
+  snapToSegmentSignal,
+  openSnappingOptionsDialog
 } from '../state/gisSignals';
 import { openPreferencesDialog } from '../state/preferencesSignals';
 import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
@@ -200,6 +205,24 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           break;
         case 'snapping':
           snappingEnabledSignal.value = !snappingEnabledSignal.value;
+          break;
+        case 'snap_to_vertices':
+          snapToVerticesSignal.value = !snapToVerticesSignal.value;
+          break;
+        case 'snap_to_midpoint':
+          snapToMidpointSignal.value = !snapToMidpointSignal.value;
+          break;
+        case 'snap_to_segment':
+          snapToSegmentSignal.value = !snapToSegmentSignal.value;
+          break;
+        case 'snap_to_active':
+          snappingScopeSignal.value = 'snap_to_active';
+          break;
+        case 'snap_to_all':
+          snappingScopeSignal.value = 'snap_to_all';
+          break;
+        case 'snap_to_advanced':
+          openSnappingOptionsDialog();
           break;
         case 'cancel_action':
           if (cancelTopDialog()) {

@@ -241,7 +241,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
     <div className={`split-tool-button ${orientationClass} ${className}`}>
       <button
         type='button'
-        className={`toolbar-btn split-tool-primary ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
+        className={`toolbar-btn split-tool-primary ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}`.replace(/\s+/g, ' ').trim()}
         title={computedTitle}
         disabled={disabled}
         onClick={handlePrimaryClick}
@@ -252,7 +252,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
       <button
         ref={chevronRef}
         type='button'
-        className={`toolbar-btn split-tool-chevron ${disabled ? 'disabled' : ''}`}
+        className={`toolbar-btn split-tool-chevron ${disabled ? 'disabled' : ''}`.replace(/\s+/g, ' ').trim()}
         title={t('more_options')}
         disabled={disabled}
         onClick={handleChevronClick}

@@ -502,6 +502,44 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'ui',
     type: 'number'
   },
+  'ui.snappingOptions.location.x': {
+    displayName: 'Snapping Options Dialog X Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.snappingOptions.location.y': {
+    displayName: 'Snapping Options Dialog Y Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.snappingOptions.location.width': {
+    displayName: 'Snapping Options Dialog Width',
+    value: 600,
+    defaultValue: 600,
+    minimum: 400,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.snappingOptions.location.height': {
+    displayName: 'Snapping Options Dialog Height',
+    value: 450,
+    defaultValue: 450,
+    minimum: 300,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
   'ui.systemDialogs.openFile.location': {
     displayName: 'Open File Dialog Location',
     value: ':Recent',
