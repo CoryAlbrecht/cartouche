@@ -4,7 +4,7 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  */
 
@@ -31,7 +31,6 @@ import {
   mdiMagnifyMinusOutline,
   mdiLoupe,
   mdiMagnifyExpand,
-  mdiSelect,
   mdiSelectDrag,
   mdiSelectionEllipse,
   mdiTableSearch,
@@ -54,7 +53,7 @@ import {
  * @description Array of built-in action descriptors defining names, descriptions, icons, keyboard shortcuts, and API handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {ActionDefinition[]}
  */
@@ -199,7 +198,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: 'select_feature',
     description: 'Selects individual features on click',
-    icon: mdiSelect,
+    icon: "file:select-primary-click.svg",
     keyCombination: { key: 'q' }
   },
   {

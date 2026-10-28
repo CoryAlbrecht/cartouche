@@ -4,7 +4,7 @@
  * @description Unit tests verifying Icon component support for CSS custom properties, calc expressions, and default --cartouche-ui-icon-size inheritance.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-22
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link Icon}
  */
@@ -315,7 +315,10 @@ const jiti = createJiti(import.meta.url, {
     '@main': path.resolve(process.cwd(), 'src/main')
   }
 });
-const { default: Icon } = jiti('../../../../src/renderer/components/common/Icon.tsx');
+const { default: Icon, BUILTIN_CUSTOM_SVG_ICONS } = jiti('../../../../src/renderer/components/common/Icon.tsx') as {
+  default: React.FC<any>;
+  BUILTIN_CUSTOM_SVG_ICONS: Record<string, { viewBox: string; paths: string[] }>;
+};
 
 describe('Icon Component CSS Custom Property & Sizing Support', () => {
   beforeEach(() => {
@@ -431,5 +434,26 @@ describe('Icon Component CSS Custom Property & Sizing Support', () => {
     assert.strictEqual(svg.style.margin, '2px');
     assert.strictEqual(svg.style.width, 'var(--cartouche-ui-icon-size, 24px)');
     assert.strictEqual(svg.style.height, 'var(--cartouche-ui-icon-size, 24px)');
+  });
+
+  it('pre-caches select-primary-click in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments', async () => {
+    assert.ok(BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'], 'select-primary-click must exist in BUILTIN_CUSTOM_SVG_ICONS');
+    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'].viewBox, '0 0 24 24');
+    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'].paths.length, 2);
+
+    await act(async () => {
+      root!.render(
+        React.createElement(Icon, {
+          name: 'file:select-primary-click.svg',
+          size: 20
+        })
+      );
+    });
+
+    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    assert.strictEqual(svgs.length, 1);
+    const paths = findAllNodes(svgs[0], el => el.tagName === 'PATH');
+    assert.strictEqual(paths.length, 2);
+    assert.ok(paths[1].attributes.d.includes('m14.0066 18.4021'));
   });
 });

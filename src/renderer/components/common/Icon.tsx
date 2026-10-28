@@ -4,7 +4,7 @@
  * @description Standardized Material Design Icons (MDI) and custom SVG file icon renderer component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-22
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  */
 
@@ -45,15 +45,22 @@ interface ParsedSvgIcon {
  * @description Pre-parsed custom SVG icon definitions from `assets/svg/icons/` for immediate synchronous rendering without async layout shifts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-19
- * @updated 2026-10-19
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {Record<string, ParsedSvgIcon>}
  */
-const BUILTIN_CUSTOM_SVG_ICONS: Record<string, ParsedSvgIcon> = {
+export const BUILTIN_CUSTOM_SVG_ICONS: Record<string, ParsedSvgIcon> = {
   "layers-plus-outline": {
     viewBox: "0 0 24 24",
     paths: [
       "m19.1845 14.4434v2.7h2.7v1.78448h-2.7v2.7h-1.78448v-2.7h-2.7v-1.78448h2.7v-2.7zm-14.5645-1.6334-1.62 1.26 9 7 1.30266-1.01318c-.592306-.503527-.74919-1.25497-.418178-2.23061l-.884483.713793zm7.38-10.81-9 7 9 7 9-7zm0 2.5293 5.74023 4.4707-5.74023 4.4707-5.74023-4.4707z",
+    ],
+  },
+  "select-primary-click": {
+    viewBox: "0 0 24 24",
+    paths: [
+      "m4 3a1 1 0 00-1 1v1h2v-2h-1zm3 0v2h2v-2h-2zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zm4 0v2h2v-1a1 1 0 00-1-1h-1zm-16 4v2h2v-2h-2zm16 0v2h2v-2h-2zm-16 4v2h2v-2h-2zm16 0v2h2v-2h-2zm-16 4v2h2v-2h-2zm0 4v1a1 1 0 001 1h1v-2h-2zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z",
+      "m14.0066 18.4021-.05925-8.46785 6.32903 5.474-2.45414.459288 1.62511 3.48777-1.89474.894737-1.58557-3.49354z",
     ],
   },
 };

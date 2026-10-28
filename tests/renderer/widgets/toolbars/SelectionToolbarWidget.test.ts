@@ -4,7 +4,7 @@
  * @description Unit and component tests for SelectionToolbarWidget verifying SplitToolButton selection modes, SelectByValue dialog trigger, select all / deselect all actions, and active/disabled button states.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link SelectionToolbarWidget}
  * @see {@link isDeselectAllDisabled}
@@ -15,7 +15,6 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import createJiti from 'jiti';
 import {
-  mdiSelect,
   mdiSelectDrag,
   mdiSelectionEllipse,
   mdiTableSearch,
@@ -51,6 +50,10 @@ const {
   SelectionToolbarWidget: React.FC<{ zone?: ToolbarZone }>;
   isDeselectAllDisabled: (selectedFeatures: Set<string | number> | number) => boolean;
   SELECTION_ACTION_TO_TOOL_MAP: Record<string, string>;
+};
+
+const { BUILTIN_CUSTOM_SVG_ICONS } = jiti('@renderer/components/common/Icon') as {
+  BUILTIN_CUSTOM_SVG_ICONS: Record<string, { viewBox: string; paths: string[] }>;
 };
 
 const {
@@ -111,7 +114,7 @@ describe('SelectionToolbarWidget Component Rendering and Controls', () => {
       {
         name: 'select_feature',
         description: 'Select Feature',
-        icon: mdiSelect,
+        icon: 'file:select-primary-click.svg',
         formattedKey: 'Q',
         keyCombination: { key: 'q' }
       },
@@ -178,8 +181,12 @@ describe('SelectionToolbarWidget Component Rendering and Controls', () => {
     assert.ok(html.includes('split-tool-primary'), 'Expected SplitToolButton primary button segment');
     assert.ok(html.includes('split-tool-chevron'), 'Expected SplitToolButton chevron button segment');
 
-    // MDI icons: default select_feature icon
-    assert.ok(html.includes(mdiSelect), 'Expected mdiSelect icon on primary split button');
+    // Custom SVG icon: default select_feature icon
+    const selectPrimaryPaths = BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'].paths;
+    assert.ok(
+      html.includes(selectPrimaryPaths[0]) && html.includes(selectPrimaryPaths[1]),
+      'Expected select-primary-click icon path geometries on primary split button'
+    );
 
     // Discrete action buttons: select_features_by_value, select_all_features, deselect_all_features
     assert.ok(html.includes('id="toolbar-tool-select-by-value"'), 'Missing select_features_by_value button');
