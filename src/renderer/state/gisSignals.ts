@@ -49,7 +49,8 @@ import {
   layerStylesSignal,
   activeLayerIdSignal,
   updateLayerFeatureCount,
-  clearNodeSelection
+  clearNodeSelection,
+  findItemInTree
 } from './projectSignals';
 
 export {
@@ -67,6 +68,8 @@ export {
   activeLayerIdSignal,
   updateLayerFeatureCount
 };
+
+export type { GeometryKind, GisLayer } from '../../shared/types';
 
 /**
  * @signal undoStackSignal
@@ -103,18 +106,18 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
- * @typedef {'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon'} ActiveTool
+ * @typedef {'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor'} ActiveTool
  * @description Supported interactive canvas tool modes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-27
  * @since 0.1.0-dev
  */
-export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon';
+export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor';
 
 /**
  * @signal activeToolSignal
- * @description Active canvas interactive tool mode ('pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon').
+ * @description Active canvas interactive tool mode ('pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-27
@@ -122,6 +125,17 @@ export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 
  * @type {Signal<ActiveTool>}
  */
 export const activeToolSignal = signal<ActiveTool>('pan');
+
+/**
+ * @signal editableLayerIdsSignal
+ * @description Set of layer identifiers currently enabled for feature digitizing and editing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<Set<string>>}
+ */
+export const editableLayerIdsSignal = signal<Set<string>>(new Set());
 
 /**
  * @typedef {'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand'} SelectionMode
@@ -148,7 +162,13 @@ export { activeSelectionModeSignal as selectionModeSignal };
 
 // Automatically revert activeToolSignal to 'pan' if active layer is cleared while digitizing
 activeLayerIdSignal.subscribe((activeId) => {
-  if (activeId === null && (activeToolSignal.value === 'point' || activeToolSignal.value === 'line' || activeToolSignal.value === 'polygon')) {
+  if (
+    activeId === null &&
+    (activeToolSignal.value === 'point' ||
+      activeToolSignal.value === 'line' ||
+      activeToolSignal.value === 'polygon' ||
+      activeToolSignal.value === 'vertex_editor')
+  ) {
     activeToolSignal.value = 'pan';
   }
 });
@@ -558,15 +578,41 @@ export function getLayerDisplayName(layer: GisLayer): string {
 /**
  * @signal activeLayerSignal
  * @description Computed derivation returning active layer object corresponding to activeLayerIdSignal.
+ * Checks layersSignal first, then falls back to projectLayersSignal or projectTreeSignal item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
- * @type {ReadonlySignal<GisLayer | null>}
+ * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
-export const activeLayerSignal = computed(() => {
+export const activeLayerSignal = computed<GisLayer | ProjectLayerItem | null>(() => {
   const activeId = activeLayerIdSignal.value;
-  return layersSignal.value.find((l) => l.id === activeId) ?? null;
+  if (!activeId) return null;
+
+  const inLayers = layersSignal.value.find((l) => l.id === activeId);
+  if (inLayers) {
+    if (!inLayers.geometryKind) {
+      const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
+      if (inProjectLayers?.geometryKind) {
+        return { ...inLayers, geometryKind: inProjectLayers.geometryKind };
+      }
+      const inTree = findItemInTree(projectTreeSignal.value, activeId);
+      if (inTree && !('children' in inTree) && (inTree as ProjectLayerItem).geometryKind) {
+        return { ...inLayers, geometryKind: (inTree as ProjectLayerItem).geometryKind };
+      }
+    }
+    return inLayers;
+  }
+
+  const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
+  if (inProjectLayers) return inProjectLayers;
+
+  const inTree = findItemInTree(projectTreeSignal.value, activeId);
+  if (inTree && !('children' in inTree)) {
+    return inTree as ProjectLayerItem;
+  }
+
+  return null;
 });
 
 /**
@@ -1884,19 +1930,42 @@ export function pasteFeaturesAction(): void {
 }
 
 /**
- * @description Toggles vector feature editing mode for the active layer.
+ * @description Action handler toggling vector feature editing mode for the active or specified layer.
+ * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-10-27
  * @since 0.1.0-dev
+ * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
  * @returns {void}
  */
-export function toggleLayerEditingAction(): void {
-  addConsoleLog('info', 'Toggle layer editing requested.', 'Digitizing');
+export function toggleLayerEditingAction(layerId?: string | null): void {
+  const targetId = layerId !== undefined ? layerId : activeLayerIdSignal.value;
+  if (!targetId) return;
+
+  const current = new Set(editableLayerIdsSignal.value);
+  if (current.has(targetId)) {
+    current.delete(targetId);
+    editableLayerIdsSignal.value = current;
+    if (
+      activeLayerIdSignal.value === targetId &&
+      (activeToolSignal.value === 'point' ||
+        activeToolSignal.value === 'line' ||
+        activeToolSignal.value === 'polygon' ||
+        activeToolSignal.value === 'vertex_editor')
+    ) {
+      activeToolSignal.value = 'pan';
+    }
+    addConsoleLog('info', `Layer editing disabled for "${targetId}".`, 'Digitizing');
+  } else {
+    current.add(targetId);
+    editableLayerIdsSignal.value = current;
+    addConsoleLog('info', `Layer editing enabled for "${targetId}".`, 'Digitizing');
+  }
 }
 
 /**
- * @description Toggles interactive vertex and edge editing mode.
+ * @description Action handler toggling interactive vertex and edge editing mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-10-27
@@ -1904,6 +1973,11 @@ export function toggleLayerEditingAction(): void {
  * @returns {void}
  */
 export function vertexEditorAction(): void {
+  if (activeToolSignal.value === 'vertex_editor') {
+    activeToolSignal.value = 'pan';
+  } else {
+    activeToolSignal.value = 'vertex_editor';
+  }
   addConsoleLog('info', 'Vertex editor toggled.', 'Digitizing');
 }
 

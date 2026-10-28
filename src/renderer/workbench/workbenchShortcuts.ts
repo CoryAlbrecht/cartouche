@@ -42,6 +42,8 @@ import {
   copySelectedFeaturesAction,
   cutSelectedFeaturesAction,
   pasteFeaturesAction,
+  toggleLayerEditingAction,
+  vertexEditorAction,
   snappingEnabledSignal
 } from '../state/gisSignals';
 import { openPreferencesDialog } from '../state/preferencesSignals';
@@ -189,6 +191,12 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           break;
         case 'paste_features':
           pasteFeaturesAction();
+          break;
+        case 'toggle_layer_editing':
+          toggleLayerEditingAction();
+          break;
+        case 'vertex_editor':
+          vertexEditorAction();
           break;
         case 'snapping':
           snappingEnabledSignal.value = !snappingEnabledSignal.value;
