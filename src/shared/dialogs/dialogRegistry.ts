@@ -12,7 +12,7 @@
 /**
  * Valid frame name identifiers for detached dialog windows.
  *
- * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow'} DialogWindowName
+ * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow'} DialogWindowName
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
  * @updated 2026-10-27
@@ -22,7 +22,8 @@ export type DialogWindowName =
   | 'preferencesWindow'
   | 'addLayersWindow'
   | 'layerPropertiesWindow'
-  | 'projectPropertiesWindow';
+  | 'projectPropertiesWindow'
+  | 'selectByValueWindow';
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -49,11 +50,10 @@ export interface DialogWindowSpec {
 }
 
 /**
- * Central registry mapping dialog window frame names to their dimensional constraints and preference keys.
- *
+ * @description Central registry mapping dialog window frame names to their dimensional constraints and preference keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Readonly<Record<DialogWindowName, DialogWindowSpec>>}
  */
@@ -89,6 +89,14 @@ export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindow
     defaultHeight: 520,
     minWidth: 480,
     minHeight: 360
+  }),
+  selectByValueWindow: Object.freeze({
+    frameName: 'selectByValueWindow',
+    locationKeyPrefix: 'ui.selectByValue.location',
+    defaultWidth: 640,
+    defaultHeight: 480,
+    minWidth: 400,
+    minHeight: 300
   })
 });
 

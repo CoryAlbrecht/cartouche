@@ -20,7 +20,8 @@ describe('Centralized Dialog Window Registry (DIALOG_WINDOW_SPECS)', () => {
     'preferencesWindow',
     'addLayersWindow',
     'layerPropertiesWindow',
-    'projectPropertiesWindow'
+    'projectPropertiesWindow',
+    'selectByValueWindow'
   ];
 
   it('contains specifications for all standard dialog windows', () => {

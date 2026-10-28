@@ -103,15 +103,48 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
- * @signal activeToolSignal
- * @description Active canvas interactive tool mode ('pan' | 'select' | 'point' | 'line' | 'polygon').
+ * @typedef {'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon'} ActiveTool
+ * @description Supported interactive canvas tool modes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-27
  * @since 0.1.0-dev
- * @type {Signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>}
  */
-export const activeToolSignal = signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>('pan');
+export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon';
+
+/**
+ * @signal activeToolSignal
+ * @description Active canvas interactive tool mode ('pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-21
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<ActiveTool>}
+ */
+export const activeToolSignal = signal<ActiveTool>('pan');
+
+/**
+ * @typedef {'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand'} SelectionMode
+ * @description Discrete spatial feature selection mode identifiers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ */
+export type SelectionMode = 'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand';
+
+/**
+ * @signal activeSelectionModeSignal
+ * @description Currently active selection mode option for SplitToolButton ('select_feature' | 'select_features_by_drag' | 'select_features_by_freehand').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<SelectionMode>}
+ */
+export const activeSelectionModeSignal = signal<SelectionMode>('select_feature');
+
+export { activeSelectionModeSignal as selectionModeSignal };
 
 // Automatically revert activeToolSignal to 'pan' if active layer is cleared while digitizing
 activeLayerIdSignal.subscribe((activeId) => {
@@ -1875,6 +1908,43 @@ export function vertexEditorAction(): void {
 }
 
 /**
+ * @signal isSelectByValueOpenSignal
+ * @description Modeless visibility toggle signal for the Select Features by Value dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isSelectByValueOpenSignal = signal<boolean>(false);
+
+/**
+ * @description Opens modeless Select Features by Value dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openSelectByValueDialog(): void {
+  isSelectByValueOpenSignal.value = true;
+  addConsoleLog('info', 'Select Features by Value dialog opened.', 'Selection');
+}
+
+/**
+ * @description Closes modeless Select Features by Value dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeSelectByValueDialog(): void {
+  isSelectByValueOpenSignal.value = false;
+  addConsoleLog('info', 'Select Features by Value dialog closed.', 'Selection');
+}
+
+/**
  * @description Opens Select Features by Value attribute query dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
@@ -1883,7 +1953,7 @@ export function vertexEditorAction(): void {
  * @returns {void}
  */
 export function selectFeaturesByValueAction(): void {
-  addConsoleLog('info', 'Select features by value requested.', 'Selection');
+  openSelectByValueDialog();
 }
 
 /**

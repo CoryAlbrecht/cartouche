@@ -17,7 +17,9 @@ import {
   isAddLayersOpenSignal,
   closeAddLayersDialog,
   isProjectPropertiesOpenSignal,
-  closeProjectPropertiesDialog
+  closeProjectPropertiesDialog,
+  isSelectByValueOpenSignal,
+  closeSelectByValueDialog
 } from './gisSignals';
 import { activeLayerPropertiesIdSignal, cancelLayerPropertiesEdits } from './layerPropertiesSignals';
 
@@ -119,6 +121,11 @@ export function cancelTopDialog(): boolean {
 
   if (isProjectPropertiesOpenSignal.value) {
     closeProjectPropertiesDialog();
+    return true;
+  }
+
+  if (isSelectByValueOpenSignal.value) {
+    closeSelectByValueDialog();
     return true;
   }
 

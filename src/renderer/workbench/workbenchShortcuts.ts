@@ -35,6 +35,9 @@ import {
   zoomToLayerAction,
   selectAllFeaturesAction,
   deselectAllFeaturesAction,
+  openSelectByValueDialog,
+  activeToolSignal,
+  activeSelectionModeSignal,
   deleteSelectedFeaturesAction,
   copySelectedFeaturesAction,
   cutSelectedFeaturesAction,
@@ -153,6 +156,21 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           break;
         case 'zoom_to_layer':
           zoomToLayerAction();
+          break;
+        case 'select_feature':
+          activeSelectionModeSignal.value = 'select_feature';
+          activeToolSignal.value = 'select';
+          break;
+        case 'select_features_by_drag':
+          activeSelectionModeSignal.value = 'select_features_by_drag';
+          activeToolSignal.value = 'select_drag';
+          break;
+        case 'select_features_by_freehand':
+          activeSelectionModeSignal.value = 'select_features_by_freehand';
+          activeToolSignal.value = 'select_freehand';
+          break;
+        case 'select_features_by_value':
+          openSelectByValueDialog();
           break;
         case 'select_all_features':
           selectAllFeaturesAction();

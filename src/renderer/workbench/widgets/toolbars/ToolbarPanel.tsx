@@ -9,6 +9,7 @@
  * @see {@link ToolbarContainerWidget}
  * @see {@link ProjectToolbarWidget}
  * @see {@link MapViewToolbarWidget}
+ * @see {@link SelectionToolbarWidget}
  */
 
 import React from "react";
@@ -22,6 +23,7 @@ import {
 import { ToolbarContainerWidget } from "../ToolbarContainerWidget";
 import { ProjectToolbarWidget } from "./ProjectToolbarWidget";
 import { MapViewToolbarWidget } from "./MapViewToolbarWidget";
+import { SelectionToolbarWidget } from "./SelectionToolbarWidget";
 import { DigitizingToolbarWidget } from "./DigitizingToolbarWidget";
 import { SnappingToolbarWidget } from "./SnappingToolbarWidget";
 
@@ -38,6 +40,7 @@ const toolbarComponentMap: Partial<
 > = {
   project: ProjectToolbarWidget,
   map_view: MapViewToolbarWidget,
+  selection: SelectionToolbarWidget,
   digitizing: DigitizingToolbarWidget,
   snapping: SnappingToolbarWidget,
 };

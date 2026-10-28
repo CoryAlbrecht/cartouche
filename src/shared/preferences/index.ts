@@ -464,6 +464,44 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'ui',
     type: 'number'
   },
+  'ui.selectByValue.location.x': {
+    displayName: 'Select Features by Value Dialog X Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.selectByValue.location.y': {
+    displayName: 'Select Features by Value Dialog Y Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.selectByValue.location.width': {
+    displayName: 'Select Features by Value Dialog Width',
+    value: 640,
+    defaultValue: 640,
+    minimum: 400,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.selectByValue.location.height': {
+    displayName: 'Select Features by Value Dialog Height',
+    value: 480,
+    defaultValue: 480,
+    minimum: 300,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
   'ui.systemDialogs.openFile.location': {
     displayName: 'Open File Dialog Location',
     value: ':Recent',
