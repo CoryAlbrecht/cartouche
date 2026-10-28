@@ -4,7 +4,7 @@
  * @description Unit tests verifying action registry parity, ensuring every BUILTIN_ACTION maps to a localized string in en.xml and has a valid functionCall where expected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-13
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link BUILTIN_ACTIONS}
  */
@@ -95,6 +95,74 @@ describe('actionParity', () => {
 
     const cancelAction = actionsMap.get('cancel_action');
     assert.deepEqual(cancelAction?.keyCombination, { key: 'Escape' });
+  });
+
+  it('ensures all 24 modular toolbar actions have matching entries in fr.xml', () => {
+    const stringNameRegex = /<string\s+name=["']([^"']+)["']/g;
+    const definedFrKeys = new Set<string>();
+    let match: RegExpExecArray | null;
+    while ((match = stringNameRegex.exec(frXmlContent)) !== null) {
+      definedFrKeys.add(match[1]);
+    }
+
+    const modularToolbarActions = [
+      'project_properties',
+      'zoom_in',
+      'zoom_out',
+      'zoom_to_selection',
+      'zoom_to_layer',
+      'select_feature',
+      'select_features_by_drag',
+      'select_features_by_freehand',
+      'select_features_by_value',
+      'select_all_features',
+      'deselect_all_features',
+      'toggle_layer_editing',
+      'vertex_editor',
+      'delete_selected_features',
+      'copy_selected_features',
+      'cut_selected_features',
+      'paste_features',
+      'snapping',
+      'snap_to_active',
+      'snap_to_all',
+      'snap_to_advanced',
+      'snap_to_vertices',
+      'snap_to_midpoint',
+      'snap_to_segment'
+    ];
+
+    for (const key of modularToolbarActions) {
+      assert.ok(
+        definedFrKeys.has(key),
+        `Action "${key}" must have a localized entry in assets/xml/i18n/fr.xml`
+      );
+    }
+  });
+
+  it('verifies all modular toolbar action keyboard shortcuts conform to spec', () => {
+    const actionsMap = new Map(BUILTIN_ACTIONS.map(a => [a.name, a]));
+
+    assert.deepEqual(actionsMap.get('zoom_in')?.keyCombination, { key: '=', ctrl: true });
+    assert.deepEqual(actionsMap.get('zoom_out')?.keyCombination, { key: '-', ctrl: true });
+    assert.deepEqual(actionsMap.get('zoom_to_selection')?.keyCombination, { key: 'j', ctrl: true });
+    assert.deepEqual(actionsMap.get('zoom_to_layer')?.keyCombination, { key: 'l', ctrl: true, alt: true });
+    assert.deepEqual(actionsMap.get('select_feature')?.keyCombination, { key: 'q' });
+    assert.deepEqual(actionsMap.get('select_features_by_drag')?.keyCombination, { key: 'q', shift: true });
+    assert.deepEqual(actionsMap.get('select_features_by_freehand')?.keyCombination, { key: 'q', alt: true });
+    assert.deepEqual(actionsMap.get('select_features_by_value')?.keyCombination, { key: 'F6' });
+    assert.deepEqual(actionsMap.get('select_all_features')?.keyCombination, { key: 'a', ctrl: true });
+    assert.deepEqual(actionsMap.get('deselect_all_features')?.keyCombination, { key: 'a', ctrl: true, shift: true });
+    assert.deepEqual(actionsMap.get('toggle_layer_editing')?.keyCombination, { key: 'e', ctrl: true });
+    assert.deepEqual(actionsMap.get('vertex_editor')?.keyCombination, { key: 'v' });
+    assert.deepEqual(actionsMap.get('delete_selected_features')?.keyCombination, { key: 'Delete' });
+    assert.deepEqual(actionsMap.get('copy_selected_features')?.keyCombination, { key: 'c', ctrl: true });
+    assert.deepEqual(actionsMap.get('cut_selected_features')?.keyCombination, { key: 'x', ctrl: true });
+    assert.deepEqual(actionsMap.get('paste_features')?.keyCombination, { key: 'v', ctrl: true });
+    assert.deepEqual(actionsMap.get('snapping')?.keyCombination, { key: 's' });
+    assert.deepEqual(actionsMap.get('snap_to_vertices')?.keyCombination, { key: 'v', alt: true });
+    assert.deepEqual(actionsMap.get('snap_to_midpoint')?.keyCombination, { key: 'm', alt: true });
+    assert.deepEqual(actionsMap.get('snap_to_segment')?.keyCombination, { key: 'e', alt: true });
   });
 
   it('ensures every BUILTIN_ACTION that defines a functionCall has a callable function', () => {

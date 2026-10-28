@@ -28,7 +28,18 @@ import {
   redoAction,
   openAddLayersDialog,
   toggleLayersWidgetAction,
-  cancelAction
+  cancelAction,
+  zoomInAction,
+  zoomOutAction,
+  zoomToSelectionAction,
+  zoomToLayerAction,
+  selectAllFeaturesAction,
+  deselectAllFeaturesAction,
+  deleteSelectedFeaturesAction,
+  copySelectedFeaturesAction,
+  cutSelectedFeaturesAction,
+  pasteFeaturesAction,
+  snappingEnabledSignal
 } from '../state/gisSignals';
 import { openPreferencesDialog } from '../state/preferencesSignals';
 import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
@@ -130,6 +141,39 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           break;
         case 'rename_layer_tree_node':
           requestRenameSelectedNode();
+          break;
+        case 'zoom_in':
+          zoomInAction();
+          break;
+        case 'zoom_out':
+          zoomOutAction();
+          break;
+        case 'zoom_to_selection':
+          zoomToSelectionAction();
+          break;
+        case 'zoom_to_layer':
+          zoomToLayerAction();
+          break;
+        case 'select_all_features':
+          selectAllFeaturesAction();
+          break;
+        case 'deselect_all_features':
+          deselectAllFeaturesAction();
+          break;
+        case 'delete_selected_features':
+          deleteSelectedFeaturesAction();
+          break;
+        case 'copy_selected_features':
+          copySelectedFeaturesAction();
+          break;
+        case 'cut_selected_features':
+          cutSelectedFeaturesAction();
+          break;
+        case 'paste_features':
+          pasteFeaturesAction();
+          break;
+        case 'snapping':
+          snappingEnabledSignal.value = !snappingEnabledSignal.value;
           break;
         case 'cancel_action':
           if (cancelTopDialog()) {

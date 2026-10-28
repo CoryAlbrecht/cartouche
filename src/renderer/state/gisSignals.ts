@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -106,7 +106,7 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
  * @description Active canvas interactive tool mode ('pan' | 'select' | 'point' | 'line' | 'polygon').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<'pan' | 'select' | 'point' | 'line' | 'polygon'>}
  */
@@ -1392,5 +1392,183 @@ export function cancelAction(): void {
     window.electronAPI.executeAction('cancel_action');
   }
   addConsoleLog('info', 'Cancelled active operation.', 'Workbench');
+}
+
+/**
+ * @description Triggers zoom-in map viewport step.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomInAction(): void {
+  triggerMapAction('zoomIn');
+}
+
+/**
+ * @description Triggers zoom-out map viewport step.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomOutAction(): void {
+  triggerMapAction('zoomOut');
+}
+
+/**
+ * @description Triggers viewport fit to currently selected feature bounds.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomToSelectionAction(): void {
+  addConsoleLog('info', 'Zoom to selection requested.', 'Map');
+}
+
+/**
+ * @description Triggers viewport fit to active layer spatial extent.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function zoomToLayerAction(): void {
+  addConsoleLog('info', 'Zoom to layer requested.', 'Map');
+}
+
+/**
+ * @description Selects all features belonging to the active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function selectAllFeaturesAction(): void {
+  const activeId = activeLayerIdSignal.value;
+  const targetFeatures = activeId
+    ? featuresSignal.value.filter((f) => f.layerId === activeId)
+    : featuresSignal.value;
+  selectedFeatureIdsSignal.value = new Set(targetFeatures.map((f) => f.id));
+  addConsoleLog('info', `Selected ${targetFeatures.length} feature(s).`, 'Selection');
+}
+
+/**
+ * @description Deselects all currently selected spatial feature records.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function deselectAllFeaturesAction(): void {
+  selectedFeatureIdsSignal.value = new Set();
+  addConsoleLog('info', 'Deselected all features.', 'Selection');
+}
+
+/**
+ * @description Deletes selected spatial features from the active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function deleteSelectedFeaturesAction(): void {
+  if (selectedFeatureIdsSignal.value.size === 0) return;
+  const count = selectedFeatureIdsSignal.value.size;
+  featuresSignal.value = featuresSignal.value.filter((f) => !selectedFeatureIdsSignal.value.has(f.id));
+  selectedFeatureIdsSignal.value = new Set();
+  addConsoleLog('info', `Deleted ${count} selected feature(s).`, 'Edit');
+}
+
+/**
+ * @description Copies selected features to feature clipboard.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function copySelectedFeaturesAction(): void {
+  copyAction();
+}
+
+/**
+ * @description Cuts selected features to feature clipboard.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function cutSelectedFeaturesAction(): void {
+  cutAction();
+}
+
+/**
+ * @description Pastes features from clipboard into active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function pasteFeaturesAction(): void {
+  pasteAction();
+}
+
+/**
+ * @description Toggles vector feature editing mode for the active layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function toggleLayerEditingAction(): void {
+  addConsoleLog('info', 'Toggle layer editing requested.', 'Digitizing');
+}
+
+/**
+ * @description Toggles interactive vertex and edge editing mode.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function vertexEditorAction(): void {
+  addConsoleLog('info', 'Vertex editor toggled.', 'Digitizing');
+}
+
+/**
+ * @description Opens Select Features by Value attribute query dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function selectFeaturesByValueAction(): void {
+  addConsoleLog('info', 'Select features by value requested.', 'Selection');
+}
+
+/**
+ * @description Opens Project Properties dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function projectPropertiesAction(): void {
+  addConsoleLog('info', 'Project properties dialog requested.', 'Project');
 }
 

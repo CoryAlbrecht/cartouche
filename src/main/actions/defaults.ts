@@ -4,7 +4,7 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-13
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 
@@ -25,14 +25,36 @@ import {
   mdiLayersOutline,
   mdiMapPlus,
   mdiPencilOutline,
-  mdiCancel
+  mdiCancel,
+  mdiFolderSettingsOutline,
+  mdiMagnifyPlusOutline,
+  mdiMagnifyMinusOutline,
+  mdiLoupe,
+  mdiMagnifyExpand,
+  mdiSelect,
+  mdiSelectDrag,
+  mdiSelectionEllipse,
+  mdiTableSearch,
+  mdiSelectAll,
+  mdiSelectionOff,
+  mdiVectorPointSelect,
+  mdiTrashCanOutline,
+  mdiContentCopy,
+  mdiContentCut,
+  mdiContentPaste,
+  mdiMagnet,
+  mdiLayersTripleOutline,
+  mdiTuneVariant,
+  mdiVectorPoint,
+  mdiRayVertex,
+  mdiVectorLine
 } from '@mdi/js';
 
 /**
  * @description Array of built-in action descriptors defining names, descriptions, icons, keyboard shortcuts, and API handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-13
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {ActionDefinition[]}
  */
@@ -115,7 +137,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: 'toggle_layers_widget',
     description: 'Toggles visibility of the Layers widget in the workbench grid',
-    icon: mdiLayersOutline, // Default layout icon
+    icon: mdiLayersOutline,
     keyCombination: { key: 'l', ctrl: true, shift: true }
   },
   {
@@ -142,6 +164,150 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     icon: mdiCancel,
     keyCombination: { key: 'Escape' },
     functionCall: ApiFunctions.cancelAction
+  },
+  // Modular Toolbars & Spatial Actions
+  {
+    name: 'project_properties',
+    description: 'Opens project properties dialog',
+    icon: mdiFolderSettingsOutline,
+    functionCall: ApiFunctions.projectProperties
+  },
+  {
+    name: 'zoom_in',
+    description: 'Zooms viewport in by the configured zoom amount',
+    icon: mdiMagnifyPlusOutline,
+    keyCombination: { key: '=', ctrl: true }
+  },
+  {
+    name: 'zoom_out',
+    description: 'Zooms viewport out by the configured zoom amount',
+    icon: mdiMagnifyMinusOutline,
+    keyCombination: { key: '-', ctrl: true }
+  },
+  {
+    name: 'zoom_to_selection',
+    description: 'Zooms viewport to fit selected features',
+    icon: mdiLoupe,
+    keyCombination: { key: 'j', ctrl: true }
+  },
+  {
+    name: 'zoom_to_layer',
+    description: 'Zooms viewport to the active layer extent',
+    icon: mdiMagnifyExpand,
+    keyCombination: { key: 'l', ctrl: true, alt: true }
+  },
+  {
+    name: 'select_feature',
+    description: 'Selects individual features on click',
+    icon: mdiSelect,
+    keyCombination: { key: 'q' }
+  },
+  {
+    name: 'select_features_by_drag',
+    description: 'Selects features within a drawn rectangle',
+    icon: mdiSelectDrag,
+    keyCombination: { key: 'q', shift: true }
+  },
+  {
+    name: 'select_features_by_freehand',
+    description: 'Selects features within a freehand lasso region',
+    icon: mdiSelectionEllipse,
+    keyCombination: { key: 'q', alt: true }
+  },
+  {
+    name: 'select_features_by_value',
+    description: 'Opens dialog to select features by attribute query',
+    icon: mdiTableSearch,
+    keyCombination: { key: 'F6' },
+    functionCall: ApiFunctions.selectFeaturesByValue
+  },
+  {
+    name: 'select_all_features',
+    description: 'Selects all features in the active layer',
+    icon: mdiSelectAll,
+    keyCombination: { key: 'a', ctrl: true }
+  },
+  {
+    name: 'deselect_all_features',
+    description: 'Clears all feature selections in the active layer',
+    icon: mdiSelectionOff,
+    keyCombination: { key: 'a', ctrl: true, shift: true }
+  },
+  {
+    name: 'toggle_layer_editing',
+    description: 'Toggles vector feature edit mode for the active layer',
+    icon: mdiPencilOutline,
+    keyCombination: { key: 'e', ctrl: true }
+  },
+  {
+    name: 'vertex_editor',
+    description: 'Toggles interactive vertex and edge editing mode',
+    icon: mdiVectorPointSelect,
+    keyCombination: { key: 'v' },
+    functionCall: ApiFunctions.vertexEditor
+  },
+  {
+    name: 'delete_selected_features',
+    description: 'Deletes selected features from the active layer',
+    icon: mdiTrashCanOutline,
+    keyCombination: { key: 'Delete' },
+    functionCall: ApiFunctions.deleteSelectedFeatures
+  },
+  {
+    name: 'copy_selected_features',
+    description: 'Copies selected features to the clipboard',
+    icon: mdiContentCopy,
+    keyCombination: { key: 'c', ctrl: true }
+  },
+  {
+    name: 'cut_selected_features',
+    description: 'Cuts selected features to the clipboard',
+    icon: mdiContentCut,
+    keyCombination: { key: 'x', ctrl: true }
+  },
+  {
+    name: 'paste_features',
+    description: 'Pastes features from the clipboard into the active layer',
+    icon: mdiContentPaste,
+    keyCombination: { key: 'v', ctrl: true }
+  },
+  {
+    name: 'snapping',
+    description: 'Toggles snapping functionality globally',
+    icon: mdiMagnet,
+    keyCombination: { key: 's' }
+  },
+  {
+    name: 'snap_to_active',
+    description: 'Restricts snapping targets to the active layer',
+    icon: mdiLayersOutline
+  },
+  {
+    name: 'snap_to_all',
+    description: 'Enables snapping against all visible layers',
+    icon: mdiLayersTripleOutline
+  },
+  {
+    name: 'snap_to_advanced',
+    description: 'Opens advanced snapping configuration dialog',
+    icon: mdiTuneVariant
+  },
+  {
+    name: 'snap_to_vertices',
+    description: 'Toggles snapping to feature vertices',
+    icon: mdiVectorPoint,
+    keyCombination: { key: 'v', alt: true }
+  },
+  {
+    name: 'snap_to_midpoint',
+    description: 'Toggles snapping to segment midpoints',
+    icon: mdiRayVertex,
+    keyCombination: { key: 'm', alt: true }
+  },
+  {
+    name: 'snap_to_segment',
+    description: 'Toggles snapping to feature segments',
+    icon: mdiVectorLine,
+    keyCombination: { key: 'e', alt: true }
   }
 ];
-

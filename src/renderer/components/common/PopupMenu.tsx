@@ -4,7 +4,7 @@
  * @description Modeless floating context menu component rendered at cursor coordinates via React portal, supporting boundary collision avoidance, keyboard dismissal, and menubar submenu styling tokens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link PopupMenuItem}
  */
@@ -35,7 +35,7 @@ export interface PopupMenuProps {
  * @description Independent portal-based context popup menu component adhering to Cartouche design system tokens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @param {PopupMenuProps} props - Component properties.
  * @returns {React.ReactPortal | null} Portaled popup menu element or null when closed.
@@ -221,6 +221,9 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
             )}
 
             <span className='menu-item-label'>{item.label}</span>
+            {item.formattedKey ? (
+              <span className='menu-key-slot'>{item.formattedKey}</span>
+            ) : null}
           </div>
         );
       })}

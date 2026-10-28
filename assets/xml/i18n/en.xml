@@ -26,6 +26,32 @@
     <string name="paste">Paste</string>
     <string name="edit_layer_attributes">Edit Layer Attributes...</string>
     <string name="open_preferences">Open Preferences...</string>
+    <!-- Modular Toolbars & Actions -->
+    <string name="project_properties">Project Properties...</string>
+    <string name="zoom_in">Zoom In</string>
+    <string name="zoom_out">Zoom Out</string>
+    <string name="zoom_to_selection">Zoom to Selection</string>
+    <string name="zoom_to_layer">Zoom to Layer</string>
+    <string name="select_feature">Select Feature</string>
+    <string name="select_features_by_drag">Select Features by Drag</string>
+    <string name="select_features_by_freehand">Select Features by Freehand</string>
+    <string name="select_features_by_value">Select Features by Value...</string>
+    <string name="select_all_features">Select All Features</string>
+    <string name="deselect_all_features">Deselect All Features</string>
+    <string name="toggle_layer_editing">Toggle Layer Editing</string>
+    <string name="vertex_editor">Vertex Editor</string>
+    <string name="delete_selected_features">Delete Selected Features</string>
+    <string name="copy_selected_features">Copy Selected Features</string>
+    <string name="cut_selected_features">Cut Selected Features</string>
+    <string name="paste_features">Paste Features</string>
+    <string name="snapping">Enable Snapping</string>
+    <string name="snap_to_active">Snap to Active Layer</string>
+    <string name="snap_to_all">Snap to All Layers</string>
+    <string name="snap_to_advanced">Advanced Snapping Options...</string>
+    <string name="snap_to_vertices">Snap to Vertices</string>
+    <string name="snap_to_midpoint">Snap to Segment Midpoints</string>
+    <string name="snap_to_segment">Snap to Segments</string>
+    <string name="more_options">More options...</string>
     <!-- Miscellaneous -->
     <string name="shortcut_save">Press <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.</string>
     <!-- Layer Tree & Modal Dialogs -->
