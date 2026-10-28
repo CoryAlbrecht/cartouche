@@ -4,10 +4,11 @@
  * @description Unit and component tests for ProjectToolbarWidget verifying project file actions, outline MDI icons, ProjectPropertiesDialog trigger, layer widget integration, save button disabled states, and toolbar layout migration.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link ProjectToolbarWidget}
  * @see {@link isProjectToolbarSaveDisabled}
+ * @see {@link isProjectToolbarPropertiesDisabled}
  * @see {@link toolbarOrderSignal}
  */
 
@@ -50,10 +51,12 @@ const jiti = createJiti(import.meta.url, {
 
 const {
   ProjectToolbarWidget,
-  isProjectToolbarSaveDisabled
+  isProjectToolbarSaveDisabled,
+  isProjectToolbarPropertiesDisabled
 } = jiti('../../../../src/renderer/workbench/widgets/toolbars/ProjectToolbarWidget') as {
   ProjectToolbarWidget: React.FC<{ zone?: ToolbarZone }>;
   isProjectToolbarSaveDisabled: (hasProject: boolean, filePath: string | null, isProjectDirty: boolean) => boolean;
+  isProjectToolbarPropertiesDisabled: (hasProject: boolean) => boolean;
 };
 
 const { dictionarySignal } = jiti('@renderer/state/i18nSignals') as {
@@ -156,6 +159,16 @@ describe('ProjectToolbarWidget Save Button Logic', () => {
   });
 });
 
+describe('ProjectToolbarWidget Properties Button Logic', () => {
+  it('isProjectToolbarPropertiesDisabled returns true when no project is open', () => {
+    assert.equal(isProjectToolbarPropertiesDisabled(false), true);
+  });
+
+  it('isProjectToolbarPropertiesDisabled returns false when project is open', () => {
+    assert.equal(isProjectToolbarPropertiesDisabled(true), false);
+  });
+});
+
 describe('ProjectToolbarWidget Component Rendering and Interactions', () => {
   beforeEach(() => {
     hasProjectSignal.value = false;
@@ -229,12 +242,44 @@ describe('ProjectToolbarWidget Component Rendering and Interactions', () => {
     );
   });
 
+  it('renders project properties button disabled when no project open and enabled when project is open', () => {
+    const React = jiti('react');
+    const { renderToStaticMarkup } = jiti('react-dom/server');
+
+    // No project: project properties button is disabled
+    hasProjectSignal.value = false;
+    let html = renderToStaticMarkup(React.createElement(ProjectToolbarWidget, { zone: 'top' }));
+    assert.ok(
+      html.includes('class="toolbar-btn disabled" title="Project Properties..." disabled=""') ||
+      (html.includes('aria-label="Project Properties..."') && html.includes('disabled')),
+      'Expected project properties button disabled when no project'
+    );
+
+    // With active project: project properties button is enabled
+    hasProjectSignal.value = true;
+    html = renderToStaticMarkup(React.createElement(ProjectToolbarWidget, { zone: 'top' }));
+    assert.ok(
+      !html.includes('class="toolbar-btn disabled" title="Project Properties..."') &&
+      !html.includes('title="Project Properties..." disabled'),
+      'Expected project properties button enabled when project is open'
+    );
+  });
+
   it('project properties action opens and closes ProjectPropertiesDialog', () => {
     assert.equal(isProjectPropertiesOpenSignal.value, false);
+
+    // When no project is open, openProjectPropertiesDialog is a no-op
+    hasProjectSignal.value = false;
     openProjectPropertiesDialog();
-    assert.equal(isProjectPropertiesOpenSignal.value, true);
+    assert.equal(isProjectPropertiesOpenSignal.value, false, 'openProjectPropertiesDialog must be a no-op when no project is open');
+
+    // When project is open, openProjectPropertiesDialog opens the dialog
+    hasProjectSignal.value = true;
+    openProjectPropertiesDialog();
+    assert.equal(isProjectPropertiesOpenSignal.value, true, 'openProjectPropertiesDialog must open dialog when project is open');
+
     closeProjectPropertiesDialog();
-    assert.equal(isProjectPropertiesOpenSignal.value, false);
+    assert.equal(isProjectPropertiesOpenSignal.value, false, 'closeProjectPropertiesDialog must close dialog');
   });
 
   it('toggle layers widget action toggles LayerTreeWidget visibility in openDockPanelsSignal', () => {

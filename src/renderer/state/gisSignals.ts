@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -1479,7 +1479,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
  * If saved or clean, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project closed, false if aborted.
  */
@@ -1503,6 +1503,7 @@ export async function closeProjectAction(): Promise<boolean> {
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;
+  closeProjectPropertiesDialog();
   layersSignal.value = [];
   layerGroupsSignal.value = [];
   projectTreeSignal.value = [];
@@ -2181,14 +2182,15 @@ export function selectFeaturesByValueAction(): void {
 export const isProjectPropertiesOpenSignal = signal<boolean>(false);
 
 /**
- * @description Opens modeless Project Properties dialog box.
+ * @description Opens modeless Project Properties dialog box if an active project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function openProjectPropertiesDialog(): void {
+  if (!hasProjectSignal.value) return;
   isProjectPropertiesOpenSignal.value = true;
   addConsoleLog('info', 'Project Properties dialog opened.', 'Project');
 }

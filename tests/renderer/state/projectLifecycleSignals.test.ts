@@ -4,7 +4,7 @@
  * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  */
 
@@ -16,6 +16,7 @@ import {
   projectNameSignal,
   projectFilePathSignal,
   isProjectDirtySignal,
+  isProjectPropertiesOpenSignal,
   layersSignal,
   layerGroupsSignal,
   projectTreeSignal,
@@ -49,6 +50,7 @@ describe("Project Lifecycle Signals & Actions", () => {
     projectNameSignal.value = null;
     projectFilePathSignal.value = null;
     isProjectDirtySignal.value = false;
+    isProjectPropertiesOpenSignal.value = false;
     layersSignal.value = [];
     layerGroupsSignal.value = [];
     projectTreeSignal.value = [];
@@ -192,6 +194,19 @@ describe("Project Lifecycle Signals & Actions", () => {
     assert.equal(layersSignal.value.length, 0);
     assert.deepEqual(viewportExtentSignal.value, [-180, -90, 180, 90]);
     assert.deepEqual(executedActions, ["close_project"]);
+  });
+
+  it("closeProjectAction closes ProjectPropertiesDialog if open", async () => {
+    createNewProject("Test Project");
+    assert.equal(hasProjectSignal.value, true);
+
+    isProjectPropertiesOpenSignal.value = true;
+    assert.equal(isProjectPropertiesOpenSignal.value, true);
+
+    const result = await closeProjectAction();
+    assert.equal(result, true);
+    assert.equal(hasProjectSignal.value, false);
+    assert.equal(isProjectPropertiesOpenSignal.value, false, "ProjectPropertiesDialog must be closed when project closes");
   });
 
   it("closeProjectAction on a dirty project triggers save; aborts if save is canceled", async () => {

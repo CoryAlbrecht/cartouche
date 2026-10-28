@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link cancelAction}
@@ -22,6 +22,7 @@ import {
   closeProjectAction,
   saveProjectAction,
   saveAsProjectAction,
+  openProjectPropertiesDialog,
   saveActiveLayerAction,
   saveActiveLayerAsAction,
   undoAction,
@@ -62,7 +63,7 @@ import { cancelTopDialog } from '../state/dialogSignals';
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
@@ -127,6 +128,9 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           break;
         case 'save_as_project':
           if (hasProjectSignal.value) saveAsProjectAction();
+          break;
+        case 'project_properties':
+          if (hasProjectSignal.value) openProjectPropertiesDialog();
           break;
         case 'save_active_layer':
           if (activeLayerIdSignal.value) saveActiveLayerAction();

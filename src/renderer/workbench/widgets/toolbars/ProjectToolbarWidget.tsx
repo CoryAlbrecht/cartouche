@@ -4,10 +4,12 @@
  * @description Toolbar widget rendering project actions (New, Open, Save, Properties) and layer catalog integration tools.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link ProjectPropertiesDialog}
+ * @see {@link isProjectToolbarSaveDisabled}
+ * @see {@link isProjectToolbarPropertiesDisabled}
  */
 
 import React from "react";
@@ -73,11 +75,26 @@ export function isProjectToolbarSaveDisabled(
 }
 
 /**
+ * @function isProjectToolbarPropertiesDisabled
+ * @description Computes whether the Project Properties toolbar button should be disabled.
+ * Disabled if there is no active project open.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @param {boolean} hasProject - Whether an active project is open.
+ * @returns {boolean} True if button should be disabled, false otherwise.
+ */
+export function isProjectToolbarPropertiesDisabled(hasProject: boolean): boolean {
+  return !hasProject;
+}
+
+/**
  * @component ProjectToolbarWidget
  * @description Renders project file management actions, project properties dialog trigger, and layer catalog controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ProjectToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ProjectToolbarWidget instance.
@@ -124,6 +141,10 @@ export const ProjectToolbarWidget: React.FC<ProjectToolbarWidgetProps> = ({
     isProjectDirtySignal.value
   );
 
+  const isPropertiesDisabled = isProjectToolbarPropertiesDisabled(
+    hasProjectSignal.value
+  );
+
   const handleSaveClick = () => {
     if (isSaveDisabled) return;
     if (!projectFilePathSignal.value) {
@@ -158,9 +179,14 @@ export const ProjectToolbarWidget: React.FC<ProjectToolbarWidgetProps> = ({
         <Icon path={getActionIcon("save_project", mdiFolderDownloadOutline)} />
       </button>
       <button
-        className='toolbar-btn'
+        className={`toolbar-btn ${isPropertiesDisabled ? "disabled" : ""}`}
         title={projectPropertiesTitle}
-        onClick={openProjectPropertiesDialog}
+        disabled={isPropertiesDisabled}
+        onClick={() => {
+          if (!isPropertiesDisabled) {
+            openProjectPropertiesDialog();
+          }
+        }}
         aria-label={t("project_properties")}>
         <Icon path={getActionIcon("project_properties", mdiFolderSettingsOutline)} />
       </button>

@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  */
@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import createJiti from 'jiti';
 import {
+  hasProjectSignal,
+  isProjectPropertiesOpenSignal,
   activeToolSignal,
   selectedFeatureIdsSignal,
   isAddLayersOpenSignal
@@ -110,6 +112,8 @@ describe('Workbench Global Keyboard Listener', () => {
 
     isPreferencesOpenSignal.value = false;
     isAddLayersOpenSignal.value = false;
+    hasProjectSignal.value = false;
+    isProjectPropertiesOpenSignal.value = false;
     activeLayerPropertiesIdSignal.value = null;
     activeDialogStackSignal.value = [];
   });
@@ -216,5 +220,28 @@ describe('Workbench Global Keyboard Listener', () => {
     assert.equal(event.defaultPrevented, true);
     assert.equal(activeLayerPropertiesIdSignal.value, null, 'LayerPropertiesDialog must be closed');
     assert.equal(activeToolSignal.value, 'point', 'Active tool must NOT be reverted');
+  });
+
+  it('dispatches project_properties action only when active project is open', () => {
+    registeredActionsSignal.value = [
+      {
+        name: 'project_properties',
+        description: 'Opens project properties dialog',
+        keyCombination: { key: 'p', ctrl: true }
+      }
+    ];
+
+    // When no project is open:
+    hasProjectSignal.value = false;
+    isProjectPropertiesOpenSignal.value = false;
+    let event = createMockKeyEvent({ key: 'p', ctrlKey: true });
+    handleWorkbenchKeyDown(event);
+    assert.equal(isProjectPropertiesOpenSignal.value, false, 'project_properties must not open dialog when no project is open');
+
+    // When project is open:
+    hasProjectSignal.value = true;
+    event = createMockKeyEvent({ key: 'p', ctrlKey: true });
+    handleWorkbenchKeyDown(event);
+    assert.equal(isProjectPropertiesOpenSignal.value, true, 'project_properties must open dialog when project is open');
   });
 });
