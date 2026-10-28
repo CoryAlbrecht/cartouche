@@ -4,7 +4,7 @@
  * @description Outer panel edge container widget managing masonry layout and drag-and-drop relocation for toolbars across 4 outer zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -15,6 +15,7 @@ import {
   visibleToolbarsSignal,
   toggleToolbar,
   moveToolbar,
+  activeDraggedToolbarSignal,
   type ToolbarId,
   type ToolbarZone,
 } from "@renderer/state/gisSignals";
@@ -35,7 +36,7 @@ export interface ToolbarContainerWidgetProps {
  * @description Outer 4-edge panel container hosting docked ToolbarWidget items and handling dragover drop targets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ToolbarContainerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Toolbar container zone element.
@@ -101,10 +102,13 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     isToolbarZoneDragOverSignal.value = false;
-    const toolbarId = e.dataTransfer.getData("text/plain") as ToolbarId;
+    const toolbarId =
+      activeDraggedToolbarSignal.value ||
+      (e.dataTransfer.getData("text/plain") as ToolbarId);
     if (toolbarId && visibleToolbars[toolbarId] !== undefined) {
       moveToolbar(toolbarId, zone);
     }
+    activeDraggedToolbarSignal.value = null;
   };
 
   const activeBackground = isDragOver ? "#e0f2fe" : "#f8fafc";
@@ -160,9 +164,9 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
       }}>
       <Widget
         id={`toolbar-container-${zone}`}
-        background={activeBackground}
+        background='#f8fafc'
         border={1}
-        borderColor={activeBorderColor}
+        borderColor='#f8fafc'
         location={zone}
         minWidth={isHorizontal ? "100%" : 32}
         minHeight={isHorizontal ? 32 : "100%"}

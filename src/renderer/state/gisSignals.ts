@@ -257,6 +257,17 @@ export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
 });
 
 /**
+ * @signal activeDraggedToolbarSignal
+ * @description Reactive signal holding the identifier of the toolbar currently being dragged, or null if none.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @type {Signal<ToolbarId | null>}
+ */
+export const activeDraggedToolbarSignal = signal<ToolbarId | null>(null);
+
+/**
  * @function migrateToolbarLayout
  * @description Migrates legacy stored toolbar layout configurations to the modular toolbar architecture.
  * Converts legacy 'basic' to 'project' and purges deprecated 'layer'.
@@ -941,7 +952,7 @@ export function toggleToolbar(id: ToolbarId) {
  * @description Relocates toolbar widget to specified outer panel zone and index.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
@@ -956,12 +967,15 @@ export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?
   };
 
   const order = { ...toolbarOrderSignal.value };
-  order[currentZone] = order[currentZone].filter((item) => item !== id);
+  order[currentZone] = (order[currentZone] || []).filter((item) => item !== id);
+  const targetList = [...(order[targetZone] || [])];
   if (typeof targetIndex === 'number' && targetIndex >= 0) {
-    order[targetZone].splice(targetIndex, 0, id);
+    const clampedIndex = Math.min(targetIndex, targetList.length);
+    targetList.splice(clampedIndex, 0, id);
   } else {
-    order[targetZone].push(id);
+    targetList.push(id);
   }
+  order[targetZone] = targetList;
   toolbarOrderSignal.value = order;
 }
 

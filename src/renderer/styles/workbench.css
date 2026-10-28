@@ -646,6 +646,49 @@
   top: -8px;
 }
 
+/* Toolbar Drop Reordering Indicators */
+.toolbar-widget-wrapper {
+  display: inline-flex;
+  position: relative;
+  transition: box-shadow 0.08s ease-in-out;
+}
+
+.toolbar-drop-marker {
+  position: absolute;
+  background-color: #0284c7;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 1px;
+}
+
+.toolbar-drop-marker.horizontal.before {
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.toolbar-drop-marker.horizontal.after {
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.toolbar-drop-marker.vertical.before {
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.toolbar-drop-marker.vertical.after {
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
 /* =========================================================================
    5. Panels: Layers, Attribute Table, Console
    ========================================================================= */
