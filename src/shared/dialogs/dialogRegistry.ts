@@ -4,7 +4,7 @@
  * @description Centralized registry and specifications for detached child dialog windows in Cartouche GIS.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link Dialog}
  */
@@ -12,16 +12,17 @@
 /**
  * Valid frame name identifiers for detached dialog windows.
  *
- * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow'} DialogWindowName
+ * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow'} DialogWindowName
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  */
 export type DialogWindowName =
   | 'preferencesWindow'
   | 'addLayersWindow'
-  | 'layerPropertiesWindow';
+  | 'layerPropertiesWindow'
+  | 'projectPropertiesWindow';
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -80,6 +81,14 @@ export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindow
     defaultHeight: 620,
     minWidth: 600,
     minHeight: 400
+  }),
+  projectPropertiesWindow: Object.freeze({
+    frameName: 'projectPropertiesWindow',
+    locationKeyPrefix: 'ui.projectProperties.location',
+    defaultWidth: 720,
+    defaultHeight: 520,
+    minWidth: 480,
+    minHeight: 360
   })
 });
 

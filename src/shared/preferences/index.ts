@@ -426,6 +426,44 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'ui',
     type: 'number'
   },
+  'ui.projectProperties.location.x': {
+    displayName: 'Project Properties Dialog X Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.projectProperties.location.y': {
+    displayName: 'Project Properties Dialog Y Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.projectProperties.location.width': {
+    displayName: 'Project Properties Dialog Width',
+    value: 720,
+    defaultValue: 720,
+    minimum: 480,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.projectProperties.location.height': {
+    displayName: 'Project Properties Dialog Height',
+    value: 520,
+    defaultValue: 520,
+    minimum: 360,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
   'ui.systemDialogs.openFile.location': {
     displayName: 'Open File Dialog Location',
     value: ':Recent',

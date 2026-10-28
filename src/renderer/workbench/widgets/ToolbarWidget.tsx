@@ -4,7 +4,7 @@
  * @description Dockable toolbar widget subclass of Widget featuring MDI grabber drag handles and divider icons.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -17,7 +17,7 @@ import { mdiDrag, mdiDragHorizontal, mdiPowerOn, mdiMinus } from "@mdi/js";
 
 /**
  * @typedef {Object} ToolbarWidgetProps
- * @property {ToolbarId} id - Toolbar identifier string ('basic' | 'digitizing' | 'snapping').
+ * @property {ToolbarId} id - Toolbar identifier string ('project' | 'map_view' | 'selection' | 'digitizing' | 'snapping').
  * @property {ToolbarZone} [zone='top'] - Active dock zone placement ('top' | 'bottom' | 'left' | 'right').
  * @property {React.ReactNode} [children] - Toolbar action buttons and controls.
  */

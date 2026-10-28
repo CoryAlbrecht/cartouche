@@ -121,10 +121,10 @@ activeLayerIdSignal.subscribe((activeId) => {
 
 // Toolbar placement and visibility signals
 /**
- * @typedef {'basic' | 'layer' | 'digitizing' | 'snapping'} ToolbarId
+ * @typedef {'project' | 'map_view' | 'selection' | 'digitizing' | 'snapping'} ToolbarId
  * @description Identifier string for registered toolbar widgets.
  */
-export type ToolbarId = 'basic' | 'layer' | 'digitizing' | 'snapping';
+export type ToolbarId = 'project' | 'map_view' | 'selection' | 'digitizing' | 'snapping';
 
 /**
  * @typedef {'top' | 'bottom' | 'left' | 'right'} ToolbarZone
@@ -137,13 +137,14 @@ export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
 export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
-  basic: true,
-  layer: true,
+  project: true,
+  map_view: false,
+  selection: false,
   digitizing: false,
   snapping: false
 });
@@ -153,13 +154,14 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
 export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
-  basic: 'top',
-  layer: 'top',
+  project: 'top',
+  map_view: 'top',
+  selection: 'top',
   digitizing: 'top',
   snapping: 'top'
 });
@@ -169,15 +171,86 @@ export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
 export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
-  top: ['basic', 'layer', 'digitizing', 'snapping'],
+  top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
   bottom: [],
   left: [],
   right: []
+});
+
+/**
+ * @function migrateToolbarLayout
+ * @description Migrates legacy stored toolbar layout configurations to the modular toolbar architecture.
+ * Converts legacy 'basic' to 'project' and purges deprecated 'layer'.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @param {Record<ToolbarZone, string[]>} storedOrder - Legacy or stored layout configuration.
+ * @returns {Record<ToolbarZone, ToolbarId[]>} Modernized toolbar layout order.
+ */
+export function migrateToolbarLayout(
+  storedOrder: Record<ToolbarZone, string[]>
+): Record<ToolbarZone, ToolbarId[]> {
+  const zones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  const result: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+
+  const seen = new Set<ToolbarId>();
+
+  for (const zone of zones) {
+    const list = storedOrder[zone] || [];
+    for (const item of list) {
+      let mapped: ToolbarId | null = null;
+      if (item === 'basic' || item === 'project') {
+        mapped = 'project';
+      } else if (item === 'layer') {
+        mapped = null;
+      } else if (
+        item === 'map_view' ||
+        item === 'selection' ||
+        item === 'digitizing' ||
+        item === 'snapping'
+      ) {
+        mapped = item;
+      }
+      if (mapped && !seen.has(mapped)) {
+        seen.add(mapped);
+        result[zone].push(mapped);
+      }
+    }
+  }
+
+  return result;
+}
+
+let isMigratingToolbarOrder = false;
+toolbarOrderSignal.subscribe((order) => {
+  if (isMigratingToolbarOrder || !order) return;
+  let hasLegacy = false;
+  for (const zone of ['top', 'bottom', 'left', 'right'] as ToolbarZone[]) {
+    const list = order[zone] as any[];
+    if (list && (list.includes('basic') || list.includes('layer'))) {
+      hasLegacy = true;
+      break;
+    }
+  }
+  if (hasLegacy) {
+    isMigratingToolbarOrder = true;
+    try {
+      toolbarOrderSignal.value = migrateToolbarLayout(order as any);
+    } finally {
+      isMigratingToolbarOrder = false;
+    }
+  }
 });
 
 /**
@@ -1561,6 +1634,43 @@ export function selectFeaturesByValueAction(): void {
 }
 
 /**
+ * @signal isProjectPropertiesOpenSignal
+ * @description Modeless visibility toggle signal for the Project Properties dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isProjectPropertiesOpenSignal = signal<boolean>(false);
+
+/**
+ * @description Opens modeless Project Properties dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openProjectPropertiesDialog(): void {
+  isProjectPropertiesOpenSignal.value = true;
+  addConsoleLog('info', 'Project Properties dialog opened.', 'Project');
+}
+
+/**
+ * @description Closes modeless Project Properties dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-10-27
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeProjectPropertiesDialog(): void {
+  isProjectPropertiesOpenSignal.value = false;
+  addConsoleLog('info', 'Project Properties dialog closed.', 'Project');
+}
+
+/**
  * @description Opens Project Properties dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
@@ -1569,6 +1679,6 @@ export function selectFeaturesByValueAction(): void {
  * @returns {void}
  */
 export function projectPropertiesAction(): void {
-  addConsoleLog('info', 'Project properties dialog requested.', 'Project');
+  openProjectPropertiesDialog();
 }
 

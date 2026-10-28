@@ -12,10 +12,10 @@ import type { ActionDefinition } from '@shared/types';
 import * as ApiFunctions from '../api/ApiFunctions';
 import {
   mdiHandBackRightOutline,
-  mdiFileDocumentPlus,
-  mdiFolderOpen,
+  mdiFolderPlusOutline,
+  mdiFolderOpenOutline,
+  mdiFolderDownloadOutline,
   mdiCloseCircleOutline,
-  mdiContentSave,
   mdiContentSaveAll,
   mdiContentSaveOutline,
   mdiContentSaveAllOutline,
@@ -68,14 +68,14 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: 'new_project',
     description: 'Initializes a new blank project with default canvas',
-    icon: mdiFileDocumentPlus,
+    icon: mdiFolderPlusOutline,
     keyCombination: { key: 'n', ctrl: true, alt: true },
     functionCall: ApiFunctions.newProject
   },
   {
     name: 'open_project',
     description: 'Opens an existing Cartouche project file',
-    icon: mdiFolderOpen,
+    icon: mdiFolderOpenOutline,
     keyCombination: { key: 'o', ctrl: true, alt: true },
     functionCall: ApiFunctions.openProject
   },
@@ -89,7 +89,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: 'save_project',
     description: 'Saves current active project state',
-    icon: mdiContentSave,
+    icon: mdiFolderDownloadOutline,
     keyCombination: { key: 's', ctrl: true, alt: true },
     functionCall: ApiFunctions.saveProject
   },

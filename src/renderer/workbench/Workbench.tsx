@@ -4,12 +4,13 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-26
+ * @updated 2026-10-27
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link PreferencesDialog}
  * @see {@link LayerPropertiesDialog}
+ * @see {@link ProjectPropertiesDialog}
  */
 
 import React, { useCallback, useEffect, useRef } from "react";
@@ -89,6 +90,7 @@ import {
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import { AddLayersDialog } from "./dialogs/AddLayersDialog";
 import { LayerPropertiesDialog } from "./dialogs/LayerPropertiesDialog";
+import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { handleWorkbenchKeyDown } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
@@ -195,9 +197,9 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-22
+ * @updated 2026-10-27
  * @since 0.1.0-dev
- * @returns {React.ReactElement} Main workbench window container.
+ * @returns {JSX.Element} Main workbench window container.
  */
 export const Workbench: React.FC = () => {
   useSignals();
@@ -1267,36 +1269,52 @@ export const Workbench: React.FC = () => {
 
                   {activeSubmenu === "toolbars" && (
                     <div className='menu-submenu-dropdown'>
-                      {/* ? Basic */}
+                      {/* ? Project */}
                       <div
                         className='menu-dropdown-item'
                         onClick={() => {
-                          toggleToolbar("basic");
+                          toggleToolbar("project");
                           setOpenMenu(null);
                           setActiveSubmenu(null);
                         }}>
                         <span className='menu-item-check-slot'>
-                          {visibleToolbars.basic && (
+                          {visibleToolbars.project && (
                             <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
-                        <span className='menu-item-label'>Basic</span>
+                        <span className='menu-item-label'>Project</span>
                       </div>
 
-                      {/* ? Layer */}
+                      {/* ? Map View */}
                       <div
                         className='menu-dropdown-item'
                         onClick={() => {
-                          toggleToolbar("layer");
+                          toggleToolbar("map_view");
                           setOpenMenu(null);
                           setActiveSubmenu(null);
                         }}>
                         <span className='menu-item-check-slot'>
-                          {visibleToolbars.layer && (
+                          {visibleToolbars.map_view && (
                             <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
                           )}
                         </span>
-                        <span className='menu-item-label'>Layer</span>
+                        <span className='menu-item-label'>Map View</span>
+                      </div>
+
+                      {/* ? Selection */}
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={() => {
+                          toggleToolbar("selection");
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}>
+                        <span className='menu-item-check-slot'>
+                          {visibleToolbars.selection && (
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
+                          )}
+                        </span>
+                        <span className='menu-item-label'>Selection</span>
                       </div>
 
                       {/* ? Digitizing */}
@@ -1626,6 +1644,9 @@ export const Workbench: React.FC = () => {
 
       {/* Layer Properties Modeless Dialog */}
       <LayerPropertiesDialog />
+
+      {/* Project Properties Modeless Dialog */}
+      <ProjectPropertiesDialog />
     </div>
   );
 };
