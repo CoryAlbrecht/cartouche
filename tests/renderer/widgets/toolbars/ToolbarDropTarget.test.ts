@@ -7,6 +7,7 @@
  * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link resolveToolbarDropPosition}
+ * @see {@link resolveContainerDropPosition}
  * @see {@link calculateToolbarTargetIndex}
  */
 
@@ -14,6 +15,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveToolbarDropPosition,
+  resolveContainerDropPosition,
   calculateToolbarTargetIndex
 } from '../../../../src/renderer/workbench/widgets/toolbarDropTarget';
 import type { ToolbarId } from '../../../../src/renderer/state/gisSignals';
@@ -65,6 +67,84 @@ describe('resolveToolbarDropPosition', () => {
       'after',
       'Offset at midpoint should resolve to after'
     );
+  });
+
+  it('resolves horizontal outer 25% cross-axis bands to new-row-above and new-row-below', () => {
+    // Width = 100px, Height = 40px. 25% = 10px, 75% = 30px
+    assert.equal(
+      resolveToolbarDropPosition('top', 50, 5, 100, 40),
+      'new-row-above',
+      'Hovering in top 25% of horizontal toolbar resolves to new-row-above'
+    );
+    assert.equal(
+      resolveToolbarDropPosition('top', 50, 35, 100, 40),
+      'new-row-below',
+      'Hovering in bottom 25% of horizontal toolbar resolves to new-row-below'
+    );
+    assert.equal(
+      resolveToolbarDropPosition('bottom', 20, 8, 100, 40),
+      'new-row-above',
+      'Hovering in top 25% of bottom zone toolbar resolves to new-row-above'
+    );
+    assert.equal(
+      resolveToolbarDropPosition('bottom', 80, 32, 100, 40),
+      'new-row-below',
+      'Hovering in bottom 25% of bottom zone toolbar resolves to new-row-below'
+    );
+  });
+
+  it('resolves vertical outer 25% cross-axis bands to new-row-before and new-row-after', () => {
+    // Width = 40px, Height = 100px. 25% = 10px, 75% = 30px
+    assert.equal(
+      resolveToolbarDropPosition('left', 5, 50, 40, 100),
+      'new-row-before',
+      'Hovering in left 25% of vertical toolbar resolves to new-row-before'
+    );
+    assert.equal(
+      resolveToolbarDropPosition('left', 35, 50, 40, 100),
+      'new-row-after',
+      'Hovering in right 25% of vertical toolbar resolves to new-row-after'
+    );
+    assert.equal(
+      resolveToolbarDropPosition('right', 8, 20, 40, 100),
+      'new-row-before',
+      'Hovering in left 25% of right zone toolbar resolves to new-row-before'
+    );
+    assert.equal(
+      resolveToolbarDropPosition('right', 32, 80, 40, 100),
+      'new-row-after',
+      'Hovering in right 25% of right zone toolbar resolves to new-row-after'
+    );
+  });
+});
+
+describe('resolveContainerDropPosition', () => {
+  it('resolves container hit zones based on 25% threshold', () => {
+    // Dimension = 100px. Offset < 25 => 'prepend-new-row', Offset >= 25 => 'append-new-row'
+    assert.equal(
+      resolveContainerDropPosition('top', 10, 100),
+      'prepend-new-row',
+      'Offset in first 25% of container resolves to prepend-new-row'
+    );
+    assert.equal(
+      resolveContainerDropPosition('top', 50, 100),
+      'append-new-row',
+      'Offset in trailing 75% of container resolves to append-new-row'
+    );
+    assert.equal(
+      resolveContainerDropPosition('left', 20, 100),
+      'prepend-new-row',
+      'Offset in first 25% of vertical container resolves to prepend-new-row'
+    );
+    assert.equal(
+      resolveContainerDropPosition('left', 80, 100),
+      'append-new-row',
+      'Offset in trailing 75% of vertical container resolves to append-new-row'
+    );
+  });
+
+  it('falls back to append-new-row if dimension is 0 or unmeasured', () => {
+    assert.equal(resolveContainerDropPosition('top', 0, 0), 'append-new-row');
   });
 });
 

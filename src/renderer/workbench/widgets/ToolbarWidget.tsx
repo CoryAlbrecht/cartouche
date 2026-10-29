@@ -8,7 +8,6 @@
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link resolveToolbarDropPosition}
- * @see {@link calculateToolbarTargetIndex}
  * @see {@link moveToolbar}
  */
 
@@ -18,9 +17,6 @@ import {
   type ToolbarId,
   type ToolbarZone,
   activeDraggedToolbarSignal,
-  toolbarOrderSignal,
-  toolbarLocationsSignal,
-  visibleToolbarsSignal,
   moveToolbar,
 } from "@renderer/state/gisSignals";
 import { useSignal, useSignals } from "@preact/signals-react/runtime";
@@ -28,7 +24,6 @@ import Icon from "@renderer/components/common/Icon";
 import { mdiDrag, mdiDragHorizontal, mdiPowerOn, mdiMinus } from "@mdi/js";
 import {
   resolveToolbarDropPosition,
-  calculateToolbarTargetIndex,
   type ToolbarDropPosition,
 } from "./toolbarDropTarget";
 
@@ -36,11 +31,13 @@ import {
  * @typedef {Object} ToolbarWidgetProps
  * @property {ToolbarId} id - Toolbar identifier string ('project' | 'map_view' | 'selection' | 'digitizing' | 'snapping').
  * @property {ToolbarZone} [zone='top'] - Active dock zone placement ('top' | 'bottom' | 'left' | 'right').
+ * @property {ToolbarDropPosition | null} [dropPosition] - Explicit drop placement indicator for preview and testing.
  * @property {React.ReactNode} [children] - Toolbar action buttons and controls.
  */
 export interface ToolbarWidgetProps {
   id: ToolbarId;
   zone?: ToolbarZone;
+  dropPosition?: ToolbarDropPosition | null;
   children?: React.ReactNode;
 }
 
@@ -57,6 +54,7 @@ export interface ToolbarWidgetProps {
 export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   id,
   zone = "top",
+  dropPosition: propDropPosition,
   children,
 }) => {
   useSignals();
@@ -64,7 +62,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
 
   /**
    * @signal dropPositionSignal
-   * @description Reactive signal tracking relative drop placement indicator ('before' or 'after') during toolbar dragover.
+   * @description Reactive signal tracking relative drop placement indicator ('before', 'after', 'new-row-above', 'new-row-below', 'new-row-before', 'new-row-after') during toolbar dragover.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-28
    * @updated 2026-10-28
@@ -72,7 +70,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
    * @type {Signal<ToolbarDropPosition | null>}
    */
   const dropPositionSignal = useSignal<ToolbarDropPosition | null>(null);
-  const dropPosition = dropPositionSignal.value;
+  const dropPosition = propDropPosition !== undefined ? propDropPosition : dropPositionSignal.value;
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
@@ -166,21 +164,10 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         rect.height
       );
 
-    const fullOrder = toolbarOrderSignal.value[zone] || [];
-    const visibleMap = visibleToolbarsSignal.value;
-    const visibleOrder = fullOrder.filter((item) => visibleMap[item]);
-    const currentZone = toolbarLocationsSignal.value[draggedId] || zone;
-    const targetIndex = calculateToolbarTargetIndex({
-      fullOrder,
-      visibleOrder,
-      draggedId,
+    moveToolbar(draggedId, zone, {
       hoveredId: id,
-      currentZone,
-      targetZone: zone,
       position: pos,
     });
-
-    moveToolbar(draggedId, zone, targetIndex);
     dropPositionSignal.value = null;
     activeDraggedToolbarSignal.value = null;
   };
@@ -194,7 +181,14 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
       onDrop={handleDrop}
       style={{
         display: "inline-flex",
-        position: "relative",
+        position:
+          dropPosition &&
+          (dropPosition === "new-row-above" ||
+            dropPosition === "new-row-below" ||
+            dropPosition === "new-row-before" ||
+            dropPosition === "new-row-after")
+            ? "static"
+            : "relative",
       }}>
       <Widget
         id={`toolbar-widget-${id}`}
@@ -214,7 +208,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
           boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
           cursor: "default",
         }}>
-        {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with high contrast */}
+        {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with low contrast */}
         <span
           className='toolbar-grabber'
           title='Drag toolbar to reorder or move to another edge'
@@ -235,14 +229,13 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         {/* Child Controls */}
         {children}
 
-        {/* Divider: MDI Icon 'power-on' (horizontal) / 'minus' (vertical) */}
+        {/* Divider: MDI Icon 'power-on' (horizontal) / 'minus' (vertical) with low contrast */}
         <span
           className='toolbar-divider'
           style={{
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#cbd5e1",
             padding: isHorizontal ? "0 2px" : "2px 0",
             userSelect: "none",
           }}>

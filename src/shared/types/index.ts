@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  */
 
@@ -309,6 +309,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(name: string) => Promise<void>} executeAction - Triggers main process keyboard shortcut by name.
  * @property {() => Promise<ActionDefinition[]>} getActions - Fetches array of registered shortcut definitions.
  * @property {(name?: string) => Promise<PreferenceMap>} getPreferenceValue - Queries preference map item(s).
+ * @property {(name: string, value: any) => Promise<PreferenceMap>} [setPreference] - Updates preference item value (alias to setPreferenceValue).
  * @property {(name: string, value: any) => Promise<PreferenceMap>} setPreferenceValue - Updates preference item value.
  * @property {() => Promise<FileTypeDescriptor[]>} [getFileTypes] - Fetches array of registered file type descriptors.
  * @property {(filePath: string) => Promise<FileTypeDescriptor | undefined>} [identifyFile] - Identifies file type descriptor for target file path.
@@ -318,7 +319,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>} [reorderNodes] - Reorders layer tree nodes relative to target node.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -345,6 +346,8 @@ export interface ElectronAPI {
   getActions: () => Promise<ActionDefinition[]>;
   /** @ipc gis:get-preference */
   getPreferenceValue: (name?: string) => Promise<PreferenceMap>;
+  /** @ipc gis:set-preference */
+  setPreference?: (name: string, value: any) => Promise<PreferenceMap>;
   /** @ipc gis:set-preference */
   setPreferenceValue: (name: string, value: any) => Promise<PreferenceMap>;
   /** @ipc gis:get-filetypes */

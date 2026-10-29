@@ -4,7 +4,7 @@
  * @description Unit tests verifying action registry parity, ensuring every BUILTIN_ACTION maps to a localized string in en.xml and has a valid functionCall where expected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link BUILTIN_ACTIONS}
  */
@@ -97,7 +97,7 @@ describe('actionParity', () => {
     assert.deepEqual(cancelAction?.keyCombination, { key: 'Escape' });
   });
 
-  it('ensures all 24 modular toolbar actions have matching entries in fr.xml', () => {
+  it('ensures all 25 modular toolbar actions have matching entries in fr.xml', () => {
     const stringNameRegex = /<string\s+name=["']([^"']+)["']/g;
     const definedFrKeys = new Set<string>();
     let match: RegExpExecArray | null;
@@ -129,7 +129,8 @@ describe('actionParity', () => {
       'snap_to_advanced',
       'snap_to_vertices',
       'snap_to_midpoint',
-      'snap_to_segment'
+      'snap_to_segment',
+      'reset_toolbar_layout'
     ];
 
     for (const key of modularToolbarActions) {

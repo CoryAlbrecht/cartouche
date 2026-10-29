@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -39,6 +39,7 @@ import {
   mdiInformationOutline,
   mdiCheck,
   mdiChevronRight,
+  mdiRestore,
 } from "@mdi/js";
 
 import { widgetComponents } from "./widgetRegistry";
@@ -75,6 +76,7 @@ import {
   editAttributesAction,
   triggerMapAction,
   toggleToolbar,
+  resetToolbarsToDefault,
   registerTogglePanelHandler,
   openAddLayersDialog,
 } from "@renderer/state/gisSignals";
@@ -201,7 +203,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -1351,6 +1353,24 @@ export const Workbench: React.FC = () => {
                           )}
                         </span>
                         <span className='menu-item-label'>Snapping</span>
+                      </div>
+
+                      <div className='menu-dropdown-separator' />
+
+                      {/* * Reset Toolbars to Default */}
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={() => {
+                          resetToolbarsToDefault();
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}>
+                        <span className='menu-item-icon-slot'>
+                          <Icon path={mdiRestore} size={MENU_ITEM_ICON_SIZE} />
+                        </span>
+                        <span className='menu-item-label'>
+                          {t("reset_toolbar_layout")}
+                        </span>
                       </div>
                     </div>
                   )}

@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -559,6 +559,192 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'ui',
     description: 'Last-used directory or named location token for system file save dialogs',
     type: 'string'
+  },
+  // Modular Toolbar Layout Coordinates (Ticket #113, ADR 0020)
+  'ui.toolbars.project.visible': {
+    displayName: 'Project Toolbar Visibility',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'boolean'
+  },
+  'ui.toolbars.project.dock': {
+    displayName: 'Project Toolbar Dock Zone',
+    value: 'top',
+    defaultValue: 'top',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'string'
+  },
+  'ui.toolbars.project.row': {
+    displayName: 'Project Toolbar Row Index',
+    value: 0,
+    defaultValue: 0,
+    minimum: 0,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.project.order': {
+    displayName: 'Project Toolbar Sequence Order',
+    value: 0,
+    defaultValue: 0,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.map_view.visible': {
+    displayName: 'Map View Toolbar Visibility',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'boolean'
+  },
+  'ui.toolbars.map_view.dock': {
+    displayName: 'Map View Toolbar Dock Zone',
+    value: 'top',
+    defaultValue: 'top',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'string'
+  },
+  'ui.toolbars.map_view.row': {
+    displayName: 'Map View Toolbar Row Index',
+    value: 0,
+    defaultValue: 0,
+    minimum: 0,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.map_view.order': {
+    displayName: 'Map View Toolbar Sequence Order',
+    value: 1,
+    defaultValue: 1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.selection.visible': {
+    displayName: 'Selection Toolbar Visibility',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'boolean'
+  },
+  'ui.toolbars.selection.dock': {
+    displayName: 'Selection Toolbar Dock Zone',
+    value: 'top',
+    defaultValue: 'top',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'string'
+  },
+  'ui.toolbars.selection.row': {
+    displayName: 'Selection Toolbar Row Index',
+    value: 0,
+    defaultValue: 0,
+    minimum: 0,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.selection.order': {
+    displayName: 'Selection Toolbar Sequence Order',
+    value: 2,
+    defaultValue: 2,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.digitizing.visible': {
+    displayName: 'Digitizing Toolbar Visibility',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'boolean'
+  },
+  'ui.toolbars.digitizing.dock': {
+    displayName: 'Digitizing Toolbar Dock Zone',
+    value: 'top',
+    defaultValue: 'top',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'string'
+  },
+  'ui.toolbars.digitizing.row': {
+    displayName: 'Digitizing Toolbar Row Index',
+    value: 0,
+    defaultValue: 0,
+    minimum: 0,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.digitizing.order': {
+    displayName: 'Digitizing Toolbar Sequence Order',
+    value: 3,
+    defaultValue: 3,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.snapping.visible': {
+    displayName: 'Snapping Toolbar Visibility',
+    value: false,
+    defaultValue: false,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'boolean'
+  },
+  'ui.toolbars.snapping.dock': {
+    displayName: 'Snapping Toolbar Dock Zone',
+    value: 'top',
+    defaultValue: 'top',
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'string'
+  },
+  'ui.toolbars.snapping.row': {
+    displayName: 'Snapping Toolbar Row Index',
+    value: 0,
+    defaultValue: 0,
+    minimum: 0,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.toolbars.snapping.order': {
+    displayName: 'Snapping Toolbar Sequence Order',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
   },
   'rendering.simplification.threshold': {
     displayName: 'Simplification Threshold',

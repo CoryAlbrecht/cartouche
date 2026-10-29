@@ -46,7 +46,8 @@ import {
   mdiTuneVariant,
   mdiVectorPoint,
   mdiRayVertex,
-  mdiVectorLine
+  mdiVectorLine,
+  mdiRestore
 } from '@mdi/js';
 
 /**
@@ -308,5 +309,11 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     description: 'Toggles snapping to feature segments',
     icon: mdiVectorLine,
     keyCombination: { key: 'e', alt: true }
+  },
+  {
+    name: 'reset_toolbar_layout',
+    description: 'Restores all toolbar coordinates and visibility to factory defaults',
+    icon: mdiRestore,
+    functionCall: ApiFunctions.resetToolbarLayout
   }
 ];

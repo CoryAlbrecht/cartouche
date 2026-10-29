@@ -9,6 +9,7 @@
  * @see {@link GisLayer}
  * @see {@link GisFeature}
  * @see {@link GisLayerGroup}
+ * @see {@link resetToolbarsToDefault}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -207,20 +208,77 @@ export type ToolbarId = 'project' | 'map_view' | 'selection' | 'digitizing' | 's
 export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
 
 /**
+ * @typedef {Object} ToolbarCoordinates
+ * @property {boolean} visible - Whether the toolbar is actively rendered.
+ * @property {ToolbarZone} dock - Outer perimeter zone ('top' | 'bottom' | 'left' | 'right').
+ * @property {number} row - 0-based row band index.
+ * @property {number} order - Sequence order integer (positive for visible, negative for hidden).
+ */
+export interface ToolbarCoordinates {
+  visible: boolean;
+  dock: ToolbarZone;
+  row: number;
+  order: number;
+}
+
+/**
+ * @typedef {Object} MoveToolbarOptions
+ * @description Options configuration bag for moveToolbar multi-row placement and relocation operations.
+ * @property {ToolbarZone} [targetZone] - Destination perimeter zone ('top' | 'bottom' | 'left' | 'right').
+ * @property {number} [targetRow] - Explicit destination row index (0-based).
+ * @property {number} [targetOrder] - Explicit destination order sequence in destination row.
+ * @property {ToolbarId} [hoveredId] - Identifier of destination toolbar widget hovered during drop.
+ * @property {string} [position] - Relative drop position ('before', 'after', 'new-row-above', 'new-row-below', 'new-row-before', 'new-row-after', 'prepend-new-row', 'append-new-row').
+ * @property {number} [targetIndex] - Flat index within target zone for legacy index compatibility.
+ */
+export interface MoveToolbarOptions {
+  targetZone?: ToolbarZone;
+  targetRow?: number;
+  targetOrder?: number;
+  hoveredId?: ToolbarId;
+  position?:
+    | 'before'
+    | 'after'
+    | 'new-row-above'
+    | 'new-row-below'
+    | 'new-row-before'
+    | 'new-row-after'
+    | 'prepend-new-row'
+    | 'append-new-row';
+  targetIndex?: number;
+}
+
+/**
+ * @description Factory default coordinates and visibility configurations for registered toolbars (Ticket #113, ADR 0020).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @type {Record<ToolbarId, ToolbarCoordinates>}
+ */
+export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> = {
+  project: { visible: true, dock: 'top', row: 0, order: 0 },
+  map_view: { visible: true, dock: 'top', row: 0, order: 1 },
+  selection: { visible: true, dock: 'top', row: 0, order: 2 },
+  digitizing: { visible: true, dock: 'top', row: 0, order: 3 },
+  snapping: { visible: false, dock: 'top', row: 0, order: -1 }
+};
+
+/**
  * @signal visibleToolbarsSignal
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
 export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
-  project: true,
-  map_view: false,
-  selection: false,
-  digitizing: false,
-  snapping: false
+  project: DEFAULT_TOOLBAR_COORDINATES.project.visible,
+  map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.visible,
+  selection: DEFAULT_TOOLBAR_COORDINATES.selection.visible,
+  digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.visible,
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible
 });
 
 /**
@@ -228,16 +286,50 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
 export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
-  project: 'top',
-  map_view: 'top',
-  selection: 'top',
-  digitizing: 'top',
-  snapping: 'top'
+  project: DEFAULT_TOOLBAR_COORDINATES.project.dock,
+  map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.dock,
+  selection: DEFAULT_TOOLBAR_COORDINATES.selection.dock,
+  digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.dock,
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock
+});
+
+/**
+ * @signal toolbarRowsSignal
+ * @description Map of toolbar IDs to assigned row band indices (0-based).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @type {Signal<Record<ToolbarId, number>>}
+ */
+export const toolbarRowsSignal = signal<Record<ToolbarId, number>>({
+  project: DEFAULT_TOOLBAR_COORDINATES.project.row,
+  map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.row,
+  selection: DEFAULT_TOOLBAR_COORDINATES.selection.row,
+  digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.row,
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row
+});
+
+/**
+ * @signal toolbarOrdersSignal
+ * @description Map of toolbar IDs to sequence ordering indices (positive for visible, negative for hidden).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @type {Signal<Record<ToolbarId, number>>}
+ */
+export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
+  project: DEFAULT_TOOLBAR_COORDINATES.project.order,
+  map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.order,
+  selection: DEFAULT_TOOLBAR_COORDINATES.selection.order,
+  digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.order,
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order
 });
 
 /**
@@ -245,7 +337,7 @@ export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
@@ -266,6 +358,73 @@ export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
  * @type {Signal<ToolbarId | null>}
  */
 export const activeDraggedToolbarSignal = signal<ToolbarId | null>(null);
+
+/**
+ * @function hydrateToolbarSignalsFromPreferences
+ * @description Hydrates reactive toolbar layout signals from PreferencesStore with fallback to factory defaults.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @param {Record<string, any>} prefs - Preference map or key-value dictionary loaded from preferences.
+ * @returns {void}
+ */
+export function hydrateToolbarSignalsFromPreferences(prefs: Record<string, any>) {
+  if (!prefs) return;
+  const toolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+
+  const nextVisible: Record<ToolbarId, boolean> = { ...visibleToolbarsSignal.value };
+  const nextLocations: Record<ToolbarId, ToolbarZone> = { ...toolbarLocationsSignal.value };
+  const nextRows: Record<ToolbarId, number> = { ...toolbarRowsSignal.value };
+  const nextOrders: Record<ToolbarId, number> = { ...toolbarOrdersSignal.value };
+
+  for (const id of toolbarIds) {
+    const defaultCoords = DEFAULT_TOOLBAR_COORDINATES[id];
+
+    // Read visible
+    const visibleRaw = prefs[`ui.toolbars.${id}.visible`]?.value ?? prefs[`ui.toolbars.${id}.visible`];
+    nextVisible[id] = typeof visibleRaw === 'boolean' ? visibleRaw : defaultCoords.visible;
+
+    // Read dock
+    const dockRaw = prefs[`ui.toolbars.${id}.dock`]?.value ?? prefs[`ui.toolbars.${id}.dock`];
+    nextLocations[id] = validZones.includes(dockRaw) ? dockRaw : defaultCoords.dock;
+
+    // Read row
+    const rowRaw = prefs[`ui.toolbars.${id}.row`]?.value ?? prefs[`ui.toolbars.${id}.row`];
+    nextRows[id] = typeof rowRaw === 'number' && !Number.isNaN(rowRaw) && rowRaw >= 0 ? Math.floor(rowRaw) : defaultCoords.row;
+
+    // Read order
+    const orderRaw = prefs[`ui.toolbars.${id}.order`]?.value ?? prefs[`ui.toolbars.${id}.order`];
+    nextOrders[id] = typeof orderRaw === 'number' && !Number.isNaN(orderRaw) ? Math.floor(orderRaw) : defaultCoords.order;
+  }
+
+  visibleToolbarsSignal.value = nextVisible;
+  toolbarLocationsSignal.value = nextLocations;
+  toolbarRowsSignal.value = nextRows;
+  toolbarOrdersSignal.value = nextOrders;
+
+  // Sync toolbarOrderSignal for backwards compatibility and zone ordering
+  const nextOrder: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+
+  for (const zone of validZones) {
+    const inZone = toolbarIds.filter((id) => nextLocations[id] === zone);
+    inZone.sort((a, b) => {
+      if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+      const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+      const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+      return orderA - orderB;
+    });
+    nextOrder[zone] = inZone;
+  }
+
+  toolbarOrderSignal.value = nextOrder;
+}
 
 /**
  * @function migrateToolbarLayout
@@ -932,51 +1091,439 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
 
 // Toolbar management actions
 /**
- * @description Toggles visibility flag of target toolbar widget.
+ * @function toggleToolbar
+ * @description Toggles visibility flag of target toolbar widget, negating order when hidden,
+ * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
  */
-export function toggleToolbar(id: ToolbarId) {
-  const current = visibleToolbarsSignal.value;
+export function toggleToolbar(id: ToolbarId): void {
+  const isCurrentlyVisible = !!visibleToolbarsSignal.value[id];
+  const nextVisible = !isCurrentlyVisible;
+  const currentDock = toolbarLocationsSignal.value[id] || 'top';
+  const currentRow = toolbarRowsSignal.value[id] ?? 0;
+  const currentOrder = toolbarOrdersSignal.value[id] ?? 0;
+
+  const allToolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+
+  let nextOrder: number;
+  if (!nextVisible) {
+    // Hiding: negate order coordinate (ensure it is strictly negative, even if 0 was passed)
+    nextOrder = -Math.abs(currentOrder) || -1;
+  } else {
+    // Unhiding: assign order = Math.max(0, ...visibleOrdersInRow) + 1 to append to end of preserved row
+    const visibleOrdersInRow = allToolbarIds
+      .filter(
+        (tId) =>
+          tId !== id &&
+          toolbarLocationsSignal.value[tId] === currentDock &&
+          toolbarRowsSignal.value[tId] === currentRow &&
+          visibleToolbarsSignal.value[tId]
+      )
+      .map((tId) => toolbarOrdersSignal.value[tId]);
+    nextOrder = Math.max(0, ...visibleOrdersInRow) + 1;
+  }
+
+  // Update reactive signals
   visibleToolbarsSignal.value = {
-    ...current,
-    [id]: !current[id]
+    ...visibleToolbarsSignal.value,
+    [id]: nextVisible
   };
+  toolbarOrdersSignal.value = {
+    ...toolbarOrdersSignal.value,
+    [id]: nextOrder
+  };
+
+  // Re-sort toolbarOrderSignal for backwards-compatibility and zone ordering
+  const nextOrderSignal: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  for (const zone of validZones) {
+    const inZone = allToolbarIds.filter((tId) => toolbarLocationsSignal.value[tId] === zone);
+    inZone.sort((a, b) => {
+      if (toolbarRowsSignal.value[a] !== toolbarRowsSignal.value[b]) {
+        return toolbarRowsSignal.value[a] - toolbarRowsSignal.value[b];
+      }
+      return toolbarOrdersSignal.value[a] - toolbarOrdersSignal.value[b];
+    });
+    nextOrderSignal[zone] = inZone;
+  }
+  toolbarOrderSignal.value = nextOrderSignal;
+
+  // Persist visibility and order changes to PreferencesStore via IPC
+  if (typeof (globalThis as any).window !== 'undefined') {
+    const api = (globalThis as any).window?.electronAPI;
+    if (api) {
+      if (typeof api.setPreference === 'function') {
+        api.setPreference(`ui.toolbars.${id}.visible`, nextVisible)?.catch?.(() => {});
+        api.setPreference(`ui.toolbars.${id}.order`, nextOrder)?.catch?.(() => {});
+      } else if (typeof api.setPreferenceValue === 'function') {
+        api.setPreferenceValue(`ui.toolbars.${id}.visible`, nextVisible)?.catch?.(() => {});
+        api.setPreferenceValue(`ui.toolbars.${id}.order`, nextOrder)?.catch?.(() => {});
+      }
+    }
+  }
 }
 
 /**
- * @description Relocates toolbar widget to specified outer panel zone and index.
+ * @function moveToolbar
+ * @description Relocates a toolbar widget across dock zones, moves it between existing rows,
+ * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
- * @param {number} [targetIndex] - Optional target ordering index in destination zone.
+ * @param {number | MoveToolbarOptions} [targetRowOrIndexOrOptions] - Destination row index, flat index, or multi-row drop options.
+ * @param {number} [targetOrder] - Optional target sequence order in destination row.
  * @returns {void}
  */
-export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?: number) {
-  const currentZone = toolbarLocationsSignal.value[id];
-  toolbarLocationsSignal.value = {
-    ...toolbarLocationsSignal.value,
-    [id]: targetZone
+export function moveToolbar(
+  id: ToolbarId,
+  targetZone: ToolbarZone,
+  targetRowOrIndexOrOptions?: number | MoveToolbarOptions,
+  targetOrder?: number
+): void {
+  const allToolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+
+  const initialLocations: Record<ToolbarId, ToolbarZone> = { ...toolbarLocationsSignal.value };
+  const initialRows: Record<ToolbarId, number> = { ...toolbarRowsSignal.value };
+  const initialOrders: Record<ToolbarId, number> = { ...toolbarOrdersSignal.value };
+
+  // Synchronize orders with toolbarOrderSignal for backwards-compatibility when toolbarOrderSignal was set externally
+  for (const zone of validZones) {
+    const list = toolbarOrderSignal.value[zone] || [];
+    list.forEach((tId, idx) => {
+      if (initialLocations[tId] === zone && initialOrders[tId] >= 0) {
+        initialOrders[tId] = idx;
+      }
+    });
+  }
+
+  const currentZone = initialLocations[id];
+
+  const nextLocations: Record<ToolbarId, ToolbarZone> = { ...initialLocations };
+  const nextRows: Record<ToolbarId, number> = { ...initialRows };
+  const nextOrders: Record<ToolbarId, number> = { ...initialOrders };
+
+  // Parse options
+  let options: MoveToolbarOptions | undefined;
+  if (typeof targetRowOrIndexOrOptions === 'object' && targetRowOrIndexOrOptions !== null) {
+    options = targetRowOrIndexOrOptions;
+  } else if (typeof targetRowOrIndexOrOptions === 'number') {
+    if (typeof targetOrder === 'number') {
+      options = { targetRow: targetRowOrIndexOrOptions, targetOrder };
+    } else {
+      options = { targetIndex: targetRowOrIndexOrOptions };
+    }
+  }
+
+  // Determine final targetZone
+  let destZone = options?.targetZone || targetZone;
+  if (options?.hoveredId && options.hoveredId !== id) {
+    destZone = initialLocations[options.hoveredId];
+  }
+  nextLocations[id] = destZone;
+
+  if (options?.hoveredId && options.hoveredId !== id) {
+    const hoveredId = options.hoveredId;
+    const hoveredZone = destZone;
+    const hoveredRow = initialRows[hoveredId];
+    const pos = options.position || 'after';
+
+    if (pos === 'new-row-above' || pos === 'new-row-before') {
+      // Create new row before hoveredRow
+      const destRow = hoveredRow;
+      // Shift all other toolbars in hoveredZone with row >= destRow up by 1
+      for (const tId of allToolbarIds) {
+        if (tId !== id && nextLocations[tId] === hoveredZone && nextRows[tId] >= destRow) {
+          nextRows[tId] += 1;
+        }
+      }
+      nextRows[id] = destRow;
+      nextOrders[id] = 0;
+    } else if (pos === 'new-row-below' || pos === 'new-row-after') {
+      // Create new row after hoveredRow
+      const destRow = hoveredRow + 1;
+      // Shift all other toolbars in hoveredZone with row >= destRow up by 1
+      for (const tId of allToolbarIds) {
+        if (tId !== id && nextLocations[tId] === hoveredZone && nextRows[tId] >= destRow) {
+          nextRows[tId] += 1;
+        }
+      }
+      nextRows[id] = destRow;
+      nextOrders[id] = 0;
+    } else {
+      // Intra-row reordering (before or after)
+      nextRows[id] = hoveredRow;
+
+      // Collect visible toolbars in hoveredZone and hoveredRow (excluding id)
+      const inRow = allToolbarIds
+        .filter(
+          (tId) =>
+            tId !== id &&
+            nextLocations[tId] === hoveredZone &&
+            nextRows[tId] === hoveredRow &&
+            nextOrders[tId] >= 0
+        )
+        .sort((a, b) => nextOrders[a] - nextOrders[b]);
+
+      const hoveredIndex = inRow.indexOf(hoveredId);
+      const insertIndex = pos === 'before' ? Math.max(0, hoveredIndex) : hoveredIndex + 1;
+      inRow.splice(insertIndex, 0, id);
+
+      inRow.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  } else if (options?.position === 'prepend-new-row') {
+    // Shift all other toolbars in destZone up by 1
+    for (const tId of allToolbarIds) {
+      if (tId !== id && nextLocations[tId] === destZone) {
+        nextRows[tId] += 1;
+      }
+    }
+    nextRows[id] = 0;
+    nextOrders[id] = 0;
+  } else if (options?.position === 'append-new-row') {
+    // Append as a new row at end of destZone
+    const rowsInTarget = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone)
+      .map((tId) => nextRows[tId]);
+    const maxRow = rowsInTarget.length > 0 ? Math.max(...rowsInTarget) : -1;
+    nextRows[id] = maxRow + 1;
+    nextOrders[id] = 0;
+  } else if (typeof options?.targetRow === 'number') {
+    const destRow = Math.max(0, Math.floor(options.targetRow));
+    nextRows[id] = destRow;
+
+    // Collect toolbars in destRow (excluding id)
+    const zoneOrder = toolbarOrderSignal.value[destZone] || [];
+    const inRow = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone && nextRows[tId] === destRow)
+      .sort((a, b) => {
+        const idxA = zoneOrder.indexOf(a);
+        const idxB = zoneOrder.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+        const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+        return orderA - orderB;
+      });
+
+    const destOrder =
+      typeof options.targetOrder === 'number'
+        ? Math.min(Math.max(0, Math.floor(options.targetOrder)), inRow.length)
+        : inRow.length;
+
+    inRow.splice(destOrder, 0, id);
+    inRow.forEach((tId, idx) => {
+      nextOrders[tId] = idx;
+    });
+  } else if (typeof options?.targetIndex === 'number') {
+    // Flat index within destZone (backwards-compatible reordering)
+    const inZone = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone)
+      .sort((a, b) => {
+        if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+        return nextOrders[a] - nextOrders[b];
+      });
+
+    const clampedIndex = Math.min(Math.max(0, options.targetIndex), inZone.length);
+    if (inZone.length === 0) {
+      nextRows[id] = 0;
+      nextOrders[id] = 0;
+    } else if (clampedIndex === 0) {
+      nextRows[id] = nextRows[inZone[0]];
+      inZone.splice(0, 0, id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    } else if (clampedIndex >= inZone.length) {
+      const last = inZone[inZone.length - 1];
+      nextRows[id] = nextRows[last];
+      inZone.push(id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    } else {
+      const neighbor = inZone[clampedIndex];
+      nextRows[id] = nextRows[neighbor];
+      inZone.splice(clampedIndex, 0, id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  } else {
+    // Default append to end of destZone (preserving single-row flat behavior)
+    const inZone = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone)
+      .sort((a, b) => {
+        if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+        return nextOrders[a] - nextOrders[b];
+      });
+
+    if (inZone.length === 0) {
+      nextRows[id] = 0;
+      nextOrders[id] = 0;
+    } else {
+      const last = inZone[inZone.length - 1];
+      nextRows[id] = nextRows[last];
+      inZone.push(id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  }
+
+  // 2. Auto-compact rows in affected zones (currentZone and destZone)
+  const affectedZones = Array.from(new Set([currentZone, destZone]));
+  for (const zone of affectedZones) {
+    const inZone = allToolbarIds.filter((tId) => nextLocations[tId] === zone);
+    const uniqueRows = Array.from(new Set(inZone.map((tId) => nextRows[tId]))).sort((a, b) => a - b);
+    const rowMap = new Map<number, number>();
+    uniqueRows.forEach((oldRow, newRow) => {
+      rowMap.set(oldRow, newRow);
+    });
+    for (const tId of inZone) {
+      nextRows[tId] = rowMap.get(nextRows[tId]) ?? 0;
+    }
+
+    // Re-sequence orders within each row of this zone for visible toolbars (positive order)
+    for (const row of Array.from(rowMap.values())) {
+      const inRowVisible = inZone
+        .filter((tId) => nextRows[tId] === row && nextOrders[tId] >= 0)
+        .sort((a, b) => nextOrders[a] - nextOrders[b]);
+      inRowVisible.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  }
+
+  // 3. Update reactive state signals
+  toolbarLocationsSignal.value = nextLocations;
+  toolbarRowsSignal.value = nextRows;
+  toolbarOrdersSignal.value = nextOrders;
+
+  // Re-sort toolbarOrderSignal for backwards compatibility
+  const nextOrderSignal: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+  for (const zone of validZones) {
+    const inZone = allToolbarIds.filter((tId) => nextLocations[tId] === zone);
+    inZone.sort((a, b) => {
+      if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+      const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+      const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+      return orderA - orderB;
+    });
+    nextOrderSignal[zone] = inZone;
+  }
+  toolbarOrderSignal.value = nextOrderSignal;
+
+  // 4. Dispatch IPC preference updates for any changed coordinates
+  if (typeof (globalThis as any).window !== 'undefined') {
+    const api = (globalThis as any).window?.electronAPI;
+    const setPref = api?.setPreference || api?.setPreferenceValue;
+    if (typeof setPref === 'function') {
+      for (const tId of allToolbarIds) {
+        if (nextLocations[tId] !== initialLocations[tId]) {
+          setPref(`ui.toolbars.${tId}.dock`, nextLocations[tId])?.catch?.(() => {});
+        }
+        if (nextRows[tId] !== initialRows[tId]) {
+          setPref(`ui.toolbars.${tId}.row`, nextRows[tId])?.catch?.(() => {});
+        }
+        if (nextOrders[tId] !== initialOrders[tId]) {
+          setPref(`ui.toolbars.${tId}.order`, nextOrders[tId])?.catch?.(() => {});
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @function resetToolbarsToDefault
+ * @description Restores all registered toolbar coordinates and visibility to factory defaults, updating reactive signals immediately and dispatching preference persistence via IPC.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function resetToolbarsToDefault(): void {
+  const toolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const nextVisible: Record<ToolbarId, boolean> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.visible,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.visible,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.visible,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.visible,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible
+  };
+  const nextLocations: Record<ToolbarId, ToolbarZone> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.dock,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.dock,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.dock,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.dock,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock
+  };
+  const nextRows: Record<ToolbarId, number> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.row,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.row,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.row,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.row,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row
+  };
+  const nextOrders: Record<ToolbarId, number> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.order,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.order,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.order,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.order,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order
   };
 
-  const order = { ...toolbarOrderSignal.value };
-  order[currentZone] = (order[currentZone] || []).filter((item) => item !== id);
-  const targetList = [...(order[targetZone] || [])];
-  if (typeof targetIndex === 'number' && targetIndex >= 0) {
-    const clampedIndex = Math.min(targetIndex, targetList.length);
-    targetList.splice(clampedIndex, 0, id);
-  } else {
-    targetList.push(id);
+  batch(() => {
+    visibleToolbarsSignal.value = nextVisible;
+    toolbarLocationsSignal.value = nextLocations;
+    toolbarRowsSignal.value = nextRows;
+    toolbarOrdersSignal.value = nextOrders;
+
+    toolbarOrderSignal.value = {
+      top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
+      bottom: [],
+      left: [],
+      right: []
+    };
+  });
+
+  if (typeof (globalThis as any).window !== 'undefined') {
+    const api = (globalThis as any).window?.electronAPI;
+    const setPref = api?.setPreference || api?.setPreferenceValue;
+    if (typeof setPref === 'function') {
+      for (const tId of toolbarIds) {
+        const def = DEFAULT_TOOLBAR_COORDINATES[tId];
+        setPref(`ui.toolbars.${tId}.visible`, def.visible)?.catch?.(() => {});
+        setPref(`ui.toolbars.${tId}.dock`, def.dock)?.catch?.(() => {});
+        setPref(`ui.toolbars.${tId}.row`, def.row)?.catch?.(() => {});
+        setPref(`ui.toolbars.${tId}.order`, def.order)?.catch?.(() => {});
+      }
+    }
   }
-  order[targetZone] = targetList;
-  toolbarOrderSignal.value = order;
 }
 
 // Project Actions

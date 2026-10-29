@@ -4,7 +4,7 @@
  * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-13
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link PopupMenu}
  */
@@ -22,6 +22,7 @@ import type { PopupMenuItem } from "@renderer/state/projectSignals";
  * @property {string} [id] - Optional unique identifier.
  * @property {string} [icon] - Optional MDI icon path.
  * @property {boolean} [checked] - True if checkmark icon is displayed.
+ * @property {boolean} [separator] - True if item is a horizontal divider.
  */
 export interface WidgetContextMenuItem {
   id?: string;
@@ -29,6 +30,7 @@ export interface WidgetContextMenuItem {
   action: () => void;
   icon?: string;
   checked?: boolean;
+  separator?: boolean;
 }
 
 /**
@@ -78,7 +80,7 @@ export interface WidgetProps {
  * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-13
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {WidgetProps} props - Component properties.
  * @returns {React.ReactElement} Base widget container element.
@@ -184,6 +186,7 @@ export const Widget: React.FC<WidgetProps> = ({
     label: item.label,
     icon: item.icon,
     checked: item.checked,
+    separator: item.separator,
     onClick: item.action,
   }));
 

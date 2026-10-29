@@ -598,11 +598,20 @@
 }
 
 .toolbar-grabber {
-  color: #475569;
+  color: #94a3b8;
+  opacity: 0.22;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
 
 .toolbar-grabber:hover {
   color: #0037b9 !important;
+  opacity: 1 !important;
+}
+
+.toolbar-divider {
+  color: #94a3b8;
+  opacity: 0.22;
+  pointer-events: none;
 }
 
 /* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area) */
@@ -646,11 +655,52 @@
   top: -8px;
 }
 
+/* Toolbar Row bands (ADR 0020, Ticket #116) */
+.toolbar-row {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-row.zone-top,
+.toolbar-row.zone-bottom {
+  flex-direction: row;
+  width: 100%;
+  height: auto;
+}
+
+.toolbar-row.zone-left,
+.toolbar-row.zone-right {
+  flex-direction: column;
+  width: auto;
+  height: 100%;
+}
+
+.toolbar-row:empty {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.toolbar-container-wrapper {
+  position: relative;
+}
+
 /* Toolbar Drop Reordering Indicators */
 .toolbar-widget-wrapper {
   display: inline-flex;
   position: relative;
   transition: box-shadow 0.08s ease-in-out;
+}
+
+.toolbar-widget-wrapper.toolbar-drop-new-row-above,
+.toolbar-widget-wrapper.toolbar-drop-new-row-below,
+.toolbar-widget-wrapper.toolbar-drop-new-row-before,
+.toolbar-widget-wrapper.toolbar-drop-new-row-after {
+  position: static;
 }
 
 .toolbar-drop-marker {
@@ -675,6 +725,22 @@
   width: 3px;
 }
 
+.toolbar-drop-marker.horizontal.new-row-above {
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  width: auto;
+}
+
+.toolbar-drop-marker.horizontal.new-row-below {
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  width: auto;
+}
+
 .toolbar-drop-marker.vertical.before {
   top: -3px;
   left: 0;
@@ -687,6 +753,50 @@
   left: 0;
   right: 0;
   height: 3px;
+}
+
+.toolbar-drop-marker.vertical.new-row-before {
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  height: auto;
+}
+
+.toolbar-drop-marker.vertical.new-row-after {
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  height: auto;
+}
+
+.toolbar-drop-marker.container-drop.horizontal.prepend-new-row {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.toolbar-drop-marker.container-drop.horizontal.append-new-row {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.toolbar-drop-marker.container-drop.vertical.prepend-new-row {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.toolbar-drop-marker.container-drop.vertical.append-new-row {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
 }
 
 /* =========================================================================
