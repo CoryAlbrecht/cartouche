@@ -37,6 +37,7 @@
     <string name="snap_to_vertices">Accrocher aux Sommets</string>
     <string name="snap_to_midpoint">Accrocher aux Milieux de Segment</string>
     <string name="snap_to_segment">Accrocher aux Segments</string>
+    <string name="reset_toolbar_layout">Rétablir les barres d'outils par défaut</string>
     <string name="more_options">Plus d'options...</string>
     <string name="cancel_action">Annuler</string>
     <string name="quit">Quitter</string>

@@ -11,15 +11,17 @@
  */
 
 import React from "react";
-import { Widget } from "./Widget";
+import { Widget, type WidgetContextMenuItem } from "./Widget";
 import {
   visibleToolbarsSignal,
   toggleToolbar,
   moveToolbar,
+  resetToolbarsToDefault,
   activeDraggedToolbarSignal,
   type ToolbarId,
   type ToolbarZone,
 } from "@renderer/state/gisSignals";
+import { mdiRestore } from "@mdi/js";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import {
   resolveContainerDropPosition,
@@ -93,13 +95,26 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     snapping: "Snapping",
   };
 
-  const contextMenuItems = (Object.keys(toolbarLabels) as ToolbarId[]).map(
-    (id) => ({
+  const contextMenuItems: WidgetContextMenuItem[] = [
+    ...(Object.keys(toolbarLabels) as ToolbarId[]).map((id) => ({
+      id: `toggle-toolbar-${id}`,
       label: toolbarLabels[id],
       checked: visibleToolbars[id],
       action: () => toggleToolbar(id),
-    })
-  );
+    })),
+    {
+      id: "toolbar-context-separator",
+      label: "",
+      separator: true,
+      action: () => {},
+    },
+    {
+      id: "reset-toolbars-default",
+      label: "Reset Toolbars to Default",
+      icon: mdiRestore,
+      action: () => resetToolbarsToDefault(),
+    },
+  ];
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();

@@ -9,6 +9,7 @@
  * @see {@link GisLayer}
  * @see {@link GisFeature}
  * @see {@link GisLayerGroup}
+ * @see {@link resetToolbarsToDefault}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -1451,6 +1452,75 @@ export function moveToolbar(
         if (nextOrders[tId] !== initialOrders[tId]) {
           setPref(`ui.toolbars.${tId}.order`, nextOrders[tId])?.catch?.(() => {});
         }
+      }
+    }
+  }
+}
+
+/**
+ * @function resetToolbarsToDefault
+ * @description Restores all registered toolbar coordinates and visibility to factory defaults, updating reactive signals immediately and dispatching preference persistence via IPC.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-28
+ * @updated 2026-10-28
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function resetToolbarsToDefault(): void {
+  const toolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const nextVisible: Record<ToolbarId, boolean> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.visible,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.visible,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.visible,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.visible,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible
+  };
+  const nextLocations: Record<ToolbarId, ToolbarZone> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.dock,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.dock,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.dock,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.dock,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock
+  };
+  const nextRows: Record<ToolbarId, number> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.row,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.row,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.row,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.row,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row
+  };
+  const nextOrders: Record<ToolbarId, number> = {
+    project: DEFAULT_TOOLBAR_COORDINATES.project.order,
+    map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.order,
+    selection: DEFAULT_TOOLBAR_COORDINATES.selection.order,
+    digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.order,
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order
+  };
+
+  batch(() => {
+    visibleToolbarsSignal.value = nextVisible;
+    toolbarLocationsSignal.value = nextLocations;
+    toolbarRowsSignal.value = nextRows;
+    toolbarOrdersSignal.value = nextOrders;
+
+    toolbarOrderSignal.value = {
+      top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
+      bottom: [],
+      left: [],
+      right: []
+    };
+  });
+
+  if (typeof (globalThis as any).window !== 'undefined') {
+    const api = (globalThis as any).window?.electronAPI;
+    const setPref = api?.setPreference || api?.setPreferenceValue;
+    if (typeof setPref === 'function') {
+      for (const tId of toolbarIds) {
+        const def = DEFAULT_TOOLBAR_COORDINATES[tId];
+        setPref(`ui.toolbars.${tId}.visible`, def.visible)?.catch?.(() => {});
+        setPref(`ui.toolbars.${tId}.dock`, def.dock)?.catch?.(() => {});
+        setPref(`ui.toolbars.${tId}.row`, def.row)?.catch?.(() => {});
+        setPref(`ui.toolbars.${tId}.order`, def.order)?.catch?.(() => {});
       }
     }
   }
