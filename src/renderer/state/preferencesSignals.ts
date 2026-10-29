@@ -4,14 +4,14 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-26
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
 
 import { signal, type Signal } from '@preact/signals-react';
 import type { PreferenceMap } from '@shared/types';
-import { addConsoleLog } from './gisSignals';
+import { addConsoleLog, hydrateToolbarSignalsFromPreferences } from './gisSignals';
 import { logging } from '../../shared/logging';
 
 /**
@@ -131,6 +131,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
       }
       attachAndSyncSignals(merged);
       preferencesMapSignal.value = merged;
+      hydrateToolbarSignalsFromPreferences(merged);
       return prefs;
     }
   } catch (err) {
@@ -143,7 +144,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
  * @description Saves a single preference value via IPC and updates preferencesMapSignal reactively.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-26
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {string} name - Preference key identifier.
  * @param {any} value - New preference value to set.
@@ -159,6 +160,7 @@ export async function updatePreference(name: string, value: any): Promise<void> 
       };
       attachAndSyncSignals(merged);
       preferencesMapSignal.value = merged;
+      hydrateToolbarSignalsFromPreferences(merged);
       addConsoleLog('info', `Preference updated: "${name}" = ${JSON.stringify(value)}`, 'Preferences');
     }
   } catch (err) {
