@@ -13,8 +13,8 @@
 import type { ToolbarId, ToolbarZone } from '@renderer/state/gisSignals';
 
 /**
- * @typedef {'before' | 'after' | 'new-row-above' | 'new-row-below' | 'new-row-before' | 'new-row-after'} ToolbarDropPosition
- * @description Relative insertion placement relative to the hovered toolbar widget, supporting intra-row reordering and multi-row creation.
+ * @typedef {'before' | 'after' | 'new-row-above' | 'new-row-below' | 'new-row-before' | 'new-row-after' | 'prepend-new-row' | 'append-new-row'} ToolbarDropPosition
+ * @description Relative insertion placement relative to the hovered toolbar widget or container boundary, supporting intra-row reordering and multi-row creation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
  * @updated 2026-10-28
@@ -26,7 +26,9 @@ export type ToolbarDropPosition =
   | 'new-row-above'
   | 'new-row-below'
   | 'new-row-before'
-  | 'new-row-after';
+  | 'new-row-after'
+  | 'prepend-new-row'
+  | 'append-new-row';
 
 /**
  * @typedef {Object} CalculateToolbarTargetIndexParams
@@ -94,7 +96,7 @@ export function resolveToolbarDropPosition(
   if (offsetX > width * 0.75) {
     return 'new-row-after';
   }
-  // Middle 50% cross-axis band: intra-column reordering by primary axis (Y)
+  // Middle 50% cross-axis band: intra-row reordering by primary axis (Y)
   return offsetY < height * 0.5 ? 'before' : 'after';
 }
 

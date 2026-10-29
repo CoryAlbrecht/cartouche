@@ -21,15 +21,22 @@ import {
   type ToolbarZone,
 } from "@renderer/state/gisSignals";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
-import { resolveContainerDropPosition } from "./toolbarDropTarget";
+import {
+  resolveContainerDropPosition,
+  type ToolbarDropPosition,
+} from "./toolbarDropTarget";
 
 /**
  * @typedef {Object} ToolbarContainerWidgetProps
  * @property {ToolbarZone} zone - Outer panel dock zone identifier ('top' | 'bottom' | 'left' | 'right').
+ * @property {ToolbarDropPosition | null} [dropPosition] - Explicit boundary drop placement indicator for preview and testing.
+ * @property {boolean} [isDragOver] - Explicit dragover state override for testing.
  * @property {React.ReactNode} [children] - Child toolbar widgets docked inside this container zone.
  */
 export interface ToolbarContainerWidgetProps {
   zone: ToolbarZone;
+  dropPosition?: ToolbarDropPosition | null;
+  isDragOver?: boolean;
   children?: React.ReactNode;
 }
 
@@ -45,6 +52,8 @@ export interface ToolbarContainerWidgetProps {
  */
 export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
   zone,
+  dropPosition: propDropPosition,
+  isDragOver: propIsDragOver,
   children,
 }) => {
   useSignals();
@@ -58,7 +67,19 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
    * @type {Signal<boolean>}
    */
   const isToolbarZoneDragOverSignal = useSignal<boolean>(false);
-  const isDragOver = isToolbarZoneDragOverSignal.value;
+  const isDragOver = propIsDragOver !== undefined ? propIsDragOver : isToolbarZoneDragOverSignal.value;
+
+  /**
+   * @signal containerDropPositionSignal
+   * @description Reactive signal tracking resolved boundary drop position on container dragover.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-28
+   * @updated 2026-10-28
+   * @since 0.1.0-dev
+   * @type {Signal<ToolbarDropPosition | null>}
+   */
+  const containerDropPositionSignal = useSignal<ToolbarDropPosition | null>(null);
+  const containerDropPosition = propDropPosition !== undefined ? propDropPosition : containerDropPositionSignal.value;
 
   const isHorizontal = zone === "top" || zone === "bottom";
   const visibleToolbars = visibleToolbarsSignal.value;
@@ -91,6 +112,13 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     if (!isToolbarZoneDragOverSignal.value) {
       isToolbarZoneDragOverSignal.value = true;
     }
+    const rect = e.currentTarget?.getBoundingClientRect?.();
+    const offset = rect ? (isHorizontal ? e.clientY - rect.top : e.clientX - rect.left) : 0;
+    const dimension = rect ? (isHorizontal ? rect.height : rect.width) : 0;
+    const pos = resolveContainerDropPosition(zone, offset, dimension);
+    if (containerDropPositionSignal.value !== pos) {
+      containerDropPositionSignal.value = pos;
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -98,18 +126,19 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     // Only clear dragOver if mouse leaves the container element completely
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       isToolbarZoneDragOverSignal.value = false;
+      containerDropPositionSignal.value = null;
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     isToolbarZoneDragOverSignal.value = false;
+    containerDropPositionSignal.value = null;
     const toolbarId =
       activeDraggedToolbarSignal.value ||
       (e.dataTransfer.getData("text/plain") as ToolbarId);
     if (toolbarId && visibleToolbars[toolbarId] !== undefined) {
       const rect = e.currentTarget?.getBoundingClientRect?.();
-      const isHorizontal = zone === "top" || zone === "bottom";
       const offset = rect ? (isHorizontal ? e.clientY - rect.top : e.clientX - rect.left) : 0;
       const dimension = rect ? (isHorizontal ? rect.height : rect.width) : 0;
       const position = resolveContainerDropPosition(zone, offset, dimension);
@@ -160,6 +189,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
 
   return (
     <div
+      className={`toolbar-container-wrapper zone-${zone}`}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -168,6 +198,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
         width: isHorizontal ? "100%" : "auto",
         height: isHorizontal ? "auto" : "100%",
         display: "flex",
+        position: "relative",
       }}>
       <Widget
         id={`toolbar-container-${zone}`}
@@ -180,8 +211,8 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
         customContextMenuItems={contextMenuItems}
         style={{
           display: "flex",
-          flexDirection: isHorizontal ? "row" : "column",
-          flexWrap: "wrap",
+          flexDirection: isHorizontal ? "column" : "row",
+          flexWrap: "nowrap",
           alignItems: "flex-start",
           alignContent: "flex-start",
           gap: "4px",
@@ -193,6 +224,13 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
         }}>
         {children}
       </Widget>
+
+      {/* Container boundary drop marker */}
+      {isDragOver && containerDropPosition && (
+        <span
+          className={`toolbar-drop-marker container-drop ${isHorizontal ? "horizontal" : "vertical"} ${containerDropPosition}`}
+        />
+      )}
     </div>
   );
 };

@@ -31,11 +31,13 @@ import {
  * @typedef {Object} ToolbarWidgetProps
  * @property {ToolbarId} id - Toolbar identifier string ('project' | 'map_view' | 'selection' | 'digitizing' | 'snapping').
  * @property {ToolbarZone} [zone='top'] - Active dock zone placement ('top' | 'bottom' | 'left' | 'right').
+ * @property {ToolbarDropPosition | null} [dropPosition] - Explicit drop placement indicator for preview and testing.
  * @property {React.ReactNode} [children] - Toolbar action buttons and controls.
  */
 export interface ToolbarWidgetProps {
   id: ToolbarId;
   zone?: ToolbarZone;
+  dropPosition?: ToolbarDropPosition | null;
   children?: React.ReactNode;
 }
 
@@ -52,6 +54,7 @@ export interface ToolbarWidgetProps {
 export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   id,
   zone = "top",
+  dropPosition: propDropPosition,
   children,
 }) => {
   useSignals();
@@ -59,7 +62,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
 
   /**
    * @signal dropPositionSignal
-   * @description Reactive signal tracking relative drop placement indicator ('before' or 'after') during toolbar dragover.
+   * @description Reactive signal tracking relative drop placement indicator ('before', 'after', 'new-row-above', 'new-row-below', 'new-row-before', 'new-row-after') during toolbar dragover.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-28
    * @updated 2026-10-28
@@ -67,7 +70,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
    * @type {Signal<ToolbarDropPosition | null>}
    */
   const dropPositionSignal = useSignal<ToolbarDropPosition | null>(null);
-  const dropPosition = dropPositionSignal.value;
+  const dropPosition = propDropPosition !== undefined ? propDropPosition : dropPositionSignal.value;
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
@@ -178,7 +181,14 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
       onDrop={handleDrop}
       style={{
         display: "inline-flex",
-        position: "relative",
+        position:
+          dropPosition &&
+          (dropPosition === "new-row-above" ||
+            dropPosition === "new-row-below" ||
+            dropPosition === "new-row-before" ||
+            dropPosition === "new-row-after")
+            ? "static"
+            : "relative",
       }}>
       <Widget
         id={`toolbar-widget-${id}`}
