@@ -1061,20 +1061,86 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
 
 // Toolbar management actions
 /**
- * @description Toggles visibility flag of target toolbar widget.
+ * @function toggleToolbar
+ * @description Toggles visibility flag of target toolbar widget, negating order when hidden,
+ * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
  */
-export function toggleToolbar(id: ToolbarId) {
-  const current = visibleToolbarsSignal.value;
+export function toggleToolbar(id: ToolbarId): void {
+  const isCurrentlyVisible = !!visibleToolbarsSignal.value[id];
+  const nextVisible = !isCurrentlyVisible;
+  const currentDock = toolbarLocationsSignal.value[id] || 'top';
+  const currentRow = toolbarRowsSignal.value[id] ?? 0;
+  const currentOrder = toolbarOrdersSignal.value[id] ?? 0;
+
+  const allToolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+
+  let nextOrder: number;
+  if (!nextVisible) {
+    // Hiding: negate order coordinate (ensure it is strictly negative, even if 0 was passed)
+    nextOrder = -Math.abs(currentOrder) || -1;
+  } else {
+    // Unhiding: assign order = Math.max(0, ...visibleOrdersInRow) + 1 to append to end of preserved row
+    const visibleOrdersInRow = allToolbarIds
+      .filter(
+        (tId) =>
+          tId !== id &&
+          toolbarLocationsSignal.value[tId] === currentDock &&
+          toolbarRowsSignal.value[tId] === currentRow &&
+          visibleToolbarsSignal.value[tId]
+      )
+      .map((tId) => toolbarOrdersSignal.value[tId]);
+    nextOrder = Math.max(0, ...visibleOrdersInRow) + 1;
+  }
+
+  // Update reactive signals
   visibleToolbarsSignal.value = {
-    ...current,
-    [id]: !current[id]
+    ...visibleToolbarsSignal.value,
+    [id]: nextVisible
   };
+  toolbarOrdersSignal.value = {
+    ...toolbarOrdersSignal.value,
+    [id]: nextOrder
+  };
+
+  // Re-sort toolbarOrderSignal for backwards-compatibility and zone ordering
+  const nextOrderSignal: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  for (const zone of validZones) {
+    const inZone = allToolbarIds.filter((tId) => toolbarLocationsSignal.value[tId] === zone);
+    inZone.sort((a, b) => {
+      if (toolbarRowsSignal.value[a] !== toolbarRowsSignal.value[b]) {
+        return toolbarRowsSignal.value[a] - toolbarRowsSignal.value[b];
+      }
+      return toolbarOrdersSignal.value[a] - toolbarOrdersSignal.value[b];
+    });
+    nextOrderSignal[zone] = inZone;
+  }
+  toolbarOrderSignal.value = nextOrderSignal;
+
+  // Persist visibility and order changes to PreferencesStore via IPC
+  if (typeof (globalThis as any).window !== 'undefined') {
+    const api = (globalThis as any).window?.electronAPI;
+    if (api) {
+      if (typeof api.setPreference === 'function') {
+        api.setPreference(`ui.toolbars.${id}.visible`, nextVisible)?.catch?.(() => {});
+        api.setPreference(`ui.toolbars.${id}.order`, nextOrder)?.catch?.(() => {});
+      } else if (typeof api.setPreferenceValue === 'function') {
+        api.setPreferenceValue(`ui.toolbars.${id}.visible`, nextVisible)?.catch?.(() => {});
+        api.setPreferenceValue(`ui.toolbars.${id}.order`, nextOrder)?.catch?.(() => {});
+      }
+    }
+  }
 }
 
 /**

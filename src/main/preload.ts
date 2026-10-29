@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-24
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { DropPosition, ElectronAPI } from '@shared/types';
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-24
+ * @updated 2026-10-28
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -51,6 +51,8 @@ const electronAPI: ElectronAPI = {
   getActions: () => ipcRenderer.invoke('gis:get-actions'),
   /** @ipc gis:get-preference */
   getPreferenceValue: (name?: string) => ipcRenderer.invoke('gis:get-preference', name),
+  /** @ipc gis:set-preference */
+  setPreference: (name: string, value: any) => ipcRenderer.invoke('gis:set-preference', name, value),
   /** @ipc gis:set-preference */
   setPreferenceValue: (name: string, value: any) => ipcRenderer.invoke('gis:set-preference', name, value),
   /** @ipc gis:get-filetypes */
