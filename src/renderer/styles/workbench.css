@@ -598,11 +598,20 @@
 }
 
 .toolbar-grabber {
-  color: #475569;
+  color: #94a3b8;
+  opacity: 0.22;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
 
 .toolbar-grabber:hover {
   color: #0037b9 !important;
+  opacity: 1 !important;
+}
+
+.toolbar-divider {
+  color: #94a3b8;
+  opacity: 0.22;
+  pointer-events: none;
 }
 
 /* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area) */

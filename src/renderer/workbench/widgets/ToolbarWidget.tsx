@@ -214,7 +214,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
           boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
           cursor: "default",
         }}>
-        {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with high contrast */}
+        {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with low contrast */}
         <span
           className='toolbar-grabber'
           title='Drag toolbar to reorder or move to another edge'
@@ -235,14 +235,13 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         {/* Child Controls */}
         {children}
 
-        {/* Divider: MDI Icon 'power-on' (horizontal) / 'minus' (vertical) */}
+        {/* Divider: MDI Icon 'power-on' (horizontal) / 'minus' (vertical) with low contrast */}
         <span
           className='toolbar-divider'
           style={{
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#cbd5e1",
             padding: isHorizontal ? "0 2px" : "2px 0",
             userSelect: "none",
           }}>
