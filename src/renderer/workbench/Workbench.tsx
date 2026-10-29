@@ -4,10 +4,11 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
+ * @see {@link WorkbenchStatusBar}
  * @see {@link PreferencesDialog}
  * @see {@link LayerPropertiesDialog}
  * @see {@link ProjectPropertiesDialog}
@@ -44,11 +45,8 @@ import {
 
 import { widgetComponents } from "./widgetRegistry";
 import { ToolbarPanel } from "./widgets/toolbars/ToolbarPanel";
+import { WorkbenchStatusBar } from "./WorkbenchStatusBar";
 import {
-  cursorCoordsSignal,
-  activeCrsSignal,
-  scaleDenominatorSignal,
-  selectedFeaturesCountSignal,
   selectedFeatureIdsSignal,
   hasProjectSignal,
   isProjectDirtySignal,
@@ -203,7 +201,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -787,12 +785,6 @@ export const Workbench: React.FC = () => {
   const hasSelectedFeatures = selectedFeatureIdsSignal.value.size > 0;
   const hasClipboard = clipboardFeaturesSignal.value.length > 0;
   const visibleToolbars = visibleToolbarsSignal.value;
-
-  // Status bar signals
-  const coords = cursorCoordsSignal.value;
-  const crs = activeCrsSignal.value;
-  const scale = scaleDenominatorSignal.value;
-  const selectedCount = selectedFeaturesCountSignal.value;
 
   return (
     <div className='workbench-container'>
@@ -1573,49 +1565,7 @@ export const Workbench: React.FC = () => {
       <ToolbarPanel zone='bottom' />
 
       {/* Status Bar */}
-      <footer className='workbench-statusbar'>
-        <div
-          className='statusbar-item'
-          title='Current Cursor Coordinates (Lon, Lat)'>
-          {coords ?
-            <span>
-              {coords.lon >= 0 ?
-                `${coords.lon.toFixed(4)}°E`
-              : `${Math.abs(coords.lon).toFixed(4)}°W`}
-              ,{" "}
-              {coords.lat >= 0 ?
-                `${coords.lat.toFixed(4)}°N`
-              : `${Math.abs(coords.lat).toFixed(4)}°S`}
-            </span>
-          : <span>Coordinate: 0.0000°, 0.0000°</span>}
-        </div>
-
-        <div className='statusbar-separator' />
-
-        <div className='statusbar-item' title='Cartographic Scale'>
-          Scale: 1 : {scale.toLocaleString()}
-        </div>
-
-        <div className='statusbar-separator' />
-
-        <div className='statusbar-item' title='Selected Features'>
-          Selected: {selectedCount}
-        </div>
-
-        <div className='statusbar-spacer' />
-
-        <div
-          className='statusbar-item'
-          title='Active Coordinate Reference System'>
-          🌐 {crs.authId}
-        </div>
-
-        <div className='statusbar-separator' />
-
-        <div className='statusbar-item' title='Application Core Status'>
-          ● Ready
-        </div>
-      </footer>
+      <WorkbenchStatusBar />
 
       {/* About Modal Dialog */}
       {showAboutModal && (

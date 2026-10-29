@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-27
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorLayer}
@@ -190,7 +190,7 @@ export interface FitExtentOptions {
  * @description Imperative OpenLayers map canvas controller encapsulating native ol/Map and vector rendering completely insulated from React Virtual DOM.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 export class MapController {
@@ -205,6 +205,8 @@ export class MapController {
   private previousLayerCount = 0;
   private scaleThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private lastScaleUpdateTime = 0;
+  private cursorRafId: number | null = null;
+  private pendingCursorEvent: { coordinate: number[]; pixel?: number[] } | null = null;
 
   /**
    * @constructor
@@ -281,22 +283,39 @@ export class MapController {
    * @description Attaches native OpenLayers event listeners for cursor tracking, resolution changes, and moveend.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @private
    * @returns {void}
    */
   private bindEvents(): void {
-    // Cursor location tracking
+    // Cursor location tracking throttled via requestAnimationFrame to fire at most once per display frame
     this.map.on('pointermove', (evt) => {
       if (evt.coordinate) {
-        const [lon, lat] = toLonLat(evt.coordinate);
-        cursorCoordsSignal.value = {
-          lon: Math.round(lon * 100000) / 100000,
-          lat: Math.round(lat * 100000) / 100000,
-          x: Math.round(evt.pixel ? evt.pixel[0] : 0),
-          y: Math.round(evt.pixel ? evt.pixel[1] : 0),
+        this.pendingCursorEvent = {
+          coordinate: evt.coordinate,
+          pixel: evt.pixel,
         };
+        if (this.cursorRafId === null) {
+          const scheduleFrame =
+            typeof requestAnimationFrame === 'function'
+              ? requestAnimationFrame
+              : (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number;
+          this.cursorRafId = scheduleFrame(() => {
+            this.cursorRafId = null;
+            const pending = this.pendingCursorEvent;
+            this.pendingCursorEvent = null;
+            if (pending) {
+              const [lon, lat] = toLonLat(pending.coordinate);
+              cursorCoordsSignal.value = {
+                lon: Math.round(lon * 100000) / 100000,
+                lat: Math.round(lat * 100000) / 100000,
+                x: Math.round(pending.pixel ? pending.pixel[0] : 0),
+                y: Math.round(pending.pixel ? pending.pixel[1] : 0),
+              };
+            }
+          });
+        }
       }
     });
 
@@ -1139,7 +1158,7 @@ export class MapController {
    * @description Disposes all reactive signal subscriptions, clears layer sources, and detaches the map target.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @returns {void}
    */
@@ -1157,6 +1176,16 @@ export class MapController {
       clearTimeout(this.scaleThrottleTimer);
       this.scaleThrottleTimer = null;
     }
+
+    if (this.cursorRafId !== null) {
+      if (typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(this.cursorRafId);
+      } else {
+        clearTimeout(this.cursorRafId);
+      }
+      this.cursorRafId = null;
+    }
+    this.pendingCursorEvent = null;
 
     for (const entry of this.vectorLayers.values()) {
       try {
