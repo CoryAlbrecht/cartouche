@@ -7,7 +7,7 @@
  * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link OlMap}
- * @see {@link VectorLayer}
+ * @see {@link VectorImageLayer}
  * @see {@link VectorSource}
  */
 
@@ -15,7 +15,7 @@ import { effect } from '@preact/signals-react';
 import { logging } from '../../shared/logging';
 import OlMap from 'ol/Map.js';
 import View from 'ol/View.js';
-import VectorLayer from 'ol/layer/Vector.js';
+import VectorImageLayer from 'ol/layer/VectorImage.js';
 import VectorSource from 'ol/source/Vector.js';
 import WKB from 'ol/format/WKB.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
@@ -155,16 +155,16 @@ export function extractStyleAttributes(
 
 /**
  * @typedef {Object} VectorLayerEntry
- * @property {VectorLayer<VectorSource>} layer - Native OpenLayers vector layer instance.
- * @property {VectorSource} source - Native OpenLayers vector source backed by bbox strategy.
+ * @property {VectorImageLayer<VectorSource>} layer - Native OpenLayers image-cached vector layer instance.
+ * @property {VectorSource} source - Native OpenLayers vector source backed by allStrategy/bboxStrategy.
  * @property {LayerDescriptor} descriptor - Serializable layer metadata descriptor.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
-  layer: VectorLayer<VectorSource>;
+  layer: VectorImageLayer<VectorSource>;
   source: VectorSource;
   descriptor: LayerDescriptor;
 }
@@ -205,8 +205,6 @@ export class MapController {
   private previousLayerCount = 0;
   private scaleThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private lastScaleUpdateTime = 0;
-  private cursorRafId: number | null = null;
-  private pendingCursorEvent: { coordinate: number[]; pixel?: number[] } | null = null;
 
   /**
    * @constructor
@@ -289,33 +287,21 @@ export class MapController {
    * @returns {void}
    */
   private bindEvents(): void {
-    // Cursor location tracking throttled via requestAnimationFrame to fire at most once per display frame
+    // Cursor location tracking when not actively dragging the map canvas
     this.map.on('pointermove', (evt) => {
-      if (evt.coordinate) {
-        this.pendingCursorEvent = {
-          coordinate: evt.coordinate,
-          pixel: evt.pixel,
+      if (evt.dragging) {
+        return;
+      }
+      const coordinate = evt.coordinate;
+      if (coordinate) {
+        const pixel = evt.pixel;
+        const [lon, lat] = toLonLat(coordinate);
+        cursorCoordsSignal.value = {
+          lon: Math.round(lon * 100000) / 100000,
+          lat: Math.round(lat * 100000) / 100000,
+          x: Math.round(pixel ? pixel[0] : 0),
+          y: Math.round(pixel ? pixel[1] : 0),
         };
-        if (this.cursorRafId === null) {
-          const scheduleFrame =
-            typeof requestAnimationFrame === 'function'
-              ? requestAnimationFrame
-              : (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number;
-          this.cursorRafId = scheduleFrame(() => {
-            this.cursorRafId = null;
-            const pending = this.pendingCursorEvent;
-            this.pendingCursorEvent = null;
-            if (pending) {
-              const [lon, lat] = toLonLat(pending.coordinate);
-              cursorCoordsSignal.value = {
-                lon: Math.round(lon * 100000) / 100000,
-                lat: Math.round(lat * 100000) / 100000,
-                x: Math.round(pending.pixel ? pending.pixel[0] : 0),
-                y: Math.round(pending.pixel ? pending.pixel[1] : 0),
-              };
-            }
-          });
-        }
       }
     });
 
@@ -469,10 +455,10 @@ export class MapController {
   }
 
   /**
-   * @description Creates and registers an OpenLayers VectorLayer and VectorSource backed by allStrategy/bboxStrategy and WKB/GeoJSON loader.
+   * @description Creates and registers an OpenLayers VectorImageLayer and VectorSource backed by allStrategy/bboxStrategy, wrapX: false, and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-25
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
@@ -486,6 +472,7 @@ export class MapController {
 
     const source = new VectorSource({
       strategy,
+      wrapX: false,
       loader: async (extent, _resolution, projection, success, _failure) => {
         const loaded = await this.loadFeaturesForExtent(descriptor, source, extent, projection);
         if (success) {
@@ -503,7 +490,7 @@ export class MapController {
     const currentFlat = flattenTreeLayers(projectTreeSignal.value, projectVisibleSignal.value);
     const treeMatch = currentFlat.find((item) => item.id === descriptor.id);
 
-    const layer = new VectorLayer({
+    const layer = new VectorImageLayer({
       source,
       style: styleRules as any,
       opacity: treeMatch ? treeMatch.opacity : (descriptor.opacity ?? 1),
@@ -1176,16 +1163,6 @@ export class MapController {
       clearTimeout(this.scaleThrottleTimer);
       this.scaleThrottleTimer = null;
     }
-
-    if (this.cursorRafId !== null) {
-      if (typeof cancelAnimationFrame === 'function') {
-        cancelAnimationFrame(this.cursorRafId);
-      } else {
-        clearTimeout(this.cursorRafId);
-      }
-      this.cursorRafId = null;
-    }
-    this.pendingCursorEvent = null;
 
     for (const entry of this.vectorLayers.values()) {
       try {

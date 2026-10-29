@@ -11,7 +11,6 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { effect } from '@preact/signals-react';
 import {
   projectLayersSignal,
   layerStylesSignal,
@@ -23,6 +22,7 @@ import {
   MapController,
   extractStyleAttributes,
 } from '../../../src/renderer/map/MapController';
+import VectorImageLayer from 'ol/layer/VectorImage.js';
 import { fromLonLat, transformExtent } from 'ol/proj.js';
 import { generateDefaultVectorStyleJson } from '../../../src/shared/styles/defaultLayerStyles';
 import { WKB_PACKET_MAGIC } from '../../../src/shared/types';
@@ -218,7 +218,7 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.equal(view.getZoom(), 3);
   });
 
-  it('instantiates VectorLayer and VectorSource backed by bboxStrategy on layer addition', () => {
+  it('instantiates VectorImageLayer and VectorSource with wrapX: false on layer addition', () => {
     const descriptor: LayerDescriptor = {
       id: 'layer-points-1',
       name: 'Sample Points',
@@ -235,8 +235,16 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.equal(controller.getVectorLayers().size, 1);
     const entry = controller.getLayer('layer-points-1');
     assert.ok(entry, 'Vector layer entry must be created');
-    assert.ok(entry.layer, 'OpenLayers VectorLayer must exist');
+    assert.ok(
+      entry.layer instanceof VectorImageLayer,
+      'OpenLayers layer must be an instance of VectorImageLayer for image-cached panning'
+    );
     assert.ok(entry.source, 'OpenLayers VectorSource must exist');
+    assert.equal(
+      entry.source.getWrapX(),
+      false,
+      'VectorSource must set wrapX: false to prevent 3-world-width replay expansion'
+    );
     assert.equal(entry.descriptor.id, 'layer-points-1');
   });
 
@@ -1117,108 +1125,81 @@ describe('MapController Isolated Canvas Engine', () => {
     assert.equal(fitOptions.duration, 200);
   });
 
-  it('throttles pointermove cursorCoordsSignal updates via requestAnimationFrame to fire at most once per frame', () => {
-    const origRaf = (globalThis as any).requestAnimationFrame;
-    const origCaf = (globalThis as any).cancelAnimationFrame;
-    const rafCallbacks = new Map<number, FrameRequestCallback>();
-    let nextRafId = 1;
+  it('ignores pointermove events while dragging without evaluating lazy coordinate or pixel getters', () => {
+    cursorCoordsSignal.value = null;
+    let coordinateAccessed = false;
+    let pixelAccessed = false;
 
-    (globalThis as any).requestAnimationFrame = (cb: FrameRequestCallback) => {
-      const id = nextRafId++;
-      rafCallbacks.set(id, cb);
-      return id;
+    const dragEvent: any = {
+      type: 'pointermove',
+      dragging: true,
     };
-    (globalThis as any).cancelAnimationFrame = (id: number) => {
-      rafCallbacks.delete(id);
+    Object.defineProperty(dragEvent, 'coordinate', {
+      get() {
+        coordinateAccessed = true;
+        return fromLonLat([10, 20]);
+      },
+    });
+    Object.defineProperty(dragEvent, 'pixel', {
+      get() {
+        pixelAccessed = true;
+        return [100, 200];
+      },
+    });
+
+    const map = controller.getMap() as any;
+    map.dispatchEvent(dragEvent);
+
+    assert.equal(
+      coordinateAccessed,
+      false,
+      'evt.coordinate getter must not be accessed when evt.dragging is true'
+    );
+    assert.equal(
+      pixelAccessed,
+      false,
+      'evt.pixel getter must not be accessed when evt.dragging is true'
+    );
+    assert.equal(
+      cursorCoordsSignal.value,
+      null,
+      'cursorCoordsSignal must not be updated while dragging'
+    );
+  });
+
+  it('updates cursorCoordsSignal synchronously on non-dragging pointermove without scheduling requestAnimationFrame', () => {
+    const origRaf = (globalThis as any).requestAnimationFrame;
+    let rafScheduled = false;
+
+    (globalThis as any).requestAnimationFrame = () => {
+      rafScheduled = true;
+      return 1;
     };
 
     cursorCoordsSignal.value = null;
-    const emittedCoords: Array<{ lon: number; lat: number; x: number; y: number }> = [];
-    const disposeEffect = effect(() => {
-      if (cursorCoordsSignal.value !== null) {
-        emittedCoords.push(cursorCoordsSignal.value);
-      }
-    });
 
     try {
       const map = controller.getMap() as any;
-
-      // Dispatch 3 rapid pointermove events within the same animation frame
       map.dispatchEvent({
         type: 'pointermove',
-        coordinate: fromLonLat([10, 20]),
-        pixel: [100, 200],
-      });
-      map.dispatchEvent({
-        type: 'pointermove',
-        coordinate: fromLonLat([15, 25]),
-        pixel: [150, 250],
-      });
-      map.dispatchEvent({
-        type: 'pointermove',
+        dragging: false,
         coordinate: fromLonLat([-75.5, 40.25]),
         pixel: [320, 480],
       });
 
-      // Before animation frame flushes, cursorCoordsSignal must not have emitted intermediate coordinates
-      assert.equal(rafCallbacks.size, 1, 'Exactly one requestAnimationFrame callback must be scheduled per frame');
-      assert.equal(emittedCoords.length, 0, 'cursorCoordsSignal must not emit synchronously before animation frame');
-
-      // Flush the scheduled animation frame
-      for (const [id, cb] of Array.from(rafCallbacks.entries())) {
-        rafCallbacks.delete(id);
-        cb(16);
-      }
-
-      assert.equal(emittedCoords.length, 1, 'cursorCoordsSignal must emit exactly once for the frame');
-      assert.equal(emittedCoords[0].lon, -75.5);
-      assert.equal(emittedCoords[0].lat, 40.25);
-      assert.equal(emittedCoords[0].x, 320);
-      assert.equal(emittedCoords[0].y, 480);
-    } finally {
-      disposeEffect();
-      (globalThis as any).requestAnimationFrame = origRaf;
-      (globalThis as any).cancelAnimationFrame = origCaf;
-    }
-  });
-
-  it('cancels pending pointermove requestAnimationFrame callback when MapController is disposed', () => {
-    const origRaf = (globalThis as any).requestAnimationFrame;
-    const origCaf = (globalThis as any).cancelAnimationFrame;
-    const rafCallbacks = new Map<number, FrameRequestCallback>();
-    let nextRafId = 1;
-    let cancelledId: number | null = null;
-
-    (globalThis as any).requestAnimationFrame = (cb: FrameRequestCallback) => {
-      const id = nextRafId++;
-      rafCallbacks.set(id, cb);
-      return id;
-    };
-    (globalThis as any).cancelAnimationFrame = (id: number) => {
-      cancelledId = id;
-      rafCallbacks.delete(id);
-    };
-
-    cursorCoordsSignal.value = null;
-
-    try {
-      const map = controller.getMap() as any;
-      map.dispatchEvent({
-        type: 'pointermove',
-        coordinate: fromLonLat([12, 34]),
-        pixel: [50, 60],
+      assert.equal(
+        rafScheduled,
+        false,
+        'pointermove must not defer cursorCoordsSignal into requestAnimationFrame'
+      );
+      assert.deepEqual(cursorCoordsSignal.value, {
+        lon: -75.5,
+        lat: 40.25,
+        x: 320,
+        y: 480,
       });
-
-      assert.equal(rafCallbacks.size, 1, 'Expected pending RAF callback before dispose');
-
-      controller.dispose();
-
-      assert.equal(cancelledId, 1, 'Expected cancelAnimationFrame to be called with pending RAF id');
-      assert.equal(rafCallbacks.size, 0, 'Expected pending RAF callback to be removed');
-      assert.equal(cursorCoordsSignal.value, null, 'cursorCoordsSignal must remain null after dispose');
     } finally {
       (globalThis as any).requestAnimationFrame = origRaf;
-      (globalThis as any).cancelAnimationFrame = origCaf;
     }
   });
 });

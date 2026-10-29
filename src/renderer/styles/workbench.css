@@ -1314,6 +1314,7 @@
   height: 1.5rem;
   padding: 0 10px;
   font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
   user-select: none;
   z-index: 100;
 }
