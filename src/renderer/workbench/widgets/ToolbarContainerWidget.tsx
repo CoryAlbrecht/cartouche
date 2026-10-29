@@ -7,6 +7,7 @@
  * @updated 2026-10-28
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
+ * @see {@link resolveContainerDropPosition}
  */
 
 import React from "react";
@@ -20,6 +21,7 @@ import {
   type ToolbarZone,
 } from "@renderer/state/gisSignals";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
+import { resolveContainerDropPosition } from "./toolbarDropTarget";
 
 /**
  * @typedef {Object} ToolbarContainerWidgetProps
@@ -106,7 +108,12 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
       activeDraggedToolbarSignal.value ||
       (e.dataTransfer.getData("text/plain") as ToolbarId);
     if (toolbarId && visibleToolbars[toolbarId] !== undefined) {
-      moveToolbar(toolbarId, zone);
+      const rect = e.currentTarget?.getBoundingClientRect?.();
+      const isHorizontal = zone === "top" || zone === "bottom";
+      const offset = rect ? (isHorizontal ? e.clientY - rect.top : e.clientX - rect.left) : 0;
+      const dimension = rect ? (isHorizontal ? rect.height : rect.width) : 0;
+      const position = resolveContainerDropPosition(zone, offset, dimension);
+      moveToolbar(toolbarId, zone, { position });
     }
     activeDraggedToolbarSignal.value = null;
   };

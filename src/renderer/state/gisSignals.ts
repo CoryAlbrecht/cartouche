@@ -221,6 +221,33 @@ export interface ToolbarCoordinates {
 }
 
 /**
+ * @typedef {Object} MoveToolbarOptions
+ * @description Options configuration bag for moveToolbar multi-row placement and relocation operations.
+ * @property {ToolbarZone} [targetZone] - Destination perimeter zone ('top' | 'bottom' | 'left' | 'right').
+ * @property {number} [targetRow] - Explicit destination row index (0-based).
+ * @property {number} [targetOrder] - Explicit destination order sequence in destination row.
+ * @property {ToolbarId} [hoveredId] - Identifier of destination toolbar widget hovered during drop.
+ * @property {string} [position] - Relative drop position ('before', 'after', 'new-row-above', 'new-row-below', 'new-row-before', 'new-row-after', 'prepend-new-row', 'append-new-row').
+ * @property {number} [targetIndex] - Flat index within target zone for legacy index compatibility.
+ */
+export interface MoveToolbarOptions {
+  targetZone?: ToolbarZone;
+  targetRow?: number;
+  targetOrder?: number;
+  hoveredId?: ToolbarId;
+  position?:
+    | 'before'
+    | 'after'
+    | 'new-row-above'
+    | 'new-row-below'
+    | 'new-row-before'
+    | 'new-row-after'
+    | 'prepend-new-row'
+    | 'append-new-row';
+  targetIndex?: number;
+}
+
+/**
  * @description Factory default coordinates and visibility configurations for registered toolbars (Ticket #113, ADR 0020).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
@@ -388,7 +415,9 @@ export function hydrateToolbarSignalsFromPreferences(prefs: Record<string, any>)
     const inZone = toolbarIds.filter((id) => nextLocations[id] === zone);
     inZone.sort((a, b) => {
       if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
-      return nextOrders[a] - nextOrders[b];
+      const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+      const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+      return orderA - orderB;
     });
     nextOrder[zone] = inZone;
   }
@@ -1144,34 +1173,287 @@ export function toggleToolbar(id: ToolbarId): void {
 }
 
 /**
- * @description Relocates toolbar widget to specified outer panel zone and index.
+ * @function moveToolbar
+ * @description Relocates a toolbar widget across dock zones, moves it between existing rows,
+ * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-10-28
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
- * @param {number} [targetIndex] - Optional target ordering index in destination zone.
+ * @param {number | MoveToolbarOptions} [targetRowOrIndexOrOptions] - Destination row index, flat index, or multi-row drop options.
+ * @param {number} [targetOrder] - Optional target sequence order in destination row.
  * @returns {void}
  */
-export function moveToolbar(id: ToolbarId, targetZone: ToolbarZone, targetIndex?: number) {
-  const currentZone = toolbarLocationsSignal.value[id];
-  toolbarLocationsSignal.value = {
-    ...toolbarLocationsSignal.value,
-    [id]: targetZone
-  };
+export function moveToolbar(
+  id: ToolbarId,
+  targetZone: ToolbarZone,
+  targetRowOrIndexOrOptions?: number | MoveToolbarOptions,
+  targetOrder?: number
+): void {
+  const allToolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
 
-  const order = { ...toolbarOrderSignal.value };
-  order[currentZone] = (order[currentZone] || []).filter((item) => item !== id);
-  const targetList = [...(order[targetZone] || [])];
-  if (typeof targetIndex === 'number' && targetIndex >= 0) {
-    const clampedIndex = Math.min(targetIndex, targetList.length);
-    targetList.splice(clampedIndex, 0, id);
-  } else {
-    targetList.push(id);
+  const initialLocations: Record<ToolbarId, ToolbarZone> = { ...toolbarLocationsSignal.value };
+  const initialRows: Record<ToolbarId, number> = { ...toolbarRowsSignal.value };
+  const initialOrders: Record<ToolbarId, number> = { ...toolbarOrdersSignal.value };
+
+  // Synchronize orders with toolbarOrderSignal for backwards-compatibility when toolbarOrderSignal was set externally
+  for (const zone of validZones) {
+    const list = toolbarOrderSignal.value[zone] || [];
+    list.forEach((tId, idx) => {
+      if (initialLocations[tId] === zone && initialOrders[tId] >= 0) {
+        initialOrders[tId] = idx;
+      }
+    });
   }
-  order[targetZone] = targetList;
-  toolbarOrderSignal.value = order;
+
+  const currentZone = initialLocations[id];
+
+  const nextLocations: Record<ToolbarId, ToolbarZone> = { ...initialLocations };
+  const nextRows: Record<ToolbarId, number> = { ...initialRows };
+  const nextOrders: Record<ToolbarId, number> = { ...initialOrders };
+
+  // Parse options
+  let options: MoveToolbarOptions | undefined;
+  if (typeof targetRowOrIndexOrOptions === 'object' && targetRowOrIndexOrOptions !== null) {
+    options = targetRowOrIndexOrOptions;
+  } else if (typeof targetRowOrIndexOrOptions === 'number') {
+    if (typeof targetOrder === 'number') {
+      options = { targetRow: targetRowOrIndexOrOptions, targetOrder };
+    } else {
+      options = { targetIndex: targetRowOrIndexOrOptions };
+    }
+  }
+
+  // Determine final targetZone
+  let destZone = options?.targetZone || targetZone;
+  if (options?.hoveredId && options.hoveredId !== id) {
+    destZone = initialLocations[options.hoveredId];
+  }
+  nextLocations[id] = destZone;
+
+  if (options?.hoveredId && options.hoveredId !== id) {
+    const hoveredId = options.hoveredId;
+    const hoveredZone = destZone;
+    const hoveredRow = initialRows[hoveredId];
+    const pos = options.position || 'after';
+
+    if (pos === 'new-row-above' || pos === 'new-row-before') {
+      // Create new row before hoveredRow
+      const destRow = hoveredRow;
+      // Shift all other toolbars in hoveredZone with row >= destRow up by 1
+      for (const tId of allToolbarIds) {
+        if (tId !== id && nextLocations[tId] === hoveredZone && nextRows[tId] >= destRow) {
+          nextRows[tId] += 1;
+        }
+      }
+      nextRows[id] = destRow;
+      nextOrders[id] = 0;
+    } else if (pos === 'new-row-below' || pos === 'new-row-after') {
+      // Create new row after hoveredRow
+      const destRow = hoveredRow + 1;
+      // Shift all other toolbars in hoveredZone with row >= destRow up by 1
+      for (const tId of allToolbarIds) {
+        if (tId !== id && nextLocations[tId] === hoveredZone && nextRows[tId] >= destRow) {
+          nextRows[tId] += 1;
+        }
+      }
+      nextRows[id] = destRow;
+      nextOrders[id] = 0;
+    } else {
+      // Intra-row reordering (before or after)
+      nextRows[id] = hoveredRow;
+
+      // Collect visible toolbars in hoveredZone and hoveredRow (excluding id)
+      const inRow = allToolbarIds
+        .filter(
+          (tId) =>
+            tId !== id &&
+            nextLocations[tId] === hoveredZone &&
+            nextRows[tId] === hoveredRow &&
+            nextOrders[tId] >= 0
+        )
+        .sort((a, b) => nextOrders[a] - nextOrders[b]);
+
+      const hoveredIndex = inRow.indexOf(hoveredId);
+      const insertIndex = pos === 'before' ? Math.max(0, hoveredIndex) : hoveredIndex + 1;
+      inRow.splice(insertIndex, 0, id);
+
+      inRow.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  } else if (options?.position === 'prepend-new-row') {
+    // Shift all other toolbars in destZone up by 1
+    for (const tId of allToolbarIds) {
+      if (tId !== id && nextLocations[tId] === destZone) {
+        nextRows[tId] += 1;
+      }
+    }
+    nextRows[id] = 0;
+    nextOrders[id] = 0;
+  } else if (options?.position === 'append-new-row') {
+    // Append as a new row at end of destZone
+    const rowsInTarget = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone)
+      .map((tId) => nextRows[tId]);
+    const maxRow = rowsInTarget.length > 0 ? Math.max(...rowsInTarget) : -1;
+    nextRows[id] = maxRow + 1;
+    nextOrders[id] = 0;
+  } else if (typeof options?.targetRow === 'number') {
+    const destRow = Math.max(0, Math.floor(options.targetRow));
+    nextRows[id] = destRow;
+
+    // Collect toolbars in destRow (excluding id)
+    const zoneOrder = toolbarOrderSignal.value[destZone] || [];
+    const inRow = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone && nextRows[tId] === destRow)
+      .sort((a, b) => {
+        const idxA = zoneOrder.indexOf(a);
+        const idxB = zoneOrder.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+        const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+        return orderA - orderB;
+      });
+
+    const destOrder =
+      typeof options.targetOrder === 'number'
+        ? Math.min(Math.max(0, Math.floor(options.targetOrder)), inRow.length)
+        : inRow.length;
+
+    inRow.splice(destOrder, 0, id);
+    inRow.forEach((tId, idx) => {
+      nextOrders[tId] = idx;
+    });
+  } else if (typeof options?.targetIndex === 'number') {
+    // Flat index within destZone (backwards-compatible reordering)
+    const inZone = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone)
+      .sort((a, b) => {
+        if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+        return nextOrders[a] - nextOrders[b];
+      });
+
+    const clampedIndex = Math.min(Math.max(0, options.targetIndex), inZone.length);
+    if (inZone.length === 0) {
+      nextRows[id] = 0;
+      nextOrders[id] = 0;
+    } else if (clampedIndex === 0) {
+      nextRows[id] = nextRows[inZone[0]];
+      inZone.splice(0, 0, id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    } else if (clampedIndex >= inZone.length) {
+      const last = inZone[inZone.length - 1];
+      nextRows[id] = nextRows[last];
+      inZone.push(id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    } else {
+      const neighbor = inZone[clampedIndex];
+      nextRows[id] = nextRows[neighbor];
+      inZone.splice(clampedIndex, 0, id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  } else {
+    // Default append to end of destZone (preserving single-row flat behavior)
+    const inZone = allToolbarIds
+      .filter((tId) => tId !== id && nextLocations[tId] === destZone)
+      .sort((a, b) => {
+        if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+        return nextOrders[a] - nextOrders[b];
+      });
+
+    if (inZone.length === 0) {
+      nextRows[id] = 0;
+      nextOrders[id] = 0;
+    } else {
+      const last = inZone[inZone.length - 1];
+      nextRows[id] = nextRows[last];
+      inZone.push(id);
+      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      rowToolbars.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  }
+
+  // 2. Auto-compact rows in affected zones (currentZone and destZone)
+  const affectedZones = Array.from(new Set([currentZone, destZone]));
+  for (const zone of affectedZones) {
+    const inZone = allToolbarIds.filter((tId) => nextLocations[tId] === zone);
+    const uniqueRows = Array.from(new Set(inZone.map((tId) => nextRows[tId]))).sort((a, b) => a - b);
+    const rowMap = new Map<number, number>();
+    uniqueRows.forEach((oldRow, newRow) => {
+      rowMap.set(oldRow, newRow);
+    });
+    for (const tId of inZone) {
+      nextRows[tId] = rowMap.get(nextRows[tId]) ?? 0;
+    }
+
+    // Re-sequence orders within each row of this zone for visible toolbars (positive order)
+    for (const row of Array.from(rowMap.values())) {
+      const inRowVisible = inZone
+        .filter((tId) => nextRows[tId] === row && nextOrders[tId] >= 0)
+        .sort((a, b) => nextOrders[a] - nextOrders[b]);
+      inRowVisible.forEach((tId, idx) => {
+        nextOrders[tId] = idx;
+      });
+    }
+  }
+
+  // 3. Update reactive state signals
+  toolbarLocationsSignal.value = nextLocations;
+  toolbarRowsSignal.value = nextRows;
+  toolbarOrdersSignal.value = nextOrders;
+
+  // Re-sort toolbarOrderSignal for backwards compatibility
+  const nextOrderSignal: Record<ToolbarZone, ToolbarId[]> = {
+    top: [],
+    bottom: [],
+    left: [],
+    right: []
+  };
+  for (const zone of validZones) {
+    const inZone = allToolbarIds.filter((tId) => nextLocations[tId] === zone);
+    inZone.sort((a, b) => {
+      if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
+      const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+      const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+      return orderA - orderB;
+    });
+    nextOrderSignal[zone] = inZone;
+  }
+  toolbarOrderSignal.value = nextOrderSignal;
+
+  // 4. Dispatch IPC preference updates for any changed coordinates
+  if (typeof (globalThis as any).window !== 'undefined') {
+    const api = (globalThis as any).window?.electronAPI;
+    const setPref = api?.setPreference || api?.setPreferenceValue;
+    if (typeof setPref === 'function') {
+      for (const tId of allToolbarIds) {
+        if (nextLocations[tId] !== initialLocations[tId]) {
+          setPref(`ui.toolbars.${tId}.dock`, nextLocations[tId])?.catch?.(() => {});
+        }
+        if (nextRows[tId] !== initialRows[tId]) {
+          setPref(`ui.toolbars.${tId}.row`, nextRows[tId])?.catch?.(() => {});
+        }
+        if (nextOrders[tId] !== initialOrders[tId]) {
+          setPref(`ui.toolbars.${tId}.order`, nextOrders[tId])?.catch?.(() => {});
+        }
+      }
+    }
+  }
 }
 
 // Project Actions

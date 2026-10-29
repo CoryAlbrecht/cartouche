@@ -8,7 +8,6 @@
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link resolveToolbarDropPosition}
- * @see {@link calculateToolbarTargetIndex}
  * @see {@link moveToolbar}
  */
 
@@ -18,9 +17,6 @@ import {
   type ToolbarId,
   type ToolbarZone,
   activeDraggedToolbarSignal,
-  toolbarOrderSignal,
-  toolbarLocationsSignal,
-  visibleToolbarsSignal,
   moveToolbar,
 } from "@renderer/state/gisSignals";
 import { useSignal, useSignals } from "@preact/signals-react/runtime";
@@ -28,7 +24,6 @@ import Icon from "@renderer/components/common/Icon";
 import { mdiDrag, mdiDragHorizontal, mdiPowerOn, mdiMinus } from "@mdi/js";
 import {
   resolveToolbarDropPosition,
-  calculateToolbarTargetIndex,
   type ToolbarDropPosition,
 } from "./toolbarDropTarget";
 
@@ -166,21 +161,10 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         rect.height
       );
 
-    const fullOrder = toolbarOrderSignal.value[zone] || [];
-    const visibleMap = visibleToolbarsSignal.value;
-    const visibleOrder = fullOrder.filter((item) => visibleMap[item]);
-    const currentZone = toolbarLocationsSignal.value[draggedId] || zone;
-    const targetIndex = calculateToolbarTargetIndex({
-      fullOrder,
-      visibleOrder,
-      draggedId,
+    moveToolbar(draggedId, zone, {
       hoveredId: id,
-      currentZone,
-      targetZone: zone,
       position: pos,
     });
-
-    moveToolbar(draggedId, zone, targetIndex);
     dropPositionSignal.value = null;
     activeDraggedToolbarSignal.value = null;
   };
