@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 
@@ -317,9 +317,12 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void} [onLayerAdded] - Registers listener for newly added layer descriptors.
  * @property {(layerId: string, options?: import('./project').QueryExtentOptions | BoundingBox, targetProjection?: string) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>} [queryExtent] - Queries intersecting features within spatial extent and target projection.
  * @property {(draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>} [reorderNodes] - Reorders layer tree nodes relative to target node.
+ * @property {(layerIds: string[], style: import('./project').ProjectLayerStyleItem | undefined, opacity?: number) => Promise<void>} [setLayerStyle] - Assigns a layer style container to one or more vector layers, promoting shared styles when applied to multiple layers.
+ * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
+ * @property {(style: import('./project').ProjectLayerStyleItem, defaultPath?: string) => Promise<string | null>} [saveStyleFile] - Saves a ProjectLayerStyleItem to disk via explicit path or native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -416,6 +419,19 @@ export interface ElectronAPI {
   getLayerInfo?: (layerId: string) => Promise<import('./layers').LayerDetailedInfo>;
   /** @ipc layers:rekeyLayer */
   rekeyLayer?: (oldLayerId: string, newLayerId: string) => Promise<{ success: boolean; layerId: string }>;
+  /** @ipc layers:setLayerStyle */
+  setLayerStyle?: (
+    layerIds: string[],
+    style: import('./project').ProjectLayerStyleItem | undefined,
+    opacity?: number
+  ) => Promise<void>;
+  /** @ipc layers:loadStyleFile */
+  loadStyleFile?: (filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>;
+  /** @ipc layers:saveStyleFile */
+  saveStyleFile?: (
+    style: import('./project').ProjectLayerStyleItem,
+    defaultPath?: string
+  ) => Promise<string | null>;
   /** @ipc gis:log */
   log?: (payload: import('../logging').LogPayload) => void;
 }

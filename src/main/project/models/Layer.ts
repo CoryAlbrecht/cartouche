@@ -4,7 +4,7 @@
  * @description Runtime representation of a physical spatial dataset loaded in memory.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 
@@ -18,7 +18,7 @@ import { geospatialService } from '../../worker/GeospatialService';
  * @description Manages state and native lifecycle of a single spatial layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @extends LayerTreeNode
  * @implements Disposable
@@ -32,6 +32,7 @@ export class Layer extends LayerTreeNode implements Disposable {
   public opacity: number = 1.0;
   public selectable: boolean = true;
   public style?: string | ProjectLayerStyleItem | OlLayerStyle;
+  public styleId?: string;
   public crs?: import('@shared/types').ProjectCrs;
   public customProperties?: Record<string, unknown>;
   public extent?: BoundingBox;

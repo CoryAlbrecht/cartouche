@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-27
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -16,6 +16,7 @@ import type {
   ProjectModel,
   ProjectLayerItem,
   ProjectGroupItem,
+  ProjectLayerStyleItem,
   LayerDescriptor
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
@@ -199,6 +200,17 @@ export const activeLayerIdSignal = signal<string | null>(null);
  * @type {Signal<string | null>}
  */
 export const editingNodeIdSignal = signal<string | null>(null);
+
+/**
+ * @signal copiedLayerStyleSignal
+ * @description Reactive signal holding a copied layer style definition in the Renderer clipboard for Paste Style operations.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-29
+ * @updated 2026-10-29
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectLayerStyleItem | null>}
+ */
+export const copiedLayerStyleSignal = signal<ProjectLayerStyleItem | null>(null);
 
 /**
  * @description Recursively counts total layers across the tree.
@@ -710,22 +722,40 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
       const remainingLayers = projectLayersSignal.value.filter((layer) => activeLayerIds.has(layer.id));
       projectLayersSignal.value = remainingLayers.map((desc) => {
         const treeItem = findItemInTree(enrichedTree, desc.id) as ProjectLayerItem | null;
-        if (treeItem && treeItem.featureCount !== undefined && desc.featureCount !== treeItem.featureCount) {
-          return { ...desc, featureCount: treeItem.featureCount };
+        if (treeItem) {
+          return {
+            ...desc,
+            ...(treeItem.featureCount !== undefined ? { featureCount: treeItem.featureCount } : {}),
+            ...(treeItem.style !== undefined ? { style: treeItem.style } : {}),
+            ...(treeItem.styleId !== undefined ? { styleId: treeItem.styleId } : {}),
+            ...(treeItem.opacity !== undefined ? { opacity: treeItem.opacity } : {})
+          };
         }
         return desc;
       });
     }
 
     const currentStyles = { ...layerStylesSignal.value };
-    let stylesPruned = false;
+    let stylesChanged = false;
     for (const styleId of Object.keys(currentStyles)) {
       if (!activeLayerIds.has(styleId)) {
         delete currentStyles[styleId];
-        stylesPruned = true;
+        stylesChanged = true;
       }
     }
-    if (stylesPruned) {
+    for (const layerId of activeLayerIds) {
+      const treeItem = findItemInTree(enrichedTree, layerId) as ProjectLayerItem | null;
+      if (treeItem && treeItem.style !== undefined) {
+        const desc = projectLayersSignal.value.find((l) => l.id === layerId);
+        currentStyles[layerId] = resolveLayerStyle(
+          treeItem.style,
+          currentProjectSignal.value?.styles,
+          treeItem.geometryKind || desc?.geometryKind || 'Unknown'
+        );
+        stylesChanged = true;
+      }
+    }
+    if (stylesChanged) {
       layerStylesSignal.value = currentStyles;
     }
   });
@@ -848,6 +878,141 @@ export function updateLayerFeatureCount(layerId: string, featureCount: number): 
     });
   };
   projectTreeSignal.value = updateTree(projectTreeSignal.value);
+}
+
+/**
+ * @function resolveLayerStyleItem
+ * @description Resolves the self-contained ProjectLayerStyleItem for a given layer ID, dereferencing #sharedId references or serializing raw OpenLayers Flat Style rules.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-29
+ * @updated 2026-10-29
+ * @since 0.1.0-dev
+ * @param {string} layerId - Target layer identifier.
+ * @returns {ProjectLayerStyleItem} Self-contained layer style item.
+ */
+export function resolveLayerStyleItem(layerId: string): ProjectLayerStyleItem {
+  const treeItem = findItemInTree(projectTreeSignal.value, layerId) as ProjectLayerItem | null;
+  const desc = projectLayersSignal.value.find((l) => l.id === layerId);
+  const rawStyle = treeItem?.style ?? desc?.style;
+  const geometryKind = treeItem?.geometryKind ?? desc?.geometryKind ?? 'Unknown';
+
+  if (rawStyle && typeof rawStyle === 'object' && ('format' in rawStyle || 'href' in rawStyle || 'content' in rawStyle)) {
+    const styleWrapper = rawStyle as ProjectLayerStyleItem;
+    if (styleWrapper.href && styleWrapper.href.startsWith('#')) {
+      const refId = styleWrapper.href.slice(1);
+      const shared = currentProjectSignal.value?.styles?.find((s) => s.id === refId);
+      if (shared && shared.content) {
+        return {
+          format: shared.format || 'openlayers',
+          ...(shared.version ? { version: shared.version } : {}),
+          content: shared.content
+        };
+      }
+    }
+    if (styleWrapper.content) {
+      return {
+        format: styleWrapper.format || 'openlayers',
+        ...(styleWrapper.version ? { version: styleWrapper.version } : {}),
+        content: styleWrapper.content
+      };
+    }
+  } else if (rawStyle && typeof rawStyle === 'object') {
+    return {
+      format: 'openlayers',
+      content: JSON.stringify(rawStyle, null, 2)
+    };
+  }
+
+  const resolved =
+    layerStylesSignal.value[layerId] ||
+    resolveLayerStyle(rawStyle, currentProjectSignal.value?.styles, geometryKind);
+  if (
+    resolved &&
+    !Array.isArray(resolved) &&
+    (resolved.format === 'sld' || resolved.__cartoucheSld)
+  ) {
+    return {
+      format: 'sld',
+      version: resolved.version || '1.0.0',
+      content: resolved.content
+    };
+  }
+  return {
+    format: 'openlayers',
+    content: JSON.stringify(resolved, null, 2)
+  };
+}
+
+/**
+ * @function applyStyleToLayers
+ * @description Applies a style (and optional opacity) to one or more vector layers across Renderer signals and synchronizes with the Main process over IPC.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-29
+ * @updated 2026-10-29
+ * @since 0.1.0-dev
+ * @param {string[]} layerIds - Target layer identifiers.
+ * @param {ProjectLayerStyleItem | undefined} style - Style definition to apply, or undefined to reset to default.
+ * @param {number} [opacity] - Optional layer opacity value between 0 and 1.
+ * @returns {Promise<void>} Resolves when Renderer and Main states are synchronized.
+ */
+export async function applyStyleToLayers(
+  layerIds: string[],
+  style: ProjectLayerStyleItem | undefined,
+  opacity?: number
+): Promise<void> {
+  if (layerIds.length === 0) {
+    return;
+  }
+  const targetSet = new Set(layerIds);
+
+  batch(() => {
+    const updateTree = (
+      items: Array<ProjectLayerItem | ProjectGroupItem>
+    ): Array<ProjectLayerItem | ProjectGroupItem> => {
+      return items.map((item) => {
+        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+          return {
+            ...item,
+            children: updateTree((item as ProjectGroupItem).children)
+          };
+        }
+        if (item.id && targetSet.has(item.id)) {
+          return {
+            ...item,
+            style,
+            ...(opacity !== undefined ? { opacity } : {})
+          };
+        }
+        return item;
+      });
+    };
+    projectTreeSignal.value = updateTree(projectTreeSignal.value);
+
+    projectLayersSignal.value = projectLayersSignal.value.map((desc) => {
+      if (targetSet.has(desc.id)) {
+        return {
+          ...desc,
+          style,
+          ...(opacity !== undefined ? { opacity } : {})
+        };
+      }
+      return desc;
+    });
+
+    const nextStyles = { ...layerStylesSignal.value };
+    for (const id of layerIds) {
+      const treeItem = findItemInTree(projectTreeSignal.value, id) as ProjectLayerItem | null;
+      const desc = projectLayersSignal.value.find((l) => l.id === id);
+      const geometryKind = treeItem?.geometryKind ?? desc?.geometryKind ?? 'Unknown';
+      nextStyles[id] = resolveLayerStyle(style, currentProjectSignal.value?.styles, geometryKind);
+    }
+    layerStylesSignal.value = nextStyles;
+    isProjectDirtySignal.value = true;
+  });
+
+  if (typeof window !== 'undefined' && window.electronAPI?.setLayerStyle) {
+    await window.electronAPI.setLayerStyle(layerIds, style, opacity);
+  }
 }
 
 // Automatically subscribe to IPC layer added broadcasts from Electron Main process

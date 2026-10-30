@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -35,6 +35,9 @@ import {
   mdiFolderPlusOutline,
   mdiPencilOutline,
   mdiLayersOutline,
+  mdiContentSaveOutline,
+  mdiContentCopy,
+  mdiContentPaste,
 } from "@mdi/js";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
 import {
@@ -48,6 +51,9 @@ import {
   selectedNodeIdsSignal,
   layerTreeContextMenuHooksSignal,
   editingNodeIdSignal,
+  copiedLayerStyleSignal,
+  resolveLayerStyleItem,
+  applyStyleToLayers,
   requestRenameSelectedNode,
   toggleProjectVisibility,
   toggleNodeVisibility,
@@ -170,7 +176,7 @@ const TREE_NODE_ICON_STYLE: React.CSSProperties = {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-22
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -239,6 +245,15 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   }>({
     isOpen: false,
     actionableNodes: [],
+  });
+
+  // Modal Dialog state for style file loading errors
+  const [styleErrorModalState, setStyleErrorModalState] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({
+    isOpen: false,
+    message: "",
   });
 
   // Dynamic displayName formatted as "Layers %1/%2" (e.g. Layers 0/0)
@@ -544,6 +559,83 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           openLayerPropertiesDialog(layerId);
         },
       });
+    }
+
+    const isVectorLayerNode = (
+      node: ProjectLayerItem | ProjectGroupItem
+    ): node is ProjectLayerItem =>
+      !('children' in node) &&
+      (node as ProjectLayerItem).type !== 'raster' &&
+      (node as ProjectLayerItem).geometryKind !== 'Raster';
+
+    const allVectorLayers =
+      actionableNodes.length > 0 && actionableNodes.every(isVectorLayerNode);
+
+    if (allVectorLayers) {
+      const targetLayerIds = actionableNodes
+        .map((n) => n.id)
+        .filter(Boolean) as string[];
+      const singleLayerId = !isMultiple && targetNode.id ? targetNode.id : null;
+      const tr = (key: string, fallback: string): string => {
+        const val = t(key);
+        return val && val !== key ? val : fallback;
+      };
+
+      items.push(
+        {
+          id: 'load_layer_style',
+          label: tr('load_layer_style', 'Load Style...'),
+          icon: mdiFolderOpenOutline,
+          onClick: () => {
+            void (async () => {
+              try {
+                const loadedStyle = await window.electronAPI?.loadStyleFile?.();
+                if (loadedStyle) {
+                  await applyStyleToLayers(targetLayerIds, loadedStyle);
+                }
+              } catch (err: any) {
+                setStyleErrorModalState({
+                  isOpen: true,
+                  message: err?.message || String(err),
+                });
+              }
+            })();
+          },
+        },
+        {
+          id: 'export_layer_style',
+          label: tr('export_layer_style', 'Export Style...'),
+          icon: mdiContentSaveOutline,
+          disabled: isMultiple || !singleLayerId,
+          onClick: () => {
+            if (!singleLayerId) return;
+            const styleItem = resolveLayerStyleItem(singleLayerId);
+            void window.electronAPI?.saveStyleFile?.(styleItem);
+          },
+        },
+        {
+          id: 'copy_layer_style',
+          label: tr('copy_layer_style', 'Copy Style'),
+          icon: mdiContentCopy,
+          disabled: isMultiple || !singleLayerId,
+          onClick: () => {
+            if (!singleLayerId) return;
+            const styleItem = resolveLayerStyleItem(singleLayerId);
+            copiedLayerStyleSignal.value = { ...styleItem };
+          },
+        },
+        {
+          id: 'paste_layer_style',
+          label: tr('paste_layer_style', 'Paste Style'),
+          icon: mdiContentPaste,
+          disabled: copiedLayerStyleSignal.value === null,
+          onClick: () => {
+            const copied = copiedLayerStyleSignal.value;
+            if (!copied) return;
+            void applyStyleToLayers(targetLayerIds, { ...copied });
+          },
+        }
+      );
     }
 
     items.push(
@@ -1228,6 +1320,21 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           },
         ]}>
         <div>{modalPrompt}</div>
+      </ModalDialog>
+
+      {/* Error ModalDialog for Style Load Failures */}
+      <ModalDialog
+        isOpen={styleErrorModalState.isOpen}
+        title={t('style_load_error_title') || 'Style Load Error'}
+        onClose={() => setStyleErrorModalState({ isOpen: false, message: "" })}
+        buttons={[
+          {
+            label: t('dialog_ok') || 'OK',
+            primary: true,
+            onClick: () => setStyleErrorModalState({ isOpen: false, message: "" }),
+          },
+        ]}>
+        <div className='style-error-modal-message'>{styleErrorModalState.message}</div>
       </ModalDialog>
     </BasicWidget>
   );

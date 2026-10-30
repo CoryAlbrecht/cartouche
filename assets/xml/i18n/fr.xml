@@ -40,6 +40,12 @@
     <string name="reset_toolbar_layout">Rétablir les barres d'outils par défaut</string>
     <string name="more_options">Plus d'options...</string>
     <string name="cancel_action">Annuler</string>
+    <string name="dialog_ok">OK</string>
+    <string name="load_layer_style">Charger un style...</string>
+    <string name="export_layer_style">Exporter le style...</string>
+    <string name="copy_layer_style">Copier le style</string>
+    <string name="paste_layer_style">Coller le style</string>
+    <string name="style_load_error_title">Erreur de chargement du style</string>
     <string name="quit">Quitter</string>
     <string name="hello_name">Bonjour {name}</string>
     <string name="shortcut_save">Appuyez sur <kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer.</string>

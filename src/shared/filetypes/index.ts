@@ -4,7 +4,7 @@
  * @description Built-in geospatial raster, vector, project, and tabular format definitions for the Cartouche File Types Registry.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-12
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 
@@ -17,7 +17,7 @@ import type { FileTypeDescriptor } from '@shared/types';
  * @type {FileTypeDescriptor[]}
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-12
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
@@ -784,5 +784,31 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     canRead: false,
     canWrite: false,
     loaderId: 'project:cartouche-bundled'
+  },
+
+  // ==========================================
+  // STYLE FORMATS
+  // ==========================================
+  {
+    id: 'sld',
+    name: 'OGC SLD Style',
+    category: 'style',
+    primaryExtensions: ['.sld', '.se'],
+    accessoryExtensions: [],
+    mimeType: 'application/vnd.ogc.sld+xml',
+    canRead: true,
+    canWrite: true,
+    loaderId: 'style:sld'
+  },
+  {
+    id: 'ol-flat-style',
+    name: 'OpenLayers Flat Style',
+    category: 'style',
+    primaryExtensions: ['.json'],
+    accessoryExtensions: [],
+    mimeType: 'application/json',
+    canRead: true,
+    canWrite: true,
+    loaderId: 'style:openlayers'
   }
 ];

@@ -64,11 +64,17 @@
     <string name="remove_items_prompt">Are you sure you want to remove the {0} selected items from the project? Any groups will also have their contents removed.</string>
     <string name="dialog_remove">Remove</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_ok">OK</string>
     <string name="create_group">Create Group</string>
     <string name="remove_layer">Remove Layer</string>
     <string name="remove_group">Remove Group</string>
     <string name="remove_selected_items">Remove Selected Items</string>
     <string name="rename_layer_tree_node">Rename</string>
+    <string name="load_layer_style">Load Style...</string>
+    <string name="export_layer_style">Export Style...</string>
+    <string name="copy_layer_style">Copy Style</string>
+    <string name="paste_layer_style">Paste Style</string>
+    <string name="style_load_error_title">Style Load Error</string>
     <!-- Preferences Tabs -->
     <string name="prefs_tab_general_name">General</string>
     <string name="prefs_tab_ui_name">UI &amp; Display</string>

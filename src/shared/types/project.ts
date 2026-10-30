@@ -171,6 +171,7 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {string} [layerKind] - General GIS category (vector or raster).
  * @property {GeometryKind} [geometryKind] - Spatial geometry type for vector features.
  * @property {string | ProjectLayerStyleItem | OlLayerStyle} [style] - Layer style rule definition, serialized wrapper, or reference.
+ * @property {string} [styleId] - Optional shared style identifier reference in project.styles.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
  * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
  * @property {number} [featureCount] - Total number of features in the dataset.
@@ -194,6 +195,7 @@ export interface ProjectLayerItem {
   layerKind?: 'vector' | 'raster';
   geometryKind?: GeometryKind;
   style?: string | ProjectLayerStyleItem | OlLayerStyle;
+  styleId?: string;
   crs?: ProjectCrs;
   customProperties?: Record<string, unknown>;
   extent?: BoundingBox;
