@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  */
 
@@ -15,6 +15,7 @@ import type { FileCategory, FileTypeDescriptor } from './filetypes';
 export * from './actions';
 export * from './filetypes';
 export * from './project';
+export * from './styling';
 export * from './i18n';
 export * from './layers';
 export * from '../dialogs';

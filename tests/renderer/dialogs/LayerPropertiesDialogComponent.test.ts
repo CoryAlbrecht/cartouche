@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -103,8 +103,20 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_dialog_title: 'Layer Properties',
       layer_properties_tab_information: 'Information',
       layer_properties_tab_source: 'Source',
+      layer_properties_tab_styling: 'Styling',
       layer_properties_tab_fields: 'Fields',
       layer_properties_tab_time_filter: 'Time Filter',
+      layer_properties_styling_group: 'Layer Style & Rendering',
+      layer_properties_styling_format: 'Format',
+      layer_properties_format_openlayers: 'OpenLayers Flat Style',
+      layer_properties_format_sld: 'OGC Styled Layer Descriptor (SLD)',
+      layer_properties_styling_version: 'SLD Version',
+      layer_properties_styling_load: 'Load from File...',
+      layer_properties_styling_export: 'Export to File...',
+      layer_properties_styling_reset: 'Reset to Default',
+      layer_properties_styling_raw_style: 'Raw Style Definition',
+      layer_properties_style_valid: 'Style syntax is valid.',
+      layer_properties_style_syntax_error: 'Style syntax error',
       layer_properties_group_general: 'General Information',
       layer_properties_label_name: 'Layer Name',
       layer_properties_label_id: 'Layer Identifier',
@@ -256,6 +268,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     dictionarySignal.value = {
       layer_properties_dialog_title: 'Propriétés de la couche',
       layer_properties_tab_information: 'Information',
+      layer_properties_tab_styling: 'Style',
       layer_properties_group_general: 'Informations générales',
       layer_properties_group_provider: 'Détails du fournisseur',
       layer_properties_group_fields: 'Champs d&#39;attributs',
@@ -454,5 +467,97 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
     assert(html.includes('class="layer-prop-toolbar-btn new-field"'), 'Should render New Field button');
     assert(html.includes(mdiTablePlus), 'New Field toolbar button must render mdiTablePlus SVG path');
+  });
+
+  describe('Styling Tab & Transactional Staging (Ticket #122)', () => {
+    it('renders Styling tab button in sidebar with palette icon', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert(html.includes('Styling'), 'Sidebar must include Styling tab label');
+    });
+
+    it('renders Styling tab pane with Format selector, action buttons, raw style editor, and validation banner', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert(html.includes('id="layer-prop-styling-format"'), 'Must render format selector dropdown');
+      assert(html.includes('id="layer-prop-styling-load"'), 'Must render Load from File button');
+      assert(html.includes('id="layer-prop-styling-export"'), 'Must render Export to File button');
+      assert(html.includes('id="layer-prop-styling-reset"'), 'Must render Reset to Default button');
+      assert(html.includes('id="layer-prop-styling-raw-style"'), 'Must render raw style textarea');
+      assert(html.includes('style-validation-valid'), 'Must render valid style banner by default');
+    });
+
+    it('renders conditional SLD Version selector when format is SLD', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+      updateLayerPropertiesDraft({ styleFormat: 'sld', sldVersion: '1.0.0' });
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert(html.includes('id="layer-prop-styling-version"'), 'Must render SLD version selector when format is sld');
+      assert(html.includes('value="1.0.0"'));
+      assert(html.includes('value="1.1.0"'));
+    });
+
+    it('renders live syntax validation error banner when style has validation errors', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+      updateLayerPropertiesDraft({
+        styleValidationError: 'Unexpected token at line 3',
+      });
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert(html.includes('style-validation-error'), 'Must render error banner class');
+      assert(html.includes('Style syntax error: Unexpected token at line 3'), 'Must display error message');
+    });
+
+    it('disables Apply and OK footer buttons when draft style validation error exists', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      updateLayerPropertiesDraft({
+        styleValidationError: 'Malformed JSON',
+      });
+
+      const success = await applyLayerPropertiesEdits();
+      assert.strictEqual(success, false, 'applyLayerPropertiesEdits must return false when style error exists');
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert(html.includes('class="layer-properties-btn apply" disabled=""') || html.includes('class="layer-properties-btn apply" disabled'), 'Apply button must be disabled');
+      assert(html.includes('class="layer-properties-btn ok" disabled=""') || html.includes('class="layer-properties-btn ok" disabled'), 'OK button must be disabled');
+    });
+
+    it('preserves layer style untouched on cancel and commits draft edits on apply', async () => {
+      let appliedStyle: { format?: string; content?: string } | null = null;
+      (globalThis as any).window.electronAPI.setLayerStyle = async (
+        _ids: string[],
+        style: any,
+        _opacity: number
+      ) => {
+        appliedStyle = style;
+      };
+
+      await openLayerPropertiesDialog('layer-lakes-1');
+      updateLayerPropertiesDraft({
+        styleContent: JSON.stringify([{ style: { 'fill-color': '#123456' } }]),
+      });
+
+      // Canceling must close and discard draft without committing to window.electronAPI
+      cancelLayerPropertiesEdits();
+      assert.strictEqual(appliedStyle, null, 'Cancel must not apply draft edits');
+      assert.strictEqual(activeLayerPropertiesIdSignal.value, null);
+
+      // Reopening and applying commits draft
+      await openLayerPropertiesDialog('layer-lakes-1');
+      updateLayerPropertiesDraft({
+        styleContent: JSON.stringify([{ style: { 'fill-color': '#654321' } }]),
+      });
+      const committed = await applyLayerPropertiesEdits();
+      assert.strictEqual(committed, true);
+      const finalStyle = appliedStyle as { format?: string; content?: string } | null;
+      assert.ok(finalStyle);
+      assert.strictEqual(finalStyle.format, 'openlayers');
+      assert.ok(finalStyle.content?.includes('#654321'));
+    });
   });
 });

@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link activeLayerPropertiesIdSignal}
@@ -23,6 +23,7 @@ import {
   mdiTablePlus,
   mdiTrashCanOutline,
   mdiCalculator,
+  mdiPaletteOutline,
 } from "@mdi/js";
 import {
   activeLayerPropertiesIdSignal,
@@ -38,6 +39,12 @@ import {
   POPULAR_CRS_OPTIONS,
   type LayerPropertiesTabId,
 } from "@renderer/state/layerPropertiesSignals";
+import {
+  convertStyleFormat,
+  validateStyleContent,
+} from "@shared/styles/flatStyleConverter";
+import { generateDefaultVectorStyleJson } from "@shared/styles/defaultLayerStyles";
+import type { ProjectStyleFormat, SldStyleVersion } from "@shared/types";
 import { t } from "@renderer/state/i18nSignals";
 import { Dialog } from "./Dialog";
 
@@ -64,6 +71,11 @@ const SIDEBAR_TABS: SidebarTabDef[] = [
     labelKey: "layer_properties_tab_source",
     icon: mdiTuneVariant,
   },
+  {
+    id: "styling",
+    labelKey: "layer_properties_tab_styling",
+    icon: mdiPaletteOutline,
+  },
   { id: "fields", labelKey: "layer_properties_tab_fields", icon: mdiTable },
   {
     id: "time_filter",
@@ -73,11 +85,25 @@ const SIDEBAR_TABS: SidebarTabDef[] = [
 ];
 
 /**
+ * Common secondary button style for Styling Tab file management and reset actions.
+ */
+const SECONDARY_BUTTON_STYLE: React.CSSProperties = {
+  padding: "0.3125rem 0.75rem",
+  backgroundColor: "#ffffff",
+  border: "1px solid #cbd5e1",
+  borderRadius: "0.25rem",
+  fontSize: "0.8125rem",
+  fontWeight: 500,
+  cursor: "pointer",
+  color: "#334155",
+};
+
+/**
  * @component LayerPropertiesDialog
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -105,6 +131,145 @@ export const LayerPropertiesDialog: React.FC = () => {
   const handleOk = useCallback(async () => {
     await commitAndCloseLayerPropertiesDialog();
   }, []);
+
+  const handleFormatChange = useCallback(
+    async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newFormat = e.target.value as ProjectStyleFormat;
+      if (newFormat === draft.styleFormat) return;
+      try {
+        const converted = await convertStyleFormat(draft.styleContent, {
+          fromFormat: draft.styleFormat,
+          toFormat: newFormat,
+          fromVersion: draft.sldVersion,
+          toVersion: draft.sldVersion,
+        });
+        updateLayerPropertiesDraft({
+          styleFormat: newFormat,
+          styleContent: converted,
+          styleValidationError: null,
+        });
+      } catch (err: any) {
+        updateLayerPropertiesDraft({
+          styleFormat: newFormat,
+          styleValidationError: err?.message || String(err),
+        });
+      }
+    },
+    [draft.styleFormat, draft.sldVersion, draft.styleContent]
+  );
+
+  const handleVersionChange = useCallback(
+    async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newVersion = e.target.value as SldStyleVersion;
+      if (newVersion === draft.sldVersion) return;
+      try {
+        const converted = await convertStyleFormat(draft.styleContent, {
+          fromFormat: "sld",
+          toFormat: "sld",
+          fromVersion: draft.sldVersion,
+          toVersion: newVersion,
+        });
+        updateLayerPropertiesDraft({
+          sldVersion: newVersion,
+          styleContent: converted,
+          styleValidationError: null,
+        });
+      } catch (err: any) {
+        updateLayerPropertiesDraft({
+          sldVersion: newVersion,
+          styleValidationError: err?.message || String(err),
+        });
+      }
+    },
+    [draft.sldVersion, draft.styleContent]
+  );
+
+  const handleRawStyleChange = useCallback(
+    async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newContent = e.target.value;
+      const validation = await validateStyleContent(
+        newContent,
+        draft.styleFormat,
+        draft.sldVersion
+      );
+      updateLayerPropertiesDraft({
+        styleContent: newContent,
+        styleValidationError:
+          validation.isValid ? null : (validation.error ?? "Invalid style"),
+      });
+    },
+    [draft.styleFormat, draft.sldVersion]
+  );
+
+  const handleLoadStyle = useCallback(async () => {
+    if (window.electronAPI?.loadStyleFile) {
+      try {
+        const loaded = await window.electronAPI.loadStyleFile();
+        if (loaded && loaded.content) {
+          const loadedFormat = loaded.format || "openlayers";
+          const loadedVersion = loaded.version || "1.0.0";
+          const validation = await validateStyleContent(
+            loaded.content,
+            loadedFormat,
+            loadedVersion
+          );
+          updateLayerPropertiesDraft({
+            styleFormat: loadedFormat,
+            sldVersion: loadedVersion,
+            styleContent: loaded.content,
+            styleValidationError:
+              validation.isValid ? null : (validation.error ?? "Invalid style"),
+          });
+        }
+      } catch (err: any) {
+        updateLayerPropertiesDraft({
+          styleValidationError: err?.message || String(err),
+        });
+      }
+    }
+  }, []);
+
+  const handleExportStyle = useCallback(async () => {
+    if (window.electronAPI?.saveStyleFile) {
+      const defaultExt = draft.styleFormat === "sld" ? ".sld" : ".json";
+      const defaultName = `${draft.layerId || "style"}${defaultExt}`;
+      await window.electronAPI.saveStyleFile(
+        {
+          format: draft.styleFormat,
+          ...(draft.styleFormat === "sld" ? { version: draft.sldVersion } : {}),
+          content: draft.styleContent,
+        },
+        defaultName
+      );
+    }
+  }, [draft.styleFormat, draft.sldVersion, draft.styleContent, draft.layerId]);
+
+  const handleResetStyle = useCallback(async () => {
+    const defaultJson = generateDefaultVectorStyleJson();
+    if (draft.styleFormat === "sld") {
+      try {
+        const sldContent = await convertStyleFormat(defaultJson, {
+          fromFormat: "openlayers",
+          toFormat: "sld",
+          toVersion: draft.sldVersion,
+        });
+        updateLayerPropertiesDraft({
+          styleContent: sldContent,
+          styleValidationError: null,
+        });
+      } catch (err: any) {
+        updateLayerPropertiesDraft({
+          styleContent: defaultJson,
+          styleValidationError: err?.message || String(err),
+        });
+      }
+    } else {
+      updateLayerPropertiesDraft({
+        styleContent: defaultJson,
+        styleValidationError: null,
+      });
+    }
+  }, [draft.styleFormat, draft.sldVersion]);
 
   if (!activeId) {
     return null;
@@ -152,12 +317,18 @@ export const LayerPropertiesDialog: React.FC = () => {
             type='button'
             className='layer-properties-btn apply'
             onClick={handleApply}
+            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}
             style={{
               padding: "6px 14px",
               backgroundColor: "#ffffff",
               border: "1px solid #cbd5e1",
               borderRadius: "4px",
-              cursor: "pointer",
+              cursor:
+                draft.idValidationError || draft.styleValidationError ?
+                  "not-allowed"
+                : "pointer",
+              opacity:
+                draft.idValidationError || draft.styleValidationError ? 0.6 : 1,
               fontWeight: 500,
               fontSize: "0.875rem",
               color: "#334155",
@@ -168,12 +339,18 @@ export const LayerPropertiesDialog: React.FC = () => {
             type='button'
             className='layer-properties-btn ok'
             onClick={handleOk}
+            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}
             style={{
               padding: "6px 16px",
               backgroundColor: "#1b446c",
               border: "1px solid #1b446c",
               borderRadius: "4px",
-              cursor: "pointer",
+              cursor:
+                draft.idValidationError || draft.styleValidationError ?
+                  "not-allowed"
+                : "pointer",
+              opacity:
+                draft.idValidationError || draft.styleValidationError ? 0.6 : 1,
               fontWeight: 600,
               fontSize: "0.875rem",
               color: "#ffffff",
@@ -744,6 +921,207 @@ export const LayerPropertiesDialog: React.FC = () => {
                       t("layer_properties_dialect_nosql")
                     : t("layer_properties_dialect_generic")}
                   </span>
+                </div>
+              </fieldset>
+            </div>
+          )}
+
+          {activeTab === "styling" && (
+            <div
+              className='layer-properties-tab-pane styling'
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <fieldset className='preference-group-box'>
+                <legend className='preference-group-legend'>
+                  {t("layer_properties_styling_group")}
+                </legend>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.75rem",
+                  }}>
+                  {/* Action Bar / Controls */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      flexWrap: "wrap",
+                    }}>
+                    {/* Format Selector */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}>
+                      <label
+                        htmlFor='layer-prop-styling-format'
+                        style={{
+                          fontWeight: 500,
+                          fontSize: "0.875rem",
+                          color: "#334155",
+                        }}>
+                        {t("layer_properties_styling_format")}
+                      </label>
+                      <select
+                        id='layer-prop-styling-format'
+                        value={draft.styleFormat}
+                        onChange={handleFormatChange}
+                        style={{
+                          padding: "0.3125rem 0.625rem",
+                          borderRadius: "0.25rem",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.875rem",
+                          backgroundColor: "#ffffff",
+                        }}>
+                        <option value='openlayers'>
+                          {t("layer_properties_format_openlayers")}
+                        </option>
+                        <option value='sld'>
+                          {t("layer_properties_format_sld")}
+                        </option>
+                      </select>
+                    </div>
+
+                    {/* Conditional SLD Version Selector */}
+                    {draft.styleFormat === "sld" && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                        }}>
+                        <label
+                          htmlFor='layer-prop-styling-version'
+                          style={{
+                            fontWeight: 500,
+                            fontSize: "0.875rem",
+                            color: "#334155",
+                          }}>
+                          {t("layer_properties_styling_version")}
+                        </label>
+                        <select
+                          id='layer-prop-styling-version'
+                          value={draft.sldVersion}
+                          onChange={handleVersionChange}
+                          style={{
+                            padding: "0.3125rem 0.625rem",
+                            borderRadius: "0.25rem",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "0.875rem",
+                            backgroundColor: "#ffffff",
+                          }}>
+                          <option value='1.0.0'>1.0.0</option>
+                          <option value='1.1.0'>1.1.0</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* File and Reset Buttons */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        marginLeft: "auto",
+                      }}>
+                      <button
+                        type='button'
+                        id='layer-prop-styling-load'
+                        className='layer-properties-btn'
+                        onClick={handleLoadStyle}
+                        style={SECONDARY_BUTTON_STYLE}>
+                        {t("layer_properties_styling_load")}
+                      </button>
+                      <button
+                        type='button'
+                        id='layer-prop-styling-export'
+                        className='layer-properties-btn'
+                        onClick={handleExportStyle}
+                        style={SECONDARY_BUTTON_STYLE}>
+                        {t("layer_properties_styling_export")}
+                      </button>
+                      <button
+                        type='button'
+                        id='layer-prop-styling-reset'
+                        className='layer-properties-btn'
+                        onClick={handleResetStyle}
+                        style={SECONDARY_BUTTON_STYLE}>
+                        {t("layer_properties_styling_reset")}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Validation Feedback Banner */}
+                  {draft.styleValidationError ? (
+                    <div
+                      className='style-validation-banner style-validation-error'
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        backgroundColor: "#fee2e2",
+                        border: "1px solid #f87171",
+                        borderRadius: "0.25rem",
+                        color: "#b91c1c",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                      }}>
+                      {t("layer_properties_style_syntax_error")}:{" "}
+                      {draft.styleValidationError}
+                    </div>
+                  ) : (
+                    <div
+                      className='style-validation-banner style-validation-valid'
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        backgroundColor: "#dcfce7",
+                        border: "1px solid #86efac",
+                        borderRadius: "0.25rem",
+                        color: "#15803d",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                      }}>
+                      {t("layer_properties_style_valid")}
+                    </div>
+                  )}
+
+                  {/* Raw Style Text Editor */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.25rem",
+                    }}>
+                    <label
+                      htmlFor='layer-prop-styling-raw-style'
+                      style={{
+                        fontWeight: 500,
+                        fontSize: "0.875rem",
+                        color: "#334155",
+                      }}>
+                      {t("layer_properties_styling_raw_style")}
+                    </label>
+                    <textarea
+                      id='layer-prop-styling-raw-style'
+                      value={draft.styleContent}
+                      onChange={handleRawStyleChange}
+                      rows={12}
+                      spellCheck={false}
+                      style={{
+                        width: "100%",
+                        fontFamily:
+                          "var(--cartouche-theme-font-family-mono, monospace)",
+                        fontSize: "0.8125rem",
+                        padding: "0.5rem",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "0.25rem",
+                        boxSizing: "border-box",
+                        resize: "vertical",
+                        backgroundColor: "#ffffff",
+                        color: "#0f172a",
+                      }}
+                    />
+                  </div>
                 </div>
               </fieldset>
             </div>

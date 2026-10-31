@@ -181,4 +181,16 @@
     <string name="layer_properties_btn_apply">Apply</string>
     <string name="layer_properties_btn_cancel">Cancel</string>
     <string name="layer_properties_loading">Loading layer properties...</string>
+    <string name="layer_properties_tab_styling">Styling</string>
+    <string name="layer_properties_styling_group">Layer Style &amp; Formatting</string>
+    <string name="layer_properties_styling_format">Style Format</string>
+    <string name="layer_properties_format_openlayers">OpenLayers Flat Style (JSON)</string>
+    <string name="layer_properties_format_sld">OGC SLD (XML)</string>
+    <string name="layer_properties_styling_version">SLD Version</string>
+    <string name="layer_properties_styling_load">Load from File...</string>
+    <string name="layer_properties_styling_export">Export to File...</string>
+    <string name="layer_properties_styling_reset">Reset to Default</string>
+    <string name="layer_properties_styling_raw_style">Raw Style Text</string>
+    <string name="layer_properties_style_valid">Style syntax is valid.</string>
+    <string name="layer_properties_style_syntax_error">Style syntax or validation error.</string>
 </ci18n:localization>
