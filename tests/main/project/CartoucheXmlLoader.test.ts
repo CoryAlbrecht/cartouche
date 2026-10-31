@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 
@@ -608,6 +608,121 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.deepEqual(model.viewport?.center, { x: 0, y: 0 });
     assert.equal(model.viewport?.scale, 50000);
     assert.equal((model.viewport as any)?.zoom, undefined, 'Legacy zoom must be ignored and not present on model');
+  });
+
+  it('round-trips SLD version attribute ("1.0.0" and "1.1.0") on inline and shared <style> elements with project.xsd validation', async () => {
+    const loader = new CartoucheXmlLoader();
+    const tempPath = path.join(tempDir, 'sld-version-roundtrip.cproj');
+    const sld100 = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>L100</Name></NamedLayer></StyledLayerDescriptor>';
+    const sld110 = '<StyledLayerDescriptor version="1.1.0"><NamedLayer><Name>L110</Name></NamedLayer></StyledLayerDescriptor>';
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'SLD Version Roundtrip',
+        appVersion: '0.1.0-dev',
+      },
+      layers: [
+        {
+          id: 'layer-sld-100',
+          name: 'SLD 1.0.0 Layer',
+          type: 'geojson',
+          source: '/data/l100.geojson',
+          style: {
+            content: sld100,
+            format: 'sld',
+            version: '1.0.0',
+          },
+        },
+        {
+          id: 'layer-sld-ref-110',
+          name: 'SLD 1.1.0 Shared Ref Layer',
+          type: 'geojson',
+          source: '/data/l110.geojson',
+          style: {
+            href: '#shared-sld-110',
+            format: 'sld',
+            version: '1.1.0',
+          },
+        },
+      ],
+      styles: [
+        {
+          id: 'shared-sld-110',
+          format: 'sld',
+          version: '1.1.0',
+          content: sld110,
+        },
+      ],
+    };
+
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('version="1.0.0"'), 'Serialized XML must include version="1.0.0"');
+    assert.ok(xml.includes('version="1.1.0"'), 'Serialized XML must include version="1.1.0"');
+
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, `Schema validation error for SLD version attribute: ${validation.error}`);
+
+    await loader.save(model, tempPath);
+    const loaded = await loader.load(tempPath);
+
+    const l100 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(l100.style, {
+      content: sld100,
+      format: 'sld',
+      version: '1.0.0',
+    });
+
+    const l110 = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(l110.style, {
+      href: '#shared-sld-110',
+      format: 'sld',
+      version: '1.1.0',
+    });
+
+    assert.equal(loaded.styles?.length, 1);
+    assert.deepEqual(loaded.styles?.[0], {
+      id: 'shared-sld-110',
+      format: 'sld',
+      version: '1.1.0',
+      content: sld110,
+    });
+  });
+
+  it('populates style.content from external href file on disk when inline content is omitted', async () => {
+    const loader = new CartoucheXmlLoader();
+    const externalSldPath = path.join(tempDir, 'rivers.sld');
+    const externalSldContent = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>ExternalRivers</Name></NamedLayer></StyledLayerDescriptor>';
+    fs.writeFileSync(externalSldPath, externalSldContent, 'utf-8');
+
+    const projPath = path.join(tempDir, 'external-href-project.cproj');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata>
+    <dc:title>External Style Href Project</dc:title>
+  </metadata>
+  <layers>
+    <layer id="layer-ext-sld">
+      <name>Rivers</name>
+      <type>geojson</type>
+      <source>/data/rivers.geojson</source>
+      <style href="rivers.sld" format="sld" version="1.0.0" />
+    </layer>
+  </layers>
+  <styles />
+</cartouche:project>`;
+
+    fs.writeFileSync(projPath, xml, 'utf-8');
+    const loaded = await loader.load(projPath);
+    const layer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(layer.style, {
+      href: 'rivers.sld',
+      content: externalSldContent,
+      format: 'sld',
+      version: '1.0.0',
+    });
   });
 });
 

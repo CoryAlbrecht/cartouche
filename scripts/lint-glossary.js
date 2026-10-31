@@ -4,7 +4,7 @@
  * @description Linter and pre-commit validator that parses prohibited domain terms from GLOSSARY.md and enforces canonical domain lexicon across staged diffs and source files.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-25
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  */
 
@@ -96,6 +96,26 @@ export const ALLOWED_COMPOUND_PHRASES = Object.freeze([
       'system font fallback',
       'system font fallbacks',
       'monospace system font'
+    ])
+  }),
+  Object.freeze({
+    avoid: 'Shape',
+    allowedPhrases: Object.freeze([
+      'shape-points',
+      'shape-radius',
+      'shape-radius2',
+      'shape-fill-color',
+      'shape-stroke-color',
+      'shape-stroke-width',
+      'shape-opacity',
+      'shape-angle',
+      'regular-shape',
+      'regular shape',
+      'regularShape',
+      'pointShape',
+      'point-shape',
+      'point shape',
+      'marker shape'
     ])
   })
 ]);

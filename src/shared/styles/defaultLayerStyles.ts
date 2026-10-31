@@ -4,7 +4,7 @@
  * @description Shared default OpenLayers vector layer styling rules and lookup helpers for Polygon, LineString, Point, and multi-geometry feature layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link createDefaultVectorLayerStyle}
  * @see {@link generateDefaultVectorStyleJson}
@@ -143,19 +143,24 @@ export function getDefaultLayerStyle(
 }
 
 /**
- * @description Resolves OpenLayers Flat Style rules from various raw representations (JSON string, metadata object with content or href, or raw rules object/array), falling back to default geometry style rules.
+ * @description Resolves OpenLayers Flat Style rules or SLD ProjectLayerStyleItem containers from various raw representations (JSON string, metadata object with content or href, or raw rules object/array), falling back to default geometry style rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-25
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @param {unknown} style - Raw style descriptor (string, object with content/href, or rule definition).
- * @param {Array<{ id: string; content: string; format?: string }>} [sharedStyles] - Optional collection of shared project styles to resolve href references against.
+ * @param {Array<{ id: string; content: string; format?: string; version?: string }>} [sharedStyles] - Optional collection of shared project styles to resolve href references against.
  * @param {string} [fallbackGeometryKind='Unknown'] - Fallback geometry kind when style cannot be resolved.
- * @returns {Record<string, any> | Array<Record<string, any>>} Valid OpenLayers Flat Style rules array or object.
+ * @returns {Record<string, any> | Array<Record<string, any>>} Valid OpenLayers Flat Style rules array/object or SLD ProjectLayerStyleItem container.
  */
 export function resolveLayerStyle(
   style: unknown,
-  sharedStyles?: Array<{ id: string; content: string; format?: string }>,
+  sharedStyles?: Array<{
+    id: string;
+    content: string;
+    format?: string;
+    version?: string;
+  }>,
   fallbackGeometryKind: string = "Unknown"
 ): Record<string, any> | Array<Record<string, any>> {
   if (!style) {
@@ -194,6 +199,18 @@ export function resolveLayerStyle(
       if (sharedStyles && sharedStyles.length > 0) {
         const matched = sharedStyles.find((s) => s.id === targetId);
         if (matched && matched.content) {
+          if (matched.format === "sld" || style.format === "sld") {
+            const trimmedSld = matched.content.trim();
+            if (trimmedSld.startsWith("<")) {
+              const ver = matched.version || style.version;
+              return {
+                content: trimmedSld,
+                format: "sld",
+                ...(ver === "1.0.0" || ver === "1.1.0" ? { version: ver } : {}),
+              };
+            }
+            return getDefaultLayerStyle(fallbackGeometryKind);
+          }
           try {
             const parsed = JSON.parse(matched.content);
             if (
@@ -211,11 +228,24 @@ export function resolveLayerStyle(
           }
         }
       }
-      return getDefaultLayerStyle(fallbackGeometryKind);
+      if (!style.content) {
+        return getDefaultLayerStyle(fallbackGeometryKind);
+      }
     }
 
     // 3b. Check for 'content' wrapper property
     if (style.content) {
+      if (style.format === "sld") {
+        const trimmedSld = style.content.trim();
+        if (trimmedSld.startsWith("<")) {
+          return {
+            content: trimmedSld,
+            format: "sld",
+            ...(style.version ? { version: style.version } : {}),
+          };
+        }
+        return getDefaultLayerStyle(fallbackGeometryKind);
+      }
       try {
         const parsed = JSON.parse(style.content);
         if (parsed && (typeof parsed === "object" || Array.isArray(parsed))) {

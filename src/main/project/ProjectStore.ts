@@ -4,7 +4,7 @@
  * @description Central in-memory store maintaining authoritative active Cartouche project state in the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-21
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  */
@@ -66,7 +66,7 @@ export class ProjectStore {
    * @description Recursively deserializes an IPC-safe project layer or group item into a runtime LayerTreeNode.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @param {ProjectLayerItem | ProjectGroupItem} item - Serialized layer or group DTO.
    * @returns {LayerTreeNode} Deserialized runtime layer or group node.
@@ -94,6 +94,7 @@ export class ProjectStore {
     layer.readOnly = layerItem.readOnly === true;
     layer.geometryKind = layerItem.geometryKind;
     layer.style = layerItem.style;
+    layer.styleId = layerItem.styleId;
     layer.crs = layerItem.crs;
     layer.customProperties = layerItem.customProperties;
 

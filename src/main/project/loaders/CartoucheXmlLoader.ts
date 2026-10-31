@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -59,7 +59,7 @@ function escapeXml(unsafe: string): string {
  * @description Extensible project loader for native unbundled Cartouche XML project documents.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-26
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  */
 export class CartoucheXmlLoader implements IProjectLoader {
@@ -115,7 +115,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-26
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -233,14 +233,51 @@ export class CartoucheXmlLoader implements IProjectLoader {
         const format = (s["@_format"] === "sld" ? "sld" : "openlayers") as
           | "openlayers"
           | "sld";
+        const rawVersion = s["@_version"];
+        const version =
+          rawVersion === "1.0.0" || rawVersion === "1.1.0" ?
+            rawVersion
+          : undefined;
+        const inlineText =
+          s.__cdata !== undefined ? String(s.__cdata).trim()
+          : typeof s === "string" ? s.trim()
+          : s["#text"] !== undefined ? String(s["#text"]).trim()
+          : "";
+
         if (href) {
-          style = { href, format };
-        } else if (s.__cdata !== undefined) {
-          style = { content: s.__cdata.trim(), format };
-        } else if (typeof s === "string") {
-          style = { content: s.trim(), format };
-        } else if (s["#text"] !== undefined) {
-          style = { content: String(s["#text"]).trim(), format };
+          let resolvedContent = inlineText || undefined;
+          if (!resolvedContent && !String(href).startsWith("#")) {
+            try {
+              const cleanHref = String(href).replace(/^file:\/\//i, "");
+              const extStylePath =
+                path.isAbsolute(cleanHref) ? cleanHref : (
+                  path.resolve(path.dirname(filePath), cleanHref)
+                );
+              if (fs.existsSync(extStylePath)) {
+                resolvedContent = fs
+                  .readFileSync(extStylePath, "utf-8")
+                  .trim();
+              }
+            } catch {
+              // Ignore external style file read failures; fallback handled downstream
+            }
+          }
+          style = {
+            href,
+            format,
+            ...(resolvedContent ? { content: resolvedContent } : {}),
+            ...(version ? { version } : {}),
+          };
+        } else if (
+          s.__cdata !== undefined
+          || typeof s === "string"
+          || s["#text"] !== undefined
+        ) {
+          style = {
+            content: inlineText,
+            format,
+            ...(version ? { version } : {}),
+          };
         }
       }
 
@@ -397,6 +434,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
         const format = (s["@_format"] === "sld" ? "sld" : "openlayers") as
           | "openlayers"
           | "sld";
+        const rawVersion = s["@_version"];
+        const version =
+          rawVersion === "1.0.0" || rawVersion === "1.1.0" ?
+            rawVersion
+          : undefined;
         const content = (
           s.__cdata !== undefined ? s.__cdata
           : typeof s === "string" ? s
@@ -406,7 +448,12 @@ export class CartoucheXmlLoader implements IProjectLoader {
           catalogStyles.set(styleId, { id: styleId, format, content });
         }
 
-        styles.push({ id: styleId, format, content });
+        styles.push({
+          id: styleId,
+          format,
+          content,
+          ...(version ? { version } : {}),
+        });
       }
     }
 
@@ -474,7 +521,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-26
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
    * @returns {string} XML project document string.
@@ -612,11 +659,15 @@ export class CartoucheXmlLoader implements IProjectLoader {
             );
           }
         } else if (isProjectLayerStyleWrapper(layer.style)) {
+          const versionAttr =
+            layer.style.version ?
+              ` version="${escapeXml(layer.style.version)}"`
+            : "";
           if (layer.style.href) {
             const formatAttr =
               layer.style.format ? ` format="${layer.style.format}"` : "";
             res.push(
-              `${pad}  <style href="${escapeXml(layer.style.href)}"${formatAttr} />`
+              `${pad}  <style href="${escapeXml(layer.style.href)}"${formatAttr}${versionAttr} />`
             );
           } else if (layer.style.content) {
             const formatAttr =
@@ -624,7 +675,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
                 ` format="${layer.style.format}"`
               : ' format="openlayers"';
             res.push(
-              `${pad}  <style${formatAttr}><![CDATA[${layer.style.content}]]></style>`
+              `${pad}  <style${formatAttr}${versionAttr}><![CDATA[${layer.style.content}]]></style>`
             );
           }
         } else if (typeof layer.style === "object" && layer.style !== null) {
@@ -727,8 +778,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
       for (const style of project.styles) {
         const formatAttr =
           style.format ? ` format="${style.format}"` : ' format="openlayers"';
+        const versionAttr =
+          style.version ? ` version="${escapeXml(style.version)}"` : "";
         lines.push(
-          `    <style id="${escapeXml(style.id)}"${formatAttr}><![CDATA[${style.content}]]></style>`
+          `    <style id="${escapeXml(style.id)}"${formatAttr}${versionAttr}><![CDATA[${style.content}]]></style>`
         );
       }
       lines.push("  </styles>");

@@ -4,7 +4,7 @@
  * @description Main Process API functions for layer tree visibility, selection, deletion, group creation, and reordering operations on the authoritative ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-19
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link LayerGroup}
@@ -16,6 +16,7 @@ import { projectStore } from '../../project/ProjectStore';
 import { LayerGroup } from '../../project/models/LayerGroup';
 import { LayerTreeNode } from '../../project/models/LayerTreeNode';
 import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
+import { cleanupOrphanedSharedStyles } from '../layers/layerStyles';
 
 /**
  * @description Recursively searches for a LayerTreeNode by its identifier within a parent LayerGroup.
@@ -132,10 +133,10 @@ export function setNodeSelection(selectedNodeIds: string[]): void {
 }
 
 /**
- * @description Removes specified nodes from the ProjectStore, deterministically disposing native handles.
+ * @description Removes specified nodes from the ProjectStore, deterministically disposing native handles and cleaning up orphaned shared styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-09
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @param {string[]} nodeIds - Identifiers of nodes to remove.
  * @returns {void}
@@ -156,6 +157,7 @@ export function removeNodes(nodeIds: string[]): void {
   }
 
   if (changed) {
+    cleanupOrphanedSharedStyles();
     projectStore.setProjectDirty(true);
     broadcastProjectLayersTree();
   }

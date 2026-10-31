@@ -4,19 +4,19 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DropPosition, ElectronAPI } from '@shared/types';
+import type { DropPosition, ElectronAPI, ProjectLayerStyleItem } from '@shared/types';
 
 /**
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -73,6 +73,15 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:rekeyLayer */
   rekeyLayer: (oldLayerId: string, newLayerId: string) =>
     ipcRenderer.invoke('layers:rekeyLayer', oldLayerId, newLayerId),
+  /** @ipc layers:setLayerStyle */
+  setLayerStyle: (layerIds: string[], style: ProjectLayerStyleItem | undefined, opacity?: number) =>
+    ipcRenderer.invoke('layers:setLayerStyle', layerIds, style, opacity),
+  /** @ipc layers:loadStyleFile */
+  loadStyleFile: (filePath?: string) =>
+    ipcRenderer.invoke('layers:loadStyleFile', filePath),
+  /** @ipc layers:saveStyleFile */
+  saveStyleFile: (style: ProjectLayerStyleItem, defaultPath?: string) =>
+    ipcRenderer.invoke('layers:saveStyleFile', style, defaultPath),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc dialog:save-file */

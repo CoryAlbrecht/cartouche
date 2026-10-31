@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-24
+ * @updated 2026-10-29
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -17,12 +17,22 @@ import { handleIpc, onIpc } from './ipc/registerIpcHandler';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { DropPosition, FileCategory } from '@shared/types';
+import type { DropPosition, FileCategory, ProjectLayerStyleItem } from '@shared/types';
 import { DIALOG_WINDOW_SPECS, type DialogWindowName } from '@shared/dialogs';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
-import { getLayerInfo, pathExists, queryExtent, rekeyLayer, resolveDialogDefaultPath, updateDialogLocation } from "./api/ApiFunctions";
+import {
+  getLayerInfo,
+  loadStyleFile,
+  pathExists,
+  queryExtent,
+  rekeyLayer,
+  resolveDialogDefaultPath,
+  saveStyleFile,
+  setLayerStyle,
+  updateDialogLocation
+} from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
@@ -598,6 +608,18 @@ function startApp(): void {
 
   handleIpc('layers:rekeyLayer', async (_event, oldLayerId: string, newLayerId: string) => {
     return await rekeyLayer(oldLayerId, newLayerId);
+  });
+
+  handleIpc('layers:setLayerStyle', async (_event, layerIds: string[], style: ProjectLayerStyleItem | undefined, opacity?: number) => {
+    await setLayerStyle(layerIds, style, opacity);
+  });
+
+  handleIpc('layers:loadStyleFile', async (_event, filePath?: string) => {
+    return await loadStyleFile(filePath);
+  });
+
+  handleIpc('layers:saveStyleFile', async (_event, style: ProjectLayerStyleItem, defaultPath?: string) => {
+    return await saveStyleFile(style, defaultPath);
   });
 
   handleIpc('gis:path-exists', async (_event, filePath: string) => {

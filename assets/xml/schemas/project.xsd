@@ -177,6 +177,7 @@
         <xs:attribute name="id" type="xs:string" />
         <xs:attribute name="href" type="xs:anyURI" />
         <xs:attribute name="format" type="StyleFormatType" default="openlayers" />
+        <xs:attribute name="version" type="xs:string" />
       </xs:extension>
     </xs:simpleContent>
   </xs:complexType>
@@ -187,6 +188,7 @@
       <xs:extension base="xs:string">
         <xs:attribute name="id" type="xs:string" use="required" />
         <xs:attribute name="format" type="StyleFormatType" default="openlayers" />
+        <xs:attribute name="version" type="xs:string" />
       </xs:extension>
     </xs:simpleContent>
   </xs:complexType>

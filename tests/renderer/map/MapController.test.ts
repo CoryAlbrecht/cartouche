@@ -1293,5 +1293,388 @@ describe('extractStyleAttributes', () => {
     const invalidWrapper = { content: 'not valid json', format: 'openlayers' as const };
     assert.equal(extractStyleAttributes(invalidWrapper).size, 0);
   });
+
+  it('extracts attribute names from SLD 1.0.0 and 1.1.0 ProjectLayerStyleItem containers', () => {
+    const sldWrapper = {
+      format: 'sld' as const,
+      version: '1.1.0' as const,
+      content: `<?xml version="1.0" encoding="UTF-8"?>
+<StyledLayerDescriptor version="1.1.0" xmlns="http://www.opengis.net/sld" xmlns:se="http://www.opengis.net/se" xmlns:ogc="http://www.opengis.net/ogc">
+  <NamedLayer>
+    <se:Name>Rivers</se:Name>
+    <UserStyle>
+      <se:FeatureTypeStyle>
+        <se:Rule>
+          <ogc:Filter>
+            <ogc:PropertyIsGreaterThan>
+              <ogc:PropertyName>scalerank</ogc:PropertyName>
+              <ogc:Literal>2</ogc:Literal>
+            </ogc:PropertyIsGreaterThan>
+          </ogc:Filter>
+          <se:TextSymbolizer>
+            <se:Label><ogc:PropertyName>river_name</ogc:PropertyName></se:Label>
+          </se:TextSymbolizer>
+        </se:Rule>
+      </se:FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`,
+    };
+
+    const extracted = extractStyleAttributes(sldWrapper);
+    assert.equal(extracted.size, 2);
+    assert.ok(extracted.has('scalerank'));
+    assert.ok(extracted.has('river_name'));
+  });
+});
+
+describe('MapController SLD Compilation & Delayed Field-Subset Reload', () => {
+  let container: any;
+  let controller: MapController;
+
+  beforeEach(() => {
+    projectLayersSignal.value = [];
+    layerStylesSignal.value = {};
+    currentProjectSignal.value = null;
+    container = (globalThis as any).document.createElement('div');
+    controller = new MapController(container);
+  });
+
+  afterEach(() => {
+    controller.dispose();
+    projectLayersSignal.value = [];
+    layerStylesSignal.value = {};
+    currentProjectSignal.value = null;
+    (globalThis as any).window.electronAPI = undefined;
+  });
+
+  it('compiles SLD 1.0.0 and 1.1.0 styles via SldStyleParser and OlStyleParser and applies them to VectorImageLayer', async () => {
+    const sld100 = `<?xml version="1.0" encoding="UTF-8"?>
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
+  <NamedLayer>
+    <Name>Polygons</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <PolygonSymbolizer>
+            <Fill><CssParameter name="fill">#336699</CssParameter></Fill>
+          </PolygonSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`;
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-sld-100',
+      name: 'SLD 1.0.0 Layer',
+      type: 'geojson',
+      source: '/path/to/poly.geojson',
+      geometryKind: 'Polygon',
+      layerKind: 'vector',
+      style: {
+        content: sld100,
+        format: 'sld',
+        version: '1.0.0',
+      },
+      extent: [-90, 40, -80, 50],
+      featureCount: 2,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    await controller.waitForPendingStyleUpdates();
+
+    const entry = controller.getLayer('layer-sld-100')!;
+    assert.ok(entry);
+    const appliedStyle100 = entry.layer.getStyle();
+    assert.ok(
+      typeof appliedStyle100 === 'function' || typeof appliedStyle100 === 'object',
+      'SLD 1.0.0 must compile to an OpenLayers Style or style function'
+    );
+    assert.equal(Array.isArray(appliedStyle100), false, 'Compiled SLD style must not be a raw flat style rule array');
+
+    // Switch to SLD 1.1.0 via layerStylesSignal
+    const sld110 = `<?xml version="1.0" encoding="UTF-8"?>
+<StyledLayerDescriptor version="1.1.0" xmlns="http://www.opengis.net/sld" xmlns:se="http://www.opengis.net/se">
+  <NamedLayer>
+    <se:Name>Lines</se:Name>
+    <UserStyle>
+      <se:FeatureTypeStyle>
+        <se:Rule>
+          <se:LineSymbolizer>
+            <se:Stroke><se:SvgParameter name="stroke">#cc0000</se:SvgParameter></se:Stroke>
+          </se:LineSymbolizer>
+        </se:Rule>
+      </se:FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`;
+
+    layerStylesSignal.value = {
+      'layer-sld-100': {
+        content: sld110,
+        format: 'sld',
+        version: '1.1.0',
+      } as any,
+    };
+    await controller.waitForPendingStyleUpdates();
+
+    const appliedStyle110 = entry.layer.getStyle();
+    assert.ok(appliedStyle110);
+    assert.notEqual(appliedStyle110, appliedStyle100, 'Layer style must update when SLD 1.1.0 is applied');
+  });
+
+  it('applies new style immediately without re-querying Main when requiredFields is a subset of loadedFields', async () => {
+    let queryCount = 0;
+    const pointWkb = new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64]);
+
+    layerStylesSignal.value = {
+      'layer-subset': {
+        'circle-radius': ['get', 'scalerank'],
+        'circle-fill-color': ['get', 'category'],
+      },
+    };
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, _options: any) => {
+        queryCount++;
+        return {
+          layerId: 'layer-subset',
+          buffer: createMockBinaryPacket([
+            { fid: 1, wkb: pointWkb, properties: { scalerank: 4, category: 'major' } },
+          ]),
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-subset',
+      name: 'Subset Layer',
+      type: 'shp',
+      source: '/path/to/subset.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-subset')!;
+    await controller.loadFeaturesForExtent(descriptor, entry.source, [-100, 30, -70, 60], 'EPSG:3857');
+    assert.equal(queryCount, 1);
+    assert.ok(entry.loadedFields.has('scalerank'));
+    assert.ok(entry.loadedFields.has('category'));
+
+    // Apply a new style requiring only 'scalerank' (subset of {'scalerank', 'category'})
+    const subsetStyle = {
+      'circle-radius': ['get', 'scalerank'],
+      'circle-fill-color': '#123456',
+    };
+    layerStylesSignal.value = {
+      'layer-subset': subsetStyle,
+    };
+
+    // Must be applied immediately and must NOT trigger another queryExtent call
+    assert.deepEqual(entry.layer.getStyle(), subsetStyle);
+    assert.equal(queryCount, 1, 'queryExtent must not be called when requiredFields ⊆ loadedFields');
+  });
+
+  it('delays layer.setStyle until layers:queryExtent reloads missing fields when requiredFields is not a subset of loadedFields', async () => {
+    let queryCount = 0;
+    let lastRequestedFields: string[] | undefined;
+    let resolvePendingQuery: (() => void) | null = null;
+    const pointWkb = new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64]);
+
+    const initialStyle = {
+      'circle-radius': 6,
+      'circle-fill-color': '#333333',
+    };
+    layerStylesSignal.value = {
+      'layer-delayed': initialStyle,
+    };
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, options: any) => {
+        queryCount++;
+        lastRequestedFields = options?.fields;
+        if (queryCount === 2) {
+          await new Promise<void>((resolve) => {
+            resolvePendingQuery = resolve;
+          });
+        }
+        return {
+          layerId: 'layer-delayed',
+          buffer: createMockBinaryPacket([
+            { fid: 10, wkb: pointWkb, properties: { population: 500000 } },
+          ]),
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-delayed',
+      name: 'Delayed Reload Layer',
+      type: 'shp',
+      source: '/path/to/delayed.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-delayed')!;
+    await controller.loadFeaturesForExtent(descriptor, entry.source, [-100, 30, -70, 60], 'EPSG:3857');
+    assert.equal(queryCount, 1);
+    assert.equal(entry.loadedFields.has('population'), false);
+
+    // Apply a new style referencing unloaded field 'population'
+    const newAttrStyle = {
+      'circle-radius': ['get', 'population'],
+      'circle-fill-color': '#ff0000',
+    };
+    layerStylesSignal.value = {
+      'layer-delayed': newAttrStyle,
+    };
+
+    // While queryExtent #2 is still in-flight, layer.getStyle() MUST still be initialStyle!
+    assert.equal(queryCount, 2, 'queryExtent must be invoked to reload missing attribute fields');
+    assert.ok(lastRequestedFields?.includes('population'), 'Reload query must request missing field "population"');
+    assert.deepEqual(
+      entry.layer.getStyle(),
+      initialStyle,
+      'layer.setStyle must be delayed while missing fields are being reloaded from Main'
+    );
+
+    // Now finish the pending queryExtent call
+    assert.ok(resolvePendingQuery);
+    (resolvePendingQuery as () => void)();
+    await controller.waitForPendingStyleUpdates();
+
+    // Now the new style must be applied and 'population' recorded in loadedFields
+    assert.deepEqual(entry.layer.getStyle(), newAttrStyle);
+    assert.equal(entry.loadedFields.has('population'), true);
+    assert.equal(entry.source.getFeatureById(10)?.get('population'), 500000);
+  });
+
+  it('falls back to the 3-rule default random-color style when unstyled or when style compilation fails', async () => {
+    const descriptor: LayerDescriptor = {
+      id: 'layer-fallback',
+      name: 'Fallback Layer',
+      type: 'geojson',
+      source: '/path/to/fallback.geojson',
+      geometryKind: 'Polygon',
+      layerKind: 'vector',
+      style: {
+        content: '<malformed-sld-xml',
+        format: 'sld',
+      },
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    await controller.waitForPendingStyleUpdates();
+
+    const entry = controller.getLayer('layer-fallback')!;
+    const fallbackStyle = entry.layer.getStyle() as any[];
+    assert.ok(Array.isArray(fallbackStyle), 'Fallback style must be the 3-rule multi-geometry flat style array');
+    assert.equal(fallbackStyle.length, 3);
+  });
+
+  it('delays SLD style application until layers:queryExtent reloads unloaded SLD filter/label fields', async () => {
+    let queryCount = 0;
+    let lastRequestedFields: string[] | undefined;
+    let resolvePendingQuery: (() => void) | null = null;
+    const pointWkb = new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64]);
+
+    const initialStyle = { 'circle-radius': 5, 'circle-fill-color': '#112233' };
+    layerStylesSignal.value = { 'layer-sld-delayed': initialStyle };
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, options: any) => {
+        queryCount++;
+        lastRequestedFields = options?.fields;
+        if (queryCount === 2) {
+          await new Promise<void>((resolve) => {
+            resolvePendingQuery = resolve;
+          });
+        }
+        return {
+          layerId: 'layer-sld-delayed',
+          buffer: createMockBinaryPacket([
+            { fid: 20, wkb: pointWkb, properties: { city_name: 'Ottawa', rank: 1 } },
+          ]),
+        };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-sld-delayed',
+      name: 'SLD Delayed Layer',
+      type: 'shp',
+      source: '/path/to/cities.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-sld-delayed')!;
+    await controller.loadFeaturesForExtent(descriptor, entry.source, [-100, 30, -70, 60], 'EPSG:3857');
+    assert.equal(queryCount, 1);
+
+    const sldWithFields = `<?xml version="1.0" encoding="UTF-8"?>
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:ogc="http://www.opengis.net/ogc">
+  <NamedLayer>
+    <Name>Cities</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <ogc:Filter>
+            <ogc:PropertyIsEqualTo>
+              <ogc:PropertyName>rank</ogc:PropertyName>
+              <ogc:Literal>1</ogc:Literal>
+            </ogc:PropertyIsEqualTo>
+          </ogc:Filter>
+          <TextSymbolizer>
+            <Label><ogc:PropertyName>city_name</ogc:PropertyName></Label>
+          </TextSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`;
+
+    layerStylesSignal.value = {
+      'layer-sld-delayed': {
+        content: sldWithFields,
+        format: 'sld',
+        version: '1.0.0',
+      } as any,
+    };
+
+    // Wait until SldStyleParser finishes reading and triggers queryExtent #2
+    while (queryCount < 2) {
+      await new Promise((r) => setTimeout(r, 5));
+    }
+
+    assert.equal(queryCount, 2);
+    assert.ok(lastRequestedFields?.includes('rank'));
+    assert.ok(lastRequestedFields?.includes('city_name'));
+    assert.deepEqual(
+      entry.layer.getStyle(),
+      initialStyle,
+      'SLD style must not be applied before missing fields finish reloading'
+    );
+
+    (resolvePendingQuery as unknown as () => void)();
+    await controller.waitForPendingStyleUpdates();
+
+    assert.notDeepEqual(entry.layer.getStyle(), initialStyle);
+    assert.equal(entry.loadedFields.has('rank'), true);
+    assert.equal(entry.loadedFields.has('city_name'), true);
+  });
 });
 

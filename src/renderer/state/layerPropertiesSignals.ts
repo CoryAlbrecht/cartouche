@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -15,19 +15,33 @@ import type {
   LayerDetailedInfo,
   ProjectLayerItem,
   ProjectGroupItem,
+  ProjectStyleFormat,
+  SldStyleVersion,
+  ProjectLayerStyleItem,
+  LayerVisualSymbolizer,
 } from "@shared/types";
-import { projectTreeSignal, isProjectDirtySignal } from "./projectSignals";
+import {
+  parseStyleTextToGeoStyler,
+  extractVisualSymbolizers,
+} from "../../shared/styles/flatStyleConverter";
+import {
+  projectTreeSignal,
+  isProjectDirtySignal,
+  resolveLayerStyleItem,
+  applyStyleToLayers,
+} from "./projectSignals";
 import { logging } from "../../shared/logging";
 
 /**
- * @typedef {'information' | 'source' | 'fields' | 'time_filter'} LayerPropertiesTabId
+ * @typedef {'information' | 'source' | 'fields' | 'time_filter' | 'styling'} LayerPropertiesTabId
  * @description Identifier for CategorySidebar navigation tabs in LayerPropertiesDialog.
  */
 export type LayerPropertiesTabId =
   | "information"
   | "source"
   | "fields"
-  | "time_filter";
+  | "time_filter"
+  | "styling";
 
 /**
  * @typedef {Object} LayerPropertiesDraft
@@ -36,6 +50,12 @@ export type LayerPropertiesTabId =
  * @property {string} crsAuthId - Draft CRS authority identifier (e.g. "EPSG:4326").
  * @property {string} featureFilter - Draft provider subset filter expression.
  * @property {string | null} idValidationError - Validation error message for layer ID, or null if valid.
+ * @property {ProjectStyleFormat} styleFormat - Active draft style serialization format.
+ * @property {SldStyleVersion} sldVersion - Active draft SLD specification version.
+ * @property {string} styleContent - Raw style markup or JSON text content.
+ * @property {string | null} styleValidationError - Validation error message for style content, or null if valid.
+ * @property {LayerVisualSymbolizer} visualSymbolizer - Active draft visual symbolizer control parameters.
+ * @property {number} opacity - Draft layer opacity between 0.0 and 1.0.
  */
 export interface LayerPropertiesDraft {
   layerName: string;
@@ -43,6 +63,12 @@ export interface LayerPropertiesDraft {
   crsAuthId: string;
   featureFilter: string;
   idValidationError: string | null;
+  styleFormat: ProjectStyleFormat;
+  sldVersion: SldStyleVersion;
+  styleContent: string;
+  styleValidationError: string | null;
+  visualSymbolizer: LayerVisualSymbolizer;
+  opacity: number;
 }
 
 /**
@@ -130,7 +156,7 @@ export const isLayerPropertiesLoadingSignal: Signal<boolean> =
  * @description Holds uncommitted draft modifications for the active layer properties session across tab transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @type {Signal<LayerPropertiesDraft>}
  */
@@ -141,6 +167,12 @@ export const layerPropertiesDraftSignal: Signal<LayerPropertiesDraft> =
     crsAuthId: "EPSG:4326",
     featureFilter: "",
     idValidationError: null,
+    styleFormat: "openlayers",
+    sldVersion: "1.0.0",
+    styleContent: "",
+    styleValidationError: null,
+    visualSymbolizer: {},
+    opacity: 1,
   });
 
 /**
@@ -210,7 +242,7 @@ export function collectAllLayerIds(
  * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier to inspect.
  * @returns {Promise<void>}
@@ -228,6 +260,35 @@ export async function openLayerPropertiesDialog(
     typeof currentLayer?.customProperties?.featureFilter === "string" ?
       (currentLayer.customProperties.featureFilter as string)
     : "";
+  const initialOpacity =
+    typeof currentLayer?.opacity === "number" ? currentLayer.opacity : 1;
+
+  const resolvedStyleItem = resolveLayerStyleItem(layerId);
+  const initialFormat = resolvedStyleItem.format || "openlayers";
+  const initialSldVersion = resolvedStyleItem.version || "1.0.0";
+  const initialContent = resolvedStyleItem.content || "";
+
+  let initialVisual: LayerVisualSymbolizer = {};
+  if (initialContent) {
+    try {
+      const ast = await parseStyleTextToGeoStyler(
+        initialContent,
+        initialFormat,
+        initialSldVersion
+      );
+      initialVisual = extractVisualSymbolizers(ast, currentLayer?.geometryKind);
+    } catch {
+      initialVisual = extractVisualSymbolizers(
+        { name: "Default", rules: [] },
+        currentLayer?.geometryKind
+      );
+    }
+  } else {
+    initialVisual = extractVisualSymbolizers(
+      { name: "Default", rules: [] },
+      currentLayer?.geometryKind
+    );
+  }
 
   layerPropertiesDraftSignal.value = {
     layerName: initialName,
@@ -235,12 +296,44 @@ export async function openLayerPropertiesDialog(
     crsAuthId: initialCrs,
     featureFilter: initialFilter,
     idValidationError: null,
+    styleFormat: initialFormat,
+    sldVersion: initialSldVersion,
+    styleContent: initialContent,
+    styleValidationError: null,
+    visualSymbolizer: initialVisual,
+    opacity: initialOpacity,
   };
 
   try {
     if (typeof window !== "undefined" && window.electronAPI?.getLayerInfo) {
       const info = await window.electronAPI.getLayerInfo(layerId);
       layerDetailedInfoSignal.value = info;
+      if (
+        info?.geometryKind &&
+        (!currentLayer?.geometryKind || currentLayer.geometryKind === "Unknown")
+      ) {
+        try {
+          const ast =
+            initialContent ?
+              await parseStyleTextToGeoStyler(
+                initialContent,
+                initialFormat,
+                initialSldVersion
+              )
+            : { name: "Default", rules: [] };
+          const updatedVisual = extractVisualSymbolizers(
+            ast,
+            info.geometryKind
+          );
+          updateLayerPropertiesDraft({ visualSymbolizer: updatedVisual });
+        } catch {
+          const updatedVisual = extractVisualSymbolizers(
+            { name: "Default", rules: [] },
+            info.geometryKind
+          );
+          updateLayerPropertiesDraft({ visualSymbolizer: updatedVisual });
+        }
+      }
     } else {
       // Fallback mock information if window.electronAPI is unavailable (e.g. test environment)
       layerDetailedInfoSignal.value = {
@@ -270,7 +363,7 @@ export async function openLayerPropertiesDialog(
  * @description Closes the LayerPropertiesDialog and resets session state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -284,6 +377,12 @@ export function closeLayerPropertiesDialog(): void {
     crsAuthId: "EPSG:4326",
     featureFilter: "",
     idValidationError: null,
+    styleFormat: "openlayers",
+    sldVersion: "1.0.0",
+    styleContent: "",
+    styleValidationError: null,
+    visualSymbolizer: {},
+    opacity: 1,
   };
 }
 
@@ -381,10 +480,10 @@ export function updateLayerPropertiesInTree(
 }
 
 /**
- * @description Commits active draft modifications (name, ID, CRS, filter) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
+ * @description Commits active draft modifications (name, ID, CRS, filter, style, opacity) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -393,7 +492,7 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
   if (!activeId) return false;
 
   const draft = layerPropertiesDraftSignal.value;
-  if (draft.idValidationError) {
+  if (draft.idValidationError || draft.styleValidationError) {
     return false;
   }
 
@@ -458,6 +557,16 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
   activeLayerPropertiesIdSignal.value = trimmedId;
   projectTreeSignal.value = updatedTree;
   isProjectDirtySignal.value = true;
+
+  // 4. Apply transactional draft style and opacity to layer
+  if (draft.styleContent) {
+    const draftStyle: ProjectLayerStyleItem = {
+      format: draft.styleFormat,
+      ...(draft.styleFormat === "sld" ? { version: draft.sldVersion } : {}),
+      content: draft.styleContent,
+    };
+    await applyStyleToLayers([trimmedId], draftStyle, draft.opacity);
+  }
 
   // Refresh detailed info if available
   if (layerDetailedInfoSignal.value) {

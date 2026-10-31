@@ -11,18 +11,21 @@
  * @see {@link VectorSource}
  */
 
-import { effect } from '@preact/signals-react';
-import { logging } from '../../shared/logging';
-import OlMap from 'ol/Map.js';
-import View from 'ol/View.js';
-import VectorImageLayer from 'ol/layer/VectorImage.js';
-import VectorSource from 'ol/source/Vector.js';
-import WKB from 'ol/format/WKB.js';
-import GeoJSON from 'ol/format/GeoJSON.js';
-import { all as allStrategy, bbox as bboxStrategy } from 'ol/loadingstrategy.js';
-import { fromLonLat, toLonLat, transformExtent } from 'ol/proj.js';
-import Feature from 'ol/Feature.js';
-import { getScale } from './getScale';
+import { effect } from "@preact/signals-react";
+import { logging } from "../../shared/logging";
+import OlMap from "ol/Map.js";
+import View from "ol/View.js";
+import VectorImageLayer from "ol/layer/VectorImage.js";
+import VectorSource from "ol/source/Vector.js";
+import WKB from "ol/format/WKB.js";
+import GeoJSON from "ol/format/GeoJSON.js";
+import {
+  all as allStrategy,
+  bbox as bboxStrategy,
+} from "ol/loadingstrategy.js";
+import { fromLonLat, toLonLat, transformExtent } from "ol/proj.js";
+import Feature from "ol/Feature.js";
+import { getScale } from "./getScale";
 import {
   cursorCoordsSignal,
   viewportExtentSignal,
@@ -30,25 +33,31 @@ import {
   mapActionSignal,
   activeMapControllerSignal,
   addConsoleLog,
-} from '../state/gisSignals';
+} from "../state/gisSignals";
 import {
   projectLayersSignal,
   layerStylesSignal,
   currentProjectSignal,
   projectTreeSignal,
   projectVisibleSignal,
-} from '../state/projectSignals';
-import { preferencesMapSignal } from '../state/preferencesSignals';
-import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
+} from "../state/projectSignals";
+import { preferencesMapSignal } from "../state/preferencesSignals";
+import {
+  compileFlatLayerStyleSync,
+  compileLayerStyle,
+  extractStyleAttributes,
+  isSldStyleDescriptor,
+} from "./styleCompiler";
 import {
   WKB_PACKET_MAGIC,
-  isProjectLayerStyleWrapper,
   type LayerDescriptor,
   type BoundingBox,
   type ProjectLayerItem,
   type ProjectGroupItem,
   type QueryExtentOptions,
-} from '../../shared/types';
+} from "../../shared/types";
+
+export { extractStyleAttributes };
 
 /**
  * @typedef {Object} FlattenedTreeLayer
@@ -85,7 +94,10 @@ export function flattenTreeLayers(
   result: FlattenedTreeLayer[] = []
 ): FlattenedTreeLayer[] {
   for (const item of items) {
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       const group = item as ProjectGroupItem;
       const isGroupEffectiveVisible = parentVisible && group.visible !== false;
       flattenTreeLayers(group.children, isGroupEffectiveVisible, result);
@@ -104,60 +116,14 @@ export function flattenTreeLayers(
 }
 
 /**
- * @description Recursively extracts all property names referenced by `['get', '<property>']` expressions within an OpenLayers Flat Style definition or serialized style wrapper.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-16
- * @updated 2026-10-26
- * @since 0.1.0-dev
- * @param {unknown} style - Flat style object, array of rules, serialized style wrapper, or expression tree.
- * @param {Set<string>} [fields=new Set()] - Accumulator for extracted attribute names.
- * @returns {Set<string>} Set of unique attribute names referenced in the style.
- */
-export function extractStyleAttributes(
-  style: unknown,
-  fields: Set<string> = new Set()
-): Set<string> {
-  if (!style) {
-    return fields;
-  }
-
-  if (isProjectLayerStyleWrapper(style)) {
-    if (style.content) {
-      try {
-        const parsed = JSON.parse(style.content);
-        return extractStyleAttributes(parsed, fields);
-      } catch {
-        return fields;
-      }
-    }
-    return fields;
-  }
-
-  if (typeof style !== 'object') {
-    return fields;
-  }
-
-  if (Array.isArray(style)) {
-    if (style.length >= 2 && style[0] === 'get' && typeof style[1] === 'string') {
-      fields.add(style[1]);
-    }
-    for (const item of style) {
-      extractStyleAttributes(item, fields);
-    }
-  } else {
-    for (const value of Object.values(style)) {
-      extractStyleAttributes(value, fields);
-    }
-  }
-
-  return fields;
-}
-
-/**
  * @typedef {Object} VectorLayerEntry
  * @property {VectorImageLayer<VectorSource>} layer - Native OpenLayers image-cached vector layer instance.
  * @property {VectorSource} source - Native OpenLayers vector source backed by allStrategy/bboxStrategy.
  * @property {LayerDescriptor} descriptor - Serializable layer metadata descriptor.
+ * @property {Set<string>} loadedFields - Set of feature attribute column names currently projected in the VectorSource.
+ * @property {boolean} [allFieldsLoaded] - True if all feature attributes were projected without restriction.
+ * @property {unknown} [activeRawStyle] - Most recently applied raw style descriptor or wrapper.
+ * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
  * @updated 2026-10-29
@@ -167,6 +133,10 @@ export interface VectorLayerEntry {
   layer: VectorImageLayer<VectorSource>;
   source: VectorSource;
   descriptor: LayerDescriptor;
+  loadedFields: Set<string>;
+  allFieldsLoaded?: boolean;
+  activeRawStyle?: unknown;
+  styleRevision?: number;
 }
 
 /**
@@ -201,6 +171,7 @@ export class MapController {
   private wkbFormat = new WKB();
   private geojsonFormat = new GeoJSON();
   private inFlightQueries = new Map<string, Promise<Feature[]>>();
+  private pendingStyleUpdates = new Set<Promise<void>>();
   private disposeSignals: Array<() => void> = [];
   private previousLayerCount = 0;
   private scaleThrottleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -221,11 +192,10 @@ export class MapController {
     this.container = container;
 
     this.view =
-      options?.view ??
-      new View({
+      options?.view
+      ?? new View({
         center: fromLonLat([15, 35]),
         zoom: 3,
-        projection: 'EPSG:3857',
       });
 
     this.map = new OlMap({
@@ -243,9 +213,9 @@ export class MapController {
     activeMapControllerSignal.value = this;
 
     addConsoleLog(
-      'info',
-      'MapController spatial canvas engine initialized.',
-      'OpenLayers'
+      "info",
+      "MapController spatial canvas engine initialized.",
+      "OpenLayers"
     );
   }
 
@@ -262,8 +232,9 @@ export class MapController {
     const currentProject = currentProjectSignal.value;
     if (currentProject?.viewport) {
       this.setViewport({
-        extent: currentProject.viewport.extent
-          ? [
+        extent:
+          currentProject.viewport.extent ?
+            [
               currentProject.viewport.extent.xmin,
               currentProject.viewport.extent.ymin,
               currentProject.viewport.extent.xmax,
@@ -288,7 +259,7 @@ export class MapController {
    */
   private bindEvents(): void {
     // Cursor location tracking when not actively dragging the map canvas
-    this.map.on('pointermove', (evt) => {
+    this.map.on("pointermove", (evt) => {
       if (evt.dragging) {
         return;
       }
@@ -306,12 +277,12 @@ export class MapController {
     });
 
     // View resolution change signal updates
-    this.view.on('change:resolution', () => {
+    this.view.on("change:resolution", () => {
       this.updateScaleSignal(false);
     });
 
     // Viewport bounding box updates on movement completion
-    this.map.on('moveend', () => {
+    this.map.on("moveend", () => {
       this.updateViewportSignals();
       this.updateScaleSignal(true);
     });
@@ -354,13 +325,13 @@ export class MapController {
       const mapAction = mapActionSignal.value;
       if (!mapAction) return;
 
-      if (mapAction.action === 'zoomIn') {
+      if (mapAction.action === "zoomIn") {
         this.zoomIn();
-      } else if (mapAction.action === 'zoomOut') {
+      } else if (mapAction.action === "zoomOut") {
         this.zoomOut();
-      } else if (mapAction.action === 'reset') {
+      } else if (mapAction.action === "reset") {
         this.resetExtent();
-      } else if (mapAction.action === 'setViewport') {
+      } else if (mapAction.action === "setViewport") {
         this.setViewport(mapAction);
       }
     });
@@ -438,20 +409,186 @@ export class MapController {
   }
 
   /**
-   * @description Applies dynamic OpenLayers Flat Style rules to registered vector layers at 60 FPS without modifying feature buffers.
+   * @description Applies dynamic OpenLayers Flat Style rules or SLD XML styles to registered vector layers, reloading missing attribute fields on demand before passing the compiled style to OpenLayers.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-25
+   * @updated 2026-10-29
    * @since 0.1.0-dev
-   * @param {Record<string, any>} styles - OpenLayers flat style rules map keyed by layer UUID.
+   * @param {Record<string, any>} styles - Style descriptors or rules map keyed by layer UUID.
    * @returns {void}
    */
   public applyLayerStyles(styles: Record<string, any>): void {
     for (const [id, entry] of this.vectorLayers.entries()) {
-      if (styles[id]) {
-        entry.layer.setStyle(styles[id] as any);
+      if (styles[id] !== undefined && styles[id] !== entry.activeRawStyle) {
+        this.applySingleLayerStyle(entry, styles[id], false);
       }
     }
+  }
+
+  /**
+   * @description Waits for all in-flight asynchronous SLD compilations and field-subset reloads to settle.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-29
+   * @updated 2026-10-29
+   * @since 0.1.0-dev
+   * @returns {Promise<void>} Resolves when all pending style operations complete.
+   */
+  public async waitForPendingStyleUpdates(): Promise<void> {
+    while (this.pendingStyleUpdates.size > 0) {
+      await Promise.all(Array.from(this.pendingStyleUpdates));
+    }
+  }
+
+  /**
+   * @description Checks whether a newly compiled style references feature attribute fields that are not yet present in the layer's loadedFields set.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-29
+   * @updated 2026-10-29
+   * @since 0.1.0-dev
+   * @param {VectorLayerEntry} entry - Target vector layer entry.
+   * @param {Set<string>} requiredFields - Attribute fields referenced by the new style.
+   * @param {boolean} isInitialCreate - True if called during initial layer creation before first loadFeaturesForExtent.
+   * @private
+   * @returns {boolean} True if Main process feature reload is required before applying the style.
+   */
+  private requiresFieldReload(
+    entry: VectorLayerEntry,
+    requiredFields: Set<string>,
+    isInitialCreate: boolean
+  ): boolean {
+    if (isInitialCreate || requiredFields.size === 0 || entry.allFieldsLoaded) {
+      return false;
+    }
+    if (typeof window === "undefined" || !window.electronAPI?.queryExtent) {
+      return false;
+    }
+    for (const field of requiredFields) {
+      if (!entry.loadedFields.has(field)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @description Reloads features for a vector layer from Main with the specified union of attribute fields.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-29
+   * @updated 2026-10-29
+   * @since 0.1.0-dev
+   * @param {VectorLayerEntry} entry - Target vector layer entry.
+   * @param {string[]} fieldsToLoad - Attribute field names to project in queryExtent.
+   * @private
+   * @returns {Promise<void>}
+   */
+  private async reloadLayerWithFields(
+    entry: VectorLayerEntry,
+    fieldsToLoad: string[]
+  ): Promise<void> {
+    const viewCrs = this.view.getProjection() || "EPSG:3857";
+    const size = this.map.getSize();
+    const extent =
+      size && size[0] > 0 && size[1] > 0 ?
+        this.view.calculateExtent(size)
+      : entry.descriptor.extent || [-180, -90, 180, 90];
+
+    await this.loadFeaturesForExtent(
+      entry.descriptor,
+      entry.source,
+      extent,
+      viewCrs,
+      { forceReload: true, fields: fieldsToLoad }
+    );
+  }
+
+  /**
+   * @description Compiles and applies a style to a single vector layer entry, executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-29
+   * @updated 2026-10-29
+   * @since 0.1.0-dev
+   * @param {VectorLayerEntry} entry - Target vector layer entry.
+   * @param {unknown} rawStyle - Raw style descriptor or wrapper.
+   * @param {boolean} isInitialCreate - True if invoked during initial layer creation.
+   * @private
+   * @returns {void}
+   */
+  private applySingleLayerStyle(
+    entry: VectorLayerEntry,
+    rawStyle: unknown,
+    isInitialCreate: boolean
+  ): void {
+    const nextRevision = (entry.styleRevision ?? 0) + 1;
+    entry.styleRevision = nextRevision;
+    entry.activeRawStyle = rawStyle;
+
+    const sharedStyles = currentProjectSignal.value?.styles;
+    const isSld = isSldStyleDescriptor(rawStyle, sharedStyles);
+
+    if (!isSld) {
+      const flatResult = compileFlatLayerStyleSync(rawStyle, {
+        sharedStyles,
+        layerId: entry.descriptor.id,
+      });
+
+      if (
+        !this.requiresFieldReload(
+          entry,
+          flatResult.requiredFields,
+          isInitialCreate
+        )
+      ) {
+        entry.layer.setStyle(flatResult.compiledStyle as any);
+        return;
+      }
+
+      const mergedFields = Array.from(
+        new Set([...entry.loadedFields, ...flatResult.requiredFields])
+      );
+      const reloadTask = (async () => {
+        await this.reloadLayerWithFields(entry, mergedFields);
+        if (entry.styleRevision === nextRevision) {
+          entry.layer.setStyle(flatResult.compiledStyle as any);
+        }
+      })();
+
+      this.pendingStyleUpdates.add(reloadTask);
+      void reloadTask.finally(() => {
+        this.pendingStyleUpdates.delete(reloadTask);
+      });
+      return;
+    }
+
+    const sldTask = (async () => {
+      const compiledResult = await compileLayerStyle(rawStyle, {
+        sharedStyles,
+        layerId: entry.descriptor.id,
+      });
+      if (entry.styleRevision !== nextRevision) {
+        return;
+      }
+      if (
+        this.requiresFieldReload(
+          entry,
+          compiledResult.requiredFields,
+          isInitialCreate
+        )
+      ) {
+        const mergedFields = Array.from(
+          new Set([...entry.loadedFields, ...compiledResult.requiredFields])
+        );
+        await this.reloadLayerWithFields(entry, mergedFields);
+        if (entry.styleRevision !== nextRevision) {
+          return;
+        }
+      }
+      entry.layer.setStyle(compiledResult.compiledStyle as any);
+    })();
+
+    this.pendingStyleUpdates.add(sldTask);
+    void sldTask.finally(() => {
+      this.pendingStyleUpdates.delete(sldTask);
+    });
   }
 
   /**
@@ -464,17 +601,27 @@ export class MapController {
    * @returns {VectorLayerEntry} Created layer and source tuple.
    */
   public createVectorLayer(descriptor: LayerDescriptor): VectorLayerEntry {
-    const isLocalVector = descriptor.layerKind === 'vector' || !descriptor.layerKind;
+    const isLocalVector =
+      descriptor.layerKind === "vector" || !descriptor.layerKind;
     const strategy =
-      isLocalVector && (descriptor.featureCount === undefined || descriptor.featureCount < 50000)
-        ? allStrategy
-        : bboxStrategy;
+      (
+        isLocalVector
+        && (descriptor.featureCount === undefined
+          || descriptor.featureCount < 50000)
+      ) ?
+        allStrategy
+      : bboxStrategy;
 
     const source = new VectorSource({
       strategy,
       wrapX: false,
-      loader: async (extent, _resolution, projection, success, _failure) => {
-        const loaded = await this.loadFeaturesForExtent(descriptor, source, extent, projection);
+      loader: async (extent, _resolution, viewCrs, success, _failure) => {
+        const loaded = await this.loadFeaturesForExtent(
+          descriptor,
+          source,
+          extent,
+          viewCrs
+        );
         if (success) {
           success(loaded);
         }
@@ -482,56 +629,89 @@ export class MapController {
       },
     });
 
-    // Resolve Flat Style rules from layerStylesSignal, layer descriptor, or default geometry style
-    const styleRules =
-      layerStylesSignal.value[descriptor.id] ||
-      resolveLayerStyle(descriptor.style, currentProjectSignal.value?.styles, descriptor.geometryKind);
+    const initialRawStyle =
+      layerStylesSignal.value[descriptor.id] !== undefined ?
+        layerStylesSignal.value[descriptor.id]
+      : descriptor.style;
 
-    const currentFlat = flattenTreeLayers(projectTreeSignal.value, projectVisibleSignal.value);
+    const sharedStyles = currentProjectSignal.value?.styles;
+    const isInitialSld = isSldStyleDescriptor(initialRawStyle, sharedStyles);
+    const initialFlatResult =
+      isInitialSld ?
+        compileFlatLayerStyleSync(null, {
+          sharedStyles,
+          layerId: descriptor.id,
+        })
+      : compileFlatLayerStyleSync(initialRawStyle, {
+          sharedStyles,
+          layerId: descriptor.id,
+        });
+
+    const currentFlat = flattenTreeLayers(
+      projectTreeSignal.value,
+      projectVisibleSignal.value
+    );
     const treeMatch = currentFlat.find((item) => item.id === descriptor.id);
 
     const layer = new VectorImageLayer({
       source,
-      style: styleRules as any,
+      style: initialFlatResult.compiledStyle as any,
       opacity: treeMatch ? treeMatch.opacity : (descriptor.opacity ?? 1),
-      visible: treeMatch ? treeMatch.effectiveVisible : (descriptor.visible ?? true),
+      visible:
+        treeMatch ? treeMatch.effectiveVisible : (descriptor.visible ?? true),
       zIndex: treeMatch ? 1000 - treeMatch.flatIndex : 0,
     });
 
     this.map.addLayer(layer);
-    const entry: VectorLayerEntry = { layer, source, descriptor };
+    const entry: VectorLayerEntry = {
+      layer,
+      source,
+      descriptor,
+      loadedFields: new Set<string>(),
+      activeRawStyle: initialRawStyle,
+      styleRevision: 0,
+    };
     this.vectorLayers.set(descriptor.id, entry);
+
+    if (isInitialSld) {
+      this.applySingleLayerStyle(entry, initialRawStyle, true);
+    }
 
     return entry;
   }
 
   /**
-   * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style projection.
+   * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-25
+   * @updated 2026-10-29
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
    * @param {number[]} extent - Spatial query bounding box extent.
-   * @param {any} projection - Viewport projection instance or authority string.
+   * @param {any} viewCrs - Viewport CRS instance or authority string.
+   * @param {{ forceReload?: boolean; fields?: string[] }} [reloadOptions] - Optional reload overrides when fetching missing style attribute fields.
    * @returns {Promise<Feature[]>} Deserialized features loaded for extent.
    */
   public async loadFeaturesForExtent(
     descriptor: LayerDescriptor,
     source: VectorSource,
     extent: number[],
-    projection: any
+    viewCrs: any,
+    reloadOptions?: { forceReload?: boolean; fields?: string[] }
   ): Promise<Feature[]> {
-    if (typeof window === 'undefined' || !window.electronAPI?.queryExtent) {
+    if (typeof window === "undefined" || !window.electronAPI?.queryExtent) {
       return [];
     }
 
+    const forceReload = reloadOptions?.forceReload === true;
+
     // Skip redundant IPC query if all features are already loaded into the vector source
     if (
-      descriptor.featureCount &&
-      descriptor.featureCount > 0 &&
-      source.getFeatures().length >= descriptor.featureCount
+      !forceReload
+      && descriptor.featureCount
+      && descriptor.featureCount > 0
+      && source.getFeatures().length >= descriptor.featureCount
     ) {
       return [];
     }
@@ -539,33 +719,53 @@ export class MapController {
     // Deduplicate in-flight queries for the same layer
     const inFlight = this.inFlightQueries.get(descriptor.id);
     if (inFlight) {
-      return await inFlight;
+      if (!forceReload) {
+        return await inFlight;
+      }
+      try {
+        await inFlight;
+      } catch {
+        // Proceed with reload even if prior query failed
+      }
     }
 
     const queryPromise = (async (): Promise<Feature[]> => {
       const projectionCode =
-        typeof projection === 'string'
-          ? projection
-          : projection?.getCode?.() || 'EPSG:3857';
+        typeof viewCrs === "string" ? viewCrs : (
+          viewCrs?.getCode?.() || "EPSG:3857"
+        );
 
-      const queryBox: BoundingBox = [extent[0], extent[1], extent[2], extent[3]];
+      const queryBox: BoundingBox = [
+        extent[0],
+        extent[1],
+        extent[2],
+        extent[3],
+      ];
       const newFeatures: Feature[] = [];
 
       try {
-        const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        const api =
+          typeof window !== "undefined" ? window.electronAPI : undefined;
         if (!api?.queryExtent) {
           return [];
         }
 
         const activeStyle =
-          layerStylesSignal.value[descriptor.id] ||
-          resolveLayerStyle(descriptor.style, currentProjectSignal.value?.styles, descriptor.geometryKind);
+          layerStylesSignal.value[descriptor.id] !== undefined ?
+            layerStylesSignal.value[descriptor.id]
+          : descriptor.style;
 
         let fields: string[] | undefined;
-        if (typeof activeStyle === 'function') {
+        if (reloadOptions?.fields !== undefined) {
+          fields = reloadOptions.fields;
+        } else if (typeof activeStyle === "function") {
           fields = undefined;
         } else if (activeStyle) {
-          const extracted = extractStyleAttributes(activeStyle);
+          const extracted = extractStyleAttributes(
+            activeStyle,
+            new Set(),
+            currentProjectSignal.value?.styles
+          );
           fields = Array.from(extracted);
         } else {
           fields = [];
@@ -588,16 +788,25 @@ export class MapController {
           return [];
         }
 
-        const dataProjection = descriptor.crs?.authId || 'EPSG:4326';
+        if (forceReload) {
+          source.clear(true);
+        }
+
+        const dataProjection = descriptor.crs?.authId || "EPSG:4326";
 
         let buffer: ArrayBuffer | null = null;
-        if ('buffer' in result && result.buffer) {
+        if ("buffer" in result && result.buffer) {
           if (result.buffer instanceof ArrayBuffer) {
             buffer = result.buffer;
-          } else if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(result.buffer)) {
+          } else if (
+            typeof ArrayBuffer !== "undefined"
+            && ArrayBuffer.isView(result.buffer)
+          ) {
             const view = result.buffer as ArrayBufferView;
             const copy = new Uint8Array(view.byteLength);
-            copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+            copy.set(
+              new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+            );
             buffer = copy.buffer;
           }
         }
@@ -632,9 +841,9 @@ export class MapController {
                   });
                 } catch (geomErr) {
                   logging.warn(
-                    'Failed to parse WKB geometry for feature',
+                    "Failed to parse WKB geometry for feature",
                     geomErr,
-                    { scope: 'MapController', fid, layerId: descriptor.id }
+                    { scope: "MapController", fid, layerId: descriptor.id }
                   );
                 }
               }
@@ -652,9 +861,9 @@ export class MapController {
                   properties = JSON.parse(decoder.decode(propsSlice));
                 } catch (propsErr) {
                   logging.warn(
-                    'Failed to parse properties for feature',
+                    "Failed to parse properties for feature",
                     propsErr,
-                    { scope: 'MapController', fid, layerId: descriptor.id }
+                    { scope: "MapController", fid, layerId: descriptor.id }
                   );
                 }
                 offset += propsLen;
@@ -662,22 +871,19 @@ export class MapController {
 
               // Deduplicate by ID to prevent duplicate entities during pan overlaps
               if (geometry && !source.getFeatureById(fid)) {
-                const feature = new Feature({
-                  geometry,
-                  ...properties,
-                });
+                const feature = new Feature({ geometry, ...properties });
                 feature.setId(fid);
                 newFeatures.push(feature);
               }
             }
           } else {
-            logging.warn('Invalid WKB packet magic header', {
-              scope: 'MapController',
+            logging.warn("Invalid WKB packet magic header", {
+              scope: "MapController",
               magic: `0x${magic.toString(16)}`,
-              layerId: descriptor.id
+              layerId: descriptor.id,
             });
           }
-        } else if ('features' in result && Array.isArray(result.features)) {
+        } else if ("features" in result && Array.isArray(result.features)) {
           // Legacy object array fallback
           for (const featRecord of result.features) {
             // Deduplicate by ID to prevent duplicate entities during pan overlaps
@@ -711,11 +917,22 @@ export class MapController {
 
               newFeatures.push(feature);
             } catch (geomErr) {
-              logging.warn(
-                'Failed to parse legacy feature record',
-                geomErr,
-                { scope: 'MapController', featureId: featRecord.id, layerId: descriptor.id }
-              );
+              logging.warn("Failed to parse legacy feature record", geomErr, {
+                scope: "MapController",
+                featureId: featRecord.id,
+                layerId: descriptor.id,
+              });
+            }
+          }
+        }
+
+        const entry = this.vectorLayers.get(descriptor.id);
+        if (entry) {
+          if (fields === undefined) {
+            entry.allFieldsLoaded = true;
+          } else {
+            for (const f of fields) {
+              entry.loadedFields.add(f);
             }
           }
         }
@@ -724,14 +941,14 @@ export class MapController {
           source.addFeatures(newFeatures);
         }
       } catch (err) {
-        logging.error('Failed to load features for layer', err, {
-          scope: 'MapController',
-          layerId: descriptor.id
+        logging.error("Failed to load features for layer", err, {
+          scope: "MapController",
+          layerId: descriptor.id,
         });
         addConsoleLog(
-          'error',
+          "error",
           `Failed to query features for layer "${descriptor.name || descriptor.id}": ${err}`,
-          'OpenLayers'
+          "OpenLayers"
         );
       }
 
@@ -756,7 +973,11 @@ export class MapController {
    * @returns {void}
    */
   public fitLayerExtent(descriptor: LayerDescriptor): void {
-    if (!descriptor.extent || !Array.isArray(descriptor.extent) || descriptor.extent.length !== 4) {
+    if (
+      !descriptor.extent
+      || !Array.isArray(descriptor.extent)
+      || descriptor.extent.length !== 4
+    ) {
       return;
     }
 
@@ -766,8 +987,12 @@ export class MapController {
     }
 
     try {
-      const sourceCrs = descriptor.crs?.authId || 'EPSG:4326';
-      const extent3857 = transformExtent(descriptor.extent, sourceCrs, 'EPSG:3857');
+      const sourceCrs = descriptor.crs?.authId || "EPSG:4326";
+      const extent3857 = transformExtent(
+        descriptor.extent,
+        sourceCrs,
+        "EPSG:3857"
+      );
 
       if (!extent3857 || extent3857.some((val) => !isFinite(val))) {
         return;
@@ -775,12 +1000,19 @@ export class MapController {
 
       const size = this.map.getSize();
       if (size && size[0] > 0 && size[1] > 0) {
-        this.view.fit(extent3857, { size, padding: [40, 40, 40, 40], maxZoom: 16 });
+        this.view.fit(extent3857, {
+          size,
+          padding: [40, 40, 40, 40],
+          maxZoom: 16,
+        });
       } else {
         this.view.fit(extent3857, { padding: [40, 40, 40, 40], maxZoom: 16 });
       }
     } catch (err) {
-      logging.warn('Failed to fit extent for layer', err, { scope: 'MapController', layerId: descriptor.id });
+      logging.warn("Failed to fit extent for layer", err, {
+        scope: "MapController",
+        layerId: descriptor.id,
+      });
     }
   }
 
@@ -801,8 +1033,8 @@ export class MapController {
 
     const [minLon, minLat, maxLon, maxLat] = transformExtent(
       extent3857,
-      'EPSG:3857',
-      'EPSG:4326'
+      "EPSG:3857",
+      "EPSG:4326"
     );
 
     viewportExtentSignal.value = [
@@ -855,12 +1087,22 @@ export class MapController {
    * @returns {number} Zoom step factor (defaults to 1.0 if not configured or non-positive).
    */
   public getZoomAmount(): number {
-    const mapToolVal = preferencesMapSignal.value['mapTools.mapViewport.zoomAmount']?.value;
-    if (typeof mapToolVal === 'number' && Number.isFinite(mapToolVal) && mapToolVal > 0) {
+    const mapToolVal =
+      preferencesMapSignal.value["mapTools.mapViewport.zoomAmount"]?.value;
+    if (
+      typeof mapToolVal === "number"
+      && Number.isFinite(mapToolVal)
+      && mapToolVal > 0
+    ) {
       return mapToolVal;
     }
-    const prefVal = preferencesMapSignal.value['general.mapViewport.zoomAmount']?.value;
-    if (typeof prefVal === 'number' && Number.isFinite(prefVal) && prefVal > 0) {
+    const prefVal =
+      preferencesMapSignal.value["general.mapViewport.zoomAmount"]?.value;
+    if (
+      typeof prefVal === "number"
+      && Number.isFinite(prefVal)
+      && prefVal > 0
+    ) {
       return prefVal;
     }
     return 1.0;
@@ -878,7 +1120,10 @@ export class MapController {
   public zoomIn(): void {
     const zoomAmount = this.getZoomAmount();
     const currentResolution = this.view.getResolution();
-    if (typeof currentResolution === 'number' && Number.isFinite(currentResolution)) {
+    if (
+      typeof currentResolution === "number"
+      && Number.isFinite(currentResolution)
+    ) {
       this.view.animate({
         resolution: currentResolution / Math.pow(2, zoomAmount),
         duration: 200,
@@ -903,7 +1148,10 @@ export class MapController {
   public zoomOut(): void {
     const zoomAmount = this.getZoomAmount();
     const currentResolution = this.view.getResolution();
-    if (typeof currentResolution === 'number' && Number.isFinite(currentResolution)) {
+    if (
+      typeof currentResolution === "number"
+      && Number.isFinite(currentResolution)
+    ) {
       this.view.animate({
         resolution: currentResolution * Math.pow(2, zoomAmount),
         duration: 200,
@@ -947,8 +1195,8 @@ export class MapController {
   ): void {
     if (!extent || extent.length !== 4) return;
 
-    const viewCrs = this.view.getProjection() || 'EPSG:3857';
-    const projected = transformExtent(extent, 'EPSG:4326', viewCrs);
+    const viewCrs = this.view.getProjection() || "EPSG:3857";
+    const projected = transformExtent(extent, "EPSG:4326", viewCrs);
     const [minX, minY, maxX, maxY] = projected;
     const deltaX = Math.abs(maxX - minX);
     const deltaY = Math.abs(maxY - minY);
@@ -976,8 +1224,13 @@ export class MapController {
       }
     }
 
-    const options = (!Array.isArray(optionsOrSize) && optionsOrSize) ? optionsOrSize : {};
-    const size = options.size ?? this.map.getSize() ?? [this.container.clientWidth || 0, this.container.clientHeight || 0];
+    const options =
+      !Array.isArray(optionsOrSize) && optionsOrSize ? optionsOrSize : {};
+    const size = options.size
+      ?? this.map.getSize() ?? [
+        this.container.clientWidth || 0,
+        this.container.clientHeight || 0,
+      ];
     const width = size[0];
     const height = size[1];
 
@@ -1134,10 +1387,7 @@ export class MapController {
       return;
     }
     this.vectorLayers.delete(oldLayerId);
-    entry.descriptor = {
-      ...entry.descriptor,
-      id: newLayerId,
-    };
+    entry.descriptor = { ...entry.descriptor, id: newLayerId };
     this.vectorLayers.set(newLayerId, entry);
   }
 
