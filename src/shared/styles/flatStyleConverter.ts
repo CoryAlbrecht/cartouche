@@ -10,6 +10,10 @@
  * @see {@link geoStylerToFlatStyle}
  * @see {@link convertStyleFormat}
  * @see {@link validateStyleContent}
+ * @see {@link extractVisualSymbolizers}
+ * @see {@link applyVisualSymbolizersToGeoStyler}
+ * @see {@link parseStyleTextToGeoStyler}
+ * @see {@link serializeGeoStylerToText}
  */
 
 import { SldStyleParser } from 'geostyler-sld-parser';
@@ -31,6 +35,7 @@ import type {
   SldStyleVersion,
   StyleFormatConversionOptions,
   StyleValidationResult,
+  LayerVisualSymbolizer,
 } from '../types';
 
 /**
@@ -628,4 +633,266 @@ export async function validateStyleContent(
   } catch (err: any) {
     return { isValid: false, error: `SLD parsing failed: ${err.message || String(err)}` };
   }
+}
+
+/**
+ * @description Parses raw style text into an in-memory GeoStyler Style AST based on the specified format and version.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @param {string} content - Raw style markup or JSON text.
+ * @param {ProjectStyleFormat} format - Style format ('openlayers' | 'sld').
+ * @param {SldStyleVersion} [version='1.0.0'] - Optional SLD specification version.
+ * @returns {Promise<GeoStylerStyle>} In-memory GeoStyler Style AST.
+ */
+export async function parseStyleTextToGeoStyler(
+  content: string,
+  format: ProjectStyleFormat,
+  version: SldStyleVersion = '1.0.0'
+): Promise<GeoStylerStyle> {
+  if (format === 'openlayers') {
+    return flatStyleToGeoStyler(content);
+  }
+
+  const parser = version === '1.1.0' ? sldParser110 : sldParser100;
+  const readResult = await parser.readStyle(content.trim());
+  if (readResult.errors?.length || !readResult.output) {
+    throw new Error(
+      `Failed to parse SLD ${version} style: ${readResult.errors?.map((e) => e.message || String(e)).join(', ') || 'Unknown error'}`
+    );
+  }
+  return readResult.output as unknown as GeoStylerStyle;
+}
+
+/**
+ * @description Serializes an in-memory GeoStyler Style AST into raw style text based on the specified format and version.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
+ * @param {ProjectStyleFormat} format - Target style format ('openlayers' | 'sld').
+ * @param {SldStyleVersion} [version='1.0.0'] - Optional SLD specification version.
+ * @returns {Promise<string>} Serialized style string.
+ */
+export async function serializeGeoStylerToText(
+  ast: GeoStylerStyle,
+  format: ProjectStyleFormat,
+  version: SldStyleVersion = '1.0.0'
+): Promise<string> {
+  if (format === 'openlayers') {
+    const flatRules = geoStylerToFlatStyle(ast);
+    return JSON.stringify(flatRules, null, 2);
+  }
+
+  const parser = version === '1.1.0' ? sldParser110 : sldParser100;
+  const writeResult = await parser.writeStyle(ast);
+  if (writeResult.errors?.length || !writeResult.output) {
+    throw new Error(
+      `Failed to generate SLD ${version} style: ${writeResult.errors?.map((e) => e.message || String(e)).join(', ') || 'Unknown error'}`
+    );
+  }
+  return writeResult.output;
+}
+
+/**
+ * @description Extracts editable visual symbolizer control parameters from an in-memory GeoStyler Style AST.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
+ * @param {string} [geometryKind] - Optional geometry hint ('Polygon', 'LineString', 'Point').
+ * @returns {LayerVisualSymbolizer} Extracted visual symbolizer properties.
+ */
+export function extractVisualSymbolizers(
+  ast: GeoStylerStyle,
+  geometryKind?: string
+): LayerVisualSymbolizer {
+  const result: LayerVisualSymbolizer = {};
+
+  for (const rule of ast.rules || []) {
+    for (const sym of rule.symbolizers || []) {
+      if (
+        sym.kind === 'Fill' &&
+        (!geometryKind || geometryKind === 'Polygon' || geometryKind === 'MultiPolygon')
+      ) {
+        const fill = sym as FillSymbolizer;
+        if (result.fillColor === undefined && fill.color) {
+          result.fillColor = String(fill.color);
+        }
+        if (
+          result.fillOpacity === undefined &&
+          (fill.fillOpacity !== undefined || fill.opacity !== undefined)
+        ) {
+          result.fillOpacity = Number(fill.fillOpacity ?? fill.opacity);
+        }
+        if (result.strokeColor === undefined && fill.outlineColor) {
+          result.strokeColor = String(fill.outlineColor);
+        }
+        if (result.strokeWidth === undefined && fill.outlineWidth !== undefined) {
+          result.strokeWidth = Number(fill.outlineWidth);
+        }
+      } else if (
+        sym.kind === 'Line' &&
+        (!geometryKind || geometryKind === 'LineString' || geometryKind === 'MultiLineString')
+      ) {
+        const line = sym as LineSymbolizer;
+        if (result.strokeColor === undefined && line.color) {
+          result.strokeColor = String(line.color);
+        }
+        if (result.strokeWidth === undefined && line.width !== undefined) {
+          result.strokeWidth = Number(line.width);
+        }
+        if (result.strokeLineDash === undefined) {
+          result.strokeLineDash = Array.isArray(line.dasharray) && line.dasharray.length > 0;
+        }
+      } else if (
+        sym.kind === 'Mark' &&
+        (!geometryKind || geometryKind === 'Point' || geometryKind === 'MultiPoint')
+      ) {
+        const mark = sym as MarkSymbolizer;
+        if (result.pointShape === undefined && mark.wellKnownName) {
+          result.pointShape = mark.wellKnownName as LayerVisualSymbolizer['pointShape'];
+        }
+        if (result.pointRadius === undefined && mark.radius !== undefined) {
+          result.pointRadius = Number(mark.radius);
+        }
+        if (result.fillColor === undefined && mark.color) {
+          result.fillColor = String(mark.color);
+        }
+        if (result.strokeColor === undefined && mark.strokeColor) {
+          result.strokeColor = String(mark.strokeColor);
+        }
+        if (result.strokeWidth === undefined && mark.strokeWidth !== undefined) {
+          result.strokeWidth = Number(mark.strokeWidth);
+        }
+      }
+    }
+  }
+
+  // Provide sensible defaults for any unpopulated fields based on geometryKind
+  const isLine = geometryKind === 'LineString' || geometryKind === 'MultiLineString';
+  const isPoint = geometryKind === 'Point' || geometryKind === 'MultiPoint';
+
+  if (isLine) {
+    if (result.strokeColor === undefined) result.strokeColor = '#0284c7';
+    if (result.strokeWidth === undefined) result.strokeWidth = 1;
+    if (result.strokeLineDash === undefined) result.strokeLineDash = false;
+  } else if (isPoint) {
+    if (result.pointShape === undefined) result.pointShape = 'circle';
+    if (result.pointRadius === undefined) result.pointRadius = 6;
+    if (result.fillColor === undefined) result.fillColor = '#0369a1';
+    if (result.strokeColor === undefined) result.strokeColor = '#0284c7';
+    if (result.strokeWidth === undefined) result.strokeWidth = 1;
+  } else {
+    // Polygon / Unknown default
+    if (result.fillColor === undefined) result.fillColor = '#1e293b';
+    if (result.fillOpacity === undefined) result.fillOpacity = 1;
+    if (result.strokeColor === undefined) result.strokeColor = '#0284c7';
+    if (result.strokeWidth === undefined) result.strokeWidth = 0;
+  }
+
+  return result;
+}
+
+/**
+ * @description Injects updated visual symbolizer parameters into an existing or newly constructed GeoStyler Style AST.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
+ * @param {LayerVisualSymbolizer} visual - Updated visual properties.
+ * @param {string} [geometryKind] - Optional geometry kind ('Polygon', 'LineString', 'Point').
+ * @returns {GeoStylerStyle} Cloned and updated GeoStyler Style AST.
+ */
+export function applyVisualSymbolizersToGeoStyler(
+  ast: GeoStylerStyle,
+  visual: LayerVisualSymbolizer,
+  geometryKind?: string
+): GeoStylerStyle {
+  const cloned: GeoStylerStyle = JSON.parse(
+    JSON.stringify(ast || { name: 'Cartouche Style', rules: [] })
+  );
+  if (!cloned.rules) cloned.rules = [];
+
+  const isLine = geometryKind === 'LineString' || geometryKind === 'MultiLineString';
+  const isPoint = geometryKind === 'Point' || geometryKind === 'MultiPoint';
+  const targetKind = isLine ? 'Line' : isPoint ? 'Mark' : 'Fill';
+
+  let found = false;
+
+  for (const rule of cloned.rules) {
+    if (!rule.symbolizers) rule.symbolizers = [];
+    for (let i = 0; i < rule.symbolizers.length; i++) {
+      const sym = rule.symbolizers[i];
+      if (sym.kind === targetKind) {
+        found = true;
+        if (targetKind === 'Fill') {
+          const fill = sym as FillSymbolizer;
+          if (visual.fillColor !== undefined) fill.color = visual.fillColor;
+          if (visual.fillOpacity !== undefined) fill.fillOpacity = visual.fillOpacity;
+          if (visual.strokeColor !== undefined) fill.outlineColor = visual.strokeColor;
+          if (visual.strokeWidth !== undefined) fill.outlineWidth = visual.strokeWidth;
+        } else if (targetKind === 'Line') {
+          const line = sym as LineSymbolizer;
+          if (visual.strokeColor !== undefined) line.color = visual.strokeColor;
+          if (visual.strokeWidth !== undefined) line.width = visual.strokeWidth;
+          if (visual.strokeLineDash !== undefined) {
+            line.dasharray = visual.strokeLineDash ? [4, 4] : undefined;
+          }
+        } else if (targetKind === 'Mark') {
+          const mark = sym as MarkSymbolizer;
+          if (visual.pointShape !== undefined) mark.wellKnownName = visual.pointShape;
+          if (visual.pointRadius !== undefined) mark.radius = visual.pointRadius;
+          if (visual.fillColor !== undefined) mark.color = visual.fillColor;
+          if (visual.strokeColor !== undefined) mark.strokeColor = visual.strokeColor;
+          if (visual.strokeWidth !== undefined) mark.strokeWidth = visual.strokeWidth;
+        }
+      }
+    }
+  }
+
+  // If no matching symbolizer was found in the AST, create one
+  if (!found) {
+    let newSym: Symbolizer;
+    if (targetKind === 'Line') {
+      newSym = {
+        kind: 'Line',
+        color: visual.strokeColor || '#0284c7',
+        width: visual.strokeWidth ?? 1,
+        ...(visual.strokeLineDash ? { dasharray: [4, 4] } : {}),
+      };
+    } else if (targetKind === 'Mark') {
+      newSym = {
+        kind: 'Mark',
+        wellKnownName: visual.pointShape || 'circle',
+        radius: visual.pointRadius ?? 6,
+        color: visual.fillColor || '#0369a1',
+        strokeColor: visual.strokeColor || '#0284c7',
+        strokeWidth: visual.strokeWidth ?? 1,
+      };
+    } else {
+      newSym = {
+        kind: 'Fill',
+        color: visual.fillColor || '#1e293b',
+        fillOpacity: visual.fillOpacity ?? 1,
+        outlineColor: visual.strokeColor || '#0284c7',
+        outlineWidth: visual.strokeWidth ?? 0,
+      };
+    }
+
+    if (cloned.rules.length === 0) {
+      cloned.rules.push({
+        name: geometryKind || 'Default Rule',
+        symbolizers: [newSym],
+      });
+    } else {
+      cloned.rules[0].symbolizers.push(newSym);
+    }
+  }
+
+  return cloned;
 }

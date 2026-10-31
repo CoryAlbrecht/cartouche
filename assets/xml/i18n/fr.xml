@@ -167,4 +167,19 @@
     <string name="layer_properties_styling_raw_style">Texte brut du style</string>
     <string name="layer_properties_style_valid">La syntaxe du style est valide.</string>
     <string name="layer_properties_style_syntax_error">Erreur de syntaxe ou de validation du style.</string>
+    <string name="layer_properties_styling_visual_group">Symboliseur visuel</string>
+    <string name="layer_properties_styling_fill_color">Couleur de remplissage</string>
+    <string name="layer_properties_styling_fill_opacity">Opacité de remplissage</string>
+    <string name="layer_properties_styling_stroke_color">Couleur de contour</string>
+    <string name="layer_properties_styling_stroke_width">Épaisseur de contour</string>
+    <string name="layer_properties_styling_stroke_dash">Ligne pointillée</string>
+    <string name="layer_properties_styling_point_shape">Forme du point</string>
+    <string name="layer_properties_styling_point_radius">Taille du point</string>
+    <string name="layer_properties_styling_layer_opacity">Opacité de la couche</string>
+    <string name="layer_properties_shape_circle">Cercle</string>
+    <string name="layer_properties_shape_square">Carré</string>
+    <string name="layer_properties_shape_triangle">Triangle</string>
+    <string name="layer_properties_shape_star">Étoile</string>
+    <string name="layer_properties_shape_cross">Croix</string>
+    <string name="layer_properties_shape_x">X</string>
 </ci18n:localization>

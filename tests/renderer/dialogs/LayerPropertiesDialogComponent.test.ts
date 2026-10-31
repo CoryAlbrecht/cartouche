@@ -42,6 +42,12 @@ const {
 } = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
 const { projectTreeSignal, isProjectDirtySignal } = jiti('../../../src/renderer/state/projectSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const {
+  parseStyleTextToGeoStyler,
+  serializeGeoStylerToText,
+  applyVisualSymbolizersToGeoStyler,
+  extractVisualSymbolizers,
+} = jiti('../../../src/shared/styles/flatStyleConverter.ts');
 
 describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)', () => {
   let originalDocument: typeof globalThis.document;
@@ -57,43 +63,53 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     };
     (globalThis as any).window = {
       electronAPI: {
-        getLayerInfo: async (layerId: string) => ({
-          layerId,
-          name: 'North America Lakes',
-          source: '/data/lakes.shp',
-          driverName: 'ESRI Shapefile',
-          driverDialect: 'ogr_sql',
-          geometryKind: 'Polygon',
-          featureCount: 42,
-          crsDescription: 'EPSG:4326 - WGS 84',
-          extent: [-125.0, 25.0, -65.0, 50.0],
-          fields: [
-            {
-              name: 'scalerank',
-              nativeType: 'integer64',
-              width: 10,
-              precision: 0,
-              mappedType: 'number',
-              nullable: true,
-            },
-            {
-              name: 'name',
-              nativeType: 'string',
-              width: 254,
-              precision: 0,
-              mappedType: 'string',
-              nullable: true,
-            },
-            {
-              name: 'unbounded_calc',
-              nativeType: 'real',
-              width: 0,
-              precision: 0,
-              mappedType: 'number',
-              nullable: false,
-            }
-          ]
-        })
+        getLayerInfo: async (layerId: string) => {
+          const geomKind =
+            layerId === 'layer-rivers-2' ? 'LineString' :
+            layerId === 'layer-cities-3' ? 'Point' : 'Polygon';
+          return {
+            layerId,
+            name:
+              layerId === 'layer-rivers-2' ? 'Major Rivers'
+              : layerId === 'layer-cities-3' ? 'Global Cities'
+              : 'North America Lakes',
+            source:
+              layerId === 'layer-lakes-1' ? '/data/lakes.shp'
+              : `/data/${layerId}.shp`,
+            driverName: 'ESRI Shapefile',
+            driverDialect: 'ogr_sql',
+            geometryKind: geomKind,
+            featureCount: 42,
+            crsDescription: 'EPSG:4326 - WGS 84',
+            extent: [-125.0, 25.0, -65.0, 50.0],
+            fields: [
+              {
+                name: 'scalerank',
+                nativeType: 'integer64',
+                width: 10,
+                precision: 0,
+                mappedType: 'number',
+                nullable: true,
+              },
+              {
+                name: 'name',
+                nativeType: 'string',
+                width: 254,
+                precision: 0,
+                mappedType: 'string',
+                nullable: true,
+              },
+              {
+                name: 'unbounded_calc',
+                nativeType: 'real',
+                width: 0,
+                precision: 0,
+                mappedType: 'number',
+                nullable: false,
+              }
+            ]
+          };
+        }
       }
     };
     originalCreatePortal = ReactDOM.createPortal;
@@ -117,6 +133,21 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_styling_raw_style: 'Raw Style Definition',
       layer_properties_style_valid: 'Style syntax is valid.',
       layer_properties_style_syntax_error: 'Style syntax error',
+      layer_properties_styling_visual_group: 'Visual Symbolizer',
+      layer_properties_styling_fill_color: 'Fill Color',
+      layer_properties_styling_fill_opacity: 'Fill Opacity',
+      layer_properties_styling_stroke_color: 'Stroke Color',
+      layer_properties_styling_stroke_width: 'Stroke Width',
+      layer_properties_styling_stroke_dash: 'Dashed Line',
+      layer_properties_styling_point_shape: 'Point Shape',
+      layer_properties_styling_point_radius: 'Point Size',
+      layer_properties_styling_layer_opacity: 'Layer Opacity',
+      layer_properties_shape_circle: 'Circle',
+      layer_properties_shape_square: 'Square',
+      layer_properties_shape_triangle: 'Triangle',
+      layer_properties_shape_star: 'Star',
+      layer_properties_shape_cross: 'Cross',
+      layer_properties_shape_x: 'X',
       layer_properties_group_general: 'General Information',
       layer_properties_label_name: 'Layer Name',
       layer_properties_label_id: 'Layer Identifier',
@@ -178,6 +209,13 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         name: 'Major Rivers',
         type: 'vector',
         source: '/data/rivers.shp',
+        crs: { authId: 'EPSG:4326', description: 'WGS 84' },
+      },
+      {
+        id: 'layer-cities-3',
+        name: 'Global Cities',
+        type: 'vector',
+        source: '/data/cities.shp',
         crs: { authId: 'EPSG:4326', description: 'WGS 84' },
       }
     ];
@@ -558,6 +596,177 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(finalStyle);
       assert.strictEqual(finalStyle.format, 'openlayers');
       assert.ok(finalStyle.content?.includes('#654321'));
+    });
+  });
+
+  describe('Visual Symbolizer Controls & Two-Way Live Sync (Ticket #123)', () => {
+    it('renders geometry-specific visual symbolizer controls for Polygon, LineString, and Point layers', async () => {
+      // 1. Polygon layer (layer-lakes-1)
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+      const polyHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert(polyHtml.includes('id="layer-prop-layer-opacity"'), 'Polygon must render layer opacity slider');
+      assert(polyHtml.includes('id="layer-prop-visual-fill-color"'), 'Polygon must render fill color');
+      assert(polyHtml.includes('id="layer-prop-visual-fill-opacity"'), 'Polygon must render fill opacity');
+      assert(polyHtml.includes('id="layer-prop-visual-stroke-color"'), 'Polygon must render stroke color');
+      assert(polyHtml.includes('id="layer-prop-visual-stroke-width"'), 'Polygon must render stroke width');
+      assert(!polyHtml.includes('id="layer-prop-visual-stroke-dash"'), 'Polygon must not render stroke dash');
+      assert(!polyHtml.includes('id="layer-prop-visual-point-shape"'), 'Polygon must not render point shape');
+
+      // 2. LineString layer (layer-rivers-2)
+      await openLayerPropertiesDialog('layer-rivers-2');
+      activeLayerPropertiesTabSignal.value = 'styling';
+      const lineHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert(lineHtml.includes('id="layer-prop-layer-opacity"'), 'LineString must render layer opacity slider');
+      assert(lineHtml.includes('id="layer-prop-visual-stroke-color"'), 'LineString must render stroke color');
+      assert(lineHtml.includes('id="layer-prop-visual-stroke-width"'), 'LineString must render stroke width');
+      assert(lineHtml.includes('id="layer-prop-visual-stroke-dash"'), 'LineString must render stroke dash checkbox');
+      assert(!lineHtml.includes('id="layer-prop-visual-fill-color"'), 'LineString must not render fill color');
+      assert(!lineHtml.includes('id="layer-prop-visual-point-shape"'), 'LineString must not render point shape');
+
+      // 3. Point layer (layer-cities-3)
+      await openLayerPropertiesDialog('layer-cities-3');
+      activeLayerPropertiesTabSignal.value = 'styling';
+      const pointHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert(pointHtml.includes('id="layer-prop-layer-opacity"'), 'Point must render layer opacity slider');
+      assert(pointHtml.includes('id="layer-prop-visual-point-shape"'), 'Point must render point shape dropdown');
+      assert(pointHtml.includes('id="layer-prop-visual-point-radius"'), 'Point must render point size/radius');
+      assert(pointHtml.includes('id="layer-prop-visual-fill-color"'), 'Point must render fill color');
+      assert(pointHtml.includes('id="layer-prop-visual-stroke-color"'), 'Point must render stroke color');
+      assert(pointHtml.includes('id="layer-prop-visual-stroke-width"'), 'Point must render stroke width');
+      assert(!pointHtml.includes('id="layer-prop-visual-stroke-dash"'), 'Point must not render stroke dash');
+    });
+
+    it('adjusting visual symbolizer controls regenerates draft raw style text in currently selected format', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      // 1. OpenLayers format
+      updateLayerPropertiesDraft({
+        styleFormat: 'openlayers',
+        visualSymbolizer: {
+          fillColor: '#ef4444',
+          fillOpacity: 0.5,
+          strokeColor: '#b91c1c',
+          strokeWidth: 3,
+        },
+      });
+
+      // Regenerate raw style text from visual symbolizer using flatStyleConverter
+      const ast = applyVisualSymbolizersToGeoStyler(
+        { name: 'Test Style', rules: [] },
+        layerPropertiesDraftSignal.value.visualSymbolizer,
+        'Polygon'
+      );
+      const regeneratedOl = await serializeGeoStylerToText(ast, 'openlayers');
+      updateLayerPropertiesDraft({ styleContent: regeneratedOl });
+
+      const parsedOl = JSON.parse(layerPropertiesDraftSignal.value.styleContent);
+      assert.strictEqual(parsedOl[0].style['fill-color'], '#ef4444');
+      assert.strictEqual(parsedOl[0].style['fill-opacity'], 0.5);
+      assert.strictEqual(parsedOl[0].style['stroke-color'], '#b91c1c');
+      assert.strictEqual(parsedOl[0].style['stroke-width'], 3);
+
+      // 2. SLD XML format
+      updateLayerPropertiesDraft({
+        styleFormat: 'sld',
+        sldVersion: '1.0.0',
+        visualSymbolizer: {
+          fillColor: '#3b82f6',
+          fillOpacity: 1,
+          strokeColor: '#1d4ed8',
+          strokeWidth: 2,
+        },
+      });
+      const sldAst = applyVisualSymbolizersToGeoStyler(
+        { name: 'SLD Style', rules: [] },
+        layerPropertiesDraftSignal.value.visualSymbolizer,
+        'Polygon'
+      );
+      const regeneratedSld = await serializeGeoStylerToText(sldAst, 'sld', '1.0.0');
+      updateLayerPropertiesDraft({ styleContent: regeneratedSld });
+
+      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('StyledLayerDescriptor'));
+      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('#3b82f6'));
+    });
+
+    it('typing or pasting valid raw style text updates visual symbolizer controls', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      // Paste new OpenLayers JSON
+      const newOlJson = JSON.stringify([
+        {
+          filter: ['==', ['geometry-type'], 'Polygon'],
+          style: {
+            'fill-color': '#10b981',
+            'fill-opacity': 0.8,
+            'stroke-color': '#047857',
+            'stroke-width': 4,
+          },
+        },
+      ]);
+      const ast = await parseStyleTextToGeoStyler(newOlJson, 'openlayers');
+      const extracted = extractVisualSymbolizers(ast, 'Polygon');
+      updateLayerPropertiesDraft({
+        styleContent: newOlJson,
+        visualSymbolizer: extracted,
+        styleValidationError: null,
+      });
+
+      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.fillColor, '#10b981');
+      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.fillOpacity, 0.8);
+      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.strokeColor, '#047857');
+      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.strokeWidth, 4);
+
+      // Verify DOM reflects updated visual control values
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert(html.includes('value="#10b981"'), 'Fill color input must reflect pasted color');
+    });
+
+    it('invalid raw style text displays error banner, preserves last valid visual controls, and disables Apply/OK', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      // Set initial valid visual state
+      const initialVisual = {
+        fillColor: '#6366f1',
+        fillOpacity: 1,
+        strokeColor: '#4338ca',
+        strokeWidth: 2,
+      };
+      updateLayerPropertiesDraft({
+        visualSymbolizer: initialVisual,
+        styleContent: JSON.stringify([{ style: { 'fill-color': '#6366f1' } }]),
+        styleValidationError: null,
+      });
+
+      // Now enter invalid JSON text
+      updateLayerPropertiesDraft({
+        styleContent: '{ invalid json style text',
+        styleValidationError: 'JSON parse error at position 2',
+      });
+
+      // Visual symbolizer must be preserved
+      assert.deepStrictEqual(layerPropertiesDraftSignal.value.visualSymbolizer, initialVisual);
+
+      // Error banner must be rendered
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert(html.includes('style-validation-error'), 'Must render error banner');
+      assert(html.includes('JSON parse error at position 2'), 'Must display error message');
+
+      // Visual control inputs must still render initial values without crashing
+      assert(html.includes('value="#6366f1"'), 'Visual control must retain last valid color');
+
+      // Apply and OK must be disabled
+      assert(html.includes('class="layer-properties-btn apply" disabled'), 'Apply must be disabled');
+      assert(html.includes('class="layer-properties-btn ok" disabled'), 'OK must be disabled');
+
+      const applySuccess = await applyLayerPropertiesEdits();
+      assert.strictEqual(applySuccess, false, 'applyLayerPropertiesEdits must fail when invalid style text is present');
     });
   });
 });

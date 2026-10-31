@@ -111,7 +111,11 @@ export const ALLOWED_COMPOUND_PHRASES = Object.freeze([
       'shape-angle',
       'regular-shape',
       'regular shape',
-      'regularShape'
+      'regularShape',
+      'pointShape',
+      'point-shape',
+      'point shape',
+      'marker shape'
     ])
   })
 ]);

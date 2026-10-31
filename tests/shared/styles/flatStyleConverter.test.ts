@@ -21,6 +21,10 @@ import {
   validateStyleContent,
   olFilterToGeoStyler,
   geoStylerFilterToOl,
+  extractVisualSymbolizers,
+  applyVisualSymbolizersToGeoStyler,
+  parseStyleTextToGeoStyler,
+  serializeGeoStylerToText,
 } from '../../../src/shared/styles/flatStyleConverter';
 import type { OlFlatStyleRule } from '../../../src/shared/types';
 import type {
@@ -412,6 +416,171 @@ describe('GeoStyler AST <-> OpenLayers Flat Style Converter (Ticket #122)', () =
       const result = await validateStyleContent(malformedXml, 'sld', '1.0.0');
       assert.strictEqual(result.isValid, false);
       assert.ok(result.error);
+    });
+  });
+
+  describe('Visual Symbolizer Extraction & Injection (Ticket #123)', () => {
+    it('extracts Polygon visual symbolizers from GeoStyler AST with fallbacks', () => {
+      const ast: GeoStylerStyle = {
+        name: 'Polygon Style',
+        rules: [
+          {
+            name: 'Polygon Rule',
+            symbolizers: [
+              {
+                kind: 'Fill',
+                color: '#22c55e',
+                fillOpacity: 0.75,
+                outlineColor: '#15803d',
+                outlineWidth: 2,
+              } as FillSymbolizer,
+            ],
+          },
+        ],
+      };
+
+      const visual = extractVisualSymbolizers(ast, 'Polygon');
+      assert.strictEqual(visual.fillColor, '#22c55e');
+      assert.strictEqual(visual.fillOpacity, 0.75);
+      assert.strictEqual(visual.strokeColor, '#15803d');
+      assert.strictEqual(visual.strokeWidth, 2);
+
+      // Default fallback when empty
+      const emptyVisual = extractVisualSymbolizers({ name: 'Empty', rules: [] }, 'Polygon');
+      assert.strictEqual(emptyVisual.fillColor, '#1e293b');
+      assert.strictEqual(emptyVisual.fillOpacity, 1);
+      assert.strictEqual(emptyVisual.strokeColor, '#0284c7');
+      assert.strictEqual(emptyVisual.strokeWidth, 0);
+    });
+
+    it('extracts LineString visual symbolizers from GeoStyler AST with dash detection', () => {
+      const ast: GeoStylerStyle = {
+        name: 'Line Style',
+        rules: [
+          {
+            name: 'Line Rule',
+            symbolizers: [
+              {
+                kind: 'Line',
+                color: '#ef4444',
+                width: 3,
+                dasharray: [4, 4],
+              } as LineSymbolizer,
+            ],
+          },
+        ],
+      };
+
+      const visual = extractVisualSymbolizers(ast, 'LineString');
+      assert.strictEqual(visual.strokeColor, '#ef4444');
+      assert.strictEqual(visual.strokeWidth, 3);
+      assert.strictEqual(visual.strokeLineDash, true);
+
+      // Default fallback when empty
+      const emptyVisual = extractVisualSymbolizers({ name: 'Empty', rules: [] }, 'LineString');
+      assert.strictEqual(emptyVisual.strokeColor, '#0284c7');
+      assert.strictEqual(emptyVisual.strokeWidth, 1);
+      assert.strictEqual(emptyVisual.strokeLineDash, false);
+    });
+
+    it('extracts Point visual symbolizers from GeoStyler AST', () => {
+      const ast: GeoStylerStyle = {
+        name: 'Point Style',
+        rules: [
+          {
+            name: 'Point Rule',
+            symbolizers: [
+              {
+                kind: 'Mark',
+                wellKnownName: 'star',
+                radius: 8,
+                color: '#eab308',
+                strokeColor: '#ca8a04',
+                strokeWidth: 2,
+              } as MarkSymbolizer,
+            ],
+          },
+        ],
+      };
+
+      const visual = extractVisualSymbolizers(ast, 'Point');
+      assert.strictEqual(visual.pointShape, 'star');
+      assert.strictEqual(visual.pointRadius, 8);
+      assert.strictEqual(visual.fillColor, '#eab308');
+      assert.strictEqual(visual.strokeColor, '#ca8a04');
+      assert.strictEqual(visual.strokeWidth, 2);
+
+      // Default fallback when empty
+      const emptyVisual = extractVisualSymbolizers({ name: 'Empty', rules: [] }, 'Point');
+      assert.strictEqual(emptyVisual.pointShape, 'circle');
+      assert.strictEqual(emptyVisual.pointRadius, 6);
+      assert.strictEqual(emptyVisual.fillColor, '#0369a1');
+    });
+
+    it('applies visual symbolizer mutations to existing and newly constructed GeoStyler AST', () => {
+      // 1. Mutate existing Polygon Fill symbolizer
+      const polyAst: GeoStylerStyle = {
+        name: 'Poly',
+        rules: [
+          {
+            name: 'Rule 1',
+            symbolizers: [
+              { kind: 'Fill', color: '#000000', fillOpacity: 1 } as FillSymbolizer,
+            ],
+          },
+        ],
+      };
+      const updatedPoly = applyVisualSymbolizersToGeoStyler(
+        polyAst,
+        { fillColor: '#3b82f6', fillOpacity: 0.5, strokeColor: '#1d4ed8', strokeWidth: 2 },
+        'Polygon'
+      );
+      const fillSym = updatedPoly.rules[0].symbolizers[0] as FillSymbolizer;
+      assert.strictEqual(fillSym.color, '#3b82f6');
+      assert.strictEqual(fillSym.fillOpacity, 0.5);
+      assert.strictEqual(fillSym.outlineColor, '#1d4ed8');
+      assert.strictEqual(fillSym.outlineWidth, 2);
+
+      // 2. Synthesize new symbolizer on empty AST
+      const emptyAst: GeoStylerStyle = { name: 'Empty', rules: [] };
+      const pointAst = applyVisualSymbolizersToGeoStyler(
+        emptyAst,
+        { pointShape: 'triangle', pointRadius: 10, fillColor: '#ec4899' },
+        'Point'
+      );
+      assert.strictEqual(pointAst.rules.length, 1);
+      const markSym = pointAst.rules[0].symbolizers[0] as MarkSymbolizer;
+      assert.strictEqual(markSym.kind, 'Mark');
+      assert.strictEqual(markSym.wellKnownName, 'triangle');
+      assert.strictEqual(markSym.radius, 10);
+      assert.strictEqual(markSym.color, '#ec4899');
+    });
+
+    it('parses style text to GeoStyler and serializes back across openlayers and sld formats', async () => {
+      const olJson = JSON.stringify([
+        {
+          filter: ['==', ['geometry-type'], 'Polygon'],
+          style: {
+            'fill-color': '#10b981',
+            'stroke-color': '#047857',
+            'stroke-width': 2,
+          },
+        },
+      ]);
+
+      const ast = await parseStyleTextToGeoStyler(olJson, 'openlayers');
+      assert.ok(ast.rules.length > 0);
+
+      const serializedOl = await serializeGeoStylerToText(ast, 'openlayers');
+      const parsedOl = JSON.parse(serializedOl);
+      assert.strictEqual(parsedOl[0].style['fill-color'], '#10b981');
+
+      const sldXml = await serializeGeoStylerToText(ast, 'sld', '1.0.0');
+      assert.ok(sldXml.includes('StyledLayerDescriptor'));
+      assert.ok(sldXml.includes('#10b981'));
+
+      const sldAst = await parseStyleTextToGeoStyler(sldXml, 'sld', '1.0.0');
+      assert.ok(sldAst.rules.length > 0);
     });
   });
 });

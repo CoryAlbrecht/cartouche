@@ -18,7 +18,12 @@ import type {
   ProjectStyleFormat,
   SldStyleVersion,
   ProjectLayerStyleItem,
+  LayerVisualSymbolizer,
 } from "@shared/types";
+import {
+  parseStyleTextToGeoStyler,
+  extractVisualSymbolizers,
+} from "../../shared/styles/flatStyleConverter";
 import {
   projectTreeSignal,
   isProjectDirtySignal,
@@ -49,6 +54,7 @@ export type LayerPropertiesTabId =
  * @property {SldStyleVersion} sldVersion - Active draft SLD specification version.
  * @property {string} styleContent - Raw style markup or JSON text content.
  * @property {string | null} styleValidationError - Validation error message for style content, or null if valid.
+ * @property {LayerVisualSymbolizer} visualSymbolizer - Active draft visual symbolizer control parameters.
  * @property {number} opacity - Draft layer opacity between 0.0 and 1.0.
  */
 export interface LayerPropertiesDraft {
@@ -61,6 +67,7 @@ export interface LayerPropertiesDraft {
   sldVersion: SldStyleVersion;
   styleContent: string;
   styleValidationError: string | null;
+  visualSymbolizer: LayerVisualSymbolizer;
   opacity: number;
 }
 
@@ -164,6 +171,7 @@ export const layerPropertiesDraftSignal: Signal<LayerPropertiesDraft> =
     sldVersion: "1.0.0",
     styleContent: "",
     styleValidationError: null,
+    visualSymbolizer: {},
     opacity: 1,
   });
 
@@ -260,6 +268,28 @@ export async function openLayerPropertiesDialog(
   const initialSldVersion = resolvedStyleItem.version || "1.0.0";
   const initialContent = resolvedStyleItem.content || "";
 
+  let initialVisual: LayerVisualSymbolizer = {};
+  if (initialContent) {
+    try {
+      const ast = await parseStyleTextToGeoStyler(
+        initialContent,
+        initialFormat,
+        initialSldVersion
+      );
+      initialVisual = extractVisualSymbolizers(ast, currentLayer?.geometryKind);
+    } catch {
+      initialVisual = extractVisualSymbolizers(
+        { name: "Default", rules: [] },
+        currentLayer?.geometryKind
+      );
+    }
+  } else {
+    initialVisual = extractVisualSymbolizers(
+      { name: "Default", rules: [] },
+      currentLayer?.geometryKind
+    );
+  }
+
   layerPropertiesDraftSignal.value = {
     layerName: initialName,
     layerId: layerId,
@@ -270,6 +300,7 @@ export async function openLayerPropertiesDialog(
     sldVersion: initialSldVersion,
     styleContent: initialContent,
     styleValidationError: null,
+    visualSymbolizer: initialVisual,
     opacity: initialOpacity,
   };
 
@@ -277,6 +308,32 @@ export async function openLayerPropertiesDialog(
     if (typeof window !== "undefined" && window.electronAPI?.getLayerInfo) {
       const info = await window.electronAPI.getLayerInfo(layerId);
       layerDetailedInfoSignal.value = info;
+      if (
+        info?.geometryKind &&
+        (!currentLayer?.geometryKind || currentLayer.geometryKind === "Unknown")
+      ) {
+        try {
+          const ast =
+            initialContent ?
+              await parseStyleTextToGeoStyler(
+                initialContent,
+                initialFormat,
+                initialSldVersion
+              )
+            : { name: "Default", rules: [] };
+          const updatedVisual = extractVisualSymbolizers(
+            ast,
+            info.geometryKind
+          );
+          updateLayerPropertiesDraft({ visualSymbolizer: updatedVisual });
+        } catch {
+          const updatedVisual = extractVisualSymbolizers(
+            { name: "Default", rules: [] },
+            info.geometryKind
+          );
+          updateLayerPropertiesDraft({ visualSymbolizer: updatedVisual });
+        }
+      }
     } else {
       // Fallback mock information if window.electronAPI is unavailable (e.g. test environment)
       layerDetailedInfoSignal.value = {
@@ -324,6 +381,7 @@ export function closeLayerPropertiesDialog(): void {
     sldVersion: "1.0.0",
     styleContent: "",
     styleValidationError: null,
+    visualSymbolizer: {},
     opacity: 1,
   };
 }
