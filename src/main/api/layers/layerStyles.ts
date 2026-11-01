@@ -4,7 +4,7 @@
  * @description Main Process API functions for reading, writing, and assigning vector layer styles (OpenLayers Flat Style and OGC SLD 1.0.0/1.1.0), promoting shared styles across multi-layer selections, and cleaning up orphaned shared styles in ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -38,7 +38,7 @@ import {
  * @description Interface for invoking the native open style file dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @property {(options: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>} showOpenDialog - Function invoking system open dialog.
  */
@@ -53,7 +53,7 @@ export interface OpenStyleDialogInvoker {
  * @description Interface for invoking the native save style file dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @property {(options: Electron.SaveDialogOptions) => Promise<{ canceled: boolean; filePath?: string }>} showSaveDialog - Function invoking system save dialog.
  */
@@ -69,7 +69,7 @@ let sharedStyleCounter = 0;
  * @description Recursively collects all leaf Layer instances from a LayerTreeNode hierarchy.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {LayerTreeNode} node - Tree node to traverse.
  * @returns {Layer[]} Flattened array of leaf Layer instances.
@@ -91,7 +91,7 @@ function collectLeafLayers(node: LayerTreeNode): Layer[] {
  * Also synchronizes ProjectModel.layers with the current serialized layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -124,7 +124,7 @@ export function cleanupOrphanedSharedStyles(): void {
  * @description Resolves the concrete style content, format, and optional SLD version from a ProjectLayerStyleItem, expanding `#id` shared style references if needed.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {ProjectLayerStyleItem} style - Input style item.
  * @returns {{ content: string; format: ProjectStyleFormat; version?: SldStyleVersion }} Resolved concrete style fields.
@@ -139,7 +139,10 @@ function resolveConcreteStyle(style: ProjectLayerStyleItem): {
     const targetId = style.href.slice(1);
     const matched = project.styles.find((s) => s.id === targetId);
     if (matched) {
-      const format: ProjectStyleFormat = matched.format === 'sld' ? 'sld' : 'openlayers';
+      const format: ProjectStyleFormat =
+        matched.format === 'sld' ? 'sld'
+        : matched.format === 'cartouche' ? 'cartouche'
+        : 'openlayers';
       const version: SldStyleVersion | undefined =
         matched.version === '1.0.0' || matched.version === '1.1.0'
           ? matched.version
@@ -154,7 +157,10 @@ function resolveConcreteStyle(style: ProjectLayerStyleItem): {
     }
   }
 
-  const format: ProjectStyleFormat = style.format === 'sld' ? 'sld' : 'openlayers';
+  const format: ProjectStyleFormat =
+    style.format === 'sld' ? 'sld'
+    : style.format === 'cartouche' ? 'cartouche'
+    : 'openlayers';
   const version: SldStyleVersion | undefined =
     style.version === '1.0.0' || style.version === '1.1.0'
       ? style.version
@@ -175,7 +181,7 @@ function resolveConcreteStyle(style: ProjectLayerStyleItem): {
  * Cleans up orphaned shared styles, marks Project Dirty State as true, and broadcasts the updated layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string[]} layerIds - Target layer identifiers.
  * @param {ProjectLayerStyleItem | undefined} style - Style container to assign, or undefined to clear.
@@ -261,7 +267,7 @@ export async function setLayerStyle(
  * @description Parses and validates raw style file text from disk into a ProjectLayerStyleItem.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} rawContent - Raw file text read from disk.
  * @param {string} filePath - Source file path used for extension hinting.
@@ -324,7 +330,7 @@ export function parseStyleFileContent(
  * @description Loads a layer style file (`.sld`, `.se`, or `.json`) from disk, presenting a native open file dialog filtered to `category: 'style'` when `filePath` is omitted.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional explicit file path to load.
  * @param {OpenStyleDialogInvoker} [dialogInvoker=dialog] - Optional dialog invoker override for testing.
@@ -362,7 +368,7 @@ export async function loadStyleFile(
  * @description Saves a ProjectLayerStyleItem to disk, presenting a native save file dialog filtered to `category: 'style'` when `defaultPath` is omitted, is a relative filename suggestion, or when `dialogInvoker` is explicitly supplied.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {ProjectLayerStyleItem} style - Style item to write to disk.
  * @param {string} [defaultPath] - Optional target file path or suggested filename.

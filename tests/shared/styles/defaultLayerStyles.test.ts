@@ -4,7 +4,7 @@
  * @description Unit tests verifying OpenLayers Flat Style definitions, contrast-filtered color palettes, and random multi-geometry style generators.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 
@@ -15,6 +15,9 @@ import {
   getDefaultLayerStyle,
   createDefaultVectorLayerStyle,
   generateDefaultVectorStyleJson,
+  createDefaultCartoucheLayerStyle,
+  createDefaultCartoucheLayerStyleJson,
+  isCartoucheLayerStyle,
   resolveLayerStyle,
   isProjectLayerStyleWrapper,
 } from "../../../src/shared/styles/defaultLayerStyles";
@@ -244,6 +247,107 @@ describe("defaultLayerStyles", () => {
     assert.equal(parsed[2].style["circle-fill-color"], "forestgreen");
   });
 
+  describe("createDefaultCartoucheLayerStyle", () => {
+    it("generates valid SimpleCartoucheStyle for Polygon with fill and line components", () => {
+      const style = createDefaultCartoucheLayerStyle("Polygon", "#ff0000");
+      assert.equal(style.format, "simple");
+      assert.equal(style.version, 1);
+      assert.equal(style.components.length, 2);
+      assert.deepEqual(style.components[0], {
+        id: "fill-1",
+        type: "simple-fill",
+        enabled: true,
+        color: "#ff0000",
+      });
+      assert.deepEqual(style.components[1], {
+        id: "line-1",
+        type: "simple-line",
+        enabled: true,
+        color: "#000000",
+        width: 1,
+      });
+    });
+
+    it("generates valid SimpleCartoucheStyle for LineString with line component", () => {
+      const style = createDefaultCartoucheLayerStyle("LineString", "#00ff00");
+      assert.equal(style.format, "simple");
+      assert.equal(style.version, 1);
+      assert.equal(style.components.length, 1);
+      assert.deepEqual(style.components[0], {
+        id: "line-1",
+        type: "simple-line",
+        enabled: true,
+        color: "#00ff00",
+        width: 2,
+      });
+    });
+
+    it("generates valid SimpleCartoucheStyle for Point with circle marker component", () => {
+      const style = createDefaultCartoucheLayerStyle("Point", "#0000ff");
+      assert.equal(style.format, "simple");
+      assert.equal(style.version, 1);
+      assert.equal(style.components.length, 1);
+      assert.deepEqual(style.components[0], {
+        id: "marker-1",
+        type: "simple-marker",
+        enabled: true,
+        shape: "circle",
+        radius: 6,
+        fillColor: "#0000ff",
+        strokeColor: "#000000",
+        strokeWidth: 1,
+      });
+    });
+
+    it("generates valid SimpleCartoucheStyle for Unknown with fill, line, and marker components", () => {
+      const style = createDefaultCartoucheLayerStyle("Unknown", "#purple");
+      assert.equal(style.format, "simple");
+      assert.equal(style.version, 1);
+      assert.equal(style.components.length, 3);
+      assert.equal(style.components[0].type, "simple-fill");
+      assert.equal(style.components[1].type, "simple-line");
+      assert.equal(style.components[2].type, "simple-marker");
+    });
+
+    it("generates valid JSON string via createDefaultCartoucheLayerStyleJson", () => {
+      const jsonStr = createDefaultCartoucheLayerStyleJson("Polygon", "#123456");
+      const parsed = JSON.parse(jsonStr);
+      assert.equal(parsed.format, "simple");
+      assert.equal(parsed.version, 1);
+      assert.equal(parsed.components.length, 2);
+    });
+  });
+
+  describe("isCartoucheLayerStyle", () => {
+    it("returns true for valid CartoucheLayerStyle objects", () => {
+      assert.equal(
+        isCartoucheLayerStyle({
+          format: "simple",
+          version: 1,
+          components: [],
+        }),
+        true
+      );
+      assert.equal(
+        isCartoucheLayerStyle({
+          format: "categorized",
+          version: 1,
+        }),
+        true
+      );
+    });
+
+    it("returns false for non-conforming objects or primitives", () => {
+      assert.equal(isCartoucheLayerStyle(null), false);
+      assert.equal(isCartoucheLayerStyle(undefined), false);
+      assert.equal(isCartoucheLayerStyle("string"), false);
+      assert.equal(isCartoucheLayerStyle([]), false);
+      assert.equal(isCartoucheLayerStyle({ format: "simple", version: 2 }), false);
+      assert.equal(isCartoucheLayerStyle({ format: "other", version: 1 }), false);
+      assert.equal(isCartoucheLayerStyle({ format: "simple", version: 1, components: "not-array" }), false);
+    });
+  });
+
   describe("resolveLayerStyle", () => {
     it("returns raw rule array if already provided as an array", () => {
       const rules = [
@@ -306,6 +410,50 @@ describe("defaultLayerStyles", () => {
       };
       const resolved2 = resolveLayerStyle(wrapperWithoutHash, sharedStyles);
       assert.deepEqual(resolved2, sharedRules);
+    });
+
+    it("resolves cartouche format inline style wrapper and shared style href", () => {
+      const cartoucheStyle = {
+        format: "simple",
+        version: 1,
+        components: [
+          { id: "fill-1", type: "simple-fill", enabled: true, color: "#123456" },
+        ],
+      };
+      const jsonStr = JSON.stringify(cartoucheStyle);
+
+      // Inline wrapper
+      const resolvedInline = resolveLayerStyle({
+        content: jsonStr,
+        format: "cartouche",
+      });
+      assert.deepEqual(resolvedInline, {
+        content: jsonStr,
+        format: "cartouche",
+      });
+
+      // Shared style href
+      const sharedStyles = [
+        {
+          id: "shared-cartouche",
+          content: jsonStr,
+          format: "cartouche" as const,
+        },
+      ];
+      const resolvedShared = resolveLayerStyle(
+        { href: "#shared-cartouche", format: "cartouche" },
+        sharedStyles
+      );
+      assert.deepEqual(resolvedShared, {
+        content: jsonStr,
+        format: "cartouche",
+      });
+
+      // Raw object conforming to CartoucheLayerStyle
+      const resolvedObj = resolveLayerStyle(cartoucheStyle);
+      assert.ok(!Array.isArray(resolvedObj));
+      assert.equal(resolvedObj.format, "cartouche");
+      assert.equal(JSON.parse(String(resolvedObj.content)).version, 1);
     });
 
     it("returns raw Flat Style dictionary when containing symbolizer properties", () => {
