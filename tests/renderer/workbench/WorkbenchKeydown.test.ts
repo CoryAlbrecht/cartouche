@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-28
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  */
@@ -54,6 +54,7 @@ const { handleWorkbenchKeyDown } = jiti('../../../src/renderer/workbench/workben
  */
 function createMockKeyEvent(options: {
   key: string;
+  code?: string;
   ctrlKey?: boolean;
   altKey?: boolean;
   shiftKey?: boolean;
@@ -65,6 +66,7 @@ function createMockKeyEvent(options: {
   let stopped = false;
   return {
     key: options.key,
+    code: options.code || '',
     ctrlKey: options.ctrlKey || false,
     altKey: options.altKey || false,
     shiftKey: options.shiftKey || false,
@@ -83,6 +85,32 @@ function createMockKeyEvent(options: {
     },
     target: options.target || { tagName: 'DIV' }
   };
+}
+
+/**
+ * @function setupOpenProjectMock
+ * @description Helper configuring window.electronAPI.openFiles mock and registering open_project action.
+ * @param {() => void} [onOpenFiles] - Callback invoked when openFiles is called.
+ * @returns {void}
+ */
+function setupOpenProjectMock(onOpenFiles?: () => void): void {
+  (globalThis as any).window = {
+    ...(globalThis as any).window,
+    electronAPI: {
+      openFiles: async () => {
+        if (onOpenFiles) onOpenFiles();
+        return [];
+      }
+    }
+  };
+
+  registeredActionsSignal.value = [
+    {
+      name: 'open_project',
+      description: 'Opens an existing Cartouche project file',
+      keyCombination: { key: 'o', ctrl: true, alt: true }
+    }
+  ];
 }
 
 describe('Workbench Global Keyboard Listener', () => {
@@ -243,5 +271,74 @@ describe('Workbench Global Keyboard Listener', () => {
     event = createMockKeyEvent({ key: 'p', ctrlKey: true });
     handleWorkbenchKeyDown(event);
     assert.equal(isProjectPropertiesOpenSignal.value, true, 'project_properties must open dialog when project is open');
+  });
+
+  it('dispatches open_project action when Ctrl+Alt+O is pressed with standard key', () => {
+    let openFilesCalled = false;
+    setupOpenProjectMock(() => {
+      openFilesCalled = true;
+    });
+
+    const event = createMockKeyEvent({
+      key: 'o',
+      code: 'KeyO',
+      ctrlKey: true,
+      altKey: true
+    });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(event.propagationStopped, true);
+    assert.equal(openFilesCalled, true, 'openFiles should have been called via openProjectAction');
+  });
+
+  it('dispatches open_project action when Ctrl+Alt+O is pressed with layout-modified key but matching physical code', () => {
+    let openFilesCalled = false;
+    setupOpenProjectMock(() => {
+      openFilesCalled = true;
+    });
+
+    // Simulating keyboard layout or AltGr modifier producing 'ó' instead of 'o'
+    const event = createMockKeyEvent({
+      key: 'ó',
+      code: 'KeyO',
+      ctrlKey: true,
+      altKey: true
+    });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(event.propagationStopped, true);
+    assert.equal(openFilesCalled, true, 'openFiles should have been called via physical key code KeyO');
+  });
+
+  it('bypasses open_project action when modifier combinations do not match', () => {
+    let openFilesCalled = false;
+    setupOpenProjectMock(() => {
+      openFilesCalled = true;
+    });
+
+    // Missing Alt (only Ctrl+O)
+    const eventMissingAlt = createMockKeyEvent({
+      key: 'o',
+      code: 'KeyO',
+      ctrlKey: true,
+      altKey: false
+    });
+    handleWorkbenchKeyDown(eventMissingAlt);
+    assert.equal(eventMissingAlt.defaultPrevented, false);
+    assert.equal(openFilesCalled, false);
+
+    // Extra Shift (Ctrl+Alt+Shift+O)
+    const eventExtraShift = createMockKeyEvent({
+      key: 'o',
+      code: 'KeyO',
+      ctrlKey: true,
+      altKey: true,
+      shiftKey: true
+    });
+    handleWorkbenchKeyDown(eventExtraShift);
+    assert.equal(eventExtraShift.defaultPrevented, false);
+    assert.equal(openFilesCalled, false);
   });
 });

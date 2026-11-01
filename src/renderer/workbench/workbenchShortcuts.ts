@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-28
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link cancelAction}
@@ -56,6 +56,41 @@ import { openPreferencesDialog } from '../state/preferencesSignals';
 import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
 import { registeredActionsSignal } from '../state/actionSignals';
 import { cancelTopDialog } from '../state/dialogSignals';
+import type { KeyCombination } from '@shared/types';
+
+/**
+ * @description Compares a registered key combination against native KeyboardEvent logical and physical key values.
+ * Evaluates physical key code (e.code) as fallback for single letters and digits to support international layouts and AltGr combinations.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {KeyCombination} combination - Action key combination definition.
+ * @param {string} key - Normalized lowercase logical key string from KeyboardEvent.key.
+ * @param {string} code - Physical key code from KeyboardEvent.code (e.g. 'KeyO', 'Digit1').
+ * @returns {boolean} True if the logical key or physical key matches the combination trigger key.
+ */
+export function matchesKeyCombination(
+  combination: KeyCombination,
+  key: string,
+  code: string
+): boolean {
+  const targetKeyLower = combination.key.toLowerCase();
+  if (targetKeyLower === key) {
+    return true;
+  }
+  if (combination.key.length === 1 && /^[a-z]$/i.test(combination.key)) {
+    if (code.toUpperCase() === `KEY${combination.key.toUpperCase()}`) {
+      return true;
+    }
+  }
+  if (combination.key.length === 1 && /^[0-9]$/.test(combination.key)) {
+    if (code === `Digit${combination.key}`) {
+      return true;
+    }
+  }
+  return code.toLowerCase() === targetKeyLower;
+}
 
 /**
  * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
@@ -63,7 +98,7 @@ import { cancelTopDialog } from '../state/dialogSignals';
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-28
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
@@ -92,28 +127,29 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
     }
   }
 
-  const key = e.key.toLowerCase();
+  const key = (e.key || '').toLowerCase();
+  const code = e.code || '';
   const ctrl = e.ctrlKey;
   const alt = e.altKey;
   const shift = e.shiftKey;
   const meta = e.metaKey;
 
   const shortcuts = registeredActionsSignal.value;
-  for (const s of shortcuts) {
-    const c = s.keyCombination;
+  for (const action of shortcuts) {
+    const combination = action.keyCombination;
     if (
-      c
-      && c.key.toLowerCase() === key
-      && !!c.ctrl === ctrl
-      && !!c.alt === alt
-      && !!c.shift === shift
-      && !!c.meta === meta
+      combination
+      && matchesKeyCombination(combination, key, code)
+      && !!combination.ctrl === ctrl
+      && !!combination.alt === alt
+      && !!combination.shift === shift
+      && !!combination.meta === meta
     ) {
       e.preventDefault();
       e.stopPropagation();
 
       // Trigger corresponding Renderer signal updates or execute Main action
-      switch (s.name) {
+      switch (action.name) {
         case 'new_project':
           newProjectAction();
           break;
@@ -235,7 +271,7 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
           cancelAction();
           break;
         default:
-          window.electronAPI?.executeAction(s.name);
+          window.electronAPI?.executeAction(action.name);
           break;
       }
       break;
