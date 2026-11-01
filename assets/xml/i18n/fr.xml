@@ -182,4 +182,11 @@
     <string name="layer_properties_shape_star">Étoile</string>
     <string name="layer_properties_shape_cross">Croix</string>
     <string name="layer_properties_shape_x">X</string>
+    <string name="layer_properties_format_simple">Simple</string>
+    <string name="layer_properties_format_sld_100">OGC SLD 1.0.0</string>
+    <string name="layer_properties_format_sld_110">OGC SLD 1.1.0</string>
+    <string name="layer_properties_styling_preview">Aperçu</string>
+    <string name="layer_properties_styling_preview_legend">Aperçu du style</string>
+    <string name="layer_properties_styling_simple_mode_title">Symbologie simple</string>
+    <string name="layer_properties_styling_simple_mode_desc">Gérer la pile des composants de style visuel et les options du générateur de symboles.</string>
 </ci18n:localization>

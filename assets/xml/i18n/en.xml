@@ -208,4 +208,11 @@
     <string name="layer_properties_shape_star">Star</string>
     <string name="layer_properties_shape_cross">Cross</string>
     <string name="layer_properties_shape_x">X</string>
+    <string name="layer_properties_format_simple">Simple</string>
+    <string name="layer_properties_format_sld_100">OGC SLD 1.0.0</string>
+    <string name="layer_properties_format_sld_110">OGC SLD 1.1.0</string>
+    <string name="layer_properties_styling_preview">Preview</string>
+    <string name="layer_properties_styling_preview_legend">Style Preview</string>
+    <string name="layer_properties_styling_simple_mode_title">Simple Symbology</string>
+    <string name="layer_properties_styling_simple_mode_desc">Manage visual styling components stack and symbolizer options.</string>
 </ci18n:localization>

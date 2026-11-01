@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link activeLayerPropertiesIdSignal}
@@ -35,6 +35,7 @@ import {
   closeLayerPropertiesDialog,
   cancelLayerPropertiesEdits,
   updateLayerPropertiesDraft,
+  switchLayerPropertiesStyleFormat,
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
   POPULAR_CRS_OPTIONS,
@@ -43,45 +44,16 @@ import {
 import {
   convertStyleFormat,
   validateStyleContent,
-  parseStyleTextToGeoStyler,
-  serializeGeoStylerToText,
-  extractVisualSymbolizers,
-  applyVisualSymbolizersToGeoStyler,
 } from "@shared/styles/flatStyleConverter";
-import { generateDefaultVectorStyleJson } from "@shared/styles/defaultLayerStyles";
-import type {
-  ProjectStyleFormat,
-  SldStyleVersion,
-  LayerVisualSymbolizer,
-} from "@shared/types";
+import {
+  generateDefaultVectorStyleJson,
+  createDefaultCartoucheLayerStyleJson,
+} from "@shared/styles/defaultLayerStyles";
 import { t } from "@renderer/state/i18nSignals";
 import { Dialog } from "./Dialog";
+import { StylePreviewCanvas } from "./StylePreviewCanvas";
 
-/**
- * Normalizes a hex color string for HTML5 color inputs (#rrggbb).
- *
- * @function formatHexColor
- * @description Ensures an input color string matches the 7-character hexadecimal format (#rrggbb) required by HTML5 color inputs.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-31
- * @updated 2026-10-31
- * @since 0.1.0-dev
- * @param {string} [color] - Input color candidate.
- * @param {string} [fallback="#000000"] - Fallback hex color if input is missing or malformed.
- * @returns {string} Normalized 7-character hex color.
- */
-function formatHexColor(color?: string, fallback = "#000000"): string {
-  if (!color || typeof color !== "string") return fallback;
-  const trimmed = color.trim();
-  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed;
-  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
-    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`;
-  }
-  if (/^#[0-9a-fA-F]{8}$/.test(trimmed)) {
-    return trimmed.slice(0, 7);
-  }
-  return fallback;
-}
+
 
 /**
  * @typedef {Object} StyleTextHistoryEntry
@@ -469,7 +441,7 @@ const SECONDARY_BUTTON_STYLE: React.CSSProperties = {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -509,30 +481,30 @@ export const LayerPropertiesDialog: React.FC = () => {
         draft.sldVersion
       );
       if (seq !== validationSeqRef.current) return;
+      const currentKey =
+        draft.styleFormat === "cartouche" ?
+          "cartouche"
+        : draft.styleFormat === "sld" ?
+          draft.sldVersion === "1.1.0" ?
+            "sld-1.1.0"
+          : "sld-1.0.0"
+        : "openlayers";
+
       if (validation.isValid) {
-        try {
-          const ast = await parseStyleTextToGeoStyler(
-            contentToValidate,
-            draft.styleFormat,
-            draft.sldVersion
-          );
-          const extracted = extractVisualSymbolizers(ast, info?.geometryKind);
-          updateLayerPropertiesDraft({
-            styleValidationError: null,
-            visualSymbolizer: extracted,
-          });
-        } catch (err: any) {
-          updateLayerPropertiesDraft({
-            styleValidationError: err?.message || String(err),
-          });
-        }
+        updateLayerPropertiesDraft({
+          styleValidationError: null,
+          formatCache: {
+            ...(draft.formatCache || {}),
+            [currentKey]: contentToValidate,
+          },
+        });
       } else {
         updateLayerPropertiesDraft({
           styleValidationError: validation.error ?? "Invalid style",
         });
       }
     },
-    [draft.styleFormat, draft.sldVersion, info?.geometryKind]
+    [draft.styleFormat, draft.sldVersion, draft.formatCache]
   );
 
   const {
@@ -561,125 +533,24 @@ export const LayerPropertiesDialog: React.FC = () => {
 
 
 
-  const handleVisualChange = useCallback(
-    async (updates: Partial<LayerVisualSymbolizer>) => {
-      const nextVisual: LayerVisualSymbolizer = {
-        ...draft.visualSymbolizer,
-        ...updates,
-      };
-      try {
-        let ast;
-        try {
-          ast = await parseStyleTextToGeoStyler(
-            draft.styleContent,
-            draft.styleFormat,
-            draft.sldVersion
-          );
-        } catch {
-          ast = { name: "Cartouche Style", rules: [] };
-        }
-        const updatedAst = applyVisualSymbolizersToGeoStyler(
-          ast,
-          nextVisual,
-          info?.geometryKind
-        );
-        const regeneratedText = await serializeGeoStylerToText(
-          updatedAst,
-          draft.styleFormat,
-          draft.sldVersion
-        );
-        updateLayerPropertiesDraft({
-          visualSymbolizer: nextVisual,
-          styleContent: regeneratedText,
-          styleValidationError: null,
-        });
-        resetRawStyleHistory(regeneratedText);
-      } catch (err: any) {
-        updateLayerPropertiesDraft({
-          visualSymbolizer: nextVisual,
-          styleValidationError: err?.message || String(err),
-        });
-      }
-    },
-    [
-      draft.visualSymbolizer,
-      draft.styleContent,
-      draft.styleFormat,
-      draft.sldVersion,
-      info?.geometryKind,
-    ]
-  );
 
-  const handleFormatChange = useCallback(
-    async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newFormat = e.target.value as ProjectStyleFormat;
-      if (newFormat === draft.styleFormat) return;
-      try {
-        const converted = await convertStyleFormat(draft.styleContent, {
-          fromFormat: draft.styleFormat,
-          toFormat: newFormat,
-          fromVersion: draft.sldVersion,
-          toVersion: draft.sldVersion,
-        });
-        let extracted = draft.visualSymbolizer;
-        try {
-          const ast = await parseStyleTextToGeoStyler(
-            converted,
-            newFormat,
-            draft.sldVersion
-          );
-          extracted = extractVisualSymbolizers(ast, info?.geometryKind);
-        } catch {
-          // retain previous visual symbolizer
-        }
-        updateLayerPropertiesDraft({
-          styleFormat: newFormat,
-          styleContent: converted,
-          styleValidationError: null,
-          visualSymbolizer: extracted,
-        });
-        resetRawStyleHistory(converted);
-      } catch (err: any) {
-        updateLayerPropertiesDraft({
-          styleFormat: newFormat,
-          styleValidationError: err?.message || String(err),
-        });
-      }
-    },
-    [
-      draft.styleFormat,
-      draft.sldVersion,
-      draft.styleContent,
-      draft.visualSymbolizer,
-      info?.geometryKind,
-    ]
-  );
 
-  const handleVersionChange = useCallback(
+  const selectedFormatOption =
+    draft.styleFormat === "cartouche" ?
+      "cartouche"
+    : draft.styleFormat === "sld" ?
+      draft.sldVersion === "1.1.0" ?
+        "sld-1.1.0"
+      : "sld-1.0.0"
+    : "openlayers";
+
+  const handleFormatOptionChange = useCallback(
     async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newVersion = e.target.value as SldStyleVersion;
-      if (newVersion === draft.sldVersion) return;
-      try {
-        const converted = await convertStyleFormat(draft.styleContent, {
-          fromFormat: "sld",
-          toFormat: "sld",
-          fromVersion: draft.sldVersion,
-          toVersion: newVersion,
-        });
-        updateLayerPropertiesDraft({
-          sldVersion: newVersion,
-          styleContent: converted,
-          styleValidationError: null,
-        });
-        resetRawStyleHistory(converted);
-      } catch (err: any) {
-        updateLayerPropertiesDraft({
-          sldVersion: newVersion,
-          styleValidationError: err?.message || String(err),
-        });
-      }
+      const targetOption = e.target.value;
+      await switchLayerPropertiesStyleFormat(targetOption, info?.geometryKind);
+      resetRawStyleHistory(layerPropertiesDraftSignal.value.styleContent);
     },
-    [draft.sldVersion, draft.styleContent]
+    [info?.geometryKind, resetRawStyleHistory]
   );
 
 
@@ -696,26 +567,25 @@ export const LayerPropertiesDialog: React.FC = () => {
             loadedFormat,
             loadedVersion
           );
-          let extracted = draft.visualSymbolizer;
-          if (validation.isValid) {
-            try {
-              const ast = await parseStyleTextToGeoStyler(
-                loaded.content,
-                loadedFormat,
-                loadedVersion
-              );
-              extracted = extractVisualSymbolizers(ast, info?.geometryKind);
-            } catch {
-              // preserve existing
-            }
-          }
+          const formatKey =
+            loadedFormat === "cartouche" ?
+              "cartouche"
+            : loadedFormat === "sld" ?
+              loadedVersion === "1.1.0" ?
+                "sld-1.1.0"
+              : "sld-1.0.0"
+            : "openlayers";
+
           updateLayerPropertiesDraft({
             styleFormat: loadedFormat,
             sldVersion: loadedVersion,
             styleContent: loaded.content,
             styleValidationError:
-              validation.isValid ? null : (validation.error ?? "Invalid style"),
-            visualSymbolizer: extracted,
+              validation.isValid ? null : validation.error ?? "Invalid style",
+            formatCache: {
+              ...(draft.formatCache || {}),
+              [formatKey]: loaded.content,
+            },
           });
           resetRawStyleHistory(loaded.content);
         }
@@ -725,7 +595,7 @@ export const LayerPropertiesDialog: React.FC = () => {
         });
       }
     }
-  }, [draft.visualSymbolizer, info?.geometryKind]);
+  }, [draft.formatCache, resetRawStyleHistory]);
 
   const handleExportStyle = useCallback(async () => {
     if (window.electronAPI?.saveStyleFile) {
@@ -743,9 +613,13 @@ export const LayerPropertiesDialog: React.FC = () => {
   }, [draft.styleFormat, draft.sldVersion, draft.styleContent, draft.layerId]);
 
   const handleResetStyle = useCallback(async () => {
-    const defaultJson = generateDefaultVectorStyleJson();
-    let contentToSet = defaultJson;
-    if (draft.styleFormat === "sld") {
+    let contentToSet = "";
+    if (draft.styleFormat === "cartouche") {
+      contentToSet = createDefaultCartoucheLayerStyleJson(info?.geometryKind);
+    } else if (draft.styleFormat === "openlayers") {
+      contentToSet = generateDefaultVectorStyleJson();
+    } else {
+      const defaultJson = generateDefaultVectorStyleJson();
       try {
         contentToSet = await convertStyleFormat(defaultJson, {
           fromFormat: "openlayers",
@@ -760,37 +634,37 @@ export const LayerPropertiesDialog: React.FC = () => {
         return;
       }
     }
-    try {
-      const ast = await parseStyleTextToGeoStyler(
-        contentToSet,
-        draft.styleFormat,
-        draft.sldVersion
-      );
-      const extracted = extractVisualSymbolizers(ast, info?.geometryKind);
-      updateLayerPropertiesDraft({
-        styleContent: contentToSet,
-        styleValidationError: null,
-        visualSymbolizer: extracted,
-      });
-      resetRawStyleHistory(contentToSet);
-    } catch {
-      updateLayerPropertiesDraft({
-        styleContent: contentToSet,
-        styleValidationError: null,
-      });
-      resetRawStyleHistory(contentToSet);
-    }
-  }, [draft.styleFormat, draft.sldVersion, info?.geometryKind]);
+    const currentKey =
+      draft.styleFormat === "cartouche" ?
+        "cartouche"
+      : draft.styleFormat === "sld" ?
+        draft.sldVersion === "1.1.0" ?
+          "sld-1.1.0"
+        : "sld-1.0.0"
+      : "openlayers";
+
+    updateLayerPropertiesDraft({
+      styleContent: contentToSet,
+      styleValidationError: null,
+      formatCache: {
+        ...(draft.formatCache || {}),
+        [currentKey]: contentToSet,
+      },
+    });
+    resetRawStyleHistory(contentToSet);
+  }, [
+    draft.styleFormat,
+    draft.sldVersion,
+    draft.formatCache,
+    info?.geometryKind,
+    resetRawStyleHistory,
+  ]);
 
   if (!activeId) {
     return null;
   }
 
-  const visual = draft.visualSymbolizer || {};
   const geometryKind = info?.geometryKind || "Unknown";
-  const isLine = geometryKind === "LineString";
-  const isPoint = geometryKind === "Point";
-  const isPolygon = !isLine && !isPoint;
 
   const dialogTitle = `${t("layer_properties_dialog_title")} — ${info?.name || draft.layerName || activeId}`;
 
@@ -1479,12 +1353,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                           fontSize: "0.875rem",
                           color: "#334155",
                         }}>
-                        {t("layer_properties_styling_format")}
+                        {t("layer_properties_styling_format")}:
                       </label>
                       <select
                         id='layer-prop-styling-format'
-                        value={draft.styleFormat}
-                        onChange={handleFormatChange}
+                        value={selectedFormatOption}
+                        onChange={handleFormatOptionChange}
                         style={{
                           padding: "0.3125rem 0.625rem",
                           borderRadius: "0.25rem",
@@ -1492,48 +1366,20 @@ export const LayerPropertiesDialog: React.FC = () => {
                           fontSize: "0.875rem",
                           backgroundColor: "#ffffff",
                         }}>
+                        <option value='cartouche'>
+                          {t("layer_properties_format_simple")}
+                        </option>
                         <option value='openlayers'>
                           {t("layer_properties_format_openlayers")}
                         </option>
-                        <option value='sld'>
-                          {t("layer_properties_format_sld")}
+                        <option value='sld-1.0.0'>
+                          {t("layer_properties_format_sld_100")}
+                        </option>
+                        <option value='sld-1.1.0'>
+                          {t("layer_properties_format_sld_110")}
                         </option>
                       </select>
                     </div>
-
-                    {/* Conditional SLD Version Selector */}
-                    {draft.styleFormat === "sld" && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                        }}>
-                        <label
-                          htmlFor='layer-prop-styling-version'
-                          style={{
-                            fontWeight: 500,
-                            fontSize: "0.875rem",
-                            color: "#334155",
-                          }}>
-                          {t("layer_properties_styling_version")}
-                        </label>
-                        <select
-                          id='layer-prop-styling-version'
-                          value={draft.sldVersion}
-                          onChange={handleVersionChange}
-                          style={{
-                            padding: "0.3125rem 0.625rem",
-                            borderRadius: "0.25rem",
-                            border: "1px solid #cbd5e1",
-                            fontSize: "0.875rem",
-                            backgroundColor: "#ffffff",
-                          }}>
-                          <option value='1.0.0'>1.0.0</option>
-                          <option value='1.1.0'>1.1.0</option>
-                        </select>
-                      </div>
-                    )}
 
                     {/* File and Reset Buttons */}
                     <div
@@ -1570,16 +1416,21 @@ export const LayerPropertiesDialog: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Visual Symbolizer Controls Group */}
-                  <fieldset className='preference-group-box visual-symbolizer-group'>
-                    <legend className='preference-group-legend'>
-                      {t("layer_properties_styling_visual_group")}
-                    </legend>
+                  {/* Main Content Layout: Editor / Controls on Left, 120x120 Preview on Right */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "1.25rem",
+                      alignItems: "flex-start",
+                    }}>
+                    {/* Left Column: Mode Specific Controls */}
                     <div
                       style={{
+                        flex: 1,
                         display: "flex",
                         flexDirection: "column",
-                        gap: "0.625rem",
+                        gap: "0.75rem",
+                        minWidth: 0,
                       }}>
                       {/* Common Layer Opacity */}
                       <div
@@ -1625,603 +1476,158 @@ export const LayerPropertiesDialog: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Point Controls */}
-                      {isPoint && (
-                        <>
-                          {/* Marker Shape */}
+                      {/* Mode 1: Simple Mode (Cartouche Symbology) */}
+                      {draft.styleFormat === "cartouche" && (
+                        <div
+                          id='layer-prop-simple-mode-container'
+                          className='layer-prop-simple-mode-container'
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.5rem",
+                            padding: "0.75rem",
+                            backgroundColor: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "0.25rem",
+                          }}>
                           <div
-                            className='layer-properties-row'
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: "#1e293b",
+                            }}>
+                            {t("layer_properties_styling_simple_mode_title")}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.8125rem",
+                              color: "#64748b",
+                            }}>
+                            {t("layer_properties_styling_simple_mode_desc")}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mode 2: External Raw Format Editor (OpenLayers Flat Style or SLD XML) */}
+                      {draft.styleFormat !== "cartouche" && (
+                        <div
+                          id='layer-prop-external-mode-container'
+                          className='layer-prop-external-mode-container'
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.5rem",
+                          }}>
+                          {/* Validation Feedback Banner */}
+                          {draft.styleValidationError ?
+                            <div
+                              className='style-validation-banner style-validation-error'
+                              style={{
+                                padding: "0.5rem 0.75rem",
+                                backgroundColor: "#fee2e2",
+                                border: "1px solid #f87171",
+                                borderRadius: "0.25rem",
+                                color: "#b91c1c",
+                                fontSize: "0.875rem",
+                                fontWeight: 500,
+                              }}>
+                              {t("layer_properties_style_syntax_error")}:{" "}
+                              {draft.styleValidationError}
+                            </div>
+                          : <div
+                              className='style-validation-banner style-validation-valid'
+                              style={{
+                                padding: "0.5rem 0.75rem",
+                                backgroundColor: "#dcfce7",
+                                border: "1px solid #86efac",
+                                borderRadius: "0.25rem",
+                                color: "#15803d",
+                                fontSize: "0.875rem",
+                                fontWeight: 500,
+                              }}>
+                              {t("layer_properties_style_valid")}
+                            </div>
+                          }
+
+                          {/* Raw Style Textarea */}
+                          <div
                             style={{
                               display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
+                              flexDirection: "column",
+                              gap: "0.25rem",
                             }}>
                             <label
-                              htmlFor='layer-prop-visual-point-shape'
+                              htmlFor='layer-prop-styling-raw-style'
                               style={{
-                                width: "11rem",
                                 fontWeight: 500,
                                 fontSize: "0.875rem",
                                 color: "#334155",
                               }}>
-                              {t("layer_properties_styling_point_shape")}:
+                              {t("layer_properties_styling_raw_style")}
                             </label>
-                            <select
-                              id='layer-prop-visual-point-shape'
-                              className='layer-prop-visual-point-shape'
-                              value={visual.pointShape || "circle"}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  pointShape: e.target.value as any,
-                                })
-                              }
+                            <textarea
+                              ref={rawStyleTextareaRef}
+                              id='layer-prop-styling-raw-style'
+                              className='layer-prop-styling-raw-style'
+                              value={draft.styleContent}
+                              onChange={handleRawStyleChange}
+                              onKeyDown={handleRawStyleKeyDown}
+                              onBlur={handleRawStyleBlur}
+                              rows={12}
+                              spellCheck={false}
                               style={{
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
+                                width: "100%",
+                                fontFamily:
+                                  "var(--cartouche-theme-font-family-mono, monospace)",
+                                fontSize: "0.8125rem",
+                                padding: "0.5rem",
                                 border: "1px solid #cbd5e1",
-                                fontSize: "0.875rem",
+                                borderRadius: "0.25rem",
+                                boxSizing: "border-box",
+                                resize: "vertical",
                                 backgroundColor: "#ffffff",
-                              }}>
-                              <option value='circle'>
-                                {t("layer_properties_shape_circle")}
-                              </option>
-                              <option value='square'>
-                                {t("layer_properties_shape_square")}
-                              </option>
-                              <option value='triangle'>
-                                {t("layer_properties_shape_triangle")}
-                              </option>
-                              <option value='star'>
-                                {t("layer_properties_shape_star")}
-                              </option>
-                              <option value='cross'>
-                                {t("layer_properties_shape_cross")}
-                              </option>
-                              <option value='x'>
-                                {t("layer_properties_shape_x")}
-                              </option>
-                            </select>
-                          </div>
-
-                          {/* Point Radius / Size */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-point-radius'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_point_radius")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-point-radius'
-                              className='layer-prop-visual-point-radius'
-                              type='number'
-                              min='1'
-                              max='100'
-                              step='1'
-                              value={visual.pointRadius ?? 6}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  pointRadius: Number(e.target.value),
-                                })
-                              }
-                              style={{
-                                width: "5rem",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
-                                border: "1px solid #cbd5e1",
-                                fontSize: "0.875rem",
+                                color: "#0f172a",
                               }}
                             />
                           </div>
-
-                          {/* Fill Color */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-fill-color'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_fill_color")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-fill-color'
-                              className='layer-prop-visual-fill-color'
-                              type='color'
-                              value={formatHexColor(
-                                visual.fillColor,
-                                "#0369a1"
-                              )}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  fillColor: e.target.value,
-                                })
-                              }
-                              style={{
-                                width: "3rem",
-                                height: "1.75rem",
-                                padding: 0,
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "0.25rem",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-
-                          {/* Stroke Color */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-color'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_color")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-color'
-                              className='layer-prop-visual-stroke-color'
-                              type='color'
-                              value={formatHexColor(
-                                visual.strokeColor,
-                                "#0284c7"
-                              )}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeColor: e.target.value,
-                                })
-                              }
-                              style={{
-                                width: "3rem",
-                                height: "1.75rem",
-                                padding: 0,
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "0.25rem",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-
-                          {/* Stroke Width */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-width'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_width")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-width'
-                              className='layer-prop-visual-stroke-width'
-                              type='number'
-                              min='0'
-                              max='50'
-                              step='1'
-                              value={visual.strokeWidth ?? 1}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeWidth: Number(e.target.value),
-                                })
-                              }
-                              style={{
-                                width: "5rem",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
-                                border: "1px solid #cbd5e1",
-                                fontSize: "0.875rem",
-                              }}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {/* LineString Controls */}
-                      {isLine && (
-                        <>
-                          {/* Stroke Color */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-color'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_color")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-color'
-                              className='layer-prop-visual-stroke-color'
-                              type='color'
-                              value={formatHexColor(
-                                visual.strokeColor,
-                                "#0284c7"
-                              )}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeColor: e.target.value,
-                                })
-                              }
-                              style={{
-                                width: "3rem",
-                                height: "1.75rem",
-                                padding: 0,
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "0.25rem",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-
-                          {/* Stroke Width */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-width'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_width")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-width'
-                              className='layer-prop-visual-stroke-width'
-                              type='number'
-                              min='0'
-                              max='50'
-                              step='1'
-                              value={visual.strokeWidth ?? 1}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeWidth: Number(e.target.value),
-                                })
-                              }
-                              style={{
-                                width: "5rem",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
-                                border: "1px solid #cbd5e1",
-                                fontSize: "0.875rem",
-                              }}
-                            />
-                          </div>
-
-                          {/* Stroke Dash Toggle */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-dash'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_dash")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-dash'
-                              className='layer-prop-visual-stroke-dash'
-                              type='checkbox'
-                              checked={Boolean(visual.strokeLineDash)}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeLineDash: e.target.checked,
-                                })
-                              }
-                              style={{
-                                width: "1.125rem",
-                                height: "1.125rem",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {/* Polygon / Default Controls */}
-                      {isPolygon && (
-                        <>
-                          {/* Fill Color */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-fill-color'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_fill_color")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-fill-color'
-                              className='layer-prop-visual-fill-color'
-                              type='color'
-                              value={formatHexColor(
-                                visual.fillColor,
-                                "#1e293b"
-                              )}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  fillColor: e.target.value,
-                                })
-                              }
-                              style={{
-                                width: "3rem",
-                                height: "1.75rem",
-                                padding: 0,
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "0.25rem",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-
-                          {/* Fill Opacity */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-fill-opacity'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_fill_opacity")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-fill-opacity'
-                              className='layer-prop-visual-fill-opacity'
-                              type='range'
-                              min='0'
-                              max='1'
-                              step='0.05'
-                              value={visual.fillOpacity ?? 1}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  fillOpacity: parseFloat(e.target.value),
-                                })
-                              }
-                              style={{ flex: 1, cursor: "pointer" }}
-                            />
-                            <span
-                              style={{
-                                width: "3.5rem",
-                                textAlign: "right",
-                                fontSize: "0.875rem",
-                                color: "#475569",
-                              }}>
-                              {Math.round((visual.fillOpacity ?? 1) * 100)}%
-                            </span>
-                          </div>
-
-                          {/* Stroke Color */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-color'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_color")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-color'
-                              className='layer-prop-visual-stroke-color'
-                              type='color'
-                              value={formatHexColor(
-                                visual.strokeColor,
-                                "#0284c7"
-                              )}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeColor: e.target.value,
-                                })
-                              }
-                              style={{
-                                width: "3rem",
-                                height: "1.75rem",
-                                padding: 0,
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "0.25rem",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-
-                          {/* Stroke Width */}
-                          <div
-                            className='layer-properties-row'
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}>
-                            <label
-                              htmlFor='layer-prop-visual-stroke-width'
-                              style={{
-                                width: "11rem",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                                color: "#334155",
-                              }}>
-                              {t("layer_properties_styling_stroke_width")}:
-                            </label>
-                            <input
-                              id='layer-prop-visual-stroke-width'
-                              className='layer-prop-visual-stroke-width'
-                              type='number'
-                              min='0'
-                              max='50'
-                              step='1'
-                              value={visual.strokeWidth ?? 0}
-                              onChange={(e) =>
-                                handleVisualChange({
-                                  strokeWidth: Number(e.target.value),
-                                })
-                              }
-                              style={{
-                                width: "5rem",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
-                                border: "1px solid #cbd5e1",
-                                fontSize: "0.875rem",
-                              }}
-                            />
-                          </div>
-                        </>
+                        </div>
                       )}
                     </div>
-                  </fieldset>
 
-                  {/* Validation Feedback Banner */}
-                  {draft.styleValidationError ? (
+                    {/* Right Column: 120x120 Preview Box */}
                     <div
-                      className='style-validation-banner style-validation-error'
+                      id='layer-prop-preview-container'
+                      className='layer-prop-preview-container'
                       style={{
-                        padding: "0.5rem 0.75rem",
-                        backgroundColor: "#fee2e2",
-                        border: "1px solid #f87171",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.75rem",
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #e2e8f0",
                         borderRadius: "0.25rem",
-                        color: "#b91c1c",
-                        fontSize: "0.875rem",
-                        fontWeight: 500,
+                        width: "140px",
+                        flexShrink: 0,
                       }}>
-                      {t("layer_properties_style_syntax_error")}:{" "}
-                      {draft.styleValidationError}
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: "0.8125rem",
+                          color: "#475569",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}>
+                        {t("layer_properties_styling_preview")}
+                      </div>
+                      <StylePreviewCanvas
+                        content={draft.styleContent}
+                        format={draft.styleFormat}
+                        version={draft.sldVersion}
+                        opacity={draft.opacity ?? 1}
+                        geometryKind={geometryKind}
+                      />
                     </div>
-                  ) : (
-                    <div
-                      className='style-validation-banner style-validation-valid'
-                      style={{
-                        padding: "0.5rem 0.75rem",
-                        backgroundColor: "#dcfce7",
-                        border: "1px solid #86efac",
-                        borderRadius: "0.25rem",
-                        color: "#15803d",
-                        fontSize: "0.875rem",
-                        fontWeight: 500,
-                      }}>
-                      {t("layer_properties_style_valid")}
-                    </div>
-                  )}
-
-                  {/* Raw Style Text Editor */}
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.25rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-styling-raw-style'
-                      style={{
-                        fontWeight: 500,
-                        fontSize: "0.875rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_raw_style")}
-                    </label>
-                    <textarea
-                      ref={rawStyleTextareaRef}
-                      id='layer-prop-styling-raw-style'
-                      value={draft.styleContent}
-                      onChange={handleRawStyleChange}
-                      onKeyDown={handleRawStyleKeyDown}
-                      onBlur={handleRawStyleBlur}
-                      rows={12}
-                      spellCheck={false}
-                      style={{
-                        width: "100%",
-                        fontFamily:
-                          "var(--cartouche-theme-font-family-mono, monospace)",
-                        fontSize: "0.8125rem",
-                        padding: "0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        boxSizing: "border-box",
-                        resize: "vertical",
-                        backgroundColor: "#ffffff",
-                        color: "#0f172a",
-                      }}
-                    />
                   </div>
                 </div>
               </fieldset>

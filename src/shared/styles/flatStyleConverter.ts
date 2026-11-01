@@ -4,7 +4,7 @@
  * @description Bidirectional converter between Cartouche OpenLayers Flat Style JSON rules and GeoStyler intermediate Style AST (geostyler-style), supporting cross-format SLD conversion and validation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link flatStyleToGeoStyler}
  * @see {@link geoStylerToFlatStyle}
@@ -17,6 +17,7 @@
  */
 
 import { SldStyleParser } from 'geostyler-sld-parser';
+import { isCartoucheLayerStyle } from './defaultLayerStyles';
 import type {
   Style as GeoStylerStyle,
   Rule as GeoStylerRule,
@@ -55,7 +56,7 @@ const sldParser110 = new SldStyleParser({ sldVersion: '1.1.0' });
  * Strips standalone or combined geometry-type filters as they are inherently modeled by Symbolizer kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {any[]} [olFilter] - OpenLayers flat style filter array.
  * @returns {GeoStylerFilter | undefined} Converted GeoStyler Filter, or undefined if no attribute filter exists.
@@ -126,7 +127,7 @@ export function olFilterToGeoStyler(olFilter?: any[]): GeoStylerFilter | undefin
  * @description Converts a GeoStyler AST Filter into an OpenLayers Flat Style filter expression.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {GeoStylerFilter} [gsFilter] - GeoStyler AST filter expression.
  * @returns {any[] | undefined} OpenLayers filter array, or undefined if no filter exists.
@@ -174,7 +175,7 @@ export function geoStylerFilterToOl(gsFilter?: GeoStylerFilter): any[] | undefin
  * @description Maps an OpenLayers Flat Style dictionary to one or more GeoStyler Symbolizer objects.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {Record<string, any>} styleDict - OpenLayers flat style dictionary.
  * @param {string} [geometryHint] - Optional geometry hint derived from filter ('Polygon' | 'LineString' | 'Point').
@@ -322,7 +323,7 @@ function parseStyleDictToSymbolizers(
  * @description Converts Cartouche OpenLayers Flat Style JSON (array of rules or style dictionary) into an in-memory GeoStyler Style AST.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {unknown} flatStyle - OpenLayers flat style rules array, dictionary, or serialized JSON string.
  * @param {string} [styleName='Cartouche Style'] - Optional style title.
@@ -424,7 +425,7 @@ export function flatStyleToGeoStyler(
  * Automatically injects geometry-type filter discriminators for Fill, Line, and Mark symbolizers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - GeoStyler Style AST.
  * @returns {OlFlatStyleRule[]} Array of OpenLayers Flat Style rules.
@@ -520,7 +521,7 @@ export function geoStylerToFlatStyle(ast: GeoStylerStyle): OlFlatStyleRule[] {
  * @description Converts a raw style string between OpenLayers Flat Style JSON and OGC SLD XML (1.0.0 or 1.1.0) using GeoStyler AST as the intermediate representation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} content - Raw input style text.
  * @param {StyleFormatConversionOptions} options - Conversion configuration options.
@@ -573,7 +574,7 @@ export async function convertStyleFormat(
  * @description Validates a style text string against its declared format dialect and optional SLD version.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} content - Style text to validate.
  * @param {ProjectStyleFormat} format - Style format ('openlayers' | 'sld').
@@ -588,6 +589,21 @@ export async function validateStyleContent(
   const trimmed = (content || '').trim();
   if (!trimmed) {
     return { isValid: false, error: 'Style content cannot be empty.' };
+  }
+
+  if (format === 'cartouche') {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (err: any) {
+      return { isValid: false, error: `Invalid JSON syntax: ${err.message || String(err)}` };
+    }
+
+    if (!isCartoucheLayerStyle(parsed)) {
+      return { isValid: false, error: 'Invalid Cartouche Symbology structure.' };
+    }
+
+    return { isValid: true };
   }
 
   if (format === 'openlayers') {
@@ -639,7 +655,7 @@ export async function validateStyleContent(
  * @description Parses raw style text into an in-memory GeoStyler Style AST based on the specified format and version.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} content - Raw style markup or JSON text.
  * @param {ProjectStyleFormat} format - Style format ('openlayers' | 'sld').
@@ -669,7 +685,7 @@ export async function parseStyleTextToGeoStyler(
  * @description Serializes an in-memory GeoStyler Style AST into raw style text based on the specified format and version.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
  * @param {ProjectStyleFormat} format - Target style format ('openlayers' | 'sld').
@@ -700,7 +716,7 @@ export async function serializeGeoStylerToText(
  * @description Extracts editable visual symbolizer control parameters from an in-memory GeoStyler Style AST.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
  * @param {string} [geometryKind] - Optional geometry hint ('Polygon', 'LineString', 'Point').
@@ -801,7 +817,7 @@ export function extractVisualSymbolizers(
  * @description Injects updated visual symbolizer parameters into an existing or newly constructed GeoStyler Style AST.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
  * @param {LayerVisualSymbolizer} visual - Updated visual properties.

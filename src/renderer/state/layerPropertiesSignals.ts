@@ -4,10 +4,11 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
+ * @see {@link switchLayerPropertiesStyleFormat}
  */
 
 import { signal, type Signal } from "@preact/signals-react";
@@ -23,7 +24,13 @@ import type {
 import {
   parseStyleTextToGeoStyler,
   extractVisualSymbolizers,
+  convertStyleFormat,
+  validateStyleContent,
 } from "../../shared/styles/flatStyleConverter";
+import {
+  createDefaultCartoucheLayerStyleJson,
+  generateDefaultVectorStyleJson,
+} from "../../shared/styles/defaultLayerStyles";
 import {
   projectTreeSignal,
   isProjectDirtySignal,
@@ -56,6 +63,7 @@ export type LayerPropertiesTabId =
  * @property {string | null} styleValidationError - Validation error message for style content, or null if valid.
  * @property {LayerVisualSymbolizer} visualSymbolizer - Active draft visual symbolizer control parameters.
  * @property {number} opacity - Draft layer opacity between 0.0 and 1.0.
+ * @property {Record<string, string>} [formatCache] - In-memory style text cache indexed by format key across switches.
  */
 export interface LayerPropertiesDraft {
   layerName: string;
@@ -69,6 +77,7 @@ export interface LayerPropertiesDraft {
   styleValidationError: string | null;
   visualSymbolizer: LayerVisualSymbolizer;
   opacity: number;
+  formatCache?: Record<string, string>;
 }
 
 /**
@@ -173,6 +182,7 @@ export const layerPropertiesDraftSignal: Signal<LayerPropertiesDraft> =
     styleValidationError: null,
     visualSymbolizer: {},
     opacity: 1,
+    formatCache: {},
   });
 
 /**
@@ -266,7 +276,28 @@ export async function openLayerPropertiesDialog(
   const resolvedStyleItem = resolveLayerStyleItem(layerId);
   const initialFormat = resolvedStyleItem.format || "openlayers";
   const initialSldVersion = resolvedStyleItem.version || "1.0.0";
-  const initialContent = resolvedStyleItem.content || "";
+  let initialContent = resolvedStyleItem.content || "";
+
+  if (!initialContent) {
+    if (initialFormat === "cartouche") {
+      initialContent = createDefaultCartoucheLayerStyleJson(currentLayer?.geometryKind);
+    } else if (initialFormat === "openlayers") {
+      initialContent = generateDefaultVectorStyleJson();
+    }
+  }
+
+  const initialFormatKey =
+    initialFormat === "cartouche"
+      ? "cartouche"
+      : initialFormat === "sld"
+        ? initialSldVersion === "1.1.0"
+          ? "sld-1.1.0"
+          : "sld-1.0.0"
+        : "openlayers";
+
+  const initialCache: Record<string, string> = {
+    [initialFormatKey]: initialContent,
+  };
 
   let initialVisual: LayerVisualSymbolizer = {};
   if (initialContent) {
@@ -302,6 +333,7 @@ export async function openLayerPropertiesDialog(
     styleValidationError: null,
     visualSymbolizer: initialVisual,
     opacity: initialOpacity,
+    formatCache: initialCache,
   };
 
   try {
@@ -383,6 +415,7 @@ export function closeLayerPropertiesDialog(): void {
     styleValidationError: null,
     visualSymbolizer: {},
     opacity: 1,
+    formatCache: {},
   };
 }
 
@@ -440,6 +473,126 @@ export function updateLayerPropertiesDraft(
         updates.idValidationError
       : idValidationError,
   };
+}
+
+/**
+ * @description Switches active style format and SLD version in draft state, preserving pending edits in in-memory session cache.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {string} targetOption - Format selection key ('cartouche' | 'openlayers' | 'sld-1.0.0' | 'sld-1.1.0').
+ * @param {string} [geometryKind] - Layer geometry kind for default template generation.
+ * @returns {Promise<void>}
+ */
+export async function switchLayerPropertiesStyleFormat(
+  targetOption: string,
+  geometryKind?: string
+): Promise<void> {
+  const draft = layerPropertiesDraftSignal.value;
+  const currentKey =
+    draft.styleFormat === "cartouche" ?
+      "cartouche"
+    : draft.styleFormat === "sld" ?
+      draft.sldVersion === "1.1.0" ?
+        "sld-1.1.0"
+      : "sld-1.0.0"
+    : "openlayers";
+
+  const targetKey = targetOption === "simple" ? "cartouche" : targetOption;
+  if (targetKey === currentKey) return;
+
+  const targetFormat: ProjectStyleFormat =
+    targetKey === "cartouche" ? "cartouche"
+    : targetKey.startsWith("sld") ? "sld"
+    : "openlayers";
+  const targetVersion: SldStyleVersion =
+    targetKey === "sld-1.1.0" ? "1.1.0" : "1.0.0";
+
+  const updatedCache = {
+    ...(draft.formatCache || {}),
+    [currentKey]: draft.styleContent,
+  };
+
+  let newContent = updatedCache[targetKey];
+  if (newContent === undefined) {
+    if (targetFormat === "cartouche") {
+      newContent = createDefaultCartoucheLayerStyleJson(geometryKind);
+    } else if (targetFormat === "openlayers") {
+      if (draft.styleFormat === "sld") {
+        try {
+          newContent = await convertStyleFormat(draft.styleContent, {
+            fromFormat: "sld",
+            fromVersion: draft.sldVersion,
+            toFormat: "openlayers",
+          });
+        } catch {
+          newContent = generateDefaultVectorStyleJson();
+        }
+      } else {
+        newContent = generateDefaultVectorStyleJson();
+      }
+    } else if (targetFormat === "sld") {
+      if (draft.styleFormat === "openlayers") {
+        try {
+          newContent = await convertStyleFormat(draft.styleContent, {
+            fromFormat: "openlayers",
+            toFormat: "sld",
+            toVersion: targetVersion,
+          });
+        } catch {
+          const def = generateDefaultVectorStyleJson();
+          try {
+            newContent = await convertStyleFormat(def, {
+              fromFormat: "openlayers",
+              toFormat: "sld",
+              toVersion: targetVersion,
+            });
+          } catch {
+            newContent = "";
+          }
+        }
+      } else if (draft.styleFormat === "sld") {
+        try {
+          newContent = await convertStyleFormat(draft.styleContent, {
+            fromFormat: "sld",
+            fromVersion: draft.sldVersion,
+            toFormat: "sld",
+            toVersion: targetVersion,
+          });
+        } catch {
+          newContent = draft.styleContent;
+        }
+      } else {
+        const def = generateDefaultVectorStyleJson();
+        try {
+          newContent = await convertStyleFormat(def, {
+            fromFormat: "openlayers",
+            toFormat: "sld",
+            toVersion: targetVersion,
+          });
+        } catch {
+          newContent = "";
+        }
+      }
+    }
+    updatedCache[targetKey] = newContent || "";
+  }
+
+  const validation = await validateStyleContent(
+    newContent || "",
+    targetFormat,
+    targetVersion
+  );
+
+  updateLayerPropertiesDraft({
+    styleFormat: targetFormat,
+    sldVersion: targetVersion,
+    styleContent: newContent || "",
+    styleValidationError:
+      validation.isValid ? null : validation.error || "Validation error",
+    formatCache: updatedCache,
+  });
 }
 
 /**
