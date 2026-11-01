@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -22,6 +22,7 @@ import {
   MapController,
   extractStyleAttributes,
 } from '../../../src/renderer/map/MapController';
+import Feature from 'ol/Feature.js';
 import VectorImageLayer from 'ol/layer/VectorImage.js';
 import { fromLonLat, transformExtent } from 'ol/proj.js';
 import { generateDefaultVectorStyleJson } from '../../../src/shared/styles/defaultLayerStyles';
@@ -1675,6 +1676,47 @@ describe('MapController SLD Compilation & Delayed Field-Subset Reload', () => {
     assert.notDeepEqual(entry.layer.getStyle(), initialStyle);
     assert.equal(entry.loadedFields.has('rank'), true);
     assert.equal(entry.loadedFields.has('city_name'), true);
+  });
+
+  it('compiles and applies format="cartouche" styles to VectorImageLayer on layer creation and update', async () => {
+    const cartoucheJson = JSON.stringify({
+      format: 'simple',
+      version: 1,
+      components: [
+        { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#123456' },
+        { id: 'line-1', type: 'simple-line', enabled: true, color: '#abcdef', width: 3 }
+      ]
+    });
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-cartouche-test',
+      name: 'Cartouche Layer',
+      type: 'geojson',
+      source: '/path/to/cartouche.geojson',
+      geometryKind: 'Polygon',
+      layerKind: 'vector',
+      style: {
+        content: cartoucheJson,
+        format: 'cartouche'
+      },
+      extent: [-90, 40, -80, 50],
+      featureCount: 1,
+    };
+
+    projectLayersSignal.value = [descriptor];
+    await controller.waitForPendingStyleUpdates();
+
+    const entry = controller.getLayer('layer-cartouche-test');
+    assert.ok(entry, 'Layer entry must exist in controller');
+    const styleFunction = entry.layer.getStyle() as any;
+    assert.equal(typeof styleFunction, 'function', 'Layer style must be compiled into a StyleFunction');
+
+    const styles = styleFunction(new Feature(), 1);
+    assert.ok(Array.isArray(styles));
+    assert.equal(styles.length, 2);
+    assert.equal(styles[0].getFill()?.getColor(), '#123456');
+    assert.equal(styles[1].getStroke()?.getColor(), '#abcdef');
+    assert.equal(styles[1].getStroke()?.getWidth(), 3);
   });
 });
 

@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -44,9 +44,11 @@ import {
 import { preferencesMapSignal } from "../state/preferencesSignals";
 import {
   compileFlatLayerStyleSync,
+  compileCartoucheLayerStyleSync,
   compileLayerStyle,
   extractStyleAttributes,
   isSldStyleDescriptor,
+  isCartoucheStyleDescriptor,
 } from "./styleCompiler";
 import {
   WKB_PACKET_MAGIC,
@@ -126,7 +128,7 @@ export function flattenTreeLayers(
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
@@ -160,7 +162,7 @@ export interface FitExtentOptions {
  * @description Imperative OpenLayers map canvas controller encapsulating native ol/Map and vector rendering completely insulated from React Virtual DOM.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export class MapController {
@@ -252,7 +254,7 @@ export class MapController {
    * @description Attaches native OpenLayers event listeners for cursor tracking, resolution changes, and moveend.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @private
    * @returns {void}
@@ -412,7 +414,7 @@ export class MapController {
    * @description Applies dynamic OpenLayers Flat Style rules or SLD XML styles to registered vector layers, reloading missing attribute fields on demand before passing the compiled style to OpenLayers.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {Record<string, any>} styles - Style descriptors or rules map keyed by layer UUID.
    * @returns {void}
@@ -429,7 +431,7 @@ export class MapController {
    * @description Waits for all in-flight asynchronous SLD compilations and field-subset reloads to settle.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @returns {Promise<void>} Resolves when all pending style operations complete.
    */
@@ -443,7 +445,7 @@ export class MapController {
    * @description Checks whether a newly compiled style references feature attribute fields that are not yet present in the layer's loadedFields set.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {Set<string>} requiredFields - Attribute fields referenced by the new style.
@@ -474,7 +476,7 @@ export class MapController {
    * @description Reloads features for a vector layer from Main with the specified union of attribute fields.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {string[]} fieldsToLoad - Attribute field names to project in queryExtent.
@@ -505,7 +507,7 @@ export class MapController {
    * @description Compiles and applies a style to a single vector layer entry, executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {unknown} rawStyle - Raw style descriptor or wrapper.
@@ -523,6 +525,16 @@ export class MapController {
     entry.activeRawStyle = rawStyle;
 
     const sharedStyles = currentProjectSignal.value?.styles;
+    const isCartouche = isCartoucheStyleDescriptor(rawStyle, sharedStyles);
+    if (isCartouche) {
+      const cartoucheResult = compileCartoucheLayerStyleSync(rawStyle, {
+        sharedStyles,
+        layerId: entry.descriptor.id,
+      });
+      entry.layer.setStyle(cartoucheResult.compiledStyle as any);
+      return;
+    }
+
     const isSld = isSldStyleDescriptor(rawStyle, sharedStyles);
 
     if (!isSld) {
@@ -595,7 +607,7 @@ export class MapController {
    * @description Creates and registers an OpenLayers VectorImageLayer and VectorSource backed by allStrategy/bboxStrategy, wrapX: false, and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
@@ -635,9 +647,18 @@ export class MapController {
       : descriptor.style;
 
     const sharedStyles = currentProjectSignal.value?.styles;
+    const isInitialCartouche = isCartoucheStyleDescriptor(
+      initialRawStyle,
+      sharedStyles
+    );
     const isInitialSld = isSldStyleDescriptor(initialRawStyle, sharedStyles);
-    const initialFlatResult =
-      isInitialSld ?
+    const initialStyleResult =
+      isInitialCartouche ?
+        compileCartoucheLayerStyleSync(initialRawStyle, {
+          sharedStyles,
+          layerId: descriptor.id,
+        })
+      : isInitialSld ?
         compileFlatLayerStyleSync(null, {
           sharedStyles,
           layerId: descriptor.id,
@@ -655,7 +676,7 @@ export class MapController {
 
     const layer = new VectorImageLayer({
       source,
-      style: initialFlatResult.compiledStyle as any,
+      style: initialStyleResult.compiledStyle as any,
       opacity: treeMatch ? treeMatch.opacity : (descriptor.opacity ?? 1),
       visible:
         treeMatch ? treeMatch.effectiveVisible : (descriptor.visible ?? true),
@@ -684,7 +705,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -1395,7 +1416,7 @@ export class MapController {
    * @description Disposes all reactive signal subscriptions, clears layer sources, and detaches the map target.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @returns {void}
    */
