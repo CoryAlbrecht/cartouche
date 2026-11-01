@@ -35,6 +35,10 @@ const {
   renderStylePreviewToCanvas,
 } = jiti('../../../src/renderer/workbench/dialogs/StylePreviewCanvas.tsx');
 const {
+  SimpleModeEditor,
+  parseCartoucheStyleSafe,
+} = jiti('../../../src/renderer/workbench/dialogs/SimpleModeEditor.tsx');
+const {
   activeLayerPropertiesIdSignal,
   activeLayerPropertiesTabSignal,
   layerDetailedInfoSignal,
@@ -1312,6 +1316,217 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         visualSymbolizer: null,
         idValidationError: null,
       };
+    });
+  });
+
+  describe('Simple Mode Visual Component Stack & Dynamic Style Options (Ticket #128)', () => {
+    it('renders component stack list in reversed painter order and highlights active selection', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      const initialStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          { id: 'fill-bottom', type: 'simple-fill', enabled: true, color: '#336699' },
+          { id: 'line-top', type: 'simple-line', enabled: true, color: '#000000', width: 2 },
+        ],
+      };
+
+      updateLayerPropertiesDraft({
+        styleFormat: 'cartouche',
+        styleContent: JSON.stringify(initialStyle),
+      });
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('id="layer-prop-component-stack-list"'), 'Must render component stack list');
+      assert.ok(html.includes('line-top'), 'Must render line-top component');
+      assert.ok(html.includes('fill-bottom'), 'Must render fill-bottom component');
+
+      // In visual order (reversed painter order), line-top (index 1) must precede fill-bottom (index 0) in the HTML
+      const linePos = html.indexOf('line-top');
+      const fillPos = html.indexOf('fill-bottom');
+      assert.ok(linePos < fillPos, 'line-top (top painter item) must appear before fill-bottom in visual stack list');
+    });
+
+    it('filters component types based on layer geometry (Polygon vs LineString vs Point)', () => {
+      // 1. Polygon: allows Fill, Line, and Marker
+      let html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'c1', type: 'simple-fill', enabled: true, color: '#ff0000' }],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('value="simple-fill"'), 'Polygon must offer simple-fill');
+      assert.ok(html.includes('value="simple-line"'), 'Polygon must offer simple-line');
+
+      // 2. LineString: must omit Fill components
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'c1', type: 'simple-line', enabled: true, color: '#000000', width: 2 }],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(!html.includes('value="simple-fill"'), 'LineString must NOT offer simple-fill');
+      assert.ok(html.includes('value="simple-line"'), 'LineString must offer simple-line');
+
+      // 3. Point: offers Marker and Line, omits Fill
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'c1',
+                type: 'simple-marker',
+                enabled: true,
+                shape: 'circle',
+                radius: 6,
+                fillColor: '#00ff00',
+                strokeColor: '#000000',
+                strokeWidth: 1,
+              },
+            ],
+          }),
+          geometryKind: 'Point',
+          onChange: () => {},
+        })
+      );
+      assert.ok(!html.includes('value="simple-fill"'), 'Point must NOT offer simple-fill');
+      assert.ok(html.includes('value="simple-marker"'), 'Point must offer simple-marker');
+      assert.ok(html.includes('value="simple-line"'), 'Point must offer simple-line');
+    });
+
+    it('renders type-specific Style Options for Simple Fill, Simple Line, and Simple Marker', () => {
+      // 1. Simple Fill options
+      let html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'fill-1', type: 'simple-fill', enabled: true, color: '#123456' }],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input for simple-fill');
+      assert.ok(html.includes('value="#123456"'), 'Must reflect fill color');
+
+      // 2. Simple Line options
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-1',
+                type: 'simple-line',
+                enabled: true,
+                color: '#654321',
+                width: 4,
+                dashArray: [6, 6],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-stroke-color"'), 'Must render stroke color input for simple-line');
+      assert.ok(html.includes('id="layer-prop-stroke-width"'), 'Must render stroke width input for simple-line');
+      assert.ok(html.includes('id="layer-prop-stroke-dash"'), 'Must render stroke dash checkbox for simple-line');
+      assert.ok(html.includes('value="#654321"'), 'Must reflect stroke color');
+      assert.ok(html.includes('value="4"'), 'Must reflect stroke width');
+
+      // 3. Simple Marker options
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'mark-1',
+                type: 'simple-marker',
+                enabled: true,
+                shape: 'circle',
+                radius: 8,
+                fillColor: '#ff00ff',
+                strokeColor: '#00ffff',
+                strokeWidth: 2,
+              },
+            ],
+          }),
+          geometryKind: 'Point',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-point-shape"'), 'Must render marker shape for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-radius"'), 'Must render marker radius for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-fill-color"'), 'Must render marker fill color for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-stroke-color"'), 'Must render marker stroke color for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-stroke-width"'), 'Must render marker stroke width for simple-marker');
+      assert.ok(html.includes('value="8"'), 'Must reflect marker radius');
+    });
+
+    it('locking a component disables option controls, greys out remove button, and renders lock banner', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#111111' },
+              { id: 'fill-2', type: 'simple-fill', enabled: true, locked: true, color: '#222222' },
+            ],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+
+      // Active component is fill-2 (top component) which is locked
+      assert.ok(html.includes('component-locked-banner'), 'Must render component locked banner');
+      assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input');
+      assert.ok(html.includes('id="layer-prop-fill-color" type="color" disabled=""'), 'Fill color input must be disabled');
+      assert.ok(html.includes('id="layer-prop-component-remove"'), 'Must render remove button');
+      assert.ok(
+        /id="layer-prop-component-remove"[^>]*disabled=""/.test(html),
+        'Remove button must be disabled for locked component'
+      );
+    });
+
+    it('safely parses style content or falls back to default style with parseCartoucheStyleSafe', () => {
+      // Valid style
+      const valid = parseCartoucheStyleSafe(
+        JSON.stringify({
+          format: 'simple',
+          version: 1,
+          components: [{ id: 'a', type: 'simple-fill', enabled: true, color: '#000000' }],
+        })
+      );
+      assert.strictEqual(valid.format, 'simple');
+      assert.strictEqual(valid.components.length, 1);
+      assert.strictEqual(valid.components[0].id, 'a');
+
+      // Empty or invalid JSON
+      const fallback = parseCartoucheStyleSafe('', 'LineString');
+      assert.strictEqual(fallback.format, 'simple');
+      assert.ok(fallback.components.length >= 1);
+      assert.strictEqual(fallback.components[0].type, 'simple-line');
     });
   });
 });

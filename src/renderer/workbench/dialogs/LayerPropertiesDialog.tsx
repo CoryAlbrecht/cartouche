@@ -52,6 +52,7 @@ import {
 import { t } from "@renderer/state/i18nSignals";
 import { Dialog } from "./Dialog";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
+import { SimpleModeEditor } from "./SimpleModeEditor";
 
 
 
@@ -1478,34 +1479,20 @@ export const LayerPropertiesDialog: React.FC = () => {
 
                       {/* Mode 1: Simple Mode (Cartouche Symbology) */}
                       {draft.styleFormat === "cartouche" && (
-                        <div
-                          id='layer-prop-simple-mode-container'
-                          className='layer-prop-simple-mode-container'
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                            padding: "0.75rem",
-                            backgroundColor: "#f8fafc",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "0.25rem",
-                          }}>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              fontSize: "0.875rem",
-                              color: "#1e293b",
-                            }}>
-                            {t("layer_properties_styling_simple_mode_title")}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "0.8125rem",
-                              color: "#64748b",
-                            }}>
-                            {t("layer_properties_styling_simple_mode_desc")}
-                          </div>
-                        </div>
+                        <SimpleModeEditor
+                          styleContent={draft.styleContent}
+                          geometryKind={info?.geometryKind}
+                          onChange={(newContent) => {
+                            updateLayerPropertiesDraft({
+                              styleContent: newContent,
+                              styleValidationError: null,
+                              formatCache: {
+                                ...(draft.formatCache || {}),
+                                cartouche: newContent,
+                              },
+                            });
+                          }}
+                        />
                       )}
 
                       {/* Mode 2: External Raw Format Editor (OpenLayers Flat Style or SLD XML) */}

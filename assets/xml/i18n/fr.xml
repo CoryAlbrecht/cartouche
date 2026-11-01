@@ -189,4 +189,18 @@
     <string name="layer_properties_styling_preview_legend">Aperçu du style</string>
     <string name="layer_properties_styling_simple_mode_title">Symbologie simple</string>
     <string name="layer_properties_styling_simple_mode_desc">Gérer la pile des composants de style visuel et les options du générateur de symboles.</string>
+    <string name="layer_properties_component_stack">Pile de composants</string>
+    <string name="layer_properties_component_add">Ajouter un composant</string>
+    <string name="layer_properties_component_remove">Supprimer le composant</string>
+    <string name="layer_properties_component_move_up">Monter</string>
+    <string name="layer_properties_component_move_down">Descendre</string>
+    <string name="layer_properties_component_duplicate">Dupliquer</string>
+    <string name="layer_properties_component_lock">Verrouiller</string>
+    <string name="layer_properties_component_unlock">Déverrouiller</string>
+    <string name="layer_properties_component_type">Type de composant</string>
+    <string name="layer_properties_component_type_fill">Remplissage simple</string>
+    <string name="layer_properties_component_type_line">Ligne simple</string>
+    <string name="layer_properties_component_type_marker">Marqueur simple</string>
+    <string name="layer_properties_component_options">Options de style</string>
+    <string name="layer_properties_component_locked_notice">Ce composant est verrouillé contre les modifications.</string>
 </ci18n:localization>
