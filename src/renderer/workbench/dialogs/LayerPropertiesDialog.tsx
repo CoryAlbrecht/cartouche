@@ -10,7 +10,7 @@
  * @see {@link activeLayerPropertiesIdSignal}
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useRef, useLayoutEffect, useEffect } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/Icon";
 import {
@@ -25,6 +25,7 @@ import {
   mdiCalculator,
   mdiPaletteOutline,
 } from "@mdi/js";
+import { actionsMapSignal } from "@renderer/state/actionSignals";
 import {
   activeLayerPropertiesIdSignal,
   activeLayerPropertiesTabSignal,
@@ -80,6 +81,337 @@ function formatHexColor(color?: string, fallback = "#000000"): string {
     return trimmed.slice(0, 7);
   }
   return fallback;
+}
+
+/**
+ * @typedef {Object} StyleTextHistoryEntry
+ * @description Snapshot of style text content and cursor selection range for undo/redo operations.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @property {string} content - Style text content snapshot.
+ * @property {number} selectionStart - Cursor or selection start index.
+ * @property {number} selectionEnd - Cursor or selection end index.
+ */
+export interface StyleTextHistoryEntry {
+  content: string;
+  selectionStart: number;
+  selectionEnd: number;
+}
+
+/**
+ * Maximum snapshot history stack depth for the raw style text editor.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @type {number}
+ */
+export const MAX_RAW_STYLE_HISTORY_SIZE = 100;
+
+/**
+ * Default validation debounce delay in milliseconds waiting for typing inactivity before executing live validation.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @type {number}
+ */
+export const DEFAULT_RAW_STYLE_VALIDATION_DEBOUNCE_MS = 350;
+
+/**
+ * @typedef {Object} UseRawStyleTextEditorHistoryOptions
+ * @description Configuration options for useRawStyleTextEditorHistory hook.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @property {string} content - Active draft style content text.
+ * @property {number} [debounceMs=350] - Validation debounce delay in milliseconds.
+ * @property {(newContent: string) => void} onUpdateContent - Callback synchronizing draft style content.
+ * @property {(newContent: string) => Promise<void>} onValidateAndSync - Callback executing asynchronous validation and visual symbolizer sync.
+ */
+export interface UseRawStyleTextEditorHistoryOptions {
+  content: string;
+  debounceMs?: number;
+  onUpdateContent: (newContent: string) => void;
+  onValidateAndSync: (newContent: string) => Promise<void>;
+}
+
+/**
+ * @typedef {Object} UseRawStyleTextEditorHistoryResult
+ * @description Return object containing refs, event handlers, and undo/redo operations for the raw style text editor.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @property {React.RefObject<HTMLTextAreaElement | null>} textareaRef - Ref attached to raw style textarea.
+ * @property {React.RefObject<{ start: number; end: number } | null>} selectionRef - Ref tracking cursor selection offsets.
+ * @property {React.RefObject<StyleTextHistoryEntry[]>} historyStackRef - In-memory undo/redo history snapshots.
+ * @property {React.RefObject<number>} historyIndexRef - Pointer to current position in history stack.
+ * @property {(e: React.ChangeEvent<HTMLTextAreaElement>) => void} handleRawStyleChange - Controlled change event handler preserving cursor.
+ * @property {(e: React.KeyboardEvent<HTMLTextAreaElement>) => void} handleRawStyleKeyDown - Keyboard handler intercepting undo/redo action shortcuts.
+ * @property {() => void} handleRawStyleBlur - Blur handler immediately flushing pending validation.
+ * @property {() => boolean} undo - Programmatic undo operation restoring previous edit and cursor position.
+ * @property {() => boolean} redo - Programmatic redo operation reapplying undone edit and cursor position.
+ * @property {(newBaseContent: string) => void} resetHistory - Resets history stack with new baseline content.
+ */
+export interface UseRawStyleTextEditorHistoryResult {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  selectionRef: React.RefObject<{ start: number; end: number } | null>;
+  historyStackRef: React.RefObject<StyleTextHistoryEntry[]>;
+  historyIndexRef: React.RefObject<number>;
+  handleRawStyleChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  handleRawStyleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  handleRawStyleBlur: () => void;
+  undo: () => boolean;
+  redo: () => boolean;
+  resetHistory: (newBaseContent: string) => void;
+}
+
+/**
+ * Custom React hook managing raw style multiline textarea undo/redo history and cursor position preservation.
+ *
+ * @function useRawStyleTextEditorHistory
+ * @description Manages in-memory undo/redo snapshot history for raw style text editing, traps configured Action Registry shortcuts, and preserves active cursor/selection offsets across live updates.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-31
+ * @updated 2026-10-31
+ * @since 0.1.0-dev
+ * @param {UseRawStyleTextEditorHistoryOptions} options - Configuration and change dispatch callbacks.
+ * @returns {UseRawStyleTextEditorHistoryResult} Hook state refs, undo/redo controls, and input event handlers.
+ */
+export function useRawStyleTextEditorHistory({
+  content,
+  debounceMs = DEFAULT_RAW_STYLE_VALIDATION_DEBOUNCE_MS,
+  onUpdateContent,
+  onValidateAndSync,
+}: UseRawStyleTextEditorHistoryOptions): UseRawStyleTextEditorHistoryResult {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const selectionRef = useRef<{ start: number; end: number } | null>(null);
+  const historyStackRef = useRef<StyleTextHistoryEntry[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInternalEditRef = useRef<boolean>(false);
+  const lastSyncedContentRef = useRef<string>(content);
+
+  const resetHistory = useCallback((newBaseContent: string) => {
+    historyStackRef.current = [
+      {
+        content: newBaseContent,
+        selectionStart: 0,
+        selectionEnd: 0,
+      },
+    ];
+    historyIndexRef.current = 0;
+    selectionRef.current = null;
+    lastSyncedContentRef.current = newBaseContent;
+  }, []);
+
+  // Initialize or synchronize external content updates (e.g. initial layer load)
+  if (historyStackRef.current.length === 0) {
+    resetHistory(content || "");
+  } else if (!isInternalEditRef.current && content !== lastSyncedContentRef.current) {
+    lastSyncedContentRef.current = content;
+    // If the baseline was empty and now non-empty content arrived from async layer load:
+    if (
+      historyStackRef.current.length === 1 &&
+      historyStackRef.current[0].content === "" &&
+      content
+    ) {
+      historyStackRef.current = [
+        {
+          content: content,
+          selectionStart: 0,
+          selectionEnd: 0,
+        },
+      ];
+      historyIndexRef.current = 0;
+    }
+  }
+
+  // Cleanup pending debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (textareaRef.current && selectionRef.current) {
+      const { start, end } = selectionRef.current;
+      if (typeof textareaRef.current.setSelectionRange === "function") {
+        textareaRef.current.setSelectionRange(start, end);
+      }
+      selectionRef.current = null;
+    }
+  }, [content]);
+
+  // Helper scheduling debounced validation
+  const scheduleValidation = useCallback(
+    (contentToValidate: string) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      if (debounceMs <= 0) {
+        void onValidateAndSync(contentToValidate);
+      } else {
+        debounceTimerRef.current = setTimeout(() => {
+          debounceTimerRef.current = null;
+          void onValidateAndSync(contentToValidate);
+        }, debounceMs);
+      }
+    },
+    [debounceMs, onValidateAndSync]
+  );
+
+  const undo = useCallback((): boolean => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current -= 1;
+      const targetEntry = historyStackRef.current[historyIndexRef.current];
+      selectionRef.current = {
+        start: targetEntry.selectionStart,
+        end: targetEntry.selectionEnd,
+      };
+      isInternalEditRef.current = true;
+      lastSyncedContentRef.current = targetEntry.content;
+      onUpdateContent(targetEntry.content);
+      isInternalEditRef.current = false;
+      scheduleValidation(targetEntry.content);
+      return true;
+    }
+    return false;
+  }, [onUpdateContent, scheduleValidation]);
+
+  const redo = useCallback((): boolean => {
+    if (historyIndexRef.current < historyStackRef.current.length - 1) {
+      historyIndexRef.current += 1;
+      const targetEntry = historyStackRef.current[historyIndexRef.current];
+      selectionRef.current = {
+        start: targetEntry.selectionStart,
+        end: targetEntry.selectionEnd,
+      };
+      isInternalEditRef.current = true;
+      lastSyncedContentRef.current = targetEntry.content;
+      onUpdateContent(targetEntry.content);
+      isInternalEditRef.current = false;
+      scheduleValidation(targetEntry.content);
+      return true;
+    }
+    return false;
+  }, [onUpdateContent, scheduleValidation]);
+
+  const handleRawStyleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newContent = e.target.value;
+      const target = e.target;
+      const selStart = target.selectionStart ?? newContent.length;
+      const selEnd = target.selectionEnd ?? newContent.length;
+
+      selectionRef.current = { start: selStart, end: selEnd };
+
+      if (historyStackRef.current.length === 0) {
+        resetHistory(content || "");
+      }
+
+      const newHistory = historyStackRef.current.slice(
+        0,
+        historyIndexRef.current + 1
+      );
+      newHistory.push({
+        content: newContent,
+        selectionStart: selStart,
+        selectionEnd: selEnd,
+      });
+      if (newHistory.length > MAX_RAW_STYLE_HISTORY_SIZE) {
+        newHistory.shift();
+      }
+      historyStackRef.current = newHistory;
+      historyIndexRef.current = newHistory.length - 1;
+
+      isInternalEditRef.current = true;
+      lastSyncedContentRef.current = newContent;
+      onUpdateContent(newContent);
+      isInternalEditRef.current = false;
+
+      scheduleValidation(newContent);
+    },
+    [content, onUpdateContent, resetHistory, scheduleValidation]
+  );
+
+  const handleRawStyleBlur = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+      void onValidateAndSync(lastSyncedContentRef.current);
+    }
+  }, [onValidateAndSync]);
+
+  const handleRawStyleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const key = e.key.toLowerCase();
+      const ctrl = e.ctrlKey;
+      const alt = e.altKey;
+      const shift = e.shiftKey;
+      const meta = e.metaKey;
+
+      const undoActionDef = actionsMapSignal.value.get("undo_action");
+      const redoActionDef = actionsMapSignal.value.get("redo_action");
+
+      const undoKey = undoActionDef?.keyCombination ?? { key: "z", ctrl: true };
+      const redoKey = redoActionDef?.keyCombination ?? { key: "y", ctrl: true };
+
+      const isUndoMatch =
+        key === undoKey.key.toLowerCase() &&
+        !!undoKey.ctrl === ctrl &&
+        !!undoKey.alt === alt &&
+        !!undoKey.shift === shift &&
+        !!undoKey.meta === meta;
+
+      const isRedoMatch =
+        (key === redoKey.key.toLowerCase() &&
+          !!redoKey.ctrl === ctrl &&
+          !!redoKey.alt === alt &&
+          !!redoKey.shift === shift &&
+          !!redoKey.meta === meta) ||
+        ((ctrl || meta) && shift && key === "z");
+
+      if (!isUndoMatch && !isRedoMatch) {
+        return;
+      }
+
+      if (typeof e.preventDefault === "function") {
+        e.preventDefault();
+      }
+      if (typeof e.stopPropagation === "function") {
+        e.stopPropagation();
+      }
+
+      if (isUndoMatch) {
+        undo();
+      } else if (isRedoMatch) {
+        redo();
+      }
+    },
+    [undo, redo]
+  );
+
+  return {
+    textareaRef,
+    selectionRef,
+    historyStackRef,
+    historyIndexRef,
+    handleRawStyleChange,
+    handleRawStyleKeyDown,
+    handleRawStyleBlur,
+    undo,
+    redo,
+    resetHistory,
+  };
 }
 
 /**
@@ -166,6 +498,69 @@ export const LayerPropertiesDialog: React.FC = () => {
     await commitAndCloseLayerPropertiesDialog();
   }, []);
 
+  const validationSeqRef = useRef<number>(0);
+
+  const validateAndSyncDraft = useCallback(
+    async (contentToValidate: string) => {
+      const seq = ++validationSeqRef.current;
+      const validation = await validateStyleContent(
+        contentToValidate,
+        draft.styleFormat,
+        draft.sldVersion
+      );
+      if (seq !== validationSeqRef.current) return;
+      if (validation.isValid) {
+        try {
+          const ast = await parseStyleTextToGeoStyler(
+            contentToValidate,
+            draft.styleFormat,
+            draft.sldVersion
+          );
+          const extracted = extractVisualSymbolizers(ast, info?.geometryKind);
+          updateLayerPropertiesDraft({
+            styleValidationError: null,
+            visualSymbolizer: extracted,
+          });
+        } catch (err: any) {
+          updateLayerPropertiesDraft({
+            styleValidationError: err?.message || String(err),
+          });
+        }
+      } else {
+        updateLayerPropertiesDraft({
+          styleValidationError: validation.error ?? "Invalid style",
+        });
+      }
+    },
+    [draft.styleFormat, draft.sldVersion, info?.geometryKind]
+  );
+
+  const {
+    textareaRef: rawStyleTextareaRef,
+    handleRawStyleChange,
+    handleRawStyleKeyDown,
+    handleRawStyleBlur,
+    resetHistory: resetRawStyleHistory,
+  } = useRawStyleTextEditorHistory({
+    content: draft.styleContent,
+    onUpdateContent: (newContent) => {
+      updateLayerPropertiesDraft({
+        styleContent: newContent,
+      });
+    },
+    onValidateAndSync: validateAndSyncDraft,
+  });
+
+  const lastActiveIdRef = useRef<string | null>(null);
+  if (activeId !== lastActiveIdRef.current) {
+    lastActiveIdRef.current = activeId;
+    if (activeId && draft.styleContent) {
+      resetRawStyleHistory(draft.styleContent);
+    }
+  }
+
+
+
   const handleVisualChange = useCallback(
     async (updates: Partial<LayerVisualSymbolizer>) => {
       const nextVisual: LayerVisualSymbolizer = {
@@ -198,6 +593,7 @@ export const LayerPropertiesDialog: React.FC = () => {
           styleContent: regeneratedText,
           styleValidationError: null,
         });
+        resetRawStyleHistory(regeneratedText);
       } catch (err: any) {
         updateLayerPropertiesDraft({
           visualSymbolizer: nextVisual,
@@ -242,6 +638,7 @@ export const LayerPropertiesDialog: React.FC = () => {
           styleValidationError: null,
           visualSymbolizer: extracted,
         });
+        resetRawStyleHistory(converted);
       } catch (err: any) {
         updateLayerPropertiesDraft({
           styleFormat: newFormat,
@@ -274,6 +671,7 @@ export const LayerPropertiesDialog: React.FC = () => {
           styleContent: converted,
           styleValidationError: null,
         });
+        resetRawStyleHistory(converted);
       } catch (err: any) {
         updateLayerPropertiesDraft({
           sldVersion: newVersion,
@@ -284,42 +682,7 @@ export const LayerPropertiesDialog: React.FC = () => {
     [draft.sldVersion, draft.styleContent]
   );
 
-  const handleRawStyleChange = useCallback(
-    async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newContent = e.target.value;
-      const validation = await validateStyleContent(
-        newContent,
-        draft.styleFormat,
-        draft.sldVersion
-      );
-      if (validation.isValid) {
-        try {
-          const ast = await parseStyleTextToGeoStyler(
-            newContent,
-            draft.styleFormat,
-            draft.sldVersion
-          );
-          const extracted = extractVisualSymbolizers(ast, info?.geometryKind);
-          updateLayerPropertiesDraft({
-            styleContent: newContent,
-            styleValidationError: null,
-            visualSymbolizer: extracted,
-          });
-        } catch (err: any) {
-          updateLayerPropertiesDraft({
-            styleContent: newContent,
-            styleValidationError: err?.message || String(err),
-          });
-        }
-      } else {
-        updateLayerPropertiesDraft({
-          styleContent: newContent,
-          styleValidationError: validation.error ?? "Invalid style",
-        });
-      }
-    },
-    [draft.styleFormat, draft.sldVersion, info?.geometryKind]
-  );
+
 
   const handleLoadStyle = useCallback(async () => {
     if (window.electronAPI?.loadStyleFile) {
@@ -354,6 +717,7 @@ export const LayerPropertiesDialog: React.FC = () => {
               validation.isValid ? null : (validation.error ?? "Invalid style"),
             visualSymbolizer: extracted,
           });
+          resetRawStyleHistory(loaded.content);
         }
       } catch (err: any) {
         updateLayerPropertiesDraft({
@@ -408,11 +772,13 @@ export const LayerPropertiesDialog: React.FC = () => {
         styleValidationError: null,
         visualSymbolizer: extracted,
       });
+      resetRawStyleHistory(contentToSet);
     } catch {
       updateLayerPropertiesDraft({
         styleContent: contentToSet,
         styleValidationError: null,
       });
+      resetRawStyleHistory(contentToSet);
     }
   }, [draft.styleFormat, draft.sldVersion, info?.geometryKind]);
 
@@ -1834,9 +2200,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                       {t("layer_properties_styling_raw_style")}
                     </label>
                     <textarea
+                      ref={rawStyleTextareaRef}
                       id='layer-prop-styling-raw-style'
                       value={draft.styleContent}
                       onChange={handleRawStyleChange}
+                      onKeyDown={handleRawStyleKeyDown}
+                      onBlur={handleRawStyleBlur}
                       rows={12}
                       spellCheck={false}
                       style={{

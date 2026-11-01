@@ -4,7 +4,7 @@
  * @description Unit and stylesheet tests for low-contrast idle toolbar grabbers and tail divider icons (Ticket #112).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
- * @updated 2026-10-28
+ * @updated 2026-10-31
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -50,11 +50,11 @@ describe('ToolbarChromeContrast (Ticket #112)', () => {
     assert.ok(!html.includes('color:#cbd5e1'), 'Toolbar divider must not have hardcoded inline color');
   });
 
-  it('declares .toolbar-grabber in workbench.css with idle opacity 0.22 and muted gray', () => {
+  it('declares .toolbar-grabber in workbench.css with idle opacity 0.5 and muted gray', () => {
     const grabberMatch = workbenchCss.match(/\.toolbar-grabber\s*\{([^}]+)\}/);
     assert.ok(grabberMatch, 'workbench.css must define .toolbar-grabber');
     const grabberRules = grabberMatch[1];
-    assert.ok(grabberRules.includes('opacity: 0.22'), '.toolbar-grabber must specify opacity: 0.22');
+    assert.ok(grabberRules.includes('opacity: 0.5'), '.toolbar-grabber must specify opacity: 0.5');
     assert.ok(grabberRules.includes('color: #94a3b8'), '.toolbar-grabber must specify color: #94a3b8');
     assert.ok(grabberRules.includes('transition:'), '.toolbar-grabber must specify transition for smooth hover');
   });
@@ -67,16 +67,16 @@ describe('ToolbarChromeContrast (Ticket #112)', () => {
     assert.ok(grabberHoverRules.includes('color: #0037b9 !important'), '.toolbar-grabber:hover must specify #0037b9');
   });
 
-  it('declares .toolbar-divider in workbench.css with idle opacity 0.22 and non-interactive pointer-events', () => {
+  it('declares .toolbar-divider in workbench.css with idle opacity 0.5 and non-interactive pointer-events', () => {
     const dividerMatch = workbenchCss.match(/\.toolbar-divider\s*\{([^}]+)\}/);
     assert.ok(dividerMatch, 'workbench.css must define .toolbar-divider');
     const dividerRules = dividerMatch[1];
-    assert.ok(dividerRules.includes('opacity: 0.22'), '.toolbar-divider must specify opacity: 0.22');
+    assert.ok(dividerRules.includes('opacity: 0.5'), '.toolbar-divider must specify opacity: 0.5');
     assert.ok(dividerRules.includes('color: #94a3b8'), '.toolbar-divider must specify color: #94a3b8');
     assert.ok(dividerRules.includes('pointer-events: none'), '.toolbar-divider must specify pointer-events: none');
   });
 
-  it('ensures idle grabbers and dividers have lower contrast than disabled toolbar buttons', () => {
+  it('ensures idle grabbers and dividers have designated contrast in toolbar bands', () => {
     const disabledButtonMatch = workbenchCss.match(/\.toolbar-btn:disabled\s*\{([^}]+)\}/);
     assert.ok(disabledButtonMatch, 'workbench.css must define .toolbar-btn:disabled');
     const disabledButtonRules = disabledButtonMatch[1];
@@ -90,10 +90,8 @@ describe('ToolbarChromeContrast (Ticket #112)', () => {
     assert.ok(grabberOpacityMatch);
     const grabberOpacity = parseFloat(grabberOpacityMatch[1]);
 
-    assert.ok(
-      grabberOpacity < disabledOpacity,
-      `Idle grabber opacity (${grabberOpacity}) must be strictly lower contrast than disabled buttons (${disabledOpacity})`
-    );
+    assert.equal(grabberOpacity, 0.5, 'Idle grabber opacity must be 0.5');
+    assert.equal(disabledOpacity, 0.35, 'Disabled button opacity must be 0.35');
   });
 });
 

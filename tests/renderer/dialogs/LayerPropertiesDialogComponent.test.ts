@@ -27,7 +27,10 @@ const React = jiti('react');
 const ReactDOM = jiti('react-dom');
 const { renderToStaticMarkup } = jiti('react-dom/server');
 const { mdiTablePlus } = jiti('@mdi/js');
-const { LayerPropertiesDialog } = jiti('../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx');
+const {
+  LayerPropertiesDialog,
+  useRawStyleTextEditorHistory,
+} = jiti('../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx');
 const {
   activeLayerPropertiesIdSignal,
   activeLayerPropertiesTabSignal,
@@ -42,6 +45,8 @@ const {
 } = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
 const { projectTreeSignal, isProjectDirtySignal } = jiti('../../../src/renderer/state/projectSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
+const { undoStackSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
 const {
   parseStyleTextToGeoStyler,
   serializeGeoStylerToText,
@@ -767,6 +772,529 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       const applySuccess = await applyLayerPropertiesEdits();
       assert.strictEqual(applySuccess, false, 'applyLayerPropertiesEdits must fail when invalid style text is present');
+    });
+  });
+
+  describe('Raw Style Text Cursor Stability & Action-Driven Undo/Redo (Ticket #129)', () => {
+    it('captures cursor selection offsets and updates draft styleContent immediately during typing without jumping', async () => {
+      let updatedContent = '';
+      let validatedContent = '';
+      const onUpdateContent = (c: string) => {
+        updatedContent = c;
+      };
+      const onValidateAndSync = async (c: string) => {
+        validatedContent = c;
+      };
+
+      // Mock textarea DOM element with setSelectionRange
+      const mockTextarea = {
+        value: 'Initial style content here',
+        selectionStart: 10,
+        selectionEnd: 10,
+        setSelectionRange(start: number, end: number) {
+          this.selectionStart = start;
+          this.selectionEnd = end;
+        },
+      };
+
+      let hookResult: any;
+      function TestHookWrapper() {
+        hookResult = useRawStyleTextEditorHistory({
+          content: 'Initial style content here',
+          debounceMs: 0,
+          onUpdateContent,
+          onValidateAndSync,
+        });
+        hookResult.textareaRef.current = mockTextarea;
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+      // Simulate typing 'X' at position 10
+      const changeEvent = {
+        target: {
+          value: 'Initial stXyle content here',
+          selectionStart: 11,
+          selectionEnd: 11,
+        },
+      };
+      hookResult.handleRawStyleChange(changeEvent);
+
+      // Verify draft content updated synchronously without lag
+      assert.strictEqual(updatedContent, 'Initial stXyle content here');
+      assert.strictEqual(validatedContent, 'Initial stXyle content here');
+      assert.strictEqual(hookResult.selectionRef.current?.start, 11);
+      assert.strictEqual(hookResult.selectionRef.current?.end, 11);
+      assert.strictEqual(hookResult.historyIndexRef.current, 1);
+      assert.strictEqual(hookResult.historyStackRef.current.length, 2);
+    });
+
+    it('reverts previous text edit and restores prior cursor position on undo', async () => {
+      let activeContent = 'initial';
+      const onUpdateContent = (c: string) => {
+        activeContent = c;
+      };
+      const onValidateAndSync = async () => {};
+
+      let hookResult: any;
+      function TestHookWrapper() {
+        hookResult = useRawStyleTextEditorHistory({
+          content: activeContent,
+          onUpdateContent,
+          onValidateAndSync,
+        });
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+      // 1. Edit 1: insert '1' at pos 3
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'ini1tial',
+          selectionStart: 4,
+          selectionEnd: 4,
+        },
+      });
+      assert.strictEqual(activeContent, 'ini1tial');
+
+      // 2. Edit 2: insert '2' at pos 4
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'ini12tial',
+          selectionStart: 5,
+          selectionEnd: 5,
+        },
+      });
+      assert.strictEqual(activeContent, 'ini12tial');
+      assert.strictEqual(hookResult.historyIndexRef.current, 2);
+
+      // 3. Trigger undo keydown (Ctrl+Z)
+      let prevented = false;
+      let stopped = false;
+      const undoEvent = {
+        key: 'z',
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        preventDefault() {
+          prevented = true;
+        },
+        stopPropagation() {
+          stopped = true;
+        },
+      };
+
+      hookResult.handleRawStyleKeyDown(undoEvent);
+      assert.strictEqual(prevented, true, 'Must preventDefault on undo key match');
+      assert.strictEqual(stopped, true, 'Must stopPropagation on undo key match');
+      assert.strictEqual(activeContent, 'ini1tial', 'Undo must restore previous content');
+      assert.strictEqual(hookResult.selectionRef.current?.start, 4, 'Undo must restore previous cursor position');
+      assert.strictEqual(hookResult.historyIndexRef.current, 1);
+
+      // 4. Undo again to initial
+      hookResult.handleRawStyleKeyDown(undoEvent);
+      assert.strictEqual(activeContent, 'initial', 'Second undo must restore initial content');
+      assert.strictEqual(hookResult.selectionRef.current?.start, 0);
+      assert.strictEqual(hookResult.historyIndexRef.current, 0);
+
+      // 5. Undo at top of stack is a no-op
+      hookResult.handleRawStyleKeyDown(undoEvent);
+      assert.strictEqual(activeContent, 'initial');
+      assert.strictEqual(hookResult.historyIndexRef.current, 0);
+    });
+
+    it('re-applies undone edit and restores cursor position on redo', async () => {
+      let activeContent = 'hello';
+      const onUpdateContent = (c: string) => {
+        activeContent = c;
+      };
+      const onValidateAndSync = async () => {};
+
+      let hookResult: any;
+      function TestHookWrapper() {
+        hookResult = useRawStyleTextEditorHistory({
+          content: activeContent,
+          onUpdateContent,
+          onValidateAndSync,
+        });
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'hello world',
+          selectionStart: 11,
+          selectionEnd: 11,
+        },
+      });
+      assert.strictEqual(activeContent, 'hello world');
+
+      // Undo
+      hookResult.undo();
+      assert.strictEqual(activeContent, 'hello');
+
+      // Redo via keydown (Ctrl+Y)
+      let redoPrevented = false;
+      hookResult.handleRawStyleKeyDown({
+        key: 'y',
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        preventDefault() {
+          redoPrevented = true;
+        },
+        stopPropagation() {},
+      });
+      assert.strictEqual(redoPrevented, true, 'Ctrl+Y must be prevented');
+      assert.strictEqual(activeContent, 'hello world', 'Redo must reapply edit');
+      assert.strictEqual(hookResult.selectionRef.current?.start, 11, 'Redo must restore cursor at end of re-applied text');
+
+      // Undo and redo via alternative Ctrl+Shift+Z
+      hookResult.undo();
+      assert.strictEqual(activeContent, 'hello');
+
+      let shiftZPrevented = false;
+      hookResult.handleRawStyleKeyDown({
+        key: 'z',
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: true,
+        metaKey: false,
+        preventDefault() {
+          shiftZPrevented = true;
+        },
+        stopPropagation() {},
+      });
+      assert.strictEqual(shiftZPrevented, true);
+      assert.strictEqual(activeContent, 'hello world', 'Ctrl+Shift+Z must also trigger redo');
+    });
+
+    it('dynamically resolves custom key combinations configured in registeredActionsSignal for undo and redo', async () => {
+      // Configure custom key combinations in registeredActionsSignal
+      const originalActions = registeredActionsSignal.value;
+      registeredActionsSignal.value = [
+        {
+          name: 'undo_action',
+          description: 'Custom Undo',
+          keyCombination: { key: 'u', alt: true },
+        },
+        {
+          name: 'redo_action',
+          description: 'Custom Redo',
+          keyCombination: { key: 'r', alt: true },
+        },
+      ];
+
+      try {
+        let activeContent = 'base';
+        let hookResult: any;
+        function TestHookWrapper() {
+          hookResult = useRawStyleTextEditorHistory({
+            content: activeContent,
+            onUpdateContent: (c: string) => {
+              activeContent = c;
+            },
+            onValidateAndSync: async () => {},
+          });
+          return null;
+        }
+
+        renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+        hookResult.handleRawStyleChange({
+          target: {
+            value: 'base-modified',
+            selectionStart: 13,
+            selectionEnd: 13,
+          },
+        });
+        assert.strictEqual(activeContent, 'base-modified');
+
+        // Normal Ctrl+Z must NOT undo since action has custom keyCombination Alt+U
+        let ctrlZPrevented = false;
+        hookResult.handleRawStyleKeyDown({
+          key: 'z',
+          ctrlKey: true,
+          altKey: false,
+          shiftKey: false,
+          metaKey: false,
+          preventDefault() {
+            ctrlZPrevented = true;
+          },
+          stopPropagation() {},
+        });
+        assert.strictEqual(ctrlZPrevented, false, 'Ctrl+Z must not trigger when action is mapped to Alt+U');
+        assert.strictEqual(activeContent, 'base-modified');
+
+        // Alt+U must trigger undo
+        let altUPrevented = false;
+        hookResult.handleRawStyleKeyDown({
+          key: 'u',
+          ctrlKey: false,
+          altKey: true,
+          shiftKey: false,
+          metaKey: false,
+          preventDefault() {
+            altUPrevented = true;
+          },
+          stopPropagation() {},
+        });
+        assert.strictEqual(altUPrevented, true, 'Alt+U must trigger undo per registeredActionsSignal');
+        assert.strictEqual(activeContent, 'base');
+
+        // Alt+R must trigger redo
+        let altRPrevented = false;
+        hookResult.handleRawStyleKeyDown({
+          key: 'r',
+          ctrlKey: false,
+          altKey: true,
+          shiftKey: false,
+          metaKey: false,
+          preventDefault() {
+            altRPrevented = true;
+          },
+          stopPropagation() {},
+        });
+        assert.strictEqual(altRPrevented, true, 'Alt+R must trigger redo per registeredActionsSignal');
+        assert.strictEqual(activeContent, 'base-modified');
+      } finally {
+        registeredActionsSignal.value = originalActions;
+      }
+    });
+
+    it('undo and redo operations in raw style text control do not modify workbench undoStackSignal', async () => {
+      undoStackSignal.value = [{ action: 'gis_edit_1' }, { action: 'gis_edit_2' }];
+      const initialStackLen = undoStackSignal.value.length;
+
+      let activeContent = 'original';
+      let hookResult: any;
+      function TestHookWrapper() {
+        hookResult = useRawStyleTextEditorHistory({
+          content: activeContent,
+          onUpdateContent: (c: string) => {
+            activeContent = c;
+          },
+          onValidateAndSync: async () => {},
+        });
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'original-edited',
+          selectionStart: 15,
+          selectionEnd: 15,
+        },
+      });
+
+      hookResult.undo();
+      assert.strictEqual(activeContent, 'original');
+      assert.strictEqual(undoStackSignal.value.length, initialStackLen, 'GIS undoStackSignal must remain untouched');
+
+      hookResult.redo();
+      assert.strictEqual(activeContent, 'original-edited');
+      assert.strictEqual(undoStackSignal.value.length, initialStackLen, 'GIS undoStackSignal must remain untouched');
+
+      undoStackSignal.value = [];
+    });
+
+    it('debounces live validation until typing has paused without altering raw style text', async () => {
+      let draftContent = 'color: red;';
+      const validationCalls: string[] = [];
+      const onUpdateContent = (c: string) => {
+        draftContent = c;
+      };
+      const onValidateAndSync = async (c: string) => {
+        validationCalls.push(c);
+      };
+
+      let hookResult: any;
+      function TestHookWrapper() {
+        hookResult = useRawStyleTextEditorHistory({
+          content: draftContent,
+          debounceMs: 40,
+          onUpdateContent,
+          onValidateAndSync,
+        });
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+      // First keystroke
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'color: bl',
+          selectionStart: 9,
+          selectionEnd: 9,
+        },
+      });
+      assert.strictEqual(draftContent, 'color: bl');
+      assert.strictEqual(validationCalls.length, 0, 'Validation must not run immediately');
+
+      // Wait 15ms (less than 40ms debounce)
+      await new Promise((resolve) => setTimeout(resolve, 15));
+
+      // Second keystroke before debounce timer expires
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'color: blue;',
+          selectionStart: 12,
+          selectionEnd: 12,
+        },
+      });
+      assert.strictEqual(draftContent, 'color: blue;');
+      assert.strictEqual(validationCalls.length, 0, 'Validation must still be waiting');
+
+      // Wait 50ms (exceeds 40ms from second keystroke)
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      assert.strictEqual(validationCalls.length, 1, 'Validation should fire once after pause');
+      assert.strictEqual(validationCalls[0], 'color: blue;');
+      // Verify raw style text in draft remains completely unaltered
+      assert.strictEqual(draftContent, 'color: blue;');
+    });
+
+    it('synchronizes external baseline style updates so undo never reverts to an empty placeholder', async () => {
+      let currentContent = '';
+      let hookResult: any;
+
+      function TestHookWrapper({ content }: { content: string }) {
+        hookResult = useRawStyleTextEditorHistory({
+          content,
+          debounceMs: 0,
+          onUpdateContent: (c: string) => {
+            currentContent = c;
+          },
+          onValidateAndSync: async () => {},
+        });
+        return null;
+      }
+
+      // 1. Initial mount when dialog opens before async style text is fetched (content is empty)
+      renderToStaticMarkup(React.createElement(TestHookWrapper, { content: '' }));
+      assert.strictEqual(hookResult.historyStackRef.current.length, 1);
+      assert.strictEqual(hookResult.historyStackRef.current[0].content, '');
+
+      // 2. Async style text arrives and updates draft.styleContent
+      const loadedStyle = '{"version": 8, "layers": []}';
+      currentContent = loadedStyle;
+      renderToStaticMarkup(React.createElement(TestHookWrapper, { content: loadedStyle }));
+      assert.strictEqual(hookResult.historyStackRef.current.length, 1);
+      assert.strictEqual(
+        hookResult.historyStackRef.current[0].content,
+        loadedStyle,
+        'Empty baseline placeholder must be replaced by loaded style'
+      );
+
+      // 3. User makes an edit
+      hookResult.handleRawStyleChange({
+        target: {
+          value: '{"version": 8, "layers": ["test"]}',
+          selectionStart: 35,
+          selectionEnd: 35,
+        },
+      });
+      assert.strictEqual(currentContent, '{"version": 8, "layers": ["test"]}');
+      assert.strictEqual(hookResult.historyIndexRef.current, 1);
+
+      // 4. User triggers Undo (Ctrl+Z)
+      const didUndo = hookResult.undo();
+      assert.strictEqual(didUndo, true);
+      assert.strictEqual(
+        currentContent,
+        loadedStyle,
+        'Undo must revert to loaded style, NOT empty string placeholder'
+      );
+
+      // 5. Subsequent undo is not possible
+      const secondUndo = hookResult.undo();
+      assert.strictEqual(secondUndo, false);
+      assert.strictEqual(currentContent, loadedStyle, 'Style content must never disappear on undo');
+    });
+
+    it('flushes pending debounced validation immediately when textarea loses focus (blur)', async () => {
+      let draftContent = 'color: red;';
+      const validationCalls: string[] = [];
+      let hookResult: any;
+
+      function TestHookWrapper() {
+        hookResult = useRawStyleTextEditorHistory({
+          content: draftContent,
+          debounceMs: 500, // long debounce
+          onUpdateContent: (c: string) => {
+            draftContent = c;
+          },
+          onValidateAndSync: async (c: string) => {
+            validationCalls.push(c);
+          },
+        });
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHookWrapper));
+
+      hookResult.handleRawStyleChange({
+        target: {
+          value: 'color: green;',
+          selectionStart: 13,
+          selectionEnd: 13,
+        },
+      });
+
+      assert.strictEqual(validationCalls.length, 0, 'Validation waiting on debounce timer');
+
+      // Trigger blur
+      hookResult.handleRawStyleBlur();
+
+      assert.strictEqual(validationCalls.length, 1, 'Blur must flush pending validation immediately');
+      assert.strictEqual(validationCalls[0], 'color: green;');
+    });
+
+    it('preserves previous text when Apply or OK is attempted with validation errors', async () => {
+      // Setup draft state with a validation error
+      activeLayerPropertiesIdSignal.value = 'mock-layer-1';
+      layerPropertiesDraftSignal.value = {
+        ...layerPropertiesDraftSignal.value,
+        styleContent: 'invalid: { unparseable syntax }',
+        styleValidationError: 'Style syntax or validation error: Unexpected token',
+      };
+
+      // Calling applyLayerPropertiesEdits must return false and fail to apply
+      const applyResult = await applyLayerPropertiesEdits();
+      assert.strictEqual(applyResult, false, 'applyLayerPropertiesEdits must return false when validation error exists');
+
+      // Calling commitAndCloseLayerPropertiesDialog must also return false and leave dialog open
+      const okResult = await commitAndCloseLayerPropertiesDialog();
+      assert.strictEqual(okResult, false, 'commitAndCloseLayerPropertiesDialog must return false when validation error exists');
+      assert.strictEqual(activeLayerPropertiesIdSignal.value, 'mock-layer-1', 'Dialog must remain open when validation errors exist');
+
+      // Render dialog and verify Apply and OK buttons have disabled attribute
+      const markup = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(markup.includes('disabled'), 'Buttons must be disabled in dialog when draft has styleValidationError');
+
+      // Clean up signals
+      activeLayerPropertiesIdSignal.value = null;
+      layerPropertiesDraftSignal.value = {
+        layerId: '',
+        layerName: '',
+        crsAuthId: 'EPSG:4326',
+        featureFilter: '',
+        styleFormat: 'openlayers',
+        sldVersion: '1.0.0',
+        styleContent: '',
+        styleValidationError: null,
+        visualSymbolizer: null,
+        idValidationError: null,
+      };
     });
   });
 });
