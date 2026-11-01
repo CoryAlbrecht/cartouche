@@ -1,15 +1,22 @@
 /**
  * @file styleCompiler.ts
  * @module renderer/map/styleCompiler
- * @description Headless Renderer style compiler and feature attribute extractor supporting native OpenLayers Flat Styles and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
+ * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link compileLayerStyle}
+ * @see {@link compileCartoucheLayerStyleSync}
+ * @see {@link compileStyleFunction}
+ * @see {@link isCartoucheStyleDescriptor}
  * @see {@link extractStyleAttributes}
  */
 
+import Style, { type StyleFunction } from "ol/style/Style";
+import Fill from "ol/style/Fill";
+import Stroke from "ol/style/Stroke";
+import CircleStyle from "ol/style/Circle";
 import { SldStyleParser } from "geostyler-sld-parser";
 import { OlStyleParser } from "geostyler-openlayers-parser";
 import type { Style as GeoStylerStyle } from "geostyler-style";
@@ -17,11 +24,14 @@ import { logging } from "../../shared/logging";
 import {
   createDefaultVectorLayerStyle,
   isProjectLayerStyleWrapper,
+  isCartoucheLayerStyle,
 } from "../../shared/styles/defaultLayerStyles";
 import type {
   ProjectStyleFormat,
   SldStyleVersion,
   ProjectStyleItem,
+  CartoucheLayerStyle,
+  StyleComponent,
 } from "../../shared/types";
 
 /**
@@ -363,6 +373,271 @@ export function isSldStyleDescriptor(
 }
 
 /**
+ * @description Determines whether a given style descriptor, wrapper, or raw JSON represents Cartouche Symbology Specification (format="cartouche").
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {unknown} style - Style descriptor, ProjectLayerStyleItem container, or raw string/object.
+ * @param {ProjectStyleItem[]} [sharedStyles] - Optional shared project styles catalog to resolve `#id` references.
+ * @returns {boolean} True if the style is a Cartouche Symbology descriptor.
+ */
+export function isCartoucheStyleDescriptor(
+  style: unknown,
+  sharedStyles?: ProjectStyleItem[]
+): boolean {
+  if (!style) {
+    return false;
+  }
+  if (isProjectLayerStyleWrapper(style)) {
+    if (style.format === "cartouche") {
+      return true;
+    }
+    if (style.href && !style.content && sharedStyles) {
+      const targetId = style.href.replace(/^#/, "");
+      const matched = sharedStyles.find((s) => s.id === targetId);
+      if (matched) {
+        if (matched.format === "cartouche") {
+          return true;
+        }
+        try {
+          const parsed = JSON.parse(matched.content.trim());
+          if (isCartoucheLayerStyle(parsed)) {
+            return true;
+          }
+        } catch {
+          // not JSON
+        }
+      }
+    }
+    if (style.content) {
+      try {
+        const parsed = JSON.parse(style.content.trim());
+        if (isCartoucheLayerStyle(parsed)) {
+          return true;
+        }
+      } catch {
+        // not JSON
+      }
+    }
+  }
+  if (typeof style === "object" && isCartoucheLayerStyle(style)) {
+    return true;
+  }
+  if (typeof style === "string") {
+    const trimmed = style.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return isCartoucheLayerStyle(parsed);
+      } catch {
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * @description Compiles a Cartouche Symbology Specification style (CartoucheLayerStyle) into an OpenLayers StyleFunction closure with in-memory Style caching.
+ * Resolves components in sequential painter's execution order (components[0] bottom, components[n - 1] top) and filters disabled components.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {CartoucheLayerStyle} cartoucheStyle - Authoritative Cartouche Symbology model.
+ * @returns {StyleFunction} OpenLayers StyleFunction closure returning cached Style[] array.
+ */
+export function compileStyleFunction(
+  cartoucheStyle: CartoucheLayerStyle
+): StyleFunction {
+  const styleCache = new Map<string, Style>();
+
+  function getOrCreateComponentStyle(component: StyleComponent): Style | null {
+    if (!component.enabled) {
+      return null;
+    }
+
+    const cacheKey = JSON.stringify(component);
+    const cached = styleCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    let created: Style | null = null;
+    if (component.type === "simple-fill") {
+      created = new Style({
+        fill: new Fill({
+          color: component.color,
+        }),
+      });
+    } else if (component.type === "simple-line") {
+      created = new Style({
+        stroke: new Stroke({
+          color: component.color,
+          width: component.width,
+          ...(component.dashArray && component.dashArray.length > 0
+            ? { lineDash: component.dashArray }
+            : {}),
+        }),
+      });
+    } else if (component.type === "simple-marker") {
+      created = new Style({
+        image: new CircleStyle({
+          radius: component.radius,
+          fill: new Fill({
+            color: component.fillColor,
+          }),
+          stroke: new Stroke({
+            color: component.strokeColor,
+            width: component.strokeWidth,
+          }),
+        }),
+      });
+    }
+
+    if (created) {
+      styleCache.set(cacheKey, created);
+    }
+    return created;
+  }
+
+  // Pre-resolve the cached Style[] array for simple symbology to eliminate allocations during 60 FPS rendering
+  let resolvedStylesArray: Style[] | null = null;
+
+  return (_feature, _resolution): Style[] => {
+    if (resolvedStylesArray) {
+      return resolvedStylesArray;
+    }
+
+    const styles: Style[] = [];
+    if ("components" in cartoucheStyle && Array.isArray(cartoucheStyle.components)) {
+      for (const comp of cartoucheStyle.components) {
+        const s = getOrCreateComponentStyle(comp);
+        if (s) {
+          styles.push(s);
+        }
+      }
+    }
+
+    resolvedStylesArray = styles;
+    return resolvedStylesArray;
+  };
+}
+
+/**
+ * @description Synchronously compiles a Cartouche Symbology style into an executable OpenLayers StyleFunction.
+ * Returns a fallback 3-rule random-color style if the input is unstyled or invalid.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {unknown} style - Raw Cartouche Symbology descriptor, JSON string, or ProjectLayerStyleItem wrapper.
+ * @param {CompileLayerStyleOptions} [options] - Optional shared styles catalog and layer ID context.
+ * @returns {CompiledLayerStyleResult} Compiled layer style result containing the StyleFunction.
+ */
+export function compileCartoucheLayerStyleSync(
+  style: unknown,
+  options?: CompileLayerStyleOptions
+): CompiledLayerStyleResult {
+  const sharedStyles = options?.sharedStyles;
+
+  if (!style) {
+    return {
+      compiledStyle: createDefaultVectorLayerStyle(),
+      requiredFields: new Set<string>(),
+      format: "cartouche",
+      isFallback: true,
+    };
+  }
+
+  let rawTarget: unknown = style;
+
+  if (isProjectLayerStyleWrapper(style)) {
+    if (style.href && !style.content) {
+      const targetId = style.href.replace(/^#/, "");
+      const matched = sharedStyles?.find((s) => s.id === targetId);
+      if (matched && matched.content) {
+        rawTarget = matched.content;
+      } else {
+        logging.warn(
+          "Unresolved shared cartouche style href; falling back to default vector style",
+          {
+            scope: "styleCompiler",
+            layerId: options?.layerId,
+            href: style.href,
+          }
+        );
+        return {
+          compiledStyle: createDefaultVectorLayerStyle(),
+          requiredFields: new Set<string>(),
+          format: "cartouche",
+          isFallback: true,
+        };
+      }
+    } else if (style.content !== undefined) {
+      rawTarget = style.content;
+    } else {
+      logging.warn(
+        "Empty cartouche style wrapper; falling back to default vector style",
+        { scope: "styleCompiler", layerId: options?.layerId }
+      );
+      return {
+        compiledStyle: createDefaultVectorLayerStyle(),
+        requiredFields: new Set<string>(),
+        format: "cartouche",
+        isFallback: true,
+      };
+    }
+  }
+
+  let cartoucheModel: CartoucheLayerStyle | null = null;
+  if (typeof rawTarget === "string") {
+    try {
+      const parsed = JSON.parse(rawTarget.trim());
+      if (isCartoucheLayerStyle(parsed)) {
+        cartoucheModel = parsed;
+      }
+    } catch (err) {
+      logging.warn(
+        "Failed to parse Cartouche Symbology JSON; falling back to default vector style",
+        err,
+        { scope: "styleCompiler", layerId: options?.layerId }
+      );
+      return {
+        compiledStyle: createDefaultVectorLayerStyle(),
+        requiredFields: new Set<string>(),
+        format: "cartouche",
+        isFallback: true,
+      };
+    }
+  } else if (typeof rawTarget === "object" && isCartoucheLayerStyle(rawTarget)) {
+    cartoucheModel = rawTarget;
+  }
+
+  if (!cartoucheModel) {
+    logging.warn(
+      "Invalid Cartouche Symbology structure; falling back to default vector style",
+      { scope: "styleCompiler", layerId: options?.layerId }
+    );
+    return {
+      compiledStyle: createDefaultVectorLayerStyle(),
+      requiredFields: new Set<string>(),
+      format: "cartouche",
+      isFallback: true,
+    };
+  }
+
+  const styleFunction = compileStyleFunction(cartoucheModel);
+  return {
+    compiledStyle: styleFunction,
+    requiredFields: new Set<string>(),
+    format: "cartouche",
+    isFallback: false,
+  };
+}
+
+/**
  * @description Validates whether a parsed object or array is a valid OpenLayers Flat Style rule or dictionary.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
@@ -557,6 +832,9 @@ export async function compileLayerStyle(
   style: unknown,
   options?: CompileLayerStyleOptions
 ): Promise<CompiledLayerStyleResult> {
+  if (isCartoucheStyleDescriptor(style, options?.sharedStyles)) {
+    return compileCartoucheLayerStyleSync(style, options);
+  }
   if (!isSldStyleDescriptor(style, options?.sharedStyles)) {
     return compileFlatLayerStyleSync(style, options);
   }

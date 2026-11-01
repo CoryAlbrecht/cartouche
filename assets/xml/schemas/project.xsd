@@ -193,9 +193,10 @@
     </xs:simpleContent>
   </xs:complexType>
 
-  <!-- Style Format Enumeration: OpenLayers Flat Style JSON or OGC SLD XML -->
+  <!-- Style Format Enumeration: Cartouche Symbology, OpenLayers Flat Style JSON, or OGC SLD XML -->
   <xs:simpleType name="StyleFormatType">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="cartouche" />
       <xs:enumeration value="openlayers" />
       <xs:enumeration value="sld" />
     </xs:restriction>

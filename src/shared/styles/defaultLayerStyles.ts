@@ -4,10 +4,13 @@
  * @description Shared default OpenLayers vector layer styling rules and lookup helpers for Polygon, LineString, Point, and multi-geometry feature layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link createDefaultVectorLayerStyle}
  * @see {@link generateDefaultVectorStyleJson}
+ * @see {@link createDefaultCartoucheLayerStyle}
+ * @see {@link createDefaultCartoucheLayerStyleJson}
+ * @see {@link isCartoucheLayerStyle}
  * @see {@link getDefaultLayerStyle}
  * @see {@link resolveLayerStyle}
  * @see {@link isProjectLayerStyleWrapper}
@@ -21,12 +24,26 @@ import {
   type OlFlatStyleRule,
   type OlLayerStyle,
 } from "../types/project";
+import type {
+  CartoucheLayerStyle,
+  SimpleCartoucheStyle,
+  StyleComponent,
+  SimpleFillComponent,
+  SimpleLineComponent,
+  SimpleMarkerComponent,
+} from "../types/styling";
 
 export {
   isProjectLayerStyleWrapper,
   type ProjectLayerStyleItem,
   type OlFlatStyleRule,
   type OlLayerStyle,
+  type CartoucheLayerStyle,
+  type SimpleCartoucheStyle,
+  type StyleComponent,
+  type SimpleFillComponent,
+  type SimpleLineComponent,
+  type SimpleMarkerComponent,
 };
 
 /**
@@ -93,6 +110,150 @@ export function generateDefaultVectorStyleJson(
 }
 
 /**
+ * @description Type guard verifying whether an object conforms to the Cartouche Symbology Specification (CartoucheLayerStyle).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {unknown} value - Object to inspect.
+ * @returns {boolean} True if value is a valid CartoucheLayerStyle.
+ */
+export function isCartoucheLayerStyle(
+  value: unknown
+): value is CartoucheLayerStyle {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const obj = value as Record<string, any>;
+  if (obj.version !== 1) {
+    return false;
+  }
+  if (obj.format === "simple") {
+    return Array.isArray(obj.components);
+  }
+  return (
+    obj.format === "categorized" ||
+    obj.format === "graduated" ||
+    obj.format === "rules"
+  );
+}
+
+/**
+ * @description Generates a default Cartouche Symbology Specification style (SimpleCartoucheStyle) appropriate to the layer geometry kind.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {string} [geometryKind='Unknown'] - Geometry kind of the target layer ('Polygon', 'LineString', 'Point', etc.).
+ * @param {string} [color] - Optional primary fill/stroke CSS color name or hex code. If omitted, samples a random color.
+ * @returns {SimpleCartoucheStyle} Geometry-appropriate Simple CartoucheLayerStyle object.
+ */
+export function createDefaultCartoucheLayerStyle(
+  geometryKind?: string,
+  color?: string
+): SimpleCartoucheStyle {
+  const primaryColor = color || (getRandomCssColors(1)[0] as string);
+  const gKind = (geometryKind || "Unknown").toLowerCase();
+
+  let components: StyleComponent[];
+
+  if (gKind.includes("polygon")) {
+    components = [
+      {
+        id: "fill-1",
+        type: "simple-fill",
+        enabled: true,
+        color: primaryColor,
+      },
+      {
+        id: "line-1",
+        type: "simple-line",
+        enabled: true,
+        color: "#000000",
+        width: 1,
+      },
+    ];
+  } else if (gKind.includes("line")) {
+    components = [
+      {
+        id: "line-1",
+        type: "simple-line",
+        enabled: true,
+        color: primaryColor,
+        width: 2,
+      },
+    ];
+  } else if (gKind.includes("point")) {
+    components = [
+      {
+        id: "marker-1",
+        type: "simple-marker",
+        enabled: true,
+        shape: "circle",
+        radius: 6,
+        fillColor: primaryColor,
+        strokeColor: "#000000",
+        strokeWidth: 1,
+      },
+    ];
+  } else {
+    // Unknown or mixed geometries
+    components = [
+      {
+        id: "fill-1",
+        type: "simple-fill",
+        enabled: true,
+        color: primaryColor,
+      },
+      {
+        id: "line-1",
+        type: "simple-line",
+        enabled: true,
+        color: "#000000",
+        width: 1,
+      },
+      {
+        id: "marker-1",
+        type: "simple-marker",
+        enabled: true,
+        shape: "circle",
+        radius: 6,
+        fillColor: primaryColor,
+        strokeColor: "#000000",
+        strokeWidth: 1,
+      },
+    ];
+  }
+
+  return {
+    format: "simple",
+    version: 1,
+    components,
+  };
+}
+
+/**
+ * @description Generates the serialized JSON string representation of the default Cartouche Symbology style.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {string} [geometryKind='Unknown'] - Geometry kind of the target layer.
+ * @param {string} [color] - Optional primary fill/stroke CSS color name or hex code.
+ * @returns {string} Formatted JSON string of the default Cartouche Symbology style.
+ */
+export function createDefaultCartoucheLayerStyleJson(
+  geometryKind?: string,
+  color?: string
+): string {
+  return JSON.stringify(
+    createDefaultCartoucheLayerStyle(geometryKind, color),
+    null,
+    2
+  );
+}
+
+/**
  * @description Standard default styling rules for spatial vector layers by geometry type.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
@@ -146,7 +307,7 @@ export function getDefaultLayerStyle(
  * @description Resolves OpenLayers Flat Style rules or SLD ProjectLayerStyleItem containers from various raw representations (JSON string, metadata object with content or href, or raw rules object/array), falling back to default geometry style rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-25
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {unknown} style - Raw style descriptor (string, object with content/href, or rule definition).
  * @param {Array<{ id: string; content: string; format?: string; version?: string }>} [sharedStyles] - Optional collection of shared project styles to resolve href references against.
@@ -181,6 +342,12 @@ export function resolveLayerStyle(
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
       try {
         const parsed = JSON.parse(trimmed);
+        if (isCartoucheLayerStyle(parsed)) {
+          return {
+            content: trimmed,
+            format: "cartouche",
+          };
+        }
         if (parsed && (typeof parsed === "object" || Array.isArray(parsed))) {
           return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
         }
@@ -199,6 +366,12 @@ export function resolveLayerStyle(
       if (sharedStyles && sharedStyles.length > 0) {
         const matched = sharedStyles.find((s) => s.id === targetId);
         if (matched && matched.content) {
+          if (matched.format === "cartouche" || style.format === "cartouche") {
+            return {
+              content: matched.content,
+              format: "cartouche",
+            };
+          }
           if (matched.format === "sld" || style.format === "sld") {
             const trimmedSld = matched.content.trim();
             if (trimmedSld.startsWith("<")) {
@@ -235,6 +408,12 @@ export function resolveLayerStyle(
 
     // 3b. Check for 'content' wrapper property
     if (style.content) {
+      if (style.format === "cartouche") {
+        return {
+          content: style.content,
+          format: "cartouche",
+        };
+      }
       if (style.format === "sld") {
         const trimmedSld = style.content.trim();
         if (trimmedSld.startsWith("<")) {
@@ -258,8 +437,14 @@ export function resolveLayerStyle(
     }
   }
 
-  // 4. If style is an object (Flat Style rule object or dictionary of flat styles)
+  // 4. If style is an object (CartoucheLayerStyle or Flat Style rule object)
   if (typeof style === "object" && style !== null) {
+    if (isCartoucheLayerStyle(style)) {
+      return {
+        content: JSON.stringify(style, null, 2),
+        format: "cartouche",
+      };
+    }
     const obj = style as Record<string, any>;
     const keys = Object.keys(obj);
     const hasSymbolizerProps = keys.some(

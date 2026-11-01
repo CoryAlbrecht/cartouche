@@ -4,7 +4,7 @@
  * @description Integration tests for vector layer ingestion via GeospatialService, LayerDescriptor extraction, and IPC broadcasting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 
@@ -18,6 +18,7 @@ import { addLayer, addLayers } from '../../../../src/main/api/layers/addLayer';
 import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
 import { onBroadcast } from '../../../../src/main/project/ProjectBroadcaster';
 import type { LayerDescriptor } from '../../../../src/shared/types';
+import { isProjectLayerStyleWrapper } from '../../../../src/shared/styles/defaultLayerStyles';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,23 +65,17 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.equal(queryRes.layerId, layer.id);
     assert.equal(queryRes.features.length, 34);
 
-    // Verify default multi-geometry styling attached
+    // Verify default Cartouche Symbology styling attached
     assert.ok(layer.style, 'Default styling must be attached to layer');
     assert.equal(typeof layer.style, 'object');
-    assert.equal((layer.style as any).format, 'openlayers');
-    const styleRules = JSON.parse((layer.style as any).content);
-    assert.equal(Array.isArray(styleRules), true);
-    assert.equal(styleRules.length, 3);
-    assert.equal(styleRules[0].filter[2], 'Polygon');
-    assert.equal(styleRules[1].filter[2], 'LineString');
-    assert.equal(styleRules[2].filter[2], 'Point');
-
-    const colors = [
-      styleRules[0].style['fill-color'],
-      styleRules[1].style['stroke-color'],
-      styleRules[2].style['circle-fill-color']
-    ];
-    assert.equal(new Set(colors).size, 3, 'Sampled colors must be distinct');
+    assert.equal((layer.style as any).format, 'cartouche');
+    const styleObj = JSON.parse((layer.style as any).content);
+    assert.equal(styleObj.format, 'simple');
+    assert.equal(styleObj.version, 1);
+    assert.equal(styleObj.components.length, 2);
+    assert.equal(styleObj.components[0].type, 'simple-fill');
+    assert.equal(styleObj.components[1].type, 'simple-line');
+    assert.ok(styleObj.components[0].color);
 
     // Verify IPC broadcasts dispatched
     const addedEvents = sentEvents.filter((e) => e.channel === 'project:layer-added');
@@ -159,13 +154,19 @@ describe('addLayer API & Ingestion Pipeline', () => {
       layerName: 'Lakes Two'
     });
 
-    assert.ok(l1.style && typeof l1.style === 'object');
-    assert.ok(l2.style && typeof l2.style === 'object');
+    assert.ok(isProjectLayerStyleWrapper(l1.style));
+    assert.ok(isProjectLayerStyleWrapper(l2.style));
+    assert.equal(l1.style.format, 'cartouche');
+    assert.equal(l2.style.format, 'cartouche');
 
-    const rules1 = JSON.parse((l1.style as any).content);
-    const rules2 = JSON.parse((l2.style as any).content);
-    assert.equal(rules1.length, 3);
-    assert.equal(rules2.length, 3);
+    const style1 = JSON.parse(l1.style.content || '{}');
+    const style2 = JSON.parse(l2.style.content || '{}');
+    assert.equal(style1.format, 'simple');
+    assert.equal(style2.format, 'simple');
+    assert.equal(style1.components.length, 2);
+    assert.equal(style2.components.length, 2);
+    assert.ok(style1.components[0].color);
+    assert.ok(style2.components[0].color);
 
     l1[Symbol.dispose]();
     l2[Symbol.dispose]();

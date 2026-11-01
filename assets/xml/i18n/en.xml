@@ -208,4 +208,25 @@
     <string name="layer_properties_shape_star">Star</string>
     <string name="layer_properties_shape_cross">Cross</string>
     <string name="layer_properties_shape_x">X</string>
+    <string name="layer_properties_format_simple">Simple</string>
+    <string name="layer_properties_format_sld_100">OGC SLD 1.0.0</string>
+    <string name="layer_properties_format_sld_110">OGC SLD 1.1.0</string>
+    <string name="layer_properties_styling_preview">Preview</string>
+    <string name="layer_properties_styling_preview_legend">Style Preview</string>
+    <string name="layer_properties_styling_simple_mode_title">Simple Symbology</string>
+    <string name="layer_properties_styling_simple_mode_desc">Manage visual styling components stack and symbolizer options.</string>
+    <string name="layer_properties_component_stack">Component Stack</string>
+    <string name="layer_properties_component_add">Add Component</string>
+    <string name="layer_properties_component_remove">Remove Component</string>
+    <string name="layer_properties_component_move_up">Move Up</string>
+    <string name="layer_properties_component_move_down">Move Down</string>
+    <string name="layer_properties_component_duplicate">Duplicate</string>
+    <string name="layer_properties_component_lock">Lock</string>
+    <string name="layer_properties_component_unlock">Unlock</string>
+    <string name="layer_properties_component_type">Component Type</string>
+    <string name="layer_properties_component_type_fill">Simple Fill</string>
+    <string name="layer_properties_component_type_line">Simple Line</string>
+    <string name="layer_properties_component_type_marker">Simple Marker</string>
+    <string name="layer_properties_component_options">Style Options</string>
+    <string name="layer_properties_component_locked_notice">This component is locked against edits.</string>
 </ci18n:localization>

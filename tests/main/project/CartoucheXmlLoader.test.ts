@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 
@@ -524,6 +524,76 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(loaded.styles?.length, 1);
     assert.equal(loaded.styles?.[0].format, 'sld');
     assert.equal(loaded.styles?.[0].content, sldXmlPayload);
+  });
+
+  it('parses and serializes format="cartouche" on inline and shared styles with schema validation', async () => {
+    const loader = new CartoucheXmlLoader();
+    const tempPath = path.join(tempDir, 'format-cartouche-test.cproj');
+
+    const cartoucheJson = JSON.stringify({
+      format: 'simple',
+      version: 1,
+      components: [
+        { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#e06666' },
+        { id: 'line-1', type: 'simple-line', enabled: true, color: '#000000', width: 2 }
+      ]
+    }, null, 2);
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Cartouche Symbology Project' },
+      layers: [
+        {
+          id: 'cartouche-inline-layer',
+          name: 'Inline Cartouche Layer',
+          type: 'geojson',
+          source: 'layers/polygons.geojson',
+          visible: true,
+          style: {
+            content: cartoucheJson,
+            format: 'cartouche'
+          }
+        },
+        {
+          id: 'cartouche-ref-layer',
+          name: 'Shared Cartouche Ref Layer',
+          type: 'geojson',
+          source: 'layers/more_polygons.geojson',
+          visible: true,
+          style: {
+            href: '#shared-cartouche-style',
+            format: 'cartouche'
+          }
+        }
+      ],
+      styles: [
+        {
+          id: 'shared-cartouche-style',
+          format: 'cartouche',
+          content: cartoucheJson
+        }
+      ]
+    };
+
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('format="cartouche"'), 'Serialized XML must include format="cartouche"');
+    assert.ok(xml.includes('href="#shared-cartouche-style"'), 'Serialized XML must include href attribute');
+
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, `Schema validation error for format="cartouche": ${validation.error}`);
+
+    await loader.save(model, tempPath);
+    const loaded = await loader.load(tempPath);
+
+    const lInline = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(lInline.style, { content: cartoucheJson, format: 'cartouche' });
+
+    const lRef = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.deepEqual(lRef.style, { href: '#shared-cartouche-style', format: 'cartouche' });
+
+    assert.equal(loaded.styles?.length, 1);
+    assert.equal(loaded.styles?.[0].format, 'cartouche');
+    assert.equal(loaded.styles?.[0].content, cartoucheJson);
   });
 
   it('enforces non-redirection constraint and rejects shared styles or references with chained href', async () => {

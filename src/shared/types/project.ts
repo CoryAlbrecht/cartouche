@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 
@@ -63,7 +63,7 @@ export interface ProjectCrs {
  * @property {number} [rotation] - Initial map view rotation in radians or degrees.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export interface ProjectViewport {
@@ -75,20 +75,20 @@ export interface ProjectViewport {
 
 /**
  * Supported cartographic style serialization dialects.
- * @typedef {'openlayers' | 'sld'} ProjectStyleFormat
+ * @typedef {'cartouche' | 'openlayers' | 'sld'} ProjectStyleFormat
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
-export type ProjectStyleFormat = 'openlayers' | 'sld';
+export type ProjectStyleFormat = 'cartouche' | 'openlayers' | 'sld';
 
 /**
  * Supported OGC Styled Layer Descriptor (SLD) specification versions.
  * @typedef {'1.0.0' | '1.1.0'} SldStyleVersion
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export type SldStyleVersion = '1.0.0' | '1.1.0';
@@ -97,11 +97,11 @@ export type SldStyleVersion = '1.0.0' | '1.1.0';
  * @typedef {Object} ProjectLayerStyleItem
  * @property {string} [href] - URI or internal reference (e.g. "#style-id") to a shared project style.
  * @property {string} [content] - Serialized OpenLayers flat styles JSON rules or SLD XML string content.
- * @property {ProjectStyleFormat} [format] - Style specification format dialect ("openlayers" or "sld").
+ * @property {ProjectStyleFormat} [format] - Style specification format dialect ("cartouche", "openlayers", or "sld").
  * @property {SldStyleVersion} [version] - Optional OGC SLD specification version ("1.0.0" or "1.1.0").
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export interface ProjectLayerStyleItem {
@@ -178,7 +178,7 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 
@@ -227,12 +227,12 @@ export interface ProjectGroupItem {
 /**
  * @typedef {Object} ProjectStyleItem
  * @property {string} id - Style identifier referenced by layers (e.g. "coastline-style").
- * @property {ProjectStyleFormat} [format] - Styling dialect format ("openlayers" or "sld").
+ * @property {ProjectStyleFormat} [format] - Styling dialect format ("cartouche", "openlayers", or "sld").
  * @property {SldStyleVersion} [version] - Optional OGC SLD specification version ("1.0.0" or "1.1.0").
  * @property {string} content - Serialized OpenLayers flat styles JSON rules or SLD XML string.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export interface ProjectStyleItem {

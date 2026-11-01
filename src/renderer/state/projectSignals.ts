@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -206,7 +206,7 @@ export const editingNodeIdSignal = signal<string | null>(null);
  * @description Reactive signal holding a copied layer style definition in the Renderer clipboard for Paste Style operations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @type {Signal<ProjectLayerStyleItem | null>}
  */
@@ -885,7 +885,7 @@ export function updateLayerFeatureCount(layerId: string, featureCount: number): 
  * @description Resolves the self-contained ProjectLayerStyleItem for a given layer ID, dereferencing #sharedId references or serializing raw OpenLayers Flat Style rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier.
  * @returns {ProjectLayerStyleItem} Self-contained layer style item.
@@ -937,6 +937,16 @@ export function resolveLayerStyleItem(layerId: string): ProjectLayerStyleItem {
       content: resolved.content
     };
   }
+  if (
+    resolved &&
+    !Array.isArray(resolved) &&
+    resolved.format === 'cartouche'
+  ) {
+    return {
+      format: 'cartouche',
+      content: resolved.content
+    };
+  }
   return {
     format: 'openlayers',
     content: JSON.stringify(resolved, null, 2)
@@ -948,7 +958,7 @@ export function resolveLayerStyleItem(layerId: string): ProjectLayerStyleItem {
  * @description Applies a style (and optional opacity) to one or more vector layers across Renderer signals and synchronizes with the Main process over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string[]} layerIds - Target layer identifiers.
  * @param {ProjectLayerStyleItem | undefined} style - Style definition to apply, or undefined to reset to default.

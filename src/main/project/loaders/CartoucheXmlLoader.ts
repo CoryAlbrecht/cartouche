@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -24,6 +24,7 @@ import {
   type ProjectGroupItem,
   type ProjectStyleItem,
   type ProjectLayerStyleItem,
+  type ProjectStyleFormat,
 } from "../../../shared/types";
 
 /**
@@ -59,7 +60,7 @@ function escapeXml(unsafe: string): string {
  * @description Extensible project loader for native unbundled Cartouche XML project documents.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 export class CartoucheXmlLoader implements IProjectLoader {
@@ -115,7 +116,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -230,9 +231,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
         const s = Array.isArray(raw.style) ? raw.style[0] : raw.style;
         // legacy xlink:href support
         const href = s["@_href"] || s["@_xlink:href"];
-        const format = (s["@_format"] === "sld" ? "sld" : "openlayers") as
-          | "openlayers"
-          | "sld";
+        const rawFormat = s["@_format"];
+        const format: ProjectStyleFormat =
+          rawFormat === "sld" ? "sld"
+          : rawFormat === "cartouche" ? "cartouche"
+          : "openlayers";
         const rawVersion = s["@_version"];
         const version =
           rawVersion === "1.0.0" || rawVersion === "1.1.0" ?
@@ -413,7 +416,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       {
         id: string;
         href?: string;
-        format?: "openlayers" | "sld";
+        format?: ProjectStyleFormat;
         content?: string;
       }
     >();
@@ -431,9 +434,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
             `Invalid shared style "${styleId}": shared styles in <styles> cannot reference another style via href.`
           );
         }
-        const format = (s["@_format"] === "sld" ? "sld" : "openlayers") as
-          | "openlayers"
-          | "sld";
+        const rawFormat = s["@_format"];
+        const format: ProjectStyleFormat =
+          rawFormat === "sld" ? "sld"
+          : rawFormat === "cartouche" ? "cartouche"
+          : "openlayers";
         const rawVersion = s["@_version"];
         const version =
           rawVersion === "1.0.0" || rawVersion === "1.1.0" ?
@@ -521,7 +526,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-01
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
    * @returns {string} XML project document string.

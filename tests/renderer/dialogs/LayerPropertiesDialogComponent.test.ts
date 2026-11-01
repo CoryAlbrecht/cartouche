@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -32,6 +32,13 @@ const {
   useRawStyleTextEditorHistory,
 } = jiti('../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx');
 const {
+  renderStylePreviewToCanvas,
+} = jiti('../../../src/renderer/workbench/dialogs/StylePreviewCanvas.tsx');
+const {
+  SimpleModeEditor,
+  parseCartoucheStyleSafe,
+} = jiti('../../../src/renderer/workbench/dialogs/SimpleModeEditor.tsx');
+const {
   activeLayerPropertiesIdSignal,
   activeLayerPropertiesTabSignal,
   layerDetailedInfoSignal,
@@ -40,6 +47,7 @@ const {
   closeLayerPropertiesDialog,
   cancelLayerPropertiesEdits,
   updateLayerPropertiesDraft,
+  switchLayerPropertiesStyleFormat,
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
 } = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
@@ -47,12 +55,6 @@ const { projectTreeSignal, isProjectDirtySignal } = jiti('../../../src/renderer/
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
 const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
 const { undoStackSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
-const {
-  parseStyleTextToGeoStyler,
-  serializeGeoStylerToText,
-  applyVisualSymbolizersToGeoStyler,
-  extractVisualSymbolizers,
-} = jiti('../../../src/shared/styles/flatStyleConverter.ts');
 
 describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)', () => {
   let originalDocument: typeof globalThis.document;
@@ -533,15 +535,16 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert(html.includes('style-validation-valid'), 'Must render valid style banner by default');
     });
 
-    it('renders conditional SLD Version selector when format is SLD', async () => {
+    it('renders 4-option format dropdown offering Simple, OpenLayers Flat Style, OGC SLD 1.0.0, and OGC SLD 1.1.0 (Ticket #127)', async () => {
       await openLayerPropertiesDialog('layer-lakes-1');
       activeLayerPropertiesTabSignal.value = 'styling';
-      updateLayerPropertiesDraft({ styleFormat: 'sld', sldVersion: '1.0.0' });
 
       const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-      assert(html.includes('id="layer-prop-styling-version"'), 'Must render SLD version selector when format is sld');
-      assert(html.includes('value="1.0.0"'));
-      assert(html.includes('value="1.1.0"'));
+      assert(html.includes('id="layer-prop-styling-format"'), 'Must render format selector dropdown');
+      assert(html.includes('value="cartouche"'), 'Must render Simple / cartouche format option');
+      assert(html.includes('value="openlayers"'), 'Must render OpenLayers Flat Style option');
+      assert(html.includes('value="sld-1.0.0"'), 'Must render OGC SLD 1.0.0 option');
+      assert(html.includes('value="sld-1.1.0"'), 'Must render OGC SLD 1.1.0 option');
     });
 
     it('renders live syntax validation error banner when style has validation errors', async () => {
@@ -604,174 +607,192 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     });
   });
 
-  describe('Visual Symbolizer Controls & Two-Way Live Sync (Ticket #123)', () => {
-    it('renders geometry-specific visual symbolizer controls for Polygon, LineString, and Point layers', async () => {
-      // 1. Polygon layer (layer-lakes-1)
+  describe('Dual-Mode Styling Tab Scaffold & Canvas Preview (Ticket #127)', () => {
+    it('toggles between Simple mode container and External raw text editor based on active format', async () => {
       await openLayerPropertiesDialog('layer-lakes-1');
       activeLayerPropertiesTabSignal.value = 'styling';
-      const polyHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
 
-      assert(polyHtml.includes('id="layer-prop-layer-opacity"'), 'Polygon must render layer opacity slider');
-      assert(polyHtml.includes('id="layer-prop-visual-fill-color"'), 'Polygon must render fill color');
-      assert(polyHtml.includes('id="layer-prop-visual-fill-opacity"'), 'Polygon must render fill opacity');
-      assert(polyHtml.includes('id="layer-prop-visual-stroke-color"'), 'Polygon must render stroke color');
-      assert(polyHtml.includes('id="layer-prop-visual-stroke-width"'), 'Polygon must render stroke width');
-      assert(!polyHtml.includes('id="layer-prop-visual-stroke-dash"'), 'Polygon must not render stroke dash');
-      assert(!polyHtml.includes('id="layer-prop-visual-point-shape"'), 'Polygon must not render point shape');
+      // 1. By default or when format is 'cartouche', renders Simple mode container
+      updateLayerPropertiesDraft({ styleFormat: 'cartouche' });
+      let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('id="layer-prop-simple-mode-container"'), 'Cartouche format must render Simple mode container');
+      assert.ok(!html.includes('id="layer-prop-external-mode-container"'), 'Cartouche format must not render external raw text editor');
+      assert.ok(html.includes('id="layer-prop-preview-container"'), 'Preview box must be visible');
 
-      // 2. LineString layer (layer-rivers-2)
-      await openLayerPropertiesDialog('layer-rivers-2');
-      activeLayerPropertiesTabSignal.value = 'styling';
-      const lineHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      // 2. OpenLayers Flat Style -> renders external raw editor
+      updateLayerPropertiesDraft({ styleFormat: 'openlayers' });
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(!html.includes('id="layer-prop-simple-mode-container"'), 'OpenLayers format must not render Simple mode container');
+      assert.ok(html.includes('id="layer-prop-external-mode-container"'), 'OpenLayers format must render external raw text editor');
+      assert.ok(html.includes('id="layer-prop-styling-raw-style"'), 'OpenLayers format must render textarea for raw style');
+      assert.ok(html.includes('id="layer-prop-preview-container"'), 'Preview box must remain visible');
 
-      assert(lineHtml.includes('id="layer-prop-layer-opacity"'), 'LineString must render layer opacity slider');
-      assert(lineHtml.includes('id="layer-prop-visual-stroke-color"'), 'LineString must render stroke color');
-      assert(lineHtml.includes('id="layer-prop-visual-stroke-width"'), 'LineString must render stroke width');
-      assert(lineHtml.includes('id="layer-prop-visual-stroke-dash"'), 'LineString must render stroke dash checkbox');
-      assert(!lineHtml.includes('id="layer-prop-visual-fill-color"'), 'LineString must not render fill color');
-      assert(!lineHtml.includes('id="layer-prop-visual-point-shape"'), 'LineString must not render point shape');
+      // 3. SLD 1.0.0 -> renders external raw editor
+      updateLayerPropertiesDraft({ styleFormat: 'sld', sldVersion: '1.0.0' });
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('id="layer-prop-external-mode-container"'), 'SLD 1.0.0 must render external raw editor');
 
-      // 3. Point layer (layer-cities-3)
-      await openLayerPropertiesDialog('layer-cities-3');
-      activeLayerPropertiesTabSignal.value = 'styling';
-      const pointHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-
-      assert(pointHtml.includes('id="layer-prop-layer-opacity"'), 'Point must render layer opacity slider');
-      assert(pointHtml.includes('id="layer-prop-visual-point-shape"'), 'Point must render point shape dropdown');
-      assert(pointHtml.includes('id="layer-prop-visual-point-radius"'), 'Point must render point size/radius');
-      assert(pointHtml.includes('id="layer-prop-visual-fill-color"'), 'Point must render fill color');
-      assert(pointHtml.includes('id="layer-prop-visual-stroke-color"'), 'Point must render stroke color');
-      assert(pointHtml.includes('id="layer-prop-visual-stroke-width"'), 'Point must render stroke width');
-      assert(!pointHtml.includes('id="layer-prop-visual-stroke-dash"'), 'Point must not render stroke dash');
+      // 4. SLD 1.1.0 -> renders external raw editor
+      updateLayerPropertiesDraft({ styleFormat: 'sld', sldVersion: '1.1.0' });
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('id="layer-prop-external-mode-container"'), 'SLD 1.1.0 must render external raw editor');
     });
 
-    it('adjusting visual symbolizer controls regenerates draft raw style text in currently selected format', async () => {
+    it('renders 120x120px HTML5 Canvas 2D preview box in real-time matching active draft style', async () => {
       await openLayerPropertiesDialog('layer-lakes-1');
       activeLayerPropertiesTabSignal.value = 'styling';
 
-      // 1. OpenLayers format
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('id="layer-prop-preview-container"'), 'Must render preview container');
+      assert.ok(html.includes('<canvas'), 'Must render canvas element');
+      assert.ok(html.includes('width="120"'), 'Canvas width must be 120px');
+      assert.ok(html.includes('height="120"'), 'Canvas height must be 120px');
+
+      // Test canvas rendering logic directly via renderStylePreviewToCanvas
+      const drawCalls: string[] = [];
+      const mockCtx: any = {
+        save: () => drawCalls.push('save'),
+        restore: () => drawCalls.push('restore'),
+        clearRect: () => drawCalls.push('clearRect'),
+        fillRect: () => drawCalls.push('fillRect'),
+        beginPath: () => drawCalls.push('beginPath'),
+        closePath: () => drawCalls.push('closePath'),
+        fill: () => drawCalls.push('fill'),
+        stroke: () => drawCalls.push('stroke'),
+        moveTo: () => drawCalls.push('moveTo'),
+        lineTo: () => drawCalls.push('lineTo'),
+        arc: () => drawCalls.push('arc'),
+        setLineDash: (d: number[]) => drawCalls.push(`setLineDash:${JSON.stringify(d)}`),
+        fillStyle: '',
+        strokeStyle: '',
+        lineWidth: 1,
+        lineCap: 'butt',
+        lineJoin: 'miter',
+      };
+
+      // 1. Polygon preview with cartouche format
+      renderStylePreviewToCanvas(mockCtx, {
+        width: 120,
+        height: 120,
+        format: 'cartouche',
+        content: JSON.stringify({
+          version: 1,
+          format: 'simple',
+          components: [
+            { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#ff0000' },
+            { id: 'line-1', type: 'simple-line', enabled: true, color: '#000000', width: 2 },
+          ],
+        }),
+        geometryKind: 'Polygon',
+      });
+      assert.ok(drawCalls.includes('fill'), 'Polygon render should call fill');
+      assert.ok(drawCalls.includes('stroke'), 'Polygon render should call stroke');
+
+      // 2. LineString preview with OpenLayers flat style
+      drawCalls.length = 0;
+      renderStylePreviewToCanvas(mockCtx, {
+        width: 120,
+        height: 120,
+        format: 'openlayers',
+        content: JSON.stringify([{ style: { 'stroke-color': '#0000ff', 'stroke-width': 4 } }]),
+        geometryKind: 'LineString',
+      });
+      assert.ok(drawCalls.includes('stroke'), 'LineString render should call stroke');
+
+      // 3. Point preview with Point geometry
+      drawCalls.length = 0;
+      renderStylePreviewToCanvas(mockCtx, {
+        width: 120,
+        height: 120,
+        format: 'cartouche',
+        content: JSON.stringify({
+          version: 1,
+          format: 'simple',
+          components: [
+            { id: 'point-1', type: 'simple-marker', enabled: true, fillColor: '#00ff00', radius: 6 },
+          ],
+        }),
+        geometryKind: 'Point',
+      });
+      assert.ok(drawCalls.includes('arc'), 'Point render should call arc');
+      assert.ok(drawCalls.includes('fill'), 'Point render should call fill');
+    });
+
+    it('preserves pending draft edits across format switches via switchLayerPropertiesStyleFormat', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      // Start in Cartouche (Simple mode) with initial draft
+      await switchLayerPropertiesStyleFormat('cartouche', 'Polygon');
+      updateLayerPropertiesDraft({
+        styleContent: JSON.stringify({ version: '1.0.0', rules: [{ fill: { color: '#112233' } }] }),
+      });
+
+      // Switch to OpenLayers format
+      await switchLayerPropertiesStyleFormat('openlayers', 'Polygon');
+      assert.strictEqual(layerPropertiesDraftSignal.value.styleFormat, 'openlayers');
+      // Modify OpenLayers draft
+      updateLayerPropertiesDraft({
+        styleContent: JSON.stringify([{ style: { 'fill-color': '#445566' } }]),
+      });
+
+      // Switch back to Cartouche
+      await switchLayerPropertiesStyleFormat('cartouche', 'Polygon');
+      assert.strictEqual(layerPropertiesDraftSignal.value.styleFormat, 'cartouche');
+      // Must restore our earlier Cartouche draft edits
+      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('#112233'));
+
+      // Switch back to OpenLayers
+      await switchLayerPropertiesStyleFormat('openlayers', 'Polygon');
+      assert.strictEqual(layerPropertiesDraftSignal.value.styleFormat, 'openlayers');
+      // Must restore our earlier OpenLayers draft edits
+      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('#445566'));
+    });
+
+    it('validates syntax for Flat Style JSON and SLD XML in external raw editor, displaying error banner and disabling Apply/OK', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      // 1. Invalid OpenLayers JSON
       updateLayerPropertiesDraft({
         styleFormat: 'openlayers',
-        visualSymbolizer: {
-          fillColor: '#ef4444',
-          fillOpacity: 0.5,
-          strokeColor: '#b91c1c',
-          strokeWidth: 3,
-        },
-      });
-
-      // Regenerate raw style text from visual symbolizer using flatStyleConverter
-      const ast = applyVisualSymbolizersToGeoStyler(
-        { name: 'Test Style', rules: [] },
-        layerPropertiesDraftSignal.value.visualSymbolizer,
-        'Polygon'
-      );
-      const regeneratedOl = await serializeGeoStylerToText(ast, 'openlayers');
-      updateLayerPropertiesDraft({ styleContent: regeneratedOl });
-
-      const parsedOl = JSON.parse(layerPropertiesDraftSignal.value.styleContent);
-      assert.strictEqual(parsedOl[0].style['fill-color'], '#ef4444');
-      assert.strictEqual(parsedOl[0].style['fill-opacity'], 0.5);
-      assert.strictEqual(parsedOl[0].style['stroke-color'], '#b91c1c');
-      assert.strictEqual(parsedOl[0].style['stroke-width'], 3);
-
-      // 2. SLD XML format
-      updateLayerPropertiesDraft({
-        styleFormat: 'sld',
-        sldVersion: '1.0.0',
-        visualSymbolizer: {
-          fillColor: '#3b82f6',
-          fillOpacity: 1,
-          strokeColor: '#1d4ed8',
-          strokeWidth: 2,
-        },
-      });
-      const sldAst = applyVisualSymbolizersToGeoStyler(
-        { name: 'SLD Style', rules: [] },
-        layerPropertiesDraftSignal.value.visualSymbolizer,
-        'Polygon'
-      );
-      const regeneratedSld = await serializeGeoStylerToText(sldAst, 'sld', '1.0.0');
-      updateLayerPropertiesDraft({ styleContent: regeneratedSld });
-
-      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('StyledLayerDescriptor'));
-      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('#3b82f6'));
-    });
-
-    it('typing or pasting valid raw style text updates visual symbolizer controls', async () => {
-      await openLayerPropertiesDialog('layer-lakes-1');
-      activeLayerPropertiesTabSignal.value = 'styling';
-
-      // Paste new OpenLayers JSON
-      const newOlJson = JSON.stringify([
-        {
-          filter: ['==', ['geometry-type'], 'Polygon'],
-          style: {
-            'fill-color': '#10b981',
-            'fill-opacity': 0.8,
-            'stroke-color': '#047857',
-            'stroke-width': 4,
-          },
-        },
-      ]);
-      const ast = await parseStyleTextToGeoStyler(newOlJson, 'openlayers');
-      const extracted = extractVisualSymbolizers(ast, 'Polygon');
-      updateLayerPropertiesDraft({
-        styleContent: newOlJson,
-        visualSymbolizer: extracted,
-        styleValidationError: null,
-      });
-
-      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.fillColor, '#10b981');
-      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.fillOpacity, 0.8);
-      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.strokeColor, '#047857');
-      assert.strictEqual(layerPropertiesDraftSignal.value.visualSymbolizer.strokeWidth, 4);
-
-      // Verify DOM reflects updated visual control values
-      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-      assert(html.includes('value="#10b981"'), 'Fill color input must reflect pasted color');
-    });
-
-    it('invalid raw style text displays error banner, preserves last valid visual controls, and disables Apply/OK', async () => {
-      await openLayerPropertiesDialog('layer-lakes-1');
-      activeLayerPropertiesTabSignal.value = 'styling';
-
-      // Set initial valid visual state
-      const initialVisual = {
-        fillColor: '#6366f1',
-        fillOpacity: 1,
-        strokeColor: '#4338ca',
-        strokeWidth: 2,
-      };
-      updateLayerPropertiesDraft({
-        visualSymbolizer: initialVisual,
-        styleContent: JSON.stringify([{ style: { 'fill-color': '#6366f1' } }]),
-        styleValidationError: null,
-      });
-
-      // Now enter invalid JSON text
-      updateLayerPropertiesDraft({
-        styleContent: '{ invalid json style text',
+        styleContent: '{ invalid json style content',
         styleValidationError: 'JSON parse error at position 2',
       });
 
-      // Visual symbolizer must be preserved
-      assert.deepStrictEqual(layerPropertiesDraftSignal.value.visualSymbolizer, initialVisual);
+      let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('style-validation-error'), 'Must render error banner for invalid JSON');
+      assert.ok(html.includes('JSON parse error at position 2'), 'Must display error message');
+      assert.ok(html.includes('class="layer-properties-btn apply" disabled'), 'Apply must be disabled');
+      assert.ok(html.includes('class="layer-properties-btn ok" disabled'), 'OK must be disabled');
 
-      // Error banner must be rendered
-      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-      assert(html.includes('style-validation-error'), 'Must render error banner');
-      assert(html.includes('JSON parse error at position 2'), 'Must display error message');
+      let applySuccess = await applyLayerPropertiesEdits();
+      assert.strictEqual(applySuccess, false, 'applyLayerPropertiesEdits must fail when syntax validation error is present');
 
-      // Visual control inputs must still render initial values without crashing
-      assert(html.includes('value="#6366f1"'), 'Visual control must retain last valid color');
+      // 2. Valid OpenLayers JSON
+      updateLayerPropertiesDraft({
+        styleContent: JSON.stringify([{ style: { 'fill-color': '#336699' } }]),
+        styleValidationError: null,
+      });
 
-      // Apply and OK must be disabled
-      assert(html.includes('class="layer-properties-btn apply" disabled'), 'Apply must be disabled');
-      assert(html.includes('class="layer-properties-btn ok" disabled'), 'OK must be disabled');
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(!html.includes('style-validation-error'), 'Error banner must be hidden when valid');
+      assert.ok(!html.includes('class="layer-properties-btn apply" disabled'), 'Apply must be enabled');
 
-      const applySuccess = await applyLayerPropertiesEdits();
-      assert.strictEqual(applySuccess, false, 'applyLayerPropertiesEdits must fail when invalid style text is present');
+      // 3. Invalid SLD XML
+      updateLayerPropertiesDraft({
+        styleFormat: 'sld',
+        sldVersion: '1.0.0',
+        styleContent: '<StyledLayerDescriptor><unclosed>',
+        styleValidationError: 'XML parse error: unclosed tag',
+      });
+
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('style-validation-error'), 'Must render error banner for invalid SLD XML');
+      assert.ok(html.includes('XML parse error: unclosed tag'), 'Must display SLD error message');
+
+      applySuccess = await applyLayerPropertiesEdits();
+      assert.strictEqual(applySuccess, false, 'applyLayerPropertiesEdits must fail for invalid SLD');
     });
   });
 
@@ -1295,6 +1316,217 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         visualSymbolizer: null,
         idValidationError: null,
       };
+    });
+  });
+
+  describe('Simple Mode Visual Component Stack & Dynamic Style Options (Ticket #128)', () => {
+    it('renders component stack list in reversed painter order and highlights active selection', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      const initialStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          { id: 'fill-bottom', type: 'simple-fill', enabled: true, color: '#336699' },
+          { id: 'line-top', type: 'simple-line', enabled: true, color: '#000000', width: 2 },
+        ],
+      };
+
+      updateLayerPropertiesDraft({
+        styleFormat: 'cartouche',
+        styleContent: JSON.stringify(initialStyle),
+      });
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('id="layer-prop-component-stack-list"'), 'Must render component stack list');
+      assert.ok(html.includes('line-top'), 'Must render line-top component');
+      assert.ok(html.includes('fill-bottom'), 'Must render fill-bottom component');
+
+      // In visual order (reversed painter order), line-top (index 1) must precede fill-bottom (index 0) in the HTML
+      const linePos = html.indexOf('line-top');
+      const fillPos = html.indexOf('fill-bottom');
+      assert.ok(linePos < fillPos, 'line-top (top painter item) must appear before fill-bottom in visual stack list');
+    });
+
+    it('filters component types based on layer geometry (Polygon vs LineString vs Point)', () => {
+      // 1. Polygon: allows Fill, Line, and Marker
+      let html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'c1', type: 'simple-fill', enabled: true, color: '#ff0000' }],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('value="simple-fill"'), 'Polygon must offer simple-fill');
+      assert.ok(html.includes('value="simple-line"'), 'Polygon must offer simple-line');
+
+      // 2. LineString: must omit Fill components
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'c1', type: 'simple-line', enabled: true, color: '#000000', width: 2 }],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(!html.includes('value="simple-fill"'), 'LineString must NOT offer simple-fill');
+      assert.ok(html.includes('value="simple-line"'), 'LineString must offer simple-line');
+
+      // 3. Point: offers Marker and Line, omits Fill
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'c1',
+                type: 'simple-marker',
+                enabled: true,
+                shape: 'circle',
+                radius: 6,
+                fillColor: '#00ff00',
+                strokeColor: '#000000',
+                strokeWidth: 1,
+              },
+            ],
+          }),
+          geometryKind: 'Point',
+          onChange: () => {},
+        })
+      );
+      assert.ok(!html.includes('value="simple-fill"'), 'Point must NOT offer simple-fill');
+      assert.ok(html.includes('value="simple-marker"'), 'Point must offer simple-marker');
+      assert.ok(html.includes('value="simple-line"'), 'Point must offer simple-line');
+    });
+
+    it('renders type-specific Style Options for Simple Fill, Simple Line, and Simple Marker', () => {
+      // 1. Simple Fill options
+      let html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'fill-1', type: 'simple-fill', enabled: true, color: '#123456' }],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input for simple-fill');
+      assert.ok(html.includes('value="#123456"'), 'Must reflect fill color');
+
+      // 2. Simple Line options
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-1',
+                type: 'simple-line',
+                enabled: true,
+                color: '#654321',
+                width: 4,
+                dashArray: [6, 6],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-stroke-color"'), 'Must render stroke color input for simple-line');
+      assert.ok(html.includes('id="layer-prop-stroke-width"'), 'Must render stroke width input for simple-line');
+      assert.ok(html.includes('id="layer-prop-stroke-dash"'), 'Must render stroke dash checkbox for simple-line');
+      assert.ok(html.includes('value="#654321"'), 'Must reflect stroke color');
+      assert.ok(html.includes('value="4"'), 'Must reflect stroke width');
+
+      // 3. Simple Marker options
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'mark-1',
+                type: 'simple-marker',
+                enabled: true,
+                shape: 'circle',
+                radius: 8,
+                fillColor: '#ff00ff',
+                strokeColor: '#00ffff',
+                strokeWidth: 2,
+              },
+            ],
+          }),
+          geometryKind: 'Point',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-point-shape"'), 'Must render marker shape for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-radius"'), 'Must render marker radius for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-fill-color"'), 'Must render marker fill color for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-stroke-color"'), 'Must render marker stroke color for simple-marker');
+      assert.ok(html.includes('id="layer-prop-marker-stroke-width"'), 'Must render marker stroke width for simple-marker');
+      assert.ok(html.includes('value="8"'), 'Must reflect marker radius');
+    });
+
+    it('locking a component disables option controls, greys out remove button, and renders lock banner', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#111111' },
+              { id: 'fill-2', type: 'simple-fill', enabled: true, locked: true, color: '#222222' },
+            ],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+
+      // Active component is fill-2 (top component) which is locked
+      assert.ok(html.includes('component-locked-banner'), 'Must render component locked banner');
+      assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input');
+      assert.ok(html.includes('id="layer-prop-fill-color" type="color" disabled=""'), 'Fill color input must be disabled');
+      assert.ok(html.includes('id="layer-prop-component-remove"'), 'Must render remove button');
+      assert.ok(
+        /id="layer-prop-component-remove"[^>]*disabled=""/.test(html),
+        'Remove button must be disabled for locked component'
+      );
+    });
+
+    it('safely parses style content or falls back to default style with parseCartoucheStyleSafe', () => {
+      // Valid style
+      const valid = parseCartoucheStyleSafe(
+        JSON.stringify({
+          format: 'simple',
+          version: 1,
+          components: [{ id: 'a', type: 'simple-fill', enabled: true, color: '#000000' }],
+        })
+      );
+      assert.strictEqual(valid.format, 'simple');
+      assert.strictEqual(valid.components.length, 1);
+      assert.strictEqual(valid.components[0].id, 'a');
+
+      // Empty or invalid JSON
+      const fallback = parseCartoucheStyleSafe('', 'LineString');
+      assert.strictEqual(fallback.format, 'simple');
+      assert.ok(fallback.components.length >= 1);
+      assert.strictEqual(fallback.components[0].type, 'simple-line');
     });
   });
 });
