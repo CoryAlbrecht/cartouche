@@ -499,7 +499,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     }}
                   />
                   <span style={{ fontWeight: isSelected ? 600 : 400, flex: 1 }}>
-                    {getComponentTypeLabel(comp.type)} ({comp.id})
+                    {getComponentTypeLabel(comp.type)}
                   </span>
                   {comp.locked && (
                     <span title={t("layer_properties_component_locked_notice")}>

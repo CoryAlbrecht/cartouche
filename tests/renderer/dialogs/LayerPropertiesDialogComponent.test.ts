@@ -1408,12 +1408,14 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
       assert.ok(html.includes('id="layer-prop-component-stack-list"'), 'Must render component stack list');
-      assert.ok(html.includes('line-top'), 'Must render line-top component');
-      assert.ok(html.includes('fill-bottom'), 'Must render fill-bottom component');
+      assert.ok(html.includes('data-component-id="line-top"'), 'Must render line-top component');
+      assert.ok(html.includes('data-component-id="fill-bottom"'), 'Must render fill-bottom component');
+      assert.ok(!html.includes('(line-top)'), 'Must not display parenthetical component id for line-top');
+      assert.ok(!html.includes('(fill-bottom)'), 'Must not display parenthetical component id for fill-bottom');
 
       // In visual order (reversed painter order), line-top (index 1) must precede fill-bottom (index 0) in the HTML
-      const linePos = html.indexOf('line-top');
-      const fillPos = html.indexOf('fill-bottom');
+      const linePos = html.indexOf('data-component-id="line-top"');
+      const fillPos = html.indexOf('data-component-id="fill-bottom"');
       assert.ok(linePos < fillPos, 'line-top (top painter item) must appear before fill-bottom in visual stack list');
     });
 
