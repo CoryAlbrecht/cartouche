@@ -4,11 +4,19 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 
 import type { GeometryKind, BoundingBox } from '.';
+import type { LayerFieldInfo } from './layers';
+
+export type {
+  InferredFieldType,
+  InferredScalarFieldType,
+  InferredArrayFieldType,
+  LayerFieldInfo,
+} from './layers';
 
 /**
  * @typedef {Object} ProjectMetadata
@@ -173,12 +181,13 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {string | ProjectLayerStyleItem | OlLayerStyle} [style] - Layer style rule definition, serialized wrapper, or reference.
  * @property {string} [styleId] - Optional shared style identifier reference in project.styles.
  * @property {ProjectCrs} [crs] - Layer coordinate reference system override.
+ * @property {LayerFieldInfo[]} [fields] - Attribute field schema definitions.
  * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
  * @property {number} [featureCount] - Total number of features in the dataset.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 
@@ -197,6 +206,7 @@ export interface ProjectLayerItem {
   style?: string | ProjectLayerStyleItem | OlLayerStyle;
   styleId?: string;
   crs?: ProjectCrs;
+  fields?: LayerFieldInfo[];
   customProperties?: Record<string, unknown>;
   extent?: BoundingBox;
   featureCount?: number;
@@ -285,14 +295,16 @@ export interface AddLayerParams {
  * @typedef {Object} LayerDescriptor
  * @property {BoundingBox} extent - Geographic bounding envelope [minX, minY, maxX, maxY].
  * @property {number} featureCount - Total count of spatial features in the layer.
+ * @property {LayerFieldInfo[]} [fields] - Attribute field schema definitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 export interface LayerDescriptor extends ProjectLayerItem {
   extent: import('.').BoundingBox;
   featureCount: number;
+  fields?: LayerFieldInfo[];
 }
 
 /**

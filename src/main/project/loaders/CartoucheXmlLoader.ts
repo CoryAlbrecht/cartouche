@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -25,6 +25,8 @@ import {
   type ProjectStyleItem,
   type ProjectLayerStyleItem,
   type ProjectStyleFormat,
+  type LayerFieldInfo,
+  type InferredFieldType,
 } from "../../../shared/types";
 
 /**
@@ -128,7 +130,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       attributeNamePrefix: "@_",
       cdataPropName: "__cdata",
       trimValues: true,
-      isArray: (name) => ["layer", "group", "style", "property"].includes(name),
+      isArray: (name) => ["layer", "group", "style", "property", "field"].includes(name),
     });
 
     const parsed = parser.parse(content);
@@ -300,6 +302,54 @@ export class CartoucheXmlLoader implements IProjectLoader {
         resolvedSource = path.resolve(path.dirname(filePath), resolvedSource);
       }
 
+      let layerFields: LayerFieldInfo[] | undefined;
+      if (raw.fields && raw.fields.field) {
+        const rawFieldList =
+          Array.isArray(raw.fields.field) ?
+            raw.fields.field
+          : [raw.fields.field];
+        layerFields = rawFieldList.map((f: any): LayerFieldInfo => {
+          const fieldDef: LayerFieldInfo = {
+            name: String(f["@_name"] || ""),
+            nativeType: String(f["@_nativeType"] || ""),
+            inferredType: f["@_inferredType"] as InferredFieldType,
+          };
+          if (f["@_nativeSubType"]) {
+            fieldDef.nativeSubType = String(f["@_nativeSubType"]);
+          }
+          if (f["@_alternativeName"]) {
+            fieldDef.alternativeName = String(f["@_alternativeName"]);
+          }
+          if (f["@_domainName"]) {
+            fieldDef.domainName = String(f["@_domainName"]);
+          }
+          if (f["@_defaultValue"] !== undefined && f["@_defaultValue"] !== null) {
+            fieldDef.defaultValue = String(f["@_defaultValue"]);
+          }
+          if (f["@_width"] !== undefined && f["@_width"] !== "") {
+            const w = parseInt(String(f["@_width"]), 10);
+            if (!Number.isNaN(w)) {
+              fieldDef.width = w;
+            }
+          }
+          if (f["@_precision"] !== undefined && f["@_precision"] !== "") {
+            const p = parseInt(String(f["@_precision"]), 10);
+            if (!Number.isNaN(p)) {
+              fieldDef.precision = p;
+            }
+          }
+          if (f["@_nullable"] !== undefined) {
+            fieldDef.nullable =
+              f["@_nullable"] === "true" || f["@_nullable"] === true;
+          }
+          if (f["@_userOverridden"] !== undefined) {
+            fieldDef.userOverridden =
+              f["@_userOverridden"] === "true" || f["@_userOverridden"] === true;
+          }
+          return fieldDef;
+        });
+      }
+
       return {
         id: String(
           raw["@_id"]
@@ -318,6 +368,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
         geometryKind: raw["@_geometryKind"] || undefined,
         style,
         crs: layerCrs,
+        fields: layerFields,
         customProperties: parseCustomProps(raw.customProperties),
       };
     };
@@ -710,6 +761,50 @@ export class CartoucheXmlLoader implements IProjectLoader {
           res.push(`${pad}    <wkt>${escapeXml(layer.crs.wkt)}</wkt>`);
         }
         res.push(`${pad}  </crs>`);
+      }
+
+      if (layer.fields && layer.fields.length > 0) {
+        res.push(`${pad}  <fields>`);
+        for (const field of layer.fields) {
+          const fieldAttrs: string[] = [
+            `name="${escapeXml(field.name)}"`,
+            `nativeType="${escapeXml(field.nativeType)}"`,
+            `inferredType="${escapeXml(field.inferredType)}"`,
+          ];
+          if (field.nativeSubType) {
+            fieldAttrs.push(`nativeSubType="${escapeXml(field.nativeSubType)}"`);
+          }
+          if (field.alternativeName) {
+            fieldAttrs.push(
+              `alternativeName="${escapeXml(field.alternativeName)}"`
+            );
+          }
+          if (field.domainName) {
+            fieldAttrs.push(`domainName="${escapeXml(field.domainName)}"`);
+          }
+          if (
+            field.defaultValue !== undefined
+            && field.defaultValue !== null
+          ) {
+            fieldAttrs.push(
+              `defaultValue="${escapeXml(field.defaultValue)}"`
+            );
+          }
+          if (field.width !== undefined && field.width > 0) {
+            fieldAttrs.push(`width="${field.width}"`);
+          }
+          if (field.precision !== undefined && field.precision >= 0) {
+            fieldAttrs.push(`precision="${field.precision}"`);
+          }
+          if (field.nullable !== undefined) {
+            fieldAttrs.push(`nullable="${field.nullable}"`);
+          }
+          if (field.userOverridden !== undefined) {
+            fieldAttrs.push(`userOverridden="${field.userOverridden}"`);
+          }
+          res.push(`${pad}    <field ${fieldAttrs.join(" ")} />`);
+        }
+        res.push(`${pad}  </fields>`);
       }
 
       if (

@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-24
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -316,9 +316,13 @@ export class GeospatialService {
    */
   private spawnWorker(workerPath: string): void {
     try {
+      const isDev =
+        process.env.NODE_ENV === 'development' ||
+        process.argv.some((arg) => arg.startsWith('--inspect'));
       this.worker = utilityProcess.fork(workerPath, [], {
         serviceName: 'geospatial-worker',
-        stdio: 'pipe'
+        stdio: 'pipe',
+        execArgv: isDev ? ['--inspect=5859'] : []
       });
       this.bindWorkerEvents(this.worker);
       logging.info('Background geospatial worker process spawned successfully', { scope: 'GeospatialService' });

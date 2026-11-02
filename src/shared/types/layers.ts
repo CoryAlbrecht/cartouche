@@ -4,7 +4,7 @@
  * @description Type definitions and data transfer objects for GIS layer metadata inspection, attribute fields, provider dialects, and layer properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link LayerDescriptor}
  * @see {@link GeospatialEngine}
@@ -19,21 +19,87 @@ import type { BoundingBox, GeometryKind } from '.';
 export type ProviderQueryDialect = 'ogr_sql' | 'native_sql' | 'nosql' | 'generic';
 
 /**
+ * Canonical scalar data types inferred from vector layer attribute columns.
+ * @typedef {'string' | 'integer' | 'real' | 'boolean' | 'date' | 'time' | 'datetime' | 'uuid' | 'json' | 'binary'} InferredScalarFieldType
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ */
+export type InferredScalarFieldType =
+  | 'string'
+  | 'integer'
+  | 'real'
+  | 'boolean'
+  | 'date'
+  | 'time'
+  | 'datetime'
+  | 'uuid'
+  | 'json'
+  | 'binary';
+
+/**
+ * Canonical array/list data types inferred from vector layer attribute columns.
+ * @typedef {'string[]' | 'integer[]' | 'real[]' | 'boolean[]' | 'date[]' | 'time[]' | 'datetime[]' | 'uuid[]' | 'json[]' | 'binary[]'} InferredArrayFieldType
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ */
+export type InferredArrayFieldType =
+  | 'string[]'
+  | 'integer[]'
+  | 'real[]'
+  | 'boolean[]'
+  | 'date[]'
+  | 'time[]'
+  | 'datetime[]'
+  | 'uuid[]'
+  | 'json[]'
+  | 'binary[]';
+
+/**
+ * Union of all canonical scalar and array inferred field data types.
+ * @typedef {InferredScalarFieldType | InferredArrayFieldType} InferredFieldType
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ */
+export type InferredFieldType = InferredScalarFieldType | InferredArrayFieldType;
+
+/**
  * @typedef {Object} LayerFieldInfo
  * @property {string} name - Attribute field identifier name.
- * @property {string} nativeType - OGR/GDAL native field data type (e.g. "string", "integer64", "real").
+ * @property {string} nativeType - OGR/GDAL native field data type (e.g. "String", "Integer", "Real").
+ * @property {InferredFieldType} inferredType - Internal canonical data type classification.
+ * @property {string} [nativeSubType] - OGR/GDAL native field subtype (e.g. "OFSTBoolean", "OFSTUUID", "OFSTJSON").
+ * @property {string} [alternativeName] - Secondary alias or user-facing display label.
+ * @property {string} [domainName] - Coded value or range validation domain registered in data source.
+ * @property {string} [defaultValue] - Column default value or literal generator expression.
  * @property {number} [width] - Allocated field character width or numeric length.
  * @property {number} [precision] - Decimal precision for floating point numbers.
- * @property {'string' | 'number' | 'boolean' | 'Date' | 'unknown'} mappedType - Corresponding TypeScript runtime primitive type.
- * @property {boolean} nullable - Flag indicating whether field accepts null values.
+ * @property {boolean} [nullable] - Flag indicating whether field accepts null values.
+ * @property {boolean} [userOverridden] - Flag indicating whether inferredType was explicitly overridden by user.
+ * @property {'string' | 'number' | 'boolean' | 'Date' | 'unknown' | InferredFieldType} [mappedType] - Corresponding TypeScript runtime primitive type (legacy compatibility).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-23
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
  */
 export interface LayerFieldInfo {
   name: string;
   nativeType: string;
+  inferredType: InferredFieldType;
+  nativeSubType?: string;
+  alternativeName?: string;
+  domainName?: string;
+  defaultValue?: string;
   width?: number;
   precision?: number;
-  mappedType: 'string' | 'number' | 'boolean' | 'Date' | 'unknown';
-  nullable: boolean;
+  nullable?: boolean;
+  userOverridden?: boolean;
+  mappedType?: 'string' | 'number' | 'boolean' | 'Date' | 'unknown' | InferredFieldType;
 }
 
 /**

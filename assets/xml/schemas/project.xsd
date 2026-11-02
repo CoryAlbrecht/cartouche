@@ -150,6 +150,7 @@
       </xs:element>
       <xs:element name="style" type="StyleType" minOccurs="0" />
       <xs:element name="crs" type="CrsType" minOccurs="0" />
+      <xs:element name="fields" type="FieldsType" minOccurs="0" />
       <xs:element name="customProperties" type="CustomPropertiesType" minOccurs="0" />
     </xs:all>
     <xs:attribute name="id" type="xs:string" use="required" />
@@ -162,6 +163,56 @@
     <xs:attribute name="minScale" type="xs:double" />
     <xs:attribute name="maxScale" type="xs:double" />
   </xs:complexType>
+
+  <!-- Layer Attribute Fields Collection Type -->
+  <xs:complexType name="FieldsType">
+    <xs:sequence>
+      <xs:element name="field" type="FieldDefinitionType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Layer Attribute Field Definition -->
+  <xs:complexType name="FieldDefinitionType">
+    <xs:attribute name="name" type="xs:string" use="required" />
+    <xs:attribute name="nativeType" type="xs:string" use="required" />
+    <xs:attribute name="inferredType" type="InferredFieldType" use="required" />
+    <xs:attribute name="nativeSubType" type="xs:string" />
+    <xs:attribute name="alternativeName" type="xs:string" />
+    <xs:attribute name="domainName" type="xs:string" />
+    <xs:attribute name="defaultValue" type="xs:string" />
+    <xs:attribute name="width" type="xs:integer" />
+    <xs:attribute name="precision" type="xs:integer" />
+    <xs:attribute name="nullable" type="xs:boolean" />
+    <xs:attribute name="userOverridden" type="xs:boolean" />
+  </xs:complexType>
+
+  <!-- Inferred Attribute Field Data Type Taxonomy -->
+  <xs:simpleType name="InferredFieldType">
+    <xs:restriction base="xs:string">
+      <!-- Scalar Types -->
+      <xs:enumeration value="string" />
+      <xs:enumeration value="integer" />
+      <xs:enumeration value="real" />
+      <xs:enumeration value="boolean" />
+      <xs:enumeration value="date" />
+      <xs:enumeration value="time" />
+      <xs:enumeration value="datetime" />
+      <xs:enumeration value="uuid" />
+      <xs:enumeration value="json" />
+      <xs:enumeration value="binary" />
+      <!-- Array / List Types -->
+      <xs:enumeration value="string[]" />
+      <xs:enumeration value="integer[]" />
+      <xs:enumeration value="real[]" />
+      <xs:enumeration value="boolean[]" />
+      <xs:enumeration value="date[]" />
+      <xs:enumeration value="time[]" />
+      <xs:enumeration value="datetime[]" />
+      <xs:enumeration value="uuid[]" />
+      <xs:enumeration value="json[]" />
+      <xs:enumeration value="binary[]" />
+    </xs:restriction>
+  </xs:simpleType>
 
   <xs:simpleType name="OpacityType">
     <xs:restriction base="xs:decimal">

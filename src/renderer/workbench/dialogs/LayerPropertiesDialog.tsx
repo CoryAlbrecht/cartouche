@@ -1130,7 +1130,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   "var(--cartouche-theme-font-family-mono, monospace)",
                                 color: "#0f766e",
                               }}>
-                              {field.mappedType}
+                              {field.inferredType ?? field.mappedType}
                             </td>
                             <td
                               style={{ padding: "6px 10px", color: "#475569" }}>
@@ -1850,7 +1850,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 "var(--cartouche-theme-font-family-mono, monospace)",
                               color: "#0f766e",
                             }}>
-                            {field.mappedType}
+                            {field.inferredType ?? field.mappedType}
                           </td>
                           {showNativeType && (
                             <td style={{ padding: "6px 10px", color: "#475569" }}>

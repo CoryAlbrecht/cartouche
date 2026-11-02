@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-23
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -16,6 +16,7 @@ import { logging } from "../../shared/logging";
 import type {
   BoundingBox,
   GeometryKind,
+  InferredFieldType,
   LayerDetailedInfo,
   LayerFieldInfo,
   ProjectCrs,
@@ -512,30 +513,48 @@ export class GeospatialEngine {
       const nativeType = String(f.type || "unknown");
       let mappedType: "string" | "number" | "boolean" | "Date" | "unknown" =
         "unknown";
+      let inferredType: InferredFieldType = "string";
 
       switch (nativeType.toLowerCase()) {
         case "integer":
         case "integer64":
+          mappedType = "number";
+          inferredType = "integer";
+          break;
         case "real":
           mappedType = "number";
+          inferredType = "real";
           break;
         case "string":
           mappedType = "string";
+          inferredType = "string";
           break;
         case "date":
+          mappedType = "Date";
+          inferredType = "date";
+          break;
         case "time":
+          mappedType = "Date";
+          inferredType = "time";
+          break;
         case "datetime":
           mappedType = "Date";
+          inferredType = "datetime";
           break;
         case "binary":
+          mappedType = "unknown";
+          inferredType = "binary";
+          break;
         default:
           mappedType = "unknown";
+          inferredType = "string";
           break;
       }
 
       fields.push({
         name: f.name,
         nativeType,
+        inferredType,
         width: typeof f.width === "number" && f.width > 0 ? f.width : undefined,
         precision:
           typeof f.precision === "number" && f.precision > 0 ?

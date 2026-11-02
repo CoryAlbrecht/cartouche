@@ -4,7 +4,7 @@
  * @description Vite configuration for Cartouche desktop GIS application, configuring Electron main, preload, and React renderer compilation with vendor chunk splitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-15
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 
@@ -24,8 +24,8 @@ export default defineConfig({
       {
         entry: path.resolve(__dirname, 'src/main/main.ts'),
         onstart(options) {
-          // Open V8 inspect port for the Main process without remote-debugging-port contention
-          options.startup(['.', '--inspect=5858', '--no-sandbox']);
+          // Open V8 inspect port for the Main process and CDP port for the Renderer process
+          options.startup(['.', '--inspect=5858', '--remote-debugging-port=9222', '--no-sandbox']);
         },
         vite: {
           build: {

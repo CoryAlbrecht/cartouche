@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 
@@ -793,6 +793,144 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
       format: 'sld',
       version: '1.0.0',
     });
+  });
+
+  it('serializes and deserializes layer fields across all 10 scalar types and 10 array types with strict xmllint validation (Ticket #137)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const scalarTypes: import('../../../src/shared/types').InferredScalarFieldType[] = [
+      'string',
+      'integer',
+      'real',
+      'boolean',
+      'date',
+      'time',
+      'datetime',
+      'uuid',
+      'json',
+      'binary',
+    ];
+
+    const arrayTypes: import('../../../src/shared/types').InferredArrayFieldType[] = [
+      'string[]',
+      'integer[]',
+      'real[]',
+      'boolean[]',
+      'date[]',
+      'time[]',
+      'datetime[]',
+      'uuid[]',
+      'json[]',
+      'binary[]',
+    ];
+
+    const fields: import('../../../src/shared/types').LayerFieldInfo[] = [];
+
+    // Add all 10 scalar fields with metadata attributes
+    for (const t of scalarTypes) {
+      fields.push({
+        name: `f_${t.replace(/[^a-z0-9]/gi, '_')}`,
+        nativeType: `OGR_${t.toUpperCase()}`,
+        inferredType: t,
+        nativeSubType: t === 'boolean' ? 'OFSTBoolean' : t === 'uuid' ? 'OFSTUUID' : t === 'json' ? 'OFSTJSON' : undefined,
+        alternativeName: `Alias for ${t}`,
+        domainName: t === 'integer' ? 'CodeDomain' : undefined,
+        defaultValue: t === 'datetime' ? 'CURRENT_TIMESTAMP' : t === 'boolean' ? 'true' : undefined,
+        width: t === 'string' ? 80 : t === 'real' ? 10 : undefined,
+        precision: t === 'real' ? 3 : undefined,
+        nullable: true,
+        userOverridden: t === 'uuid',
+      });
+    }
+
+    // Add all 10 array fields
+    for (const t of arrayTypes) {
+      fields.push({
+        name: `f_${t.replace(/[^a-z0-9]/gi, '_')}`,
+        nativeType: `OGR_LIST_${t.replace('[]', '').toUpperCase()}`,
+        inferredType: t,
+        nullable: false,
+        userOverridden: false,
+      });
+    }
+
+    assert.equal(fields.length, 20);
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'Fields Schema Roundtrip Project',
+        appVersion: '0.1.0-dev',
+      },
+      layers: [
+        {
+          id: 'layer-with-fields',
+          name: 'Parcels',
+          type: 'gpkg',
+          source: '/data/parcels.gpkg',
+          visible: true,
+          fields,
+        },
+      ],
+    };
+
+    // 1. Serialize to XML and validate with xmllint against project.xsd
+    const xml = loader.serializeToXml(model);
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, `Schema validation error: ${validation.error}`);
+
+    // 2. Save to disk and re-load
+    const filePath = path.join(tempDir, 'fields-test.cproj');
+    await loader.save(model, filePath);
+
+    const loaded = await loader.load(filePath);
+    assert.equal(loaded.layers.length, 1);
+
+    const loadedLayer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.ok(loadedLayer.fields);
+    assert.equal(loadedLayer.fields?.length, 20);
+
+    const loadedFields = loadedLayer.fields!;
+    // Verify all 20 fields roundtrip exactly
+    for (let i = 0; i < 20; i++) {
+      const original = fields[i];
+      const parsedField = loadedFields[i];
+      assert.equal(parsedField.name, original.name);
+      assert.equal(parsedField.nativeType, original.nativeType);
+      assert.equal(parsedField.inferredType, original.inferredType);
+      assert.equal(parsedField.nativeSubType, original.nativeSubType);
+      assert.equal(parsedField.alternativeName, original.alternativeName);
+      assert.equal(parsedField.domainName, original.domainName);
+      assert.equal(parsedField.defaultValue, original.defaultValue);
+      assert.equal(parsedField.width, original.width);
+      assert.equal(parsedField.precision, original.precision);
+      assert.equal(parsedField.nullable, original.nullable);
+      assert.equal(parsedField.userOverridden, original.userOverridden);
+    }
+  });
+
+  it('rejects invalid inferredType values via xmllint schema validation (Ticket #137)', () => {
+    const xmlWithInvalidType = `<?xml version="1.0" encoding="UTF-8"?>
+<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata>
+    <dc:title>Invalid Field Type</dc:title>
+  </metadata>
+  <layers>
+    <layer id="layer-bad-type">
+      <name>Bad Type</name>
+      <type>geojson</type>
+      <source>/data/bad.geojson</source>
+      <fields>
+        <field name="created" nativeType="String" inferredType="timestamp" />
+      </fields>
+    </layer>
+  </layers>
+</cartouche:project>`;
+
+    const validation = validateXmlAgainstSchema(xmlWithInvalidType);
+    assert.equal(validation.valid, false, 'Schema validation should fail for invalid inferredType "timestamp"');
+    assert.match(validation.error || '', /inferredType|timestamp/);
   });
 });
 
