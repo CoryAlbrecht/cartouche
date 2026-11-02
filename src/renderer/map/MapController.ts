@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -52,6 +52,7 @@ import {
 } from "./styleCompiler";
 import {
   WKB_PACKET_MAGIC,
+  type InferredFieldType,
   type LayerDescriptor,
   type BoundingBox,
   type ProjectLayerItem,
@@ -126,9 +127,10 @@ export function flattenTreeLayers(
  * @property {boolean} [allFieldsLoaded] - True if all feature attributes were projected without restriction.
  * @property {unknown} [activeRawStyle] - Most recently applied raw style descriptor or wrapper.
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
+ * @property {Record<string, InferredFieldType>} [fieldSchema] - Dictionary of attribute names to canonical inferred field types for lazy deserialization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
@@ -139,6 +141,7 @@ export interface VectorLayerEntry {
   allFieldsLoaded?: boolean;
   activeRawStyle?: unknown;
   styleRevision?: number;
+  fieldSchema?: Record<string, InferredFieldType>;
 }
 
 /**
@@ -155,6 +158,72 @@ export interface FitExtentOptions {
   padding?: [number, number, number, number];
   duration?: number;
   size?: [number, number];
+}
+
+/**
+ * @description Attaches attribute properties to an OpenLayers Feature, defining lazy memoizing getters for complex JSON and array fields.
+ * Properties of inferredType === 'json' or array types ('T[]') remain unparsed as raw strings until accessed, caching JSON.parse() on demand.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @param {Feature} feature - Target OpenLayers feature instance.
+ * @param {Record<string, unknown>} rawProperties - Raw attribute key-value pairs decoded from WKB stream.
+ * @param {Record<string, InferredFieldType>} [fieldSchema] - Canonical field schema dictionary.
+ * @returns {void}
+ */
+export function attachFeaturePropertiesWithLazyGetters(
+  feature: Feature,
+  rawProperties: Record<string, unknown>,
+  fieldSchema?: Record<string, InferredFieldType>
+): void {
+  if (!(feature as any).values_) {
+    (feature as any).values_ = {};
+  }
+  const values = (feature as any).values_;
+
+  for (const [key, val] of Object.entries(rawProperties)) {
+    if (key === "geometry") {
+      continue;
+    }
+    const inferredType = fieldSchema?.[key];
+    const isLazy =
+      inferredType === "json" || (inferredType && inferredType.endsWith("[]"));
+
+    if (
+      isLazy
+      && (typeof val === "string" || val === null || val === undefined)
+    ) {
+      if (val === null || val === undefined) {
+        feature.set(key, null);
+        continue;
+      }
+      let memoized: unknown = undefined;
+      let isParsed = false;
+
+      Object.defineProperty(values, key, {
+        enumerable: true,
+        configurable: true,
+        get() {
+          if (!isParsed) {
+            try {
+              memoized = typeof val === "string" ? JSON.parse(val) : val;
+            } catch {
+              memoized = val;
+            }
+            isParsed = true;
+          }
+          return memoized;
+        },
+        set(newVal: unknown) {
+          memoized = newVal;
+          isParsed = true;
+        },
+      });
+    } else {
+      feature.set(key, val);
+    }
+  }
 }
 
 /**
@@ -345,7 +414,7 @@ export class MapController {
    * Instantiates new vector layers, removes deleted layers, and auto-fits viewport on initial layer import.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-11-02
    * @since 0.1.0-dev
    * @param {LayerDescriptor[]} descriptors - Flat collection of active layer descriptors.
    * @returns {void}
@@ -362,13 +431,23 @@ export class MapController {
       }
     }
 
-    // 2. Add newly registered layers
+    // 2. Add newly registered layers or synchronize updated schemas
     let newlyAddedFirstLayer: LayerDescriptor | null = null;
     for (const descriptor of descriptors) {
-      if (!this.vectorLayers.has(descriptor.id)) {
+      const existing = this.vectorLayers.get(descriptor.id);
+      if (!existing) {
         this.createVectorLayer(descriptor);
         if (this.previousLayerCount === 0 && !newlyAddedFirstLayer) {
           newlyAddedFirstLayer = descriptor;
+        }
+      } else {
+        existing.descriptor = descriptor;
+        if (descriptor.fields && descriptor.fields.length > 0) {
+          const schema: Record<string, InferredFieldType> = {};
+          for (const f of descriptor.fields) {
+            schema[f.name] = f.inferredType;
+          }
+          existing.fieldSchema = schema;
         }
       }
     }
@@ -607,7 +686,7 @@ export class MapController {
    * @description Creates and registers an OpenLayers VectorImageLayer and VectorSource backed by allStrategy/bboxStrategy, wrapX: false, and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-02
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
@@ -684,6 +763,15 @@ export class MapController {
     });
 
     this.map.addLayer(layer);
+
+    let fieldSchema: Record<string, InferredFieldType> | undefined;
+    if (descriptor.fields && descriptor.fields.length > 0) {
+      fieldSchema = {};
+      for (const f of descriptor.fields) {
+        fieldSchema[f.name] = f.inferredType;
+      }
+    }
+
     const entry: VectorLayerEntry = {
       layer,
       source,
@@ -691,6 +779,7 @@ export class MapController {
       loadedFields: new Set<string>(),
       activeRawStyle: initialRawStyle,
       styleRevision: 0,
+      fieldSchema,
     };
     this.vectorLayers.set(descriptor.id, entry);
 
@@ -705,7 +794,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-02
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -813,6 +902,15 @@ export class MapController {
           source.clear(true);
         }
 
+        const entry = this.vectorLayers.get(descriptor.id);
+        const fieldSchema =
+          entry?.fieldSchema
+          ?? (descriptor.fields && descriptor.fields.length > 0
+            ? Object.fromEntries(
+                descriptor.fields.map((f) => [f.name, f.inferredType])
+              )
+            : undefined);
+
         const dataProjection = descriptor.crs?.authId || "EPSG:4326";
 
         let buffer: ArrayBuffer | null = null;
@@ -892,7 +990,12 @@ export class MapController {
 
               // Deduplicate by ID to prevent duplicate entities during pan overlaps
               if (geometry && !source.getFeatureById(fid)) {
-                const feature = new Feature({ geometry, ...properties });
+                const feature = new Feature({ geometry });
+                attachFeaturePropertiesWithLazyGetters(
+                  feature,
+                  properties,
+                  fieldSchema
+                );
                 feature.setId(fid);
                 newFeatures.push(feature);
               }
@@ -930,10 +1033,12 @@ export class MapController {
                 continue;
               }
 
-              const feature = new Feature({
-                geometry,
-                ...(featRecord.properties || {}),
-              });
+              const feature = new Feature({ geometry });
+              attachFeaturePropertiesWithLazyGetters(
+                feature,
+                featRecord.properties || {},
+                fieldSchema
+              );
               feature.setId(featRecord.id);
 
               newFeatures.push(feature);
@@ -947,7 +1052,6 @@ export class MapController {
           }
         }
 
-        const entry = this.vectorLayers.get(descriptor.id);
         if (entry) {
           if (fields === undefined) {
             entry.allFieldsLoaded = true;

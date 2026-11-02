@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -21,6 +21,7 @@ import { preferencesMapSignal } from '../../../src/renderer/state/preferencesSig
 import {
   MapController,
   extractStyleAttributes,
+  attachFeaturePropertiesWithLazyGetters,
 } from '../../../src/renderer/map/MapController';
 import Feature from 'ol/Feature.js';
 import VectorImageLayer from 'ol/layer/VectorImage.js';
@@ -1717,6 +1718,220 @@ describe('MapController SLD Compilation & Delayed Field-Subset Reload', () => {
     assert.equal(styles[0].getFill()?.getColor(), '#123456');
     assert.equal(styles[1].getStroke()?.getColor(), '#abcdef');
     assert.equal(styles[1].getStroke()?.getWidth(), 3);
+  });
+
+  describe('Ticket #140: Viewport Lazy Deserialization Bridge for Complex Attributes', () => {
+    it('attachFeaturePropertiesWithLazyGetters defines lazy memoizing getters for json and array fields', () => {
+      const feature = new Feature();
+      const schema = {
+        meta: 'json' as const,
+        tags: 'string[]' as const,
+        scores: 'real[]' as const,
+        title: 'string' as const,
+        count: 'integer' as const,
+      };
+
+      const rawProperties = {
+        meta: '{"version":1,"author":"Cory"}',
+        tags: '["alpha","beta","gamma"]',
+        scores: '[98.5,87.2,91.0]',
+        title: 'Test Feature',
+        count: 42,
+      };
+
+      let jsonParseCount = 0;
+      const originalJsonParse = JSON.parse;
+      JSON.parse = function (...args: any[]) {
+        jsonParseCount++;
+        return (originalJsonParse as any).apply(this, args);
+      };
+
+      try {
+        attachFeaturePropertiesWithLazyGetters(feature, rawProperties, schema);
+
+        // Verify JSON.parse has NOT been called upon feature creation
+        assert.equal(jsonParseCount, 0, 'No JSON.parse calls upon property attachment');
+
+        // Access primitive non-lazy properties
+        assert.equal(feature.get('title'), 'Test Feature');
+        assert.equal(feature.get('count'), 42);
+        assert.equal(jsonParseCount, 0, 'Primitive properties must not trigger JSON.parse');
+
+        // Access tags for the first time
+        const tags = feature.get('tags');
+        assert.deepEqual(tags, ['alpha', 'beta', 'gamma']);
+        assert.equal(jsonParseCount, 1, 'First access to tags must invoke JSON.parse once');
+
+        // Access tags a second time -> should use memoized cache
+        const tagsAgain = feature.get('tags');
+        assert.deepEqual(tagsAgain, ['alpha', 'beta', 'gamma']);
+        assert.equal(jsonParseCount, 1, 'Subsequent access to tags must return cached object without JSON.parse');
+
+        // Access meta for the first time
+        const meta = feature.get('meta');
+        assert.deepEqual(meta, { version: 1, author: 'Cory' });
+        assert.equal(jsonParseCount, 2, 'First access to meta must invoke JSON.parse once');
+
+        // scores was never accessed
+        assert.equal(jsonParseCount, 2, 'Unaccessed scores property must never invoke JSON.parse');
+
+        // getProperties() returns all properties including memoized lazy properties
+        const allProps = feature.getProperties();
+        assert.equal(allProps.title, 'Test Feature');
+        assert.deepEqual(allProps.tags, ['alpha', 'beta', 'gamma']);
+        assert.deepEqual(allProps.meta, { version: 1, author: 'Cory' });
+        // Reading scores via getProperties invokes JSON.parse once for scores
+        assert.deepEqual(allProps.scores, [98.5, 87.2, 91.0]);
+        assert.equal(jsonParseCount, 3, 'Reading scores via getProperties evaluates its lazy getter');
+      } finally {
+        JSON.parse = originalJsonParse;
+      }
+    });
+
+    it('attachFeaturePropertiesWithLazyGetters handles corrupted JSON and null values gracefully', () => {
+      const feature = new Feature();
+      const schema = {
+        corrupt_json: 'json' as const,
+        null_json: 'json' as const,
+      };
+
+      const rawProperties = {
+        corrupt_json: '{ invalid json ]',
+        null_json: null,
+      };
+
+      attachFeaturePropertiesWithLazyGetters(feature, rawProperties, schema);
+
+      // Corrupted JSON returns the raw string without throwing
+      assert.equal(feature.get('corrupt_json'), '{ invalid json ]');
+      // Null stays null
+      assert.equal(feature.get('null_json'), null);
+    });
+
+    it('stores fieldSchema on VectorLayerEntry upon syncLayers and createVectorLayer', () => {
+      const descriptor: LayerDescriptor = {
+        id: 'layer-schema-test',
+        name: 'Schema Layer',
+        type: 'geojson',
+        source: '/path/to/schema.geojson',
+        geometryKind: 'Point',
+        layerKind: 'vector',
+        extent: [-90, 40, -80, 50],
+        featureCount: 1,
+        fields: [
+          { name: 'poi_name', nativeType: 'String', inferredType: 'string' },
+          { name: 'tags', nativeType: 'StringList', inferredType: 'string[]' },
+          { name: 'metadata', nativeType: 'String', inferredType: 'json' },
+        ],
+      };
+
+      projectLayersSignal.value = [descriptor];
+      const entry = controller.getLayer('layer-schema-test');
+      assert.ok(entry, 'VectorLayerEntry must exist');
+      assert.ok(entry.fieldSchema, 'fieldSchema must be registered on entry');
+      assert.equal(entry.fieldSchema.poi_name, 'string');
+      assert.equal(entry.fieldSchema.tags, 'string[]');
+      assert.equal(entry.fieldSchema.metadata, 'json');
+
+      // Update schema via syncLayers
+      const updatedDescriptor: LayerDescriptor = {
+        ...descriptor,
+        fields: [
+          { name: 'poi_name', nativeType: 'String', inferredType: 'string' },
+          { name: 'tags', nativeType: 'StringList', inferredType: 'string[]' },
+          { name: 'metadata', nativeType: 'String', inferredType: 'json' },
+          { name: 'ratings', nativeType: 'RealList', inferredType: 'real[]' },
+        ],
+      };
+
+      controller.syncLayers([updatedDescriptor]);
+      assert.equal(entry.fieldSchema.ratings, 'real[]');
+    });
+
+    it('loadFeaturesForExtent attaches lazy getters for json and array fields deserialized from WKB packet', async () => {
+      const pointWkb = new Uint8Array([
+        1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 41, 64,
+      ]);
+
+      const descriptor: LayerDescriptor = {
+        id: 'layer-wkb-lazy-test',
+        name: 'Lazy WKB Layer',
+        type: 'geojson',
+        source: '/path/to/lazy.geojson',
+        geometryKind: 'Point',
+        layerKind: 'vector',
+        extent: [-90, 40, -80, 50],
+        featureCount: 1,
+        fields: [
+          { name: 'station_id', nativeType: 'Integer', inferredType: 'integer' },
+          { name: 'sensor_readings', nativeType: 'RealList', inferredType: 'real[]' },
+          { name: 'config_json', nativeType: 'String', inferredType: 'json' },
+        ],
+      };
+
+      (window as any).electronAPI = {
+        queryExtent: async () => ({
+          layerId: 'layer-wkb-lazy-test',
+          buffer: createMockBinaryPacket([
+            {
+              fid: 101,
+              wkb: pointWkb,
+              properties: {
+                station_id: 42,
+                sensor_readings: '[21.5,22.1,23.0]',
+                config_json: '{"calibrated":true,"model":"X-1"}',
+              },
+            },
+          ]),
+        }),
+      };
+
+      projectLayersSignal.value = [descriptor];
+      const entry = controller.getLayer('layer-wkb-lazy-test')!;
+      assert.ok(entry);
+
+      let jsonParseCount = 0;
+      const originalJsonParse = JSON.parse;
+      JSON.parse = function (...args: any[]) {
+        jsonParseCount++;
+        return (originalJsonParse as any).apply(this, args);
+      };
+
+      try {
+        const features = await controller.loadFeaturesForExtent(
+          descriptor,
+          entry.source,
+          [-100, 30, -70, 60],
+          'EPSG:3857'
+        );
+
+        assert.equal(features.length, 1);
+        const feat = features[0];
+
+        // During extent loading: WKB packet decoder calls JSON.parse on propsSlice (once per feature payload)
+        const parseCountAfterLoad = jsonParseCount;
+        assert.equal(parseCountAfterLoad, 1, 'Only one JSON.parse call to decode WKB property slice');
+
+        // Access station_id (scalar)
+        assert.equal(feat.get('station_id'), 42);
+        assert.equal(jsonParseCount, parseCountAfterLoad, 'Scalar field does not invoke JSON.parse');
+
+        // Access sensor_readings for the first time
+        const readings = feat.get('sensor_readings');
+        assert.deepEqual(readings, [21.5, 22.1, 23.0]);
+        assert.equal(jsonParseCount, parseCountAfterLoad + 1, 'First access to sensor_readings triggers lazy JSON.parse');
+
+        // Access sensor_readings second time (memoized)
+        const readings2 = feat.get('sensor_readings');
+        assert.deepEqual(readings2, [21.5, 22.1, 23.0]);
+        assert.equal(jsonParseCount, parseCountAfterLoad + 1, 'Second access to sensor_readings uses memoized cache');
+
+        // config_json was never accessed
+        assert.equal(jsonParseCount, parseCountAfterLoad + 1, 'Unread config_json remains unparsed');
+      } finally {
+        JSON.parse = originalJsonParse;
+      }
+    });
   });
 });
 
