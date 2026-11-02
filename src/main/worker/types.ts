@@ -4,13 +4,14 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-24
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 
 import type {
   BoundingBox,
   GeometryKind,
+  LayerFieldInfo,
   ProjectCrs,
   QueryExtentFeature,
   QueryExtentOptions
@@ -25,6 +26,11 @@ import type {
  * @property {number} featureCount - Total count of spatial features in the dataset.
  * @property {ProjectCrs} [crs] - Resolved coordinate reference system metadata.
  * @property {GeometryKind} geometryKind - Mapped GIS geometry kind.
+ * @property {LayerFieldInfo[]} [fields] - Inferred attribute column definitions.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-15
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
  */
 export interface GeospatialLayerMetadata {
   layerId: string;
@@ -33,6 +39,7 @@ export interface GeospatialLayerMetadata {
   featureCount: number;
   crs?: ProjectCrs;
   geometryKind: GeometryKind;
+  fields?: LayerFieldInfo[];
 }
 
 /**

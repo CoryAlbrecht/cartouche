@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -31,7 +31,7 @@ export { mapGdalGeometryKind };
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.
@@ -76,6 +76,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     featureCount: number;
     crs?: import('@shared/types').ProjectCrs;
     geometryKind?: GeometryKind;
+    fields?: import('@shared/types').LayerFieldInfo[];
   } = {
     extent: [0, 0, 0, 0],
     featureCount: 0
@@ -116,6 +117,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
 
   newLayer.extent = extent;
   newLayer.featureCount = featureCount;
+  newLayer.fields = metadata.fields;
 
   const layerDescriptor: LayerDescriptor = {
     id: newLayer.id,
@@ -131,6 +133,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     geometryKind: newLayer.geometryKind,
     style: newLayer.style,
     crs: newLayer.crs,
+    fields: metadata.fields,
     customProperties: newLayer.customProperties,
     extent,
     featureCount

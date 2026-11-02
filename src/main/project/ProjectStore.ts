@@ -4,7 +4,7 @@
  * @description Central in-memory store maintaining authoritative active Cartouche project state in the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  */
@@ -96,6 +96,7 @@ export class ProjectStore {
     layer.style = layerItem.style;
     layer.styleId = layerItem.styleId;
     layer.crs = layerItem.crs;
+    layer.fields = layerItem.fields;
     layer.customProperties = layerItem.customProperties;
 
     // Resolve file format descriptor if registered

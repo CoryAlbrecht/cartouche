@@ -17,6 +17,7 @@ import type {
   BoundingBox,
   GeometryKind,
   InferredFieldType,
+  InferredScalarFieldType,
   LayerDetailedInfo,
   LayerFieldInfo,
   ProjectCrs,
@@ -422,8 +423,9 @@ export class GeospatialEngine {
     }
 
     const geometryKind = resolveLayerGeometryKind(layer);
+    const fields = this.inferLayerFields(dataset, layer, filePath);
 
-    return { layerId, name, extent, featureCount, crs, geometryKind };
+    return { layerId, name, extent, featureCount, crs, geometryKind, fields };
   }
 
   /**
@@ -506,64 +508,7 @@ export class GeospatialEngine {
     const name =
       rawName && rawName.length > 0 ? rawName : path.basename(filePath);
 
-    const fields: LayerFieldInfo[] = [];
-    const fieldCount = layer.fields ? layer.fields.count() : 0;
-    for (let i = 0; i < fieldCount; i++) {
-      const f = layer.fields.get(i);
-      const nativeType = String(f.type || "unknown");
-      let mappedType: "string" | "number" | "boolean" | "Date" | "unknown" =
-        "unknown";
-      let inferredType: InferredFieldType = "string";
-
-      switch (nativeType.toLowerCase()) {
-        case "integer":
-        case "integer64":
-          mappedType = "number";
-          inferredType = "integer";
-          break;
-        case "real":
-          mappedType = "number";
-          inferredType = "real";
-          break;
-        case "string":
-          mappedType = "string";
-          inferredType = "string";
-          break;
-        case "date":
-          mappedType = "Date";
-          inferredType = "date";
-          break;
-        case "time":
-          mappedType = "Date";
-          inferredType = "time";
-          break;
-        case "datetime":
-          mappedType = "Date";
-          inferredType = "datetime";
-          break;
-        case "binary":
-          mappedType = "unknown";
-          inferredType = "binary";
-          break;
-        default:
-          mappedType = "unknown";
-          inferredType = "string";
-          break;
-      }
-
-      fields.push({
-        name: f.name,
-        nativeType,
-        inferredType,
-        width: typeof f.width === "number" && f.width > 0 ? f.width : undefined,
-        precision:
-          typeof f.precision === "number" && f.precision > 0 ?
-            f.precision
-          : undefined,
-        mappedType,
-        nullable: (f as any).nullable !== false,
-      });
-    }
+    const fields = this.inferLayerFields(dataset, layer, filePath);
 
     return {
       layerId,
@@ -577,6 +522,371 @@ export class GeospatialEngine {
       extent,
       fields,
     };
+  }
+
+  /**
+   * @description Executes the 6-tier descending confidence field type inference cascade across a layer's attribute columns.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {gdal.Dataset} dataset - Active GDAL dataset instance.
+   * @param {gdal.Layer} layer - Target vector layer handle.
+   * @param {string} filePath - Absolute path to underlying dataset file.
+   * @returns {LayerFieldInfo[]} Inferred field schema definitions.
+   */
+  public inferLayerFields(
+    dataset: gdal.Dataset,
+    layer: gdal.Layer,
+    filePath: string
+  ): LayerFieldInfo[] {
+    const layerName = layer.name?.trim() || "";
+    const ext = path.extname(filePath).toLowerCase();
+
+    // Tier 1 prep: introspect SQLite PRAGMA table_info and GeoPackage gpkg_data_columns
+    const pragmaColumns = new Map<
+      string,
+      { type: string; dflt_value: string | null; notnull: boolean }
+    >();
+    const gpkgDataColumns = new Map<
+      string,
+      { data_type: string; mime_type: string | null }
+    >();
+
+    try {
+      if (typeof dataset.executeSQL === "function" && layerName.length > 0) {
+        // Query PRAGMA table_info
+        try {
+          const pragmaRes = dataset.executeSQL(
+            `PRAGMA table_info("${layerName.replace(/"/g, '""')}")`
+          );
+          if (pragmaRes && pragmaRes.features) {
+            for (const feat of pragmaRes.features) {
+              const obj = feat.fields.toObject();
+              if (obj.name) {
+                pragmaColumns.set(String(obj.name).toLowerCase(), {
+                  type: String(obj.type || "").toUpperCase(),
+                  dflt_value:
+                    obj.dflt_value !== undefined && obj.dflt_value !== null ?
+                      String(obj.dflt_value)
+                    : null,
+                  notnull: obj.notnull === 1 || obj.notnull === true,
+                });
+              }
+            }
+          }
+        } catch {
+          // Driver does not support SQLite PRAGMA table_info
+        }
+
+        // Query GeoPackage gpkg_data_columns
+        try {
+          const gpkgRes = dataset.executeSQL(
+            `SELECT column_name, data_type, mime_type FROM gpkg_data_columns WHERE table_name = '${layerName.replace(/'/g, "''")}'`
+          );
+          if (gpkgRes && gpkgRes.features) {
+            for (const feat of gpkgRes.features) {
+              const obj = feat.fields.toObject();
+              if (obj.column_name) {
+                gpkgDataColumns.set(String(obj.column_name).toLowerCase(), {
+                  data_type: String(obj.data_type || "").toLowerCase(),
+                  mime_type:
+                    obj.mime_type !== undefined && obj.mime_type !== null ?
+                      String(obj.mime_type).toLowerCase()
+                    : null,
+                });
+              }
+            }
+          }
+        } catch {
+          // Not a GeoPackage or gpkg_data_columns table does not exist
+        }
+      }
+    } catch {
+      // Suppress general executeSQL introspection errors
+    }
+
+    const fields: LayerFieldInfo[] = [];
+    const fieldCount = layer.fields ? layer.fields.count() : 0;
+
+    for (let i = 0; i < fieldCount; i++) {
+      const f = layer.fields.get(i);
+      const name = f.name;
+      const nameLower = name.toLowerCase().trim();
+      const nativeType = String(f.type || "unknown");
+      const nativeTypeLower = nativeType.toLowerCase();
+      const nativeSubType = (f as any).subType || (f as any).subtype || undefined;
+      const width = typeof f.width === "number" && f.width > 0 ? f.width : undefined;
+      const precision = typeof f.precision === "number" && f.precision >= 0 ? f.precision : undefined;
+      const domainName = (f as any).domainName || (f as any).domain_name || undefined;
+      const alternativeName = (f as any).alternativeName || (f as any).alternative_name || undefined;
+      const isArrayType = nativeTypeLower.includes("list") || nativeTypeLower.endsWith("[]");
+
+      const pragmaCol = pragmaColumns.get(nameLower);
+      const gpkgCol = gpkgDataColumns.get(nameLower);
+
+      let defaultValue =
+        (f as any).defaultValue !== undefined && (f as any).defaultValue !== null ?
+          String((f as any).defaultValue)
+        : undefined;
+      if (!defaultValue && pragmaCol?.dflt_value) {
+        defaultValue = pragmaCol.dflt_value;
+      }
+
+      const inferredScalar = this.resolveInferredScalarType({
+        nameLower,
+        nativeTypeLower,
+        nativeSubType,
+        width,
+        precision,
+        defaultValue,
+        domainName,
+        domain: (f as any).domain || (f as any).fieldDomain,
+        dataset,
+        pragmaCol,
+        gpkgCol,
+        ext,
+      });
+
+      const inferredType: InferredFieldType =
+        isArrayType ? (`${inferredScalar}[]` as InferredFieldType) : inferredScalar;
+
+      let mappedType: "string" | "number" | "boolean" | "Date" | "unknown" = "unknown";
+      if (inferredScalar === "integer" || inferredScalar === "real") {
+        mappedType = "number";
+      } else if (inferredScalar === "boolean") {
+        mappedType = "boolean";
+      } else if (inferredScalar === "date" || inferredScalar === "time" || inferredScalar === "datetime") {
+        mappedType = "Date";
+      } else if (inferredScalar === "string" || inferredScalar === "uuid" || inferredScalar === "json") {
+        mappedType = "string";
+      }
+
+      fields.push({
+        name,
+        nativeType,
+        inferredType,
+        nativeSubType: nativeSubType ? String(nativeSubType) : undefined,
+        alternativeName: alternativeName ? String(alternativeName) : undefined,
+        domainName: domainName ? String(domainName) : undefined,
+        defaultValue,
+        width,
+        precision,
+        nullable: (f as any).nullable !== false,
+        userOverridden: false,
+        mappedType,
+      });
+    }
+
+    return fields;
+  }
+
+  /**
+   * @description Resolves the inferred scalar field type using the 6-tier descending confidence cascade.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {Object} params - Field attributes and introspection metadata.
+   * @returns {InferredScalarFieldType} Resolved scalar inferred type.
+   */
+  private resolveInferredScalarType(params: {
+    nameLower: string;
+    nativeTypeLower: string;
+    nativeSubType?: string;
+    width?: number;
+    precision?: number;
+    defaultValue?: string;
+    domainName?: string;
+    domain?: any;
+    dataset?: any;
+    pragmaCol?: { type: string; dflt_value: string | null; notnull: boolean };
+    gpkgCol?: { data_type: string; mime_type: string | null };
+    ext: string;
+  }): InferredScalarFieldType {
+    const {
+      nameLower,
+      nativeTypeLower,
+      nativeSubType,
+      width,
+      precision,
+      defaultValue,
+      domainName,
+      domain,
+      dataset,
+      pragmaCol,
+      gpkgCol,
+      ext,
+    } = params;
+
+    // =========================================================================
+    // Tier 1: Field Domains & SQLite / GeoPackage Introspection
+    // =========================================================================
+
+    // 1a. GDAL Field Domains (CodedValue, Range, Glob)
+    const activeDomain =
+      domain
+      || (domainName && dataset?.fieldDomains ? dataset.fieldDomains[domainName] : undefined);
+
+    if (activeDomain) {
+      // CodedValueFieldDomain (Enumeration)
+      const codedValues =
+        activeDomain.codedValues || activeDomain.enumeration || activeDomain.values;
+      if (codedValues && typeof codedValues === "object") {
+        const entries = Array.isArray(codedValues) ? codedValues : Object.entries(codedValues);
+        const keys = entries.map((e: any) => (Array.isArray(e) ? String(e[0]) : String(e.code ?? e.key)));
+        const values = entries.map((e: any) => (Array.isArray(e) ? String(e[1]).toLowerCase() : String(e.value ?? e.name).toLowerCase()));
+        const isBoolCodes = keys.length === 2 && keys.every((k) => k === "0" || k === "1" || k === "true" || k === "false");
+        const isBoolValues = entries.length === 2 && values.every((v) => ["true", "false", "yes", "no", "t", "f", "y", "n"].includes(v));
+        if (entries.length === 2 && (isBoolCodes || isBoolValues)) {
+          return "boolean";
+        }
+      }
+
+      // RangeFieldDomain
+      const minVal = activeDomain.minValue ?? activeDomain.min;
+      const maxVal = activeDomain.maxValue ?? activeDomain.max;
+      if (minVal === 0 && maxVal === 1 && (nativeTypeLower.includes("int") || width === 1)) {
+        return "boolean";
+      }
+
+      // GlobFieldDomain
+      const globPattern = activeDomain.glob || activeDomain.pattern || "";
+      if (
+        /\[0-9\]\[0-9\]\[0-9\]\[0-9\]-\[0-9\]\[0-9\]-\[0-9\]\[0-9\]|\^\d{4}-\d{2}-\d{2}\$/i.test(
+          globPattern
+        )
+      ) {
+        return "date";
+      }
+    }
+
+    // 1b. GeoPackage gpkg_data_columns
+    if (gpkgCol) {
+      const dt = gpkgCol.data_type;
+      const mt = gpkgCol.mime_type || "";
+      if (dt === "boolean") return "boolean";
+      if (dt === "date") return "date";
+      if (dt === "time") return "time";
+      if (dt === "datetime") return "datetime";
+      if (dt === "json" || mt.includes("json")) return "json";
+      if (dt === "uuid" || mt.includes("uuid")) return "uuid";
+    }
+
+    // 1c. SQLite PRAGMA table_info declared column types
+    if (pragmaCol && pragmaCol.type) {
+      const pt = pragmaCol.type;
+      if (pt === "BOOLEAN" || pt === "BOOL") return "boolean";
+      if (pt === "DATE") return "date";
+      if (pt === "TIME") return "time";
+      if (pt === "DATETIME" || pt === "TIMESTAMP") return "datetime";
+      if (pt === "UUID" || pt === "GUID") return "uuid";
+      if (pt === "JSON") return "json";
+    }
+
+    // =========================================================================
+    // Tier 2: Native OGR Subtypes
+    // =========================================================================
+    if (nativeSubType) {
+      const subLower = String(nativeSubType).toLowerCase();
+      if (subLower === "ofstboolean" || subLower === "boolean") return "boolean";
+      if (subLower === "ofstuuid" || subLower === "uuid") return "uuid";
+      if (subLower === "ofstjson" || subLower === "json") return "json";
+    }
+
+    // =========================================================================
+    // Tier 3: Default Value Expressions
+    // =========================================================================
+    if (defaultValue) {
+      const defTrim = defaultValue.trim();
+      if (
+        /CURRENT_TIMESTAMP|datetime\s*\(\s*['"]now['"]\s*\)|^['"]?now['"]?$/i.test(defTrim)
+      ) {
+        return "datetime";
+      }
+      if (/CURRENT_DATE|date\s*\(\s*['"]now['"]\s*\)/i.test(defTrim)) {
+        return "date";
+      }
+      if (/CURRENT_TIME|time\s*\(\s*['"]now['"]\s*\)/i.test(defTrim)) {
+        return "time";
+      }
+      if (/^['"]?(true|false)['"]?$/i.test(defTrim)) {
+        return "boolean";
+      }
+      if (
+        /^['"]?[01]['"]?$/.test(defTrim)
+        && (nativeTypeLower.includes("int") || width === 1)
+      ) {
+        return "boolean";
+      }
+      if (/^['"]?[YN]['"]?$/i.test(defTrim) && width === 1) {
+        return "boolean";
+      }
+    }
+
+    // =========================================================================
+    // Tier 4: Attribute Dimensions (Width and Precision)
+    // =========================================================================
+    if (nativeTypeLower.includes("string") || nativeTypeLower === "unknown") {
+      if (width === 10) return "date";
+      if (width === 8 && (ext === ".dbf" || ext === ".shp")) return "date";
+      if (width === 1) return "boolean";
+      if (width === 36) return "uuid";
+    }
+
+    if (nativeTypeLower.includes("int") && width === 1) {
+      return "boolean";
+    }
+
+    if (nativeTypeLower.includes("real")) {
+      if (precision === 0 && width !== undefined && width > 0) {
+        return "integer";
+      }
+    }
+
+    // =========================================================================
+    // Tier 5: Column Naming Patterns
+    // =========================================================================
+    if (/^(is|has|can|should|active)(_|$)|^.*(_flag|_active|_enabled)$/i.test(nameLower)) {
+      return "boolean";
+    }
+
+    if (/^.*(_date|_dt|dob)$|^date$/i.test(nameLower)) {
+      return "date";
+    }
+
+    if (/^.*(_timestamp|_at)$/i.test(nameLower)) {
+      return "datetime";
+    }
+
+    if (/^.*(_time)$|^time$/i.test(nameLower)) {
+      return "time";
+    }
+
+    if (!nativeTypeLower.includes("int") && /^.*(_id|_uuid|_guid)$|^uuid$|^guid$/i.test(nameLower)) {
+      return "uuid";
+    }
+
+    if (/^.*(_json|_data|properties|attributes)$|^json$/i.test(nameLower)) {
+      return "json";
+    }
+
+    if (/^(num|cnt|count|total)(_|$)|^.*(_cnt|_count|_num)$/i.test(nameLower)) {
+      return "integer";
+    }
+
+    // =========================================================================
+    // Tier 6: Safe Fallback from Native Base OGR Types
+    // =========================================================================
+    if (nativeTypeLower.includes("int")) return "integer";
+    if (nativeTypeLower.includes("real")) return "real";
+    if (nativeTypeLower.includes("date") && nativeTypeLower.includes("time")) return "datetime";
+    if (nativeTypeLower.includes("date")) return "date";
+    if (nativeTypeLower.includes("time")) return "time";
+    if (nativeTypeLower.includes("binary")) return "binary";
+    if (nativeTypeLower.includes("string")) return "string";
+
+    return "string";
   }
 
   /**

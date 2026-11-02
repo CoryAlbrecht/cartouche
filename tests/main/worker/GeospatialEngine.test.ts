@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-23
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -489,6 +489,277 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
     const info = await engine.getLayerInfo('new-layer-id');
     assert.equal(info.layerId, 'new-layer-id');
     assert.equal(info.driverName, 'ESRI Shapefile');
+  });
+
+  describe('6-Tier Field Type Inference Cascade (Ticket #138)', () => {
+    it('openDataset populates metadata.fields via 6-tier cascade on vector layers', async () => {
+      const metadata = await engine.openDataset('lakes-test-fields', lakesShpPath);
+      assert.ok(metadata.fields, 'metadata.fields must be defined');
+      assert.ok(metadata.fields.length > 0, 'metadata.fields must have elements');
+
+      const nameField = metadata.fields.find((f) => f.name === 'name');
+      assert.ok(nameField);
+      assert.equal(nameField.inferredType, 'string');
+      assert.equal(nameField.mappedType, 'string');
+
+      const rankField = metadata.fields.find((f) => f.name === 'scalerank');
+      assert.ok(rankField);
+      assert.equal(rankField.inferredType, 'integer');
+      assert.equal(rankField.mappedType, 'number');
+
+      // Verify getLayerInfo matches openDataset fields
+      const info = await engine.getLayerInfo('lakes-test-fields');
+      assert.deepEqual(info.fields, metadata.fields);
+    });
+
+    it('Tier 1: detects booleans, ranges, regex dates from GDAL field domains, PRAGMA table_info, and gpkg_data_columns', () => {
+      const mockFields = [
+        { name: 'coded_bool', type: 'integer', domain: { codedValues: { 0: 'False', 1: 'True' } } },
+        { name: 'range_bool', type: 'integer', domain: { minValue: 0, maxValue: 1 } },
+        { name: 'glob_date', type: 'string', domain: { glob: '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' } },
+        { name: 'col_pragma_bool', type: 'integer' },
+        { name: 'col_pragma_date', type: 'string' },
+        { name: 'col_pragma_time', type: 'string' },
+        { name: 'col_pragma_datetime', type: 'string' },
+        { name: 'col_pragma_uuid', type: 'string' },
+        { name: 'col_pragma_json', type: 'string' },
+        { name: 'col_gpkg_date', type: 'string' },
+        { name: 'col_gpkg_uuid', type: 'string' },
+        { name: 'col_gpkg_json', type: 'string' },
+      ];
+
+      const mockLayer: any = {
+        name: 'test_tier1_table',
+        fields: {
+          count: () => mockFields.length,
+          get: (i: number) => mockFields[i],
+        },
+      };
+
+      const mockDataset: any = {
+        executeSQL: (sql: string) => {
+          if (sql.includes('PRAGMA table_info')) {
+            return {
+              features: [
+                { fields: { toObject: () => ({ name: 'col_pragma_bool', type: 'BOOLEAN', dflt_value: null }) } },
+                { fields: { toObject: () => ({ name: 'col_pragma_date', type: 'DATE', dflt_value: null }) } },
+                { fields: { toObject: () => ({ name: 'col_pragma_time', type: 'TIME', dflt_value: null }) } },
+                { fields: { toObject: () => ({ name: 'col_pragma_datetime', type: 'DATETIME', dflt_value: null }) } },
+                { fields: { toObject: () => ({ name: 'col_pragma_uuid', type: 'UUID', dflt_value: null }) } },
+                { fields: { toObject: () => ({ name: 'col_pragma_json', type: 'JSON', dflt_value: null }) } },
+              ],
+            };
+          }
+          if (sql.includes('gpkg_data_columns')) {
+            return {
+              features: [
+                { fields: { toObject: () => ({ column_name: 'col_gpkg_date', data_type: 'date', mime_type: null }) } },
+                { fields: { toObject: () => ({ column_name: 'col_gpkg_uuid', data_type: 'string', mime_type: 'application/x-uuid' }) } },
+                { fields: { toObject: () => ({ column_name: 'col_gpkg_json', data_type: 'string', mime_type: 'application/json' }) } },
+              ],
+            };
+          }
+          return null;
+        },
+      };
+
+      const inferred = engine.inferLayerFields(mockDataset, mockLayer, '/data/test.gpkg');
+      const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
+
+      assert.equal(byName.get('coded_bool'), 'boolean');
+      assert.equal(byName.get('range_bool'), 'boolean');
+      assert.equal(byName.get('glob_date'), 'date');
+      assert.equal(byName.get('col_pragma_bool'), 'boolean');
+      assert.equal(byName.get('col_pragma_date'), 'date');
+      assert.equal(byName.get('col_pragma_time'), 'time');
+      assert.equal(byName.get('col_pragma_datetime'), 'datetime');
+      assert.equal(byName.get('col_pragma_uuid'), 'uuid');
+      assert.equal(byName.get('col_pragma_json'), 'json');
+      assert.equal(byName.get('col_gpkg_date'), 'date');
+      assert.equal(byName.get('col_gpkg_uuid'), 'uuid');
+      assert.equal(byName.get('col_gpkg_json'), 'json');
+    });
+
+    it('Tier 2: detects boolean, uuid, and json from native OGR subtypes', () => {
+      const mockFields = [
+        { name: 'flag_field', type: 'integer', subType: 'OFSTBoolean' },
+        { name: 'guid_field', type: 'string', subType: 'OFSTUUID' },
+        { name: 'payload_field', type: 'string', subType: 'OFSTJSON' },
+      ];
+
+      const mockLayer: any = {
+        name: 'test_tier2',
+        fields: {
+          count: () => mockFields.length,
+          get: (i: number) => mockFields[i],
+        },
+      };
+
+      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.shp');
+      const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
+
+      assert.equal(byName.get('flag_field'), 'boolean');
+      assert.equal(byName.get('guid_field'), 'uuid');
+      assert.equal(byName.get('payload_field'), 'json');
+    });
+
+    it('Tier 3: detects temporal and boolean fields from default value expressions', () => {
+      const mockFields = [
+        { name: 'ts_field', type: 'string', defaultValue: 'CURRENT_TIMESTAMP' },
+        { name: 'now_field', type: 'string', defaultValue: "datetime('now')" },
+        { name: 'date_def', type: 'string', defaultValue: 'CURRENT_DATE' },
+        { name: 'time_def', type: 'string', defaultValue: 'CURRENT_TIME' },
+        { name: 'bool_true', type: 'string', defaultValue: 'true' },
+        { name: 'bool_zero', type: 'integer', defaultValue: '0' },
+        { name: 'bool_y', type: 'string', width: 1, defaultValue: 'Y' },
+      ];
+
+      const mockLayer: any = {
+        name: 'test_tier3',
+        fields: {
+          count: () => mockFields.length,
+          get: (i: number) => mockFields[i],
+        },
+      };
+
+      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.shp');
+      const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
+
+      assert.equal(byName.get('ts_field'), 'datetime');
+      assert.equal(byName.get('now_field'), 'datetime');
+      assert.equal(byName.get('date_def'), 'date');
+      assert.equal(byName.get('time_def'), 'time');
+      assert.equal(byName.get('bool_true'), 'boolean');
+      assert.equal(byName.get('bool_zero'), 'boolean');
+      assert.equal(byName.get('bool_y'), 'boolean');
+    });
+
+    it('Tier 4: detects dates (width 10, width 8 DBF), booleans (width 1), UUIDs (width 36), and 64-bit integers (real precision 0)', () => {
+      const mockFields = [
+        { name: 'str_10', type: 'string', width: 10 },
+        { name: 'dbf_8', type: 'string', width: 8 },
+        { name: 'str_1', type: 'string', width: 1 },
+        { name: 'int_1', type: 'integer', width: 1 },
+        { name: 'str_36', type: 'string', width: 36 },
+        { name: 'coerced_int', type: 'real', width: 18, precision: 0 },
+      ];
+
+      const mockLayer: any = {
+        name: 'test_tier4',
+        fields: {
+          count: () => mockFields.length,
+          get: (i: number) => mockFields[i],
+        },
+      };
+
+      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.dbf');
+      const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
+
+      assert.equal(byName.get('str_10'), 'date');
+      assert.equal(byName.get('dbf_8'), 'date');
+      assert.equal(byName.get('str_1'), 'boolean');
+      assert.equal(byName.get('int_1'), 'boolean');
+      assert.equal(byName.get('str_36'), 'uuid');
+      assert.equal(byName.get('coerced_int'), 'integer');
+    });
+
+    it('Tier 5: infers types from canonical column naming patterns', () => {
+      const mockFields = [
+        { name: 'is_active', type: 'string' },
+        { name: 'has_parking', type: 'string' },
+        { name: 'can_edit', type: 'string' },
+        { name: 'highway_flag', type: 'string' },
+        { name: 'active', type: 'string' },
+        { name: 'expiration_date', type: 'string' },
+        { name: 'event_dt', type: 'string' },
+        { name: 'dob', type: 'string' },
+        { name: 'created_at', type: 'string' },
+        { name: 'flight_timestamp', type: 'string' },
+        { name: 'arrival_time', type: 'string' },
+        { name: 'customer_id', type: 'string' },
+        { name: 'object_uuid', type: 'string' },
+        { name: 'guid', type: 'string' },
+        { name: 'config_json', type: 'string' },
+        { name: 'sensor_data', type: 'string' },
+        { name: 'properties', type: 'string' },
+        { name: 'attributes', type: 'string' },
+        { name: 'num_lanes', type: 'string' },
+        { name: 'cnt_trees', type: 'string' },
+        { name: 'count', type: 'string' },
+        { name: 'total_population', type: 'string' },
+      ];
+
+      const mockLayer: any = {
+        name: 'test_tier5',
+        fields: {
+          count: () => mockFields.length,
+          get: (i: number) => mockFields[i],
+        },
+      };
+
+      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.geojson');
+      const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
+
+      assert.equal(byName.get('is_active'), 'boolean');
+      assert.equal(byName.get('has_parking'), 'boolean');
+      assert.equal(byName.get('can_edit'), 'boolean');
+      assert.equal(byName.get('highway_flag'), 'boolean');
+      assert.equal(byName.get('active'), 'boolean');
+      assert.equal(byName.get('expiration_date'), 'date');
+      assert.equal(byName.get('event_dt'), 'date');
+      assert.equal(byName.get('dob'), 'date');
+      assert.equal(byName.get('created_at'), 'datetime');
+      assert.equal(byName.get('flight_timestamp'), 'datetime');
+      assert.equal(byName.get('arrival_time'), 'time');
+      assert.equal(byName.get('customer_id'), 'uuid');
+      assert.equal(byName.get('object_uuid'), 'uuid');
+      assert.equal(byName.get('guid'), 'uuid');
+      assert.equal(byName.get('config_json'), 'json');
+      assert.equal(byName.get('sensor_data'), 'json');
+      assert.equal(byName.get('properties'), 'json');
+      assert.equal(byName.get('attributes'), 'json');
+      assert.equal(byName.get('num_lanes'), 'integer');
+      assert.equal(byName.get('cnt_trees'), 'integer');
+      assert.equal(byName.get('count'), 'integer');
+      assert.equal(byName.get('total_population'), 'integer');
+    });
+
+    it('Tier 6: safe fallback mapping from native base OGR types to scalar and array variants', () => {
+      const mockFields = [
+        { name: 'col_int', type: 'integer' },
+        { name: 'col_real', type: 'real' },
+        { name: 'col_date', type: 'date' },
+        { name: 'col_time', type: 'time' },
+        { name: 'col_datetime', type: 'datetime' },
+        { name: 'col_binary', type: 'binary' },
+        { name: 'col_str', type: 'string' },
+        { name: 'col_int_list', type: 'IntegerList' },
+        { name: 'col_real_list', type: 'RealList' },
+        { name: 'col_str_list', type: 'StringList' },
+      ];
+
+      const mockLayer: any = {
+        name: 'test_tier6',
+        fields: {
+          count: () => mockFields.length,
+          get: (i: number) => mockFields[i],
+        },
+      };
+
+      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.bin');
+      const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
+
+      assert.equal(byName.get('col_int'), 'integer');
+      assert.equal(byName.get('col_real'), 'real');
+      assert.equal(byName.get('col_date'), 'date');
+      assert.equal(byName.get('col_time'), 'time');
+      assert.equal(byName.get('col_datetime'), 'datetime');
+      assert.equal(byName.get('col_binary'), 'binary');
+      assert.equal(byName.get('col_str'), 'string');
+      assert.equal(byName.get('col_int_list'), 'integer[]');
+      assert.equal(byName.get('col_real_list'), 'real[]');
+      assert.equal(byName.get('col_str_list'), 'string[]');
+    });
   });
 });
 

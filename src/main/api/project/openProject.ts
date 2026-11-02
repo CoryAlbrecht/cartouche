@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-26
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -87,6 +87,7 @@ function enrichProjectLayers(
         layerItem.geometryKind = info.layer.geometryKind;
         layerItem.style = info.layer.style;
         layerItem.crs = info.layer.crs;
+        layerItem.fields = info.layer.fields;
         (layerItem as any).extent = info.extent;
         (layerItem as any).featureCount = info.featureCount;
       }
@@ -129,7 +130,7 @@ export interface OpenProjectDialogInvoker {
  * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-26
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional path to the project document; if omitted, displays the non-modal system file open dialog.
  * @param {OpenProjectDialogInvoker} [dialogInvoker=dialog] - Optional dialog invoker override for testing.
@@ -176,6 +177,7 @@ export default async function openProject(
 
   // Open physical datasets for each layer via GeospatialService in the background worker
   const leafLayers = getAllLeafLayers(projectStore.getRootGroup());
+  let migratedLegacyFields = false;
   const layersMap = new Map<
     string,
     { layer: Layer; extent: BoundingBox; featureCount: number }
@@ -214,6 +216,16 @@ export default async function openProject(
               layer.crs = metadata.crs;
             }
 
+            // Legacy project migration: attach inferred fields if layer lacked persisted fields
+            if (
+              (!layer.fields || layer.fields.length === 0)
+              && metadata.fields
+              && metadata.fields.length > 0
+            ) {
+              layer.fields = metadata.fields;
+              migratedLegacyFields = true;
+            }
+
             extent = metadata.extent;
             featureCount = metadata.featureCount;
           } catch (loadErr) {
@@ -249,6 +261,10 @@ export default async function openProject(
 
   if (Array.isArray(project.layers)) {
     enrichProjectLayers(project.layers, layersMap);
+  }
+
+  if (migratedLegacyFields) {
+    projectStore.setDirty(true);
   }
 
   // Broadcast loaded layer tree to all active windows

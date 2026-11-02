@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-26
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -105,6 +105,9 @@ describe('openProject Native Session Hydration', () => {
     <layer id="centrelines-mismatch" visible="true" layerKind="vector" geometryKind="Polygon" type="geojson">
       <name>Centrelines</name>
       <source>${centrelinesPath}</source>
+      <fields>
+        <field name="scalerank" nativeType="Integer" inferredType="integer" />
+      </fields>
     </layer>
   </layers>
 </project>`;
@@ -122,6 +125,36 @@ describe('openProject Native Session Hydration', () => {
     assert.equal(Array.isArray(styleRules), true);
     assert.equal(styleRules.length, 3);
     assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
+  });
+
+  it('opening a legacy .cproj lacking <fields> infers fields on load and marks projectStore as dirty (Ticket #138)', async () => {
+    const centrelinesPath = path.resolve(
+      __dirname,
+      '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+    );
+    const legacyProjPath = path.join(tempDir, `legacy_project_${Date.now()}.cproj`);
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
+  <metadata>
+    <title>Legacy Project Without Fields</title>
+  </metadata>
+  <layers>
+    <layer id="legacy-layer" visible="true" layerKind="vector" type="geojson">
+      <name>Legacy Centrelines</name>
+      <source>${centrelinesPath}</source>
+    </layer>
+  </layers>
+</project>`;
+
+    fs.writeFileSync(legacyProjPath, xmlContent, 'utf-8');
+
+    const project = await openProject(legacyProjPath);
+    assert.ok(project, 'Project must be loaded');
+    const layerItem = project.layers[0] as ProjectLayerItem;
+    assert.ok(layerItem.fields, 'Layer fields must be attached on openProject');
+    assert.ok(layerItem.fields.length > 0, 'Inferred fields count must be positive');
+    assert.equal(projectStore.isProjectDirty(), true, 'ProjectStore must be marked dirty when migrating legacy schema');
   });
 
   it('loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors', async () => {
