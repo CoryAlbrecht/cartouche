@@ -14,12 +14,16 @@ import assert from 'node:assert/strict';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WKB from 'ol/format/WKB.js';
+import gdal from 'gdal-async';
 import {
   GeospatialEngine,
   mapGdalGeometryKind,
   resolveLayerGeometryKind,
   getSrsAuthority,
-  reprojectBoundingBox
+  reprojectBoundingBox,
+  parseDateOrDateTimeToEpochMs,
+  parseTimeToMidnightMs,
+  transformFeatureProperty,
 } from '../../../src/main/worker/GeospatialEngine';
 import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
 import type { BoundingBox, QueryExtentOptions } from '../../../src/shared/types';
@@ -759,6 +763,245 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       assert.equal(byName.get('col_int_list'), 'integer[]');
       assert.equal(byName.get('col_real_list'), 'real[]');
       assert.equal(byName.get('col_str_list'), 'string[]');
+    });
+  });
+
+  describe('Ticket #139: Temporal Epoch MS Conversion and Complex Attribute Text Preservation', () => {
+    describe('parseDateOrDateTimeToEpochMs', () => {
+      it('converts date and datetime values to UTC Unix epoch milliseconds', () => {
+        // ISO strings
+        assert.equal(parseDateOrDateTimeToEpochMs('2026-11-02'), 1793577600000);
+        assert.equal(parseDateOrDateTimeToEpochMs('2026-11-02T12:30:00Z'), 1793622600000);
+        assert.equal(parseDateOrDateTimeToEpochMs('2026-11-02 12:30:00'), 1793622600000);
+        assert.equal(parseDateOrDateTimeToEpochMs('2026/11/02'), 1793577600000);
+
+        // Date object
+        const d = new Date('2026-11-02T00:00:00Z');
+        assert.equal(parseDateOrDateTimeToEpochMs(d), 1793577600000);
+
+        // Numeric pass-through
+        assert.equal(parseDateOrDateTimeToEpochMs(1793577600000), 1793577600000);
+
+        // GDAL date object
+        assert.equal(
+          parseDateOrDateTimeToEpochMs({ year: 2026, month: 11, day: 2 }),
+          1793577600000
+        );
+
+        // GDAL datetime object with timezone offset (+2h, timezone=108)
+        assert.equal(
+          parseDateOrDateTimeToEpochMs({
+            year: 2026,
+            month: 11,
+            day: 2,
+            hour: 14,
+            minute: 30,
+            second: 0,
+            timezone: 108,
+          }),
+          1793622600000
+        );
+      });
+
+      it('disambiguates 8-character string values by rejecting colons', () => {
+        // 8-character compact date YYYYMMDD
+        assert.equal(parseDateOrDateTimeToEpochMs('20261102'), 1793577600000);
+
+        // 8-character time HH:MM:SS has a colon -> emits null
+        assert.equal(parseDateOrDateTimeToEpochMs('12:30:45'), null);
+      });
+
+      it('emits null for corrupted, unparseable, or null values without throwing', () => {
+        assert.equal(parseDateOrDateTimeToEpochMs(null), null);
+        assert.equal(parseDateOrDateTimeToEpochMs(undefined), null);
+        assert.equal(parseDateOrDateTimeToEpochMs(''), null);
+        assert.equal(parseDateOrDateTimeToEpochMs('not_a_date'), null);
+        assert.equal(parseDateOrDateTimeToEpochMs('9999999999999999999999999999999'), null);
+        assert.equal(parseDateOrDateTimeToEpochMs({ corrupted: true }), null);
+        assert.equal(parseDateOrDateTimeToEpochMs(NaN), null);
+        assert.equal(parseDateOrDateTimeToEpochMs(Infinity), null);
+      });
+    });
+
+    describe('parseTimeToMidnightMs', () => {
+      it('converts time values to integer milliseconds elapsed since midnight UTC', () => {
+        assert.equal(parseTimeToMidnightMs('00:00:00'), 0);
+        assert.equal(parseTimeToMidnightMs('12:30:45'), 45045000);
+        assert.equal(parseTimeToMidnightMs('23:59:59.999'), 86399999);
+        assert.equal(parseTimeToMidnightMs('14:30'), 52200000);
+
+        // GDAL time object
+        assert.equal(
+          parseTimeToMidnightMs({ hour: 12, minute: 30, second: 45 }),
+          45045000
+        );
+
+        // Number pass-through within a day
+        assert.equal(parseTimeToMidnightMs(45045000), 45045000);
+      });
+
+      it('disambiguates 8-character string values by requiring colons', () => {
+        // 8-character time HH:MM:SS has a colon -> parses as time
+        assert.equal(parseTimeToMidnightMs('12:30:45'), 45045000);
+
+        // 8-character compact date YYYYMMDD lacks colon -> emits null
+        assert.equal(parseTimeToMidnightMs('20261102'), null);
+      });
+
+      it('emits null for corrupted, unparseable, or null values without throwing', () => {
+        assert.equal(parseTimeToMidnightMs(null), null);
+        assert.equal(parseTimeToMidnightMs(undefined), null);
+        assert.equal(parseTimeToMidnightMs(''), null);
+        assert.equal(parseTimeToMidnightMs('invalid_time'), null);
+        assert.equal(parseTimeToMidnightMs('25:00:00'), null);
+        assert.equal(parseTimeToMidnightMs({ bad: 'object' }), null);
+        assert.equal(parseTimeToMidnightMs(-100), null);
+        assert.equal(parseTimeToMidnightMs(90000000), null);
+        assert.equal(parseTimeToMidnightMs(NaN), null);
+      });
+    });
+
+    describe('transformFeatureProperty', () => {
+      const fieldTypeMap = new Map([
+        ['created_date', 'date' as const],
+        ['updated_at', 'datetime' as const],
+        ['start_time', 'time' as const],
+        ['metadata_json', 'json' as const],
+        ['tags', 'string[]' as const],
+        ['scores', 'real[]' as const],
+        ['title', 'string' as const],
+        ['count', 'integer' as const],
+      ]);
+
+      it('converts date and datetime fields to epoch milliseconds', () => {
+        assert.equal(
+          transformFeatureProperty('created_date', '20261102', fieldTypeMap),
+          1793577600000
+        );
+        assert.equal(
+          transformFeatureProperty('updated_at', '2026-11-02T12:30:00Z', fieldTypeMap),
+          1793622600000
+        );
+      });
+
+      it('converts time fields to milliseconds elapsed since midnight UTC', () => {
+        assert.equal(
+          transformFeatureProperty('start_time', '12:30:45', fieldTypeMap),
+          45045000
+        );
+      });
+
+      it('preserves json and array types as raw string text', () => {
+        // Objects to raw string
+        assert.equal(
+          transformFeatureProperty('metadata_json', { mode: 'fast', level: 3 }, fieldTypeMap),
+          '{"mode":"fast","level":3}'
+        );
+        // Already string stays string
+        assert.equal(
+          transformFeatureProperty('metadata_json', '{"existing":"raw"}', fieldTypeMap),
+          '{"existing":"raw"}'
+        );
+        // Array of strings to raw string
+        assert.equal(
+          transformFeatureProperty('tags', ['gis', 'vector', 'cartouche'], fieldTypeMap),
+          '["gis","vector","cartouche"]'
+        );
+        // Array of numbers to raw string
+        assert.equal(
+          transformFeatureProperty('scores', [1.5, 2.7, 9.9], fieldTypeMap),
+          '[1.5,2.7,9.9]'
+        );
+      });
+
+      it('passes through primitive types unchanged', () => {
+        assert.equal(transformFeatureProperty('title', 'Cartouche Map', fieldTypeMap), 'Cartouche Map');
+        assert.equal(transformFeatureProperty('count', 42, fieldTypeMap), 42);
+      });
+    });
+
+    describe('queryExtent WKB packet feature properties integration', () => {
+      let engine: GeospatialEngine;
+
+      beforeEach(async () => {
+        engine = new GeospatialEngine();
+      });
+
+      afterEach(async () => {
+        engine.closeAll();
+      });
+
+      it('converts temporal fields and preserves json/array text in queryExtent binary packet', async () => {
+        const geojson = JSON.stringify({
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [10, 20] },
+              properties: {
+                event_date: '2026-11-02',
+                event_time: '14:30:15',
+                event_dt: '2026-11-02T14:30:00Z',
+                tags_list: ['alpha', 'beta'],
+                data_json: { nested: { key: 123 } },
+              },
+            },
+          ],
+        });
+
+        const ds = gdal.open(geojson);
+        const layer = ds.layers.get(0);
+
+        (engine as any).sessions.set('test-temporal-layer', {
+          dataset: ds,
+          layer,
+          filePath: '/data/events.geojson',
+        });
+
+        const res = await engine.queryExtent('test-temporal-layer');
+        assert.equal(res.features.length, 1);
+        const props = res.features[0].properties;
+        assert.ok(props, 'Properties must be defined');
+
+        // Assert numeric epoch conversion for dates, datetimes, and times
+        assert.equal(typeof props.event_date, 'number');
+        assert.equal(props.event_date, 1793577600000);
+
+        assert.equal(typeof props.event_time, 'number');
+        assert.equal(props.event_time, 52215000);
+
+        assert.equal(typeof props.event_dt, 'number');
+        assert.equal(props.event_dt, 1793629800000);
+
+        // Assert raw text preservation for json and string[]
+        assert.equal(typeof props.tags_list, 'string');
+        assert.equal(props.tags_list, '["alpha","beta"]');
+
+        assert.equal(typeof props.data_json, 'string');
+        assert.deepEqual(JSON.parse(props.data_json as string), { nested: { key: 123 } });
+
+        // Assert binary packet contains serialized JSON properties
+        const view = new DataView(res.buffer);
+        assert.equal(view.getUint32(0, true), WKB_PACKET_MAGIC);
+
+        // First feature starts at byte offset 12:
+        // fid (8 bytes, 12..20)
+        // wkbLen (4 bytes, 20..24)
+        const wkbLen = view.getUint32(20, true);
+        const propsOffset = 24 + wkbLen;
+        const propsLen = view.getUint32(propsOffset, true);
+        assert.ok(propsLen > 0);
+
+        const propsBuffer = new Uint8Array(res.buffer, propsOffset + 4, propsLen);
+        const deserializedPacketProps = JSON.parse(new TextDecoder().decode(propsBuffer));
+
+        assert.equal(deserializedPacketProps.event_date, 1793577600000);
+        assert.equal(deserializedPacketProps.event_time, 52215000);
+        assert.equal(deserializedPacketProps.event_dt, 1793629800000);
+        assert.equal(deserializedPacketProps.tags_list, '["alpha","beta"]');
+        assert.equal(typeof deserializedPacketProps.data_json, 'string');
+        assert.deepEqual(JSON.parse(deserializedPacketProps.data_json), { nested: { key: 123 } });
+      });
     });
   });
 });

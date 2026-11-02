@@ -42,11 +42,13 @@ import type {
  * @property {gdal.Dataset} dataset - Active native GDAL dataset handle.
  * @property {gdal.Layer} layer - Primary native GDAL spatial layer handle.
  * @property {string} filePath - Absolute path to underlying data file.
+ * @property {LayerFieldInfo[]} [fields] - Inferred layer attribute field descriptors.
  */
 interface EngineSession {
   dataset: gdal.Dataset;
   layer: gdal.Layer;
   filePath: string;
+  fields?: LayerFieldInfo[];
 }
 
 /**
@@ -298,6 +300,238 @@ export function reprojectBoundingBox(
 }
 
 /**
+ * @description Parses a date or timestamp value into UTC Unix epoch milliseconds.
+ * Disambiguates 8-character string values by rejecting time formats containing colons.
+ * Corrupted, unparseable, or null values emit null without throwing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @param {unknown} val - Input value (string, number, Date, or GDAL date/time object).
+ * @returns {number | null} Numeric UTC Unix epoch milliseconds, or null if unparseable.
+ */
+export function parseDateOrDateTimeToEpochMs(val: unknown): number | null {
+  if (val === null || val === undefined) {
+    return null;
+  }
+  if (typeof val === "number") {
+    return Number.isFinite(val) ? val : null;
+  }
+  if (val instanceof Date) {
+    const ms = val.getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+  if (typeof val === "object") {
+    try {
+      const obj = val as Record<string, unknown>;
+      const y = obj.year;
+      const m = obj.month;
+      const d = obj.day;
+      if (typeof y === "number" && typeof m === "number" && typeof d === "number") {
+        const hour = typeof obj.hour === "number" ? obj.hour : 0;
+        const minute = typeof obj.minute === "number" ? obj.minute : 0;
+        const second = typeof obj.second === "number" ? Math.floor(obj.second) : 0;
+        const ms =
+          typeof obj.second === "number"
+            ? Math.round((obj.second - second) * 1000)
+            : 0;
+
+        let offsetMs = 0;
+        if (typeof obj.timezone === "number" && obj.timezone > 1) {
+          offsetMs = (obj.timezone - 100) * 15 * 60 * 1000;
+        }
+
+        const utcMs = Date.UTC(y, m - 1, d, hour, minute, second, ms) - offsetMs;
+        return Number.isNaN(utcMs) ? null : utcMs;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  if (typeof val === "string") {
+    try {
+      const trimmed = val.trim();
+      if (!trimmed) {
+        return null;
+      }
+      // 8-character string disambiguation: if it contains a colon ('HH:MM:SS'), it is time, not date
+      if (trimmed.length === 8 && trimmed.includes(":")) {
+        return null;
+      }
+      // Compact legacy date: 'YYYYMMDD' (8 digits without colon)
+      if (/^\d{8}$/.test(trimmed)) {
+        const y = parseInt(trimmed.substring(0, 4), 10);
+        const m = parseInt(trimmed.substring(4, 6), 10);
+        const d = parseInt(trimmed.substring(6, 8), 10);
+        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+          const utcMs = Date.UTC(y, m - 1, d);
+          return Number.isNaN(utcMs) ? null : utcMs;
+        }
+        return null;
+      }
+
+      let normalized = trimmed;
+      // Convert YYYY/MM/DD to YYYY-MM-DD
+      if (/^\d{4}\/\d{2}\/\d{2}/.test(normalized)) {
+        normalized = normalized.replace(/\//g, "-");
+      }
+      // Normalize space between date and time to ISO 'T'
+      if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:/.test(normalized)) {
+        normalized = normalized.replace(/\s+/, "T");
+      }
+      // If time is present without timezone indicator, enforce UTC interpretation
+      if (/T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(normalized)) {
+        normalized += "Z";
+      }
+
+      const parsed = Date.parse(normalized);
+      return Number.isNaN(parsed) ? null : parsed;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * @description Parses a time-only value into integer milliseconds elapsed since midnight UTC (00:00:00.000).
+ * Disambiguates 8-character string values by rejecting compact dates lacking colons.
+ * Corrupted, unparseable, or null values emit null without throwing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @param {unknown} val - Input value (string, number, or GDAL time object).
+ * @returns {number | null} Integer milliseconds elapsed since midnight UTC, or null if unparseable.
+ */
+export function parseTimeToMidnightMs(val: unknown): number | null {
+  if (val === null || val === undefined) {
+    return null;
+  }
+  if (typeof val === "number") {
+    return Number.isFinite(val) && val >= 0 && val < 86400000
+      ? Math.floor(val)
+      : null;
+  }
+  if (typeof val === "object") {
+    try {
+      const obj = val as Record<string, unknown>;
+      if (typeof obj.hour === "number" && typeof obj.minute === "number") {
+        const hour = obj.hour;
+        const minute = obj.minute;
+        const second = typeof obj.second === "number" ? Math.floor(obj.second) : 0;
+        const ms =
+          typeof obj.second === "number"
+            ? Math.round((obj.second - second) * 1000)
+            : 0;
+        if (
+          hour >= 0
+          && hour < 24
+          && minute >= 0
+          && minute < 60
+          && second >= 0
+          && second < 60
+        ) {
+          return hour * 3600000 + minute * 60000 + second * 1000 + ms;
+        }
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  if (typeof val === "string") {
+    try {
+      const trimmed = val.trim();
+      if (!trimmed) {
+        return null;
+      }
+      // 8-character string disambiguation: if it does NOT contain a colon ('YYYYMMDD'), it is a date, not time
+      if (trimmed.length === 8 && !trimmed.includes(":")) {
+        return null;
+      }
+      // Match HH:MM(:SS(.sss)?)?
+      const match = trimmed.match(
+        /^T?(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?$/
+      );
+      if (match) {
+        const h = parseInt(match[1], 10);
+        const m = parseInt(match[2], 10);
+        const s = match[3] ? parseInt(match[3], 10) : 0;
+        const frac = match[4] ? parseFloat("0." + match[4]) : 0;
+        if (h >= 0 && h < 24 && m >= 0 && m < 60 && s >= 0 && s < 60) {
+          return Math.floor((h * 3600 + m * 60 + s + frac) * 1000);
+        }
+        return null;
+      }
+      // Fallback: check if it is an ISO timestamp
+      const parsed = Date.parse(trimmed);
+      if (!Number.isNaN(parsed)) {
+        const d = new Date(parsed);
+        return (
+          d.getUTCHours() * 3600000
+          + d.getUTCMinutes() * 60000
+          + d.getUTCSeconds() * 1000
+          + d.getUTCMilliseconds()
+        );
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+  return null;
+}
+
+/**
+ * @description Transforms an individual feature attribute based on its inferred field type.
+ * Converts temporal fields to UTC milliseconds and preserves JSON / array types as raw string text.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @param {string} fieldName - Name of the attribute.
+ * @param {unknown} val - Raw attribute value from dataset.
+ * @param {Map<string, InferredFieldType>} fieldTypeMap - Map of field names to inferred field types.
+ * @returns {unknown} Transformed attribute value.
+ */
+export function transformFeatureProperty(
+  fieldName: string,
+  val: unknown,
+  fieldTypeMap: Map<string, InferredFieldType>
+): unknown {
+  if (val === null || val === undefined) {
+    return null;
+  }
+  const inferred = fieldTypeMap.get(fieldName);
+  if (!inferred) {
+    return val;
+  }
+
+  if (inferred === "date" || inferred === "datetime") {
+    return parseDateOrDateTimeToEpochMs(val);
+  }
+
+  if (inferred === "time") {
+    return parseTimeToMidnightMs(val);
+  }
+
+  if (inferred === "json" || inferred.endsWith("[]")) {
+    if (typeof val === "string") {
+      return val;
+    }
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return String(val);
+    }
+  }
+
+  return val;
+}
+
+/**
  * @class GeospatialEngine
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -424,6 +658,10 @@ export class GeospatialEngine {
 
     const geometryKind = resolveLayerGeometryKind(layer);
     const fields = this.inferLayerFields(dataset, layer, filePath);
+    const session = this.sessions.get(layerId);
+    if (session) {
+      session.fields = fields;
+    }
 
     return { layerId, name, extent, featureCount, crs, geometryKind, fields };
   }
@@ -912,7 +1150,7 @@ export class GeospatialEngine {
    * @description Executes a spatial query against a cached layer session, serializing features as a contiguous binary WKB packet buffer.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-10-16
+   * @updated 2026-11-02
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy bounding box [minX, minY, maxX, maxY].
@@ -939,6 +1177,18 @@ export class GeospatialEngine {
       const activeSession = this.sessions.get(layerId);
       if (!activeSession) {
         throw new Error(`Layer session not found for layer UUID: "${layerId}"`);
+      }
+
+      if (!activeSession.fields) {
+        activeSession.fields = this.inferLayerFields(
+          activeSession.dataset,
+          activeSession.layer,
+          activeSession.filePath
+        );
+      }
+      const fieldTypeMap = new Map<string, InferredFieldType>();
+      for (const field of activeSession.fields) {
+        fieldTypeMap.set(field.name, field.inferredType);
       }
 
       const { layer } = activeSession;
@@ -1034,14 +1284,22 @@ export class GeospatialEngine {
             let properties: Record<string, unknown> = {};
 
             if (fields === undefined) {
-              properties = feature.fields.toObject();
+              const rawProps = feature.fields.toObject();
+              properties = {};
+              for (const [k, v] of Object.entries(rawProps)) {
+                properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
+              }
               propsBytes = encoder.encode(JSON.stringify(properties));
             } else if (fields.length > 0) {
               for (const f of fields) {
                 try {
                   const val = feature.fields.get(f);
                   if (val !== undefined) {
-                    properties[f] = val;
+                    properties[f] = transformFeatureProperty(
+                      f,
+                      val,
+                      fieldTypeMap
+                    );
                   }
                 } catch {
                   // Field might not exist
