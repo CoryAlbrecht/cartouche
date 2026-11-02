@@ -716,6 +716,27 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       });
       assert.ok(drawCalls.includes('arc'), 'Point render should call arc');
       assert.ok(drawCalls.includes('fill'), 'Point render should call fill');
+
+      // 4. OGC SLD 1.1.0 preview with se: namespace parameters
+      drawCalls.length = 0;
+      renderStylePreviewToCanvas(mockCtx, {
+        width: 120,
+        height: 120,
+        format: 'sld',
+        version: '1.1.0',
+        content: `<StyledLayerDescriptor version="1.1.0" xmlns:se="http://www.opengis.net/se">
+          <se:PolygonSymbolizer>
+            <se:Fill><se:SvgParameter name="fill">#d8b4e2</se:SvgParameter></se:Fill>
+            <se:Stroke><se:SvgParameter name="stroke">#6b21a8</se:SvgParameter><se:SvgParameter name="stroke-width">2</se:SvgParameter></se:Stroke>
+          </se:PolygonSymbolizer>
+        </StyledLayerDescriptor>`,
+        geometryKind: 'Polygon',
+      });
+      assert.ok(drawCalls.includes('fill'), 'SLD 1.1.0 render should call fill for polygon');
+      assert.ok(drawCalls.includes('stroke'), 'SLD 1.1.0 render should call stroke for polygon');
+      assert.strictEqual(mockCtx.fillStyle, '#d8b4e2', 'SLD 1.1.0 fill color must match');
+      assert.strictEqual(mockCtx.strokeStyle, '#6b21a8', 'SLD 1.1.0 stroke color must match');
+      assert.strictEqual(mockCtx.lineWidth, 2, 'SLD 1.1.0 stroke width must match');
     });
 
     it('preserves pending draft edits across format switches via switchLayerPropertiesStyleFormat', async () => {
@@ -1574,6 +1595,74 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.strictEqual(fallback.format, 'simple');
       assert.ok(fallback.components.length >= 1);
       assert.strictEqual(fallback.components[0].type, 'simple-line');
+    });
+
+    it('renders component stack action buttons in two columns with icons only and enforces 32-component cap', () => {
+      const initialStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#3b82f6' },
+          { id: 'line-1', type: 'simple-line', enabled: true, color: '#000000', width: 2 },
+        ],
+      };
+
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify(initialStyle),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+
+      // Verify 2-column actions grid container exists
+      assert.ok(html.includes('id="layer-prop-component-actions"'), 'Must render component actions grid container');
+      assert.ok(html.includes('class="layer-prop-component-actions"'), 'Must have layer-prop-component-actions class');
+
+      // Verify list has minimum height of at least 6 rows (12rem)
+      assert.ok(html.includes('min-height:12rem'), 'Component stack list must have min-height of 12rem (at least 6 rows)');
+
+      // Verify all 6 buttons exist with titles and aria-labels
+      assert.ok(html.includes('id="layer-prop-component-add"'), 'Must render add button');
+      assert.ok(html.includes('id="layer-prop-component-remove"'), 'Must render remove button');
+      assert.ok(html.includes('id="layer-prop-component-move-up"'), 'Must render move-up button');
+      assert.ok(html.includes('id="layer-prop-component-move-down"'), 'Must render move-down button');
+      assert.ok(html.includes('id="layer-prop-component-duplicate"'), 'Must render duplicate button');
+      assert.ok(html.includes('id="layer-prop-component-lock"'), 'Must render lock button');
+
+      // Verify buttons do not contain text spans inside them (icon-only buttons)
+      const addBtnMatch = html.match(/<button[^>]*id="layer-prop-component-add"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(addBtnMatch, 'Add button must be matched');
+      assert.ok(!addBtnMatch[1].includes('<span'), 'Add button must not contain a text span (icon-only)');
+
+      // Test 32-component cap disables Add and Duplicate buttons
+      const cappedComponents = Array.from({ length: 32 }, (_, i) => ({
+        id: `fill-${i}`,
+        type: 'simple-fill',
+        enabled: true,
+        color: '#000000',
+      }));
+
+      const cappedHtml = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: cappedComponents,
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+
+      assert.ok(
+        /id="layer-prop-component-add"[^>]*disabled=""/.test(cappedHtml),
+        'Add button must be disabled when 32 components exist'
+      );
+      assert.ok(
+        /id="layer-prop-component-duplicate"[^>]*disabled=""/.test(cappedHtml),
+        'Duplicate button must be disabled when 32 components exist'
+      );
     });
   });
 });

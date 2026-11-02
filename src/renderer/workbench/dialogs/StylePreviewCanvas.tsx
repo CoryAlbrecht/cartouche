@@ -214,46 +214,70 @@ export function renderStylePreviewToCanvas(
   if (options.format === "sld") {
     try {
       const fillMatch = content.match(
-        /<(?:CssParameter|SvgParameter)\s+name=['"]fill['"]>([^<]+)<\//i
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]fill['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
       );
       const strokeMatch = content.match(
-        /<(?:CssParameter|SvgParameter)\s+name=['"]stroke['"]>([^<]+)<\//i
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
       );
       const strokeWidthMatch = content.match(
-        /<(?:CssParameter|SvgParameter)\s+name=['"]stroke-width['"]>([^<]+)<\//i
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke-width['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
       );
-      const sizeMatch = content.match(/<Size>([^<]+)<\//i);
+      const strokeDashMatch = content.match(
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke-dasharray['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
+      );
+      const sizeMatch = content.match(
+        /<(?:[a-zA-Z0-9_-]+:)?Size[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?Size>/i
+      );
+
+      const fillColor = fillMatch ? fillMatch[1].replace(/<[^>]+>/g, "").trim() : null;
+      const strokeColor = strokeMatch ? strokeMatch[1].replace(/<[^>]+>/g, "").trim() : null;
+      const strokeWidth = strokeWidthMatch
+        ? parseFloat(strokeWidthMatch[1].replace(/<[^>]+>/g, "").trim()) || 1
+        : 1;
+      const sizeVal = sizeMatch
+        ? parseFloat(sizeMatch[1].replace(/<[^>]+>/g, "").trim())
+        : null;
 
       ctx.save();
       ctx.globalAlpha = opacity;
 
-      if (fillMatch && fillMatch[1]) {
-        tracePolygon();
-        ctx.fillStyle = fillMatch[1].trim();
-        ctx.fill();
-      }
-
-      if (strokeMatch && strokeMatch[1]) {
-        if (isLine) {
-          traceLine();
-        } else {
-          tracePolygon();
-        }
-        ctx.strokeStyle = strokeMatch[1].trim();
-        ctx.lineWidth = strokeWidthMatch ? parseFloat(strokeWidthMatch[1]) : 1;
-        ctx.stroke();
-      }
-
-      if (sizeMatch && isPoint) {
-        const r = (parseFloat(sizeMatch[1]) || 12) / 2;
+      if (isPoint) {
+        const r = (sizeVal !== null && !isNaN(sizeVal) ? sizeVal : 12) / 2;
         tracePoint(r);
-        if (fillMatch) {
-          ctx.fillStyle = fillMatch[1].trim();
+        if (fillColor) {
+          ctx.fillStyle = fillColor;
           ctx.fill();
         }
-        if (strokeMatch) {
-          ctx.strokeStyle = strokeMatch[1].trim();
-          ctx.lineWidth = strokeWidthMatch ? parseFloat(strokeWidthMatch[1]) : 1;
+        if (strokeColor && strokeWidth > 0) {
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.stroke();
+        }
+      } else {
+        if (fillColor && !isLine) {
+          tracePolygon();
+          ctx.fillStyle = fillColor;
+          ctx.fill();
+        }
+
+        if (strokeColor) {
+          if (isLine) {
+            traceLine();
+          } else {
+            tracePolygon();
+          }
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = strokeWidth;
+          if (strokeDashMatch) {
+            const rawDash = strokeDashMatch[1].replace(/<[^>]+>/g, "").trim();
+            const dashes = rawDash
+              .split(/[\s,]+/)
+              .map(Number)
+              .filter((n) => !isNaN(n));
+            if (dashes.length > 0) {
+              ctx.setLineDash(dashes);
+            }
+          }
           ctx.stroke();
         }
       }

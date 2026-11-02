@@ -46,20 +46,45 @@ export interface SimpleModeEditorProps {
   onChange: (newContent: string) => void;
 }
 
+/**
+ * Maximum allowed components in a Simple Cartouche Symbology stack.
+ *
+ * @constant {number} MAX_COMPONENTS
+ * @description Hard cap enforcing a maximum of 32 symbolizer components in a single layer style stack.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ */
+const MAX_COMPONENTS = 32;
+
+/**
+ * @description Standard CSS style applied to compact icon action buttons in the component stack grid.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ */
 const BUTTON_STYLE: React.CSSProperties = {
-  padding: "0.25rem 0.5rem",
+  padding: "0.25rem",
   display: "inline-flex",
   alignItems: "center",
-  gap: "0.25rem",
+  justifyContent: "center",
   borderRadius: "0.25rem",
   border: "1px solid #cbd5e1",
   backgroundColor: "#ffffff",
   cursor: "pointer",
-  fontSize: "0.75rem",
-  fontWeight: 500,
   color: "#1e293b",
+  lineHeight: 0,
 };
 
+/**
+ * @description Standard CSS style applied to disabled icon action buttons in the component stack grid.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ */
 const DISABLED_BUTTON_STYLE: React.CSSProperties = {
   ...BUTTON_STYLE,
   opacity: 0.5,
@@ -208,6 +233,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   }, [components]);
 
   // Actions
+  const canAdd = components.length < MAX_COMPONENTS;
   const canMoveUp =
     activePainterIndex >= 0 && activePainterIndex < components.length - 1;
   const canMoveDown = activePainterIndex > 0;
@@ -215,7 +241,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
     activeComponent !== null &&
     !activeComponent.locked &&
     components.length > 1;
-  const canDuplicate = activeComponent !== null;
+  const canDuplicate =
+    activeComponent !== null && components.length < MAX_COMPONENTS;
   const canLock = activeComponent !== null;
 
   const handleMoveUp = useCallback(() => {
@@ -237,6 +264,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   }, [canMoveDown, activePainterIndex, components, commitComponents]);
 
   const handleAdd = useCallback(() => {
+    if (!canAdd) return;
     const newId = `${typeToAdd}-${Date.now()}`;
     let newComp: StyleComponent;
     if (typeToAdd === "simple-fill") {
@@ -269,7 +297,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
     const next = [...components, newComp];
     setSelectedId(newId);
     commitComponents(next);
-  }, [typeToAdd, components, commitComponents]);
+  }, [canAdd, typeToAdd, components, commitComponents]);
 
   const handleRemove = useCallback(() => {
     if (!canRemove || !activeComponent) return;
@@ -417,152 +445,163 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
           {t("layer_properties_component_stack")}
         </legend>
 
-        {/* Stack Action Toolbar */}
+        {/* Component Stack List & Actions Container */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "0.375rem",
-            marginBottom: "0.5rem",
-            flexWrap: "wrap",
+            alignItems: "flex-start",
+            gap: "0.75rem",
           }}>
-          <button
-            type='button'
-            id='layer-prop-component-add'
-            className='layer-prop-component-btn add'
-            title={t("layer_properties_component_add")}
-            onClick={handleAdd}
-            style={BUTTON_STYLE}>
-            <Icon path={mdiPlus} size='14px' />
-            <span>{t("layer_properties_component_add")}</span>
-          </button>
-          <button
-            type='button'
-            id='layer-prop-component-remove'
-            className='layer-prop-component-btn remove'
-            title={t("layer_properties_component_remove")}
-            disabled={!canRemove}
-            onClick={handleRemove}
-            style={canRemove ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
-            <Icon path={mdiMinus} size='14px' />
-            <span>{t("layer_properties_component_remove")}</span>
-          </button>
-          <button
-            type='button'
-            id='layer-prop-component-move-up'
-            className='layer-prop-component-btn move-up'
-            title={t("layer_properties_component_move_up")}
-            disabled={!canMoveUp}
-            onClick={handleMoveUp}
-            style={canMoveUp ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
-            <Icon path={mdiArrowUp} size='14px' />
-            <span>{t("layer_properties_component_move_up")}</span>
-          </button>
-          <button
-            type='button'
-            id='layer-prop-component-move-down'
-            className='layer-prop-component-btn move-down'
-            title={t("layer_properties_component_move_down")}
-            disabled={!canMoveDown}
-            onClick={handleMoveDown}
-            style={canMoveDown ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
-            <Icon path={mdiArrowDown} size='14px' />
-            <span>{t("layer_properties_component_move_down")}</span>
-          </button>
-          <button
-            type='button'
-            id='layer-prop-component-duplicate'
-            className='layer-prop-component-btn duplicate'
-            title={t("layer_properties_component_duplicate")}
-            disabled={!canDuplicate}
-            onClick={handleDuplicate}
-            style={canDuplicate ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
-            <Icon path={mdiContentCopy} size='14px' />
-            <span>{t("layer_properties_component_duplicate")}</span>
-          </button>
-          <button
-            type='button'
-            id='layer-prop-component-lock'
-            className='layer-prop-component-btn lock'
-            title={
-              activeComponent?.locked
-                ? t("layer_properties_component_unlock")
-                : t("layer_properties_component_lock")
-            }
-            disabled={!canLock}
-            onClick={handleToggleLock}
-            style={canLock ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
-            <Icon
-              path={
-                activeComponent?.locked
-                  ? mdiLockOutline
-                  : mdiLockOpenVariantOutline
-              }
-              size='14px'
-            />
-            <span>
-              {activeComponent?.locked
-                ? t("layer_properties_component_unlock")
-                : t("layer_properties_component_lock")}
-            </span>
-          </button>
-        </div>
-
-        {/* Visual Component Stack List */}
-        <div
-          id='layer-prop-component-stack-list'
-          className='layer-prop-component-stack-list'
-          style={{
-            border: "1px solid #cbd5e1",
-            borderRadius: "0.25rem",
-            backgroundColor: "#f8fafc",
-            maxHeight: "9rem",
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-          }}>
-          {visualComponents.map((comp) => {
-            const isSelected = comp.id === activeId;
-            return (
-              <div
-                key={comp.id}
-                data-component-id={comp.id}
-                className={`layer-prop-component-item ${isSelected ? "selected" : ""}`}
-                onClick={() => setSelectedId(comp.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0.375rem 0.625rem",
-                  gap: "0.5rem",
-                  cursor: "pointer",
-                  backgroundColor: isSelected ? "#e0f2fe" : "transparent",
-                  borderLeft: isSelected ? "3px solid #0284c7" : "3px solid transparent",
-                  borderBottom: "1px solid #e2e8f0",
-                  fontSize: "0.8125rem",
-                  color: "#0f172a",
-                }}>
-                <span
+          {/* Visual Component Stack List */}
+          <div
+            id='layer-prop-component-stack-list'
+            className='layer-prop-component-stack-list'
+            style={{
+              flex: 1,
+              minWidth: 0,
+              border: "1px solid #cbd5e1",
+              borderRadius: "0.25rem",
+              backgroundColor: "#f8fafc",
+              minHeight: "12rem",
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+            }}>
+            {visualComponents.map((comp) => {
+              const isSelected = comp.id === activeId;
+              return (
+                <div
+                  key={comp.id}
+                  data-component-id={comp.id}
+                  className={`layer-prop-component-item ${isSelected ? "selected" : ""}`}
+                  onClick={() => setSelectedId(comp.id)}
                   style={{
-                    display: "inline-block",
-                    width: "0.75rem",
-                    height: "0.75rem",
-                    borderRadius: comp.type === "simple-marker" ? "50%" : "2px",
-                    backgroundColor:
-                      (comp as any).color || (comp as any).fillColor || "#000000",
-                    border: "1px solid #94a3b8",
-                  }}
-                />
-                <span style={{ fontWeight: isSelected ? 600 : 400, flex: 1 }}>
-                  {getComponentTypeLabel(comp.type)} ({comp.id})
-                </span>
-                {comp.locked && (
-                  <span title={t("layer_properties_component_locked_notice")}>
-                    <Icon path={mdiLockOutline} size='14px' color='#64748b' />
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0.375rem 0.625rem",
+                    gap: "0.5rem",
+                    cursor: "pointer",
+                    backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                    borderLeft: isSelected ? "3px solid #0284c7" : "3px solid transparent",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: "0.8125rem",
+                    color: "#0f172a",
+                  }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "0.75rem",
+                      height: "0.75rem",
+                      borderRadius: comp.type === "simple-marker" ? "50%" : "2px",
+                      backgroundColor:
+                        (comp as any).color || (comp as any).fillColor || "#000000",
+                      border: "1px solid #94a3b8",
+                    }}
+                  />
+                  <span style={{ fontWeight: isSelected ? 600 : 400, flex: 1 }}>
+                    {getComponentTypeLabel(comp.type)} ({comp.id})
                   </span>
-                )}
-              </div>
-            );
-          })}
+                  {comp.locked && (
+                    <span title={t("layer_properties_component_locked_notice")}>
+                      <Icon path={mdiLockOutline} size='14px' color='#64748b' />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 2-Column Action Buttons Grid */}
+          <div
+            id='layer-prop-component-actions'
+            className='layer-prop-component-actions'
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, auto)",
+              gap: "0.375rem",
+              alignItems: "center",
+            }}>
+            <button
+              type='button'
+              id='layer-prop-component-add'
+              className='layer-prop-component-btn add'
+              title={t("layer_properties_component_add")}
+              aria-label={t("layer_properties_component_add")}
+              disabled={!canAdd}
+              onClick={handleAdd}
+              style={canAdd ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              <Icon path={mdiPlus} />
+            </button>
+            <button
+              type='button'
+              id='layer-prop-component-remove'
+              className='layer-prop-component-btn remove'
+              title={t("layer_properties_component_remove")}
+              aria-label={t("layer_properties_component_remove")}
+              disabled={!canRemove}
+              onClick={handleRemove}
+              style={canRemove ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              <Icon path={mdiMinus} />
+            </button>
+            <button
+              type='button'
+              id='layer-prop-component-move-up'
+              className='layer-prop-component-btn move-up'
+              title={t("layer_properties_component_move_up")}
+              aria-label={t("layer_properties_component_move_up")}
+              disabled={!canMoveUp}
+              onClick={handleMoveUp}
+              style={canMoveUp ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              <Icon path={mdiArrowUp} />
+            </button>
+            <button
+              type='button'
+              id='layer-prop-component-move-down'
+              className='layer-prop-component-btn move-down'
+              title={t("layer_properties_component_move_down")}
+              aria-label={t("layer_properties_component_move_down")}
+              disabled={!canMoveDown}
+              onClick={handleMoveDown}
+              style={canMoveDown ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              <Icon path={mdiArrowDown} />
+            </button>
+            <button
+              type='button'
+              id='layer-prop-component-duplicate'
+              className='layer-prop-component-btn duplicate'
+              title={t("layer_properties_component_duplicate")}
+              aria-label={t("layer_properties_component_duplicate")}
+              disabled={!canDuplicate}
+              onClick={handleDuplicate}
+              style={canDuplicate ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              <Icon path={mdiContentCopy} />
+            </button>
+            <button
+              type='button'
+              id='layer-prop-component-lock'
+              className='layer-prop-component-btn lock'
+              title={
+                activeComponent?.locked
+                  ? t("layer_properties_component_unlock")
+                  : t("layer_properties_component_lock")
+              }
+              aria-label={
+                activeComponent?.locked
+                  ? t("layer_properties_component_unlock")
+                  : t("layer_properties_component_lock")
+              }
+              disabled={!canLock}
+              onClick={handleToggleLock}
+              style={canLock ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              <Icon
+                path={
+                  activeComponent?.locked
+                    ? mdiLockOutline
+                    : mdiLockOpenVariantOutline
+                }
+              />
+            </button>
+          </div>
         </div>
 
         {/* Component Type Selector / Morph Selector */}
