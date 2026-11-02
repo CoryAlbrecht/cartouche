@@ -7,6 +7,7 @@
  * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
+ * @see {@link executeWorkbenchAction}
  */
 
 import { describe, it, beforeEach } from 'node:test';
@@ -15,6 +16,8 @@ import path from 'node:path';
 import createJiti from 'jiti';
 import {
   hasProjectSignal,
+  isProjectDirtySignal,
+  projectFilePathSignal,
   isProjectPropertiesOpenSignal,
   activeToolSignal,
   selectedFeatureIdsSignal,
@@ -39,8 +42,9 @@ const jiti = createJiti(import.meta.url, {
   }
 });
 
-const { handleWorkbenchKeyDown } = jiti('../../../src/renderer/workbench/workbenchShortcuts') as {
+const { handleWorkbenchKeyDown, executeWorkbenchAction } = jiti('../../../src/renderer/workbench/workbenchShortcuts') as {
   handleWorkbenchKeyDown: (e: any) => void;
+  executeWorkbenchAction: (actionName: string) => void;
 };
 
 /**
@@ -340,5 +344,71 @@ describe('Workbench Global Keyboard Listener', () => {
     handleWorkbenchKeyDown(eventExtraShift);
     assert.equal(eventExtraShift.defaultPrevented, false);
     assert.equal(openFilesCalled, false);
+  });
+
+  describe('executeWorkbenchAction', () => {
+    it('executes open_project action when passed open_project action name', () => {
+      let openFilesCalled = false;
+      setupOpenProjectMock(() => {
+        openFilesCalled = true;
+      });
+
+      executeWorkbenchAction('open_project');
+      assert.equal(openFilesCalled, true, 'openFiles should have been called via executeWorkbenchAction');
+    });
+
+    it('executes save_project on untitled project even when isProjectDirty is false', () => {
+      let saveFileCalled = false;
+      hasProjectSignal.value = true;
+      projectFilePathSignal.value = null;
+      isProjectDirtySignal.value = false;
+
+      (globalThis as any).window = {
+        ...(globalThis as any).window,
+        electronAPI: {
+          saveFile: async () => {
+            saveFileCalled = true;
+            return '/mock/path.cproj';
+          }
+        }
+      };
+
+      executeWorkbenchAction('save_project');
+      assert.equal(saveFileCalled, true, 'saveFile should have been called for untitled project');
+    });
+
+    it('bypasses save_project when hasProject is false', () => {
+      let saveFileCalled = false;
+      hasProjectSignal.value = false;
+      projectFilePathSignal.value = null;
+
+      (globalThis as any).window = {
+        ...(globalThis as any).window,
+        electronAPI: {
+          saveFile: async () => {
+            saveFileCalled = true;
+            return '/mock/path.cproj';
+          }
+        }
+      };
+
+      executeWorkbenchAction('save_project');
+      assert.equal(saveFileCalled, false, 'saveFile must not be called when hasProject is false');
+    });
+
+    it('forwards unknown or main process actions to electronAPI.executeAction', () => {
+      let forwardedAction = '';
+      (globalThis as any).window = {
+        ...(globalThis as any).window,
+        electronAPI: {
+          executeAction: (name: string) => {
+            forwardedAction = name;
+          }
+        }
+      };
+
+      executeWorkbenchAction('custom_main_action');
+      assert.equal(forwardedAction, 'custom_main_action');
+    });
   });
 });

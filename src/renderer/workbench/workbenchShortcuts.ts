@@ -7,6 +7,9 @@
  * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
+ * @see {@link executeWorkbenchAction}
+ * @see {@link handleWorkbenchKeyDown}
+ * @see {@link matchesKeyCombination}
  * @see {@link cancelAction}
  * @see {@link cancelTopDialog}
  */
@@ -14,6 +17,7 @@
 import {
   hasProjectSignal,
   isProjectDirtySignal,
+  projectFilePathSignal,
   activeLayerIdSignal,
   undoStackSignal,
   redoStackSignal,
@@ -148,133 +152,149 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
 
-      // Trigger corresponding Renderer signal updates or execute Main action
-      switch (action.name) {
-        case 'new_project':
-          newProjectAction();
-          break;
-        case 'open_project':
-          openProjectAction();
-          break;
-        case 'close_project':
-          if (hasProjectSignal.value) closeProjectAction();
-          break;
-        case 'save_project':
-          if (hasProjectSignal.value && isProjectDirtySignal.value) saveProjectAction();
-          break;
-        case 'save_as_project':
-          if (hasProjectSignal.value) saveAsProjectAction();
-          break;
-        case 'project_properties':
-          if (hasProjectSignal.value) openProjectPropertiesDialog();
-          break;
-        case 'save_active_layer':
-          if (activeLayerIdSignal.value) saveActiveLayerAction();
-          break;
-        case 'save_active_layer_as':
-          if (activeLayerIdSignal.value) saveActiveLayerAsAction();
-          break;
-        case 'undo_action':
-          if (undoStackSignal.value.length > 0) undoAction();
-          break;
-        case 'redo_action':
-          if (redoStackSignal.value.length > 0) redoAction();
-          break;
-        case 'open_preferences':
-          openPreferencesDialog();
-          break;
-        case 'add_layers':
-          openAddLayersDialog();
-          break;
-        case 'toggle_layers_widget':
-          toggleLayersWidgetAction();
-          break;
-        case 'rename_layer_tree_node':
-          requestRenameSelectedNode();
-          break;
-        case 'zoom_in':
-          zoomInAction();
-          break;
-        case 'zoom_out':
-          zoomOutAction();
-          break;
-        case 'zoom_to_selection':
-          zoomToSelectionAction();
-          break;
-        case 'zoom_to_layer':
-          zoomToLayerAction();
-          break;
-        case 'select_feature':
-          activeSelectionModeSignal.value = 'select_feature';
-          activeToolSignal.value = 'select';
-          break;
-        case 'select_features_by_drag':
-          activeSelectionModeSignal.value = 'select_features_by_drag';
-          activeToolSignal.value = 'select_drag';
-          break;
-        case 'select_features_by_freehand':
-          activeSelectionModeSignal.value = 'select_features_by_freehand';
-          activeToolSignal.value = 'select_freehand';
-          break;
-        case 'select_features_by_value':
-          openSelectByValueDialog();
-          break;
-        case 'select_all_features':
-          selectAllFeaturesAction();
-          break;
-        case 'deselect_all_features':
-          deselectAllFeaturesAction();
-          break;
-        case 'delete_selected_features':
-          deleteSelectedFeaturesAction();
-          break;
-        case 'copy_selected_features':
-          copySelectedFeaturesAction();
-          break;
-        case 'cut_selected_features':
-          cutSelectedFeaturesAction();
-          break;
-        case 'paste_features':
-          pasteFeaturesAction();
-          break;
-        case 'toggle_layer_editing':
-          toggleLayerEditingAction();
-          break;
-        case 'vertex_editor':
-          vertexEditorAction();
-          break;
-        case 'snapping':
-          snappingEnabledSignal.value = !snappingEnabledSignal.value;
-          break;
-        case 'snap_to_vertices':
-          snapToVerticesSignal.value = !snapToVerticesSignal.value;
-          break;
-        case 'snap_to_midpoint':
-          snapToMidpointSignal.value = !snapToMidpointSignal.value;
-          break;
-        case 'snap_to_segment':
-          snapToSegmentSignal.value = !snapToSegmentSignal.value;
-          break;
-        case 'snap_to_active':
-          snappingScopeSignal.value = 'snap_to_active';
-          break;
-        case 'snap_to_all':
-          snappingScopeSignal.value = 'snap_to_all';
-          break;
-        case 'snap_to_advanced':
-          openSnappingOptionsDialog();
-          break;
-        case 'cancel_action':
-          if (cancelTopDialog()) {
-            break;
-          }
-          cancelAction();
-          break;
-        default:
-          window.electronAPI?.executeAction(action.name);
-          break;
-      }
+      executeWorkbenchAction(action.name);
       break;
     }
+  }
+}
+
+/**
+ * @function executeWorkbenchAction
+ * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {string} actionName - Registered action name identifier.
+ * @returns {void}
+ */
+export function executeWorkbenchAction(actionName: string): void {
+  // Trigger corresponding Renderer signal updates or execute Main action
+  switch (actionName) {
+    case 'new_project':
+      newProjectAction();
+      break;
+    case 'open_project':
+      openProjectAction();
+      break;
+    case 'close_project':
+      if (hasProjectSignal.value) closeProjectAction();
+      break;
+    case 'save_project':
+      if (hasProjectSignal.value && (!projectFilePathSignal.value || isProjectDirtySignal.value)) {
+        saveProjectAction();
+      }
+      break;
+    case 'save_as_project':
+      if (hasProjectSignal.value) saveAsProjectAction();
+      break;
+    case 'project_properties':
+      if (hasProjectSignal.value) openProjectPropertiesDialog();
+      break;
+    case 'save_active_layer':
+      if (activeLayerIdSignal.value) saveActiveLayerAction();
+      break;
+    case 'save_active_layer_as':
+      if (activeLayerIdSignal.value) saveActiveLayerAsAction();
+      break;
+    case 'undo_action':
+      if (undoStackSignal.value.length > 0) undoAction();
+      break;
+    case 'redo_action':
+      if (redoStackSignal.value.length > 0) redoAction();
+      break;
+    case 'open_preferences':
+      openPreferencesDialog();
+      break;
+    case 'add_layers':
+      openAddLayersDialog();
+      break;
+    case 'toggle_layers_widget':
+      toggleLayersWidgetAction();
+      break;
+    case 'rename_layer_tree_node':
+      requestRenameSelectedNode();
+      break;
+    case 'zoom_in':
+      zoomInAction();
+      break;
+    case 'zoom_out':
+      zoomOutAction();
+      break;
+    case 'zoom_to_selection':
+      zoomToSelectionAction();
+      break;
+    case 'zoom_to_layer':
+      zoomToLayerAction();
+      break;
+    case 'select_feature':
+      activeSelectionModeSignal.value = 'select_feature';
+      activeToolSignal.value = 'select';
+      break;
+    case 'select_features_by_drag':
+      activeSelectionModeSignal.value = 'select_features_by_drag';
+      activeToolSignal.value = 'select_drag';
+      break;
+    case 'select_features_by_freehand':
+      activeSelectionModeSignal.value = 'select_features_by_freehand';
+      activeToolSignal.value = 'select_freehand';
+      break;
+    case 'select_features_by_value':
+      openSelectByValueDialog();
+      break;
+    case 'select_all_features':
+      selectAllFeaturesAction();
+      break;
+    case 'deselect_all_features':
+      deselectAllFeaturesAction();
+      break;
+    case 'delete_selected_features':
+      deleteSelectedFeaturesAction();
+      break;
+    case 'copy_selected_features':
+      copySelectedFeaturesAction();
+      break;
+    case 'cut_selected_features':
+      cutSelectedFeaturesAction();
+      break;
+    case 'paste_features':
+      pasteFeaturesAction();
+      break;
+    case 'toggle_layer_editing':
+      toggleLayerEditingAction();
+      break;
+    case 'vertex_editor':
+      vertexEditorAction();
+      break;
+    case 'snapping':
+      snappingEnabledSignal.value = !snappingEnabledSignal.value;
+      break;
+    case 'snap_to_vertices':
+      snapToVerticesSignal.value = !snapToVerticesSignal.value;
+      break;
+    case 'snap_to_midpoint':
+      snapToMidpointSignal.value = !snapToMidpointSignal.value;
+      break;
+    case 'snap_to_segment':
+      snapToSegmentSignal.value = !snapToSegmentSignal.value;
+      break;
+    case 'snap_to_active':
+      snappingScopeSignal.value = 'snap_to_active';
+      break;
+    case 'snap_to_all':
+      snappingScopeSignal.value = 'snap_to_all';
+      break;
+    case 'snap_to_advanced':
+      openSnappingOptionsDialog();
+      break;
+    case 'cancel_action':
+      if (cancelTopDialog()) {
+        break;
+      }
+      cancelAction();
+      break;
+    default:
+      window.electronAPI?.executeAction(actionName);
+      break;
   }
 }

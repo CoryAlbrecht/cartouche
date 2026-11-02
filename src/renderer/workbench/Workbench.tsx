@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -50,6 +50,7 @@ import {
   selectedFeatureIdsSignal,
   hasProjectSignal,
   isProjectDirtySignal,
+  projectFilePathSignal,
   activeLayerIdSignal,
   undoStackSignal,
   redoStackSignal,
@@ -95,7 +96,7 @@ import { LayerPropertiesDialog } from "./dialogs/LayerPropertiesDialog";
 import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { SelectByValueDialog } from "./dialogs/SelectByValueDialog";
 import { SnappingOptionsDialog } from "./dialogs/SnappingOptionsDialog";
-import { handleWorkbenchKeyDown } from "./workbenchShortcuts";
+import { handleWorkbenchKeyDown, executeWorkbenchAction } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
 
@@ -201,7 +202,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -373,9 +374,13 @@ export const Workbench: React.FC = () => {
     loadPreferences();
     loadActionsFromMain();
 
-    window.addEventListener("keydown", handleWorkbenchKeyDown);
+    window.addEventListener("keydown", handleWorkbenchKeyDown, true);
+    const unsubscribeAction = window.electronAPI?.onExecuteRendererAction?.((actionName) => {
+      executeWorkbenchAction(actionName);
+    });
     return () => {
-      window.removeEventListener("keydown", handleWorkbenchKeyDown);
+      window.removeEventListener("keydown", handleWorkbenchKeyDown, true);
+      unsubscribeAction?.();
     };
   }, []);
 
@@ -869,12 +874,12 @@ export const Workbench: React.FC = () => {
 
                 <div className='menu-dropdown-separator' />
 
-                {/* * Save $$ (greyed out if no project or clean) */}
+                {/* * Save $$ (greyed out if no project or clean existing project) */}
                 <div
-                  className={`menu-dropdown-item ${!hasProject || !isProjectDirty ? "disabled" : ""}`}
+                  className={`menu-dropdown-item ${!hasProject || (!isProjectDirty && Boolean(projectFilePathSignal.value)) ? "disabled" : ""}`}
                   onClick={() =>
                     hasProject
-                    && isProjectDirty
+                    && (isProjectDirty || !projectFilePathSignal.value)
                     && handleMenuClick(() => {
                       saveProjectAction();
                     })

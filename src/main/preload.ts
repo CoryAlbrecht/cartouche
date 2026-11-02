@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { DropPosition, ElectronAPI, ProjectLayerStyleItem } from '@shared/t
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -159,6 +159,14 @@ const electronAPI: ElectronAPI = {
   /** @ipc gis:reorder-nodes */
   reorderNodes: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) =>
     ipcRenderer.invoke('gis:reorder-nodes', draggedNodeIds, targetNodeId, position),
+  /** @ipc gis:execute-renderer-action */
+  onExecuteRendererAction: (callback: (actionName: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, actionName: string) => callback(actionName);
+    ipcRenderer.on('gis:execute-renderer-action', handler);
+    return () => {
+      ipcRenderer.removeListener('gis:execute-renderer-action', handler);
+    };
+  },
   /** @ipc gis:log */
   log: (payload: any) => ipcRenderer.send('gis:log', payload)
 };

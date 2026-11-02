@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  */
 
@@ -433,6 +433,8 @@ export interface ElectronAPI {
     style: import('./project').ProjectLayerStyleItem,
     defaultPath?: string
   ) => Promise<string | null>;
+  /** @ipc gis:execute-renderer-action */
+  onExecuteRendererAction?: (callback: (actionName: string) => void) => () => void;
   /** @ipc gis:log */
   log?: (payload: import('../logging').LogPayload) => void;
 }

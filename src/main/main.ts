@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -12,7 +12,7 @@
  * @see {@link handleCliHelp}
  */
 
-import { app, BrowserWindow, dialog, nativeImage } from 'electron';
+import { app, BrowserWindow, dialog, Menu, nativeImage } from 'electron';
 import { handleIpc, onIpc } from './ipc/registerIpcHandler';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -122,7 +122,7 @@ Categories=Graphics;Science;Geoscience;
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-18
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -157,6 +157,7 @@ function createWindow() {
     title: 'Cartouche',
     backgroundColor: '#ffffff',
     frame: false, // Frameless window with custom menubar & window controls
+    autoHideMenuBar: true,
     roundedCorners: false, // Prevent Linux CSD border distortion and clipping on Electron 44
     show: false, // Hide until Cartouche preferences bounds are explicitly set
     icon: iconImage.isEmpty() ? iconPath : iconImage,
@@ -174,6 +175,49 @@ function createWindow() {
   }
 
   mainWindow = new BrowserWindow(mainWindowOptions);
+  mainWindow.setMenu(null);
+  mainWindow.setAutoHideMenuBar(true);
+  mainWindow.setMenuBarVisibility(false);
+
+  mainWindow.webContents.on('before-input-event', async (event, input) => {
+    if (input.type !== 'keyDown') return;
+
+    if (input.control && input.alt) {
+      const { ActionRegistry } = await import('./actions/ActionRegistry');
+      const actions = ActionRegistry.getAllActionDefinitions();
+      const keyLower = (input.key || '').toLowerCase();
+      const codeUpper = (input.code || '').toUpperCase();
+      const ctrl = input.control;
+      const alt = input.alt;
+      const shift = input.shift;
+      const meta = input.meta;
+
+      for (const action of actions) {
+        const combo = action.keyCombination;
+        if (
+          combo &&
+          combo.alt &&
+          combo.ctrl &&
+          Boolean(combo.ctrl) === ctrl &&
+          Boolean(combo.alt) === alt &&
+          Boolean(combo.shift) === shift &&
+          Boolean(combo.meta) === meta
+        ) {
+          const comboKeyLower = combo.key.toLowerCase();
+          const matches =
+            comboKeyLower === keyLower ||
+            (combo.key.length === 1 && /^[a-z]$/i.test(combo.key) && codeUpper === `KEY${combo.key.toUpperCase()}`) ||
+            (combo.key.length === 1 && /^[0-9]$/.test(combo.key) && input.code === `Digit${combo.key}`);
+
+          if (matches) {
+            event.preventDefault();
+            mainWindow?.webContents.send('gis:execute-renderer-action', action.name);
+            break;
+          }
+        }
+      }
+    }
+  });
 
   // Explicitly apply Cartouche preferences bounds to override Electron/Chromium internal userData/Preferences
   if (hasValidPos && hasValidWidth && hasValidHeight) {
@@ -342,11 +386,14 @@ function createWindow() {
  * @description Initializes and boots the main application lifecycle, logging hub, and window managers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @returns {void}
  */
 function startApp(): void {
+  // Disable default Electron application menu to prevent Alt/Ctrl+Alt intercept on Linux
+  Menu.setApplicationMenu(null);
+
   // Early logging hub initialization using CLI flags
   cliLogConfig = parseLogArgs();
   loggingHub.configure({
