@@ -4,7 +4,7 @@
  * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-27
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -170,6 +170,18 @@ describe('Extensible Preferences Subsystem Contracts', () => {
     assert.equal(pref.step, 0.1);
     assert.equal(pref.i18nId, 'prefs_general_mapViewport_zoomAmount');
     assert.equal(pref.order, 40);
+  });
+
+  it('validates schema and default values for ui.layerProperties.fields.showNativeType', () => {
+    const pref = BUILTIN_PREFERENCES['ui.layerProperties.fields.showNativeType'];
+    assert.ok(pref, 'ui.layerProperties.fields.showNativeType must be registered in BUILTIN_PREFERENCES');
+    assert.equal(pref.category, 'ui');
+    assert.equal(pref.type, 'boolean');
+    assert.deepEqual(pref.controls, ['checkbox']);
+    assert.equal(pref.defaultValue, false);
+    assert.equal(pref.value, false);
+    assert.equal(pref.hidden, true);
+    assert.equal(pref.i18nId, 'prefs_ui_layer_properties_fields_show_native_type');
   });
 
   it('validates canonical control types across all built-in preferences', () => {

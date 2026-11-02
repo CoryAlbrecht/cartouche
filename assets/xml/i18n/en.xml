@@ -119,6 +119,8 @@
     <string name="prefs_ui_basefont_size_descr">Default workbench font size across panels and controls</string>
     <string name="prefs_ui_icon_size">Toolbar Icon Size</string>
     <string name="prefs_ui_icon_size_descr">Dimensions for toolbar and panel action icons</string>
+    <string name="prefs_ui_layer_properties_fields_show_native_type">Show Native Type in Layer Fields</string>
+    <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Toggles visibility of raw native storage types in the Layer Properties Fields tab.</string>
     <string name="prefs_rendering_simplification_threshold">Simplification Threshold</string>
     <string name="prefs_rendering_simplification_threshold_descr">Tolerance threshold for rendering vector feature geometries</string>
     <string name="prefs_plugin_debug_enable">Enable Plugin Debug Mode</string>
@@ -149,6 +151,7 @@
     <string name="layer_properties_field_col_length">Length</string>
     <string name="layer_properties_field_col_precision">Precision</string>
     <string name="layer_properties_field_col_ts_type">TypeScript Type</string>
+    <string name="layer_properties_field_col_inferred_type">Inferred Type</string>
     <string name="layer_properties_field_col_nullable">Nullable</string>
     <string name="layer_properties_yes">Yes</string>
     <string name="layer_properties_no">No</string>
@@ -170,6 +173,8 @@
     <string name="layer_properties_fields_delete_field">Delete Selected Field</string>
     <string name="layer_properties_fields_calculate">Calculate Virtual Field</string>
     <string name="layer_properties_fields_col_comment">Comment</string>
+    <string name="layer_properties_fields_col_data_type">Data Type</string>
+    <string name="layer_properties_fields_show_native_type">Show Native Type</string>
     <string name="layer_properties_time_enable">Enable dynamic temporal control</string>
     <string name="layer_properties_time_mode">Configuration Mode</string>
     <string name="layer_properties_time_mode_single">Single Field with Date/Time</string>

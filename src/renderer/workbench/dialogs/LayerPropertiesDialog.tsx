@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link activeLayerPropertiesIdSignal}
@@ -24,6 +24,7 @@ import {
   mdiTrashCanOutline,
   mdiCalculator,
   mdiPaletteOutline,
+  mdiCodeTags,
 } from "@mdi/js";
 import { actionsMapSignal } from "@renderer/state/actionSignals";
 import {
@@ -50,6 +51,10 @@ import {
   createDefaultCartoucheLayerStyleJson,
 } from "@shared/styles/defaultLayerStyles";
 import { t } from "@renderer/state/i18nSignals";
+import {
+  preferencesMapSignal,
+  updatePreference,
+} from "@renderer/state/preferencesSignals";
 import { Dialog } from "./Dialog";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
 import { SimpleModeEditor } from "./SimpleModeEditor";
@@ -442,7 +447,7 @@ const SECONDARY_BUTTON_STYLE: React.CSSProperties = {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -454,6 +459,26 @@ export const LayerPropertiesDialog: React.FC = () => {
   const info = layerDetailedInfoSignal.value;
   const isLoading = isLayerPropertiesLoadingSignal.value;
   const draft = layerPropertiesDraftSignal.value;
+
+  const showNativeType = Boolean(
+    preferencesMapSignal.value["ui.layerProperties.fields.showNativeType"]?.value
+  );
+
+  /**
+   * @function handleToggleShowNativeType
+   * @description Toggles visibility of the Native Type column on the Fields tab and persists preference.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const handleToggleShowNativeType = useCallback(() => {
+    updatePreference(
+      "ui.layerProperties.fields.showNativeType",
+      !showNativeType
+    ).catch(() => {});
+  }, [showNativeType]);
 
   const handleClose = useCallback(() => {
     closeLayerPropertiesDialog();
@@ -1047,6 +1072,13 @@ export const LayerPropertiesDialog: React.FC = () => {
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
                           }}>
+                          {t("layer_properties_field_col_inferred_type")}
+                        </th>
+                        <th
+                          style={{
+                            padding: "6px 10px",
+                            borderBottom: "1px solid #cbd5e1",
+                          }}>
                           {t("layer_properties_field_col_length")}
                         </th>
                         <th
@@ -1055,13 +1087,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                             borderBottom: "1px solid #cbd5e1",
                           }}>
                           {t("layer_properties_field_col_precision")}
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                          }}>
-                          {t("layer_properties_field_col_ts_type")}
                         </th>
                         <th
                           style={{
@@ -1099,6 +1124,15 @@ export const LayerPropertiesDialog: React.FC = () => {
                               {field.nativeType}
                             </td>
                             <td
+                              style={{
+                                padding: "6px 10px",
+                                fontFamily:
+                                  "var(--cartouche-theme-font-family-mono, monospace)",
+                                color: "#0f766e",
+                              }}>
+                              {field.mappedType}
+                            </td>
+                            <td
                               style={{ padding: "6px 10px", color: "#475569" }}>
                               {field.width !== undefined && field.width > 0 ?
                                 field.width
@@ -1112,14 +1146,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                               ) ?
                                 field.precision
                               : "—"}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
-                                color: "#0f766e",
-                              }}>
-                              {field.mappedType}
                             </td>
                             <td style={{ padding: "6px 10px" }}>
                               {field.nullable ?
@@ -1707,6 +1733,27 @@ export const LayerPropertiesDialog: React.FC = () => {
                   <Icon path={mdiCalculator} size='14px' />
                   <span>{t("layer_properties_fields_calculate")}</span>
                 </button>
+                <button
+                  type='button'
+                  className={`layer-prop-toolbar-btn show-native-type ${showNativeType ? "active" : ""}`}
+                  title={t("layer_properties_fields_show_native_type")}
+                  aria-pressed={showNativeType}
+                  onClick={handleToggleShowNativeType}
+                  style={{
+                    padding: "4px 8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "3px",
+                    backgroundColor: showNativeType ? "#e2e8f0" : "#ffffff",
+                    cursor: "pointer",
+                    fontSize: "0.75rem",
+                    marginLeft: "auto",
+                  }}>
+                  <Icon path={mdiCodeTags} size='14px' />
+                  <span>{t("layer_properties_fields_show_native_type")}</span>
+                </button>
               </div>
 
               {/* Fields Data Table */}
@@ -1741,8 +1788,17 @@ export const LayerPropertiesDialog: React.FC = () => {
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
                         }}>
-                        {t("layer_properties_field_col_native_type")}
+                        {t("layer_properties_fields_col_data_type")}
                       </th>
+                      {showNativeType && (
+                        <th
+                          style={{
+                            padding: "6px 10px",
+                            borderBottom: "1px solid #cbd5e1",
+                          }}>
+                          {t("layer_properties_field_col_native_type")}
+                        </th>
+                      )}
                       <th
                         style={{
                           padding: "6px 10px",
@@ -1770,7 +1826,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                     {!info?.fields || info.fields.length === 0 ?
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={showNativeType ? 6 : 5}
                           style={{
                             padding: "12px",
                             textAlign: "center",
@@ -1787,9 +1843,20 @@ export const LayerPropertiesDialog: React.FC = () => {
                           <td style={{ padding: "6px 10px", fontWeight: 500 }}>
                             {field.name}
                           </td>
-                          <td style={{ padding: "6px 10px", color: "#475569" }}>
-                            {field.nativeType}
+                          <td
+                            style={{
+                              padding: "6px 10px",
+                              fontFamily:
+                                "var(--cartouche-theme-font-family-mono, monospace)",
+                              color: "#0f766e",
+                            }}>
+                            {field.mappedType}
                           </td>
+                          {showNativeType && (
+                            <td style={{ padding: "6px 10px", color: "#475569" }}>
+                              {field.nativeType}
+                            </td>
+                          )}
                           <td style={{ padding: "6px 10px", color: "#475569" }}>
                             {field.width !== undefined && field.width > 0 ?
                               field.width

@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-28
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-10-28
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -425,6 +425,18 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: true,
     category: 'ui',
     type: 'number'
+  },
+  'ui.layerProperties.fields.showNativeType': {
+    displayName: 'Show Native Type in Layer Fields',
+    value: false,
+    defaultValue: false,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    description: 'Toggles visibility of raw native storage types in the Layer Properties Fields tab.',
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_ui_layer_properties_fields_show_native_type'
   },
   'ui.projectProperties.location.x': {
     displayName: 'Project Properties Dialog X Coordinate',

@@ -93,6 +93,8 @@
     <string name="prefs_ui_basefont_size_descr">Taille de police par défaut de l'établi sur l'ensemble des panneaux et des commandes</string>
     <string name="prefs_ui_icon_size">Taille des Icônes de Barre d'Outils</string>
     <string name="prefs_ui_icon_size_descr">Dimensions des icônes d'action des panneaux et barres d'outils</string>
+    <string name="prefs_ui_layer_properties_fields_show_native_type">Afficher le type natif dans les champs de couche</string>
+    <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Bascule la visibilité des types de stockage natifs bruts dans l'onglet Champs des propriétés de la couche.</string>
     <string name="prefs_rendering_simplification_threshold">Seuil de Simplification</string>
     <string name="prefs_rendering_simplification_threshold_descr">Seuil de tolérance pour le rendu des géométries d'entités vectorielles</string>
     <string name="prefs_plugin_debug_enable">Activer le Mode Débogage des Extensions</string>
@@ -123,6 +125,7 @@
     <string name="layer_properties_field_col_length">Longueur</string>
     <string name="layer_properties_field_col_precision">Précision</string>
     <string name="layer_properties_field_col_ts_type">Type TypeScript</string>
+    <string name="layer_properties_field_col_inferred_type">Type déduit</string>
     <string name="layer_properties_field_col_nullable">Nullable</string>
     <string name="layer_properties_yes">Oui</string>
     <string name="layer_properties_no">Non</string>
@@ -144,6 +147,8 @@
     <string name="layer_properties_fields_delete_field">Supprimer le champ sélectionné</string>
     <string name="layer_properties_fields_calculate">Calculer un champ virtuel</string>
     <string name="layer_properties_fields_col_comment">Commentaire</string>
+    <string name="layer_properties_fields_col_data_type">Type de données</string>
+    <string name="layer_properties_fields_show_native_type">Afficher le type natif</string>
     <string name="layer_properties_time_enable">Activer le contrôle temporel dynamique</string>
     <string name="layer_properties_time_mode">Mode de configuration</string>
     <string name="layer_properties_time_mode_single">Champ unique avec date/heure</string>

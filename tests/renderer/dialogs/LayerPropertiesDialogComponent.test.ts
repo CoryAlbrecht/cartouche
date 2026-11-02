@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -53,6 +53,10 @@ const {
 } = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
 const { projectTreeSignal, isProjectDirtySignal } = jiti('../../../src/renderer/state/projectSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const {
+  preferencesMapSignal,
+  updatePreference,
+} = jiti('../../../src/renderer/state/preferencesSignals.ts');
 const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
 const { undoStackSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
 
@@ -171,6 +175,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_field_col_length: 'Length',
       layer_properties_field_col_precision: 'Precision',
       layer_properties_field_col_ts_type: 'TypeScript Type',
+      layer_properties_field_col_inferred_type: 'Inferred Type',
       layer_properties_field_col_nullable: 'Nullable',
       layer_properties_yes: 'Yes',
       layer_properties_no: 'No',
@@ -194,6 +199,8 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_fields_delete_field: 'Delete Selected Field',
       layer_properties_fields_calculate: 'Calculate Virtual Field',
       layer_properties_fields_col_comment: 'Comment',
+      layer_properties_fields_col_data_type: 'Data Type',
+      layer_properties_fields_show_native_type: 'Show Native Type',
       layer_properties_time_enable: 'Enable dynamic temporal control',
       layer_properties_time_mode: 'Configuration Mode',
       layer_properties_time_mode_single: 'Single Field with Date/Time',
@@ -271,6 +278,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
     // Fields group
     assert(html.includes('Attribute Fields'), 'Should render Attribute Fields group');
+    assert(html.includes('Inferred Type'), 'Should render Inferred Type column header in Information tab');
     assert(html.includes('scalerank'), 'Should render scalerank field name');
     assert(html.includes('integer64'), 'Should render nativeType');
     assert(html.includes('254'), 'Should render width for name field');
@@ -378,6 +386,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
   });
 
   it('renders appearance-only action toolbar and data table on Fields tab', async () => {
+    preferencesMapSignal.value = {};
     await openLayerPropertiesDialog('layer-lakes-1');
     activeLayerPropertiesTabSignal.value = 'fields';
 
@@ -387,8 +396,87 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert(html.includes('New Field'), 'Should render New Field toolbar button');
     assert(html.includes('Delete Selected Field'), 'Should render Delete Field toolbar button');
     assert(html.includes('Calculate Virtual Field'), 'Should render Calculate Virtual Field toolbar button');
+    assert(html.includes('Show Native Type'), 'Should render Show Native Type toolbar button');
+    assert(html.includes('aria-pressed="false"'), 'Show Native Type button should be unpressed by default');
+    assert(html.includes('Data Type'), 'Should render Data Type column header');
+    assert(!html.includes('>Native Type<'), 'Should hide Native Type column when Show Native Type is inactive');
     assert(html.includes('Comment'), 'Should render Comment column header');
     assert(html.includes('scalerank'), 'Should render field rows in table');
+    assert(html.includes('color:#0f766e'), 'Should render mappedType with monospace teal styling');
+  });
+
+  it('toggles Native Type column visibility and updates persistent preference on Fields tab', async () => {
+    let updatedPrefKey = '';
+    let updatedPrefVal: any = null;
+    (globalThis as any).window.electronAPI.setPreferenceValue = async (key: string, val: any) => {
+      updatedPrefKey = key;
+      updatedPrefVal = val;
+      return { [key]: { value: val } };
+    };
+
+    preferencesMapSignal.value = {
+      'ui.layerProperties.fields.showNativeType': {
+        displayName: 'Show Native Type in Layer Fields',
+        value: true,
+        defaultValue: false,
+        category: 'ui',
+        hidden: true,
+      }
+    };
+
+    await openLayerPropertiesDialog('layer-lakes-1');
+    activeLayerPropertiesTabSignal.value = 'fields';
+
+    let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes('aria-pressed="true"'), 'Show Native Type button should be pressed when preference is true');
+    assert(html.includes('>Native Type<'), 'Should display Native Type column header when Show Native Type is active');
+    assert(html.includes('integer64'), 'Should display native type cell when active');
+
+    // Simulate clicking toggle to turn off
+    await updatePreference('ui.layerProperties.fields.showNativeType', false);
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes('aria-pressed="false"'), 'Show Native Type button should be unpressed after turning off');
+    assert(!html.includes('>Native Type<'), 'Should hide Native Type column header after turning off');
+    assert.equal(updatedPrefKey, 'ui.layerProperties.fields.showNativeType');
+    assert.equal(updatedPrefVal, false);
+  });
+
+  it('renders correct colSpan on empty fields table state when Native Type is shown vs hidden', async () => {
+    (globalThis as any).window.electronAPI.getLayerInfo = async (id: string) => ({
+      layerId: id,
+      name: 'Empty Layer',
+      geometryKind: 'Point',
+      featureCount: 0,
+      fields: []
+    });
+
+    preferencesMapSignal.value = {
+      'ui.layerProperties.fields.showNativeType': {
+        displayName: 'Show Native Type in Layer Fields',
+        value: false,
+        defaultValue: false,
+        category: 'ui',
+        hidden: true,
+      }
+    };
+
+    await openLayerPropertiesDialog('layer-empty');
+    activeLayerPropertiesTabSignal.value = 'fields';
+
+    let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes('colSpan="5"') || html.includes('colspan="5"'), 'Empty state should span 5 columns when Native Type is hidden');
+
+    preferencesMapSignal.value = {
+      'ui.layerProperties.fields.showNativeType': {
+        displayName: 'Show Native Type in Layer Fields',
+        value: true,
+        defaultValue: false,
+        category: 'ui',
+        hidden: true,
+      }
+    };
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes('colSpan="6"') || html.includes('colspan="6"'), 'Empty state should span 6 columns when Native Type is shown');
   });
 
   it('renders appearance-only temporal master checkbox and mode selectors on Time Filter tab', async () => {
