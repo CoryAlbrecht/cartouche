@@ -4,15 +4,17 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-27
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
+ * @see {@link ColorInput}
  */
 
 import React, { useEffect, useRef, useCallback } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/Icon";
+import { ColorInput } from "@renderer/components/common/ColorInput";
 import {
   mdiPaletteOutline,
   mdiVectorTriangle,
@@ -21,8 +23,6 @@ import {
   mdiFileEditOutline,
   mdiSync,
   mdiCached,
-  mdiMenuDown,
-  mdiAlertRhombus,
   mdiMapOutline,
 } from "@mdi/js";
 import {
@@ -39,7 +39,6 @@ import type { PreferenceItem, PreferenceControlType } from "@shared/types";
 import { logging } from "../../../shared/logging";
 import {
   CSS_COLOR_NAMES,
-  isValidCssColor,
   resolveColorToHex,
 } from "../../../shared/colors/cssColors";
 
@@ -212,8 +211,6 @@ export const PreferencesDialog: React.FC = () => {
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const animIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingChangesRef = useRef<Record<string, any>>({});
-  const colorInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const lastValidColorsRef = useRef<Record<string, string>>({});
 
   const allPrefs = preferencesMapSignal.value;
 
@@ -269,13 +266,6 @@ export const PreferencesDialog: React.FC = () => {
       const initial: Record<string, any> = {};
       for (const [key, item] of Object.entries(allPrefs)) {
         initial[key] = item.value;
-        if (
-          item.controls?.includes("colour") ||
-          item.controls?.includes("color")
-        ) {
-          lastValidColorsRef.current[key] =
-            resolveColorToHex(item.value) || "#000000";
-        }
       }
       draftPreferencesSignal.value = initial;
       pendingChangesRef.current = {};
@@ -382,8 +372,6 @@ export const PreferencesDialog: React.FC = () => {
     pendingChangesRef.current = {};
     draftPreferencesSignal.value = {};
     saveStatusSignal.value = "idle";
-    colorInputRefs.current = {};
-    lastValidColorsRef.current = {};
     cancelPreferencesEdits();
   };
 
@@ -544,18 +532,22 @@ export const PreferencesDialog: React.FC = () => {
       case "text": {
         const isColorControl =
           item.controls?.includes("colour") || item.controls?.includes("color");
-        const textVal = currentValue !== undefined ? String(currentValue) : "";
-        const isValid =
-          isColorControl ?
-            isValidCssColor(textVal)
-          : validateTextPattern(textVal, item.patterns);
-
-        if (isColorControl && isValid) {
-          const resolvedHex = resolveColorToHex(textVal);
-          if (resolvedHex) {
-            lastValidColorsRef.current[key] = resolvedHex;
-          }
+        if (isColorControl) {
+          return (
+            <ColorInput
+              key={`${key}-text-container`}
+              id={`pref-${key}`}
+              value={currentValue !== undefined ? String(currentValue) : ""}
+              fallbackColor={resolveColorToHex(item.defaultValue) || "#000000"}
+              ariaLabel={displayName}
+              showTextInput={true}
+              onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
+            />
+          );
         }
+
+        const textVal = currentValue !== undefined ? String(currentValue) : "";
+        const isValid = validateTextPattern(textVal, item.patterns);
 
         return (
           <div
@@ -567,47 +559,17 @@ export const PreferencesDialog: React.FC = () => {
               tabIndex={0}
               aria-label={displayName}
               aria-invalid={!isValid}
-              list={isColorControl ? "css-colors-datalist" : undefined}
               value={currentValue !== undefined ? currentValue : ""}
               onChange={(e) => {
                 const val = e.target.value;
-                const valid =
-                  isColorControl ?
-                    isValidCssColor(val)
-                  : validateTextPattern(val, item.patterns);
-                if (isColorControl && valid) {
-                  const resolvedHex = resolveColorToHex(val);
-                  if (resolvedHex) {
-                    lastValidColorsRef.current[key] = resolvedHex;
-                  }
-                }
+                const valid = validateTextPattern(val, item.patterns);
                 handleFieldChange(key, val, valid);
               }}
               className={`preference-input-text ${!isValid ? "preference-input-invalid" : ""}`}
-              style={
-                !isValid && isColorControl ? { color: "#ef4444" } : undefined
-              }
               title={
-                !isValid ?
-                  isColorControl ?
-                    "Invalid CSS color name or hex format"
-                  : "Value does not match required format"
-                : undefined
+                !isValid ? "Value does not match required format" : undefined
               }
             />
-            {!isValid && isColorControl && (
-              <span
-                tabIndex={0}
-                className='preference-input-error-icon'
-                title='Invalid CSS color name or hex format'
-                aria-label='Invalid CSS color name or hex format'>
-                <Icon
-                  path={mdiAlertRhombus}
-                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
-                  title='Invalid CSS color name or hex format'
-                />
-              </span>
-            )}
           </div>
         );
       }
@@ -626,74 +588,16 @@ export const PreferencesDialog: React.FC = () => {
       }
       case "colour":
       case "color": {
-        const resolvedCurrent = resolveColorToHex(currentValue);
-        const resolvedSaved =
-          resolveColorToHex(item.value) ||
-          resolveColorToHex(item.defaultValue);
-
-        if (resolvedCurrent) {
-          lastValidColorsRef.current[key] = resolvedCurrent;
-        } else if (!lastValidColorsRef.current[key] && resolvedSaved) {
-          lastValidColorsRef.current[key] = resolvedSaved;
-        }
-
-        const swatchColor =
-          lastValidColorsRef.current[key] ||
-          resolvedCurrent ||
-          resolvedSaved ||
-          "#000000";
-
         return (
-          <div
+          <ColorInput
             key={`${key}-color`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              position: "relative",
-            }}>
-            <button
-              key={`${key}-color-btn`}
-              type='button'
-              tabIndex={0}
-              aria-haspopup='dialog'
-              aria-label={`Pick colour for ${displayName}`}
-              className='preference-color-button-wrapper'
-              title='Pick colour'
-              onClick={() => colorInputRefs.current[key]?.click()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  colorInputRefs.current[key]?.click();
-                }
-              }}>
-              <span
-                className='preference-color-swatch'
-                style={{ backgroundColor: swatchColor }}
-              />
-              <span className='preference-color-chevron'>
-                <Icon
-                  path={mdiMenuDown}
-                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
-                  title='Open colour palette'
-                />
-              </span>
-            </button>
-            <input
-              ref={(el) => {
-                colorInputRefs.current[key] = el;
-              }}
-              type='color'
-              tabIndex={-1}
-              aria-hidden='true'
-              className='preference-hidden-color-input'
-              value={swatchColor}
-              onChange={(e) => {
-                const hex = e.target.value;
-                lastValidColorsRef.current[key] = hex;
-                handleFieldChange(key, hex, true);
-              }}
-            />
-          </div>
+            id={`pref-${key}`}
+            value={currentValue !== undefined ? String(currentValue) : ""}
+            fallbackColor={resolveColorToHex(item.defaultValue) || "#000000"}
+            ariaLabel={displayName}
+            showTextInput={false}
+            onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
+          />
         );
       }
       case "checkbox": {
@@ -1048,6 +952,8 @@ export const PreferencesDialog: React.FC = () => {
       : item.value;
 
     const controlsToRender = resolveControls(item);
+    const isColorItem =
+      controlsToRender.includes("colour") || controlsToRender.includes("color");
 
     return (
       <div key={key} className='preference-item-row'>
@@ -1060,8 +966,20 @@ export const PreferencesDialog: React.FC = () => {
         </div>
 
         <div className='preference-item-control'>
-          {controlsToRender.map((ctrl) =>
-            renderControl(ctrl, key, item, currentValue, displayName)
+          {isColorItem ? (
+            <ColorInput
+              key={`${key}-color`}
+              id={`pref-${key}`}
+              value={currentValue !== undefined ? String(currentValue) : ""}
+              fallbackColor={resolveColorToHex(item.defaultValue) || "#000000"}
+              ariaLabel={displayName}
+              showTextInput={controlsToRender.includes("text")}
+              onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
+            />
+          ) : (
+            controlsToRender.map((ctrl) =>
+              renderControl(ctrl, key, item, currentValue, displayName)
+            )
           )}
         </div>
       </div>

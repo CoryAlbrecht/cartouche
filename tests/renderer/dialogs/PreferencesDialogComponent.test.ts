@@ -417,7 +417,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(html.includes('class="preference-checkbox-group"'), 'renders checkbox-group');
   });
 
-  it('renders colour control as an accessible button with inner swatch, chevron icon, and hidden input (Ticket #56)', () => {
+  it('renders colour control as an accessible button with inner swatch (without chevron) and hidden input (Ticket #56)', () => {
     preferencesMapSignal.value = {
       'general.logging.colours.level.warn': {
         displayName: 'Warning Level Color',
@@ -443,8 +443,8 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       'Must contain inner swatch with matching background color'
     );
     assert.ok(
-      html.includes('class="preference-color-chevron"'),
-      'Must contain dropdown chevron icon wrapper'
+      !html.includes('preference-color-chevron'),
+      'Must not contain dropdown chevron icon wrapper'
     );
 
     // Verify hidden input

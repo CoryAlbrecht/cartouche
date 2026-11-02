@@ -1571,7 +1571,10 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       // Active component is fill-2 (top component) which is locked
       assert.ok(html.includes('component-locked-banner'), 'Must render component locked banner');
       assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input');
-      assert.ok(html.includes('id="layer-prop-fill-color" type="color" disabled=""'), 'Fill color input must be disabled');
+      assert.ok(
+        /id="layer-prop-fill-color"[^>]*disabled=""/.test(html),
+        'Fill color input must be disabled'
+      );
       assert.ok(html.includes('id="layer-prop-component-remove"'), 'Must render remove button');
       assert.ok(
         /id="layer-prop-component-remove"[^>]*disabled=""/.test(html),

@@ -9,10 +9,12 @@
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
  * @see {@link StyleComponent}
+ * @see {@link ColorInput}
  */
 
 import React, { useState, useMemo, useCallback } from "react";
 import Icon from "@renderer/components/common/Icon";
+import { ColorInput, CssColorsDatalist } from "@renderer/components/common/ColorInput";
 import {
   mdiPlus,
   mdiMinus,
@@ -700,24 +702,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
                 {t("layer_properties_styling_fill_color")}:
               </label>
-              <input
+              <ColorInput
                 id='layer-prop-fill-color'
-                type='color'
-                disabled={activeComponent.locked}
                 value={(activeComponent as SimpleFillComponent).color || "#3388ff"}
-                onChange={(e) => updateActiveComponent({ color: e.target.value })}
-                style={{
-                  width: "3rem",
-                  height: "1.75rem",
-                  padding: 0,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
-                  cursor: activeComponent.locked ? "not-allowed" : "pointer",
+                disabled={activeComponent.locked}
+                ariaLabel={t("layer_properties_styling_fill_color")}
+                inputStyle={{ width: "7.5rem", padding: "0.25rem 0.5rem", fontSize: "0.8125rem" }}
+                onChange={(val, isValid) => {
+                  if (isValid) {
+                    updateActiveComponent({ color: val });
+                  }
                 }}
               />
-              <span style={{ fontSize: "0.8125rem", color: "#475569" }}>
-                {(activeComponent as SimpleFillComponent).color}
-              </span>
             </div>
           </div>
         )}
@@ -731,24 +727,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
                 {t("layer_properties_styling_stroke_color")}:
               </label>
-              <input
+              <ColorInput
                 id='layer-prop-stroke-color'
-                type='color'
-                disabled={activeComponent.locked}
                 value={(activeComponent as SimpleLineComponent).color || "#000000"}
-                onChange={(e) => updateActiveComponent({ color: e.target.value })}
-                style={{
-                  width: "3rem",
-                  height: "1.75rem",
-                  padding: 0,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
-                  cursor: activeComponent.locked ? "not-allowed" : "pointer",
+                disabled={activeComponent.locked}
+                ariaLabel={t("layer_properties_styling_stroke_color")}
+                inputStyle={{ width: "7.5rem", padding: "0.25rem 0.5rem", fontSize: "0.8125rem" }}
+                onChange={(val, isValid) => {
+                  if (isValid) {
+                    updateActiveComponent({ color: val });
+                  }
                 }}
               />
-              <span style={{ fontSize: "0.8125rem", color: "#475569" }}>
-                {(activeComponent as SimpleLineComponent).color}
-              </span>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -867,24 +857,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
                 {t("layer_properties_styling_fill_color")}:
               </label>
-              <input
+              <ColorInput
                 id='layer-prop-marker-fill-color'
-                type='color'
-                disabled={activeComponent.locked}
                 value={(activeComponent as SimpleMarkerComponent).fillColor || "#3388ff"}
-                onChange={(e) => updateActiveComponent({ fillColor: e.target.value })}
-                style={{
-                  width: "3rem",
-                  height: "1.75rem",
-                  padding: 0,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
-                  cursor: activeComponent.locked ? "not-allowed" : "pointer",
+                disabled={activeComponent.locked}
+                ariaLabel={t("layer_properties_styling_fill_color")}
+                inputStyle={{ width: "7.5rem", padding: "0.25rem 0.5rem", fontSize: "0.8125rem" }}
+                onChange={(val, isValid) => {
+                  if (isValid) {
+                    updateActiveComponent({ fillColor: val });
+                  }
                 }}
               />
-              <span style={{ fontSize: "0.8125rem", color: "#475569" }}>
-                {(activeComponent as SimpleMarkerComponent).fillColor}
-              </span>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -893,24 +877,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
                 {t("layer_properties_styling_stroke_color")}:
               </label>
-              <input
+              <ColorInput
                 id='layer-prop-marker-stroke-color'
-                type='color'
-                disabled={activeComponent.locked}
                 value={(activeComponent as SimpleMarkerComponent).strokeColor || "#000000"}
-                onChange={(e) => updateActiveComponent({ strokeColor: e.target.value })}
-                style={{
-                  width: "3rem",
-                  height: "1.75rem",
-                  padding: 0,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
-                  cursor: activeComponent.locked ? "not-allowed" : "pointer",
+                disabled={activeComponent.locked}
+                ariaLabel={t("layer_properties_styling_stroke_color")}
+                inputStyle={{ width: "7.5rem", padding: "0.25rem 0.5rem", fontSize: "0.8125rem" }}
+                onChange={(val, isValid) => {
+                  if (isValid) {
+                    updateActiveComponent({ strokeColor: val });
+                  }
                 }}
               />
-              <span style={{ fontSize: "0.8125rem", color: "#475569" }}>
-                {(activeComponent as SimpleMarkerComponent).strokeColor}
-              </span>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -942,6 +920,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
           </div>
         ); })()}
       </fieldset>
+      <CssColorsDatalist />
     </div>
   );
 };
