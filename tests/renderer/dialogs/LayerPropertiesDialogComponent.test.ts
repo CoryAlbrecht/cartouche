@@ -749,6 +749,53 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('#445566'));
     });
 
+    it('converts styling format bidirectionally from OpenLayers to Simple Cartouche Symbology and SLD 1.1.0 (Ticket #131)', async () => {
+      await openLayerPropertiesDialog('layer-lakes-1');
+      activeLayerPropertiesTabSignal.value = 'styling';
+
+      // 1. Set OpenLayers style with lavender fill and purple stroke (as in project-4.cproj)
+      const olLavenderStyle = JSON.stringify([
+        {
+          style: {
+            'fill-color': '#d8b4e2',
+            'stroke-color': '#6b21a8',
+            'stroke-width': 1.5,
+          },
+        },
+      ]);
+      updateLayerPropertiesDraft({
+        styleFormat: 'openlayers',
+        styleContent: olLavenderStyle,
+        sldVersion: '1.0.0',
+      });
+
+      // 2. Switch to Cartouche (Simple mode) format
+      await switchLayerPropertiesStyleFormat('cartouche', 'Polygon');
+      assert.strictEqual(layerPropertiesDraftSignal.value.styleFormat, 'cartouche');
+
+      const cartoucheParsed = JSON.parse(layerPropertiesDraftSignal.value.styleContent);
+      assert.strictEqual(cartoucheParsed.format, 'simple');
+      assert.strictEqual(cartoucheParsed.components.length, 2);
+
+      const fill = cartoucheParsed.components.find((c: any) => c.type === 'simple-fill');
+      const line = cartoucheParsed.components.find((c: any) => c.type === 'simple-line');
+      assert.ok(fill, 'Must contain simple-fill component');
+      assert.ok(line, 'Must contain simple-line component');
+      assert.strictEqual(fill.color, '#d8b4e2', 'Must preserve lavender fill color without random generation');
+      assert.strictEqual(line.color, '#6b21a8', 'Must preserve purple stroke color');
+
+      // 3. Switch from Cartouche to SLD 1.1.0 format
+      await switchLayerPropertiesStyleFormat('sld-1.1.0', 'Polygon');
+      assert.strictEqual(layerPropertiesDraftSignal.value.styleFormat, 'sld');
+      assert.strictEqual(layerPropertiesDraftSignal.value.sldVersion, '1.1.0');
+      assert.ok(layerPropertiesDraftSignal.value.styleContent.length > 0, 'SLD 1.1.0 text must not be empty');
+      assert.ok(layerPropertiesDraftSignal.value.styleContent.includes('StyledLayerDescriptor'));
+      assert.ok(
+        layerPropertiesDraftSignal.value.styleContent.includes('#d8b4e2') ||
+        layerPropertiesDraftSignal.value.styleContent.includes('#D8B4E2')
+      );
+    });
+
     it('validates syntax for Flat Style JSON and SLD XML in external raw editor, displaying error banner and disabling Apply/OK', async () => {
       await openLayerPropertiesDialog('layer-lakes-1');
       activeLayerPropertiesTabSignal.value = 'styling';

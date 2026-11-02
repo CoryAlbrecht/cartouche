@@ -8,6 +8,8 @@
  * @since 0.1.0-dev
  * @see {@link flatStyleToGeoStyler}
  * @see {@link geoStylerToFlatStyle}
+ * @see {@link cartoucheToGeoStyler}
+ * @see {@link geoStylerToCartouche}
  * @see {@link convertStyleFormat}
  * @see {@link validateStyleContent}
  * @see {@link extractVisualSymbolizers}
@@ -17,7 +19,14 @@
  */
 
 import { SldStyleParser } from 'geostyler-sld-parser';
-import { isCartoucheLayerStyle } from './defaultLayerStyles';
+import { isCartoucheLayerStyle, createDefaultCartoucheLayerStyle } from './defaultLayerStyles';
+import type {
+  SimpleCartoucheStyle,
+  StyleComponent,
+  SimpleFillComponent,
+  SimpleLineComponent,
+  SimpleMarkerComponent,
+} from '../types/styling';
 import type {
   Style as GeoStylerStyle,
   Rule as GeoStylerRule,
@@ -518,7 +527,277 @@ export function geoStylerToFlatStyle(ast: GeoStylerStyle): OlFlatStyleRule[] {
 }
 
 /**
- * @description Converts a raw style string between OpenLayers Flat Style JSON and OGC SLD XML (1.0.0 or 1.1.0) using GeoStyler AST as the intermediate representation.
+ * @description Converts a Cartouche Symbology Simple style (SimpleCartoucheStyle or serialized JSON) into an in-memory GeoStyler Style AST.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {unknown} cartoucheStyle - SimpleCartoucheStyle object, dictionary, or serialized JSON string.
+ * @param {string} [geometryKind] - Optional geometry kind hint ('Polygon', 'LineString', 'Point').
+ * @param {string} [styleName='Cartouche Style'] - Optional style title.
+ * @returns {GeoStylerStyle} In-memory GeoStyler Style AST.
+ */
+export function cartoucheToGeoStyler(
+  cartoucheStyle: unknown,
+  geometryKind?: string,
+  styleName: string = 'Cartouche Style'
+): GeoStylerStyle {
+  if (!cartoucheStyle) {
+    return { name: styleName, rules: [] };
+  }
+
+  let parsed: unknown = cartoucheStyle;
+  if (typeof cartoucheStyle === 'string') {
+    try {
+      parsed = JSON.parse(cartoucheStyle.trim());
+    } catch {
+      return { name: styleName, rules: [] };
+    }
+  }
+
+  const components: StyleComponent[] =
+    parsed && typeof parsed === 'object' && 'components' in parsed && Array.isArray((parsed as any).components)
+      ? (parsed as any).components
+      : [];
+
+  const isPoly = !geometryKind || geometryKind.includes('Polygon');
+  const isLine = geometryKind && geometryKind.includes('Line');
+  const isPoint = geometryKind && geometryKind.includes('Point');
+
+  const symbolizers: Symbolizer[] = [];
+  const fills = components.filter(
+    (c): c is SimpleFillComponent => c.type === 'simple-fill' && c.enabled !== false
+  );
+  const lines = components.filter(
+    (c): c is SimpleLineComponent => c.type === 'simple-line' && c.enabled !== false
+  );
+  const markers = components.filter(
+    (c): c is SimpleMarkerComponent => c.type === 'simple-marker' && c.enabled !== false
+  );
+
+  if (isPoly && (fills.length > 0 || lines.length > 0)) {
+    if (fills.length > 0) {
+      fills.forEach((fill, idx) => {
+        const correspondingLine = idx === 0 && lines.length > 0 ? lines[0] : undefined;
+        symbolizers.push({
+          kind: 'Fill',
+          color: fill.color,
+          ...(correspondingLine
+            ? {
+                outlineColor: correspondingLine.color,
+                outlineWidth: correspondingLine.width,
+                ...(Array.isArray(correspondingLine.dashArray)
+                  ? { outlineDasharray: correspondingLine.dashArray }
+                  : {}),
+              }
+            : {}),
+        });
+      });
+      lines.slice(fills.length > 0 ? 1 : 0).forEach((line) => {
+        symbolizers.push({
+          kind: 'Line',
+          color: line.color,
+          width: line.width,
+          ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+        });
+      });
+    } else {
+      lines.forEach((line) => {
+        symbolizers.push({
+          kind: 'Fill',
+          outlineColor: line.color,
+          outlineWidth: line.width,
+          ...(Array.isArray(line.dashArray) ? { outlineDasharray: line.dashArray } : {}),
+        });
+      });
+    }
+  } else if (isLine) {
+    lines.forEach((line) => {
+      symbolizers.push({
+        kind: 'Line',
+        color: line.color,
+        width: line.width,
+        ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+      });
+    });
+  } else if (isPoint) {
+    markers.forEach((marker) => {
+      symbolizers.push({
+        kind: 'Mark',
+        wellKnownName: 'circle',
+        radius: marker.radius,
+        color: marker.fillColor,
+        strokeColor: marker.strokeColor,
+        strokeWidth: marker.strokeWidth,
+      });
+    });
+  } else {
+    // Unknown geometry: extract all available symbolizers
+    fills.forEach((f) => symbolizers.push({ kind: 'Fill', color: f.color }));
+    lines.forEach((l) =>
+      symbolizers.push({
+        kind: 'Line',
+        color: l.color,
+        width: l.width,
+        ...(Array.isArray(l.dashArray) ? { dasharray: l.dashArray } : {}),
+      })
+    );
+    markers.forEach((m) =>
+      symbolizers.push({
+        kind: 'Mark',
+        wellKnownName: 'circle',
+        radius: m.radius,
+        color: m.fillColor,
+        strokeColor: m.strokeColor,
+        strokeWidth: m.strokeWidth,
+      })
+    );
+  }
+
+  return {
+    name: styleName,
+    rules: symbolizers.length > 0 ? [{ name: geometryKind || 'Rule', symbolizers }] : [],
+  };
+}
+
+/**
+ * @description Converts a GeoStyler Style AST into a Cartouche Symbology Simple style (SimpleCartoucheStyle).
+ * Maps Fill, Line, and Mark symbolizers into sequential painter's order components (fill bottom, line/marker top).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-01
+ * @updated 2026-11-01
+ * @since 0.1.0-dev
+ * @param {GeoStylerStyle} ast - GeoStyler Style AST.
+ * @param {string} [geometryKind] - Optional geometry kind hint ('Polygon', 'LineString', 'Point').
+ * @returns {SimpleCartoucheStyle} Converted SimpleCartoucheStyle object.
+ */
+export function geoStylerToCartouche(
+  ast: GeoStylerStyle,
+  geometryKind?: string
+): SimpleCartoucheStyle {
+  if (!ast || !Array.isArray(ast.rules) || ast.rules.length === 0) {
+    return createDefaultCartoucheLayerStyle(geometryKind);
+  }
+
+  const isPoly = geometryKind && geometryKind.includes('Polygon');
+  const isLine = geometryKind && geometryKind.includes('Line');
+  const isPoint = geometryKind && geometryKind.includes('Point');
+
+  const components: StyleComponent[] = [];
+  let compId = 1;
+
+  for (const rule of ast.rules) {
+    for (const sym of rule.symbolizers || []) {
+      if (sym.kind === 'Fill' && (!geometryKind || isPoly)) {
+        const fill = sym as FillSymbolizer;
+        if (fill.color) {
+          components.push({
+            id: `fill-${compId++}`,
+            type: 'simple-fill',
+            enabled: true,
+            color: String(fill.color),
+          });
+        }
+        if (fill.outlineColor) {
+          components.push({
+            id: `line-${compId++}`,
+            type: 'simple-line',
+            enabled: true,
+            color: String(fill.outlineColor),
+            width: Number(fill.outlineWidth ?? 1),
+            ...(Array.isArray(fill.outlineDasharray)
+              ? { dashArray: fill.outlineDasharray.map(Number) }
+              : {}),
+          });
+        }
+      } else if (sym.kind === 'Line' && (!geometryKind || isLine)) {
+        const line = sym as LineSymbolizer;
+        components.push({
+          id: `line-${compId++}`,
+          type: 'simple-line',
+          enabled: true,
+          color: String(line.color || '#000000'),
+          width: Number(line.width ?? 1),
+          ...(Array.isArray(line.dasharray) ? { dashArray: line.dasharray.map(Number) } : {}),
+        });
+      } else if (sym.kind === 'Mark' && (!geometryKind || isPoint)) {
+        const mark = sym as MarkSymbolizer;
+        components.push({
+          id: `marker-${compId++}`,
+          type: 'simple-marker',
+          enabled: true,
+          shape: 'circle',
+          radius: Number(mark.radius ?? 6),
+          fillColor: String(mark.color || '#000000'),
+          strokeColor: String(mark.strokeColor || '#000000'),
+          strokeWidth: Number(mark.strokeWidth ?? 1),
+        });
+      }
+    }
+  }
+
+  // Fallback to extracting any available symbolizers if specific geometryKind matched none
+  if (components.length === 0 && geometryKind && geometryKind !== 'Unknown') {
+    for (const rule of ast.rules) {
+      for (const sym of rule.symbolizers || []) {
+        if (sym.kind === 'Fill') {
+          const fill = sym as FillSymbolizer;
+          if (fill.color) {
+            components.push({
+              id: `fill-${compId++}`,
+              type: 'simple-fill',
+              enabled: true,
+              color: String(fill.color),
+            });
+          }
+          if (fill.outlineColor) {
+            components.push({
+              id: `line-${compId++}`,
+              type: 'simple-line',
+              enabled: true,
+              color: String(fill.outlineColor),
+              width: Number(fill.outlineWidth ?? 1),
+            });
+          }
+        } else if (sym.kind === 'Line') {
+          const line = sym as LineSymbolizer;
+          components.push({
+            id: `line-${compId++}`,
+            type: 'simple-line',
+            enabled: true,
+            color: String(line.color || '#000000'),
+            width: Number(line.width ?? 1),
+          });
+        } else if (sym.kind === 'Mark') {
+          const mark = sym as MarkSymbolizer;
+          components.push({
+            id: `marker-${compId++}`,
+            type: 'simple-marker',
+            enabled: true,
+            shape: 'circle',
+            radius: Number(mark.radius ?? 6),
+            fillColor: String(mark.color || '#000000'),
+            strokeColor: String(mark.strokeColor || '#000000'),
+            strokeWidth: Number(mark.strokeWidth ?? 1),
+          });
+        }
+      }
+    }
+  }
+
+  if (components.length === 0) {
+    return createDefaultCartoucheLayerStyle(geometryKind);
+  }
+
+  return {
+    format: 'simple',
+    version: 1,
+    components,
+  };
+}
+
+/**
+ * @description Converts a raw style string between Cartouche Symbology JSON, OpenLayers Flat Style JSON, and OGC SLD XML (1.0.0 or 1.1.0) using GeoStyler AST as the intermediate representation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
  * @updated 2026-11-01
@@ -532,7 +811,7 @@ export async function convertStyleFormat(
   content: string,
   options: StyleFormatConversionOptions
 ): Promise<string> {
-  const { fromFormat, toFormat, fromVersion = '1.0.0', toVersion = '1.0.0' } = options;
+  const { fromFormat, toFormat, fromVersion = '1.0.0', toVersion = '1.0.0', geometryKind } = options;
 
   if (fromFormat === toFormat && fromVersion === toVersion) {
     return content;
@@ -543,6 +822,8 @@ export async function convertStyleFormat(
   // 1. Parse input to GeoStyler AST
   if (fromFormat === 'openlayers') {
     ast = flatStyleToGeoStyler(content);
+  } else if (fromFormat === 'cartouche') {
+    ast = cartoucheToGeoStyler(content, geometryKind);
   } else {
     const sldInParser = fromVersion === '1.1.0' ? sldParser110 : sldParser100;
     const readResult = await sldInParser.readStyle(content.trim());
@@ -558,6 +839,9 @@ export async function convertStyleFormat(
   if (toFormat === 'openlayers') {
     const flatRules = geoStylerToFlatStyle(ast);
     return JSON.stringify(flatRules, null, 2);
+  } else if (toFormat === 'cartouche') {
+    const cartouche = geoStylerToCartouche(ast, geometryKind);
+    return JSON.stringify(cartouche, null, 2);
   } else {
     const sldOutParser = toVersion === '1.1.0' ? sldParser110 : sldParser100;
     const writeResult = await sldOutParser.writeStyle(ast);
@@ -658,17 +942,22 @@ export async function validateStyleContent(
  * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {string} content - Raw style markup or JSON text.
- * @param {ProjectStyleFormat} format - Style format ('openlayers' | 'sld').
+ * @param {ProjectStyleFormat} format - Style format ('cartouche' | 'openlayers' | 'sld').
  * @param {SldStyleVersion} [version='1.0.0'] - Optional SLD specification version.
+ * @param {string} [geometryKind] - Optional geometry kind hint for Cartouche Symbology mapping.
  * @returns {Promise<GeoStylerStyle>} In-memory GeoStyler Style AST.
  */
 export async function parseStyleTextToGeoStyler(
   content: string,
   format: ProjectStyleFormat,
-  version: SldStyleVersion = '1.0.0'
+  version: SldStyleVersion = '1.0.0',
+  geometryKind?: string
 ): Promise<GeoStylerStyle> {
   if (format === 'openlayers') {
     return flatStyleToGeoStyler(content);
+  }
+  if (format === 'cartouche') {
+    return cartoucheToGeoStyler(content, geometryKind);
   }
 
   const parser = version === '1.1.0' ? sldParser110 : sldParser100;
@@ -688,18 +977,24 @@ export async function parseStyleTextToGeoStyler(
  * @updated 2026-11-01
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
- * @param {ProjectStyleFormat} format - Target style format ('openlayers' | 'sld').
+ * @param {ProjectStyleFormat} format - Target style format ('cartouche' | 'openlayers' | 'sld').
  * @param {SldStyleVersion} [version='1.0.0'] - Optional SLD specification version.
+ * @param {string} [geometryKind] - Optional geometry kind hint for Cartouche Symbology mapping.
  * @returns {Promise<string>} Serialized style string.
  */
 export async function serializeGeoStylerToText(
   ast: GeoStylerStyle,
   format: ProjectStyleFormat,
-  version: SldStyleVersion = '1.0.0'
+  version: SldStyleVersion = '1.0.0',
+  geometryKind?: string
 ): Promise<string> {
   if (format === 'openlayers') {
     const flatRules = geoStylerToFlatStyle(ast);
     return JSON.stringify(flatRules, null, 2);
+  }
+  if (format === 'cartouche') {
+    const cartouche = geoStylerToCartouche(ast, geometryKind);
+    return JSON.stringify(cartouche, null, 2);
   }
 
   const parser = version === '1.1.0' ? sldParser110 : sldParser100;

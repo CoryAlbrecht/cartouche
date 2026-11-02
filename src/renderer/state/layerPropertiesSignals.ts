@@ -516,60 +516,37 @@ export async function switchLayerPropertiesStyleFormat(
 
   let newContent = updatedCache[targetKey];
   if (newContent === undefined) {
-    if (targetFormat === "cartouche") {
-      newContent = createDefaultCartoucheLayerStyleJson(geometryKind);
-    } else if (targetFormat === "openlayers") {
-      if (draft.styleFormat === "sld") {
-        try {
-          newContent = await convertStyleFormat(draft.styleContent, {
-            fromFormat: "sld",
-            fromVersion: draft.sldVersion,
-            toFormat: "openlayers",
-          });
-        } catch {
-          newContent = generateDefaultVectorStyleJson();
-        }
-      } else {
-        newContent = generateDefaultVectorStyleJson();
+    if (draft.styleContent && draft.styleContent.trim()) {
+      try {
+        newContent = await convertStyleFormat(draft.styleContent, {
+          fromFormat: draft.styleFormat,
+          fromVersion: draft.sldVersion,
+          toFormat: targetFormat,
+          toVersion: targetVersion,
+          geometryKind,
+        });
+      } catch (err) {
+        logging.warn("Style conversion failed; falling back to default style template", err, {
+          fromFormat: draft.styleFormat,
+          toFormat: targetFormat,
+          scope: "layerPropertiesSignals",
+        });
       }
-    } else if (targetFormat === "sld") {
-      if (draft.styleFormat === "openlayers") {
-        try {
-          newContent = await convertStyleFormat(draft.styleContent, {
-            fromFormat: "openlayers",
-            toFormat: "sld",
-            toVersion: targetVersion,
-          });
-        } catch {
-          const def = generateDefaultVectorStyleJson();
-          try {
-            newContent = await convertStyleFormat(def, {
-              fromFormat: "openlayers",
-              toFormat: "sld",
-              toVersion: targetVersion,
-            });
-          } catch {
-            newContent = "";
-          }
-        }
-      } else if (draft.styleFormat === "sld") {
-        try {
-          newContent = await convertStyleFormat(draft.styleContent, {
-            fromFormat: "sld",
-            fromVersion: draft.sldVersion,
-            toFormat: "sld",
-            toVersion: targetVersion,
-          });
-        } catch {
-          newContent = draft.styleContent;
-        }
-      } else {
+    }
+
+    if (!newContent) {
+      if (targetFormat === "cartouche") {
+        newContent = createDefaultCartoucheLayerStyleJson(geometryKind);
+      } else if (targetFormat === "openlayers") {
+        newContent = generateDefaultVectorStyleJson();
+      } else if (targetFormat === "sld") {
         const def = generateDefaultVectorStyleJson();
         try {
           newContent = await convertStyleFormat(def, {
             fromFormat: "openlayers",
             toFormat: "sld",
             toVersion: targetVersion,
+            geometryKind,
           });
         } catch {
           newContent = "";

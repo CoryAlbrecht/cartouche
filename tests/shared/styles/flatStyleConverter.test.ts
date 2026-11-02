@@ -1,13 +1,15 @@
 /**
  * @file flatStyleConverter.test.ts
  * @module tests/shared/styles/flatStyleConverter.test
- * @description Unit and round-trip integration tests for GeoStyler AST <-> OpenLayers Flat Style bidirectional converter, SLD 1.0.0/1.1.0 format conversions, and live syntax validation.
+ * @description Unit and round-trip integration tests for GeoStyler AST <-> OpenLayers Flat Style bidirectional converter, Cartouche Simple Symbology converter, SLD 1.0.0/1.1.0 format conversions, and live syntax validation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-10-31
+ * @updated 2026-11-01
  * @since 0.1.0-dev
  * @see {@link flatStyleToGeoStyler}
  * @see {@link geoStylerToFlatStyle}
+ * @see {@link cartoucheToGeoStyler}
+ * @see {@link geoStylerToCartouche}
  * @see {@link convertStyleFormat}
  * @see {@link validateStyleContent}
  */
@@ -17,6 +19,8 @@ import assert from 'node:assert/strict';
 import {
   flatStyleToGeoStyler,
   geoStylerToFlatStyle,
+  cartoucheToGeoStyler,
+  geoStylerToCartouche,
   convertStyleFormat,
   validateStyleContent,
   olFilterToGeoStyler,
@@ -26,7 +30,13 @@ import {
   parseStyleTextToGeoStyler,
   serializeGeoStylerToText,
 } from '../../../src/shared/styles/flatStyleConverter';
-import type { OlFlatStyleRule } from '../../../src/shared/types';
+import type {
+  OlFlatStyleRule,
+  SimpleCartoucheStyle,
+  SimpleFillComponent,
+  SimpleLineComponent,
+  SimpleMarkerComponent,
+} from '../../../src/shared/types';
 import type {
   Style as GeoStylerStyle,
   FillSymbolizer,
@@ -581,6 +591,267 @@ describe('GeoStyler AST <-> OpenLayers Flat Style Converter (Ticket #122)', () =
 
       const sldAst = await parseStyleTextToGeoStyler(sldXml, 'sld', '1.0.0');
       assert.ok(sldAst.rules.length > 0);
+    });
+  });
+
+  describe('Cartouche Symbology <-> GeoStyler & Format Conversion (Ticket #131)', () => {
+    it('converts SimpleCartoucheStyle to GeoStyler AST for Polygon, LineString, and Point', () => {
+      // 1. Polygon: fill + line should combine into FillSymbolizer with fill & outline properties
+      const polyCartouche: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'fill-1',
+            type: 'simple-fill',
+            enabled: true,
+            color: '#d8b4e2', // lavender
+          },
+          {
+            id: 'line-1',
+            type: 'simple-line',
+            enabled: true,
+            color: '#6b21a8', // purple
+            width: 1.5,
+          },
+        ],
+      };
+
+      const polyAst = cartoucheToGeoStyler(polyCartouche, 'Polygon');
+      assert.strictEqual(polyAst.rules.length, 1);
+      assert.strictEqual(polyAst.rules[0].symbolizers.length, 1);
+      const fillSym = polyAst.rules[0].symbolizers[0] as FillSymbolizer;
+      assert.strictEqual(fillSym.kind, 'Fill');
+      assert.strictEqual(fillSym.color, '#d8b4e2');
+      assert.strictEqual(fillSym.outlineColor, '#6b21a8');
+      assert.strictEqual(fillSym.outlineWidth, 1.5);
+
+      // 2. LineString: simple-line should produce LineSymbolizer
+      const lineCartouche: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-1',
+            type: 'simple-line',
+            enabled: true,
+            color: '#2563eb',
+            width: 2.5,
+            dashArray: [5, 5],
+          },
+        ],
+      };
+      const lineAst = cartoucheToGeoStyler(lineCartouche, 'LineString');
+      assert.strictEqual(lineAst.rules.length, 1);
+      const lineSym = lineAst.rules[0].symbolizers[0] as LineSymbolizer;
+      assert.strictEqual(lineSym.kind, 'Line');
+      assert.strictEqual(lineSym.color, '#2563eb');
+      assert.strictEqual(lineSym.width, 2.5);
+      assert.deepStrictEqual(lineSym.dasharray, [5, 5]);
+
+      // 3. Point: simple-marker should produce MarkSymbolizer
+      const pointCartouche: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'marker-1',
+            type: 'simple-marker',
+            enabled: true,
+            shape: 'circle',
+            radius: 8,
+            fillColor: '#ef4444',
+            strokeColor: '#991b1b',
+            strokeWidth: 2,
+          },
+        ],
+      };
+      const pointAst = cartoucheToGeoStyler(pointCartouche, 'Point');
+      assert.strictEqual(pointAst.rules.length, 1);
+      const markSym = pointAst.rules[0].symbolizers[0] as MarkSymbolizer;
+      assert.strictEqual(markSym.kind, 'Mark');
+      assert.strictEqual(markSym.color, '#ef4444');
+      assert.strictEqual(markSym.strokeColor, '#991b1b');
+      assert.strictEqual(markSym.strokeWidth, 2);
+      assert.strictEqual(markSym.radius, 8);
+
+      const pointCartoucheResult = geoStylerToCartouche(pointAst, 'Point');
+      const markerComp = pointCartoucheResult.components[0] as SimpleMarkerComponent;
+      assert.strictEqual(markerComp.type, 'simple-marker');
+      assert.strictEqual(markerComp.fillColor, '#ef4444');
+      assert.strictEqual(markerComp.strokeColor, '#991b1b');
+      assert.strictEqual(markerComp.radius, 8);
+    });
+
+    it('converts GeoStyler AST to SimpleCartoucheStyle with painter ordering (fill bottom, stroke top)', () => {
+      const ast: GeoStylerStyle = {
+        name: 'Polygon Style',
+        rules: [
+          {
+            name: 'Rule 1',
+            symbolizers: [
+              {
+                kind: 'Fill',
+                color: '#d8b4e2',
+                outlineColor: '#6b21a8',
+                outlineWidth: 2,
+              } as FillSymbolizer,
+            ],
+          },
+        ],
+      };
+
+      const cartouche = geoStylerToCartouche(ast, 'Polygon');
+      assert.strictEqual(cartouche.format, 'simple');
+      assert.strictEqual(cartouche.version, 1);
+      assert.strictEqual(cartouche.components.length, 2);
+
+      // Painter's order: fill is at index 0 (bottom), line is at index 1 (top)
+      const fillComp = cartouche.components[0] as SimpleFillComponent;
+      assert.strictEqual(fillComp.type, 'simple-fill');
+      assert.strictEqual(fillComp.color, '#d8b4e2');
+
+      const lineComp = cartouche.components[1] as SimpleLineComponent;
+      assert.strictEqual(lineComp.type, 'simple-line');
+      assert.strictEqual(lineComp.color, '#6b21a8');
+      assert.strictEqual(lineComp.width, 2);
+    });
+
+    it('converts OpenLayers Flat Style to Cartouche Symbology and back (lavender fill, purple stroke)', async () => {
+      // The exact test case from project-4.cproj layer timeline_level_0
+      const olJson = JSON.stringify([
+        {
+          style: {
+            'fill-color': '#d8b4e2',
+            'stroke-color': '#6b21a8',
+            'stroke-width': 1.5,
+          },
+        },
+      ]);
+
+      const cartoucheJson = await convertStyleFormat(olJson, {
+        fromFormat: 'openlayers',
+        toFormat: 'cartouche',
+        geometryKind: 'Polygon',
+      });
+
+      const parsedCartouche = JSON.parse(cartoucheJson) as SimpleCartoucheStyle;
+      assert.strictEqual(parsedCartouche.format, 'simple');
+      assert.strictEqual(parsedCartouche.components.length, 2);
+
+      const fill = parsedCartouche.components.find((c) => c.type === 'simple-fill') as SimpleFillComponent;
+      const line = parsedCartouche.components.find((c) => c.type === 'simple-line') as SimpleLineComponent;
+      assert.ok(fill, 'Must have a simple-fill component');
+      assert.ok(line, 'Must have a simple-line component');
+      assert.strictEqual(fill.color, '#d8b4e2');
+      assert.strictEqual(line.color, '#6b21a8');
+      assert.strictEqual(line.width, 1.5);
+
+      // Convert back to OpenLayers
+      const convertedBackOl = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'openlayers',
+        geometryKind: 'Polygon',
+      });
+      const parsedOl = JSON.parse(convertedBackOl);
+      assert.ok(Array.isArray(parsedOl));
+      assert.strictEqual(parsedOl[0].style['fill-color'], '#d8b4e2');
+      assert.strictEqual(parsedOl[0].style['stroke-color'], '#6b21a8');
+      assert.strictEqual(parsedOl[0].style['stroke-width'], 1.5);
+    });
+
+    it('converts Simple Cartouche Symbology to OGC SLD 1.1.0 and 1.0.0 without empty text', async () => {
+      const cartoucheStyle: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'fill-1',
+            type: 'simple-fill',
+            enabled: true,
+            color: '#d8b4e2',
+          },
+          {
+            id: 'line-1',
+            type: 'simple-line',
+            enabled: true,
+            color: '#6b21a8',
+            width: 1.5,
+          },
+        ],
+      };
+      const cartoucheJson = JSON.stringify(cartoucheStyle);
+
+      // Convert to SLD 1.1.0
+      const sld110 = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'sld',
+        toVersion: '1.1.0',
+        geometryKind: 'Polygon',
+      });
+      assert.ok(sld110.length > 0, 'SLD 1.1.0 text must not be empty');
+      assert.ok(sld110.includes('StyledLayerDescriptor'), 'Must be valid SLD XML');
+      assert.ok(sld110.includes('#d8b4e2') || sld110.includes('#D8B4E2'), 'Must contain fill color');
+      assert.ok(sld110.includes('#6b21a8') || sld110.includes('#6B21A8'), 'Must contain stroke color');
+
+      // Convert back from SLD 1.1.0 to cartouche
+      const fromSld110 = await convertStyleFormat(sld110, {
+        fromFormat: 'sld',
+        fromVersion: '1.1.0',
+        toFormat: 'cartouche',
+        geometryKind: 'Polygon',
+      });
+      const parsedFromSld110 = JSON.parse(fromSld110) as SimpleCartoucheStyle;
+      assert.strictEqual(parsedFromSld110.format, 'simple');
+      const sldFill = parsedFromSld110.components.find((c) => c.type === 'simple-fill') as SimpleFillComponent;
+      const sldLine = parsedFromSld110.components.find((c) => c.type === 'simple-line') as SimpleLineComponent;
+      assert.ok(sldFill);
+      assert.ok(sldLine);
+      assert.strictEqual(sldFill.color.toLowerCase(), '#d8b4e2');
+      assert.strictEqual(sldLine.color.toLowerCase(), '#6b21a8');
+
+      // Convert to SLD 1.0.0
+      const sld100 = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'sld',
+        toVersion: '1.0.0',
+        geometryKind: 'Polygon',
+      });
+      assert.ok(sld100.length > 0, 'SLD 1.0.0 text must not be empty');
+      assert.ok(sld100.includes('StyledLayerDescriptor'), 'Must be valid SLD XML');
+      assert.ok(sld100.includes('#d8b4e2') || sld100.includes('#D8B4E2'), 'Must contain fill color');
+      assert.ok(sld100.includes('#6b21a8') || sld100.includes('#6B21A8'), 'Must contain stroke color');
+    });
+
+    it('supports cartouche format in parseStyleTextToGeoStyler and serializeGeoStylerToText', async () => {
+      const cartoucheStyle: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-1',
+            type: 'simple-line',
+            enabled: true,
+            color: '#10b981',
+            width: 3,
+          },
+        ],
+      };
+      const json = JSON.stringify(cartoucheStyle);
+
+      const ast = await parseStyleTextToGeoStyler(json, 'cartouche', '1.0.0', 'LineString');
+      assert.strictEqual(ast.rules.length, 1);
+      const sym = ast.rules[0].symbolizers[0] as LineSymbolizer;
+      assert.strictEqual(sym.kind, 'Line');
+      assert.strictEqual(sym.color, '#10b981');
+      assert.strictEqual(sym.width, 3);
+
+      const serialized = await serializeGeoStylerToText(ast, 'cartouche', '1.0.0', 'LineString');
+      const parsed = JSON.parse(serialized) as SimpleCartoucheStyle;
+      assert.strictEqual(parsed.format, 'simple');
+      const lineComp = parsed.components[0] as SimpleLineComponent;
+      assert.strictEqual(lineComp.color, '#10b981');
+      assert.strictEqual(lineComp.width, 3);
     });
   });
 });

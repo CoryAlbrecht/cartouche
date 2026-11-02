@@ -495,7 +495,6 @@ export const LayerPropertiesDialog: React.FC = () => {
         updateLayerPropertiesDraft({
           styleValidationError: null,
           formatCache: {
-            ...(draft.formatCache || {}),
             [currentKey]: contentToValidate,
           },
         });
@@ -505,7 +504,7 @@ export const LayerPropertiesDialog: React.FC = () => {
         });
       }
     },
-    [draft.styleFormat, draft.sldVersion, draft.formatCache]
+    [draft.styleFormat, draft.sldVersion]
   );
 
   const {
@@ -1487,7 +1486,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                               styleContent: newContent,
                               styleValidationError: null,
                               formatCache: {
-                                ...(draft.formatCache || {}),
                                 cartouche: newContent,
                               },
                             });

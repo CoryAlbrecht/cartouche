@@ -203,6 +203,7 @@ export interface StyleValidationResult {
  * @property {ProjectStyleFormat} toFormat - Target style format dialect.
  * @property {SldStyleVersion} [fromVersion] - Optional source SLD specification version.
  * @property {SldStyleVersion} [toVersion] - Optional target SLD specification version.
+ * @property {string} [geometryKind] - Optional geometry kind hint for target format mapping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
  * @updated 2026-11-01
@@ -213,6 +214,7 @@ export interface StyleFormatConversionOptions {
   toFormat: ProjectStyleFormat;
   fromVersion?: SldStyleVersion;
   toVersion?: SldStyleVersion;
+  geometryKind?: string;
 }
 
 /**
