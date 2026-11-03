@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -624,10 +624,10 @@ export function updateLayerPropertiesInTree(
 }
 
 /**
- * @description Commits active draft modifications (name, ID, CRS, filter, style, opacity) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
+ * @description Commits active draft modifications (name, ID, CRS, filter, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-31
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -727,6 +727,7 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
       layerId: trimmedId,
       name: trimmedName,
       crsDescription: updatedCrs.description,
+      ...(draft.fields ? { fields: draft.fields } : {}),
     };
   }
 

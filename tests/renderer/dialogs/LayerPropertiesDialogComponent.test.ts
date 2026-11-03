@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -2022,6 +2022,169 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.equal(ipcFields.length, 1);
       assert.equal(ipcFields[0].inferredType, 'integer');
       assert.equal(ipcFields[0].userOverridden, true);
+    });
+  });
+
+  describe('Fields Tab Transactional Draft Isolation (Ticket #144 - ADR 0024)', () => {
+    const testLayerId = 'layer-fields-draft-144';
+    const initialFields = [
+      {
+        name: 'pop_density',
+        nativeType: 'Real',
+        inferredType: 'real' as const,
+        userOverridden: false,
+      },
+    ];
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Draft Isolation Layer',
+          type: 'vector',
+          source: '/data/draft-isolation.shp',
+          fields: initialFields.map((f) => ({ ...f })),
+        },
+      ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Draft Isolation Layer',
+          type: 'vector',
+          source: '/data/draft-isolation.shp',
+          fields: initialFields.map((f) => ({ ...f })),
+        },
+      ];
+      isProjectDirtySignal.value = false;
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('isolates field modifications in layerPropertiesDraftSignal without mutating projectLayersSignal or calling IPC', async () => {
+      let ipcCalled = false;
+      (globalThis as any).window.electronAPI.updateLayerFields = async () => {
+        ipcCalled = true;
+        return true;
+      };
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Verify initial draft is populated with initial fields
+      assert.ok(layerPropertiesDraftSignal.value.fields, 'Draft fields must be initialized');
+      assert.equal(layerPropertiesDraftSignal.value.fields[0].inferredType, 'real');
+
+      // Mutate draft fields (simulating handleFieldTypeChange in dialog)
+      const updatedDraftFields = [
+        {
+          name: 'pop_density',
+          nativeType: 'Real',
+          inferredType: 'integer' as const,
+          userOverridden: true,
+        },
+      ];
+      updateLayerPropertiesDraft({ fields: updatedDraftFields });
+
+      // Draft must reflect changes
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'integer');
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].userOverridden, true);
+
+      // Project state must NOT be modified while dialog remains uncommitted
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'real', 'projectLayersSignal must remain unmodified');
+      assert.equal(projectLayer?.fields?.[0].userOverridden, false, 'projectLayersSignal userOverridden must remain false');
+
+      const treeLayer = projectTreeSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal((treeLayer as any)?.fields?.[0].inferredType, 'real', 'projectTreeSignal must remain unmodified');
+
+      // IPC must NOT be called
+      assert.equal(ipcCalled, false, 'IPC updateLayerFields must not be called during draft editing');
+    });
+
+    it('commits draft fields to projectLayersSignal, projectTreeSignal, and IPC upon applyLayerPropertiesEdits', async () => {
+      let ipcCalled = false;
+      let ipcLayerId = '';
+      let ipcFields: any[] = [];
+      (globalThis as any).window.electronAPI.updateLayerFields = async (id: string, fields: any[]) => {
+        ipcCalled = true;
+        ipcLayerId = id;
+        ipcFields = fields;
+        return true;
+      };
+
+      await openLayerPropertiesDialog(testLayerId);
+      const updatedDraftFields = [
+        {
+          name: 'pop_density',
+          nativeType: 'Real',
+          inferredType: 'integer' as const,
+          userOverridden: true,
+        },
+      ];
+      updateLayerPropertiesDraft({ fields: updatedDraftFields });
+
+      const commitResult = await applyLayerPropertiesEdits();
+      assert.equal(commitResult, true, 'applyLayerPropertiesEdits must succeed');
+
+      // Verify projectLayersSignal and projectTreeSignal updated
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'integer');
+      assert.equal(projectLayer?.fields?.[0].userOverridden, true);
+
+      const treeLayer = projectTreeSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal((treeLayer as any)?.fields?.[0].inferredType, 'integer');
+      assert.equal((treeLayer as any)?.fields?.[0].userOverridden, true);
+
+      // Verify IPC was dispatched
+      assert.equal(ipcCalled, true, 'IPC updateLayerFields must be called upon apply');
+      assert.equal(ipcLayerId, testLayerId);
+      assert.equal(ipcFields[0].inferredType, 'integer');
+      assert.equal(ipcFields[0].userOverridden, true);
+
+      // Verify Project Dirty State is flagged via isProjectDirtySignal
+      assert.equal(isProjectDirtySignal.value, true);
+
+      // Verify layerDetailedInfoSignal fields updated if present
+      assert.equal(layerDetailedInfoSignal.value?.fields?.[0].inferredType, 'integer');
+    });
+
+    it('discards draft fields and leaves projectLayersSignal intact upon cancelLayerPropertiesEdits', async () => {
+      let ipcCalled = false;
+      (globalThis as any).window.electronAPI.updateLayerFields = async () => {
+        ipcCalled = true;
+        return true;
+      };
+
+      await openLayerPropertiesDialog(testLayerId);
+      const updatedDraftFields = [
+        {
+          name: 'pop_density',
+          nativeType: 'Real',
+          inferredType: 'uuid' as const,
+          userOverridden: true,
+        },
+      ];
+      updateLayerPropertiesDraft({ fields: updatedDraftFields });
+
+      // Cancel edits
+      cancelLayerPropertiesEdits();
+
+      // Draft must be reset
+      assert.equal(layerPropertiesDraftSignal.value.fields, undefined);
+      assert.equal(activeLayerPropertiesIdSignal.value, null);
+
+      // Project state must remain original
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'real');
+      assert.equal(projectLayer?.fields?.[0].userOverridden, false);
+
+      const treeLayer = projectTreeSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal((treeLayer as any)?.fields?.[0].inferredType, 'real');
+
+      // IPC must NOT be called
+      assert.equal(ipcCalled, false, 'IPC updateLayerFields must not be called upon cancel');
     });
   });
 });

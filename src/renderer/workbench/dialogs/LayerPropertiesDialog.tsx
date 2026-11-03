@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link activeLayerPropertiesIdSignal}
@@ -46,14 +46,12 @@ import {
 import {
   projectLayersSignal,
   projectTreeSignal,
-  updateLayerFields,
 } from "@renderer/state/projectSignals";
 import {
   type InferredFieldType,
   type LayerFieldInfo,
   CANONICAL_INFERRED_FIELD_TYPES,
 } from "@shared/types";
-import { logging } from "../../../shared/logging";
 import {
   convertStyleFormat,
   validateStyleContent,
@@ -459,7 +457,7 @@ const SECONDARY_BUTTON_STYLE: React.CSSProperties = {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -483,10 +481,10 @@ export const LayerPropertiesDialog: React.FC = () => {
 
   /**
    * @function handleFieldTypeChange
-   * @description Modifies a field's inferredType, marks userOverridden: true, and synchronizes with ProjectStore.
+   * @description Modifies a field's inferredType, marks userOverridden: true, and updates transactional draft state conforming to ADR 0024.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-02
-   * @updated 2026-11-02
+   * @updated 2026-11-03
    * @since 0.1.0-dev
    * @param {string} fieldName - Name of the target field to modify.
    * @param {InferredFieldType} newType - New canonical field data type.
@@ -506,23 +504,8 @@ export const LayerPropertiesDialog: React.FC = () => {
         return f;
       });
 
-      // 1. Update draft
+      // Update draft state exclusively (conforming to ADR 0024)
       updateLayerPropertiesDraft({ fields: updatedFields });
-
-      // 2. Update renderer state (projectLayersSignal, projectTreeSignal, isProjectDirtySignal)
-      updateLayerFields(activeId, updatedFields);
-
-      // 3. Update main process ProjectStore via IPC (sets projectStore dirty)
-      if (typeof window !== "undefined" && window.electronAPI?.updateLayerFields) {
-        window.electronAPI.updateLayerFields(activeId, updatedFields).catch((err: any) => {
-          logging.error("Failed to update layer fields via IPC", err, {
-            scope: "LayerPropertiesDialog",
-            activeId,
-            fieldName,
-            newType,
-          });
-        });
-      }
     },
     [activeId, layerFields]
   );
