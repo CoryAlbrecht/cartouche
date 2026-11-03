@@ -4,11 +4,12 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
  * @see {@link ProjectGroupItem}
+ * @see {@link updateLayerFields}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -17,7 +18,8 @@ import type {
   ProjectLayerItem,
   ProjectGroupItem,
   ProjectLayerStyleItem,
-  LayerDescriptor
+  LayerDescriptor,
+  LayerFieldInfo
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 
@@ -878,6 +880,42 @@ export function updateLayerFeatureCount(layerId: string, featureCount: number): 
     });
   };
   projectTreeSignal.value = updateTree(projectTreeSignal.value);
+}
+
+/**
+ * @function updateLayerFields
+ * @description Updates the vector field schema metadata for a specific layer across projectLayersSignal and projectTreeSignal, setting Project Dirty State.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @param {string} layerId - Unique identifier of the target layer.
+ * @param {LayerFieldInfo[]} fields - Array of updated field metadata definitions.
+ * @returns {void}
+ */
+export function updateLayerFields(layerId: string, fields: LayerFieldInfo[]): void {
+  projectLayersSignal.value = projectLayersSignal.value.map((l) =>
+    l.id === layerId ? { ...l, fields } : l
+  );
+
+  const updateTree = (
+    items: Array<ProjectLayerItem | ProjectGroupItem>
+  ): Array<ProjectLayerItem | ProjectGroupItem> => {
+    return items.map((item) => {
+      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+        return {
+          ...item,
+          children: updateTree((item as ProjectGroupItem).children)
+        };
+      }
+      if (item.id === layerId) {
+        return { ...item, fields };
+      }
+      return item;
+    });
+  };
+  projectTreeSignal.value = updateTree(projectTreeSignal.value);
+  isProjectDirtySignal.value = true;
 }
 
 /**

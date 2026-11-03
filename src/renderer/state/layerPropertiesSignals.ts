@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -20,6 +20,7 @@ import type {
   SldStyleVersion,
   ProjectLayerStyleItem,
   LayerVisualSymbolizer,
+  LayerFieldInfo,
 } from "@shared/types";
 import {
   parseStyleTextToGeoStyler,
@@ -33,9 +34,11 @@ import {
 } from "../../shared/styles/defaultLayerStyles";
 import {
   projectTreeSignal,
+  projectLayersSignal,
   isProjectDirtySignal,
   resolveLayerStyleItem,
   applyStyleToLayers,
+  updateLayerFields,
 } from "./projectSignals";
 import { logging } from "../../shared/logging";
 
@@ -64,6 +67,7 @@ export type LayerPropertiesTabId =
  * @property {LayerVisualSymbolizer} visualSymbolizer - Active draft visual symbolizer control parameters.
  * @property {number} opacity - Draft layer opacity between 0.0 and 1.0.
  * @property {Record<string, string>} [formatCache] - In-memory style text cache indexed by format key across switches.
+ * @property {LayerFieldInfo[]} [fields] - Draft array of layer attribute field definitions.
  */
 export interface LayerPropertiesDraft {
   layerName: string;
@@ -78,6 +82,7 @@ export interface LayerPropertiesDraft {
   visualSymbolizer: LayerVisualSymbolizer;
   opacity: number;
   formatCache?: Record<string, string>;
+  fields?: LayerFieldInfo[];
 }
 
 /**
@@ -264,6 +269,13 @@ export async function openLayerPropertiesDialog(
   isLayerPropertiesLoadingSignal.value = true;
 
   const currentLayer = findLayerInTree(projectTreeSignal.value, layerId);
+  const currentProjectLayer = projectLayersSignal.value.find((l) => l.id === layerId);
+  const initialFields =
+    currentProjectLayer?.fields
+      ? currentProjectLayer.fields.map((f) => ({ ...f }))
+      : (currentLayer && 'fields' in currentLayer && (currentLayer as any).fields)
+        ? ((currentLayer as any).fields as LayerFieldInfo[]).map((f) => ({ ...f }))
+        : undefined;
   const initialName = currentLayer?.name || layerId;
   const initialCrs = currentLayer?.crs?.authId || "EPSG:4326";
   const initialFilter =
@@ -334,6 +346,7 @@ export async function openLayerPropertiesDialog(
     visualSymbolizer: initialVisual,
     opacity: initialOpacity,
     formatCache: initialCache,
+    fields: initialFields,
   };
 
   try {
@@ -416,6 +429,7 @@ export function closeLayerPropertiesDialog(): void {
     visualSymbolizer: {},
     opacity: 1,
     formatCache: {},
+    fields: undefined,
   };
 }
 
@@ -696,6 +710,14 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
       content: draft.styleContent,
     };
     await applyStyleToLayers([trimmedId], draftStyle, draft.opacity);
+  }
+
+  // 5. Update layer fields if draft fields are present
+  if (draft.fields) {
+    updateLayerFields(trimmedId, draft.fields);
+    if (window.electronAPI?.updateLayerFields) {
+      await window.electronAPI.updateLayerFields(trimmedId, draft.fields);
+    }
   }
 
   // Refresh detailed info if available

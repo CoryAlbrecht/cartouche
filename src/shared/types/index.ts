@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 
@@ -418,6 +418,8 @@ export interface ElectronAPI {
   reorderNodes?: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>;
   /** @ipc layers:getLayerInfo */
   getLayerInfo?: (layerId: string) => Promise<import('./layers').LayerDetailedInfo>;
+  /** @ipc layers:updateLayerFields */
+  updateLayerFields?: (layerId: string, fields: import('./layers').LayerFieldInfo[]) => Promise<boolean>;
   /** @ipc layers:rekeyLayer */
   rekeyLayer?: (oldLayerId: string, newLayerId: string) => Promise<{ success: boolean; layerId: string }>;
   /** @ipc layers:setLayerStyle */

@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -16,7 +16,7 @@ import type { DropPosition, ElectronAPI, ProjectLayerStyleItem } from '@shared/t
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -70,6 +70,9 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:getLayerInfo */
   getLayerInfo: (layerId: string) =>
     ipcRenderer.invoke('layers:getLayerInfo', layerId),
+  /** @ipc layers:updateLayerFields */
+  updateLayerFields: (layerId: string, fields: any[]) =>
+    ipcRenderer.invoke('layers:updateLayerFields', layerId, fields),
   /** @ipc layers:rekeyLayer */
   rekeyLayer: (oldLayerId: string, newLayerId: string) =>
     ipcRenderer.invoke('layers:rekeyLayer', oldLayerId, newLayerId),

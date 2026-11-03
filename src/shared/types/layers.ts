@@ -69,6 +69,37 @@ export type InferredArrayFieldType =
 export type InferredFieldType = InferredScalarFieldType | InferredArrayFieldType;
 
 /**
+ * Array of all 20 canonical scalar and array inferred field data types.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @type {readonly InferredFieldType[]}
+ */
+export const CANONICAL_INFERRED_FIELD_TYPES: readonly InferredFieldType[] = [
+  'string',
+  'integer',
+  'real',
+  'boolean',
+  'date',
+  'time',
+  'datetime',
+  'uuid',
+  'json',
+  'binary',
+  'string[]',
+  'integer[]',
+  'real[]',
+  'boolean[]',
+  'date[]',
+  'time[]',
+  'datetime[]',
+  'uuid[]',
+  'json[]',
+  'binary[]'
+] as const;
+
+/**
  * @typedef {Object} LayerFieldInfo
  * @property {string} name - Attribute field identifier name.
  * @property {string} nativeType - OGR/GDAL native field data type (e.g. "String", "Integer", "Real").

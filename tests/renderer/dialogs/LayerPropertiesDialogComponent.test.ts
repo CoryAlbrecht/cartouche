@@ -51,7 +51,15 @@ const {
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
 } = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
-const { projectTreeSignal, isProjectDirtySignal } = jiti('../../../src/renderer/state/projectSignals.ts');
+const {
+  projectTreeSignal,
+  projectLayersSignal,
+  isProjectDirtySignal,
+  updateLayerFields,
+} = jiti('../../../src/renderer/state/projectSignals.ts');
+const {
+  CANONICAL_INFERRED_FIELD_TYPES,
+} = jiti('../../../src/shared/types/layers.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
 const {
   preferencesMapSignal,
@@ -1756,6 +1764,264 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         /id="layer-prop-component-duplicate"[^>]*disabled=""/.test(cappedHtml),
         'Duplicate button must be disabled when 32 components exist'
       );
+    });
+  });
+
+  describe('Layer Field Type Inspection & Manual Overrides (Ticket #141)', () => {
+    it('reads field definitions directly from projectLayersSignal without calling layers:getLayerInfo', async () => {
+      let getLayerInfoCalled = false;
+      (globalThis as any).window.electronAPI.getLayerInfo = async () => {
+        getLayerInfoCalled = true;
+        throw new Error('layers:getLayerInfo should not be invoked when fields are in projectLayersSignal');
+      };
+
+      const testLayerId = 'layer-in-memory-141';
+      const sampleFields = [
+        {
+          name: 'parcel_id',
+          nativeType: 'Integer',
+          inferredType: 'integer' as const,
+          width: 10,
+          precision: 0,
+          nullable: false,
+        },
+        {
+          name: 'metadata_raw',
+          nativeType: 'String',
+          inferredType: 'json' as const,
+          width: 0,
+          precision: 0,
+          nullable: true,
+          userOverridden: true,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Parcels In Memory',
+          type: 'vector',
+          source: '/data/parcels.shp',
+          fields: sampleFields,
+          geometryKind: 'Polygon',
+        },
+      ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Parcels In Memory',
+          type: 'vector',
+          source: '/data/parcels.shp',
+          fields: sampleFields,
+          geometryKind: 'Polygon',
+        },
+      ];
+
+      activeLayerPropertiesIdSignal.value = testLayerId;
+      layerPropertiesDraftSignal.value = {
+        layerName: 'Parcels In Memory',
+        layerId: testLayerId,
+        crsAuthId: 'EPSG:4326',
+        featureFilter: '',
+        idValidationError: null,
+        styleFormat: 'openlayers',
+        sldVersion: '1.0.0',
+        styleContent: '',
+        styleValidationError: null,
+        visualSymbolizer: {},
+        opacity: 1,
+        formatCache: {},
+        fields: sampleFields,
+      };
+
+      // 1. Information Tab test
+      activeLayerPropertiesTabSignal.value = 'information';
+      const infoHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(infoHtml.includes('parcel_id'), 'Information tab must render parcel_id from projectLayersSignal');
+      assert.ok(infoHtml.includes('metadata_raw'), 'Information tab must render metadata_raw from projectLayersSignal');
+      assert.ok(infoHtml.includes('integer'), 'Information tab must display inferredType integer');
+      assert.ok(infoHtml.includes('json'), 'Information tab must display inferredType json');
+      assert.equal(getLayerInfoCalled, false, 'getLayerInfo must not be invoked during in-memory field rendering');
+
+      // 2. Fields Tab test
+      activeLayerPropertiesTabSignal.value = 'fields';
+      const fieldsHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(fieldsHtml.includes('parcel_id'), 'Fields tab must render parcel_id from projectLayersSignal');
+      assert.ok(fieldsHtml.includes('metadata_raw'), 'Fields tab must render metadata_raw from projectLayersSignal');
+      assert.equal(getLayerInfoCalled, false, 'getLayerInfo must not be invoked on Fields tab');
+    });
+
+    it('displays the current inferredType for each attribute with clear visual indication for user-overridden fields', () => {
+      const testLayerId = 'layer-visual-override-141';
+      const sampleFields = [
+        {
+          name: 'normal_field',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          userOverridden: false,
+        },
+        {
+          name: 'overridden_field',
+          nativeType: 'String',
+          inferredType: 'uuid' as const,
+          userOverridden: true,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Override Visual Layer',
+          type: 'vector',
+          source: '/data/overrides.shp',
+          fields: sampleFields,
+        },
+      ];
+      activeLayerPropertiesIdSignal.value = testLayerId;
+      layerPropertiesDraftSignal.value = {
+        layerName: 'Override Visual Layer',
+        layerId: testLayerId,
+        crsAuthId: 'EPSG:4326',
+        featureFilter: '',
+        idValidationError: null,
+        styleFormat: 'openlayers',
+        sldVersion: '1.0.0',
+        styleContent: '',
+        styleValidationError: null,
+        visualSymbolizer: {},
+        opacity: 1,
+        formatCache: {},
+        fields: sampleFields,
+      };
+
+      activeLayerPropertiesTabSignal.value = 'fields';
+      const fieldsHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Overridden field must render User badge and green override styling
+      assert.ok(
+        fieldsHtml.includes('layer-field-override-badge'),
+        'Must render layer-field-override-badge for user-overridden field'
+      );
+      assert.ok(
+        fieldsHtml.includes('User</span>'),
+        'Must render User text badge for user-overridden field'
+      );
+      assert.ok(
+        fieldsHtml.includes('background-color:#f0fdf4') || fieldsHtml.includes('backgroundColor:#f0fdf4'),
+        'Overridden select element must have light green background style'
+      );
+    });
+
+    it('renders in-table dropdown selector offering all 20 canonical scalar and array types', () => {
+      const testLayerId = 'layer-dropdown-141';
+      const sampleFields = [
+        {
+          name: 'field_types_test',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Types Test Layer',
+          type: 'vector',
+          source: '/data/types.shp',
+          fields: sampleFields,
+        },
+      ];
+      activeLayerPropertiesIdSignal.value = testLayerId;
+      layerPropertiesDraftSignal.value = {
+        layerName: 'Types Test Layer',
+        layerId: testLayerId,
+        crsAuthId: 'EPSG:4326',
+        featureFilter: '',
+        idValidationError: null,
+        styleFormat: 'openlayers',
+        sldVersion: '1.0.0',
+        styleContent: '',
+        styleValidationError: null,
+        visualSymbolizer: {},
+        opacity: 1,
+        formatCache: {},
+        fields: sampleFields,
+      };
+
+      activeLayerPropertiesTabSignal.value = 'fields';
+      const fieldsHtml = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert.ok(
+        fieldsHtml.includes('layer-field-type-select'),
+        'Must render select with layer-field-type-select class'
+      );
+
+      // Verify all 20 canonical types are present as options
+      assert.equal(CANONICAL_INFERRED_FIELD_TYPES.length, 20);
+      for (const canonicalType of CANONICAL_INFERRED_FIELD_TYPES) {
+        assert.ok(
+          fieldsHtml.includes(`value="${canonicalType}"`) &&
+          fieldsHtml.includes(`>${canonicalType}</option>`),
+          `Select dropdown must include option for ${canonicalType}`
+        );
+      }
+    });
+
+    it('modifying an inferredType marks userOverridden: true, updates projectLayersSignal, and sets Project Dirty State', async () => {
+      const testLayerId = 'layer-state-update-141';
+      const initialFields = [
+        {
+          name: 'population',
+          nativeType: 'Real',
+          inferredType: 'real' as const,
+          userOverridden: false,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'State Update Layer',
+          type: 'vector',
+          source: '/data/state.shp',
+          fields: initialFields,
+        },
+      ];
+      isProjectDirtySignal.value = false;
+
+      // 1. Test renderer updateLayerFields function
+      const updatedFields = [
+        {
+          name: 'population',
+          nativeType: 'Real',
+          inferredType: 'integer' as const,
+          userOverridden: true,
+        },
+      ];
+
+      updateLayerFields(testLayerId, updatedFields);
+      assert.equal(isProjectDirtySignal.value, true, 'updateLayerFields must flag isProjectDirtySignal');
+      const updatedLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.ok(updatedLayer, 'Layer must still exist in projectLayersSignal');
+      assert.equal(updatedLayer.fields?.[0].inferredType, 'integer');
+      assert.equal(updatedLayer.fields?.[0].userOverridden, true);
+
+      // 2. Test IPC dispatch to window.electronAPI.updateLayerFields
+      let ipcLayerId = '';
+      let ipcFields: any[] = [];
+      (globalThis as any).window.electronAPI.updateLayerFields = async (id: string, fields: any[]) => {
+        ipcLayerId = id;
+        ipcFields = fields;
+        return true;
+      };
+
+      if ((globalThis as any).window.electronAPI.updateLayerFields) {
+        await (globalThis as any).window.electronAPI.updateLayerFields(testLayerId, updatedFields);
+      }
+      assert.equal(ipcLayerId, testLayerId, 'Must pass layerId to IPC updateLayerFields');
+      assert.equal(ipcFields.length, 1);
+      assert.equal(ipcFields[0].inferredType, 'integer');
+      assert.equal(ipcFields[0].userOverridden, true);
     });
   });
 });

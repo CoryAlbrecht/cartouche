@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -31,7 +31,8 @@ import {
   resolveDialogDefaultPath,
   saveStyleFile,
   setLayerStyle,
-  updateDialogLocation
+  updateDialogLocation,
+  updateLayerFields
 } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
@@ -122,7 +123,7 @@ Categories=Graphics;Science;Geoscience;
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -651,6 +652,14 @@ function startApp(): void {
 
   handleIpc('layers:getLayerInfo', async (_event, layerId: string) => {
     return await getLayerInfo(layerId);
+  });
+
+  handleIpc('layers:updateLayerFields', async (_event, layerId: string, fields: any[]) => {
+    return await updateLayerFields(layerId, fields);
+  });
+
+  handleIpc('gis:update-layer-fields', async (_event, layerId: string, fields: any[]) => {
+    return await updateLayerFields(layerId, fields);
   });
 
   handleIpc('layers:rekeyLayer', async (_event, oldLayerId: string, newLayerId: string) => {

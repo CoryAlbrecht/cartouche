@@ -39,9 +39,21 @@ import {
   switchLayerPropertiesStyleFormat,
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
+  findLayerInTree,
   POPULAR_CRS_OPTIONS,
   type LayerPropertiesTabId,
 } from "@renderer/state/layerPropertiesSignals";
+import {
+  projectLayersSignal,
+  projectTreeSignal,
+  updateLayerFields,
+} from "@renderer/state/projectSignals";
+import {
+  type InferredFieldType,
+  type LayerFieldInfo,
+  CANONICAL_INFERRED_FIELD_TYPES,
+} from "@shared/types";
+import { logging } from "../../../shared/logging";
 import {
   convertStyleFormat,
   validateStyleContent,
@@ -459,6 +471,61 @@ export const LayerPropertiesDialog: React.FC = () => {
   const info = layerDetailedInfoSignal.value;
   const isLoading = isLayerPropertiesLoadingSignal.value;
   const draft = layerPropertiesDraftSignal.value;
+
+  const currentProjectLayer = activeId ? projectLayersSignal.value.find((l) => l.id === activeId) : undefined;
+  const currentTreeLayer = activeId ? findLayerInTree(projectTreeSignal.value, activeId) : undefined;
+  const layerFields: LayerFieldInfo[] =
+    draft.fields ??
+    currentProjectLayer?.fields ??
+    (currentTreeLayer && 'fields' in currentTreeLayer ? (currentTreeLayer as any).fields : undefined) ??
+    info?.fields ??
+    [];
+
+  /**
+   * @function handleFieldTypeChange
+   * @description Modifies a field's inferredType, marks userOverridden: true, and synchronizes with ProjectStore.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {string} fieldName - Name of the target field to modify.
+   * @param {InferredFieldType} newType - New canonical field data type.
+   * @returns {void}
+   */
+  const handleFieldTypeChange = useCallback(
+    (fieldName: string, newType: InferredFieldType) => {
+      if (!activeId) return;
+      const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
+        if (f.name === fieldName) {
+          return {
+            ...f,
+            inferredType: newType,
+            userOverridden: true,
+          };
+        }
+        return f;
+      });
+
+      // 1. Update draft
+      updateLayerPropertiesDraft({ fields: updatedFields });
+
+      // 2. Update renderer state (projectLayersSignal, projectTreeSignal, isProjectDirtySignal)
+      updateLayerFields(activeId, updatedFields);
+
+      // 3. Update main process ProjectStore via IPC (sets projectStore dirty)
+      if (typeof window !== "undefined" && window.electronAPI?.updateLayerFields) {
+        window.electronAPI.updateLayerFields(activeId, updatedFields).catch((err: any) => {
+          logging.error("Failed to update layer fields via IPC", err, {
+            scope: "LayerPropertiesDialog",
+            activeId,
+            fieldName,
+            newType,
+          });
+        });
+      }
+    },
+    [activeId, layerFields]
+  );
 
   const showNativeType = Boolean(
     preferencesMapSignal.value["ui.layerProperties.fields.showNativeType"]?.value
@@ -1098,7 +1165,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {!info?.fields || info.fields.length === 0 ?
+                      {!layerFields || layerFields.length === 0 ?
                         <tr>
                           <td
                             colSpan={6}
@@ -1111,7 +1178,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                             No attribute fields found for this layer.
                           </td>
                         </tr>
-                      : info.fields.map((field) => (
+                      : layerFields.map((field) => (
                           <tr
                             key={field.name}
                             style={{ borderBottom: "1px solid #e2e8f0" }}>
@@ -1128,9 +1195,27 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 padding: "6px 10px",
                                 fontFamily:
                                   "var(--cartouche-theme-font-family-mono, monospace)",
-                                color: "#0f766e",
+                                color: field.userOverridden ? "#047857" : "#0f766e",
+                                fontWeight: field.userOverridden ? 600 : 400,
                               }}>
                               {field.inferredType ?? field.mappedType}
+                              {field.userOverridden && (
+                                <span
+                                  className='layer-field-override-badge'
+                                  title='Field type manually overridden by user'
+                                  style={{
+                                    marginLeft: "6px",
+                                    fontSize: "0.6875rem",
+                                    padding: "1px 5px",
+                                    borderRadius: "3px",
+                                    backgroundColor: "#dcfce7",
+                                    color: "#15803d",
+                                    fontWeight: 600,
+                                    textTransform: "uppercase",
+                                  }}>
+                                  User
+                                </span>
+                              )}
                             </td>
                             <td
                               style={{ padding: "6px 10px", color: "#475569" }}>
@@ -1823,7 +1908,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {!info?.fields || info.fields.length === 0 ?
+                    {!layerFields || layerFields.length === 0 ?
                       <tr>
                         <td
                           colSpan={showNativeType ? 6 : 5}
@@ -1836,7 +1921,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                           No attribute fields found.
                         </td>
                       </tr>
-                    : info.fields.map((field) => (
+                    : layerFields.map((field) => (
                         <tr
                           key={field.name}
                           style={{ borderBottom: "1px solid #e2e8f0" }}>
@@ -1850,7 +1935,53 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 "var(--cartouche-theme-font-family-mono, monospace)",
                               color: "#0f766e",
                             }}>
-                            {field.inferredType ?? field.mappedType}
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <select
+                                className='layer-field-type-select'
+                                aria-label={`Field type for ${field.name}`}
+                                value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
+                                onChange={(e) =>
+                                  handleFieldTypeChange(
+                                    field.name,
+                                    e.target.value as InferredFieldType
+                                  )
+                                }
+                                style={{
+                                  padding: "2px 6px",
+                                  fontSize: "0.8125rem",
+                                  fontFamily:
+                                    "var(--cartouche-theme-font-family-mono, monospace)",
+                                  fontWeight: field.userOverridden ? 600 : 400,
+                                  color: field.userOverridden ? "#047857" : "#0f766e",
+                                  backgroundColor: field.userOverridden ? "#f0fdf4" : "#ffffff",
+                                  border: field.userOverridden ? "1px solid #10b981" : "1px solid #cbd5e1",
+                                  borderRadius: "3px",
+                                  cursor: "pointer",
+                                }}>
+                                {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
+                                  <option key={typeOption} value={typeOption}>
+                                    {typeOption}
+                                  </option>
+                                ))}
+                              </select>
+                              {field.userOverridden && (
+                                <span
+                                  className='layer-field-override-badge'
+                                  title='Field type manually overridden by user'
+                                  style={{
+                                    fontSize: "0.6875rem",
+                                    padding: "1px 5px",
+                                    borderRadius: "3px",
+                                    backgroundColor: "#dcfce7",
+                                    color: "#15803d",
+                                    fontWeight: 600,
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.025em",
+                                  }}>
+                                  User
+                                </span>
+                              )}
+                            </div>
                           </td>
                           {showNativeType && (
                             <td style={{ padding: "6px 10px", color: "#475569" }}>
@@ -1980,7 +2111,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                         backgroundColor: "#ffffff",
                       }}>
                       <option value=''>—</option>
-                      {(info?.fields || []).map((f) => (
+                      {layerFields.map((f) => (
                         <option key={f.name} value={f.name}>
                           {f.name} ({f.nativeType})
                         </option>
@@ -2013,7 +2144,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                         backgroundColor: "#ffffff",
                       }}>
                       <option value=''>—</option>
-                      {(info?.fields || []).map((f) => (
+                      {layerFields.map((f) => (
                         <option key={f.name} value={f.name}>
                           {f.name} ({f.nativeType})
                         </option>
