@@ -43,12 +43,14 @@ import type {
  * @property {gdal.Layer} layer - Primary native GDAL spatial layer handle.
  * @property {string} filePath - Absolute path to underlying data file.
  * @property {LayerFieldInfo[]} [fields] - Inferred layer attribute field descriptors.
+ * @property {number} [cursorVersion] - Monotonically increasing revision counter tracking spatial filter and cursor mutations.
  */
 interface EngineSession {
   dataset: gdal.Dataset;
   layer: gdal.Layer;
   filePath: string;
   fields?: LayerFieldInfo[];
+  cursorVersion?: number;
 }
 
 /**
@@ -532,16 +534,50 @@ export function transformFeatureProperty(
 }
 
 /**
+ * @interface BackgroundScanState
+ * @description Tracks cooperative background verification scan execution state for an opened vector dataset.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @property {string} layerId - Target layer identifier.
+ * @property {boolean} cancelled - Flag indicating whether scan has been cancelled.
+ * @property {number} featureIndex - Current sequential feature offset index.
+ * @property {number} totalFeatures - Total feature count in layer.
+ * @property {number} batchSize - Maximum features processed per tick (default 500).
+ * @property {NodeJS.Immediate | null} timerId - Active setImmediate timer handle.
+ * @property {number} [cursorVersion] - Cursor revision counter at scan start/resume.
+ * @property {any} [currentFeature] - Active GDAL feature handle for sequential traversal.
+ * @property {() => void} [resolvePromise] - Completion resolver callback.
+ */
+interface BackgroundScanState {
+  layerId: string;
+  cancelled: boolean;
+  featureIndex: number;
+  totalFeatures: number;
+  batchSize: number;
+  timerId: NodeJS.Immediate | null;
+  cursorVersion?: number;
+  currentFeature?: any;
+  promise?: Promise<void>;
+  resolvePromise?: () => void;
+}
+
+/**
  * @class GeospatialEngine
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-19
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  */
 export class GeospatialEngine {
   private sessions = new Map<string, EngineSession>();
   private queues = new Map<string, Promise<unknown>>();
+  private activeScans = new Map<string, BackgroundScanState>();
+  private pendingQueries = new Map<string, number>();
+  public backgroundScanEnabled: boolean = true;
+  public onFieldDemoted?: (layerId: string, updatedFields: LayerFieldInfo[]) => void;
 
   /**
    * @description Opens a spatial dataset from disk, extracts metadata, and registers the session.
@@ -661,6 +697,15 @@ export class GeospatialEngine {
     const session = this.sessions.get(layerId);
     if (session) {
       session.fields = fields;
+    }
+
+    if (this.backgroundScanEnabled && featureCount > 0) {
+      this.startBackgroundScan(layerId).catch((scanErr) => {
+        logging.warn("Background scan error on openDataset", scanErr, {
+          layerId,
+          scope: "GeospatialEngine",
+        });
+      });
     }
 
     return { layerId, name, extent, featureCount, crs, geometryKind, fields };
@@ -1138,6 +1183,12 @@ export class GeospatialEngine {
    * @returns {void}
    */
   public rekeySession(oldLayerId: string, newLayerId: string): void {
+    const scan = this.activeScans.get(oldLayerId);
+    if (scan) {
+      this.activeScans.delete(oldLayerId);
+      scan.layerId = newLayerId;
+      this.activeScans.set(newLayerId, scan);
+    }
     const session = this.sessions.get(oldLayerId);
     if (!session) {
       return;
@@ -1173,7 +1224,11 @@ export class GeospatialEngine {
       throw new Error(`Layer session not found for layer UUID: "${layerId}"`);
     }
 
-    return this.executeSequential(layerId, async () => {
+    const pending = (this.pendingQueries.get(layerId) || 0) + 1;
+    this.pendingQueries.set(layerId, pending);
+
+    try {
+      return await this.executeSequential(layerId, async () => {
       const activeSession = this.sessions.get(layerId);
       if (!activeSession) {
         throw new Error(`Layer session not found for layer UUID: "${layerId}"`);
@@ -1393,14 +1448,33 @@ export class GeospatialEngine {
         }
       }
     });
+    } finally {
+      const remaining = (this.pendingQueries.get(layerId) || 1) - 1;
+      if (remaining <= 0) {
+        this.pendingQueries.delete(layerId);
+      } else {
+        this.pendingQueries.set(layerId, remaining);
+      }
+      const s = this.sessions.get(layerId);
+      if (s) {
+        s.cursorVersion = (s.cursorVersion || 0) + 1;
+      }
+    }
   }
 
   /**
    * @description Closes a specific native dataset session and disposes its handles.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-15
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @returns {boolean} True if dataset was found and closed, false otherwise.
    */
   public closeDataset(layerId: string): boolean {
+    this.cancelBackgroundScan(layerId);
+    this.pendingQueries.delete(layerId);
+
     const session = this.sessions.get(layerId);
     if (!session) {
       return false;
@@ -1425,14 +1499,453 @@ export class GeospatialEngine {
 
   /**
    * @description Closes all open native datasets and clears all sessions.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-15
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
    * @returns {void}
    */
   public closeAll(): void {
+    this.cancelAllBackgroundScans();
+    this.pendingQueries.clear();
     for (const layerId of Array.from(this.sessions.keys())) {
       this.closeDataset(layerId);
     }
     this.sessions.clear();
     this.queues.clear();
+  }
+
+  /**
+   * @description Configures whether cooperative background verification scanning is active.
+   * Disabling the preference immediately cancels all active scans.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {boolean} enabled - Whether background scanning is enabled.
+   * @returns {void}
+   */
+  public setBackgroundScanEnabled(enabled: boolean): void {
+    this.backgroundScanEnabled = enabled;
+    if (!enabled) {
+      this.cancelAllBackgroundScans();
+    }
+  }
+
+  /**
+   * @description Checks if a background scan is actively running for the given layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @returns {boolean} True if an active, non-cancelled scan exists.
+   */
+  public isBackgroundScanActive(layerId: string): boolean {
+    const scan = this.activeScans.get(layerId);
+    return Boolean(scan && !scan.cancelled);
+  }
+
+  /**
+   * @description Cancels an in-progress background verification scan for a specific layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @returns {void}
+   */
+  public cancelBackgroundScan(layerId: string): void {
+    const scan = this.activeScans.get(layerId);
+    if (scan) {
+      scan.cancelled = true;
+      if (scan.timerId) {
+        clearImmediate(scan.timerId);
+        scan.timerId = null;
+      }
+      if (scan.resolvePromise) {
+        scan.resolvePromise();
+      }
+      this.activeScans.delete(layerId);
+    }
+  }
+
+  /**
+   * @description Cancels all active background verification scans across all layers.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public cancelAllBackgroundScans(): void {
+    for (const layerId of Array.from(this.activeScans.keys())) {
+      this.cancelBackgroundScan(layerId);
+    }
+  }
+
+  /**
+   * @description Starts a cooperative background verification scan to validate non-geometry field values across an opened dataset.
+   * Processes features in non-blocking batches of up to 500 features per tick via setImmediate, yielding priority to incoming queries.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {string} layerId - Unique layer identifier.
+   * @param {number} [batchSize=500] - Batch size of features processed per tick.
+   * @returns {Promise<void>} Resolves when the background scan completes or is cancelled.
+   */
+  public async startBackgroundScan(layerId: string, batchSize: number = 500): Promise<void> {
+    if (!this.backgroundScanEnabled) {
+      return;
+    }
+    const existing = this.activeScans.get(layerId);
+    if (existing && !existing.cancelled) {
+      if (existing.promise) {
+        return existing.promise;
+      }
+      return;
+    }
+
+    const session = this.sessions.get(layerId);
+    if (!session || !session.layer) {
+      return;
+    }
+
+    if (!session.fields) {
+      session.fields = this.inferLayerFields(
+        session.dataset,
+        session.layer,
+        session.filePath
+      );
+    }
+
+    let totalFeatures = 0;
+    try {
+      if (typeof session.layer.features?.count === "function") {
+        totalFeatures = session.layer.features.count(true);
+      }
+    } catch {
+      totalFeatures = 0;
+    }
+
+    if (totalFeatures <= 0) {
+      return;
+    }
+
+    this.cancelBackgroundScan(layerId);
+
+    const scanState: BackgroundScanState = {
+      layerId,
+      cancelled: false,
+      featureIndex: 0,
+      totalFeatures,
+      batchSize,
+      timerId: null,
+      cursorVersion: session.cursorVersion || 0,
+    };
+
+    this.activeScans.set(layerId, scanState);
+
+    const scanPromise = new Promise<void>((resolve) => {
+      scanState.resolvePromise = resolve;
+
+      const tick = async () => {
+        if (scanState.cancelled) {
+          this.activeScans.delete(layerId);
+          resolve();
+          return;
+        }
+
+        // Cooperative yield: if any queryExtent is currently pending or executing, yield immediately
+        const pending = this.pendingQueries.get(layerId) || 0;
+        if (pending > 0) {
+          scanState.timerId = setImmediate(tick);
+          return;
+        }
+
+        const activeSession = this.sessions.get(layerId);
+        if (!activeSession || !activeSession.layer) {
+          scanState.cancelled = true;
+          this.activeScans.delete(layerId);
+          resolve();
+          return;
+        }
+
+        let demotedAny = false;
+
+        await this.executeSequential(layerId, async () => {
+          if (scanState.cancelled) {
+            return;
+          }
+          if ((this.pendingQueries.get(layerId) || 0) > 0) {
+            return; // Yield if a query arrived just before entering sequential block
+          }
+
+          const layer = activeSession.layer;
+          const fields = activeSession.fields || [];
+
+          // If cursor was reset or beginning of scan, re-initialize iterator
+          if (
+            scanState.featureIndex === 0
+            || scanState.cursorVersion !== activeSession.cursorVersion
+            || !scanState.currentFeature
+          ) {
+            try {
+              layer.setSpatialFilter(null);
+            } catch {
+              // Suppress filter reset error
+            }
+            let cur = layer.features.first();
+            for (let i = 0; i < scanState.featureIndex && cur; i++) {
+              cur = layer.features.next();
+            }
+            scanState.currentFeature = cur;
+            scanState.cursorVersion = activeSession.cursorVersion;
+          }
+
+          let batchProcessed = 0;
+          while (
+            batchProcessed < scanState.batchSize
+            && scanState.featureIndex < scanState.totalFeatures
+            && scanState.currentFeature
+          ) {
+            const feature = scanState.currentFeature;
+            for (const field of fields) {
+              if (field.userOverridden === true) {
+                continue;
+              }
+              if (field.inferredType === "string") {
+                continue;
+              }
+              try {
+                const val = feature.fields.get(field.name);
+                if (val !== null && val !== undefined) {
+                  if (this.validateAndDemoteField(field, val)) {
+                    demotedAny = true;
+                  }
+                }
+              } catch {
+                // Ignore field extraction error
+              }
+            }
+
+            scanState.featureIndex++;
+            batchProcessed++;
+            try {
+              scanState.currentFeature = layer.features.next();
+            } catch {
+              scanState.currentFeature = null;
+              break;
+            }
+          }
+        });
+
+        if (demotedAny && this.onFieldDemoted) {
+          try {
+            this.onFieldDemoted(layerId, activeSession.fields || []);
+          } catch (callbackErr) {
+            logging.warn("onFieldDemoted callback error", callbackErr, {
+              layerId,
+              scope: "GeospatialEngine",
+            });
+          }
+        }
+
+        if (
+          scanState.cancelled
+          || scanState.featureIndex >= scanState.totalFeatures
+          || !scanState.currentFeature
+        ) {
+          this.activeScans.delete(layerId);
+          resolve();
+          return;
+        }
+
+        scanState.timerId = setImmediate(tick);
+      };
+
+      scanState.timerId = setImmediate(tick);
+    });
+
+    scanState.promise = scanPromise;
+    return scanPromise;
+  }
+
+  /**
+   * @description Validates a single feature value against a field's inferred type and demotes the type if an anomaly is detected.
+   * Fields with userOverridden === true are shielded and never demoted.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {LayerFieldInfo} field - Field metadata descriptor.
+   * @param {unknown} val - Attribute value from feature.
+   * @returns {boolean} True if field was demoted, false otherwise.
+   */
+  public validateAndDemoteField(field: LayerFieldInfo, val: unknown): boolean {
+    if (field.userOverridden === true) {
+      return false;
+    }
+    if (val === null || val === undefined) {
+      return false;
+    }
+
+    const currentType = field.inferredType;
+    if (currentType === "string") {
+      return false;
+    }
+
+    // Handle array types
+    if (currentType.endsWith("[]")) {
+      if (!Array.isArray(val)) {
+        field.inferredType = "string";
+        return true;
+      }
+      const scalarType = currentType.slice(0, -2) as InferredScalarFieldType;
+      if (scalarType === "string") {
+        return false;
+      }
+      const dummyField: LayerFieldInfo = {
+        ...field,
+        inferredType: scalarType,
+        userOverridden: false,
+      };
+      for (const item of val) {
+        if (item !== null && item !== undefined) {
+          if (this.validateAndDemoteField(dummyField, item)) {
+            field.inferredType =
+              dummyField.inferredType === "string"
+                ? "string"
+                : (`${dummyField.inferredType}[]` as InferredFieldType);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    switch (currentType) {
+      case "integer": {
+        if (typeof val === "number") {
+          if (!Number.isInteger(val)) {
+            field.inferredType = "real";
+            return true;
+          }
+          return false;
+        }
+        if (typeof val === "string") {
+          const trimmed = val.trim();
+          if (/^-?\d+$/.test(trimmed)) {
+            return false;
+          }
+          if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed)) {
+            field.inferredType = "real";
+            return true;
+          }
+          field.inferredType = "string";
+          return true;
+        }
+        field.inferredType = "string";
+        return true;
+      }
+
+      case "real": {
+        if (typeof val === "number") {
+          return false;
+        }
+        if (typeof val === "string") {
+          const trimmed = val.trim();
+          if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed)) {
+            return false;
+          }
+          field.inferredType = "string";
+          return true;
+        }
+        field.inferredType = "string";
+        return true;
+      }
+
+      case "boolean": {
+        if (typeof val === "boolean") {
+          return false;
+        }
+        if (typeof val === "number") {
+          if (val === 0 || val === 1) {
+            return false;
+          }
+          if (Number.isInteger(val)) {
+            field.inferredType = "integer";
+            return true;
+          }
+          field.inferredType = "real";
+          return true;
+        }
+        if (typeof val === "string") {
+          const lower = val.trim().toLowerCase();
+          if (
+            ["true", "false", "t", "f", "yes", "no", "0", "1"].includes(lower)
+          ) {
+            return false;
+          }
+          field.inferredType = "string";
+          return true;
+        }
+        field.inferredType = "string";
+        return true;
+      }
+
+      case "date":
+      case "datetime": {
+        const ms = parseDateOrDateTimeToEpochMs(val);
+        if (ms === null) {
+          field.inferredType = "string";
+          return true;
+        }
+        return false;
+      }
+
+      case "time": {
+        const ms = parseTimeToMidnightMs(val);
+        if (ms === null) {
+          field.inferredType = "string";
+          return true;
+        }
+        return false;
+      }
+
+      case "uuid": {
+        if (typeof val === "string") {
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (uuidRegex.test(val.trim())) {
+            return false;
+          }
+        }
+        field.inferredType = "string";
+        return true;
+      }
+
+      case "json": {
+        if (typeof val === "object") {
+          return false;
+        }
+        if (typeof val === "string") {
+          try {
+            JSON.parse(val);
+            return false;
+          } catch {
+            field.inferredType = "string";
+            return true;
+          }
+        }
+        field.inferredType = "string";
+        return true;
+      }
+
+      default:
+        return false;
+    }
   }
 
   /**

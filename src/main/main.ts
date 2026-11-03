@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import type { DropPosition, FileCategory, ProjectLayerStyleItem } from '@shared/types';
 import { DIALOG_WINDOW_SPECS, type DialogWindowName } from '@shared/dialogs';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
+import { geospatialService } from './worker/GeospatialService';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
 import {
@@ -136,6 +137,16 @@ function createWindow() {
   bindLoggingPreferences(loggingHub, PreferencesStore, {
     cliLogFile: cliLogConfig.logFile,
     cliLevel: cliLogConfig.level
+  });
+
+  const scanPrefVal = PreferencesStore.get('prefsLayerScanBackgroundValidation')?.prefsLayerScanBackgroundValidation?.value;
+  if (typeof scanPrefVal === 'boolean') {
+    geospatialService.setBackgroundScanEnabled(scanPrefVal);
+  }
+  PreferencesStore.onPreferenceChange((key: string, value: any) => {
+    if (key === 'prefsLayerScanBackgroundValidation') {
+      geospatialService.setBackgroundScanEnabled(Boolean(value));
+    }
   });
   const wbPrefs = PreferencesStore.get();
   const savedWbX = wbPrefs['ui.workbench.location.x']?.value;

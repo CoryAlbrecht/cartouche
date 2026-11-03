@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
-import type { BoundingBox, LayerDetailedInfo, QueryExtentOptions } from '@shared/types';
+import type { BoundingBox, LayerDetailedInfo, LayerFieldInfo, QueryExtentOptions } from '@shared/types';
 import { GeospatialEngine } from './GeospatialEngine';
 import { projectStore } from '../project/ProjectStore';
 import { LoggingHub, loggingHub as defaultLoggingHub } from '../logging/LoggingHub';
@@ -99,6 +99,24 @@ export class GeospatialService {
   private loggingHub: LoggingHub;
   private stdoutBuffer = '';
   private stderrBuffer = '';
+  private backgroundScanEnabled = true;
+
+  /**
+   * @description Initializes and configures an in-process GeospatialEngine instance with background scanning and demotion listeners.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
+  private initEngine(): void {
+    this.engine = new GeospatialEngine();
+    this.engine.backgroundScanEnabled = this.backgroundScanEnabled;
+    this.engine.onFieldDemoted = (layerId, updatedFields) => {
+      this.handleFieldDemoted(layerId, updatedFields);
+    };
+  }
 
   /**
    * @constructor
@@ -164,7 +182,7 @@ export class GeospatialService {
         this.isReady = true;
       }
     } else {
-      this.engine = new GeospatialEngine();
+      this.initEngine();
       this.isReady = true;
     }
   }
@@ -281,6 +299,10 @@ export class GeospatialService {
         this.loggingHub.handleLogPayload((response as any).payload);
         return;
       }
+      if (response && (response as any).type === 'fieldDemoted') {
+        this.handleFieldDemoted((response as any).layerId, (response as any).fields);
+        return;
+      }
       this.handleWorkerResponse(response);
     });
 
@@ -333,7 +355,7 @@ export class GeospatialService {
         { scope: 'GeospatialService' }
       );
       this.worker = null;
-      this.engine = new GeospatialEngine();
+      this.initEngine();
     }
   }
 
@@ -513,7 +535,7 @@ export class GeospatialService {
     }
 
     if (!this.engine) {
-      this.engine = new GeospatialEngine();
+      this.initEngine();
     }
 
     // Consolidate active layer file paths from internal activeLayers map and ProjectStore
@@ -544,7 +566,7 @@ export class GeospatialService {
         layerCount: specs.length
       });
       try {
-        const rehydrateRes = await this.engine.rehydrate(specs);
+        const rehydrateRes = await this.engine!.rehydrate(specs);
         for (const spec of specs) {
           if (rehydrateRes.rehydrated.includes(spec.layerId)) {
             this.activeLayers.set(spec.layerId, spec.filePath);
@@ -1090,6 +1112,60 @@ export class GeospatialService {
    */
   public isInProcessFallback(): boolean {
     return this.engine !== null;
+  }
+
+  /**
+   * @description Handles background verification scan field demotion events, updating ProjectStore, marking Project Dirty State, and broadcasting layers tree.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {string} layerId - Unique layer identifier.
+   * @param {LayerFieldInfo[]} updatedFields - Array of updated layer field definitions.
+   * @returns {void}
+   */
+  public handleFieldDemoted(layerId: string, updatedFields: LayerFieldInfo[]): void {
+    import('../api/layers/updateLayerFields')
+      .then(({ updateLayerFields }) => {
+        updateLayerFields(layerId, updatedFields).catch((err: any) => {
+          logging.warn('Failed to update ProjectStore on field demoted', err, {
+            layerId,
+            scope: 'GeospatialService'
+          });
+        });
+      })
+      .catch((err: any) => {
+        logging.warn('Failed to load updateLayerFields module', err, {
+          layerId,
+          scope: 'GeospatialService'
+        });
+      });
+  }
+
+  /**
+   * @description Configures whether cooperative background verification scanning is active across worker or in-process engine.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-02
+   * @updated 2026-11-02
+   * @since 0.1.0-dev
+   * @param {boolean} enabled - Whether background scanning is enabled.
+   * @returns {void}
+   */
+  public setBackgroundScanEnabled(enabled: boolean): void {
+    this.backgroundScanEnabled = enabled;
+    if (this.engine) {
+      this.engine.setBackgroundScanEnabled(enabled);
+    }
+    if (this.worker && this.isReady) {
+      this.sendInternalRequest({
+        type: 'setBackgroundScanEnabled',
+        enabled
+      }).catch((err: any) => {
+        logging.warn('Failed to forward setBackgroundScanEnabled to worker', err, {
+          scope: 'GeospatialService'
+        });
+      });
+    }
   }
 
   /**

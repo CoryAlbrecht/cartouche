@@ -97,6 +97,8 @@
     <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Bascule la visibilité des types de stockage natifs bruts dans l'onglet Champs des propriétés de la couche.</string>
     <string name="prefs_rendering_simplification_threshold">Seuil de Simplification</string>
     <string name="prefs_rendering_simplification_threshold_descr">Seuil de tolérance pour le rendu des géométries d'entités vectorielles</string>
+    <string name="prefs_rendering_layer_scan_background_validation">Validation des champs en arrière-plan</string>
+    <string name="prefs_rendering_layer_scan_background_validation_descr">Active l'analyse coopérative en arrière-plan pour vérifier et affiner les types de champs déduits des entités vectorielles.</string>
     <string name="prefs_plugin_debug_enable">Activer le Mode Débogage des Extensions</string>
     <string name="prefs_plugin_debug_enable_descr">Activer la journalisation détaillée pour l'hôte d'extension et les canaux RPC</string>
     <string name="prefs_mapTools_mapViewport_zoomAmount">Facteur d'échelle de zoom</string>

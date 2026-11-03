@@ -447,7 +447,16 @@ export class MapController {
           for (const f of descriptor.fields) {
             schema[f.name] = f.inferredType;
           }
+          const prevJson = JSON.stringify(existing.fieldSchema || {});
+          const newJson = JSON.stringify(schema);
           existing.fieldSchema = schema;
+          if (
+            prevJson !== newJson
+            && existing.source
+            && typeof (existing.source as any).refresh === "function"
+          ) {
+            (existing.source as any).refresh();
+          }
         }
       }
     }

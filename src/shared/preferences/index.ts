@@ -774,6 +774,19 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     i18nId: 'prefs_rendering_simplification_threshold',
     order: 1
   },
+  'prefsLayerScanBackgroundValidation': {
+    displayName: 'Background Field Validation',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: false,
+    category: 'rendering',
+    description: 'Enables cooperative background scanning to verify and refine inferred field types across vector layer features.',
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_rendering_layer_scan_background_validation',
+    order: 2
+  },
   'plugin.debug.enable': {
     displayName: 'Enable Plugin Debug Mode',
     value: false,
@@ -829,3 +842,13 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     order: 1
   }
 };
+
+/**
+ * @description Canonical alias for BUILTIN_PREFERENCES.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ * @type {PreferenceMap}
+ */
+export const defaultPreferences: PreferenceMap = BUILTIN_PREFERENCES;

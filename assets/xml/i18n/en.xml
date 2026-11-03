@@ -123,6 +123,8 @@
     <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Toggles visibility of raw native storage types in the Layer Properties Fields tab.</string>
     <string name="prefs_rendering_simplification_threshold">Simplification Threshold</string>
     <string name="prefs_rendering_simplification_threshold_descr">Tolerance threshold for rendering vector feature geometries</string>
+    <string name="prefs_rendering_layer_scan_background_validation">Background Field Validation</string>
+    <string name="prefs_rendering_layer_scan_background_validation_descr">Enables cooperative background scanning to verify and refine inferred field types across vector layer features.</string>
     <string name="prefs_plugin_debug_enable">Enable Plugin Debug Mode</string>
     <string name="prefs_plugin_debug_enable_descr">Enable verbose logging for extension host execution and RPC channels</string>
     <string name="prefs_mapTools_mapViewport_zoomAmount">Zoom Step Factor</string>

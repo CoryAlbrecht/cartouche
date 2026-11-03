@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-24
+ * @updated 2026-11-02
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link logging}
@@ -105,6 +105,19 @@ export function initGeospatialWorker(
   customEngine?: GeospatialEngine
 ): (event: { data: WorkerRequest }) => Promise<void> {
   const engine = customEngine ?? new GeospatialEngine();
+
+  engine.onFieldDemoted = (layerId: string, fields: any[]) => {
+    postResponse(port, {
+      id: `demote-${layerId}`,
+      success: true,
+      result: {
+        type: "fieldDemoted",
+        layerId,
+        fields,
+      },
+      ...({ type: "fieldDemoted", layerId, fields } as any),
+    });
+  };
 
   // Trap uncaught exceptions and forward formatted error notification across port
   process.on("uncaughtException", (err: any) =>
@@ -212,6 +225,19 @@ export function initGeospatialWorker(
         case "rekeySession": {
           engine.rekeySession(request.oldLayerId, request.newLayerId);
           postResponse(port, { id: request.id, success: true, result: { success: true } });
+          break;
+        }
+
+        case "setBackgroundScanEnabled": {
+          const enabled = Boolean(
+            (request as any).payload?.enabled ?? (request as any).enabled
+          );
+          engine.setBackgroundScanEnabled(enabled);
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: { success: true },
+          });
           break;
         }
 

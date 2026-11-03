@@ -1004,6 +1004,180 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       });
     });
   });
+
+  describe('Cooperative Background Verification Scanner (Ticket #142)', () => {
+    let engine: GeospatialEngine;
+
+    beforeEach(() => {
+      engine = new GeospatialEngine();
+    });
+
+    afterEach(() => {
+      engine.closeAll();
+    });
+
+    it('processes non-geometry fields in batches of 500 features per tick via setImmediate', async () => {
+      await engine.openDataset('lakes-bg-test', lakesGeoJsonPath);
+      // Background scan starts automatically on openDataset
+      // Verify background scan is running or runs cooperatively
+      const scanPromise = engine.startBackgroundScan('lakes-bg-test', 500);
+      assert.equal(engine.isBackgroundScanActive('lakes-bg-test'), true);
+      await scanPromise;
+      assert.equal(engine.isBackgroundScanActive('lakes-bg-test'), false);
+    });
+
+    it('viewport extent queries take immediate execution priority over in-progress background scans', async () => {
+      await engine.openDataset('lakes-priority-test', lakesGeoJsonPath);
+      const scanPromise = engine.startBackgroundScan('lakes-priority-test', 200);
+
+      // Execute viewport extent query while scan is in flight
+      const queryRes = await engine.queryExtent('lakes-priority-test', [-180, -90, 180, 90]);
+      assert.ok(queryRes.features.length > 0);
+      assert.ok(queryRes.buffer.byteLength > 0);
+
+      await scanPromise;
+    });
+
+    it('closing a layer or closing all cancels active background scan immediately', async () => {
+      await engine.openDataset('lakes-cancel-test', lakesGeoJsonPath);
+      engine.startBackgroundScan('lakes-cancel-test', 100);
+      assert.equal(engine.isBackgroundScanActive('lakes-cancel-test'), true);
+
+      engine.closeDataset('lakes-cancel-test');
+      assert.equal(engine.isBackgroundScanActive('lakes-cancel-test'), false);
+
+      await engine.openDataset('lakes-cancel-all', lakesGeoJsonPath);
+      engine.startBackgroundScan('lakes-cancel-all', 100);
+      assert.equal(engine.isBackgroundScanActive('lakes-cancel-all'), true);
+
+      engine.closeAll();
+      assert.equal(engine.isBackgroundScanActive('lakes-cancel-all'), false);
+    });
+
+    it('demotes inferredType to compatible fallback (real or string) when data anomaly is encountered', () => {
+      // 1. Integer with float -> real
+      const intField1 = { name: 'f1', nativeType: 'Integer', inferredType: 'integer' as const };
+      assert.equal(engine.validateAndDemoteField(intField1, 12.34), true);
+      assert.equal(intField1.inferredType, 'real');
+
+      // 2. Integer with text -> string
+      const intField2 = { name: 'f2', nativeType: 'Integer', inferredType: 'integer' as const };
+      assert.equal(engine.validateAndDemoteField(intField2, 'invalid_text'), true);
+      assert.equal(intField2.inferredType, 'string');
+
+      // 3. Real with non-numeric text -> string
+      const realField = { name: 'f3', nativeType: 'Real', inferredType: 'real' as const };
+      assert.equal(engine.validateAndDemoteField(realField, 'not_a_number'), true);
+      assert.equal(realField.inferredType, 'string');
+
+      // 4. Boolean with integer > 1 -> integer
+      const boolField1 = { name: 'f4', nativeType: 'Integer', inferredType: 'boolean' as const };
+      assert.equal(engine.validateAndDemoteField(boolField1, 42), true);
+      assert.equal(boolField1.inferredType, 'integer');
+
+      // 5. Boolean with arbitrary string -> string
+      const boolField2 = { name: 'f5', nativeType: 'String', inferredType: 'boolean' as const };
+      assert.equal(engine.validateAndDemoteField(boolField2, 'maybe'), true);
+      assert.equal(boolField2.inferredType, 'string');
+
+      // 6. Date with invalid date -> string
+      const dateField = { name: 'f6', nativeType: 'String', inferredType: 'date' as const };
+      assert.equal(engine.validateAndDemoteField(dateField, 'not-a-valid-date'), true);
+      assert.equal(dateField.inferredType, 'string');
+
+      // 7. Time with invalid time -> string
+      const timeField = { name: 'f7', nativeType: 'String', inferredType: 'time' as const };
+      assert.equal(engine.validateAndDemoteField(timeField, 'not-a-valid-time'), true);
+      assert.equal(timeField.inferredType, 'string');
+
+      // 8. UUID with non-uuid -> string
+      const uuidField = { name: 'f8', nativeType: 'String', inferredType: 'uuid' as const };
+      assert.equal(engine.validateAndDemoteField(uuidField, '12345'), true);
+      assert.equal(uuidField.inferredType, 'string');
+
+      // 9. JSON with corrupted JSON -> string
+      const jsonField = { name: 'f9', nativeType: 'String', inferredType: 'json' as const };
+      assert.equal(engine.validateAndDemoteField(jsonField, '{invalid_json'), true);
+      assert.equal(jsonField.inferredType, 'string');
+
+      // 10. String cannot be demoted
+      const stringField = { name: 'f10', nativeType: 'String', inferredType: 'string' as const };
+      assert.equal(engine.validateAndDemoteField(stringField, 1234), false);
+      assert.equal(stringField.inferredType, 'string');
+    });
+
+    it('shields fields with userOverridden === true from automatic demotion', () => {
+      const intField = {
+        name: 'user_int',
+        nativeType: 'Integer',
+        inferredType: 'integer' as const,
+        userOverridden: true
+      };
+      assert.equal(engine.validateAndDemoteField(intField, 99.99), false);
+      assert.equal(intField.inferredType, 'integer');
+      assert.equal(engine.validateAndDemoteField(intField, 'broken'), false);
+      assert.equal(intField.inferredType, 'integer');
+
+      const realField = {
+        name: 'user_real',
+        nativeType: 'Real',
+        inferredType: 'real' as const,
+        userOverridden: true
+      };
+      assert.equal(engine.validateAndDemoteField(realField, 'corrupted'), false);
+      assert.equal(realField.inferredType, 'real');
+    });
+
+    it('preference toggle disables active scans and prevents new scans', async () => {
+      engine.setBackgroundScanEnabled(false);
+      assert.equal(engine.backgroundScanEnabled, false);
+
+      await engine.openDataset('lakes-disabled-scan', lakesGeoJsonPath);
+      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), false);
+
+      // Explicit scan attempt also respects toggle
+      await engine.startBackgroundScan('lakes-disabled-scan');
+      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), false);
+
+      // Re-enabling allows scan to start
+      engine.setBackgroundScanEnabled(true);
+      const scanP = engine.startBackgroundScan('lakes-disabled-scan', 500);
+      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), true);
+
+      // Toggling off while scan is in-progress cancels it immediately
+      engine.setBackgroundScanEnabled(false);
+      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), false);
+      await scanP;
+    });
+
+    it('triggers onFieldDemoted callback when anomaly is detected during background scan', async () => {
+      let demotedCallbackFired = false;
+      let demotedLayerId = '';
+      let demotedFields: any[] = [];
+
+      engine.onFieldDemoted = (layerId, fields) => {
+        demotedCallbackFired = true;
+        demotedLayerId = layerId;
+        demotedFields = fields;
+      };
+
+      await engine.openDataset('lakes-demote-event', lakesGeoJsonPath);
+      engine.cancelBackgroundScan('lakes-demote-event');
+      const session = (engine as any).sessions.get('lakes-demote-event');
+      const nameField = session?.fields?.find((f: any) => f.name === 'name');
+      if (nameField) {
+        nameField.inferredType = 'integer';
+        nameField.userOverridden = false;
+      }
+
+      await engine.startBackgroundScan('lakes-demote-event', 200);
+
+      assert.equal(demotedCallbackFired, true);
+      assert.equal(demotedLayerId, 'lakes-demote-event');
+      const updatedNameField = demotedFields.find(f => f.name === 'name');
+      assert.equal(updatedNameField?.inferredType, 'string');
+    });
+  });
 });
 
 

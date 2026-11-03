@@ -195,7 +195,23 @@ export interface PingRequest {
 }
 
 /**
- * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest} WorkerRequest
+ * @typedef {Object} SetBackgroundScanEnabledRequest
+ * @property {string} id - Unique correlation identifier.
+ * @property {'setBackgroundScanEnabled'} type - Request message discriminator.
+ * @property {boolean} enabled - Whether background verification scanning is enabled.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-02
+ * @updated 2026-11-02
+ * @since 0.1.0-dev
+ */
+export interface SetBackgroundScanEnabledRequest {
+  id: string;
+  type: 'setBackgroundScanEnabled';
+  enabled: boolean;
+}
+
+/**
+ * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest | SetBackgroundScanEnabledRequest} WorkerRequest
  * Discriminated union of all request messages dispatched from Main to the Geospatial Worker.
  */
 export type WorkerRequest =
@@ -206,7 +222,8 @@ export type WorkerRequest =
   | CloseDatasetRequest
   | CloseAllRequest
   | RehydrateRequest
-  | PingRequest;
+  | PingRequest
+  | SetBackgroundScanEnabledRequest;
 
 /**
  * Distributive omit helper creating request payload types without correlation identifier.
