@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -270,12 +270,39 @@ export async function openLayerPropertiesDialog(
 
   const currentLayer = findLayerInTree(projectTreeSignal.value, layerId);
   const currentProjectLayer = projectLayersSignal.value.find((l) => l.id === layerId);
-  const initialFields =
+  const rawFields =
     currentProjectLayer?.fields
-      ? currentProjectLayer.fields.map((f) => ({ ...f }))
+      ? currentProjectLayer.fields
       : (currentLayer && 'fields' in currentLayer && (currentLayer as any).fields)
-        ? ((currentLayer as any).fields as LayerFieldInfo[]).map((f) => ({ ...f }))
+        ? ((currentLayer as any).fields as LayerFieldInfo[])
         : undefined;
+
+  let physicalCount = 0;
+  const initialFields =
+    rawFields ?
+      rawFields.map((f) => {
+        const isVirtual = Boolean(f.isVirtual);
+        let assignedIndex = f.index;
+        if (assignedIndex === undefined && !isVirtual) {
+          assignedIndex = physicalCount;
+        }
+        if (!isVirtual) {
+          physicalCount++;
+        }
+        return {
+          ...f,
+          index: assignedIndex,
+          originalInferredType: f.originalInferredType ?? f.inferredType,
+          isVirtual,
+        };
+      }).map((f, _, arr) => {
+        if (f.index === undefined && f.isVirtual) {
+          const virtualIdx = arr.filter((x) => x.isVirtual && x.index === undefined).indexOf(f);
+          return { ...f, index: physicalCount + virtualIdx };
+        }
+        return f;
+      })
+    : undefined;
   const initialName = currentLayer?.name || layerId;
   const initialCrs = currentLayer?.crs?.authId || "EPSG:4326";
   const initialFilter =
@@ -624,10 +651,10 @@ export function updateLayerPropertiesInTree(
 }
 
 /**
- * @description Commits active draft modifications (name, ID, CRS, filter, style, opacity) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
+ * @description Commits active draft modifications (name, ID, CRS, filter, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-31
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -727,6 +754,7 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
       layerId: trimmedId,
       name: trimmedName,
       crsDescription: updatedCrs.description,
+      ...(draft.fields ? { fields: draft.fields } : {}),
     };
   }
 

@@ -122,6 +122,7 @@
     <string name="layer_properties_label_crs">Système de coordonnées de référence</string>
     <string name="layer_properties_label_extent">Étendue spatiale</string>
     <string name="layer_properties_group_fields">Champs d'attributs</string>
+    <string name="layer_properties_field_col_index">Indice</string>
     <string name="layer_properties_field_col_name">Nom du champ</string>
     <string name="layer_properties_field_col_native_type">Type natif</string>
     <string name="layer_properties_field_col_length">Longueur</string>
@@ -150,6 +151,7 @@
     <string name="layer_properties_fields_calculate">Calculer un champ virtuel</string>
     <string name="layer_properties_fields_col_comment">Commentaire</string>
     <string name="layer_properties_fields_col_data_type">Type de données</string>
+    <string name="layer_properties_fields_reset_type">Rétablir le type de données par défaut</string>
     <string name="layer_properties_fields_show_native_type">Afficher le type natif</string>
     <string name="layer_properties_time_enable">Activer le contrôle temporel dynamique</string>
     <string name="layer_properties_time_mode">Mode de configuration</string>

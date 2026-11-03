@@ -4,7 +4,7 @@
  * @description Type definitions and data transfer objects for GIS layer metadata inspection, attribute fields, provider dialects, and layer properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link LayerDescriptor}
  * @see {@link GeospatialEngine}
@@ -101,9 +101,11 @@ export const CANONICAL_INFERRED_FIELD_TYPES: readonly InferredFieldType[] = [
 
 /**
  * @typedef {Object} LayerFieldInfo
+ * @property {number} [index] - 0-based field slot index (physical GDAL layer slot or virtual field sequential increment).
  * @property {string} name - Attribute field identifier name.
  * @property {string} nativeType - OGR/GDAL native field data type (e.g. "String", "Integer", "Real").
  * @property {InferredFieldType} inferredType - Internal canonical data type classification.
+ * @property {InferredFieldType} [originalInferredType] - Authoritative initial inferred data type prior to user overrides.
  * @property {string} [nativeSubType] - OGR/GDAL native field subtype (e.g. "OFSTBoolean", "OFSTUUID", "OFSTJSON").
  * @property {string} [alternativeName] - Secondary alias or user-facing display label.
  * @property {string} [domainName] - Coded value or range validation domain registered in data source.
@@ -111,17 +113,21 @@ export const CANONICAL_INFERRED_FIELD_TYPES: readonly InferredFieldType[] = [
  * @property {number} [width] - Allocated field character width or numeric length.
  * @property {number} [precision] - Decimal precision for floating point numbers.
  * @property {boolean} [nullable] - Flag indicating whether field accepts null values.
+ * @property {string} [comment] - Field documentation or comment string extracted from data source metadata.
  * @property {boolean} [userOverridden] - Flag indicating whether inferredType was explicitly overridden by user.
+ * @property {boolean} [isVirtual] - Flag indicating whether field is an in-memory application virtual field.
  * @property {'string' | 'number' | 'boolean' | 'Date' | 'unknown' | InferredFieldType} [mappedType] - Corresponding TypeScript runtime primitive type (legacy compatibility).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  */
 export interface LayerFieldInfo {
+  index?: number;
   name: string;
   nativeType: string;
   inferredType: InferredFieldType;
+  originalInferredType?: InferredFieldType;
   nativeSubType?: string;
   alternativeName?: string;
   domainName?: string;
@@ -129,7 +135,9 @@ export interface LayerFieldInfo {
   width?: number;
   precision?: number;
   nullable?: boolean;
+  comment?: string;
   userOverridden?: boolean;
+  isVirtual?: boolean;
   mappedType?: 'string' | 'number' | 'boolean' | 'Date' | 'unknown' | InferredFieldType;
 }
 

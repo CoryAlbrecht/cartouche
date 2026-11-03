@@ -4,7 +4,7 @@
  * @description Unit tests verifying centralized dialog window registry specifications, dimensional constraints, and synchronization with built-in preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link DIALOG_WINDOW_SPECS}
  * @see {@link BUILTIN_PREFERENCES}
@@ -22,7 +22,8 @@ describe('Centralized Dialog Window Registry (DIALOG_WINDOW_SPECS)', () => {
     'layerPropertiesWindow',
     'projectPropertiesWindow',
     'selectByValueWindow',
-    'snappingOptionsWindow'
+    'snappingOptionsWindow',
+    'newFieldWindow'
   ];
 
   it('contains specifications for all standard dialog windows', () => {

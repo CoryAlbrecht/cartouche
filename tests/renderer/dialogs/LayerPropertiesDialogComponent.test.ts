@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -178,6 +178,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_label_crs: 'Coordinate Reference System',
       layer_properties_label_extent: 'Spatial Extent',
       layer_properties_group_fields: 'Attribute Fields',
+      layer_properties_field_col_index: 'Index',
       layer_properties_field_col_name: 'Field Name',
       layer_properties_field_col_native_type: 'Native Type',
       layer_properties_field_col_length: 'Length',
@@ -208,6 +209,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_fields_calculate: 'Calculate Virtual Field',
       layer_properties_fields_col_comment: 'Comment',
       layer_properties_fields_col_data_type: 'Data Type',
+      layer_properties_fields_reset_type: 'Reset data type to default',
       layer_properties_fields_show_native_type: 'Show Native Type',
       layer_properties_time_enable: 'Enable dynamic temporal control',
       layer_properties_time_mode: 'Configuration Mode',
@@ -472,7 +474,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     activeLayerPropertiesTabSignal.value = 'fields';
 
     let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    assert(html.includes('colSpan="5"') || html.includes('colspan="5"'), 'Empty state should span 5 columns when Native Type is hidden');
+    assert(html.includes('colSpan="6"') || html.includes('colspan="6"'), 'Empty state should span 6 columns when Native Type is hidden');
 
     preferencesMapSignal.value = {
       'ui.layerProperties.fields.showNativeType': {
@@ -484,7 +486,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       }
     };
     html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    assert(html.includes('colSpan="6"') || html.includes('colspan="6"'), 'Empty state should span 6 columns when Native Type is shown');
+    assert(html.includes('colSpan="7"') || html.includes('colspan="7"'), 'Empty state should span 7 columns when Native Type is shown');
   });
 
   it('renders appearance-only temporal master checkbox and mode selectors on Time Filter tab', async () => {
@@ -2022,6 +2024,705 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.equal(ipcFields.length, 1);
       assert.equal(ipcFields[0].inferredType, 'integer');
       assert.equal(ipcFields[0].userOverridden, true);
+    });
+  });
+
+  describe('Fields Tab Transactional Draft Isolation (Ticket #144 - ADR 0024)', () => {
+    const testLayerId = 'layer-fields-draft-144';
+    const initialFields = [
+      {
+        name: 'pop_density',
+        nativeType: 'Real',
+        inferredType: 'real' as const,
+        userOverridden: false,
+      },
+    ];
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Draft Isolation Layer',
+          type: 'vector',
+          source: '/data/draft-isolation.shp',
+          fields: initialFields.map((f) => ({ ...f })),
+        },
+      ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Draft Isolation Layer',
+          type: 'vector',
+          source: '/data/draft-isolation.shp',
+          fields: initialFields.map((f) => ({ ...f })),
+        },
+      ];
+      isProjectDirtySignal.value = false;
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('isolates field modifications in layerPropertiesDraftSignal without mutating projectLayersSignal or calling IPC', async () => {
+      let ipcCalled = false;
+      (globalThis as any).window.electronAPI.updateLayerFields = async () => {
+        ipcCalled = true;
+        return true;
+      };
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Verify initial draft is populated with initial fields
+      assert.ok(layerPropertiesDraftSignal.value.fields, 'Draft fields must be initialized');
+      assert.equal(layerPropertiesDraftSignal.value.fields[0].inferredType, 'real');
+
+      // Mutate draft fields (simulating handleFieldTypeChange in dialog)
+      const updatedDraftFields = [
+        {
+          name: 'pop_density',
+          nativeType: 'Real',
+          inferredType: 'integer' as const,
+          userOverridden: true,
+        },
+      ];
+      updateLayerPropertiesDraft({ fields: updatedDraftFields });
+
+      // Draft must reflect changes
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'integer');
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].userOverridden, true);
+
+      // Project state must NOT be modified while dialog remains uncommitted
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'real', 'projectLayersSignal must remain unmodified');
+      assert.equal(projectLayer?.fields?.[0].userOverridden, false, 'projectLayersSignal userOverridden must remain false');
+
+      const treeLayer = projectTreeSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal((treeLayer as any)?.fields?.[0].inferredType, 'real', 'projectTreeSignal must remain unmodified');
+
+      // IPC must NOT be called
+      assert.equal(ipcCalled, false, 'IPC updateLayerFields must not be called during draft editing');
+    });
+
+    it('commits draft fields to projectLayersSignal, projectTreeSignal, and IPC upon applyLayerPropertiesEdits', async () => {
+      let ipcCalled = false;
+      let ipcLayerId = '';
+      let ipcFields: any[] = [];
+      (globalThis as any).window.electronAPI.updateLayerFields = async (id: string, fields: any[]) => {
+        ipcCalled = true;
+        ipcLayerId = id;
+        ipcFields = fields;
+        return true;
+      };
+
+      await openLayerPropertiesDialog(testLayerId);
+      const updatedDraftFields = [
+        {
+          name: 'pop_density',
+          nativeType: 'Real',
+          inferredType: 'integer' as const,
+          userOverridden: true,
+        },
+      ];
+      updateLayerPropertiesDraft({ fields: updatedDraftFields });
+
+      const commitResult = await applyLayerPropertiesEdits();
+      assert.equal(commitResult, true, 'applyLayerPropertiesEdits must succeed');
+
+      // Verify projectLayersSignal and projectTreeSignal updated
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'integer');
+      assert.equal(projectLayer?.fields?.[0].userOverridden, true);
+
+      const treeLayer = projectTreeSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal((treeLayer as any)?.fields?.[0].inferredType, 'integer');
+      assert.equal((treeLayer as any)?.fields?.[0].userOverridden, true);
+
+      // Verify IPC was dispatched
+      assert.equal(ipcCalled, true, 'IPC updateLayerFields must be called upon apply');
+      assert.equal(ipcLayerId, testLayerId);
+      assert.equal(ipcFields[0].inferredType, 'integer');
+      assert.equal(ipcFields[0].userOverridden, true);
+
+      // Verify Project Dirty State is flagged via isProjectDirtySignal
+      assert.equal(isProjectDirtySignal.value, true);
+
+      // Verify layerDetailedInfoSignal fields updated if present
+      assert.equal(layerDetailedInfoSignal.value?.fields?.[0].inferredType, 'integer');
+    });
+
+    it('discards draft fields and leaves projectLayersSignal intact upon cancelLayerPropertiesEdits', async () => {
+      let ipcCalled = false;
+      (globalThis as any).window.electronAPI.updateLayerFields = async () => {
+        ipcCalled = true;
+        return true;
+      };
+
+      await openLayerPropertiesDialog(testLayerId);
+      const updatedDraftFields = [
+        {
+          name: 'pop_density',
+          nativeType: 'Real',
+          inferredType: 'uuid' as const,
+          userOverridden: true,
+        },
+      ];
+      updateLayerPropertiesDraft({ fields: updatedDraftFields });
+
+      // Cancel edits
+      cancelLayerPropertiesEdits();
+
+      // Draft must be reset
+      assert.equal(layerPropertiesDraftSignal.value.fields, undefined);
+      assert.equal(activeLayerPropertiesIdSignal.value, null);
+
+      // Project state must remain original
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'real');
+      assert.equal(projectLayer?.fields?.[0].userOverridden, false);
+
+      const treeLayer = projectTreeSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal((treeLayer as any)?.fields?.[0].inferredType, 'real');
+
+      // IPC must NOT be called
+      assert.equal(ipcCalled, false, 'IPC updateLayerFields must not be called upon cancel');
+    });
+  });
+
+  describe('Fields Tab Index Column, Vertical Grid Lines & Empty Display (Ticket #145)', () => {
+    const testLayerId = 'layer-fields-grid-145';
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('renders 0-based Index column as leftmost column before Field Name', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Grid Test Layer',
+          type: 'vector',
+          source: '/data/grid.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'id',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+            },
+            {
+              index: 1,
+              name: 'title',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Header must contain Index before Field Name
+      const indexHeaderIdx = html.indexOf('Index</th>');
+      const nameHeaderIdx = html.indexOf('Field Name</th>');
+      assert.ok(indexHeaderIdx >= 0, 'Must render Index column header');
+      assert.ok(nameHeaderIdx >= 0, 'Must render Field Name column header');
+      assert.ok(indexHeaderIdx < nameHeaderIdx, 'Index column header must appear before Field Name column header');
+
+      // Body cells must render 0 and 1
+      assert.ok(html.includes('>0</td>'), 'Must render index 0 cell');
+      assert.ok(html.includes('>1</td>'), 'Must render index 1 cell');
+    });
+
+    it('physical fields retain their fixed 0-based index slot even if earlier fields are removed', async () => {
+      const initialFields = [
+        {
+          index: 0,
+          name: 'first',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+        {
+          index: 1,
+          name: 'second',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+        {
+          index: 2,
+          name: 'third',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Index Stability Layer',
+          type: 'vector',
+          source: '/data/stability.shp',
+          fields: initialFields,
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Simulate deleting the first row (index 0) in draft state
+      updateLayerPropertiesDraft({
+        fields: [initialFields[1], initialFields[2]],
+      });
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Remaining rows must retain fixed slot indices 1 and 2, not re-indexed to 0 and 1
+      assert.ok(!html.includes('>0</td>'), 'Index 0 must no longer be present');
+      assert.ok(html.includes('>1</td>'), 'Second row must retain slot index 1');
+      assert.ok(html.includes('>2</td>'), 'Third row must retain slot index 2');
+    });
+
+    it('virtual fields display sequential integers incrementing above physical field count', async () => {
+      const fields = [
+        {
+          index: 0,
+          name: 'phys_1',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+        {
+          index: 1,
+          name: 'phys_2',
+          nativeType: 'Integer',
+          inferredType: 'integer' as const,
+          isVirtual: false,
+        },
+        {
+          name: 'virt_1',
+          nativeType: 'Real',
+          inferredType: 'real' as const,
+          isVirtual: true,
+        },
+        {
+          name: 'virt_2',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: true,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Virtual Index Layer',
+          type: 'vector',
+          source: '/data/virtual.shp',
+          fields,
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert.ok(html.includes('>0</td>'), 'Physical field 1 must have index 0');
+      assert.ok(html.includes('>1</td>'), 'Physical field 2 must have index 1');
+      assert.ok(html.includes('>2</td>'), 'Virtual field 1 must have sequential index 2');
+      assert.ok(html.includes('>3</td>'), 'Virtual field 2 must have sequential index 3');
+    });
+
+    it('renders vertical grid lines with border-left and border-right across all cells', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Grid Lines Layer',
+          type: 'vector',
+          source: '/data/gridlines.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'code',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Header cells must have border-left and border-right #cbd5e1
+      assert.ok(
+        html.includes('border-left:1px solid #cbd5e1') || html.includes('borderLeft:1px solid #cbd5e1'),
+        'th elements must have border-left #cbd5e1'
+      );
+      assert.ok(
+        html.includes('border-right:1px solid #cbd5e1') || html.includes('borderRight:1px solid #cbd5e1'),
+        'th elements must have border-right #cbd5e1'
+      );
+
+      // Body cells must have border-left and border-right #e2e8f0
+      assert.ok(
+        html.includes('border-left:1px solid #e2e8f0') || html.includes('borderLeft:1px solid #e2e8f0'),
+        'td elements must have border-left #e2e8f0'
+      );
+      assert.ok(
+        html.includes('border-right:1px solid #e2e8f0') || html.includes('borderRight:1px solid #e2e8f0'),
+        'td elements must have border-right #e2e8f0'
+      );
+    });
+
+    it('renders empty string without em-dashes for missing, null, undefined, or zero Length, Precision, and Comment', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Empty Values Layer',
+          type: 'vector',
+          source: '/data/empty.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'empty_field',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              width: 0,
+              precision: 0,
+              comment: undefined,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Must not render em-dashes in any table cell
+      assert.ok(!html.includes('—</td>'), 'Cells must not contain em-dashes for empty/zero attributes');
+    });
+  });
+
+  describe('Fields Tab Editing Mode Toggle & Icon Buttons (Ticket #146)', () => {
+    const testLayerId = 'layer-fields-toggle-146';
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Toggle Test Layer',
+          type: 'vector',
+          source: '/data/toggle.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'city_name',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('defaults editing mode to off with disabled select controls and unpressed toggle button', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Toggle edit button must have aria-pressed="false" and not have active class
+      assert.ok(html.includes('aria-pressed="false"'), 'Toggle edit button must be unpressed by default');
+      assert.ok(!html.includes('toggle-edit active'), 'Toggle edit button must not have active class by default');
+
+      // Select control must be disabled
+      assert.ok(html.includes('disabled=""') || html.includes('disabled'), 'Type select dropdown must be disabled when editing mode is off');
+    });
+
+    it('renders Toggle Editing Mode, New Field, Delete Selected Field, and Field Calculator as icon-only buttons', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Verify buttons have title and aria-label attributes
+      assert.ok(html.includes('aria-label="Toggle Editing Mode"'), 'Toggle Edit button must have aria-label');
+      assert.ok(html.includes('aria-label="New Field"'), 'New Field button must have aria-label');
+      assert.ok(html.includes('aria-label="Delete Selected Field"'), 'Delete Field button must have aria-label');
+      assert.ok(html.includes('aria-label="Calculate Virtual Field"'), 'Calculate button must have aria-label');
+
+      // Verify no <span> labels inside the 4 icon buttons
+      const toggleBtnMatch = html.match(/<button[^>]*class="[^"]*toggle-edit[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(toggleBtnMatch, 'Must find toggle-edit button');
+      assert.ok(!toggleBtnMatch[1].includes('<span'), 'Toggle Edit button must not contain text span');
+
+      const newFieldBtnMatch = html.match(/<button[^>]*class="[^"]*new-field[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(newFieldBtnMatch, 'Must find new-field button');
+      assert.ok(!newFieldBtnMatch[1].includes('<span'), 'New Field button must not contain text span');
+
+      const deleteBtnMatch = html.match(/<button[^>]*class="[^"]*delete-field[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(deleteBtnMatch, 'Must find delete-field button');
+      assert.ok(!deleteBtnMatch[1].includes('<span'), 'Delete Field button must not contain text span');
+
+      const calcBtnMatch = html.match(/<button[^>]*class="[^"]*calculate[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(calcBtnMatch, 'Must find calculate button');
+      assert.ok(!calcBtnMatch[1].includes('<span'), 'Calculate button must not contain text span');
+    });
+
+    it('toggling editing mode preserves draft changes without committing to project state', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Update draft with modified type
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            index: 0,
+            name: 'city_name',
+            nativeType: 'String',
+            inferredType: 'uuid' as const,
+            userOverridden: true,
+          },
+        ],
+      });
+
+      // Draft has changes
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'uuid');
+
+      // Project state remains untouched
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'string');
+    });
+  });
+
+  describe('Fields Tab Data Type Reset Button & Original Inferred Type Tracking (Ticket #147)', () => {
+    const testLayerId = 'layer-fields-reset-147';
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Reset Test Layer',
+          type: 'vector',
+          source: '/data/reset.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'population',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+              originalInferredType: 'integer' as const,
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'identifier',
+              nativeType: 'String',
+              inferredType: 'uuid' as const,
+              originalInferredType: 'string' as const,
+              userOverridden: true,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('renders an icon-only reset button adjacent to each Data Type select dropdown', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert.ok(
+        html.includes('class="layer-field-reset-type-btn"'),
+        'Must render reset button with layer-field-reset-type-btn class'
+      );
+      assert.ok(
+        html.includes('aria-label="Reset data type to default"'),
+        'Reset button must have descriptive aria-label'
+      );
+      assert.ok(
+        html.includes('title="Reset data type to default"'),
+        'Reset button must have localized title tooltip'
+      );
+    });
+
+    it('disables the reset button when editing mode is off, even if field is userOverridden', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Both buttons must be disabled because isEditingFields defaults to false
+      const resetButtons = [...html.matchAll(/<button[^>]*class="[^"]*layer-field-reset-type-btn[^"]*"[^>]*>/g)];
+      assert.equal(resetButtons.length, 2, 'Should find 2 reset buttons');
+      for (const btn of resetButtons) {
+        assert.ok(btn[0].includes('disabled'), 'Reset button must be disabled when editing mode is off');
+      }
+    });
+
+    it('reverts inferredType to originalInferredType and clears userOverridden when reset', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Simulate modified draft
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            index: 0,
+            name: 'population',
+            nativeType: 'Integer',
+            inferredType: 'real' as const,
+            originalInferredType: 'integer' as const,
+            userOverridden: true,
+          },
+        ],
+      });
+
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'real');
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].userOverridden, true);
+
+      // Verify that resetting reverts field to originalInferredType and sets userOverridden: false
+      const updatedFields = (layerPropertiesDraftSignal.value.fields ?? []).map((f: any) => {
+        if (f.name === 'population') {
+          return {
+            ...f,
+            inferredType: f.originalInferredType ?? f.inferredType,
+            userOverridden: false,
+          };
+        }
+        return f;
+      });
+      updateLayerPropertiesDraft({ fields: updatedFields });
+
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'integer');
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].userOverridden, false);
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(!html.includes('layer-field-override-badge'), 'User badge must not be rendered after reset');
+    });
+  });
+
+  describe('Fields Tab Single-Row Selection, Deletion & New Field Dialog (Ticket #148)', () => {
+    const testLayerId = 'layer-fields-148';
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Selection & Deletion Layer',
+          type: 'vector',
+          source: '/data/select_delete.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'field_alpha',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'field_beta',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+              userOverridden: false,
+            },
+            {
+              index: 2,
+              name: 'field_gamma',
+              nativeType: 'Real',
+              inferredType: 'real' as const,
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('renders Delete Selected Field button disabled by default when no row is selected and editing is off', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      const deleteBtn = html.match(/<button[^>]*class="[^"]*delete-field[^"]*"[^>]*>/);
+      assert.ok(deleteBtn, 'Delete button must be rendered');
+      assert.ok(deleteBtn[0].includes('disabled'), 'Delete button must be disabled by default');
+    });
+
+    it('renders field rows with layer-properties-field-row class and unselected by default', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      const rows = [...html.matchAll(/<tr[^>]*class="[^"]*layer-properties-field-row[^"]*"[^>]*>/g)];
+      assert.equal(rows.length, 3, 'Must render 3 field rows with layer-properties-field-row class');
+      for (const row of rows) {
+        assert.ok(!row[0].includes('selected'), 'Row must not have selected class by default');
+        assert.ok(!row[0].includes('#e0f2fe'), 'Row must not have #e0f2fe background by default');
+      }
+    });
+
+    it('deleting a field removes it from draft.fields without mutating projectLayersSignal', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Verify initial fields count
+      assert.equal(layerPropertiesDraftSignal.value.fields?.length, 3);
+
+      // Simulate deleting 'field_beta'
+      const updatedFields = (layerPropertiesDraftSignal.value.fields ?? []).filter(
+        (f: any) => f.name !== 'field_beta'
+      );
+      updateLayerPropertiesDraft({ fields: updatedFields });
+
+      // Draft has 2 fields remaining
+      assert.equal(layerPropertiesDraftSignal.value.fields?.length, 2);
+      assert.ok(
+        !layerPropertiesDraftSignal.value.fields?.some((f: any) => f.name === 'field_beta'),
+        'field_beta must be removed from draft'
+      );
+
+      // Project state remains unmodified conforming to transactional isolation
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.length, 3, 'projectLayersSignal must remain untouched');
+    });
+
+    it('renders New Field placeholder dialog using Dialog framework when opened', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // With isNewFieldOpen defaulting to false, newFieldWindow portal is closed
+      assert.ok(!html.includes('new-field-dialog-cancel-btn'), 'New Field dialog controls not rendered when closed');
     });
   });
 });

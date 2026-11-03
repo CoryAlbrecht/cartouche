@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -464,10 +464,13 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
     assert.equal(nameField.nativeType, 'string');
     assert.equal(nameField.mappedType, 'string');
     assert.equal(nameField.nullable, true);
+    assert.equal(nameField.originalInferredType, nameField.inferredType);
+    assert.equal(typeof nameField.index, 'number');
 
     const rankField = info.fields.find((f) => f.name === 'scalerank');
     assert(rankField, 'scalerank field should exist');
     assert.equal(rankField.mappedType, 'number');
+    assert.equal(rankField.originalInferredType, rankField.inferredType);
   });
 
   it('throws descriptive error when getLayerInfo is called for unregistered layerId', async () => {
