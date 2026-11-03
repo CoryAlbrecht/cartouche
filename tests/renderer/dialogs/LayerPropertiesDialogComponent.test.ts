@@ -209,6 +209,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_fields_calculate: 'Calculate Virtual Field',
       layer_properties_fields_col_comment: 'Comment',
       layer_properties_fields_col_data_type: 'Data Type',
+      layer_properties_fields_reset_type: 'Reset data type to default',
       layer_properties_fields_show_native_type: 'Show Native Type',
       layer_properties_time_enable: 'Enable dynamic temporal control',
       layer_properties_time_mode: 'Configuration Mode',
@@ -2508,6 +2509,118 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       // Project state remains untouched
       const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
       assert.equal(projectLayer?.fields?.[0].inferredType, 'string');
+    });
+  });
+
+  describe('Fields Tab Data Type Reset Button & Original Inferred Type Tracking (Ticket #147)', () => {
+    const testLayerId = 'layer-fields-reset-147';
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Reset Test Layer',
+          type: 'vector',
+          source: '/data/reset.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'population',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+              originalInferredType: 'integer' as const,
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'identifier',
+              nativeType: 'String',
+              inferredType: 'uuid' as const,
+              originalInferredType: 'string' as const,
+              userOverridden: true,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('renders an icon-only reset button adjacent to each Data Type select dropdown', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert.ok(
+        html.includes('class="layer-field-reset-type-btn"'),
+        'Must render reset button with layer-field-reset-type-btn class'
+      );
+      assert.ok(
+        html.includes('aria-label="Reset data type to default"'),
+        'Reset button must have descriptive aria-label'
+      );
+      assert.ok(
+        html.includes('title="Reset data type to default"'),
+        'Reset button must have localized title tooltip'
+      );
+    });
+
+    it('disables the reset button when editing mode is off, even if field is userOverridden', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Both buttons must be disabled because isEditingFields defaults to false
+      const resetButtons = [...html.matchAll(/<button[^>]*class="[^"]*layer-field-reset-type-btn[^"]*"[^>]*>/g)];
+      assert.equal(resetButtons.length, 2, 'Should find 2 reset buttons');
+      for (const btn of resetButtons) {
+        assert.ok(btn[0].includes('disabled'), 'Reset button must be disabled when editing mode is off');
+      }
+    });
+
+    it('reverts inferredType to originalInferredType and clears userOverridden when reset', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Simulate modified draft
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            index: 0,
+            name: 'population',
+            nativeType: 'Integer',
+            inferredType: 'real' as const,
+            originalInferredType: 'integer' as const,
+            userOverridden: true,
+          },
+        ],
+      });
+
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'real');
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].userOverridden, true);
+
+      // Verify that resetting reverts field to originalInferredType and sets userOverridden: false
+      const updatedFields = (layerPropertiesDraftSignal.value.fields ?? []).map((f: any) => {
+        if (f.name === 'population') {
+          return {
+            ...f,
+            inferredType: f.originalInferredType ?? f.inferredType,
+            userOverridden: false,
+          };
+        }
+        return f;
+      });
+      updateLayerPropertiesDraft({ fields: updatedFields });
+
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'integer');
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].userOverridden, false);
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(!html.includes('layer-field-override-badge'), 'User badge must not be rendered after reset');
     });
   });
 });

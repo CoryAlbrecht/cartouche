@@ -25,6 +25,7 @@ import {
   mdiCalculator,
   mdiPaletteOutline,
   mdiCodeTags,
+  mdiUndo,
 } from "@mdi/js";
 import { actionsMapSignal } from "@renderer/state/actionSignals";
 import {
@@ -536,6 +537,37 @@ export const LayerPropertiesDialog: React.FC = () => {
             ...f,
             inferredType: newType,
             userOverridden: true,
+          };
+        }
+        return f;
+      });
+
+      // Update draft state exclusively (conforming to ADR 0024)
+      updateLayerPropertiesDraft({ fields: updatedFields });
+    },
+    [activeId, layerFields]
+  );
+
+  /**
+   * @function handleResetFieldType
+   * @description Resets the data type of the specified field to its original inferred type and clears user override.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {string} fieldName - Name of the target field to reset.
+   * @returns {void}
+   */
+  const handleResetFieldType = useCallback(
+    (fieldName: string) => {
+      if (!activeId) return;
+      const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
+        if (f.name === fieldName) {
+          const original = f.originalInferredType ?? f.inferredType;
+          return {
+            ...f,
+            inferredType: original,
+            userOverridden: false,
           };
         }
         return f;
@@ -2063,6 +2095,38 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   User
                                 </span>
                               )}
+                              {(() => {
+                                const isOverridden = Boolean(
+                                  field.userOverridden ||
+                                    (field.originalInferredType &&
+                                      field.inferredType !== field.originalInferredType)
+                                );
+                                const isResetEnabled = isEditingFields && isOverridden;
+                                return (
+                                  <button
+                                    type='button'
+                                    className='layer-field-reset-type-btn'
+                                    title={t("layer_properties_fields_reset_type")}
+                                    aria-label={t("layer_properties_fields_reset_type")}
+                                    disabled={!isResetEnabled}
+                                    onClick={() => handleResetFieldType(field.name)}
+                                    style={{
+                                      padding: "2px 4px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      border: "1px solid",
+                                      borderColor: isResetEnabled ? "#cbd5e1" : "#e2e8f0",
+                                      borderRadius: "3px",
+                                      backgroundColor: isResetEnabled ? "#ffffff" : "#f8fafc",
+                                      cursor: isResetEnabled ? "pointer" : "not-allowed",
+                                      color: isResetEnabled ? "#334155" : "#94a3b8",
+                                      opacity: isResetEnabled ? 1 : 0.5,
+                                    }}>
+                                    <Icon path={mdiUndo} size='14px' />
+                                  </button>
+                                );
+                              })()}
                             </div>
                           </td>
                           {showNativeType && (

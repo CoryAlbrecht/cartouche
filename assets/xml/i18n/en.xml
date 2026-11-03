@@ -177,6 +177,7 @@
     <string name="layer_properties_fields_calculate">Calculate Virtual Field</string>
     <string name="layer_properties_fields_col_comment">Comment</string>
     <string name="layer_properties_fields_col_data_type">Data Type</string>
+    <string name="layer_properties_fields_reset_type">Reset data type to default</string>
     <string name="layer_properties_fields_show_native_type">Show Native Type</string>
     <string name="layer_properties_time_enable">Enable dynamic temporal control</string>
     <string name="layer_properties_time_mode">Configuration Mode</string>
