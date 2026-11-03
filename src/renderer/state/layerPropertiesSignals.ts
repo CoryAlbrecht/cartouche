@@ -270,12 +270,39 @@ export async function openLayerPropertiesDialog(
 
   const currentLayer = findLayerInTree(projectTreeSignal.value, layerId);
   const currentProjectLayer = projectLayersSignal.value.find((l) => l.id === layerId);
-  const initialFields =
+  const rawFields =
     currentProjectLayer?.fields
-      ? currentProjectLayer.fields.map((f) => ({ ...f }))
+      ? currentProjectLayer.fields
       : (currentLayer && 'fields' in currentLayer && (currentLayer as any).fields)
-        ? ((currentLayer as any).fields as LayerFieldInfo[]).map((f) => ({ ...f }))
+        ? ((currentLayer as any).fields as LayerFieldInfo[])
         : undefined;
+
+  let physicalCount = 0;
+  const initialFields =
+    rawFields ?
+      rawFields.map((f) => {
+        const isVirtual = Boolean(f.isVirtual);
+        let assignedIndex = f.index;
+        if (assignedIndex === undefined && !isVirtual) {
+          assignedIndex = physicalCount;
+        }
+        if (!isVirtual) {
+          physicalCount++;
+        }
+        return {
+          ...f,
+          index: assignedIndex,
+          originalInferredType: f.originalInferredType ?? f.inferredType,
+          isVirtual,
+        };
+      }).map((f, _, arr) => {
+        if (f.index === undefined && f.isVirtual) {
+          const virtualIdx = arr.filter((x) => x.isVirtual && x.index === undefined).indexOf(f);
+          return { ...f, index: physicalCount + virtualIdx };
+        }
+        return f;
+      })
+    : undefined;
   const initialName = currentLayer?.name || layerId;
   const initialCrs = currentLayer?.crs?.authId || "EPSG:4326";
   const initialFilter =

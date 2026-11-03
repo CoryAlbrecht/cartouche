@@ -178,6 +178,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_label_crs: 'Coordinate Reference System',
       layer_properties_label_extent: 'Spatial Extent',
       layer_properties_group_fields: 'Attribute Fields',
+      layer_properties_field_col_index: 'Index',
       layer_properties_field_col_name: 'Field Name',
       layer_properties_field_col_native_type: 'Native Type',
       layer_properties_field_col_length: 'Length',
@@ -472,7 +473,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     activeLayerPropertiesTabSignal.value = 'fields';
 
     let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    assert(html.includes('colSpan="5"') || html.includes('colspan="5"'), 'Empty state should span 5 columns when Native Type is hidden');
+    assert(html.includes('colSpan="6"') || html.includes('colspan="6"'), 'Empty state should span 6 columns when Native Type is hidden');
 
     preferencesMapSignal.value = {
       'ui.layerProperties.fields.showNativeType': {
@@ -484,7 +485,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       }
     };
     html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    assert(html.includes('colSpan="6"') || html.includes('colspan="6"'), 'Empty state should span 6 columns when Native Type is shown');
+    assert(html.includes('colSpan="7"') || html.includes('colspan="7"'), 'Empty state should span 7 columns when Native Type is shown');
   });
 
   it('renders appearance-only temporal master checkbox and mode selectors on Time Filter tab', async () => {
@@ -2185,6 +2186,231 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       // IPC must NOT be called
       assert.equal(ipcCalled, false, 'IPC updateLayerFields must not be called upon cancel');
+    });
+  });
+
+  describe('Fields Tab Index Column, Vertical Grid Lines & Empty Display (Ticket #145)', () => {
+    const testLayerId = 'layer-fields-grid-145';
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('renders 0-based Index column as leftmost column before Field Name', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Grid Test Layer',
+          type: 'vector',
+          source: '/data/grid.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'id',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+            },
+            {
+              index: 1,
+              name: 'title',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Header must contain Index before Field Name
+      const indexHeaderIdx = html.indexOf('Index</th>');
+      const nameHeaderIdx = html.indexOf('Field Name</th>');
+      assert.ok(indexHeaderIdx >= 0, 'Must render Index column header');
+      assert.ok(nameHeaderIdx >= 0, 'Must render Field Name column header');
+      assert.ok(indexHeaderIdx < nameHeaderIdx, 'Index column header must appear before Field Name column header');
+
+      // Body cells must render 0 and 1
+      assert.ok(html.includes('>0</td>'), 'Must render index 0 cell');
+      assert.ok(html.includes('>1</td>'), 'Must render index 1 cell');
+    });
+
+    it('physical fields retain their fixed 0-based index slot even if earlier fields are removed', async () => {
+      const initialFields = [
+        {
+          index: 0,
+          name: 'first',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+        {
+          index: 1,
+          name: 'second',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+        {
+          index: 2,
+          name: 'third',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Index Stability Layer',
+          type: 'vector',
+          source: '/data/stability.shp',
+          fields: initialFields,
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Simulate deleting the first row (index 0) in draft state
+      updateLayerPropertiesDraft({
+        fields: [initialFields[1], initialFields[2]],
+      });
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Remaining rows must retain fixed slot indices 1 and 2, not re-indexed to 0 and 1
+      assert.ok(!html.includes('>0</td>'), 'Index 0 must no longer be present');
+      assert.ok(html.includes('>1</td>'), 'Second row must retain slot index 1');
+      assert.ok(html.includes('>2</td>'), 'Third row must retain slot index 2');
+    });
+
+    it('virtual fields display sequential integers incrementing above physical field count', async () => {
+      const fields = [
+        {
+          index: 0,
+          name: 'phys_1',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: false,
+        },
+        {
+          index: 1,
+          name: 'phys_2',
+          nativeType: 'Integer',
+          inferredType: 'integer' as const,
+          isVirtual: false,
+        },
+        {
+          name: 'virt_1',
+          nativeType: 'Real',
+          inferredType: 'real' as const,
+          isVirtual: true,
+        },
+        {
+          name: 'virt_2',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          isVirtual: true,
+        },
+      ];
+
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Virtual Index Layer',
+          type: 'vector',
+          source: '/data/virtual.shp',
+          fields,
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      assert.ok(html.includes('>0</td>'), 'Physical field 1 must have index 0');
+      assert.ok(html.includes('>1</td>'), 'Physical field 2 must have index 1');
+      assert.ok(html.includes('>2</td>'), 'Virtual field 1 must have sequential index 2');
+      assert.ok(html.includes('>3</td>'), 'Virtual field 2 must have sequential index 3');
+    });
+
+    it('renders vertical grid lines with border-left and border-right across all cells', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Grid Lines Layer',
+          type: 'vector',
+          source: '/data/gridlines.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'code',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Header cells must have border-left and border-right #cbd5e1
+      assert.ok(
+        html.includes('border-left:1px solid #cbd5e1') || html.includes('borderLeft:1px solid #cbd5e1'),
+        'th elements must have border-left #cbd5e1'
+      );
+      assert.ok(
+        html.includes('border-right:1px solid #cbd5e1') || html.includes('borderRight:1px solid #cbd5e1'),
+        'th elements must have border-right #cbd5e1'
+      );
+
+      // Body cells must have border-left and border-right #e2e8f0
+      assert.ok(
+        html.includes('border-left:1px solid #e2e8f0') || html.includes('borderLeft:1px solid #e2e8f0'),
+        'td elements must have border-left #e2e8f0'
+      );
+      assert.ok(
+        html.includes('border-right:1px solid #e2e8f0') || html.includes('borderRight:1px solid #e2e8f0'),
+        'td elements must have border-right #e2e8f0'
+      );
+    });
+
+    it('renders empty string without em-dashes for missing, null, undefined, or zero Length, Precision, and Comment', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Empty Values Layer',
+          type: 'vector',
+          source: '/data/empty.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'empty_field',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              width: 0,
+              precision: 0,
+              comment: undefined,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Must not render em-dashes in any table cell
+      assert.ok(!html.includes('—</td>'), 'Cells must not contain em-dashes for empty/zero attributes');
     });
   });
 });

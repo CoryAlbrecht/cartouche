@@ -122,6 +122,7 @@
     <string name="layer_properties_label_crs">Système de coordonnées de référence</string>
     <string name="layer_properties_label_extent">Étendue spatiale</string>
     <string name="layer_properties_group_fields">Champs d'attributs</string>
+    <string name="layer_properties_field_col_index">Indice</string>
     <string name="layer_properties_field_col_name">Nom du champ</string>
     <string name="layer_properties_field_col_native_type">Type natif</string>
     <string name="layer_properties_field_col_length">Longueur</string>

@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -568,7 +568,7 @@ interface BackgroundScanState {
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  */
 export class GeospatialEngine {
@@ -945,10 +945,14 @@ export class GeospatialEngine {
         mappedType = "string";
       }
 
+      const comment = (f as any).comment || (pragmaCol as any)?.comment || (gpkgCol as any)?.description || undefined;
+
       fields.push({
+        index: i,
         name,
         nativeType,
         inferredType,
+        originalInferredType: inferredType,
         nativeSubType: nativeSubType ? String(nativeSubType) : undefined,
         alternativeName: alternativeName ? String(alternativeName) : undefined,
         domainName: domainName ? String(domainName) : undefined,
@@ -956,7 +960,9 @@ export class GeospatialEngine {
         width,
         precision,
         nullable: (f as any).nullable !== false,
+        comment: comment ? String(comment) : undefined,
         userOverridden: false,
+        isVirtual: false,
         mappedType,
       });
     }

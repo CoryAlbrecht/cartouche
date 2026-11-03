@@ -453,6 +453,37 @@ const SECONDARY_BUTTON_STYLE: React.CSSProperties = {
 };
 
 /**
+ * @function resolveFieldIndex
+ * @description Resolves the stable 0-based field index, anchoring physical GDAL slots and incrementing virtual fields.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field metadata.
+ * @param {LayerFieldInfo[]} allFields - Full fields collection.
+ * @param {number} fallbackIndex - Array index fallback.
+ * @returns {number} Resolved 0-based integer index.
+ */
+export function resolveFieldIndex(
+  field: LayerFieldInfo,
+  allFields: LayerFieldInfo[],
+  fallbackIndex: number
+): number {
+  if (typeof field.index === "number") {
+    return field.index;
+  }
+  const physicalFields = allFields.filter((f) => !f.isVirtual);
+  const physicalCount = physicalFields.length;
+  if (!field.isVirtual) {
+    const physIdx = physicalFields.indexOf(field);
+    return physIdx >= 0 ? physIdx : fallbackIndex;
+  }
+  const virtualFields = allFields.filter((f) => f.isVirtual);
+  const virtIdx = virtualFields.indexOf(field);
+  return physicalCount + (virtIdx >= 0 ? virtIdx : 0);
+}
+
+/**
  * @component LayerPropertiesDialog
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -1204,7 +1235,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                               style={{ padding: "6px 10px", color: "#475569" }}>
                               {field.width !== undefined && field.width > 0 ?
                                 field.width
-                              : "—"}
+                              : ""}
                             </td>
                             <td
                               style={{ padding: "6px 10px", color: "#475569" }}>
@@ -1213,7 +1244,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 && field.precision > 0
                               ) ?
                                 field.precision
-                              : "—"}
+                              : ""}
                             </td>
                             <td style={{ padding: "6px 10px" }}>
                               {field.nullable ?
@@ -1848,6 +1879,19 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
+                          width: "48px",
+                          textAlign: "right",
+                        }}>
+                        {t("layer_properties_field_col_index")}
+                      </th>
+                      <th
+                        style={{
+                          padding: "6px 10px",
+                          borderBottom: "1px solid #cbd5e1",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
                         }}>
                         {t("layer_properties_field_col_name")}
                       </th>
@@ -1855,6 +1899,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
                         }}>
                         {t("layer_properties_fields_col_data_type")}
                       </th>
@@ -1863,6 +1909,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid #cbd5e1",
+                            borderRight: "1px solid #cbd5e1",
                           }}>
                           {t("layer_properties_field_col_native_type")}
                         </th>
@@ -1871,6 +1919,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
                         }}>
                         {t("layer_properties_field_col_length")}
                       </th>
@@ -1878,6 +1928,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
                         }}>
                         {t("layer_properties_field_col_precision")}
                       </th>
@@ -1885,6 +1937,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
                         }}>
                         {t("layer_properties_fields_col_comment")}
                       </th>
@@ -1894,26 +1948,48 @@ export const LayerPropertiesDialog: React.FC = () => {
                     {!layerFields || layerFields.length === 0 ?
                       <tr>
                         <td
-                          colSpan={showNativeType ? 6 : 5}
+                          colSpan={showNativeType ? 7 : 6}
                           style={{
                             padding: "12px",
                             textAlign: "center",
                             color: "#64748b",
                             fontStyle: "italic",
+                            borderLeft: "1px solid #e2e8f0",
+                            borderRight: "1px solid #e2e8f0",
                           }}>
                           No attribute fields found.
                         </td>
                       </tr>
-                    : layerFields.map((field) => (
+                    : layerFields.map((field, fieldIndex) => (
                         <tr
                           key={field.name}
                           style={{ borderBottom: "1px solid #e2e8f0" }}>
-                          <td style={{ padding: "6px 10px", fontWeight: 500 }}>
+                          <td
+                            style={{
+                              padding: "6px 10px",
+                              borderLeft: "1px solid #e2e8f0",
+                              borderRight: "1px solid #e2e8f0",
+                              textAlign: "right",
+                              fontFamily:
+                                "var(--cartouche-theme-font-family-mono, monospace)",
+                              color: "#64748b",
+                            }}>
+                            {resolveFieldIndex(field, layerFields, fieldIndex)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "6px 10px",
+                              borderLeft: "1px solid #e2e8f0",
+                              borderRight: "1px solid #e2e8f0",
+                              fontWeight: 500,
+                            }}>
                             {field.name}
                           </td>
                           <td
                             style={{
                               padding: "6px 10px",
+                              borderLeft: "1px solid #e2e8f0",
+                              borderRight: "1px solid #e2e8f0",
                               fontFamily:
                                 "var(--cartouche-theme-font-family-mono, monospace)",
                               color: "#0f766e",
@@ -1967,30 +2043,49 @@ export const LayerPropertiesDialog: React.FC = () => {
                             </div>
                           </td>
                           {showNativeType && (
-                            <td style={{ padding: "6px 10px", color: "#475569" }}>
+                            <td
+                              style={{
+                                padding: "6px 10px",
+                                borderLeft: "1px solid #e2e8f0",
+                                borderRight: "1px solid #e2e8f0",
+                                color: "#475569",
+                              }}>
                               {field.nativeType}
                             </td>
                           )}
-                          <td style={{ padding: "6px 10px", color: "#475569" }}>
+                          <td
+                            style={{
+                              padding: "6px 10px",
+                              borderLeft: "1px solid #e2e8f0",
+                              borderRight: "1px solid #e2e8f0",
+                              color: "#475569",
+                            }}>
                             {field.width !== undefined && field.width > 0 ?
                               field.width
-                            : "—"}
+                            : ""}
                           </td>
-                          <td style={{ padding: "6px 10px", color: "#475569" }}>
+                          <td
+                            style={{
+                              padding: "6px 10px",
+                              borderLeft: "1px solid #e2e8f0",
+                              borderRight: "1px solid #e2e8f0",
+                              color: "#475569",
+                            }}>
                             {(
                               field.precision !== undefined
                               && field.precision > 0
                             ) ?
                               field.precision
-                            : "—"}
+                            : ""}
                           </td>
                           <td
                             style={{
                               padding: "6px 10px",
+                              borderLeft: "1px solid #e2e8f0",
+                              borderRight: "1px solid #e2e8f0",
                               color: "#64748b",
-                              fontStyle: "italic",
                             }}>
-                            —
+                            {field.comment || ""}
                           </td>
                         </tr>
                       ))
