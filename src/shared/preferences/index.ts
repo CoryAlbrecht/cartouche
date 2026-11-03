@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-02
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -547,6 +547,44 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     value: 450,
     defaultValue: 450,
     minimum: 300,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.newField.location.x': {
+    displayName: 'New Field Dialog X Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.newField.location.y': {
+    displayName: 'New Field Dialog Y Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.newField.location.width': {
+    displayName: 'New Field Dialog Width',
+    value: 420,
+    defaultValue: 420,
+    minimum: 360,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.newField.location.height': {
+    displayName: 'New Field Dialog Height',
+    value: 320,
+    defaultValue: 320,
+    minimum: 240,
     ephemeral: false,
     hidden: true,
     category: 'ui',

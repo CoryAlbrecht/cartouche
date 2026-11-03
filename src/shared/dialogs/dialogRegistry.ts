@@ -12,10 +12,10 @@
 /**
  * Valid frame name identifiers for detached dialog windows.
  *
- * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow' | 'snappingOptionsWindow'} DialogWindowName
+ * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow' | 'snappingOptionsWindow' | 'newFieldWindow'} DialogWindowName
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  */
 export type DialogWindowName =
@@ -24,7 +24,8 @@ export type DialogWindowName =
   | 'layerPropertiesWindow'
   | 'projectPropertiesWindow'
   | 'selectByValueWindow'
-  | 'snappingOptionsWindow';
+  | 'snappingOptionsWindow'
+  | 'newFieldWindow';
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -54,7 +55,7 @@ export interface DialogWindowSpec {
  * @description Central registry mapping dialog window frame names to their dimensional constraints and preference keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @type {Readonly<Record<DialogWindowName, DialogWindowSpec>>}
  */
@@ -106,6 +107,14 @@ export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindow
     defaultHeight: 450,
     minWidth: 400,
     minHeight: 300
+  }),
+  newFieldWindow: Object.freeze({
+    frameName: 'newFieldWindow',
+    locationKeyPrefix: 'ui.newField.location',
+    defaultWidth: 420,
+    defaultHeight: 320,
+    minWidth: 360,
+    minHeight: 240
   })
 });
 

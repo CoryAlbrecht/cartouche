@@ -512,10 +512,30 @@ export const LayerPropertiesDialog: React.FC = () => {
     [];
 
   const [isEditingFields, setIsEditingFields] = useState(false);
+  const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
+  const [isNewFieldOpen, setIsNewFieldOpen] = useState(false);
 
   useEffect(() => {
     setIsEditingFields(false);
+    setSelectedFieldName(null);
+    setIsNewFieldOpen(false);
   }, [activeId]);
+
+  /**
+   * @function handleDeleteSelectedField
+   * @description Removes the selected attribute field from the draft layer fields collection and clears row selection.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const handleDeleteSelectedField = useCallback(() => {
+    if (!isEditingFields || !selectedFieldName || !activeId) return;
+    const updatedFields = layerFields.filter((f) => f.name !== selectedFieldName);
+    updateLayerPropertiesDraft({ fields: updatedFields });
+    setSelectedFieldName(null);
+  }, [isEditingFields, selectedFieldName, activeId, layerFields]);
 
   /**
    * @function handleFieldTypeChange
@@ -813,8 +833,9 @@ export const LayerPropertiesDialog: React.FC = () => {
   const dialogTitle = `${t("layer_properties_dialog_title")} — ${info?.name || draft.layerName || activeId}`;
 
   return (
-    <Dialog
-      name='layerPropertiesWindow'
+    <>
+      <Dialog
+        name='layerPropertiesWindow'
       title={dialogTitle}
       icon={mdiLayersOutline}
       isOpen={Boolean(activeId)}
@@ -1824,16 +1845,24 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn new-field'
                   title={t("layer_properties_fields_new_field")}
                   aria-label={t("layer_properties_fields_new_field")}
+                  disabled={!isEditingFields}
+                  onClick={() => {
+                    if (isEditingFields) {
+                      setIsNewFieldOpen(true);
+                    }
+                  }}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid",
+                    borderColor: isEditingFields ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: "#ffffff",
-                    cursor: "pointer",
-                    color: "#334155",
+                    backgroundColor: isEditingFields ? "#ffffff" : "#f8fafc",
+                    cursor: isEditingFields ? "pointer" : "not-allowed",
+                    color: isEditingFields ? "#334155" : "#94a3b8",
+                    opacity: isEditingFields ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTablePlus} size='14px' />
@@ -1843,16 +1872,25 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn delete-field'
                   title={t("layer_properties_fields_delete_field")}
                   aria-label={t("layer_properties_fields_delete_field")}
+                  disabled={!isEditingFields || !selectedFieldName}
+                  onClick={handleDeleteSelectedField}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid",
+                    borderColor:
+                      isEditingFields && selectedFieldName ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: "#ffffff",
-                    cursor: "pointer",
-                    color: "#334155",
+                    backgroundColor:
+                      isEditingFields && selectedFieldName ? "#ffffff" : "#f8fafc",
+                    cursor:
+                      isEditingFields && selectedFieldName ? "pointer" : "not-allowed",
+                    color:
+                      isEditingFields && selectedFieldName ? "#334155" : "#94a3b8",
+                    opacity:
+                      isEditingFields && selectedFieldName ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTrashCanOutline} size='14px' />
@@ -1862,16 +1900,19 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn calculate'
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
+                  disabled={!isEditingFields}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid",
+                    borderColor: isEditingFields ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: "#ffffff",
-                    cursor: "pointer",
-                    color: "#334155",
+                    backgroundColor: isEditingFields ? "#ffffff" : "#f8fafc",
+                    cursor: isEditingFields ? "pointer" : "not-allowed",
+                    color: isEditingFields ? "#334155" : "#94a3b8",
+                    opacity: isEditingFields ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiCalculator} size='14px' />
@@ -2004,131 +2045,147 @@ export const LayerPropertiesDialog: React.FC = () => {
                           No attribute fields found.
                         </td>
                       </tr>
-                    : layerFields.map((field, fieldIndex) => (
-                        <tr
-                          key={field.name}
-                          style={{ borderBottom: "1px solid #e2e8f0" }}>
-                          <td
+                    : layerFields.map((field, fieldIndex) => {
+                        const isSelected = selectedFieldName === field.name;
+                        return (
+                          <tr
+                            key={field.name}
+                            className={`layer-properties-field-row ${isSelected ? "selected" : ""}`}
+                            onClick={() => {
+                              setSelectedFieldName((prev) =>
+                                prev === field.name ? null : field.name
+                              );
+                            }}
                             style={{
-                              padding: "6px 10px",
-                              borderLeft: "1px solid #e2e8f0",
-                              borderRight: "1px solid #e2e8f0",
-                              textAlign: "right",
-                              fontFamily:
-                                "var(--cartouche-theme-font-family-mono, monospace)",
-                              color: "#64748b",
+                              borderBottom: "1px solid #e2e8f0",
+                              backgroundColor: isSelected ? "#e0f2fe" : "transparent",
+                              cursor: "pointer",
                             }}>
-                            {resolveFieldIndex(field, layerFields, fieldIndex)}
-                          </td>
-                          <td
-                            style={{
-                              padding: "6px 10px",
-                              borderLeft: "1px solid #e2e8f0",
-                              borderRight: "1px solid #e2e8f0",
-                              fontWeight: 500,
-                            }}>
-                            {field.name}
-                          </td>
-                          <td
-                            style={{
-                              padding: "6px 10px",
-                              borderLeft: "1px solid #e2e8f0",
-                              borderRight: "1px solid #e2e8f0",
-                              fontFamily:
-                                "var(--cartouche-theme-font-family-mono, monospace)",
-                              color: "#0f766e",
-                            }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <select
-                                className='layer-field-type-select'
-                                aria-label={`Field type for ${field.name}`}
-                                disabled={!isEditingFields}
-                                value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
-                                onChange={(e) =>
-                                  handleFieldTypeChange(
-                                    field.name,
-                                    e.target.value as InferredFieldType
-                                  )
-                                }
-                                style={{
-                                  padding: "2px 6px",
-                                  fontSize: "0.8125rem",
-                                  fontFamily:
-                                    "var(--cartouche-theme-font-family-mono, monospace)",
-                                  fontWeight: field.userOverridden ? 600 : 400,
-                                  color:
-                                    field.userOverridden ? "#047857"
-                                    : !isEditingFields ? "#94a3b8"
-                                    : "#0f766e",
-                                  backgroundColor:
-                                    field.userOverridden ? "#f0fdf4"
-                                    : !isEditingFields ? "#f8fafc"
-                                    : "#ffffff",
-                                  border:
-                                    field.userOverridden ? "1px solid #10b981"
-                                    : !isEditingFields ? "1px solid #e2e8f0"
-                                    : "1px solid #cbd5e1",
-                                  borderRadius: "3px",
-                                  cursor: !isEditingFields ? "not-allowed" : "pointer",
-                                  opacity: !isEditingFields ? 0.8 : 1,
-                                }}>
-                                {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
-                                  <option key={typeOption} value={typeOption}>
-                                    {typeOption}
-                                  </option>
-                                ))}
-                              </select>
-                              {field.userOverridden && (
-                                <span
-                                  className='layer-field-override-badge'
-                                  title='Field type manually overridden by user'
+                            <td
+                              style={{
+                                padding: "6px 10px",
+                                borderLeft: "1px solid #e2e8f0",
+                                borderRight: "1px solid #e2e8f0",
+                                textAlign: "right",
+                                fontFamily:
+                                  "var(--cartouche-theme-font-family-mono, monospace)",
+                                color: "#64748b",
+                              }}>
+                              {resolveFieldIndex(field, layerFields, fieldIndex)}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 10px",
+                                borderLeft: "1px solid #e2e8f0",
+                                borderRight: "1px solid #e2e8f0",
+                                fontWeight: 500,
+                              }}>
+                              {field.name}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 10px",
+                                borderLeft: "1px solid #e2e8f0",
+                                borderRight: "1px solid #e2e8f0",
+                                fontFamily:
+                                  "var(--cartouche-theme-font-family-mono, monospace)",
+                                color: "#0f766e",
+                              }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <select
+                                  className='layer-field-type-select'
+                                  aria-label={`Field type for ${field.name}`}
+                                  disabled={!isEditingFields}
+                                  value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) =>
+                                    handleFieldTypeChange(
+                                      field.name,
+                                      e.target.value as InferredFieldType
+                                    )
+                                  }
                                   style={{
-                                    fontSize: "0.6875rem",
-                                    padding: "1px 5px",
+                                    padding: "2px 6px",
+                                    fontSize: "0.8125rem",
+                                    fontFamily:
+                                      "var(--cartouche-theme-font-family-mono, monospace)",
+                                    fontWeight: field.userOverridden ? 600 : 400,
+                                    color:
+                                      field.userOverridden ? "#047857"
+                                      : !isEditingFields ? "#94a3b8"
+                                      : "#0f766e",
+                                    backgroundColor:
+                                      field.userOverridden ? "#f0fdf4"
+                                      : !isEditingFields ? "#f8fafc"
+                                      : "#ffffff",
+                                    border:
+                                      field.userOverridden ? "1px solid #10b981"
+                                      : !isEditingFields ? "1px solid #e2e8f0"
+                                      : "1px solid #cbd5e1",
                                     borderRadius: "3px",
-                                    backgroundColor: "#dcfce7",
-                                    color: "#15803d",
-                                    fontWeight: 600,
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.025em",
+                                    cursor: !isEditingFields ? "not-allowed" : "pointer",
+                                    opacity: !isEditingFields ? 0.8 : 1,
                                   }}>
-                                  User
-                                </span>
-                              )}
-                              {(() => {
-                                const isOverridden = Boolean(
-                                  field.userOverridden ||
-                                    (field.originalInferredType &&
-                                      field.inferredType !== field.originalInferredType)
-                                );
-                                const isResetEnabled = isEditingFields && isOverridden;
-                                return (
-                                  <button
-                                    type='button'
-                                    className='layer-field-reset-type-btn'
-                                    title={t("layer_properties_fields_reset_type")}
-                                    aria-label={t("layer_properties_fields_reset_type")}
-                                    disabled={!isResetEnabled}
-                                    onClick={() => handleResetFieldType(field.name)}
+                                  {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
+                                    <option key={typeOption} value={typeOption}>
+                                      {typeOption}
+                                    </option>
+                                  ))}
+                                </select>
+                                {field.userOverridden && (
+                                  <span
+                                    className='layer-field-override-badge'
+                                    title='Field type manually overridden by user'
                                     style={{
-                                      padding: "2px 4px",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      border: "1px solid",
-                                      borderColor: isResetEnabled ? "#cbd5e1" : "#e2e8f0",
+                                      fontSize: "0.6875rem",
+                                      padding: "1px 5px",
                                       borderRadius: "3px",
-                                      backgroundColor: isResetEnabled ? "#ffffff" : "#f8fafc",
-                                      cursor: isResetEnabled ? "pointer" : "not-allowed",
-                                      color: isResetEnabled ? "#334155" : "#94a3b8",
-                                      opacity: isResetEnabled ? 1 : 0.5,
+                                      backgroundColor: "#dcfce7",
+                                      color: "#15803d",
+                                      fontWeight: 600,
+                                      textTransform: "uppercase",
+                                      letterSpacing: "0.025em",
                                     }}>
-                                    <Icon path={mdiUndo} size='14px' />
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                          </td>
+                                    User
+                                  </span>
+                                )}
+                                {(() => {
+                                  const isOverridden = Boolean(
+                                    field.userOverridden ||
+                                      (field.originalInferredType &&
+                                        field.inferredType !== field.originalInferredType)
+                                  );
+                                  const isResetEnabled = isEditingFields && isOverridden;
+                                  return (
+                                    <button
+                                      type='button'
+                                      className='layer-field-reset-type-btn'
+                                      title={t("layer_properties_fields_reset_type")}
+                                      aria-label={t("layer_properties_fields_reset_type")}
+                                      disabled={!isResetEnabled}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleResetFieldType(field.name);
+                                      }}
+                                      style={{
+                                        padding: "2px 4px",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        border: "1px solid",
+                                        borderColor: isResetEnabled ? "#cbd5e1" : "#e2e8f0",
+                                        borderRadius: "3px",
+                                        backgroundColor: isResetEnabled ? "#ffffff" : "#f8fafc",
+                                        cursor: isResetEnabled ? "pointer" : "not-allowed",
+                                        color: isResetEnabled ? "#334155" : "#94a3b8",
+                                        opacity: isResetEnabled ? 1 : 0.5,
+                                      }}>
+                                      <Icon path={mdiUndo} size='14px' />
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                            </td>
                           {showNativeType && (
                             <td
                               style={{
@@ -2175,8 +2232,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                             {field.comment || ""}
                           </td>
                         </tr>
-                      ))
-                    }
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2323,6 +2380,62 @@ export const LayerPropertiesDialog: React.FC = () => {
         </div>
       </div>
     </Dialog>
+    <Dialog
+      name='newFieldWindow'
+      title={t("layer_properties_fields_new_field")}
+      icon={mdiTablePlus}
+      isOpen={isNewFieldOpen}
+      onClose={() => setIsNewFieldOpen(false)}
+      defaultWidth={420}
+      defaultHeight={320}
+      footer={
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "0.5rem",
+            padding: "0.5rem 0.75rem",
+            backgroundColor: "#f8fafc",
+            borderTop: "1px solid #e2e8f0",
+          }}>
+          <button
+            type='button'
+            className='new-field-dialog-cancel-btn'
+            onClick={() => setIsNewFieldOpen(false)}
+            style={{
+              padding: "0.375rem 0.75rem",
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "0.25rem",
+              cursor: "pointer",
+              fontSize: "0.8125rem",
+              color: "#334155",
+            }}>
+            {t("layer_properties_btn_cancel")}
+          </button>
+          <button
+            type='button'
+            className='new-field-dialog-ok-btn'
+            onClick={() => setIsNewFieldOpen(false)}
+            style={{
+              padding: "0.375rem 0.75rem",
+              backgroundColor: "#2563eb",
+              border: "1px solid #1d4ed8",
+              borderRadius: "0.25rem",
+              color: "#ffffff",
+              cursor: "pointer",
+              fontSize: "0.8125rem",
+              fontWeight: 500,
+            }}>
+            {t("layer_properties_btn_ok")}
+          </button>
+        </div>
+      }>
+      <div style={{ padding: "1rem", color: "#64748b", fontSize: "0.875rem" }}>
+        New field configuration placeholder.
+      </div>
+    </Dialog>
+  </>
   );
 };
 

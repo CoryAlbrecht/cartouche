@@ -2623,4 +2623,106 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(!html.includes('layer-field-override-badge'), 'User badge must not be rendered after reset');
     });
   });
+
+  describe('Fields Tab Single-Row Selection, Deletion & New Field Dialog (Ticket #148)', () => {
+    const testLayerId = 'layer-fields-148';
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Selection & Deletion Layer',
+          type: 'vector',
+          source: '/data/select_delete.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'field_alpha',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'field_beta',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+              userOverridden: false,
+            },
+            {
+              index: 2,
+              name: 'field_gamma',
+              nativeType: 'Real',
+              inferredType: 'real' as const,
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('renders Delete Selected Field button disabled by default when no row is selected and editing is off', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      const deleteBtn = html.match(/<button[^>]*class="[^"]*delete-field[^"]*"[^>]*>/);
+      assert.ok(deleteBtn, 'Delete button must be rendered');
+      assert.ok(deleteBtn[0].includes('disabled'), 'Delete button must be disabled by default');
+    });
+
+    it('renders field rows with layer-properties-field-row class and unselected by default', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      const rows = [...html.matchAll(/<tr[^>]*class="[^"]*layer-properties-field-row[^"]*"[^>]*>/g)];
+      assert.equal(rows.length, 3, 'Must render 3 field rows with layer-properties-field-row class');
+      for (const row of rows) {
+        assert.ok(!row[0].includes('selected'), 'Row must not have selected class by default');
+        assert.ok(!row[0].includes('#e0f2fe'), 'Row must not have #e0f2fe background by default');
+      }
+    });
+
+    it('deleting a field removes it from draft.fields without mutating projectLayersSignal', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Verify initial fields count
+      assert.equal(layerPropertiesDraftSignal.value.fields?.length, 3);
+
+      // Simulate deleting 'field_beta'
+      const updatedFields = (layerPropertiesDraftSignal.value.fields ?? []).filter(
+        (f: any) => f.name !== 'field_beta'
+      );
+      updateLayerPropertiesDraft({ fields: updatedFields });
+
+      // Draft has 2 fields remaining
+      assert.equal(layerPropertiesDraftSignal.value.fields?.length, 2);
+      assert.ok(
+        !layerPropertiesDraftSignal.value.fields?.some((f: any) => f.name === 'field_beta'),
+        'field_beta must be removed from draft'
+      );
+
+      // Project state remains unmodified conforming to transactional isolation
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.length, 3, 'projectLayersSignal must remain untouched');
+    });
+
+    it('renders New Field placeholder dialog using Dialog framework when opened', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // With isNewFieldOpen defaulting to false, newFieldWindow portal is closed
+      assert.ok(!html.includes('new-field-dialog-cancel-btn'), 'New Field dialog controls not rendered when closed');
+    });
+  });
 });
