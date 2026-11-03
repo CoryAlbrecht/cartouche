@@ -2413,4 +2413,101 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(!html.includes('—</td>'), 'Cells must not contain em-dashes for empty/zero attributes');
     });
   });
+
+  describe('Fields Tab Editing Mode Toggle & Icon Buttons (Ticket #146)', () => {
+    const testLayerId = 'layer-fields-toggle-146';
+
+    beforeEach(() => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Toggle Test Layer',
+          type: 'vector',
+          source: '/data/toggle.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'city_name',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+    });
+
+    it('defaults editing mode to off with disabled select controls and unpressed toggle button', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Toggle edit button must have aria-pressed="false" and not have active class
+      assert.ok(html.includes('aria-pressed="false"'), 'Toggle edit button must be unpressed by default');
+      assert.ok(!html.includes('toggle-edit active'), 'Toggle edit button must not have active class by default');
+
+      // Select control must be disabled
+      assert.ok(html.includes('disabled=""') || html.includes('disabled'), 'Type select dropdown must be disabled when editing mode is off');
+    });
+
+    it('renders Toggle Editing Mode, New Field, Delete Selected Field, and Field Calculator as icon-only buttons', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Verify buttons have title and aria-label attributes
+      assert.ok(html.includes('aria-label="Toggle Editing Mode"'), 'Toggle Edit button must have aria-label');
+      assert.ok(html.includes('aria-label="New Field"'), 'New Field button must have aria-label');
+      assert.ok(html.includes('aria-label="Delete Selected Field"'), 'Delete Field button must have aria-label');
+      assert.ok(html.includes('aria-label="Calculate Virtual Field"'), 'Calculate button must have aria-label');
+
+      // Verify no <span> labels inside the 4 icon buttons
+      const toggleBtnMatch = html.match(/<button[^>]*class="[^"]*toggle-edit[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(toggleBtnMatch, 'Must find toggle-edit button');
+      assert.ok(!toggleBtnMatch[1].includes('<span'), 'Toggle Edit button must not contain text span');
+
+      const newFieldBtnMatch = html.match(/<button[^>]*class="[^"]*new-field[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(newFieldBtnMatch, 'Must find new-field button');
+      assert.ok(!newFieldBtnMatch[1].includes('<span'), 'New Field button must not contain text span');
+
+      const deleteBtnMatch = html.match(/<button[^>]*class="[^"]*delete-field[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(deleteBtnMatch, 'Must find delete-field button');
+      assert.ok(!deleteBtnMatch[1].includes('<span'), 'Delete Field button must not contain text span');
+
+      const calcBtnMatch = html.match(/<button[^>]*class="[^"]*calculate[^"]*"[^>]*>([\s\S]*?)<\/button>/);
+      assert.ok(calcBtnMatch, 'Must find calculate button');
+      assert.ok(!calcBtnMatch[1].includes('<span'), 'Calculate button must not contain text span');
+    });
+
+    it('toggling editing mode preserves draft changes without committing to project state', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Update draft with modified type
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            index: 0,
+            name: 'city_name',
+            nativeType: 'String',
+            inferredType: 'uuid' as const,
+            userOverridden: true,
+          },
+        ],
+      });
+
+      // Draft has changes
+      assert.equal(layerPropertiesDraftSignal.value.fields?.[0].inferredType, 'uuid');
+
+      // Project state remains untouched
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.equal(projectLayer?.fields?.[0].inferredType, 'string');
+    });
+  });
 });

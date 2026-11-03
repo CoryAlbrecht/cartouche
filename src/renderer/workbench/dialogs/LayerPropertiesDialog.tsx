@@ -10,7 +10,7 @@
  * @see {@link activeLayerPropertiesIdSignal}
  */
 
-import React, { useCallback, useRef, useLayoutEffect, useEffect } from "react";
+import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/Icon";
 import {
@@ -509,6 +509,12 @@ export const LayerPropertiesDialog: React.FC = () => {
     (currentTreeLayer && 'fields' in currentTreeLayer ? (currentTreeLayer as any).fields : undefined) ??
     info?.fields ??
     [];
+
+  const [isEditingFields, setIsEditingFields] = useState(false);
+
+  useEffect(() => {
+    setIsEditingFields(false);
+  }, [activeId]);
 
   /**
    * @function handleFieldTypeChange
@@ -1762,75 +1768,81 @@ export const LayerPropertiesDialog: React.FC = () => {
                 }}>
                 <button
                   type='button'
-                  className='layer-prop-toolbar-btn toggle-edit'
+                  className={`layer-prop-toolbar-btn toggle-edit ${isEditingFields ? "active toolbar-btn" : ""}`}
                   title={t("layer_properties_fields_toggle_edit")}
+                  aria-label={t("layer_properties_fields_toggle_edit")}
+                  aria-pressed={isEditingFields}
+                  onClick={() => setIsEditingFields((prev) => !prev)}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "4px",
-                    border: "1px solid #cbd5e1",
+                    justifyContent: "center",
+                    border: isEditingFields ? "1px solid #0284c7" : "1px solid #cbd5e1",
                     borderRadius: "3px",
-                    backgroundColor: "#ffffff",
+                    backgroundColor: isEditingFields ? "#e0f2fe" : "#ffffff",
+                    color: isEditingFields ? "#0369a1" : "#334155",
                     cursor: "pointer",
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiPencilOutline} size='14px' />
-                  <span>{t("layer_properties_fields_toggle_edit")}</span>
                 </button>
                 <button
                   type='button'
                   className='layer-prop-toolbar-btn new-field'
                   title={t("layer_properties_fields_new_field")}
+                  aria-label={t("layer_properties_fields_new_field")}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "4px",
+                    justifyContent: "center",
                     border: "1px solid #cbd5e1",
                     borderRadius: "3px",
                     backgroundColor: "#ffffff",
                     cursor: "pointer",
+                    color: "#334155",
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTablePlus} size='14px' />
-                  <span>{t("layer_properties_fields_new_field")}</span>
                 </button>
                 <button
                   type='button'
                   className='layer-prop-toolbar-btn delete-field'
                   title={t("layer_properties_fields_delete_field")}
+                  aria-label={t("layer_properties_fields_delete_field")}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "4px",
+                    justifyContent: "center",
                     border: "1px solid #cbd5e1",
                     borderRadius: "3px",
                     backgroundColor: "#ffffff",
                     cursor: "pointer",
+                    color: "#334155",
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTrashCanOutline} size='14px' />
-                  <span>{t("layer_properties_fields_delete_field")}</span>
                 </button>
                 <button
                   type='button'
                   className='layer-prop-toolbar-btn calculate'
                   title={t("layer_properties_fields_calculate")}
+                  aria-label={t("layer_properties_fields_calculate")}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "4px",
+                    justifyContent: "center",
                     border: "1px solid #cbd5e1",
                     borderRadius: "3px",
                     backgroundColor: "#ffffff",
                     cursor: "pointer",
+                    color: "#334155",
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiCalculator} size='14px' />
-                  <span>{t("layer_properties_fields_calculate")}</span>
                 </button>
                 <button
                   type='button'
@@ -1998,6 +2010,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                               <select
                                 className='layer-field-type-select'
                                 aria-label={`Field type for ${field.name}`}
+                                disabled={!isEditingFields}
                                 value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
                                 onChange={(e) =>
                                   handleFieldTypeChange(
@@ -2011,11 +2024,21 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   fontFamily:
                                     "var(--cartouche-theme-font-family-mono, monospace)",
                                   fontWeight: field.userOverridden ? 600 : 400,
-                                  color: field.userOverridden ? "#047857" : "#0f766e",
-                                  backgroundColor: field.userOverridden ? "#f0fdf4" : "#ffffff",
-                                  border: field.userOverridden ? "1px solid #10b981" : "1px solid #cbd5e1",
+                                  color:
+                                    field.userOverridden ? "#047857"
+                                    : !isEditingFields ? "#94a3b8"
+                                    : "#0f766e",
+                                  backgroundColor:
+                                    field.userOverridden ? "#f0fdf4"
+                                    : !isEditingFields ? "#f8fafc"
+                                    : "#ffffff",
+                                  border:
+                                    field.userOverridden ? "1px solid #10b981"
+                                    : !isEditingFields ? "1px solid #e2e8f0"
+                                    : "1px solid #cbd5e1",
                                   borderRadius: "3px",
-                                  cursor: "pointer",
+                                  cursor: !isEditingFields ? "not-allowed" : "pointer",
+                                  opacity: !isEditingFields ? 0.8 : 1,
                                 }}>
                                 {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
                                   <option key={typeOption} value={typeOption}>
