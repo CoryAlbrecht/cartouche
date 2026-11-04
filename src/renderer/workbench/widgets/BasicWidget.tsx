@@ -291,7 +291,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             }}>
             <Icon
               path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
-              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.667)'
+              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
             />
           </button>
 
@@ -322,7 +322,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
               }}>
               <Icon
                 path={mdiClose}
-                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
               />
             </button>
           )}
