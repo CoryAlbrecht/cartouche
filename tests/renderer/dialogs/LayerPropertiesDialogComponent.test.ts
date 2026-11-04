@@ -3725,5 +3725,81 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.strictEqual(mockCtx.lineJoin, 'round', 'Canvas lineJoin must be round');
       assert.strictEqual(mockCtx.lineWidth, 3.5, 'Canvas lineWidth must be 3.5');
     });
+
+    it('renders DashPatternSelect with 128px visual samples for options and trigger (Ticket #159)', () => {
+      // 1. Preset pattern
+      let html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-159',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.0,
+                dashPattern: 'long-dash',
+                dashArray: [18, 6],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-dash-pattern"'), 'Trigger button must be rendered');
+      assert.ok(html.includes('width="128"'), 'Must include 128px line sample');
+      assert.ok(html.includes('stroke-dasharray="18 6"'), 'Sample must reflect long-dash preset array');
+
+      // 2. No line pattern
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-159-noline',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.0,
+                dashPattern: 'no-line',
+                dashArray: [],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('data-testid="dash-sample-no-line"'), 'no-line must render blank 128px sample');
+
+      // 3. Custom pattern
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-159-custom',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.0,
+                dashPattern: 'custom',
+                dashArray: [12, 3, 2, 3],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('stroke-dasharray="12 3 2 3"'), 'custom must render custom dashArray in 128px sample');
+    });
   });
 });

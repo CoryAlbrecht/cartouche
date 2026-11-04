@@ -12,11 +12,13 @@
  * @see {@link ColorInput}
  * @see {@link DASH_PATTERN_PRESETS}
  * @see {@link matchDashPattern}
+ * @see {@link DashPatternSelect}
  */
 
 import React, { useState, useMemo, useCallback } from "react";
 import Icon from "@renderer/components/common/Icon";
 import { ColorInput, CssColorsDatalist } from "@renderer/components/common/ColorInput";
+import { DashPatternSelect } from "./DashPatternSelect";
 import {
   mdiPlus,
   mdiMinus,
@@ -40,7 +42,6 @@ import type {
   SimpleFillComponent,
   SimpleLineComponent,
   SimpleMarkerComponent,
-  DashPatternPreset,
 } from "@shared/types/styling";
 
 /**
@@ -896,12 +897,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
                   {t("layer_properties_styling_dash_pattern")}:
                 </label>
-                <select
+                <DashPatternSelect
                   id='layer-prop-dash-pattern'
-                  disabled={activeComponent.locked}
                   value={currentPattern}
-                  onChange={(e) => {
-                    const nextPattern = e.target.value as DashPatternPreset;
+                  dashArray={lineComp.dashArray}
+                  disabled={activeComponent.locked}
+                  onChange={(nextPattern) => {
                     if (nextPattern === "solid") {
                       updateActiveComponent({ dashPattern: "solid", dashArray: [] });
                     } else if (nextPattern === "no-line") {
@@ -915,23 +916,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       updateActiveComponent({ dashPattern: nextPattern, dashArray: [...presetArr] });
                     }
                   }}
-                  style={{
-                    padding: "0.25rem 0.5rem",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "0.25rem",
-                    fontSize: "0.8125rem",
-                  }}>
-                  <option value='solid'>{t("layer_properties_dash_pattern_solid")}</option>
-                  <option value='no-line'>{t("layer_properties_dash_pattern_no_line")}</option>
-                  <option value='dash'>{t("layer_properties_dash_pattern_dash")}</option>
-                  <option value='dot'>{t("layer_properties_dash_pattern_dot")}</option>
-                  <option value='dash-dot'>{t("layer_properties_dash_pattern_dash_dot")}</option>
-                  <option value='dash-dot-dot'>{t("layer_properties_dash_pattern_dash_dot_dot")}</option>
-                  <option value='long-dash'>{t("layer_properties_dash_pattern_long_dash")}</option>
-                  <option value='long-dash-dot'>{t("layer_properties_dash_pattern_long_dash_dot")}</option>
-                  <option value='sparse-dot'>{t("layer_properties_dash_pattern_sparse_dot")}</option>
-                  <option value='custom'>{t("layer_properties_dash_pattern_custom")}</option>
-                </select>
+                  t={t}
+                />
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
