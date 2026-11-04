@@ -4,12 +4,14 @@
  * @description Visual component stack manager and dynamic Style Options panel for Simple Cartouche Symbology mode in LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
  * @see {@link StyleComponent}
  * @see {@link ColorInput}
+ * @see {@link DASH_PATTERN_PRESETS}
+ * @see {@link matchDashPattern}
  */
 
 import React, { useState, useMemo, useCallback } from "react";
@@ -28,12 +30,17 @@ import { dictionarySignal } from "@renderer/state/i18nSignals";
 import {
   createDefaultCartoucheLayerStyle,
 } from "@shared/styles/defaultLayerStyles";
+import {
+  DASH_PATTERN_PRESETS,
+  matchDashPattern,
+} from "@shared/types/styling";
 import type {
   SimpleCartoucheStyle,
   StyleComponent,
   SimpleFillComponent,
   SimpleLineComponent,
   SimpleMarkerComponent,
+  DashPatternPreset,
 } from "@shared/types/styling";
 
 /**
@@ -158,6 +165,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   const components = cartoucheStyle.components;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDashRow, setSelectedDashRow] = useState<number | null>(null);
 
   // Active component resolution
   const activeComponent = useMemo(() => {
@@ -719,79 +727,458 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
         )}
 
         {/* 2. Simple Line Options */}
-        {activeComponent?.type === "simple-line" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <label
-                htmlFor='layer-prop-stroke-color'
-                style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
-                {t("layer_properties_styling_stroke_color")}:
-              </label>
-              <ColorInput
-                id='layer-prop-stroke-color'
-                value={(activeComponent as SimpleLineComponent).color || "#000000"}
-                disabled={activeComponent.locked}
-                ariaLabel={t("layer_properties_styling_stroke_color")}
-                inputStyle={{ width: "7.5rem", padding: "0.25rem 0.5rem", fontSize: "0.8125rem" }}
-                onChange={(val, isValid) => {
-                  if (isValid) {
-                    updateActiveComponent({ color: val });
+        {activeComponent?.type === "simple-line" && (() => {
+          const lineComp = activeComponent as SimpleLineComponent;
+          const currentPattern = lineComp.dashPattern ?? matchDashPattern(lineComp.dashArray, lineComp.dashPattern);
+          const isCustom = currentPattern === "custom";
+          const isReadOnly = !isCustom || !!activeComponent.locked;
+
+          const displayArray =
+            currentPattern in DASH_PATTERN_PRESETS
+              ? DASH_PATTERN_PRESETS[currentPattern]
+              : lineComp.dashArray ?? [];
+
+          const pairs: Array<{ line: number; gap: number }> = [];
+          for (let i = 0; i < displayArray.length; i += 2) {
+            pairs.push({
+              line: displayArray[i] ?? 0,
+              gap: displayArray[i + 1] ?? 0,
+            });
+          }
+
+          const activeRowIndex =
+            selectedDashRow !== null && selectedDashRow >= 0 && selectedDashRow < pairs.length
+              ? selectedDashRow
+              : pairs.length > 0
+              ? 0
+              : null;
+
+          const canAddDash = isCustom && !activeComponent.locked;
+          const canRemoveDash = isCustom && !activeComponent.locked && activeRowIndex !== null;
+          const canMoveUpDash = isCustom && !activeComponent.locked && activeRowIndex !== null && activeRowIndex > 0;
+          const canMoveDownDash =
+            isCustom && !activeComponent.locked && activeRowIndex !== null && activeRowIndex < pairs.length - 1;
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-stroke-color'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_stroke_color")}:
+                </label>
+                <ColorInput
+                  id='layer-prop-stroke-color'
+                  value={lineComp.color || "#000000"}
+                  disabled={activeComponent.locked}
+                  ariaLabel={t("layer_properties_styling_stroke_color")}
+                  inputStyle={{ width: "7.5rem", padding: "0.25rem 0.5rem", fontSize: "0.8125rem" }}
+                  onChange={(val, isValid) => {
+                    if (isValid) {
+                      updateActiveComponent({ color: val });
+                    }
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-stroke-width'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_stroke_width")}:
+                </label>
+                <input
+                  id='layer-prop-stroke-width'
+                  type='number'
+                  min='0'
+                  step='0.1'
+                  disabled={activeComponent.locked}
+                  value={lineComp.width ?? 1}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    updateActiveComponent({ width: isNaN(val) ? 0 : Math.max(0, val) });
+                  }}
+                  style={{
+                    width: "5rem",
+                    padding: "0.25rem 0.5rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.8125rem",
+                  }}
+                />
+                <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>px</span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-line-offset'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_line_offset")}:
+                </label>
+                <input
+                  id='layer-prop-line-offset'
+                  type='number'
+                  step='0.1'
+                  disabled={activeComponent.locked}
+                  value={lineComp.offset ?? 0}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    updateActiveComponent({ offset: isNaN(val) ? 0 : val });
+                  }}
+                  style={{
+                    width: "5rem",
+                    padding: "0.25rem 0.5rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.8125rem",
+                  }}
+                />
+                <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>px</span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-line-cap'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_line_cap")}:
+                </label>
+                <select
+                  id='layer-prop-line-cap'
+                  disabled={activeComponent.locked}
+                  value={lineComp.cap ?? "round"}
+                  onChange={(e) =>
+                    updateActiveComponent({
+                      cap: e.target.value as "butt" | "round" | "square",
+                    })
                   }
-                }}
-              />
-            </div>
+                  style={{
+                    padding: "0.25rem 0.5rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.8125rem",
+                  }}>
+                  <option value='butt'>{t("layer_properties_line_cap_butt")}</option>
+                  <option value='round'>{t("layer_properties_line_cap_round")}</option>
+                  <option value='square'>{t("layer_properties_line_cap_square")}</option>
+                </select>
+              </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <label
-                htmlFor='layer-prop-stroke-width'
-                style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
-                {t("layer_properties_styling_stroke_width")}:
-              </label>
-              <input
-                id='layer-prop-stroke-width'
-                type='number'
-                min='1'
-                max='100'
-                disabled={activeComponent.locked}
-                value={(activeComponent as SimpleLineComponent).width ?? 1}
-                onChange={(e) =>
-                  updateActiveComponent({ width: Math.max(1, parseInt(e.target.value, 10) || 1) })
-                }
-                style={{
-                  width: "5rem",
-                  padding: "0.25rem 0.5rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
-                  fontSize: "0.8125rem",
-                }}
-              />
-              <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>px</span>
-            </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-line-join'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_line_join")}:
+                </label>
+                <select
+                  id='layer-prop-line-join'
+                  disabled={activeComponent.locked}
+                  value={lineComp.join ?? "round"}
+                  onChange={(e) =>
+                    updateActiveComponent({
+                      join: e.target.value as "bevel" | "miter" | "round",
+                    })
+                  }
+                  style={{
+                    padding: "0.25rem 0.5rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.8125rem",
+                  }}>
+                  <option value='bevel'>{t("layer_properties_line_join_bevel")}</option>
+                  <option value='miter'>{t("layer_properties_line_join_miter")}</option>
+                  <option value='round'>{t("layer_properties_line_join_round")}</option>
+                </select>
+              </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <label
-                htmlFor='layer-prop-stroke-dash'
-                style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
-                {t("layer_properties_styling_stroke_dash")}:
-              </label>
-              <input
-                id='layer-prop-stroke-dash'
-                type='checkbox'
-                disabled={activeComponent.locked}
-                checked={
-                  Array.isArray((activeComponent as SimpleLineComponent).dashArray) &&
-                  ((activeComponent as SimpleLineComponent).dashArray?.length ?? 0) > 0
-                }
-                onChange={(e) =>
-                  updateActiveComponent({
-                    dashArray: e.target.checked ? [6, 6] : undefined,
-                  })
-                }
-                style={{ cursor: activeComponent.locked ? "not-allowed" : "pointer" }}
-              />
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-dash-pattern'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_dash_pattern")}:
+                </label>
+                <select
+                  id='layer-prop-dash-pattern'
+                  disabled={activeComponent.locked}
+                  value={currentPattern}
+                  onChange={(e) => {
+                    const nextPattern = e.target.value as DashPatternPreset;
+                    if (nextPattern === "solid") {
+                      updateActiveComponent({ dashPattern: "solid", dashArray: [] });
+                    } else if (nextPattern === "no-line") {
+                      updateActiveComponent({ dashPattern: "no-line", dashArray: [] });
+                    } else if (nextPattern === "custom") {
+                      const existing = lineComp.dashArray;
+                      const initial = existing && existing.length > 0 ? existing : [5, 2];
+                      updateActiveComponent({ dashPattern: "custom", dashArray: initial });
+                    } else {
+                      const presetArr = DASH_PATTERN_PRESETS[nextPattern] ?? [];
+                      updateActiveComponent({ dashPattern: nextPattern, dashArray: [...presetArr] });
+                    }
+                  }}
+                  style={{
+                    padding: "0.25rem 0.5rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.8125rem",
+                  }}>
+                  <option value='solid'>{t("layer_properties_dash_pattern_solid")}</option>
+                  <option value='no-line'>{t("layer_properties_dash_pattern_no_line")}</option>
+                  <option value='dash'>{t("layer_properties_dash_pattern_dash")}</option>
+                  <option value='dot'>{t("layer_properties_dash_pattern_dot")}</option>
+                  <option value='dash-dot'>{t("layer_properties_dash_pattern_dash_dot")}</option>
+                  <option value='dash-dot-dot'>{t("layer_properties_dash_pattern_dash_dot_dot")}</option>
+                  <option value='long-dash'>{t("layer_properties_dash_pattern_long_dash")}</option>
+                  <option value='long-dash-dot'>{t("layer_properties_dash_pattern_long_dash_dot")}</option>
+                  <option value='sparse-dot'>{t("layer_properties_dash_pattern_sparse_dot")}</option>
+                  <option value='custom'>{t("layer_properties_dash_pattern_custom")}</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <label
+                  htmlFor='layer-prop-dash-offset'
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_dash_offset")}:
+                </label>
+                <input
+                  id='layer-prop-dash-offset'
+                  type='number'
+                  min='0'
+                  step='0.1'
+                  disabled={activeComponent.locked}
+                  value={lineComp.dashOffset ?? 0}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    updateActiveComponent({ dashOffset: isNaN(val) ? 0 : Math.max(0, val) });
+                  }}
+                  style={{
+                    width: "5rem",
+                    padding: "0.25rem 0.5rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.8125rem",
+                  }}
+                />
+                <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>px</span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                <label
+                  style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155", paddingTop: "0.25rem" }}>
+                  {t("layer_properties_styling_dash_array")}:
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                  <div
+                    id='layer-prop-dash-array-container'
+                    style={{
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "0.25rem",
+                      overflow: "hidden",
+                      width: "12rem",
+                      backgroundColor: isReadOnly ? "#f8fafc" : "#ffffff",
+                    }}>
+                    <table
+                      id='layer-prop-dash-array-table'
+                      style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        fontSize: "0.8125rem",
+                      }}>
+                      <thead>
+                        <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "1px solid #cbd5e1" }}>
+                          <th style={{ padding: "0.25rem 0.5rem", textAlign: "left", width: "50%", fontWeight: 600 }}>
+                            {t("layer_properties_dash_array_col_line")}
+                          </th>
+                          <th style={{ padding: "0.25rem 0.5rem", textAlign: "left", width: "50%", fontWeight: 600 }}>
+                            {t("layer_properties_dash_array_col_gap")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pairs.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={2}
+                              style={{
+                                padding: "0.5rem",
+                                textAlign: "center",
+                                color: "#94a3b8",
+                                fontStyle: "italic",
+                                fontSize: "0.75rem",
+                              }}>
+                              —
+                            </td>
+                          </tr>
+                        ) : (
+                          pairs.map((pair, idx) => (
+                            <tr
+                              key={idx}
+                              onClick={() => setSelectedDashRow(idx)}
+                              style={{
+                                backgroundColor: activeRowIndex === idx ? "#e2e8f0" : "transparent",
+                                cursor: isCustom ? "pointer" : "default",
+                              }}>
+                              <td style={{ padding: "0.125rem 0.25rem" }}>
+                                <input
+                                  type='number'
+                                  min='0'
+                                  step='0.1'
+                                  aria-label={`${t("layer_properties_dash_array_col_line")} ${idx + 1}`}
+                                  disabled={isReadOnly}
+                                  value={pair.line}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    const num = isNaN(val) ? 0 : Math.max(0, val);
+                                    const newPairs = pairs.map((p, pIdx) =>
+                                      pIdx === idx ? { ...p, line: num } : p
+                                    );
+                                    updateActiveComponent({
+                                      dashPattern: "custom",
+                                      dashArray: newPairs.flatMap((p) => [p.line, p.gap]),
+                                    });
+                                  }}
+                                  onFocus={() => setSelectedDashRow(idx)}
+                                  style={{
+                                    width: "100%",
+                                    boxSizing: "border-box",
+                                    padding: "0.125rem 0.25rem",
+                                    fontSize: "0.8125rem",
+                                    border: "1px solid #cbd5e1",
+                                    borderRadius: "0.125rem",
+                                    backgroundColor: isReadOnly ? "#f1f5f9" : "#ffffff",
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: "0.125rem 0.25rem" }}>
+                                <input
+                                  type='number'
+                                  min='0'
+                                  step='0.1'
+                                  aria-label={`${t("layer_properties_dash_array_col_gap")} ${idx + 1}`}
+                                  disabled={isReadOnly}
+                                  value={pair.gap}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    const num = isNaN(val) ? 0 : Math.max(0, val);
+                                    const newPairs = pairs.map((p, pIdx) =>
+                                      pIdx === idx ? { ...p, gap: num } : p
+                                    );
+                                    updateActiveComponent({
+                                      dashPattern: "custom",
+                                      dashArray: newPairs.flatMap((p) => [p.line, p.gap]),
+                                    });
+                                  }}
+                                  onFocus={() => setSelectedDashRow(idx)}
+                                  style={{
+                                    width: "100%",
+                                    boxSizing: "border-box",
+                                    padding: "0.125rem 0.25rem",
+                                    fontSize: "0.8125rem",
+                                    border: "1px solid #cbd5e1",
+                                    borderRadius: "0.125rem",
+                                    backgroundColor: isReadOnly ? "#f1f5f9" : "#ffffff",
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div
+                    id='layer-prop-dash-array-actions'
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, auto)",
+                      gap: "0.25rem",
+                    }}>
+                    <button
+                      type='button'
+                      id='layer-prop-dash-array-add'
+                      title={t("layer_properties_dash_array_add")}
+                      aria-label={t("layer_properties_dash_array_add")}
+                      disabled={!canAddDash}
+                      onClick={() => {
+                        if (!canAddDash) return;
+                        const newPairs = [...pairs, { line: 5.0, gap: 2.0 }];
+                        setSelectedDashRow(newPairs.length - 1);
+                        updateActiveComponent({
+                          dashPattern: "custom",
+                          dashArray: newPairs.flatMap((p) => [p.line, p.gap]),
+                        });
+                      }}
+                      style={canAddDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+                      <Icon path={mdiPlus} />
+                    </button>
+                    <button
+                      type='button'
+                      id='layer-prop-dash-array-remove'
+                      title={t("layer_properties_dash_array_remove")}
+                      aria-label={t("layer_properties_dash_array_remove")}
+                      disabled={!canRemoveDash}
+                      onClick={() => {
+                        if (!canRemoveDash || activeRowIndex === null) return;
+                        const newPairs = pairs.filter((_, idx) => idx !== activeRowIndex);
+                        const nextIndex = newPairs.length > 0 ? Math.min(activeRowIndex, newPairs.length - 1) : null;
+                        setSelectedDashRow(nextIndex);
+                        updateActiveComponent({
+                          dashPattern: "custom",
+                          dashArray: newPairs.flatMap((p) => [p.line, p.gap]),
+                        });
+                      }}
+                      style={canRemoveDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+                      <Icon path={mdiMinus} />
+                    </button>
+                    <button
+                      type='button'
+                      id='layer-prop-dash-array-move-up'
+                      title={t("layer_properties_dash_array_move_up")}
+                      aria-label={t("layer_properties_dash_array_move_up")}
+                      disabled={!canMoveUpDash}
+                      onClick={() => {
+                        if (!canMoveUpDash || activeRowIndex === null) return;
+                        const newPairs = [...pairs];
+                        const temp = newPairs[activeRowIndex];
+                        newPairs[activeRowIndex] = newPairs[activeRowIndex - 1];
+                        newPairs[activeRowIndex - 1] = temp;
+                        setSelectedDashRow(activeRowIndex - 1);
+                        updateActiveComponent({
+                          dashPattern: "custom",
+                          dashArray: newPairs.flatMap((p) => [p.line, p.gap]),
+                        });
+                      }}
+                      style={canMoveUpDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+                      <Icon path={mdiArrowUp} />
+                    </button>
+                    <button
+                      type='button'
+                      id='layer-prop-dash-array-move-down'
+                      title={t("layer_properties_dash_array_move_down")}
+                      aria-label={t("layer_properties_dash_array_move_down")}
+                      disabled={!canMoveDownDash}
+                      onClick={() => {
+                        if (!canMoveDownDash || activeRowIndex === null) return;
+                        const newPairs = [...pairs];
+                        const temp = newPairs[activeRowIndex];
+                        newPairs[activeRowIndex] = newPairs[activeRowIndex + 1];
+                        newPairs[activeRowIndex + 1] = temp;
+                        setSelectedDashRow(activeRowIndex + 1);
+                        updateActiveComponent({
+                          dashPattern: "custom",
+                          dashArray: newPairs.flatMap((p) => [p.line, p.gap]),
+                        });
+                      }}
+                      style={canMoveDownDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+                      <Icon path={mdiArrowDown} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 3. Simple Marker Options */}
         {activeComponent?.type === "simple-marker" && (() => {

@@ -121,6 +121,9 @@ export function matchDashPattern(
   if (explicitPattern === 'no-line') {
     return 'no-line';
   }
+  if (explicitPattern === 'custom') {
+    return 'custom';
+  }
   if (!dashArray || dashArray.length === 0) {
     return explicitPattern === 'no-line' ? 'no-line' : 'solid';
   }
