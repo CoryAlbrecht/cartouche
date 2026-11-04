@@ -7,6 +7,7 @@
  * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link Dialog}
+ * @see {@link ModalDialog}
  * @see {@link activeLayerPropertiesIdSignal}
  */
 
@@ -41,6 +42,8 @@ import {
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
   findLayerInTree,
+  isDiscardFieldChangesModalOpenSignal,
+  discardUnappliedFieldChanges,
   POPULAR_CRS_OPTIONS,
   type LayerPropertiesTabId,
 } from "@renderer/state/layerPropertiesSignals";
@@ -66,7 +69,13 @@ import {
   preferencesMapSignal,
   updatePreference,
 } from "@renderer/state/preferencesSignals";
+import {
+  editableLayerIdsSignal,
+  toggleLayerEditingAction,
+  isLayerInEditMode,
+} from "@renderer/state/gisSignals";
 import { Dialog } from "./Dialog";
+import { ModalDialog } from "./ModalDialog";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
 import { SimpleModeEditor } from "./SimpleModeEditor";
 
@@ -485,6 +494,101 @@ export function resolveFieldIndex(
 }
 
 /**
+ * @typedef {'width' | 'precision' | 'comment'} EditableFieldColumn
+ * @description Editable attribute schema column identifiers on the Fields tab.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ */
+export type EditableFieldColumn = "width" | "precision" | "comment";
+
+/**
+ * @function resolveFieldColumnStringValue
+ * @description Extracts the string representation of an editable column value for inline input initialization.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field metadata.
+ * @param {EditableFieldColumn} column - Target column to evaluate.
+ * @returns {string} String representation of cell value.
+ */
+export function resolveFieldColumnStringValue(
+  field: LayerFieldInfo,
+  column: EditableFieldColumn
+): string {
+  if (column === "comment") {
+    return field.comment || "";
+  }
+  const val = field[column];
+  return val !== undefined && val > 0 ? String(val) : "";
+}
+
+/**
+ * @function isFieldColumnEditable
+ * @description Evaluates whether an attribute schema column is editable for the specified field.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field info.
+ * @param {EditableFieldColumn} column - Target column to evaluate.
+ * @returns {boolean} True if the column is editable for this field type.
+ */
+export function isFieldColumnEditable(
+  field: LayerFieldInfo,
+  column: EditableFieldColumn
+): boolean {
+  const effectiveType =
+    field.inferredType ??
+    (field.mappedType === "number" ? "real"
+    : field.mappedType === "boolean" ? "boolean"
+    : "string");
+
+  switch (column) {
+    case "width":
+      return (
+        effectiveType === "string" ||
+        effectiveType === "integer" ||
+        effectiveType === "real"
+      );
+    case "precision":
+      return effectiveType === "real";
+    case "comment":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * @function getEditableColumnsForField
+ * @description Returns the sequence of editable columns available for a given field type.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field info.
+ * @returns {EditableFieldColumn[]} Ordered array of editable column names.
+ */
+export function getEditableColumnsForField(
+  field: LayerFieldInfo
+): EditableFieldColumn[] {
+  const columns: EditableFieldColumn[] = [];
+  if (isFieldColumnEditable(field, "width")) {
+    columns.push("width");
+  }
+  if (isFieldColumnEditable(field, "precision")) {
+    columns.push("precision");
+  }
+  if (isFieldColumnEditable(field, "comment")) {
+    columns.push("comment");
+  }
+  return columns;
+}
+
+/**
  * @component LayerPropertiesDialog
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -511,12 +615,11 @@ export const LayerPropertiesDialog: React.FC = () => {
     info?.fields ??
     [];
 
-  const [isEditingFields, setIsEditingFields] = useState(false);
+  const isEditing = isLayerInEditMode(activeId, editableLayerIdsSignal.value);
   const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
   const [isNewFieldOpen, setIsNewFieldOpen] = useState(false);
 
   useEffect(() => {
-    setIsEditingFields(false);
     setSelectedFieldName(null);
     setIsNewFieldOpen(false);
   }, [activeId]);
@@ -531,11 +634,11 @@ export const LayerPropertiesDialog: React.FC = () => {
    * @returns {void}
    */
   const handleDeleteSelectedField = useCallback(() => {
-    if (!isEditingFields || !selectedFieldName || !activeId) return;
+    if (!isEditing || !selectedFieldName || !activeId) return;
     const updatedFields = layerFields.filter((f) => f.name !== selectedFieldName);
     updateLayerPropertiesDraft({ fields: updatedFields });
     setSelectedFieldName(null);
-  }, [isEditingFields, selectedFieldName, activeId, layerFields]);
+  }, [isEditing, selectedFieldName, activeId, layerFields]);
 
   /**
    * @function handleFieldTypeChange
@@ -597,6 +700,150 @@ export const LayerPropertiesDialog: React.FC = () => {
       updateLayerPropertiesDraft({ fields: updatedFields });
     },
     [activeId, layerFields]
+  );
+
+  const [editingCell, setEditingCell] = useState<{
+    fieldName: string;
+    column: EditableFieldColumn;
+  } | null>(null);
+  const [cellInputValue, setCellInputValue] = useState<string>("");
+  const isCancellingRef = useRef(false);
+
+  useEffect(() => {
+    setEditingCell(null);
+    if (!isEditing) {
+      setSelectedFieldName(null);
+    }
+  }, [isEditing, activeId]);
+
+  /**
+   * @function commitCellEdit
+   * @description Commits staged inline cell edits (width, precision, comment) to draft state and marks userOverridden: true.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {string} fieldName - Target field identifier.
+   * @param {EditableFieldColumn} column - Column being edited.
+   * @param {string} rawValue - Raw user-entered string value.
+   * @returns {void}
+   */
+  const commitCellEdit = useCallback(
+    (fieldName: string, column: EditableFieldColumn, rawValue: string) => {
+      const field = layerFields.find((f) => f.name === fieldName);
+      if (!field) return;
+
+      const trimmed = rawValue.trim();
+      let updatedValue: number | string | undefined;
+
+      if (column === "width" || column === "precision") {
+        if (!trimmed) {
+          updatedValue = undefined;
+        } else {
+          const parsed = parseInt(trimmed, 10);
+          if (isNaN(parsed) || parsed < 0) {
+            updatedValue = field[column];
+          } else {
+            updatedValue = parsed;
+          }
+        }
+      } else {
+        updatedValue = rawValue;
+      }
+
+      const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
+        if (f.name === fieldName) {
+          return {
+            ...f,
+            [column]: updatedValue,
+            userOverridden: true,
+          };
+        }
+        return f;
+      });
+
+      updateLayerPropertiesDraft({ fields: updatedFields });
+    },
+    [layerFields]
+  );
+
+  /**
+   * @function handleCellBlur
+   * @description Handles inline input blur events, committing edits unless cancellation was requested.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {LayerFieldInfo} field - Target field metadata.
+   * @param {EditableFieldColumn} column - Active column.
+   * @param {string} value - Current input value.
+   * @returns {void}
+   */
+  const handleCellBlur = useCallback(
+    (field: LayerFieldInfo, column: EditableFieldColumn, value: string) => {
+      if (isCancellingRef.current) {
+        isCancellingRef.current = false;
+        return;
+      }
+      commitCellEdit(field.name, column, value);
+      setEditingCell(null);
+    },
+    [commitCellEdit]
+  );
+
+  /**
+   * @function handleCellKeyDown
+   * @description Handles inline editor keyboard navigation, trapping Enter, Escape, Tab, and Shift-Tab.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {React.KeyboardEvent<HTMLInputElement>} e - Keyboard event.
+   * @param {LayerFieldInfo} field - Target field metadata.
+   * @param {EditableFieldColumn} column - Active column.
+   * @param {string} currentValue - Current input value.
+   * @returns {void}
+   */
+  const handleCellKeyDown = useCallback(
+    (
+      e: React.KeyboardEvent<HTMLInputElement>,
+      field: LayerFieldInfo,
+      column: EditableFieldColumn,
+      currentValue: string
+    ) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commitCellEdit(field.name, column, currentValue);
+        setEditingCell(null);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        isCancellingRef.current = true;
+        setEditingCell(null);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        commitCellEdit(field.name, column, currentValue);
+        const editableCols = getEditableColumnsForField(field);
+        const currentIndex = editableCols.indexOf(column);
+        if (e.shiftKey) {
+          if (currentIndex > 0) {
+            const prevCol = editableCols[currentIndex - 1];
+            setEditingCell({ fieldName: field.name, column: prevCol });
+            setCellInputValue(resolveFieldColumnStringValue(field, prevCol));
+          } else {
+            setEditingCell(null);
+          }
+        } else {
+          if (currentIndex >= 0 && currentIndex < editableCols.length - 1) {
+            const nextCol = editableCols[currentIndex + 1];
+            setEditingCell({ fieldName: field.name, column: nextCol });
+            setCellInputValue(resolveFieldColumnStringValue(field, nextCol));
+          } else {
+            setEditingCell(null);
+          }
+        }
+      }
+    },
+    [commitCellEdit]
   );
 
   const showNativeType = Boolean(
@@ -1821,20 +2068,24 @@ export const LayerPropertiesDialog: React.FC = () => {
                 }}>
                 <button
                   type='button'
-                  className={`layer-prop-toolbar-btn toggle-edit ${isEditingFields ? "active toolbar-btn" : ""}`}
+                  className={`layer-prop-toolbar-btn toggle-edit ${isEditing ? "active toolbar-btn" : ""}`}
                   title={t("layer_properties_fields_toggle_edit")}
                   aria-label={t("layer_properties_fields_toggle_edit")}
-                  aria-pressed={isEditingFields}
-                  onClick={() => setIsEditingFields((prev) => !prev)}
+                  aria-pressed={isEditing}
+                  onClick={() => {
+                    if (activeId) {
+                      toggleLayerEditingAction(activeId);
+                    }
+                  }}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: isEditingFields ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                    border: isEditing ? "1px solid #0284c7" : "1px solid #cbd5e1",
                     borderRadius: "3px",
-                    backgroundColor: isEditingFields ? "#e0f2fe" : "#ffffff",
-                    color: isEditingFields ? "#0369a1" : "#334155",
+                    backgroundColor: isEditing ? "#e0f2fe" : "#ffffff",
+                    color: isEditing ? "#0369a1" : "#334155",
                     cursor: "pointer",
                     fontSize: "0.75rem",
                   }}>
@@ -1845,9 +2096,9 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn new-field'
                   title={t("layer_properties_fields_new_field")}
                   aria-label={t("layer_properties_fields_new_field")}
-                  disabled={!isEditingFields}
+                  disabled={!isEditing}
                   onClick={() => {
-                    if (isEditingFields) {
+                    if (isEditing) {
                       setIsNewFieldOpen(true);
                     }
                   }}
@@ -1857,12 +2108,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     alignItems: "center",
                     justifyContent: "center",
                     border: "1px solid",
-                    borderColor: isEditingFields ? "#cbd5e1" : "#e2e8f0",
+                    borderColor: isEditing ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: isEditingFields ? "#ffffff" : "#f8fafc",
-                    cursor: isEditingFields ? "pointer" : "not-allowed",
-                    color: isEditingFields ? "#334155" : "#94a3b8",
-                    opacity: isEditingFields ? 1 : 0.5,
+                    backgroundColor: isEditing ? "#ffffff" : "#f8fafc",
+                    cursor: isEditing ? "pointer" : "not-allowed",
+                    color: isEditing ? "#334155" : "#94a3b8",
+                    opacity: isEditing ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTablePlus} size='14px' />
@@ -1872,7 +2123,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn delete-field'
                   title={t("layer_properties_fields_delete_field")}
                   aria-label={t("layer_properties_fields_delete_field")}
-                  disabled={!isEditingFields || !selectedFieldName}
+                  disabled={!isEditing || !selectedFieldName}
                   onClick={handleDeleteSelectedField}
                   style={{
                     padding: "4px 8px",
@@ -1881,16 +2132,16 @@ export const LayerPropertiesDialog: React.FC = () => {
                     justifyContent: "center",
                     border: "1px solid",
                     borderColor:
-                      isEditingFields && selectedFieldName ? "#cbd5e1" : "#e2e8f0",
+                      isEditing && selectedFieldName ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
                     backgroundColor:
-                      isEditingFields && selectedFieldName ? "#ffffff" : "#f8fafc",
+                      isEditing && selectedFieldName ? "#ffffff" : "#f8fafc",
                     cursor:
-                      isEditingFields && selectedFieldName ? "pointer" : "not-allowed",
+                      isEditing && selectedFieldName ? "pointer" : "not-allowed",
                     color:
-                      isEditingFields && selectedFieldName ? "#334155" : "#94a3b8",
+                      isEditing && selectedFieldName ? "#334155" : "#94a3b8",
                     opacity:
-                      isEditingFields && selectedFieldName ? 1 : 0.5,
+                      isEditing && selectedFieldName ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTrashCanOutline} size='14px' />
@@ -1900,19 +2151,19 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn calculate'
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
-                  disabled={!isEditingFields}
+                  disabled={!isEditing}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     border: "1px solid",
-                    borderColor: isEditingFields ? "#cbd5e1" : "#e2e8f0",
+                    borderColor: isEditing ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: isEditingFields ? "#ffffff" : "#f8fafc",
-                    cursor: isEditingFields ? "pointer" : "not-allowed",
-                    color: isEditingFields ? "#334155" : "#94a3b8",
-                    opacity: isEditingFields ? 1 : 0.5,
+                    backgroundColor: isEditing ? "#ffffff" : "#f8fafc",
+                    cursor: isEditing ? "pointer" : "not-allowed",
+                    color: isEditing ? "#334155" : "#94a3b8",
+                    opacity: isEditing ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiCalculator} size='14px' />
@@ -2095,7 +2346,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 <select
                                   className='layer-field-type-select'
                                   aria-label={`Field type for ${field.name}`}
-                                  disabled={!isEditingFields}
+                                  disabled={!isEditing}
                                   value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
                                   onClick={(e) => e.stopPropagation()}
                                   onChange={(e) =>
@@ -2112,19 +2363,19 @@ export const LayerPropertiesDialog: React.FC = () => {
                                     fontWeight: field.userOverridden ? 600 : 400,
                                     color:
                                       field.userOverridden ? "#047857"
-                                      : !isEditingFields ? "#94a3b8"
+                                      : !isEditing ? "#94a3b8"
                                       : "#0f766e",
                                     backgroundColor:
                                       field.userOverridden ? "#f0fdf4"
-                                      : !isEditingFields ? "#f8fafc"
+                                      : !isEditing ? "#f8fafc"
                                       : "#ffffff",
                                     border:
                                       field.userOverridden ? "1px solid #10b981"
-                                      : !isEditingFields ? "1px solid #e2e8f0"
+                                      : !isEditing ? "1px solid #e2e8f0"
                                       : "1px solid #cbd5e1",
                                     borderRadius: "3px",
-                                    cursor: !isEditingFields ? "not-allowed" : "pointer",
-                                    opacity: !isEditingFields ? 0.8 : 1,
+                                    cursor: !isEditing ? "not-allowed" : "pointer",
+                                    opacity: !isEditing ? 0.8 : 1,
                                   }}>
                                   {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
                                     <option key={typeOption} value={typeOption}>
@@ -2155,7 +2406,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                       (field.originalInferredType &&
                                         field.inferredType !== field.originalInferredType)
                                   );
-                                  const isResetEnabled = isEditingFields && isOverridden;
+                                  const isResetEnabled = isEditing && isOverridden;
                                   return (
                                     <button
                                       type='button'
@@ -2198,38 +2449,155 @@ export const LayerPropertiesDialog: React.FC = () => {
                             </td>
                           )}
                           <td
+                            className={`layer-properties-field-cell-length ${isEditing && isSelected && isFieldColumnEditable(field, "width") ? "editable-cell" : ""}`}
+                            onClick={(e) => {
+                              if (isEditing && isSelected && isFieldColumnEditable(field, "width")) {
+                                e.stopPropagation();
+                                setEditingCell({ fieldName: field.name, column: "width" });
+                                setCellInputValue(resolveFieldColumnStringValue(field, "width"));
+                              }
+                            }}
                             style={{
-                              padding: "6px 10px",
+                              padding:
+                                editingCell?.fieldName === field.name && editingCell?.column === "width"
+                                  ? "2px 4px"
+                                  : "6px 10px",
                               borderLeft: "1px solid #e2e8f0",
                               borderRight: "1px solid #e2e8f0",
                               color: "#475569",
+                              cursor:
+                                isEditing && isSelected && isFieldColumnEditable(field, "width")
+                                  ? "text"
+                                  : "inherit",
                             }}>
-                            {field.width !== undefined && field.width > 0 ?
-                              field.width
-                            : ""}
+                            {editingCell?.fieldName === field.name && editingCell?.column === "width" ? (
+                              <input
+                                type='text'
+                                className='layer-field-cell-input layer-field-cell-input-width'
+                                aria-label={`Length for ${field.name}`}
+                                value={cellInputValue}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => handleCellKeyDown(e, field, "width", cellInputValue)}
+                                onBlur={() => handleCellBlur(field, "width", cellInputValue)}
+                                style={{
+                                  width: "100%",
+                                  boxSizing: "border-box",
+                                  padding: "2px 4px",
+                                  fontSize: "0.8125rem",
+                                  border: "1px solid #0284c7",
+                                  borderRadius: "2px",
+                                  outline: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#0f172a",
+                                }}
+                              />
+                            ) : (
+                              field.width !== undefined && field.width > 0 ?
+                                field.width
+                              : ""
+                            )}
                           </td>
                           <td
+                            className={`layer-properties-field-cell-precision ${isEditing && isSelected && isFieldColumnEditable(field, "precision") ? "editable-cell" : ""}`}
+                            onClick={(e) => {
+                              if (isEditing && isSelected && isFieldColumnEditable(field, "precision")) {
+                                e.stopPropagation();
+                                setEditingCell({ fieldName: field.name, column: "precision" });
+                                setCellInputValue(resolveFieldColumnStringValue(field, "precision"));
+                              }
+                            }}
                             style={{
-                              padding: "6px 10px",
+                              padding:
+                                editingCell?.fieldName === field.name && editingCell?.column === "precision"
+                                  ? "2px 4px"
+                                  : "6px 10px",
                               borderLeft: "1px solid #e2e8f0",
                               borderRight: "1px solid #e2e8f0",
                               color: "#475569",
+                              cursor:
+                                isEditing && isSelected && isFieldColumnEditable(field, "precision")
+                                  ? "text"
+                                  : "inherit",
                             }}>
-                            {(
-                              field.precision !== undefined
-                              && field.precision > 0
-                            ) ?
-                              field.precision
-                            : ""}
+                            {editingCell?.fieldName === field.name && editingCell?.column === "precision" ? (
+                              <input
+                                type='text'
+                                className='layer-field-cell-input layer-field-cell-input-precision'
+                                aria-label={`Precision for ${field.name}`}
+                                value={cellInputValue}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => handleCellKeyDown(e, field, "precision", cellInputValue)}
+                                onBlur={() => handleCellBlur(field, "precision", cellInputValue)}
+                                style={{
+                                  width: "100%",
+                                  boxSizing: "border-box",
+                                  padding: "2px 4px",
+                                  fontSize: "0.8125rem",
+                                  border: "1px solid #0284c7",
+                                  borderRadius: "2px",
+                                  outline: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#0f172a",
+                                }}
+                              />
+                            ) : (
+                              field.precision !== undefined && field.precision > 0 ?
+                                field.precision
+                              : ""
+                            )}
                           </td>
                           <td
+                            className={`layer-properties-field-cell-comment ${isEditing && isSelected && isFieldColumnEditable(field, "comment") ? "editable-cell" : ""}`}
+                            onClick={(e) => {
+                              if (isEditing && isSelected && isFieldColumnEditable(field, "comment")) {
+                                e.stopPropagation();
+                                setEditingCell({ fieldName: field.name, column: "comment" });
+                                setCellInputValue(resolveFieldColumnStringValue(field, "comment"));
+                              }
+                            }}
                             style={{
-                              padding: "6px 10px",
+                              padding:
+                                editingCell?.fieldName === field.name && editingCell?.column === "comment"
+                                  ? "2px 4px"
+                                  : "6px 10px",
                               borderLeft: "1px solid #e2e8f0",
                               borderRight: "1px solid #e2e8f0",
                               color: "#64748b",
+                              cursor:
+                                isEditing && isSelected && isFieldColumnEditable(field, "comment")
+                                  ? "text"
+                                  : "inherit",
                             }}>
-                            {field.comment || ""}
+                            {editingCell?.fieldName === field.name && editingCell?.column === "comment" ? (
+                              <input
+                                type='text'
+                                className='layer-field-cell-input layer-field-cell-input-comment'
+                                aria-label={`Comment for ${field.name}`}
+                                value={cellInputValue}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => handleCellKeyDown(e, field, "comment", cellInputValue)}
+                                onBlur={() => handleCellBlur(field, "comment", cellInputValue)}
+                                style={{
+                                  width: "100%",
+                                  boxSizing: "border-box",
+                                  padding: "2px 4px",
+                                  fontSize: "0.8125rem",
+                                  border: "1px solid #0284c7",
+                                  borderRadius: "2px",
+                                  outline: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#0f172a",
+                                }}
+                              />
+                            ) : (
+                              field.comment || ""
+                            )}
                           </td>
                         </tr>
                       );
@@ -2435,6 +2803,39 @@ export const LayerPropertiesDialog: React.FC = () => {
         New field configuration placeholder.
       </div>
     </Dialog>
+    {/* Confirmation ModalDialog for Discarding Unapplied Field Changes */}
+    <ModalDialog
+      isOpen={isDiscardFieldChangesModalOpenSignal.value}
+      title={t("layer_properties_fields_discard_title") || "Discard Unapplied Field Changes?"}
+      onClose={() => {
+        isDiscardFieldChangesModalOpenSignal.value = false;
+      }}
+      buttons={[
+        {
+          label: t("dialog_cancel") || "Cancel",
+          onClick: () => {
+            isDiscardFieldChangesModalOpenSignal.value = false;
+          },
+        },
+        {
+          label: t("dialog_ok") || "OK",
+          primary: true,
+          onClick: () => {
+            discardUnappliedFieldChanges();
+            if (activeId) {
+              toggleLayerEditingAction(activeId, { force: true });
+            }
+            setEditingCell(null);
+            setSelectedFieldName(null);
+            isDiscardFieldChangesModalOpenSignal.value = false;
+          },
+        },
+      ]}>
+      <p style={{ margin: 0 }}>
+        {t("layer_properties_fields_discard_warning") ||
+          "You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?"}
+      </p>
+    </ModalDialog>
   </>
   );
 };

@@ -4,7 +4,7 @@
  * @description Toolbar widget providing vector feature digitizing tools (Point, Line, Polygon), layer edit mode toggles, vertex editing, and spatial feature clipboard / deletion actions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -33,6 +33,7 @@ import {
   activeLayerIdSignal,
   activeLayerSignal,
   editableLayerIdsSignal,
+  isLayerInEditMode,
   selectedFeatureIdsSignal,
   isProjectDirtySignal,
   toggleLayerEditingAction,
@@ -71,24 +72,7 @@ export function isDigitizingToolbarDisabled(
   return activeLayerId === null;
 }
 
-/**
- * @function isLayerInEditMode
- * @description Evaluates whether a given spatial layer is currently active in edit mode.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
- * @since 0.1.0-dev
- * @param {string | null} layerId - Target layer identifier, or null.
- * @param {Set<string>} editableIds - Set of currently editable layer identifiers.
- * @returns {boolean} True if the layer is in edit mode, false otherwise.
- */
-export function isLayerInEditMode(
-  layerId: string | null,
-  editableIds: Set<string>
-): boolean {
-  if (!layerId || !editableIds) return false;
-  return editableIds.has(layerId);
-}
+export { isLayerInEditMode };
 
 /**
  * @function isDrawingToolEnabled
@@ -236,7 +220,7 @@ export function getButtonClass(
  * @description Renders spatial digitizing and vector editing buttons for toggling edit mode, saving active layer, drawing new features (Point, Line, Polygon), vertex editing, feature deletion, and clipboard operations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {DigitizingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} DigitizingToolbarWidget instance.

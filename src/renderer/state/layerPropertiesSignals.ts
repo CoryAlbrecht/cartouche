@@ -9,6 +9,9 @@
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
  * @see {@link switchLayerPropertiesStyleFormat}
+ * @see {@link isDiscardFieldChangesModalOpenSignal}
+ * @see {@link hasUnappliedFieldChanges}
+ * @see {@link discardUnappliedFieldChanges}
  */
 
 import { signal, type Signal } from "@preact/signals-react";
@@ -35,6 +38,7 @@ import {
 import {
   projectTreeSignal,
   projectLayersSignal,
+  activeLayerIdSignal,
   isProjectDirtySignal,
   resolveLayerStyleItem,
   applyStyleToLayers,
@@ -154,6 +158,18 @@ export const layerDetailedInfoSignal: Signal<LayerDetailedInfo | null> =
   signal<LayerDetailedInfo | null>(null);
 
 /**
+ * @signal isDiscardFieldChangesModalOpenSignal
+ * @description Controls visibility of the confirmation modal warning when disabling Layer Edit Mode with unapplied field changes.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isDiscardFieldChangesModalOpenSignal: Signal<boolean> =
+  signal<boolean>(false);
+
+/**
  * @signal isLayerPropertiesLoadingSignal
  * @description Indicates whether a live layer metadata query is actively in progress.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -254,10 +270,10 @@ export function collectAllLayerIds(
 }
 
 /**
- * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata.
+ * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata and synchronizing activeLayerIdSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier to inspect.
  * @returns {Promise<void>}
@@ -265,6 +281,7 @@ export function collectAllLayerIds(
 export async function openLayerPropertiesDialog(
   layerId: string
 ): Promise<void> {
+  activeLayerIdSignal.value = layerId;
   activeLayerPropertiesIdSignal.value = layerId;
   isLayerPropertiesLoadingSignal.value = true;
 
@@ -435,7 +452,7 @@ export async function openLayerPropertiesDialog(
  * @description Closes the LayerPropertiesDialog and resets session state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -443,6 +460,7 @@ export function closeLayerPropertiesDialog(): void {
   activeLayerPropertiesIdSignal.value = null;
   layerDetailedInfoSignal.value = null;
   isLayerPropertiesLoadingSignal.value = false;
+  isDiscardFieldChangesModalOpenSignal.value = false;
   layerPropertiesDraftSignal.value = {
     layerName: "",
     layerId: "",
@@ -456,6 +474,93 @@ export function closeLayerPropertiesDialog(): void {
     visualSymbolizer: {},
     opacity: 1,
     formatCache: {},
+    fields: undefined,
+  };
+}
+
+/**
+ * @description Resolves the baseline attribute field definitions for a target layer from projectLayersSignal, projectTreeSignal, or layerDetailedInfoSignal.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {string} layerId - Target layer identifier.
+ * @returns {LayerFieldInfo[]} Array of baseline field definitions.
+ */
+export function getBaselineLayerFields(layerId: string): LayerFieldInfo[] {
+  const projectLayer = projectLayersSignal.value.find((l) => l.id === layerId);
+  if (projectLayer?.fields) {
+    return projectLayer.fields;
+  }
+  const treeLayer = findLayerInTree(projectTreeSignal.value, layerId);
+  if (
+    treeLayer &&
+    "fields" in treeLayer &&
+    Array.isArray((treeLayer as any).fields)
+  ) {
+    return (treeLayer as any).fields as LayerFieldInfo[];
+  }
+  if (
+    layerDetailedInfoSignal.value?.layerId === layerId &&
+    layerDetailedInfoSignal.value.fields
+  ) {
+    return layerDetailedInfoSignal.value.fields;
+  }
+  return [];
+}
+
+/**
+ * @description Checks whether the active layer properties draft contains unapplied modifications to attribute fields compared to baseline definitions.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {string | null} [layerId] - Optional layer identifier to check; defaults to activeLayerPropertiesIdSignal.value.
+ * @returns {boolean} True if draft.fields has unapplied changes relative to baseline; otherwise false.
+ */
+export function hasUnappliedFieldChanges(layerId?: string | null): boolean {
+  const targetId =
+    layerId !== undefined && layerId !== null ?
+      layerId
+    : activeLayerPropertiesIdSignal.value;
+  if (!targetId) return false;
+
+  const draft = layerPropertiesDraftSignal.value;
+  if (!draft.fields || draft.layerId !== targetId) return false;
+
+  const baseline = getBaselineLayerFields(targetId);
+  if (draft.fields.length !== baseline.length) return true;
+
+  for (let i = 0; i < draft.fields.length; i++) {
+    const df = draft.fields[i];
+    const bf = baseline[i];
+    if (!bf) return true;
+    if (
+      df.name !== bf.name ||
+      df.inferredType !== bf.inferredType ||
+      Boolean(df.userOverridden) !== Boolean(bf.userOverridden) ||
+      (df.width ?? undefined) !== (bf.width ?? undefined) ||
+      (df.precision ?? undefined) !== (bf.precision ?? undefined) ||
+      (df.comment ?? "") !== (bf.comment ?? "")
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @description Discards unapplied field modifications in layerPropertiesDraftSignal, resetting draft.fields to undefined while keeping other tab drafts intact.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function discardUnappliedFieldChanges(): void {
+  const draft = layerPropertiesDraftSignal.value;
+  layerPropertiesDraftSignal.value = {
+    ...draft,
     fields: undefined,
   };
 }

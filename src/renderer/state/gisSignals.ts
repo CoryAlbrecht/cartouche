@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -54,6 +54,10 @@ import {
   clearNodeSelection,
   findItemInTree
 } from './projectSignals';
+import {
+  hasUnappliedFieldChanges,
+  isDiscardFieldChangesModalOpenSignal
+} from './layerPropertiesSignals';
 import {
   getLayerToolbarPreference,
   setLayerToolbarPreference,
@@ -157,6 +161,25 @@ export const activeToolSignal = signal<ActiveTool>('pan');
  * @type {Signal<Set<string>>}
  */
 export const editableLayerIdsSignal = signal<Set<string>>(new Set());
+
+/**
+ * @function isLayerInEditMode
+ * @description Evaluates whether a given spatial layer is currently active in edit mode.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-27
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {string | null} layerId - Target layer identifier, or null.
+ * @param {Set<string>} editableIds - Set of currently editable layer identifiers.
+ * @returns {boolean} True if the layer is in edit mode, false otherwise.
+ */
+export function isLayerInEditMode(
+  layerId: string | null,
+  editableIds: Set<string>
+): boolean {
+  if (!layerId || !editableIds) return false;
+  return editableIds.has(layerId);
+}
 
 /**
  * @typedef {'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand'} SelectionMode
@@ -269,7 +292,7 @@ export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> 
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
@@ -286,7 +309,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
@@ -337,7 +360,7 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
@@ -1096,7 +1119,7 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
  * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
@@ -1179,7 +1202,7 @@ export function toggleToolbar(id: ToolbarId): void {
  * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-28
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
@@ -2628,17 +2651,26 @@ export function pasteFeaturesAction(): void {
  * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
+ * @param {Object} [options] - Optional toggle execution settings.
+ * @param {boolean} [options.force] - Force toggle disabling without unapplied changes confirmation prompt.
  * @returns {void}
  */
-export function toggleLayerEditingAction(layerId?: string | null): void {
+export function toggleLayerEditingAction(
+  layerId?: string | null,
+  options?: { force?: boolean }
+): void {
   const targetId = layerId !== undefined ? layerId : activeLayerIdSignal.value;
   if (!targetId) return;
 
   const current = new Set(editableLayerIdsSignal.value);
   if (current.has(targetId)) {
+    if (!options?.force && hasUnappliedFieldChanges(targetId)) {
+      isDiscardFieldChangesModalOpenSignal.value = true;
+      return;
+    }
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
     if (
