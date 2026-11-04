@@ -4,10 +4,11 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
+ * @see {@link SimpleLineComponent}
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
@@ -1630,7 +1631,13 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       );
       assert.ok(html.includes('id="layer-prop-stroke-color"'), 'Must render stroke color input for simple-line');
       assert.ok(html.includes('id="layer-prop-stroke-width"'), 'Must render stroke width input for simple-line');
-      assert.ok(html.includes('id="layer-prop-stroke-dash"'), 'Must render stroke dash checkbox for simple-line');
+      assert.ok(html.includes('id="layer-prop-line-offset"'), 'Must render line offset input for simple-line');
+      assert.ok(html.includes('id="layer-prop-line-cap"'), 'Must render line cap select for simple-line');
+      assert.ok(html.includes('id="layer-prop-line-join"'), 'Must render line join select for simple-line');
+      assert.ok(html.includes('id="layer-prop-dash-pattern"'), 'Must render dash pattern select for simple-line');
+      assert.ok(html.includes('id="layer-prop-dash-offset"'), 'Must render dash offset input for simple-line');
+      assert.ok(html.includes('id="layer-prop-dash-array-table"'), 'Must render dash array table for simple-line');
+      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Must render dash array add button for simple-line');
       assert.ok(html.includes('value="#654321"'), 'Must reflect stroke color');
       assert.ok(html.includes('value="4"'), 'Must reflect stroke width');
 
@@ -3490,6 +3497,233 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.strictEqual(draft.styleContent, '{"rules": [{"name": "CustomRule"}]}', 'Draft styleContent must be preserved');
       assert.strictEqual(draft.styleFormat, 'openlayers', 'Draft styleFormat must be preserved');
       assert.strictEqual(draft.opacity, 0.75, 'Draft opacity must be preserved');
+    });
+  });
+
+  describe('Advanced Simple Line Controls & Dash Array Composite Control (Ticket #157)', () => {
+    it('renders all advanced Simple Line stroke controls and options with localized labels', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-advanced',
+                type: 'simple-line',
+                enabled: true,
+                color: '#2563eb',
+                width: 2.5,
+                offset: -1.2,
+                cap: 'square',
+                join: 'bevel',
+                dashPattern: 'dash-dot',
+                dashOffset: 3.4,
+                dashArray: [10, 4, 2, 4],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+
+      // Stroke Width
+      assert.ok(html.includes('id="layer-prop-stroke-width"'), 'Must render stroke width spinner');
+      assert.ok(html.includes('min="0"'), 'Stroke width must enforce min=0');
+      assert.ok(html.includes('step="0.1"'), 'Stroke width must enforce step=0.1');
+      assert.ok(html.includes('value="2.5"'), 'Stroke width must reflect 2.5 float');
+
+      // Line Offset
+      assert.ok(html.includes('id="layer-prop-line-offset"'), 'Must render line offset input');
+      assert.ok(html.includes('value="-1.2"'), 'Line offset must reflect negative float');
+
+      // Line Cap & Join
+      assert.ok(html.includes('id="layer-prop-line-cap"'), 'Must render line cap select');
+      assert.ok(html.includes('value="square"'), 'Line cap must have square selected');
+      assert.ok(html.includes('id="layer-prop-line-join"'), 'Must render line join select');
+      assert.ok(html.includes('value="bevel"'), 'Line join must have bevel selected');
+
+      // Dash Pattern & Dash Offset
+      assert.ok(html.includes('id="layer-prop-dash-pattern"'), 'Must render dash pattern select');
+      assert.ok(html.includes('value="dash-dot"'), 'Dash pattern select must have dash-dot selected');
+      assert.ok(html.includes('id="layer-prop-dash-offset"'), 'Must render dash offset spinner');
+      assert.ok(html.includes('value="3.4"'), 'Dash offset must reflect 3.4 float');
+
+      // Dash Array Composite Control
+      assert.ok(html.includes('id="layer-prop-dash-array-table"'), 'Must render dash array table');
+      assert.ok(html.includes('value="10"'), 'Dash array must render Line: 10');
+      assert.ok(html.includes('value="4"'), 'Dash array must render Gap: 4');
+      assert.ok(html.includes('value="2"'), 'Dash array must render Line: 2');
+      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Must render add button');
+      assert.ok(html.includes('id="layer-prop-dash-array-remove"'), 'Must render remove button');
+      assert.ok(html.includes('id="layer-prop-dash-array-move-up"'), 'Must render move-up button');
+      assert.ok(html.includes('id="layer-prop-dash-array-move-down"'), 'Must render move-down button');
+    });
+
+    it('renders dash array table read-only and disables 2x2 buttons when a preset pattern is selected', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-preset',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.0,
+                dashPattern: 'dash',
+                dashArray: [10, 5],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+
+      // Dash Array table inputs must be disabled
+      assert.ok(html.includes('disabled=""') || html.includes('disabled'), 'Table inputs must be disabled');
+      // Action buttons must be disabled
+      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Add button rendered');
+      assert.ok(html.includes('id="layer-prop-dash-array-add"[^>]*disabled') || html.includes('disabled'), 'Buttons disabled for preset');
+    });
+
+    it('renders empty dash array placeholder when solid or no-line pattern is active', () => {
+      const htmlSolid = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-solid',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.0,
+                dashPattern: 'solid',
+                dashArray: [],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(htmlSolid.includes('—'), 'Solid line must render empty placeholder');
+
+      const htmlNoLine = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-no-line',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.0,
+                dashPattern: 'no-line',
+                dashArray: [],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(htmlNoLine.includes('—'), 'No-line must render empty placeholder');
+    });
+
+    it('enables dash array table and action buttons when custom pattern is active', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'line-custom',
+                type: 'simple-line',
+                enabled: true,
+                color: '#000000',
+                width: 1.5,
+                dashPattern: 'custom',
+                dashArray: [8.5, 3.5],
+              },
+            ],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+
+      assert.ok(html.includes('value="8.5"'), 'Must display custom line length');
+      assert.ok(html.includes('value="3.5"'), 'Must display custom gap length');
+      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Add button must be present');
+    });
+
+    it('updates StylePreviewCanvas without throwing when advanced line styling is applied', () => {
+      const drawCalls: string[] = [];
+      const mockCtx: any = {
+        save: () => drawCalls.push('save'),
+        restore: () => drawCalls.push('restore'),
+        clearRect: () => drawCalls.push('clearRect'),
+        fillRect: () => drawCalls.push('fillRect'),
+        beginPath: () => drawCalls.push('beginPath'),
+        closePath: () => drawCalls.push('closePath'),
+        fill: () => drawCalls.push('fill'),
+        stroke: () => drawCalls.push('stroke'),
+        moveTo: () => drawCalls.push('moveTo'),
+        lineTo: () => drawCalls.push('lineTo'),
+        arc: () => drawCalls.push('arc'),
+        setLineDash: (d: number[]) => drawCalls.push(`setLineDash:${JSON.stringify(d)}`),
+        fillStyle: '',
+        strokeStyle: '',
+        lineWidth: 1,
+        lineCap: 'butt',
+        lineJoin: 'miter',
+        lineDashOffset: 0,
+      };
+
+      const styleJson = JSON.stringify({
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-preview',
+            type: 'simple-line',
+            enabled: true,
+            color: '#16a34a',
+            width: 3.5,
+            offset: 2.0,
+            cap: 'round',
+            join: 'round',
+            dashPattern: 'custom',
+            dashOffset: 1.5,
+            dashArray: [12, 4, 3, 4],
+          },
+        ],
+      });
+
+      assert.doesNotThrow(() => {
+        renderStylePreviewToCanvas(mockCtx, {
+          width: 120,
+          height: 120,
+          format: 'cartouche',
+          content: styleJson,
+          geometryKind: 'LineString',
+        });
+      });
+
+      assert.ok(drawCalls.includes('setLineDash:[12,4,3,4]'), 'Canvas preview must invoke setLineDash with custom array');
+      assert.strictEqual(mockCtx.lineCap, 'round', 'Canvas lineCap must be round');
+      assert.strictEqual(mockCtx.lineJoin, 'round', 'Canvas lineJoin must be round');
+      assert.strictEqual(mockCtx.lineWidth, 3.5, 'Canvas lineWidth must be 3.5');
     });
   });
 });

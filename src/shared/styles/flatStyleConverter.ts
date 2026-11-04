@@ -4,7 +4,7 @@
  * @description Bidirectional converter between Cartouche OpenLayers Flat Style JSON rules and GeoStyler intermediate Style AST (geostyler-style), supporting cross-format SLD conversion and validation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link flatStyleToGeoStyler}
  * @see {@link geoStylerToFlatStyle}
@@ -20,12 +20,13 @@
 
 import { SldStyleParser } from 'geostyler-sld-parser';
 import { isCartoucheLayerStyle, createDefaultCartoucheLayerStyle } from './defaultLayerStyles';
-import type {
-  SimpleCartoucheStyle,
-  StyleComponent,
-  SimpleFillComponent,
-  SimpleLineComponent,
-  SimpleMarkerComponent,
+import {
+  type SimpleCartoucheStyle,
+  type StyleComponent,
+  type SimpleFillComponent,
+  type SimpleLineComponent,
+  type SimpleMarkerComponent,
+  matchDashPattern,
 } from '../types/styling';
 import type {
   Style as GeoStylerStyle,
@@ -65,7 +66,7 @@ const sldParser110 = new SldStyleParser({ sldVersion: '1.1.0' });
  * Strips standalone or combined geometry-type filters as they are inherently modeled by Symbolizer kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {any[]} [olFilter] - OpenLayers flat style filter array.
  * @returns {GeoStylerFilter | undefined} Converted GeoStyler Filter, or undefined if no attribute filter exists.
@@ -136,7 +137,7 @@ export function olFilterToGeoStyler(olFilter?: any[]): GeoStylerFilter | undefin
  * @description Converts a GeoStyler AST Filter into an OpenLayers Flat Style filter expression.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {GeoStylerFilter} [gsFilter] - GeoStyler AST filter expression.
  * @returns {any[] | undefined} OpenLayers filter array, or undefined if no filter exists.
@@ -184,7 +185,7 @@ export function geoStylerFilterToOl(gsFilter?: GeoStylerFilter): any[] | undefin
  * @description Maps an OpenLayers Flat Style dictionary to one or more GeoStyler Symbolizer objects.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {Record<string, any>} styleDict - OpenLayers flat style dictionary.
  * @param {string} [geometryHint] - Optional geometry hint derived from filter ('Polygon' | 'LineString' | 'Point').
@@ -244,6 +245,12 @@ function parseStyleDictToSymbolizers(
           : {}),
       ...(Array.isArray(styleDict['stroke-line-dash'])
         ? { dasharray: styleDict['stroke-line-dash'].map(Number) }
+        : {}),
+      ...(styleDict['stroke-line-dash-offset'] !== undefined
+        ? { dashOffset: Number(styleDict['stroke-line-dash-offset']) }
+        : {}),
+      ...(styleDict['stroke-offset'] !== undefined
+        ? { perpendicularOffset: Number(styleDict['stroke-offset']) }
         : {}),
       ...(typeof styleDict['stroke-line-cap'] === 'string'
         ? { cap: styleDict['stroke-line-cap'] as LineSymbolizer['cap'] }
@@ -332,7 +339,7 @@ function parseStyleDictToSymbolizers(
  * @description Converts Cartouche OpenLayers Flat Style JSON (array of rules or style dictionary) into an in-memory GeoStyler Style AST.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {unknown} flatStyle - OpenLayers flat style rules array, dictionary, or serialized JSON string.
  * @param {string} [styleName='Cartouche Style'] - Optional style title.
@@ -434,7 +441,7 @@ export function flatStyleToGeoStyler(
  * Automatically injects geometry-type filter discriminators for Fill, Line, and Mark symbolizers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - GeoStyler Style AST.
  * @returns {OlFlatStyleRule[]} Array of OpenLayers Flat Style rules.
@@ -476,6 +483,8 @@ export function geoStylerToFlatStyle(ast: GeoStylerStyle): OlFlatStyleRule[] {
         if (Array.isArray(sym.dasharray)) styleDict['stroke-line-dash'] = sym.dasharray;
         if (sym.cap) styleDict['stroke-line-cap'] = sym.cap;
         if (sym.join) styleDict['stroke-line-join'] = sym.join;
+        if (sym.dashOffset !== undefined) styleDict['stroke-line-dash-offset'] = sym.dashOffset;
+        if (sym.perpendicularOffset !== undefined) styleDict['stroke-offset'] = sym.perpendicularOffset;
       } else if (sym.kind === 'Mark') {
         geomType = 'Point';
         const wellKnownName = sym.wellKnownName?.toLowerCase() || 'circle';
@@ -569,7 +578,8 @@ export function cartoucheToGeoStyler(
     (c): c is SimpleFillComponent => c.type === 'simple-fill' && c.enabled !== false
   );
   const lines = components.filter(
-    (c): c is SimpleLineComponent => c.type === 'simple-line' && c.enabled !== false
+    (c): c is SimpleLineComponent =>
+      c.type === 'simple-line' && c.enabled !== false && c.dashPattern !== 'no-line'
   );
   const markers = components.filter(
     (c): c is SimpleMarkerComponent => c.type === 'simple-marker' && c.enabled !== false
@@ -599,15 +609,23 @@ export function cartoucheToGeoStyler(
           color: line.color,
           width: line.width,
           ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+          ...(line.cap ? { cap: line.cap } : {}),
+          ...(line.join ? { join: line.join } : {}),
+          ...(line.dashOffset !== undefined ? { dashOffset: line.dashOffset } : {}),
+          ...(line.offset !== undefined ? { perpendicularOffset: line.offset } : {}),
         });
       });
     } else {
       lines.forEach((line) => {
         symbolizers.push({
-          kind: 'Fill',
-          outlineColor: line.color,
-          outlineWidth: line.width,
-          ...(Array.isArray(line.dashArray) ? { outlineDasharray: line.dashArray } : {}),
+          kind: 'Line',
+          color: line.color,
+          width: line.width,
+          ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+          ...(line.cap ? { cap: line.cap } : {}),
+          ...(line.join ? { join: line.join } : {}),
+          ...(line.dashOffset !== undefined ? { dashOffset: line.dashOffset } : {}),
+          ...(line.offset !== undefined ? { perpendicularOffset: line.offset } : {}),
         });
       });
     }
@@ -618,6 +636,10 @@ export function cartoucheToGeoStyler(
         color: line.color,
         width: line.width,
         ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+        ...(line.cap ? { cap: line.cap } : {}),
+        ...(line.join ? { join: line.join } : {}),
+        ...(line.dashOffset !== undefined ? { dashOffset: line.dashOffset } : {}),
+        ...(line.offset !== undefined ? { perpendicularOffset: line.offset } : {}),
       });
     });
   } else if (isPoint) {
@@ -640,6 +662,10 @@ export function cartoucheToGeoStyler(
         color: l.color,
         width: l.width,
         ...(Array.isArray(l.dashArray) ? { dasharray: l.dashArray } : {}),
+        ...(l.cap ? { cap: l.cap } : {}),
+        ...(l.join ? { join: l.join } : {}),
+        ...(l.dashOffset !== undefined ? { dashOffset: l.dashOffset } : {}),
+        ...(l.offset !== undefined ? { perpendicularOffset: l.offset } : {}),
       })
     );
     markers.forEach((m) =>
@@ -699,26 +725,34 @@ export function geoStylerToCartouche(
           });
         }
         if (fill.outlineColor) {
+          const outlineDash = Array.isArray(fill.outlineDasharray)
+            ? fill.outlineDasharray.map(Number)
+            : undefined;
           components.push({
             id: `line-${compId++}`,
             type: 'simple-line',
             enabled: true,
             color: String(fill.outlineColor),
             width: Number(fill.outlineWidth ?? 1),
-            ...(Array.isArray(fill.outlineDasharray)
-              ? { dashArray: fill.outlineDasharray.map(Number) }
-              : {}),
+            ...(outlineDash && outlineDash.length > 0 ? { dashArray: outlineDash } : {}),
+            dashPattern: matchDashPattern(outlineDash),
           });
         }
       } else if (sym.kind === 'Line' && (!geometryKind || isLine)) {
         const line = sym as LineSymbolizer;
+        const dashArr = Array.isArray(line.dasharray) ? line.dasharray.map(Number) : undefined;
         components.push({
           id: `line-${compId++}`,
           type: 'simple-line',
           enabled: true,
           color: String(line.color || '#000000'),
           width: Number(line.width ?? 1),
-          ...(Array.isArray(line.dasharray) ? { dashArray: line.dasharray.map(Number) } : {}),
+          ...(dashArr && dashArr.length > 0 ? { dashArray: dashArr } : {}),
+          dashPattern: matchDashPattern(dashArr),
+          ...(typeof line.cap === 'string' ? { cap: line.cap as SimpleLineComponent['cap'] } : {}),
+          ...(typeof line.join === 'string' ? { join: line.join as SimpleLineComponent['join'] } : {}),
+          ...(line.dashOffset !== undefined ? { dashOffset: Number(line.dashOffset) } : {}),
+          ...(line.perpendicularOffset !== undefined ? { offset: Number(line.perpendicularOffset) } : {}),
         });
       } else if (sym.kind === 'Mark' && (!geometryKind || isPoint)) {
         const mark = sym as MarkSymbolizer;
@@ -751,22 +785,34 @@ export function geoStylerToCartouche(
             });
           }
           if (fill.outlineColor) {
+            const outlineDash = Array.isArray(fill.outlineDasharray)
+              ? fill.outlineDasharray.map(Number)
+              : undefined;
             components.push({
               id: `line-${compId++}`,
               type: 'simple-line',
               enabled: true,
               color: String(fill.outlineColor),
               width: Number(fill.outlineWidth ?? 1),
+              ...(outlineDash && outlineDash.length > 0 ? { dashArray: outlineDash } : {}),
+              dashPattern: matchDashPattern(outlineDash),
             });
           }
         } else if (sym.kind === 'Line') {
           const line = sym as LineSymbolizer;
+          const dashArr = Array.isArray(line.dasharray) ? line.dasharray.map(Number) : undefined;
           components.push({
             id: `line-${compId++}`,
             type: 'simple-line',
             enabled: true,
             color: String(line.color || '#000000'),
             width: Number(line.width ?? 1),
+            ...(dashArr && dashArr.length > 0 ? { dashArray: dashArr } : {}),
+            dashPattern: matchDashPattern(dashArr),
+            ...(typeof line.cap === 'string' ? { cap: line.cap as SimpleLineComponent['cap'] } : {}),
+            ...(typeof line.join === 'string' ? { join: line.join as SimpleLineComponent['join'] } : {}),
+            ...(line.dashOffset !== undefined ? { dashOffset: Number(line.dashOffset) } : {}),
+            ...(line.perpendicularOffset !== undefined ? { offset: Number(line.perpendicularOffset) } : {}),
           });
         } else if (sym.kind === 'Mark') {
           const mark = sym as MarkSymbolizer;
@@ -800,7 +846,7 @@ export function geoStylerToCartouche(
  * @description Converts a raw style string between Cartouche Symbology JSON, OpenLayers Flat Style JSON, and OGC SLD XML (1.0.0 or 1.1.0) using GeoStyler AST as the intermediate representation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {string} content - Raw input style text.
  * @param {StyleFormatConversionOptions} options - Conversion configuration options.
@@ -858,7 +904,7 @@ export async function convertStyleFormat(
  * @description Validates a style text string against its declared format dialect and optional SLD version.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {string} content - Style text to validate.
  * @param {ProjectStyleFormat} format - Style format ('openlayers' | 'sld').
@@ -939,7 +985,7 @@ export async function validateStyleContent(
  * @description Parses raw style text into an in-memory GeoStyler Style AST based on the specified format and version.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {string} content - Raw style markup or JSON text.
  * @param {ProjectStyleFormat} format - Style format ('cartouche' | 'openlayers' | 'sld').
@@ -974,7 +1020,7 @@ export async function parseStyleTextToGeoStyler(
  * @description Serializes an in-memory GeoStyler Style AST into raw style text based on the specified format and version.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
  * @param {ProjectStyleFormat} format - Target style format ('cartouche' | 'openlayers' | 'sld').
@@ -1011,7 +1057,7 @@ export async function serializeGeoStylerToText(
  * @description Extracts editable visual symbolizer control parameters from an in-memory GeoStyler Style AST.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
  * @param {string} [geometryKind] - Optional geometry hint ('Polygon', 'LineString', 'Point').
@@ -1112,7 +1158,7 @@ export function extractVisualSymbolizers(
  * @description Injects updated visual symbolizer parameters into an existing or newly constructed GeoStyler Style AST.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {GeoStylerStyle} ast - In-memory GeoStyler Style AST.
  * @param {LayerVisualSymbolizer} visual - Updated visual properties.

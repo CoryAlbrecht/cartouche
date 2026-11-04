@@ -4,7 +4,7 @@
  * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
@@ -123,8 +123,43 @@ describe('openProject Native Session Hydration', () => {
     assert.equal(layerItem.style.format, 'openlayers');
     const styleRules = JSON.parse(layerItem.style.content || '');
     assert.equal(Array.isArray(styleRules), true);
-    assert.equal(styleRules.length, 3);
+    assert.equal(styleRules.length, 1, 'LineString layer must receive exactly 1 geometry-specific rule');
+    assert.deepEqual(styleRules[0].filter, ['==', ['geometry-type'], 'LineString']);
     assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
+  });
+
+  it('assigns geometry-specific default style for Polygon layers when opening project (Ticket #155)', async () => {
+    const tempProjPath = path.join(tempDir, `temp_poly_style_project_${Date.now()}.cproj`);
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
+  <metadata>
+    <title>Polygon Default Style Project</title>
+  </metadata>
+  <layers>
+    <layer id="polygon-layer" visible="true" layerKind="vector" type="shp">
+      <name>Lakes Polygon Layer</name>
+      <source>${sampleShpPath}</source>
+    </layer>
+  </layers>
+</project>`;
+
+    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+
+    const project = await openProject(tempProjPath);
+    assert.ok(project, 'Project must be loaded');
+    const layerItem = project.layers[0] as ProjectLayerItem;
+    assert.equal(layerItem.id, 'polygon-layer');
+    assert.equal(layerItem.geometryKind, 'Polygon');
+    assert.ok(isProjectLayerStyleWrapper(layerItem.style));
+    assert.equal(layerItem.style.format, 'openlayers');
+    const styleRules = JSON.parse(layerItem.style.content || '');
+    assert.equal(Array.isArray(styleRules), true);
+    assert.equal(styleRules.length, 1, 'Polygon layer must receive exactly 1 geometry-specific rule');
+    assert.deepEqual(styleRules[0].filter, ['==', ['geometry-type'], 'Polygon']);
+    assert.equal(styleRules[0].style['stroke-color'], '#000000');
+    assert.equal(styleRules[0].style['stroke-width'], 1);
+    assert.ok(styleRules[0].style['fill-color'], 'Must have fill color');
   });
 
   it('opening a legacy .cproj lacking <fields> infers fields on load and marks projectStore as dirty (Ticket #138)', async () => {
@@ -232,7 +267,7 @@ describe('openProject Native Session Hydration', () => {
     assert.ok(Array.isArray(project.styles), 'project.styles must be initialized to an array');
     assert.equal(project.styles.length, 0);
 
-    // Verify vector layers receive multi-geometry template
+    // Verify vector layers receive geometry-specific templates (Ticket #155)
     const v1 = project.layers[0] as ProjectLayerItem;
     const v2 = project.layers[1] as ProjectLayerItem;
     const r1 = project.layers[2] as ProjectLayerItem;
@@ -244,13 +279,13 @@ describe('openProject Native Session Hydration', () => {
 
     const rules1 = JSON.parse(v1.style.content || '');
     const rules2 = JSON.parse(v2.style.content || '');
-    assert.equal(rules1.length, 3);
-    assert.equal(rules2.length, 3);
+    assert.equal(rules1.length, 1, 'Polygon layer must receive single-rule Polygon style');
+    assert.equal(rules2.length, 1, 'LineString layer must receive single-rule LineString style');
+    assert.deepEqual(rules1[0].filter, ['==', ['geometry-type'], 'Polygon']);
+    assert.deepEqual(rules2[0].filter, ['==', ['geometry-type'], 'LineString']);
 
-    const colors1 = [rules1[0].style['fill-color'], rules1[1].style['stroke-color'], rules1[2].style['circle-fill-color']];
-    const colors2 = [rules2[0].style['fill-color'], rules2[1].style['stroke-color'], rules2[2].style['circle-fill-color']];
-    assert.equal(new Set(colors1).size, 3, 'Layer 1 must have 3 distinct colors');
-    assert.equal(new Set(colors2).size, 3, 'Layer 2 must have 3 distinct colors');
+    assert.ok(rules1[0].style['fill-color'], 'Polygon layer must have fill color');
+    assert.ok(rules2[0].style['stroke-color'], 'LineString layer must have stroke color');
 
     // Verify raster layer is excluded from vector style generation
     assert.equal(r1.style, undefined, 'Raster layer must not receive vector style template');

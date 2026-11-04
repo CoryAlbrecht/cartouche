@@ -4,7 +4,7 @@
  * @description Shared default OpenLayers vector layer styling rules and lookup helpers for Polygon, LineString, Point, and multi-geometry feature layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link createDefaultVectorLayerStyle}
  * @see {@link generateDefaultVectorStyleJson}
@@ -47,19 +47,112 @@ export {
 };
 
 /**
- * @description Generates a 3-rule OpenLayers Flat Style array for Polygon, LineString, and Point geometries with distinct colors.
+ * @description Generates OpenLayers Flat Style rules tailored to a specific geometry kind (single rule for Polygon, LineString, Point) or a 3-rule composite style for Unknown/mixed geometries.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-25
- * @updated 2026-10-25
+ * @updated 2026-11-04
  * @since 0.1.0-dev
- * @param {[string, string, string]} [colors] - Optional explicit [polygonFill, lineStroke, pointFill] CSS color names. If omitted, samples three distinct random colors from the contrast-filtered palette.
- * @returns {OlFlatStyleRule[]} Array of 3 OpenLayers flat style rules.
+ * @param {string[]} [colors] - Optional explicit CSS color names for composite rules.
+ * @returns {OlFlatStyleRule[]} Array of OpenLayers flat style rules.
  */
 export function createDefaultVectorLayerStyle(
-  colors?: [string, string, string]
+  colors?: string[]
+): OlFlatStyleRule[];
+/**
+ * @description Generates OpenLayers Flat Style rules tailored to a specific geometry kind (single rule for Polygon, LineString, Point) or a 3-rule composite style for Unknown/mixed geometries.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ * @param {string} [geometryKind] - Target layer geometry kind ('Polygon', 'LineString', 'Point', 'Unknown', etc.).
+ * @param {string[]} [colors] - Optional explicit CSS color names.
+ * @returns {OlFlatStyleRule[]} Array of OpenLayers flat style rules.
+ */
+export function createDefaultVectorLayerStyle(
+  geometryKind?: string,
+  colors?: string[]
+): OlFlatStyleRule[];
+/**
+ * @description Generates OpenLayers Flat Style rules tailored to a specific geometry kind (single rule for Polygon, LineString, Point) or a 3-rule composite style for Unknown/mixed geometries.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ * @param {string | string[]} [geometryKindOrColors] - Geometry kind string or explicit colors array.
+ * @param {string[]} [explicitColors] - Optional explicit CSS colors array when first parameter is geometryKind.
+ * @returns {OlFlatStyleRule[]} Array of OpenLayers flat style rules.
+ */
+export function createDefaultVectorLayerStyle(
+  geometryKindOrColors?: string | string[],
+  explicitColors?: string[]
 ): OlFlatStyleRule[] {
+  let geometryKind: string | undefined;
+  let colors: string[] | undefined;
+
+  if (Array.isArray(geometryKindOrColors)) {
+    geometryKind = undefined;
+    colors = geometryKindOrColors;
+  } else {
+    geometryKind = geometryKindOrColors;
+    colors = explicitColors;
+  }
+
+  const gKind = (geometryKind || "Unknown").toLowerCase();
+
+  if (gKind.includes("polygon")) {
+    const polygonColor =
+      (colors && colors[0]) || (getRandomCssColors(1)[0] as string);
+    return [
+      {
+        filter: ["==", ["geometry-type"], "Polygon"],
+        style: {
+          "fill-color": polygonColor,
+          "stroke-color": "#000000",
+          "stroke-width": 1,
+        },
+      },
+    ];
+  }
+
+  if (gKind.includes("line")) {
+    const lineColor =
+      (colors && (colors.length >= 2 ? colors[1] : colors[0])) ||
+      (getRandomCssColors(1)[0] as string);
+    return [
+      {
+        filter: ["==", ["geometry-type"], "LineString"],
+        style: {
+          "stroke-color": lineColor,
+          "stroke-width": 2,
+          "stroke-line-cap": "round",
+          "stroke-line-join": "round",
+        },
+      },
+    ];
+  }
+
+  if (gKind.includes("point")) {
+    const pointColor =
+      (colors && (colors.length >= 3 ? colors[2] : colors[0])) ||
+      (getRandomCssColors(1)[0] as string);
+    return [
+      {
+        filter: ["==", ["geometry-type"], "Point"],
+        style: {
+          "circle-radius": 6,
+          "circle-fill-color": pointColor,
+          "circle-stroke-color": "#000000",
+          "circle-stroke-width": 1,
+        },
+      },
+    ];
+  }
+
+  // Unknown, GeometryCollection, or mixed geometries -> 3-rule composite style
   const [polygonColor, lineColor, pointColor] =
-    colors || (getRandomCssColors(3) as [string, string, string]);
+    colors && colors.length >= 3
+      ? (colors.slice(0, 3) as [string, string, string])
+      : (getRandomCssColors(3) as [string, string, string]);
 
   return [
     // 1. Polygons
@@ -95,18 +188,55 @@ export function createDefaultVectorLayerStyle(
 }
 
 /**
- * @description Generates the serialized JSON string representation of the default multi-geometry vector layer style rules.
+ * @description Generates the serialized JSON string representation of default vector layer style rules for a specific geometry kind or composite style.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-25
- * @updated 2026-10-25
+ * @updated 2026-11-04
  * @since 0.1.0-dev
- * @param {[string, string, string]} [colors] - Optional explicit [polygonFill, lineStroke, pointFill] CSS color names.
+ * @param {string[]} [colors] - Optional explicit CSS color names for composite rules.
+ * @returns {string} Formatted JSON string of OpenLayers flat style rules.
+ */
+export function generateDefaultVectorStyleJson(colors?: string[]): string;
+/**
+ * @description Generates the serialized JSON string representation of default vector layer style rules for a specific geometry kind or composite style.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ * @param {string} [geometryKind] - Target layer geometry kind ('Polygon', 'LineString', 'Point', 'Unknown', etc.).
+ * @param {string[]} [colors] - Optional explicit CSS color names.
  * @returns {string} Formatted JSON string of OpenLayers flat style rules.
  */
 export function generateDefaultVectorStyleJson(
-  colors?: [string, string, string]
+  geometryKind?: string,
+  colors?: string[]
+): string;
+/**
+ * @description Generates the serialized JSON string representation of default vector layer style rules for a specific geometry kind or composite style.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-25
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ * @param {string | string[]} [geometryKindOrColors] - Geometry kind string or explicit colors array.
+ * @param {string[]} [explicitColors] - Optional explicit CSS colors array when first parameter is geometryKind.
+ * @returns {string} Formatted JSON string of OpenLayers flat style rules.
+ */
+export function generateDefaultVectorStyleJson(
+  geometryKindOrColors?: string | string[],
+  explicitColors?: string[]
 ): string {
-  return JSON.stringify(createDefaultVectorLayerStyle(colors), null, 2);
+  if (Array.isArray(geometryKindOrColors)) {
+    return JSON.stringify(
+      createDefaultVectorLayerStyle(undefined, geometryKindOrColors),
+      null,
+      2
+    );
+  }
+  return JSON.stringify(
+    createDefaultVectorLayerStyle(geometryKindOrColors, explicitColors),
+    null,
+    2
+  );
 }
 
 /**
@@ -142,10 +272,10 @@ export function isCartoucheLayerStyle(
  * @description Generates a default Cartouche Symbology Specification style (SimpleCartoucheStyle) appropriate to the layer geometry kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {string} [geometryKind='Unknown'] - Geometry kind of the target layer ('Polygon', 'LineString', 'Point', etc.).
- * @param {string} [color] - Optional primary fill/stroke CSS color name or hex code. If omitted, samples a random color.
+ * @param {string} [color] - Optional primary fill/stroke CSS color name or hex code. If omitted, samples random contrast colors.
  * @returns {SimpleCartoucheStyle} Geometry-appropriate Simple CartoucheLayerStyle object.
  */
 export function createDefaultCartoucheLayerStyle(
@@ -197,19 +327,22 @@ export function createDefaultCartoucheLayerStyle(
       },
     ];
   } else {
-    // Unknown or mixed geometries
+    // Unknown or mixed geometries -> 3 distinct random colors from contrast-filtered palette
+    const [polyColor, lineCol, ptColor] = color
+      ? [color, color, color]
+      : (getRandomCssColors(3) as [string, string, string]);
     components = [
       {
         id: "fill-1",
         type: "simple-fill",
         enabled: true,
-        color: primaryColor,
+        color: polyColor,
       },
       {
         id: "line-1",
         type: "simple-line",
         enabled: true,
-        color: "#000000",
+        color: lineCol,
         width: 1,
       },
       {
@@ -218,7 +351,7 @@ export function createDefaultCartoucheLayerStyle(
         enabled: true,
         shape: "circle",
         radius: 6,
-        fillColor: primaryColor,
+        fillColor: ptColor,
         strokeColor: "#000000",
         strokeWidth: 1,
       },
@@ -236,7 +369,7 @@ export function createDefaultCartoucheLayerStyle(
  * @description Generates the serialized JSON string representation of the default Cartouche Symbology style.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {string} [geometryKind='Unknown'] - Geometry kind of the target layer.
  * @param {string} [color] - Optional primary fill/stroke CSS color name or hex code.

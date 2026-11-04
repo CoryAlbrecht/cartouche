@@ -4,7 +4,7 @@
  * @description Unit tests verifying OpenLayers Flat Style definitions, contrast-filtered color palettes, and random multi-geometry style generators.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -245,6 +245,92 @@ describe("defaultLayerStyles", () => {
     assert.equal(parsed[0].style["fill-color"], "crimson");
     assert.equal(parsed[1].style["stroke-color"], "dodgerblue");
     assert.equal(parsed[2].style["circle-fill-color"], "forestgreen");
+  });
+
+  describe("Geometry-Specific Default Vector Styles (Ticket #155)", () => {
+    it("createDefaultVectorLayerStyle generates single-rule flat style array for Polygon", () => {
+      const rules = createDefaultVectorLayerStyle("Polygon", ["crimson"]);
+      assert.equal(rules.length, 1);
+      assert.deepEqual(rules[0], {
+        filter: ["==", ["geometry-type"], "Polygon"],
+        style: {
+          "fill-color": "crimson",
+          "stroke-color": "#000000",
+          "stroke-width": 1,
+        },
+      });
+    });
+
+    it("createDefaultVectorLayerStyle generates single-rule flat style array for LineString with width 2.0", () => {
+      const rules = createDefaultVectorLayerStyle("LineString", ["dodgerblue"]);
+      assert.equal(rules.length, 1);
+      assert.deepEqual(rules[0], {
+        filter: ["==", ["geometry-type"], "LineString"],
+        style: {
+          "stroke-color": "dodgerblue",
+          "stroke-width": 2,
+          "stroke-line-cap": "round",
+          "stroke-line-join": "round",
+        },
+      });
+    });
+
+    it("createDefaultVectorLayerStyle generates single-rule flat style array for Point with circle marker", () => {
+      const rules = createDefaultVectorLayerStyle("Point", ["forestgreen"]);
+      assert.equal(rules.length, 1);
+      assert.deepEqual(rules[0], {
+        filter: ["==", ["geometry-type"], "Point"],
+        style: {
+          "circle-radius": 6,
+          "circle-fill-color": "forestgreen",
+          "circle-stroke-color": "#000000",
+          "circle-stroke-width": 1,
+        },
+      });
+    });
+
+    it("createDefaultVectorLayerStyle reserves 3-rule composite output exclusively for Unknown, GeometryCollection, and mixed", () => {
+      const unknownRules = createDefaultVectorLayerStyle("Unknown");
+      assert.equal(unknownRules.length, 3);
+
+      const geomCollectionRules = createDefaultVectorLayerStyle("GeometryCollection");
+      assert.equal(geomCollectionRules.length, 3);
+
+      const defaultRules = createDefaultVectorLayerStyle();
+      assert.equal(defaultRules.length, 3);
+    });
+
+    it("createDefaultVectorLayerStyle automatically assigns random contrast palette color when color omitted", () => {
+      const polyRules = createDefaultVectorLayerStyle("Polygon");
+      assert.equal(polyRules.length, 1);
+      assert.ok(CONTRAST_FILTERED_CSS_COLORS.includes(polyRules[0].style["fill-color"]));
+
+      const lineRules = createDefaultVectorLayerStyle("LineString");
+      assert.equal(lineRules.length, 1);
+      assert.ok(CONTRAST_FILTERED_CSS_COLORS.includes(lineRules[0].style["stroke-color"]));
+
+      const pointRules = createDefaultVectorLayerStyle("Point");
+      assert.equal(pointRules.length, 1);
+      assert.ok(CONTRAST_FILTERED_CSS_COLORS.includes(pointRules[0].style["circle-fill-color"]));
+    });
+
+    it("generateDefaultVectorStyleJson generates geometry-specific JSON matching layer geometry type", () => {
+      const polyJson = generateDefaultVectorStyleJson("Polygon", ["crimson"]);
+      const parsedPoly = JSON.parse(polyJson);
+      assert.equal(parsedPoly.length, 1);
+      assert.equal(parsedPoly[0].style["fill-color"], "crimson");
+
+      const lineJson = generateDefaultVectorStyleJson("LineString", ["dodgerblue"]);
+      const parsedLine = JSON.parse(lineJson);
+      assert.equal(parsedLine.length, 1);
+      assert.equal(parsedLine[0].style["stroke-color"], "dodgerblue");
+      assert.equal(parsedLine[0].style["stroke-width"], 2);
+
+      const pointJson = generateDefaultVectorStyleJson("Point", ["forestgreen"]);
+      const parsedPoint = JSON.parse(pointJson);
+      assert.equal(parsedPoint.length, 1);
+      assert.equal(parsedPoint[0].style["circle-fill-color"], "forestgreen");
+    });
   });
 
   describe("createDefaultCartoucheLayerStyle", () => {

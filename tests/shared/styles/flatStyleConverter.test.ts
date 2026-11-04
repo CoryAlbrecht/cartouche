@@ -4,7 +4,7 @@
  * @description Unit and round-trip integration tests for GeoStyler AST <-> OpenLayers Flat Style bidirectional converter, Cartouche Simple Symbology converter, SLD 1.0.0/1.1.0 format conversions, and live syntax validation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-31
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link flatStyleToGeoStyler}
  * @see {@link geoStylerToFlatStyle}
@@ -852,6 +852,158 @@ describe('GeoStyler AST <-> OpenLayers Flat Style Converter (Ticket #122)', () =
       const lineComp = parsed.components[0] as SimpleLineComponent;
       assert.strictEqual(lineComp.color, '#10b981');
       assert.strictEqual(lineComp.width, 3);
+    });
+
+    it('losslessly converts SimpleLineComponent with advanced stroke properties to OpenLayers Flat Style and back (Ticket #156)', async () => {
+      const advancedStyle: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-1',
+            type: 'simple-line',
+            enabled: true,
+            color: '#0284c7',
+            width: 2.5,
+            offset: -3.5,
+            cap: 'round',
+            join: 'round',
+            dashPattern: 'dash',
+            dashArray: [10, 5],
+            dashOffset: 1.5,
+          },
+        ],
+      };
+      const cartoucheJson = JSON.stringify(advancedStyle);
+
+      // Convert to OpenLayers Flat Style
+      const olJson = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'openlayers',
+        geometryKind: 'LineString',
+      });
+      const parsedOl = JSON.parse(olJson);
+      assert.ok(Array.isArray(parsedOl));
+      const lineRule = parsedOl[0].style;
+      assert.strictEqual(lineRule['stroke-color'], '#0284c7');
+      assert.strictEqual(lineRule['stroke-width'], 2.5);
+      assert.strictEqual(lineRule['stroke-offset'], -3.5);
+      assert.strictEqual(lineRule['stroke-line-cap'], 'round');
+      assert.strictEqual(lineRule['stroke-line-join'], 'round');
+      assert.deepStrictEqual(lineRule['stroke-line-dash'], [10, 5]);
+      assert.strictEqual(lineRule['stroke-line-dash-offset'], 1.5);
+
+      // Convert back to Cartouche Symbology
+      const convertedBack = await convertStyleFormat(olJson, {
+        fromFormat: 'openlayers',
+        toFormat: 'cartouche',
+        geometryKind: 'LineString',
+      });
+      const parsedCartouche = JSON.parse(convertedBack) as SimpleCartoucheStyle;
+      assert.strictEqual(parsedCartouche.format, 'simple');
+      const backLine = parsedCartouche.components[0] as SimpleLineComponent;
+      assert.strictEqual(backLine.type, 'simple-line');
+      assert.strictEqual(backLine.color, '#0284c7');
+      assert.strictEqual(backLine.width, 2.5);
+      assert.strictEqual(backLine.offset, -3.5);
+      assert.strictEqual(backLine.cap, 'round');
+      assert.strictEqual(backLine.join, 'round');
+      assert.deepStrictEqual(backLine.dashArray, [10, 5]);
+      assert.strictEqual(backLine.dashOffset, 1.5);
+      assert.strictEqual(backLine.dashPattern, 'dash');
+    });
+
+    it('losslessly converts SimpleLineComponent with advanced stroke properties to SLD 1.1.0/1.0.0 and back (Ticket #156)', async () => {
+      const advancedStyle: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-1',
+            type: 'simple-line',
+            enabled: true,
+            color: '#dc2626',
+            width: 3,
+            offset: 2,
+            cap: 'square',
+            join: 'miter',
+            dashPattern: 'custom',
+            dashArray: [16, 4, 4, 4],
+            dashOffset: 2,
+          },
+        ],
+      };
+      const cartoucheJson = JSON.stringify(advancedStyle);
+
+      // Convert to SLD 1.1.0
+      const sld110 = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'sld',
+        toVersion: '1.1.0',
+        geometryKind: 'LineString',
+      });
+      assert.ok(sld110.includes('<se:SvgParameter name="stroke">#dc2626</se:SvgParameter>'));
+      assert.ok(sld110.includes('<se:SvgParameter name="stroke-width">3</se:SvgParameter>'));
+      assert.ok(sld110.includes('<se:SvgParameter name="stroke-linecap">square</se:SvgParameter>'));
+      assert.ok(sld110.includes('<se:SvgParameter name="stroke-linejoin">miter</se:SvgParameter>'));
+      assert.ok(sld110.includes('<se:SvgParameter name="stroke-dasharray">16 4 4 4</se:SvgParameter>'));
+      assert.ok(sld110.includes('<se:SvgParameter name="stroke-dashoffset">2</se:SvgParameter>'));
+      assert.ok(sld110.includes('<se:PerpendicularOffset>2</se:PerpendicularOffset>'));
+
+      // Convert back to Cartouche Symbology from SLD 1.1.0
+      const backFromSld = await convertStyleFormat(sld110, {
+        fromFormat: 'sld',
+        fromVersion: '1.1.0',
+        toFormat: 'cartouche',
+        geometryKind: 'LineString',
+      });
+      const parsedBack = JSON.parse(backFromSld) as SimpleCartoucheStyle;
+      const backLine = parsedBack.components[0] as SimpleLineComponent;
+      assert.strictEqual(backLine.color, '#dc2626');
+      assert.strictEqual(backLine.width, 3);
+      assert.strictEqual(backLine.cap, 'square');
+      assert.strictEqual(backLine.join, 'miter');
+      assert.deepStrictEqual(backLine.dashArray, [16, 4, 4, 4]);
+      assert.strictEqual(backLine.dashOffset, 2);
+      assert.strictEqual(backLine.offset, 2);
+      assert.strictEqual(backLine.dashPattern, 'custom');
+    });
+
+    it('suppresses stroke in GeoStyler / SLD / Flat Style when dashPattern is "no-line" (Ticket #156)', async () => {
+      const noLineStyle: SimpleCartoucheStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-suppressed',
+            type: 'simple-line',
+            enabled: true,
+            color: '#dc2626',
+            width: 2,
+            dashPattern: 'no-line',
+          },
+        ],
+      };
+      const cartoucheJson = JSON.stringify(noLineStyle);
+
+      // Convert to OpenLayers Flat Style -> empty rules / no stroke
+      const olJson = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'openlayers',
+        geometryKind: 'LineString',
+      });
+      const parsedOl = JSON.parse(olJson);
+      assert.ok(Array.isArray(parsedOl));
+      assert.strictEqual(parsedOl.length, 0);
+
+      // Convert to SLD 1.1.0 -> no LineSymbolizer
+      const sld110 = await convertStyleFormat(cartoucheJson, {
+        fromFormat: 'cartouche',
+        toFormat: 'sld',
+        toVersion: '1.1.0',
+        geometryKind: 'LineString',
+      });
+      assert.ok(!sld110.includes('LineSymbolizer'));
     });
   });
 });

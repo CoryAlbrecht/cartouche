@@ -4,7 +4,7 @@
  * @description Centralized TypeScript type definitions and interfaces for the internal map feature styling system and Cartouche Symbology Specification.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-30
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -37,11 +37,16 @@ export interface SimpleFillComponent {
  * @property {boolean} enabled - Whether the component is rendered.
  * @property {boolean} [locked] - Whether the component options are locked against accidental edits or deletion.
  * @property {string} color - Hex, RGB, or CSS color string for the line or outline stroke.
- * @property {number} width - Stroke width in pixels.
- * @property {number[]} [dashArray] - Optional dash and gap sequence in pixels (e.g. [4, 4]).
+ * @property {number} width - Stroke width in pixels (floating-point >= 0.0).
+ * @property {number} [offset] - Perpendicular line offset in pixels along feature normal.
+ * @property {'butt' | 'round' | 'square'} [cap] - Line cap style.
+ * @property {'bevel' | 'miter' | 'round'} [join] - Line join style.
+ * @property {string} [dashPattern] - Dash pattern preset name ('solid' | 'no-line' | 'dash' | 'dot' | 'dash-dot' | 'dash-dot-dot' | 'long-dash' | 'long-dash-dot' | 'sparse-dot' | 'custom').
+ * @property {number} [dashOffset] - Phase offset of the dash pattern along the stroke in pixels (floating-point >= 0.0).
+ * @property {number[]} [dashArray] - Sequence of line and gap lengths in pixels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 export interface SimpleLineComponent {
@@ -51,7 +56,89 @@ export interface SimpleLineComponent {
   locked?: boolean;
   color: string;
   width: number;
+  offset?: number;
+  cap?: 'butt' | 'round' | 'square';
+  join?: 'bevel' | 'miter' | 'round';
+  dashPattern?: string;
+  dashOffset?: number;
   dashArray?: number[];
+}
+
+/**
+ * @typedef {'solid' | 'no-line' | 'dash' | 'dot' | 'dash-dot' | 'dash-dot-dot' | 'long-dash' | 'long-dash-dot' | 'sparse-dot' | 'custom'} DashPatternPreset
+ * @description Standard CAD/GIS and custom stroke dash pattern preset identifiers.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-04
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ */
+export type DashPatternPreset =
+  | 'solid'
+  | 'no-line'
+  | 'dash'
+  | 'dot'
+  | 'dash-dot'
+  | 'dash-dot-dot'
+  | 'long-dash'
+  | 'long-dash-dot'
+  | 'sparse-dot'
+  | 'custom';
+
+/**
+ * Standard dictionary mapping CAD/GIS dash pattern presets to their alternating line/gap length sequences in pixels.
+ * @type {Record<string, number[]>}
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-04
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ */
+export const DASH_PATTERN_PRESETS: Record<string, number[]> = {
+  'solid': [],
+  'no-line': [],
+  'dash': [10, 5],
+  'dot': [2, 3],
+  'dash-dot': [10, 4, 2, 4],
+  'dash-dot-dot': [10, 4, 2, 4, 2, 4],
+  'long-dash': [18, 6],
+  'long-dash-dot': [18, 5, 2, 5],
+  'sparse-dot': [2, 6],
+};
+
+/**
+ * Matches a numeric dash array sequence or explicit pattern token against standard CAD/GIS dash pattern presets.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-04
+ * @updated 2026-11-04
+ * @since 0.1.0-dev
+ * @param {number[]} [dashArray] - Optional alternating line and gap lengths array.
+ * @param {string} [explicitPattern] - Optional explicit dashPattern string.
+ * @returns {string} Matched preset identifier or 'custom'.
+ */
+export function matchDashPattern(
+  dashArray?: number[],
+  explicitPattern?: string
+): string {
+  if (explicitPattern === 'no-line') {
+    return 'no-line';
+  }
+  if (explicitPattern === 'custom') {
+    return 'custom';
+  }
+  if (!dashArray || dashArray.length === 0) {
+    return explicitPattern === 'no-line' ? 'no-line' : 'solid';
+  }
+  for (const [preset, arr] of Object.entries(DASH_PATTERN_PRESETS)) {
+    if (preset === 'solid' || preset === 'no-line') {
+      continue;
+    }
+    if (
+      arr.length === dashArray.length &&
+      arr.every((val, idx) => Math.abs(val - dashArray[idx]) < 1e-4)
+    ) {
+      return preset;
+    }
+  }
+  return 'custom';
 }
 
 /**
