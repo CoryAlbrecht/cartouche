@@ -7,6 +7,7 @@
  * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link Dialog}
+ * @see {@link ModalDialog}
  * @see {@link activeLayerPropertiesIdSignal}
  */
 
@@ -41,6 +42,8 @@ import {
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
   findLayerInTree,
+  isDiscardFieldChangesModalOpenSignal,
+  discardUnappliedFieldChanges,
   POPULAR_CRS_OPTIONS,
   type LayerPropertiesTabId,
 } from "@renderer/state/layerPropertiesSignals";
@@ -72,6 +75,7 @@ import {
   isLayerInEditMode,
 } from "@renderer/state/gisSignals";
 import { Dialog } from "./Dialog";
+import { ModalDialog } from "./ModalDialog";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
 import { SimpleModeEditor } from "./SimpleModeEditor";
 
@@ -707,6 +711,9 @@ export const LayerPropertiesDialog: React.FC = () => {
 
   useEffect(() => {
     setEditingCell(null);
+    if (!isEditing) {
+      setSelectedFieldName(null);
+    }
   }, [isEditing, activeId]);
 
   /**
@@ -2796,6 +2803,39 @@ export const LayerPropertiesDialog: React.FC = () => {
         New field configuration placeholder.
       </div>
     </Dialog>
+    {/* Confirmation ModalDialog for Discarding Unapplied Field Changes */}
+    <ModalDialog
+      isOpen={isDiscardFieldChangesModalOpenSignal.value}
+      title={t("layer_properties_fields_discard_title") || "Discard Unapplied Field Changes?"}
+      onClose={() => {
+        isDiscardFieldChangesModalOpenSignal.value = false;
+      }}
+      buttons={[
+        {
+          label: t("dialog_cancel") || "Cancel",
+          onClick: () => {
+            isDiscardFieldChangesModalOpenSignal.value = false;
+          },
+        },
+        {
+          label: t("dialog_ok") || "OK",
+          primary: true,
+          onClick: () => {
+            discardUnappliedFieldChanges();
+            if (activeId) {
+              toggleLayerEditingAction(activeId, { force: true });
+            }
+            setEditingCell(null);
+            setSelectedFieldName(null);
+            isDiscardFieldChangesModalOpenSignal.value = false;
+          },
+        },
+      ]}>
+      <p style={{ margin: 0 }}>
+        {t("layer_properties_fields_discard_warning") ||
+          "You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?"}
+      </p>
+    </ModalDialog>
   </>
   );
 };

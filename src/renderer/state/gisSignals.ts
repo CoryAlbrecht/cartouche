@@ -55,6 +55,10 @@ import {
   findItemInTree
 } from './projectSignals';
 import {
+  hasUnappliedFieldChanges,
+  isDiscardFieldChangesModalOpenSignal
+} from './layerPropertiesSignals';
+import {
   getLayerToolbarPreference,
   setLayerToolbarPreference,
   captureLayerToolbarState,
@@ -2647,17 +2651,26 @@ export function pasteFeaturesAction(): void {
  * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
+ * @param {Object} [options] - Optional toggle execution settings.
+ * @param {boolean} [options.force] - Force toggle disabling without unapplied changes confirmation prompt.
  * @returns {void}
  */
-export function toggleLayerEditingAction(layerId?: string | null): void {
+export function toggleLayerEditingAction(
+  layerId?: string | null,
+  options?: { force?: boolean }
+): void {
   const targetId = layerId !== undefined ? layerId : activeLayerIdSignal.value;
   if (!targetId) return;
 
   const current = new Set(editableLayerIdsSignal.value);
   if (current.has(targetId)) {
+    if (!options?.force && hasUnappliedFieldChanges(targetId)) {
+      isDiscardFieldChangesModalOpenSignal.value = true;
+      return;
+    }
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
     if (

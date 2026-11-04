@@ -53,6 +53,10 @@ const {
   switchLayerPropertiesStyleFormat,
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
+  isDiscardFieldChangesModalOpenSignal,
+  hasUnappliedFieldChanges,
+  discardUnappliedFieldChanges,
+  getBaselineLayerFields,
 } = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
 const {
   projectTreeSignal,
@@ -219,6 +223,9 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_fields_col_data_type: 'Data Type',
       layer_properties_fields_reset_type: 'Reset data type to default',
       layer_properties_fields_show_native_type: 'Show Native Type',
+      layer_properties_fields_discard_title: 'Discard Unapplied Field Changes?',
+      layer_properties_fields_discard_warning:
+        'You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?',
       layer_properties_time_enable: 'Enable dynamic temporal control',
       layer_properties_time_mode: 'Configuration Mode',
       layer_properties_time_mode_single: 'Single Field with Date/Time',
@@ -3165,6 +3172,324 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.strictEqual(updated?.width, 250, 'Length must be preserved');
       assert.strictEqual(updated?.precision, 8, 'Precision must be preserved');
       assert.strictEqual(updated?.comment, 'Preserved documentation', 'Comment must be preserved');
+    });
+  });
+
+  describe('Unapplied Field Changes Confirmation Modal on Disabling Edit Mode (Ticket #152)', () => {
+    const testLayerId = 'layer-unapplied-guard-152';
+
+    beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = null;
+      isDiscardFieldChangesModalOpenSignal.value = false;
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Guard Test Layer',
+          type: 'vector',
+          source: '/data/guard.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'city_name',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              originalInferredType: 'string' as const,
+              width: 50,
+              precision: 0,
+              comment: 'Name of municipality',
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'population',
+              nativeType: 'Real',
+              inferredType: 'real' as const,
+              originalInferredType: 'real' as const,
+              width: 12,
+              precision: 2,
+              comment: 'Population count in millions',
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Guard Test Layer',
+          type: 'layer',
+          source: '/data/guard.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'city_name',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              originalInferredType: 'string' as const,
+              width: 50,
+              precision: 0,
+              comment: 'Name of municipality',
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'population',
+              nativeType: 'Real',
+              inferredType: 'real' as const,
+              originalInferredType: 'real' as const,
+              width: 12,
+              precision: 2,
+              comment: 'Population count in millions',
+              userOverridden: false,
+            },
+          ],
+        } as any,
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = null;
+      isDiscardFieldChangesModalOpenSignal.value = false;
+    });
+
+    it('hasUnappliedFieldChanges detects field modifications against baseline', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), false, 'Initial state must not have unapplied changes');
+
+      // 1. Modifying inferredType
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            index: 0,
+            name: 'city_name',
+            nativeType: 'String',
+            inferredType: 'integer' as const,
+            originalInferredType: 'string' as const,
+            width: 50,
+            precision: 0,
+            comment: 'Name of municipality',
+            userOverridden: true,
+          },
+          layerPropertiesDraftSignal.value.fields![1],
+        ],
+      });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), true, 'Overridden type must be detected');
+
+      // 2. Modifying width
+      updateLayerPropertiesDraft({
+        fields: [
+          layerPropertiesDraftSignal.value.fields![0],
+          {
+            ...layerPropertiesDraftSignal.value.fields![1],
+            width: 99,
+          },
+        ],
+      });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), true, 'Modified width must be detected');
+
+      // 3. Modifying comment
+      updateLayerPropertiesDraft({
+        fields: [
+          layerPropertiesDraftSignal.value.fields![0],
+          {
+            ...layerPropertiesDraftSignal.value.fields![1],
+            comment: 'New comment',
+          },
+        ],
+      });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), true, 'Modified comment must be detected');
+
+      // 4. Modifying precision
+      updateLayerPropertiesDraft({
+        fields: [
+          layerPropertiesDraftSignal.value.fields![0],
+          {
+            ...layerPropertiesDraftSignal.value.fields![1],
+            precision: 4,
+          },
+        ],
+      });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), true, 'Modified precision must be detected');
+
+      // 5. Adding/removing fields
+      updateLayerPropertiesDraft({
+        fields: [layerPropertiesDraftSignal.value.fields![0]],
+      });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), true, 'Deleted field must be detected');
+
+      // 6. Resetting back to baseline fields
+      const baseline = getBaselineLayerFields(testLayerId);
+      updateLayerPropertiesDraft({ fields: [...baseline] });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), false, 'Restoring baseline must clear unapplied state');
+    });
+
+    it('intercepts toggling Layer Edit Mode OFF when unapplied changes exist and opens ModalDialog', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Turn edit mode ON
+      toggleLayerEditingAction(testLayerId);
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId), 'Edit mode must be ON');
+
+      // Stage an unapplied change
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            ...layerPropertiesDraftSignal.value.fields![0],
+            comment: 'Unapplied draft comment',
+          },
+          layerPropertiesDraftSignal.value.fields![1],
+        ],
+      });
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), true);
+
+      // Attempt to toggle Layer Edit Mode OFF (via toggleLayerEditingAction - used by button, toolbar, Ctrl+E)
+      toggleLayerEditingAction(testLayerId);
+
+      // Must be intercepted! Edit mode must remain ON
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId), 'Edit mode must remain ON when intercepted');
+      assert.strictEqual(isDiscardFieldChangesModalOpenSignal.value, true, 'Discard modal must be opened');
+
+      // Verify ModalDialog renders in DOM with expected title and warning
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('Discard Unapplied Field Changes?'), 'Modal title must be rendered');
+      assert.ok(html.includes('unapplied changes to attribute fields') || html.includes('Turning off Layer Edit Mode will discard'), 'Warning text must be rendered');
+    });
+
+    it('toggling Layer Edit Mode OFF proceeds immediately without modal when no unapplied field changes exist', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Turn edit mode ON
+      toggleLayerEditingAction(testLayerId);
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId));
+
+      // No unapplied changes made
+      assert.strictEqual(hasUnappliedFieldChanges(testLayerId), false);
+
+      // Toggle edit mode OFF
+      toggleLayerEditingAction(testLayerId);
+
+      // Must NOT be intercepted
+      assert.ok(!editableLayerIdsSignal.value.has(testLayerId), 'Edit mode must be turned OFF immediately');
+      assert.strictEqual(isDiscardFieldChangesModalOpenSignal.value, false, 'Modal must NOT open');
+    });
+
+    it('clicking Cancel in the modal dismisses warning, keeps Edit Mode ON, and preserves unapplied modifications', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+      toggleLayerEditingAction(testLayerId);
+
+      // Stage an unapplied edit
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            ...layerPropertiesDraftSignal.value.fields![0],
+            width: 120,
+            comment: 'Pending staged note',
+          },
+          layerPropertiesDraftSignal.value.fields![1],
+        ],
+      });
+
+      // Trigger interception
+      toggleLayerEditingAction(testLayerId);
+      assert.strictEqual(isDiscardFieldChangesModalOpenSignal.value, true);
+
+      // Simulate Cancel: dismiss modal
+      isDiscardFieldChangesModalOpenSignal.value = false;
+
+      // Edit Mode remains ON
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId), 'Edit mode must stay ON after Cancel');
+
+      // Staged edits preserved
+      assert.strictEqual(layerPropertiesDraftSignal.value.fields?.[0].width, 120);
+      assert.strictEqual(layerPropertiesDraftSignal.value.fields?.[0].comment, 'Pending staged note');
+    });
+
+    it('clicking OK in the modal turns Edit Mode OFF, resets draft.fields to undefined, and clears inline edit and row selection', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+      toggleLayerEditingAction(testLayerId);
+
+      // Stage an unapplied edit
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            ...layerPropertiesDraftSignal.value.fields![0],
+            inferredType: 'integer' as const,
+            userOverridden: true,
+            comment: 'Draft to be discarded',
+          },
+          layerPropertiesDraftSignal.value.fields![1],
+        ],
+      });
+
+      // Trigger interception
+      toggleLayerEditingAction(testLayerId);
+      assert.strictEqual(isDiscardFieldChangesModalOpenSignal.value, true);
+
+      // Simulate OK: discard changes and force disable edit mode
+      discardUnappliedFieldChanges();
+      toggleLayerEditingAction(testLayerId, { force: true });
+      isDiscardFieldChangesModalOpenSignal.value = false;
+
+      // Edit mode turned OFF
+      assert.ok(!editableLayerIdsSignal.value.has(testLayerId), 'Edit mode must be OFF after OK');
+
+      // draft.fields reset to undefined
+      assert.strictEqual(layerPropertiesDraftSignal.value.fields, undefined, 'draft.fields must be undefined');
+
+      // Fields table rendered display reverts to baseline
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(!html.includes('Draft to be discarded'), 'Discarded draft field comment must not appear in rendered table');
+      assert.ok(html.includes('city_name'), 'Baseline city_name field must appear');
+    });
+
+    it('discarding unapplied field changes preserves draft settings in other tabs', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+
+      // Modify other tabs: Styling, Source / Name, CRS
+      updateLayerPropertiesDraft({
+        layerName: 'Modified Layer Name',
+        crsAuthId: 'EPSG:3857',
+        styleContent: '{"rules": [{"name": "CustomRule"}]}',
+        styleFormat: 'openlayers',
+        opacity: 0.75,
+        fields: [
+          {
+            ...layerPropertiesDraftSignal.value.fields![0],
+            comment: 'Temporary field edit to discard',
+          },
+          layerPropertiesDraftSignal.value.fields![1],
+        ],
+      });
+
+      // Turn edit mode ON
+      toggleLayerEditingAction(testLayerId);
+
+      // Intercept and confirm discard via OK
+      toggleLayerEditingAction(testLayerId);
+      assert.strictEqual(isDiscardFieldChangesModalOpenSignal.value, true);
+
+      // Discard field changes
+      discardUnappliedFieldChanges();
+      toggleLayerEditingAction(testLayerId, { force: true });
+      isDiscardFieldChangesModalOpenSignal.value = false;
+
+      // Fields are reset
+      assert.strictEqual(layerPropertiesDraftSignal.value.fields, undefined);
+
+      // Other tab drafts are 100% PRESERVED
+      const draft = layerPropertiesDraftSignal.value;
+      assert.strictEqual(draft.layerName, 'Modified Layer Name', 'Draft layerName must be preserved');
+      assert.strictEqual(draft.crsAuthId, 'EPSG:3857', 'Draft crsAuthId must be preserved');
+      assert.strictEqual(draft.styleContent, '{"rules": [{"name": "CustomRule"}]}', 'Draft styleContent must be preserved');
+      assert.strictEqual(draft.styleFormat, 'openlayers', 'Draft styleFormat must be preserved');
+      assert.strictEqual(draft.opacity, 0.75, 'Draft opacity must be preserved');
     });
   });
 });
