@@ -4,7 +4,7 @@
  * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link compileLayerStyle}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -88,14 +88,16 @@ export interface CompiledLayerStyleResult {
  * @typedef {Object} CompileLayerStyleOptions
  * @property {ProjectStyleItem[]} [sharedStyles] - Shared project styles catalog for resolving `#id` href references.
  * @property {string} [layerId] - Optional layer identifier for diagnostic logging.
+ * @property {string} [geometryKind] - Target layer geometry kind ('Polygon', 'LineString', 'Point', etc.) for fallback styling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 export interface CompileLayerStyleOptions {
   sharedStyles?: ProjectStyleItem[];
   layerId?: string;
+  geometryKind?: string;
 }
 
 /**
@@ -544,7 +546,7 @@ export function compileCartoucheLayerStyleSync(
 
   if (!style) {
     return {
-      compiledStyle: createDefaultVectorLayerStyle(),
+      compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
       requiredFields: new Set<string>(),
       format: "cartouche",
       isFallback: true,
@@ -569,7 +571,7 @@ export function compileCartoucheLayerStyleSync(
           }
         );
         return {
-          compiledStyle: createDefaultVectorLayerStyle(),
+          compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
           requiredFields: new Set<string>(),
           format: "cartouche",
           isFallback: true,
@@ -583,7 +585,7 @@ export function compileCartoucheLayerStyleSync(
         { scope: "styleCompiler", layerId: options?.layerId }
       );
       return {
-        compiledStyle: createDefaultVectorLayerStyle(),
+        compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
         requiredFields: new Set<string>(),
         format: "cartouche",
         isFallback: true,
@@ -605,7 +607,7 @@ export function compileCartoucheLayerStyleSync(
         { scope: "styleCompiler", layerId: options?.layerId }
       );
       return {
-        compiledStyle: createDefaultVectorLayerStyle(),
+        compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
         requiredFields: new Set<string>(),
         format: "cartouche",
         isFallback: true,
@@ -621,7 +623,7 @@ export function compileCartoucheLayerStyleSync(
       { scope: "styleCompiler", layerId: options?.layerId }
     );
     return {
-      compiledStyle: createDefaultVectorLayerStyle(),
+      compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
       requiredFields: new Set<string>(),
       format: "cartouche",
       isFallback: true,
@@ -704,7 +706,7 @@ export function compileFlatLayerStyleSync(
 
   if (!style) {
     return {
-      compiledStyle: createDefaultVectorLayerStyle(),
+      compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
       requiredFields: new Set<string>(),
       format: "openlayers",
       isFallback: true,
@@ -738,7 +740,7 @@ export function compileFlatLayerStyleSync(
           }
         );
         return {
-          compiledStyle: createDefaultVectorLayerStyle(),
+          compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
           requiredFields: new Set<string>(),
           format: "openlayers",
           isFallback: true,
@@ -752,7 +754,7 @@ export function compileFlatLayerStyleSync(
         { scope: "styleCompiler", layerId: options?.layerId }
       );
       return {
-        compiledStyle: createDefaultVectorLayerStyle(),
+        compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
         requiredFields: new Set<string>(),
         format: "openlayers",
         isFallback: true,
@@ -778,7 +780,7 @@ export function compileFlatLayerStyleSync(
         { scope: "styleCompiler", layerId: options?.layerId }
       );
       return {
-        compiledStyle: createDefaultVectorLayerStyle(),
+        compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
         requiredFields: new Set<string>(),
         format: "openlayers",
         isFallback: true,
@@ -789,7 +791,7 @@ export function compileFlatLayerStyleSync(
       { scope: "styleCompiler", layerId: options?.layerId }
     );
     return {
-      compiledStyle: createDefaultVectorLayerStyle(),
+      compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
       requiredFields: new Set<string>(),
       format: "openlayers",
       isFallback: true,
@@ -810,7 +812,7 @@ export function compileFlatLayerStyleSync(
     { scope: "styleCompiler", layerId: options?.layerId }
   );
   return {
-    compiledStyle: createDefaultVectorLayerStyle(),
+    compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
     requiredFields: new Set<string>(),
     format: "openlayers",
     isFallback: true,
@@ -865,7 +867,7 @@ export async function compileLayerStyle(
       { scope: "styleCompiler", layerId: options?.layerId }
     );
     return {
-      compiledStyle: createDefaultVectorLayerStyle(),
+      compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
       requiredFields: new Set<string>(),
       format: "sld",
       version: explicitVersion,
@@ -891,7 +893,7 @@ export async function compileLayerStyle(
         }
       );
       return {
-        compiledStyle: createDefaultVectorLayerStyle(),
+        compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
         requiredFields: new Set<string>(),
         format: "sld",
         version: detectedVersion,
@@ -914,7 +916,7 @@ export async function compileLayerStyle(
         }
       );
       return {
-        compiledStyle: createDefaultVectorLayerStyle(),
+        compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
         requiredFields: new Set<string>(),
         format: "sld",
         version: detectedVersion,
@@ -940,7 +942,7 @@ export async function compileLayerStyle(
       }
     );
     return {
-      compiledStyle: createDefaultVectorLayerStyle(),
+      compiledStyle: createDefaultVectorLayerStyle(options?.geometryKind),
       requiredFields: new Set<string>(),
       format: "sld",
       version: detectedVersion,

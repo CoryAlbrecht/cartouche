@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -96,10 +96,10 @@ function enrichProjectLayers(
 }
 
 /**
- * @description Ensures that non-raster vector layers receive a valid ProjectLayerStyleItem wrapper.
+ * @description Ensures that non-raster vector layers receive a valid ProjectLayerStyleItem wrapper with default styling tailored to the layer's geometry type.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-10-26
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {Layer} layer - Target layer instance.
  * @returns {void}
@@ -110,7 +110,7 @@ function ensureVectorLayerStyle(layer: Layer): void {
     && (!layer.style || !isProjectLayerStyleWrapper(layer.style))
   ) {
     layer.style = {
-      content: generateDefaultVectorStyleJson(),
+      content: generateDefaultVectorStyleJson(layer.geometryKind),
       format: "openlayers"
     };
   }
