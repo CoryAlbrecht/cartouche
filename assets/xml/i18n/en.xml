@@ -181,6 +181,7 @@
     <string name="layer_properties_fields_show_native_type">Show Native Type</string>
     <string name="layer_properties_fields_discard_title">Discard Unapplied Field Changes?</string>
     <string name="layer_properties_fields_discard_warning">You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?</string>
+    <string name="tree_node_layer_in_edit_mode">Layer is in edit mode</string>
     <string name="layer_properties_time_enable">Enable dynamic temporal control</string>
     <string name="layer_properties_time_mode">Configuration Mode</string>
     <string name="layer_properties_time_mode_single">Single Field with Date/Time</string>

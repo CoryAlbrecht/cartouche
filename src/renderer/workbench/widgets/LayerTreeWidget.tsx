@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -40,6 +40,10 @@ import {
   mdiContentPaste,
 } from "@mdi/js";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
+import {
+  editableLayerIdsSignal,
+  isLayerInEditMode,
+} from "@renderer/state/gisSignals";
 import {
   projectTreeSignal,
   projectLayersSignal,
@@ -184,7 +188,7 @@ const TREE_NODE_ICON_STYLE: React.CSSProperties = {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -909,6 +913,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   ) => {
     const isSelected = layer.id ? selectedNodeIds.includes(layer.id) : false;
     const isActive = layer.id === activeLayerId;
+    const isEditMode = isLayerInEditMode(
+      layer.id,
+      editableLayerIdsSignal.value
+    );
     const resolvedName = layer.name;
     const iconPath = getLayerIcon(layer.geometryKind);
     const isDimmed =
@@ -930,7 +938,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           && dragOverState?.position === "before"
           && renderDropMarker(dragOverState.indentLevel)}
         <div
-          className={`tree-node-row tree-node-layer ${isActive ? "active" : ""} ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
+          className={`tree-node-row tree-node-layer ${isActive ? "active" : ""} ${isEditMode ? "in-edit-mode" : ""} ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
           style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
           draggable={editingNodeId === null}
           onDragStart={(e) => handleDragStart(e, layer)}
@@ -963,6 +971,20 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               size='calc(var(--cartouche-ui-icon-size, 24px))'
             />
           </span>
+
+          {isEditMode && (
+            <span
+              className='tree-icon-slot tree-edit-icon-slot'
+              style={{ color: "#2563eb" }}
+              title={
+                t("tree_node_layer_in_edit_mode") || "Layer is in edit mode"
+              }>
+              <Icon
+                path={mdiPencilOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+              />
+            </span>
+          )}
 
           <span
             className='tree-node-title'

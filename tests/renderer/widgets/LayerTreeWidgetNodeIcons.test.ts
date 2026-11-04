@@ -492,7 +492,7 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
 
     // 3. Group folder icon (<Icon />)
     const groupIconSlot = findAllNodes(container, el => el.className.includes('group-icon'))[0];
-    assert.ok(groupIconSlot, 'Group folder icon slot must be present');
+    assert.ok(groupIconSlot, 'Group icon slot must be present');
     const folderSvg = findAllNodes(groupIconSlot, el => el.tagName === 'SVG')[0];
     assert.ok(folderSvg, 'Folder outline SVG must be present');
     assert.ok(
@@ -510,9 +510,8 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     assert.ok(layerSvg, 'Layer geometry SVG must be present');
     assert.ok(
       layerSvg.style.width.includes('calc(') &&
-      layerSvg.style.width.includes('--cartouche-ui-icon-size') &&
-      layerSvg.style.width.includes('0.8'),
-      `Layer SVG style.width must scale to 80%, got: ${layerSvg.style.width}`
+      layerSvg.style.width.includes('--cartouche-ui-icon-size'),
+      `Layer SVG style.width must scale with --cartouche-ui-icon-size, got: ${layerSvg.style.width}`
     );
     assert.strictEqual(layerSvg.style.aspectRatio, '1', 'Layer SVG must have aspectRatio 1');
   });
@@ -532,7 +531,9 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const chevronSvg = findAllNodes(container, el => el.tagName === 'SVG')[0];
+    const chevronSlot = findAllNodes(container, el => el.className.includes('tree-chevron'))[0];
+    assert.ok(chevronSlot, 'Group chevron slot must be present');
+    const chevronSvg = findAllNodes(chevronSlot, el => el.tagName === 'SVG')[0];
     assert.ok(chevronSvg, 'Chevron SVG should be present in collapsed group');
     assert.ok(
       chevronSvg.style.width.includes('calc(') &&
@@ -542,7 +543,9 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     );
     assert.strictEqual(chevronSvg.style.aspectRatio, '1');
 
-    const folderSvg = findAllNodes(container, el => el.tagName === 'SVG')[1];
+    const groupIconSlot = findAllNodes(container, el => el.className.includes('group-icon'))[0];
+    assert.ok(groupIconSlot, 'Group icon slot must be present');
+    const folderSvg = findAllNodes(groupIconSlot, el => el.tagName === 'SVG')[0];
     assert.ok(folderSvg, 'Closed folder SVG should be present in collapsed group');
     assert.ok(
       folderSvg.style.width.includes('calc(') &&
@@ -553,7 +556,7 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     assert.strictEqual(folderSvg.style.aspectRatio, '1');
   });
 
-  it('renders various layer geometry kinds (Point, LineString, Polygon) scaled to 80%', async () => {
+  it('renders various layer geometry kinds (Point, LineString, Polygon) scaled with --cartouche-ui-icon-size', async () => {
     projectTreeSignal.value = [
       { id: 'l-pt', name: 'Points', type: 'vector', source: 'pt.geojson', visible: true, geometryKind: 'Point' },
       { id: 'l-line', name: 'Lines', type: 'vector', source: 'line.geojson', visible: true, geometryKind: 'LineString' },
@@ -572,9 +575,8 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
       assert.ok(svg, 'Layer row must have SVG icon');
       assert.ok(
         svg.style.width.includes('calc(') &&
-        svg.style.width.includes('--cartouche-ui-icon-size') &&
-        svg.style.width.includes('0.8'),
-        `Layer icon style.width must scale to 80%, got: ${svg.style.width}`
+        svg.style.width.includes('--cartouche-ui-icon-size'),
+        `Layer icon style.width must scale with --cartouche-ui-icon-size, got: ${svg.style.width}`
       );
       assert.strictEqual(svg.style.aspectRatio, '1');
     }

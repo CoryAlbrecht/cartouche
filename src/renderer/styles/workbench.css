@@ -927,7 +927,22 @@
   color: #0369a1;
 }
 
+.tree-node-row .tree-node-title {
+  font-weight: normal;
+  font-style: normal;
+}
+
 .tree-node-row.active .tree-node-title {
+  font-weight: bold;
+  font-style: normal;
+}
+
+.tree-node-row.in-edit-mode .tree-node-title {
+  font-weight: normal;
+  font-style: italic;
+}
+
+.tree-node-row.active.in-edit-mode .tree-node-title {
   font-weight: bold;
   font-style: italic;
 }
@@ -1026,6 +1041,10 @@
   width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   flex-shrink: 0;
+}
+
+.tree-edit-icon-slot {
+  margin-left: 2px;
 }
 
 .tree-node-title,

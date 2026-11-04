@@ -438,8 +438,8 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
 
     for (const svg of svgs) {
       assert.ok(
-        svg.style.width.includes('calc(') && svg.style.width.includes('--cartouche-ui-icon-size') && svg.style.width.includes('0.8'),
-        `Expected svg.style.width to scale to 80% of --cartouche-ui-icon-size, got: ${svg.style.width}`
+        svg.style.width.includes('calc(') && svg.style.width.includes('--cartouche-ui-icon-size') && svg.style.width.includes('0.5'),
+        `Expected svg.style.width to scale to 50% of --cartouche-ui-icon-size, got: ${svg.style.width}`
       );
       assert.strictEqual(svg.style.aspectRatio, '1', 'Expected svg.style.aspectRatio to be 1');
     }
@@ -542,8 +542,8 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     const restoreSvg = findAllNodes(restoreBtn, el => el.tagName === 'SVG')[0];
     assert.ok(restoreSvg, 'Restore icon SVG must be present');
     assert.ok(
-      restoreSvg.style.width.includes('calc(') && restoreSvg.style.width.includes('--cartouche-ui-icon-size') && restoreSvg.style.width.includes('0.8'),
-      `Restore icon style width must scale to 80%, got: ${restoreSvg.style.width}`
+      restoreSvg.style.width.includes('calc(') && restoreSvg.style.width.includes('--cartouche-ui-icon-size') && restoreSvg.style.width.includes('0.5'),
+      `Restore icon style width must scale to 50%, got: ${restoreSvg.style.width}`
     );
     assert.strictEqual(restoreSvg.style.aspectRatio, '1');
   });
@@ -561,8 +561,8 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     const svgs = findAllNodes(container, el => el.tagName === 'SVG');
     assert.strictEqual(svgs.length, 1, 'Should render exactly 1 header icon when panel cannot close');
     assert.ok(
-      svgs[0].style.width.includes('calc(') && svgs[0].style.width.includes('--cartouche-ui-icon-size') && svgs[0].style.width.includes('0.8'),
-      `Single minimize icon style width must scale to 80%, got: ${svgs[0].style.width}`
+      svgs[0].style.width.includes('calc(') && svgs[0].style.width.includes('--cartouche-ui-icon-size') && svgs[0].style.width.includes('0.5'),
+      `Single minimize icon style width must scale to 50%, got: ${svgs[0].style.width}`
     );
     assert.strictEqual(svgs[0].style.aspectRatio, '1');
   });

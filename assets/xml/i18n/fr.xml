@@ -156,6 +156,7 @@
     <string name="layer_properties_fields_show_native_type">Afficher le type natif</string>
     <string name="layer_properties_fields_discard_title">Ignorer les modifications non appliquées ?</string>
     <string name="layer_properties_fields_discard_warning">Vous avez des modifications non appliquées aux champs d'attributs. La désactivation du mode édition ignorera ces modifications. Voulez-vous continuer ?</string>
+    <string name="tree_node_layer_in_edit_mode">La couche est en mode édition</string>
     <string name="layer_properties_time_enable">Activer le contrôle temporel dynamique</string>
     <string name="layer_properties_time_mode">Mode de configuration</string>
     <string name="layer_properties_time_mode_single">Champ unique avec date/heure</string>

@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality (Ticket #92, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-10-26
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -304,6 +304,10 @@ const {
   updateLayerFeatureCount
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 
+const { editableLayerIdsSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
+const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const { mdiPencilOutline } = jiti('@mdi/js');
+
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
 
 describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92, ADR 0016)', () => {
@@ -317,6 +321,10 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     editingNodeIdSignal.value = null;
     clearNodeSelection();
     activeLayerIdSignal.value = null;
+    editableLayerIdsSignal.value = new Set();
+    dictionarySignal.value = {
+      tree_node_layer_in_edit_mode: 'Layer is in edit mode'
+    };
 
     projectTreeSignal.value = [
       {
@@ -366,9 +374,13 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     editingNodeIdSignal.value = null;
     clearNodeSelection();
     activeLayerIdSignal.value = null;
+    editableLayerIdsSignal.value = new Set();
+    dictionarySignal.value = {
+      tree_node_layer_in_edit_mode: 'Layer is in edit mode'
+    };
   });
 
-  it('workbench.css reserves #e0f2fe background strictly for .selected and applies bold italic to active title', () => {
+  it('workbench.css reserves #e0f2fe background strictly for .selected and defines 4-state typography matrix', () => {
     // 1. .selected must declare background-color: #e0f2fe
     assert.match(
       cssContent,
@@ -386,7 +398,8 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
       );
     }
 
-    // 3. .active .tree-node-title must declare font-weight: bold and font-style: italic
+    // 3. 4-state typography matrix on .tree-node-title
+    // Active only: font-weight: bold, font-style: normal
     assert.match(
       cssContent,
       /\.tree-node-row\.active\s+\.tree-node-title[^{]*\{[^}]*font-weight:\s*bold/s,
@@ -394,8 +407,32 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     );
     assert.match(
       cssContent,
-      /\.tree-node-row\.active\s+\.tree-node-title[^{]*\{[^}]*font-style:\s*italic/s,
-      '.tree-node-row.active .tree-node-title must declare font-style: italic'
+      /\.tree-node-row\.active\s+\.tree-node-title[^{]*\{[^}]*font-style:\s*normal/s,
+      '.tree-node-row.active .tree-node-title must declare font-style: normal'
+    );
+
+    // In edit mode only: font-weight: normal, font-style: italic
+    assert.match(
+      cssContent,
+      /\.tree-node-row\.in-edit-mode\s+\.tree-node-title[^{]*\{[^}]*font-weight:\s*normal/s,
+      '.tree-node-row.in-edit-mode .tree-node-title must declare font-weight: normal'
+    );
+    assert.match(
+      cssContent,
+      /\.tree-node-row\.in-edit-mode\s+\.tree-node-title[^{]*\{[^}]*font-style:\s*italic/s,
+      '.tree-node-row.in-edit-mode .tree-node-title must declare font-style: italic'
+    );
+
+    // Active AND in edit mode: font-weight: bold, font-style: italic
+    assert.match(
+      cssContent,
+      /\.tree-node-row\.active\.in-edit-mode\s+\.tree-node-title[^{]*\{[^}]*font-weight:\s*bold/s,
+      '.tree-node-row.active.in-edit-mode .tree-node-title must declare font-weight: bold'
+    );
+    assert.match(
+      cssContent,
+      /\.tree-node-row\.active\.in-edit-mode\s+\.tree-node-title[^{]*\{[^}]*font-style:\s*italic/s,
+      '.tree-node-row.active.in-edit-mode .tree-node-title must declare font-style: italic'
     );
   });
 
@@ -563,5 +600,99 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     const riverCount = findAllNodes(riverRow, el => el.className.includes('tree-node-count'))[0];
     assert.ok(riverCount, 'River count span must exist');
     assert.strictEqual(riverCount.textContent.trim(), '(2,500)', 'Resolves count from projectLayersSignal');
+  });
+
+  it('renders 4-state typography classes (.active, .in-edit-mode) across all permutations on tree rows', async () => {
+    // State 1: Lakes is active only (active: true, edit: false)
+    await act(async () => {
+      activeLayerIdSignal.value = 'layer-lakes';
+      editableLayerIdsSignal.value = new Set();
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    let layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    let lakesRow = layerRows[0];
+    let riversRow = layerRows[1];
+
+    assert.ok(lakesRow.className.includes('active'), 'State 1: active layer has .active');
+    assert.strictEqual(lakesRow.className.includes('in-edit-mode'), false, 'State 1: non-editing layer lacks .in-edit-mode');
+    assert.strictEqual(riversRow.className.includes('active'), false, 'State 4: regular layer lacks .active');
+    assert.strictEqual(riversRow.className.includes('in-edit-mode'), false, 'State 4: regular layer lacks .in-edit-mode');
+
+    // State 2: Lakes is active AND in edit mode
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set(['layer-lakes']);
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    lakesRow = layerRows[0];
+    assert.ok(lakesRow.className.includes('active'), 'State 2: active layer has .active');
+    assert.ok(lakesRow.className.includes('in-edit-mode'), 'State 2: editing layer has .in-edit-mode');
+
+    // State 3: Rivers is in edit mode but NOT active; Lakes is inactive and not editing (State 4)
+    await act(async () => {
+      activeLayerIdSignal.value = null;
+      editableLayerIdsSignal.value = new Set(['layer-rivers-loading']);
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    lakesRow = layerRows[0];
+    riversRow = layerRows[1];
+
+    assert.strictEqual(riversRow.className.includes('active'), false, 'State 3: inactive layer lacks .active');
+    assert.ok(riversRow.className.includes('in-edit-mode'), 'State 3: editing layer has .in-edit-mode');
+    assert.strictEqual(lakesRow.className.includes('active'), false, 'State 4: neither layer lacks .active');
+    assert.strictEqual(lakesRow.className.includes('in-edit-mode'), false, 'State 4: neither layer lacks .in-edit-mode');
+  });
+
+  it('renders MDI pencil-outline icon in #2563eb with tooltip when layer is in edit mode and reactively updates on change', async () => {
+    // Initially not in edit mode
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set();
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    let layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    let lakesRow = layerRows[0];
+    let editIcons = findAllNodes(lakesRow, el => el.className.includes('tree-edit-icon-slot'));
+    assert.strictEqual(editIcons.length, 0, 'No pencil icon when edit mode is off');
+
+    // Put Lakes into edit mode
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set(['layer-lakes']);
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    lakesRow = layerRows[0];
+    const riversRow = layerRows[1];
+
+    editIcons = findAllNodes(lakesRow, el => el.className.includes('tree-edit-icon-slot'));
+    assert.strictEqual(editIcons.length, 1, 'Pencil icon rendered when in edit mode');
+
+    const editIconSpan = editIcons[0];
+    assert.strictEqual(editIconSpan.attributes['title'], 'Layer is in edit mode', 'Pencil icon must have tooltip');
+
+    // Check SVG child path
+    const svgPath = findAllNodes(editIconSpan, el => el.tagName === 'PATH')[0];
+    assert.ok(svgPath, 'SVG path must be present in edit icon slot');
+    assert.strictEqual(svgPath.attributes['d'], mdiPencilOutline, 'Must render mdiPencilOutline path');
+
+    // Rivers is not in edit mode
+    const riverEditIcons = findAllNodes(riversRow, el => el.className.includes('tree-edit-icon-slot'));
+    assert.strictEqual(riverEditIcons.length, 0, 'Non-editing layer must not render pencil icon');
+
+    // Toggle edit mode off reactively
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set();
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    lakesRow = layerRows[0];
+    editIcons = findAllNodes(lakesRow, el => el.className.includes('tree-edit-icon-slot'));
+    assert.strictEqual(editIcons.length, 0, 'Pencil icon reactively removed when edit mode is toggled off');
   });
 });
