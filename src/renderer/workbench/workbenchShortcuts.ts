@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -98,11 +98,11 @@ export function matchesKeyCombination(
 
 /**
  * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
- * Bypasses dispatching when focused on text inputs, active inline rename editors, or modal dialogs.
+ * Bypasses dispatching when focused on text inputs, active inline rename editors, modal dialogs, or active PopupMenu instances.
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
@@ -125,7 +125,7 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
       || tagName === 'TEXTAREA'
       || tagName === 'SELECT'
       || target.isContentEditable
-      || (typeof target.closest === 'function' && target.closest('.modal-backdrop, .modal-dialog, [role="dialog"]'))
+      || (typeof target.closest === 'function' && target.closest('.modal-backdrop, .modal-dialog, [role="dialog"], .popup-backdrop, .popup-menu'))
     ) {
       return;
     }
@@ -137,6 +137,16 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
   const alt = e.altKey;
   const shift = e.shiftKey;
   const meta = e.metaKey;
+
+  // Bypass global cancel_action dispatching when Escape is pressed while a localized PopupMenu is open
+  if (
+    key === 'escape'
+    && typeof document !== 'undefined'
+    && typeof document.querySelector === 'function'
+    && document.querySelector('.popup-backdrop, .popup-menu') !== null
+  ) {
+    return;
+  }
 
   const shortcuts = registeredActionsSignal.value;
   for (const action of shortcuts) {

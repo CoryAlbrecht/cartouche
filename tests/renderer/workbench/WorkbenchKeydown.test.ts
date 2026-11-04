@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  * @see {@link executeWorkbenchAction}
@@ -202,6 +202,48 @@ describe('Workbench Global Keyboard Listener', () => {
 
     assert.equal(event.defaultPrevented, false);
     assert.equal(activeToolSignal.value, 'polygon');
+  });
+
+  it('bypasses cancel_action when target is inside a PopupMenu or backdrop', () => {
+    activeToolSignal.value = 'polygon';
+    setNodeSelection(['layer-roads']);
+
+    const event = createMockKeyEvent({
+      key: 'Escape',
+      target: {
+        tagName: 'DIV',
+        closest: (selector: string) => selector.includes('popup-menu') ? {} : null
+      }
+    });
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(activeToolSignal.value, 'polygon');
+    assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads']);
+  });
+
+  it('bypasses cancel_action when an active PopupMenu exists in document', () => {
+    activeToolSignal.value = 'polygon';
+    setNodeSelection(['layer-roads']);
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      querySelector: (selector: string) => selector.includes('popup-menu') ? {} : null
+    };
+
+    try {
+      const event = createMockKeyEvent({
+        key: 'Escape',
+        target: { tagName: 'DIV' }
+      });
+      handleWorkbenchKeyDown(event);
+
+      assert.equal(event.defaultPrevented, false);
+      assert.equal(activeToolSignal.value, 'polygon');
+      assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads']);
+    } finally {
+      (globalThis as any).document = prevDoc;
+    }
   });
 
   it('bypasses cancel_action when event has already been defaultPrevented', () => {

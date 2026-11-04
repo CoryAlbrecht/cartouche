@@ -4,7 +4,7 @@
  * @description Component tests for LayerTreeWidget interaction triggers verifying active layer transitions on primary click, double click, arrow navigation, PopupMenu preservation, and empty viewport clicks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-10-29
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -38,6 +38,7 @@ import {
   selectSingleNode,
   setNodeSelection
 } from '../../../src/renderer/state/projectSignals';
+import { activeToolSignal } from '../../../src/renderer/state/gisSignals';
 
 const jiti = createJiti(import.meta.url, {
   jsx: true,
@@ -299,6 +300,14 @@ describe('LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)', () => {
       }),
       addEventListener: () => {},
       removeEventListener: () => {},
+      querySelector: (selector: string) => {
+        if (selector.includes('popup-menu') || selector.includes('popup-backdrop')) {
+          return findAllNodes(body, el =>
+            el.className && (el.className.includes('popup-menu') || el.className.includes('popup-backdrop'))
+          )[0] || null;
+        }
+        return null;
+      },
       documentElement,
       head,
       body,
@@ -308,13 +317,31 @@ describe('LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)', () => {
     head.ownerDocument = mockDoc;
     body.ownerDocument = mockDoc;
 
+    const windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+
     const mockWin: any = {
+      innerWidth: 1024,
+      innerHeight: 768,
       document: mockDoc,
       HTMLIFrameElement: class {},
       HTMLElement: MockElement,
       Element: MockElement,
-      addEventListener: () => {},
-      removeEventListener: () => {},
+      addEventListener: (type: string, cb: (e: any) => void, opts?: any) => {
+        const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+        if (!windowListeners[type]) windowListeners[type] = [];
+        windowListeners[type].push({ cb, capture });
+      },
+      removeEventListener: (type: string, cb: (e: any) => void) => {
+        if (!windowListeners[type]) return;
+        windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+      },
+      dispatchEvent: (event: any) => {
+        const listeners = (windowListeners[event.type] || []).slice();
+        for (const { cb } of listeners) {
+          cb(event);
+        }
+        return !event.defaultPrevented;
+      },
       CustomEvent: class {
         type: string;
         bubbles: boolean;
@@ -483,6 +510,135 @@ describe('LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)', () => {
 
     // Active layer remains 'layer-roads'
     assert.strictEqual(activeLayerIdSignal.value, 'layer-roads');
+  });
+
+  it('secondary click on layer row opens PopupMenu, and Escape key dismisses it while preserving selections', async () => {
+    selectSingleNode('layer-roads');
+    activeLayerIdSignal.value = 'layer-roads';
+    activeToolSignal.value = 'polygon';
+
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const railRow = findAllNodes(
+      container,
+      el => el.className.includes('tree-node-layer') && el.textContent.includes('Railway Lines')
+    )[0];
+    assert.ok(railRow, 'Rail layer row must exist');
+
+    await act(async () => {
+      railRow.dispatchEvent(new (window as any).MouseEvent('contextmenu', {
+        bubbles: true,
+        button: 2,
+        clientX: 100,
+        clientY: 100
+      }));
+    });
+
+    let popupNode = findAllNodes(
+      (document as any).body,
+      el => el.className && el.className.includes('popup-menu')
+    )[0];
+    assert.ok(popupNode, 'PopupMenu must be open after contextmenu on layer');
+
+    // Dispatch Escape on window
+    await act(async () => {
+      (window as any).dispatchEvent(new (window as any).KeyboardEvent('keydown', {
+        bubbles: true,
+        key: 'Escape'
+      }));
+    });
+
+    popupNode = findAllNodes(
+      (document as any).body,
+      el => el.className && el.className.includes('popup-menu')
+    )[0];
+    assert.strictEqual(popupNode, undefined, 'PopupMenu must be dismissed after Escape key');
+    assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads'], 'Node selection must remain intact');
+    assert.strictEqual(activeLayerIdSignal.value, 'layer-roads', 'Active layer must remain intact');
+    assert.strictEqual(activeToolSignal.value, 'polygon', 'Active tool must remain intact');
+  });
+
+  it('secondary click on group or project root opens PopupMenu, and Escape key dismisses it', async () => {
+    selectSingleNode('group-transport');
+    activeToolSignal.value = 'select';
+
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    // 1. Group row
+    const groupRow = findAllNodes(
+      container,
+      el => el.className.includes('tree-node-group') && el.textContent.includes('Transportation')
+    )[0];
+    assert.ok(groupRow, 'Group row must exist');
+
+    await act(async () => {
+      groupRow.dispatchEvent(new (window as any).MouseEvent('contextmenu', {
+        bubbles: true,
+        button: 2,
+        clientX: 120,
+        clientY: 120
+      }));
+    });
+
+    let popupNode = findAllNodes(
+      (document as any).body,
+      el => el.className && el.className.includes('popup-menu')
+    )[0];
+    assert.ok(popupNode, 'PopupMenu must be open after contextmenu on group');
+
+    await act(async () => {
+      (window as any).dispatchEvent(new (window as any).KeyboardEvent('keydown', {
+        bubbles: true,
+        key: 'Escape'
+      }));
+    });
+
+    popupNode = findAllNodes(
+      (document as any).body,
+      el => el.className && el.className.includes('popup-menu')
+    )[0];
+    assert.strictEqual(popupNode, undefined, 'PopupMenu must be dismissed after Escape key on group');
+    assert.deepEqual(selectedNodeIdsSignal.value, ['group-transport']);
+    assert.strictEqual(activeToolSignal.value, 'select');
+
+    // 2. Project root row
+    const projectRow = findAllNodes(
+      container,
+      el => el.className.includes('tree-node-project')
+    )[0];
+    assert.ok(projectRow, 'Project root row must exist');
+
+    await act(async () => {
+      projectRow.dispatchEvent(new (window as any).MouseEvent('contextmenu', {
+        bubbles: true,
+        button: 2,
+        clientX: 80,
+        clientY: 80
+      }));
+    });
+
+    popupNode = findAllNodes(
+      (document as any).body,
+      el => el.className && el.className.includes('popup-menu')
+    )[0];
+    assert.ok(popupNode, 'PopupMenu must be open after contextmenu on project root');
+
+    await act(async () => {
+      (window as any).dispatchEvent(new (window as any).KeyboardEvent('keydown', {
+        bubbles: true,
+        key: 'Escape'
+      }));
+    });
+
+    popupNode = findAllNodes(
+      (document as any).body,
+      el => el.className && el.className.includes('popup-menu')
+    )[0];
+    assert.strictEqual(popupNode, undefined, 'PopupMenu must be dismissed after Escape key on project root');
   });
 
   it('keyboard arrow navigation updates active layer when landing on leaf layers and clears on groups', async () => {
