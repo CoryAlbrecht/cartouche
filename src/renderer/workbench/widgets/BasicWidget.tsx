@@ -40,8 +40,6 @@ function parsePxValue(
   return isNaN(parsed) ? defaultVal : parsed;
 }
 
-
-
 /**
  * @typedef {Object} BasicWidgetProps
  * @extends WidgetProps
@@ -238,7 +236,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           backgroundColor: "#faf8fc",
           padding: "4px 8px",
           borderBottom: isMinimized ? "none" : "1px solid #e2e8f0",
-          minHeight: "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
+          minHeight:
+            "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
           userSelect: "none",
           cursor: effectivePanelApi ? "grab" : "default",
         }}>
@@ -292,7 +291,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             }}>
             <Icon
               path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
-              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.667)'
             />
           </button>
 

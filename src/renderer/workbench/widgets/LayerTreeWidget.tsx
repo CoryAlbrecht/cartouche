@@ -67,7 +67,11 @@ import {
   isProjectDirtySignal,
   type PopupMenuItem,
 } from "@renderer/state/projectSignals";
-import type { ProjectLayerItem, ProjectGroupItem, GeometryKind } from "@shared/types";
+import type {
+  ProjectLayerItem,
+  ProjectGroupItem,
+  GeometryKind,
+} from "@shared/types";
 import logoSvg from "../../../../assets/svg/logo.svg";
 import type { IDockviewPanelProps } from "dockview-react";
 import {
@@ -122,11 +126,17 @@ function getLayerIcon(geometryKind?: GeometryKind): string {
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Tree items.
  * @returns {Array<ProjectLayerItem | ProjectGroupItem>} Flat list of currently visible nodes.
  */
-function flattenVisibleTree(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
+function flattenVisibleTree(
+  items: Array<ProjectLayerItem | ProjectGroupItem>
+): Array<ProjectLayerItem | ProjectGroupItem> {
   const result: Array<ProjectLayerItem | ProjectGroupItem> = [];
   for (const item of items) {
     result.push(item);
-    if ('children' in item && item.expanded !== false && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && item.expanded !== false
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       result.push(...flattenVisibleTree((item as ProjectGroupItem).children));
     }
   }
@@ -144,8 +154,6 @@ const MOUSE_DRAG_MOVE_THRESHOLD_PX = 5;
  * @constant {number}
  */
 const MOUSE_CLICK_HOLD_TIMEOUT_MS = 800;
-
-
 
 /**
  * @typedef {Object} LayerTreeWidgetProps
@@ -190,14 +198,17 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   const projectVisible = projectVisibleSignal.value;
   const activeLayerId = activeLayerIdSignal.value;
   const selectedNodeIds = selectedNodeIdsSignal.value;
-  const { total: totalCount, visible: visibleCount } = projectTreeStatsSignal.value;
+  const { total: totalCount, visible: visibleCount } =
+    projectTreeStatsSignal.value;
 
   // Selection range anchor reference
   const selectionAnchorRef = useRef<string | null>(null);
 
   // Drag and drop state
   const draggedNodeIdsRef = useRef<string[]>([]);
-  const [dragOverState, setDragOverState] = useState<TreeDropTarget | null>(null);
+  const [dragOverState, setDragOverState] = useState<TreeDropTarget | null>(
+    null
+  );
 
   // Inline rename editing state driven by signal
   const editingNodeId = editingNodeIdSignal.value;
@@ -232,11 +243,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     position: { x: number; y: number } | null;
     actionableNodes: Array<ProjectLayerItem | ProjectGroupItem>;
     targetNode: ProjectLayerItem | ProjectGroupItem | null;
-  }>({
-    position: null,
-    actionableNodes: [],
-    targetNode: null,
-  });
+  }>({ position: null, actionableNodes: [], targetNode: null });
 
   /**
    * @description Dismisses the floating layer tree PopupMenu and resets popup state.
@@ -258,19 +265,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   const [removalModalState, setRemovalModalState] = useState<{
     isOpen: boolean;
     actionableNodes: Array<ProjectLayerItem | ProjectGroupItem>;
-  }>({
-    isOpen: false,
-    actionableNodes: [],
-  });
+  }>({ isOpen: false, actionableNodes: [] });
 
   // Modal Dialog state for style file loading errors
   const [styleErrorModalState, setStyleErrorModalState] = useState<{
     isOpen: boolean;
     message: string;
-  }>({
-    isOpen: false,
-    message: "",
-  });
+  }>({ isOpen: false, message: "" });
 
   // Dynamic displayName formatted as "Layers %1/%2" (e.g. Layers 0/0)
   const displayName = `Layers ${visibleCount}/${totalCount}`;
@@ -284,10 +285,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       }
       const target = e.target as HTMLElement | null;
       if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
+        target
+        && (target.tagName === "INPUT"
+          || target.tagName === "TEXTAREA"
+          || target.isContentEditable)
       ) {
         return;
       }
@@ -302,12 +303,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       switch (e.key) {
         case "ArrowDown": {
           e.preventDefault();
-          const nextIndex = currentIndex < flatNodes.length - 1 ? currentIndex + 1 : 0;
+          const nextIndex =
+            currentIndex < flatNodes.length - 1 ? currentIndex + 1 : 0;
           const nextNode = flatNodes[nextIndex];
           if (nextNode && nextNode.id) {
             selectSingleNode(nextNode.id);
             selectionAnchorRef.current = nextNode.id;
-            if (!('children' in nextNode)) {
+            if (!("children" in nextNode)) {
               setActiveLayer(nextNode.id);
             } else {
               setActiveLayer(null);
@@ -317,12 +319,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         }
         case "ArrowUp": {
           e.preventDefault();
-          const prevIndex = currentIndex > 0 ? currentIndex - 1 : flatNodes.length - 1;
+          const prevIndex =
+            currentIndex > 0 ? currentIndex - 1 : flatNodes.length - 1;
           const prevNode = flatNodes[prevIndex];
           if (prevNode && prevNode.id) {
             selectSingleNode(prevNode.id);
             selectionAnchorRef.current = prevNode.id;
-            if (!('children' in prevNode)) {
+            if (!("children" in prevNode)) {
               setActiveLayer(prevNode.id);
             } else {
               setActiveLayer(null);
@@ -333,7 +336,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         case "ArrowRight": {
           if (currentIndex !== -1) {
             const current = flatNodes[currentIndex];
-            if ('children' in current && current.id && current.expanded === false) {
+            if (
+              "children" in current
+              && current.id
+              && current.expanded === false
+            ) {
               e.preventDefault();
               toggleGroupExpanded(current.id);
             }
@@ -343,7 +350,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         case "ArrowLeft": {
           if (currentIndex !== -1) {
             const current = flatNodes[currentIndex];
-            if ('children' in current && current.id && current.expanded !== false) {
+            if (
+              "children" in current
+              && current.id
+              && current.expanded !== false
+            ) {
               e.preventDefault();
               toggleGroupExpanded(current.id);
             }
@@ -364,10 +375,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           if (currentSelectedIds.length > 0) {
             const nodes = collectNodesByIds(tree, currentSelectedIds);
             if (nodes.length > 0) {
-              setRemovalModalState({
-                isOpen: true,
-                actionableNodes: nodes,
-              });
+              setRemovalModalState({ isOpen: true, actionableNodes: nodes });
             }
           }
           break;
@@ -457,7 +465,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       // If the mouse moved more than MOUSE_DRAG_MOVE_THRESHOLD_PX (5px)
       // or was held longer than MOUSE_CLICK_HOLD_TIMEOUT_MS (800ms),
       // it is a drag/hold gesture rather than a click gesture.
-      if (dist > MOUSE_DRAG_MOVE_THRESHOLD_PX || duration > MOUSE_CLICK_HOLD_TIMEOUT_MS) {
+      if (
+        dist > MOUSE_DRAG_MOVE_THRESHOLD_PX
+        || duration > MOUSE_CLICK_HOLD_TIMEOUT_MS
+      ) {
         return;
       }
     }
@@ -512,7 +523,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       commitInlineEdit();
     }
 
-    const projectNode = { id: 'project', name: projectName } as ProjectLayerItem;
+    const projectNode = {
+      id: "project",
+      name: projectName,
+    } as ProjectLayerItem;
     setContextMenuState({
       position: { x: e.clientX, y: e.clientY },
       actionableNodes: [projectNode],
@@ -525,30 +539,30 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const { actionableNodes, targetNode } = contextMenuState;
     if (actionableNodes.length === 0 || !targetNode) return [];
 
-    if (targetNode.id === 'project') {
+    if (targetNode.id === "project") {
       return [
         {
-          id: 'rename_layer_tree_node',
-          label: t('rename_layer_tree_node') || 'Rename',
+          id: "rename_layer_tree_node",
+          label: t("rename_layer_tree_node") || "Rename",
           icon: mdiPencilOutline,
           onClick: () => {
-            setEditingNodeId('project');
+            setEditingNodeId("project");
           },
         },
       ];
     }
 
     const isMultiple = actionableNodes.length > 1;
-    const isSingleGroup = !isMultiple && 'children' in actionableNodes[0];
+    const isSingleGroup = !isMultiple && "children" in actionableNodes[0];
     const isSingleLayer = !isMultiple && !isSingleGroup;
 
     let removeLabel: string;
     if (isMultiple) {
-      removeLabel = t('remove_selected_items') || 'Remove Selected Items';
+      removeLabel = t("remove_selected_items") || "Remove Selected Items";
     } else if (isSingleGroup) {
-      removeLabel = t('remove_group') || 'Remove Group';
+      removeLabel = t("remove_group") || "Remove Group";
     } else {
-      removeLabel = t('remove_layer') || 'Remove Layer';
+      removeLabel = t("remove_layer") || "Remove Layer";
     }
 
     const items: PopupMenuItem[] = [];
@@ -556,8 +570,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     if (!isMultiple && targetNode.id) {
       const targetId = targetNode.id;
       items.push({
-        id: 'rename_layer_tree_node',
-        label: t('rename_layer_tree_node') || 'Rename',
+        id: "rename_layer_tree_node",
+        label: t("rename_layer_tree_node") || "Rename",
         icon: mdiPencilOutline,
         onClick: () => {
           setEditingNodeId(targetId);
@@ -568,8 +582,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     if (isSingleLayer && targetNode.id) {
       const layerId = targetNode.id;
       items.push({
-        id: 'layer_properties',
-        label: t('layer_properties_menu_item') || 'Layer Properties...',
+        id: "layer_properties",
+        label: t("layer_properties_menu_item") || "Layer Properties...",
         icon: mdiLayersOutline,
         onClick: () => {
           openLayerPropertiesDialog(layerId);
@@ -580,9 +594,9 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const isVectorLayerNode = (
       node: ProjectLayerItem | ProjectGroupItem
     ): node is ProjectLayerItem =>
-      !('children' in node) &&
-      (node as ProjectLayerItem).type !== 'raster' &&
-      (node as ProjectLayerItem).geometryKind !== 'Raster';
+      !("children" in node)
+      && (node as ProjectLayerItem).type !== "raster"
+      && (node as ProjectLayerItem).geometryKind !== "Raster";
 
     const allVectorLayers =
       actionableNodes.length > 0 && actionableNodes.every(isVectorLayerNode);
@@ -599,8 +613,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
       items.push(
         {
-          id: 'load_layer_style',
-          label: tr('load_layer_style', 'Load Style...'),
+          id: "load_layer_style",
+          label: tr("load_layer_style", "Load Style..."),
           icon: mdiFolderOpenOutline,
           onClick: () => {
             void (async () => {
@@ -619,8 +633,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           },
         },
         {
-          id: 'export_layer_style',
-          label: tr('export_layer_style', 'Export Style...'),
+          id: "export_layer_style",
+          label: tr("export_layer_style", "Export Style..."),
           icon: mdiContentSaveOutline,
           disabled: isMultiple || !singleLayerId,
           onClick: () => {
@@ -630,8 +644,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           },
         },
         {
-          id: 'copy_layer_style',
-          label: tr('copy_layer_style', 'Copy Style'),
+          id: "copy_layer_style",
+          label: tr("copy_layer_style", "Copy Style"),
           icon: mdiContentCopy,
           disabled: isMultiple || !singleLayerId,
           onClick: () => {
@@ -641,8 +655,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           },
         },
         {
-          id: 'paste_layer_style',
-          label: tr('paste_layer_style', 'Paste Style'),
+          id: "paste_layer_style",
+          label: tr("paste_layer_style", "Paste Style"),
           icon: mdiContentPaste,
           disabled: copiedLayerStyleSignal.value === null,
           onClick: () => {
@@ -656,16 +670,23 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
     items.push(
       {
-        id: 'create-group',
-        label: t('create_group') || 'Create Group',
+        id: "create-group",
+        label: t("create_group") || "Create Group",
         icon: mdiFolderPlusOutline,
         onClick: () => {
           const newGroupId = `group-${Date.now()}`;
-          const childIds = actionableNodes.map((n) => n.id).filter(Boolean) as string[];
+          const childIds = actionableNodes
+            .map((n) => n.id)
+            .filter(Boolean) as string[];
           if (targetNode.id) {
             isProjectDirtySignal.value = true;
             if (window.electronAPI?.createGroup) {
-              window.electronAPI.createGroup("New Group", targetNode.id, childIds, newGroupId);
+              window.electronAPI.createGroup(
+                "New Group",
+                targetNode.id,
+                childIds,
+                newGroupId
+              );
             }
             selectSingleNode(newGroupId);
             setActiveLayer(null);
@@ -674,14 +695,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         },
       },
       {
-        id: 'remove-nodes',
+        id: "remove-nodes",
         label: removeLabel,
         icon: mdiTrashCanOutline,
         onClick: () => {
-          setRemovalModalState({
-            isOpen: true,
-            actionableNodes,
-          });
+          setRemovalModalState({ isOpen: true, actionableNodes });
         },
       }
     );
@@ -694,7 +712,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         extraItems.push(...hook({ actionableNodes, isMultiple }));
       }
       if (extraItems.length > 0) {
-        items.push({ id: 'divider-external', label: '', separator: true });
+        items.push({ id: "divider-external", label: "", separator: true });
         items.push(...extraItems);
       }
     }
@@ -779,7 +797,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     if (resolved) {
       isProjectDirtySignal.value = true;
       if (window.electronAPI?.reorderNodes) {
-        window.electronAPI.reorderNodes(draggedIds, resolved.targetId, resolved.position);
+        window.electronAPI.reorderNodes(
+          draggedIds,
+          resolved.targetId,
+          resolved.position
+        );
       }
     }
 
@@ -801,7 +823,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const resolved = resolveNodeDropTarget({
       tree,
       draggedIds,
-      hoveredNodeId: 'root',
+      hoveredNodeId: "root",
       offsetY: 0,
       rowHeight: 24,
       offsetX: 0,
@@ -822,7 +844,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     if (draggedIds.length > 0) {
       isProjectDirtySignal.value = true;
       if (window.electronAPI?.reorderNodes) {
-        window.electronAPI.reorderNodes(draggedIds, 'root', 'into');
+        window.electronAPI.reorderNodes(draggedIds, "root", "into");
       }
     }
     draggedNodeIdsRef.current = [];
@@ -833,8 +855,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     e.preventDefault();
     if (draggedNodeIdsRef.current.length === 0) return;
     setDragOverState({
-      targetId: 'root',
-      position: 'append-root',
+      targetId: "root",
+      position: "append-root",
       indentLevel: 1,
     });
   };
@@ -845,7 +867,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     if (draggedIds.length > 0) {
       isProjectDirtySignal.value = true;
       if (window.electronAPI?.reorderNodes) {
-        window.electronAPI.reorderNodes(draggedIds, 'root', 'append-root');
+        window.electronAPI.reorderNodes(draggedIds, "root", "append-root");
       }
     }
     draggedNodeIdsRef.current = [];
@@ -889,18 +911,24 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const isActive = layer.id === activeLayerId;
     const resolvedName = layer.name;
     const iconPath = getLayerIcon(layer.geometryKind);
-    const isDimmed = !projectVisible || !ancestorVisible || layer.visible === false;
+    const isDimmed =
+      !projectVisible || !ancestorVisible || layer.visible === false;
     const isDropTarget = dragOverState?.targetId === layer.id;
     const isEditing = Boolean(layer.id && editingNodeId === layer.id);
-    const isVector = layer.type === 'vector' || (layer.geometryKind && layer.geometryKind !== 'Raster');
-    const layerDesc = layer.id ? projectLayersSignal.value.find((l) => l.id === layer.id) : undefined;
+    const isVector =
+      layer.type === "vector"
+      || (layer.geometryKind && layer.geometryKind !== "Raster");
+    const layerDesc =
+      layer.id ?
+        projectLayersSignal.value.find((l) => l.id === layer.id)
+      : undefined;
     const resolvedFeatureCount = layer.featureCount ?? layerDesc?.featureCount;
 
     return (
       <React.Fragment key={layer.id}>
-        {isDropTarget && dragOverState?.position === 'before' && (
-          renderDropMarker(dragOverState.indentLevel)
-        )}
+        {isDropTarget
+          && dragOverState?.position === "before"
+          && renderDropMarker(dragOverState.indentLevel)}
         <div
           className={`tree-node-row tree-node-layer ${isActive ? "active" : ""} ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
           style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
@@ -929,12 +957,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             title='Toggle layer visibility'
           />
 
-          <span
-            className='tree-icon-slot'
-            style={{ color: "#2563eb" }}>
+          <span className='tree-icon-slot' style={{ color: "#2563eb" }}>
             <Icon
               path={iconPath}
-              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+              size='calc(var(--cartouche-ui-icon-size, 24px))'
             />
           </span>
 
@@ -954,7 +980,11 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 setActiveLayer(layer.id);
               }
               const target = e.target as HTMLElement | null;
-              if (target && typeof target.className === 'string' && target.className.includes('tree-node-count')) {
+              if (
+                target
+                && typeof target.className === "string"
+                && target.className.includes("tree-node-count")
+              ) {
                 return;
               }
               e.stopPropagation();
@@ -962,7 +992,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 setEditingNodeId(layer.id);
               }
             }}>
-            {isEditing ? (
+            {isEditing ?
               <InlineRenameInput
                 initialValue={resolvedName}
                 commitRef={commitInlineEditRef}
@@ -973,23 +1003,22 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 }}
                 onCancel={() => setEditingNodeId(null)}
               />
-            ) : (
-              <span className='tree-node-name'>
-                {resolvedName}
-              </span>
-            )}
+            : <span className='tree-node-name'>{resolvedName}</span>}
             {isVector && (
               <span className='tree-node-count'>
-                {resolvedFeatureCount !== undefined && resolvedFeatureCount >= 0
-                  ? ` (${resolvedFeatureCount.toLocaleString()})`
-                  : ' (...)'}
+                {(
+                  resolvedFeatureCount !== undefined
+                  && resolvedFeatureCount >= 0
+                ) ?
+                  ` (${resolvedFeatureCount.toLocaleString()})`
+                : " (...)"}
               </span>
             )}
           </span>
         </div>
-        {isDropTarget && dragOverState?.position === 'after' && (
-          renderDropMarker(dragOverState.indentLevel)
-        )}
+        {isDropTarget
+          && dragOverState?.position === "after"
+          && renderDropMarker(dragOverState.indentLevel)}
       </React.Fragment>
     );
   };
@@ -1004,15 +1033,16 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     const groupId = getTreeNodeId(group);
     const isSelected = group.id ? selectedNodeIds.includes(group.id) : false;
     const isGroupEffectiveVisible = ancestorVisible && group.visible !== false;
-    const isDimmed = !projectVisible || !ancestorVisible || group.visible === false;
+    const isDimmed =
+      !projectVisible || !ancestorVisible || group.visible === false;
     const isEditing = editingNodeId === groupId;
     const isDropTarget = dragOverState?.targetId === groupId;
 
     return (
       <React.Fragment key={groupId}>
-        {isDropTarget && dragOverState?.position === 'before' && (
-          renderDropMarker(dragOverState.indentLevel)
-        )}
+        {isDropTarget
+          && dragOverState?.position === "before"
+          && renderDropMarker(dragOverState.indentLevel)}
         <div
           className={`tree-node-row tree-node-group ${isSelected ? "selected" : ""} ${isDimmed ? "dimmed" : ""}`}
           style={{ paddingLeft: `${indentLevel * 18 + 6}px` }}
@@ -1068,7 +1098,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 setEditingNodeId(groupId);
               }
             }}>
-            {isEditing ? (
+            {isEditing ?
               <InlineRenameInput
                 initialValue={group.name}
                 commitRef={commitInlineEditRef}
@@ -1079,17 +1109,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 }}
                 onCancel={() => setEditingNodeId(null)}
               />
-            ) : (
-              <span className='tree-node-name'>
-                {group.name}
-              </span>
-            )}
+            : <span className='tree-node-name'>{group.name}</span>}
           </span>
         </div>
 
-        {isDropTarget && dragOverState?.position === 'into' && (
-          renderDropMarker(dragOverState.indentLevel)
-        )}
+        {isDropTarget
+          && dragOverState?.position === "into"
+          && renderDropMarker(dragOverState.indentLevel)}
 
         {isExpanded && Array.isArray(group.children) && (
           <div className='tree-node-children'>
@@ -1099,9 +1125,9 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           </div>
         )}
 
-        {isDropTarget && dragOverState?.position === 'after' && (
-          renderDropMarker(dragOverState.indentLevel)
-        )}
+        {isDropTarget
+          && dragOverState?.position === "after"
+          && renderDropMarker(dragOverState.indentLevel)}
       </React.Fragment>
     );
   };
@@ -1112,35 +1138,49 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     indentLevel: number = 1,
     ancestorVisible: boolean = true
   ) => {
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
-      return renderGroupRow(item as ProjectGroupItem, indentLevel, ancestorVisible);
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
+      return renderGroupRow(
+        item as ProjectGroupItem,
+        indentLevel,
+        ancestorVisible
+      );
     }
-    return renderLayerRow(item as ProjectLayerItem, indentLevel, ancestorVisible);
+    return renderLayerRow(
+      item as ProjectLayerItem,
+      indentLevel,
+      ancestorVisible
+    );
   };
 
   // Formulate removal modal strings
   const getRemovalModalContent = () => {
     const { actionableNodes } = removalModalState;
-    if (actionableNodes.length === 0) return { title: '', prompt: '' };
+    if (actionableNodes.length === 0) return { title: "", prompt: "" };
 
     const isMultiple = actionableNodes.length > 1;
-    const isSingleGroup = !isMultiple && 'children' in actionableNodes[0];
+    const isSingleGroup = !isMultiple && "children" in actionableNodes[0];
 
     let title: string;
     let prompt: string;
 
     if (isMultiple) {
-      title = t('remove_items_title') || 'Remove Selected Items';
-      prompt = t('remove_items_prompt', { 0: actionableNodes.length }) ||
-        `Are you sure you want to remove the ${actionableNodes.length} selected items from the project? Any groups will also have their contents removed.`;
+      title = t("remove_items_title") || "Remove Selected Items";
+      prompt =
+        t("remove_items_prompt", { 0: actionableNodes.length })
+        || `Are you sure you want to remove the ${actionableNodes.length} selected items from the project? Any groups will also have their contents removed.`;
     } else if (isSingleGroup) {
-      title = t('remove_group_title') || 'Remove Group';
-      prompt = t('remove_group_prompt', { 0: actionableNodes[0].name }) ||
-        `Are you sure you want to remove group '${actionableNodes[0].name}'? This will also remove all items inside it.`;
+      title = t("remove_group_title") || "Remove Group";
+      prompt =
+        t("remove_group_prompt", { 0: actionableNodes[0].name })
+        || `Are you sure you want to remove group '${actionableNodes[0].name}'? This will also remove all items inside it.`;
     } else {
-      title = t('remove_layer_title') || 'Remove Layer';
-      prompt = t('remove_layer_prompt', { 0: actionableNodes[0].name }) ||
-        `Are you sure you want to remove layer '${actionableNodes[0].name}' from the project?`;
+      title = t("remove_layer_title") || "Remove Layer";
+      prompt =
+        t("remove_layer_prompt", { 0: actionableNodes[0].name })
+        || `Are you sure you want to remove layer '${actionableNodes[0].name}' from the project?`;
     }
 
     return { title, prompt };
@@ -1177,7 +1217,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             if (e.target === e.currentTarget && editingNodeId !== null) {
               e.preventDefault();
               rowPointerDownRef.current = {
-                nodeId: 'empty',
+                nodeId: "empty",
                 isLayer: false,
                 startX: e.clientX,
                 startY: e.clientY,
@@ -1195,7 +1235,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 const dy = Math.abs(e.clientY - downInfo.startY);
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 const duration = Date.now() - downInfo.startTime;
-                if (dist > MOUSE_DRAG_MOVE_THRESHOLD_PX || duration > MOUSE_CLICK_HOLD_TIMEOUT_MS) {
+                if (
+                  dist > MOUSE_DRAG_MOVE_THRESHOLD_PX
+                  || duration > MOUSE_CLICK_HOLD_TIMEOUT_MS
+                ) {
                   return;
                 }
               }
@@ -1221,11 +1264,13 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             <div className='layer-tree-root'>
               {/* Top-Level Project Root Item */}
               <div
-                className={`tree-node-row tree-node-project ${selectedNodeIds.includes('project') ? "selected" : ""}`}
+                className={`tree-node-row tree-node-project ${selectedNodeIds.includes("project") ? "selected" : ""}`}
                 onDragOver={handleProjectRootDragOver}
                 onDrop={handleProjectRootDrop}
-                onMouseDown={(e) => handleRowMouseDown(e, 'project', false)}
-                onClick={(e) => handleRowClickWithEditCheck(e, 'project', false)}
+                onMouseDown={(e) => handleRowMouseDown(e, "project", false)}
+                onClick={(e) =>
+                  handleRowClickWithEditCheck(e, "project", false)
+                }
                 onContextMenu={handleProjectContextMenu}>
                 <input
                   type='checkbox'
@@ -1247,48 +1292,42 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                   title={projectName}
                   onClick={(e) => {
                     setActiveLayer(null);
-                    if (selectedNodeIds.includes('project')) {
+                    if (selectedNodeIds.includes("project")) {
                       e.stopPropagation();
                     }
                   }}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     setActiveLayer(null);
-                    if (editingNodeId !== 'project') {
-                      setEditingNodeId('project');
+                    if (editingNodeId !== "project") {
+                      setEditingNodeId("project");
                     }
                   }}>
-                  {editingNodeId === 'project' ? (
+                  {editingNodeId === "project" ?
                     <InlineRenameInput
                       initialValue={projectName}
                       commitRef={commitInlineEditRef}
                       inputRef={inlineInputRef}
                       onSave={(val) => {
-                        renameNode('project', val);
+                        renameNode("project", val);
                         setEditingNodeId(null);
                       }}
                       onCancel={() => setEditingNodeId(null)}
                     />
-                  ) : (
-                    <span className='tree-node-name'>
-                      {projectName}
-                    </span>
-                  )}
+                  : <span className='tree-node-name'>{projectName}</span>}
                 </span>
               </div>
 
-              {dragOverState?.targetId === 'root' && dragOverState?.position === 'into' && (
-                renderDropMarker(dragOverState.indentLevel)
-              )}
+              {dragOverState?.targetId === "root"
+                && dragOverState?.position === "into"
+                && renderDropMarker(dragOverState.indentLevel)}
 
               {/* Children: Hierarchical Layer Tree */}
               <div className='tree-project-children'>
                 {tree.map((item) => renderTreeNode(item, 1, projectVisible))}
               </div>
 
-              {dragOverState?.position === 'append-root' && (
-                renderDropMarker(1)
-              )}
+              {dragOverState?.position === "append-root" && renderDropMarker(1)}
             </div>
           )}
         </div>
@@ -1306,14 +1345,17 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       <ModalDialog
         isOpen={removalModalState.isOpen}
         title={modalTitle}
-        onClose={() => setRemovalModalState({ isOpen: false, actionableNodes: [] })}
+        onClose={() =>
+          setRemovalModalState({ isOpen: false, actionableNodes: [] })
+        }
         buttons={[
           {
-            label: t('dialog_cancel') || 'Cancel',
-            onClick: () => setRemovalModalState({ isOpen: false, actionableNodes: [] }),
+            label: t("dialog_cancel") || "Cancel",
+            onClick: () =>
+              setRemovalModalState({ isOpen: false, actionableNodes: [] }),
           },
           {
-            label: t('dialog_remove') || 'Remove',
+            label: t("dialog_remove") || "Remove",
             primary: true,
             onClick: () => {
               const nodeIds = removalModalState.actionableNodes
@@ -1335,16 +1377,19 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       {/* Error ModalDialog for Style Load Failures */}
       <ModalDialog
         isOpen={styleErrorModalState.isOpen}
-        title={t('style_load_error_title') || 'Style Load Error'}
+        title={t("style_load_error_title") || "Style Load Error"}
         onClose={() => setStyleErrorModalState({ isOpen: false, message: "" })}
         buttons={[
           {
-            label: t('dialog_ok') || 'OK',
+            label: t("dialog_ok") || "OK",
             primary: true,
-            onClick: () => setStyleErrorModalState({ isOpen: false, message: "" }),
+            onClick: () =>
+              setStyleErrorModalState({ isOpen: false, message: "" }),
           },
         ]}>
-        <div className='style-error-modal-message'>{styleErrorModalState.message}</div>
+        <div className='style-error-modal-message'>
+          {styleErrorModalState.message}
+        </div>
       </ModalDialog>
     </BasicWidget>
   );
