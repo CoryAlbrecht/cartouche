@@ -490,6 +490,101 @@ export function resolveFieldIndex(
 }
 
 /**
+ * @typedef {'width' | 'precision' | 'comment'} EditableFieldColumn
+ * @description Editable attribute schema column identifiers on the Fields tab.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ */
+export type EditableFieldColumn = "width" | "precision" | "comment";
+
+/**
+ * @function resolveFieldColumnStringValue
+ * @description Extracts the string representation of an editable column value for inline input initialization.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field metadata.
+ * @param {EditableFieldColumn} column - Target column to evaluate.
+ * @returns {string} String representation of cell value.
+ */
+export function resolveFieldColumnStringValue(
+  field: LayerFieldInfo,
+  column: EditableFieldColumn
+): string {
+  if (column === "comment") {
+    return field.comment || "";
+  }
+  const val = field[column];
+  return val !== undefined && val > 0 ? String(val) : "";
+}
+
+/**
+ * @function isFieldColumnEditable
+ * @description Evaluates whether an attribute schema column is editable for the specified field.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field info.
+ * @param {EditableFieldColumn} column - Target column to evaluate.
+ * @returns {boolean} True if the column is editable for this field type.
+ */
+export function isFieldColumnEditable(
+  field: LayerFieldInfo,
+  column: EditableFieldColumn
+): boolean {
+  const effectiveType =
+    field.inferredType ??
+    (field.mappedType === "number" ? "real"
+    : field.mappedType === "boolean" ? "boolean"
+    : "string");
+
+  switch (column) {
+    case "width":
+      return (
+        effectiveType === "string" ||
+        effectiveType === "integer" ||
+        effectiveType === "real"
+      );
+    case "precision":
+      return effectiveType === "real";
+    case "comment":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * @function getEditableColumnsForField
+ * @description Returns the sequence of editable columns available for a given field type.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-03
+ * @updated 2026-11-03
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Target layer field info.
+ * @returns {EditableFieldColumn[]} Ordered array of editable column names.
+ */
+export function getEditableColumnsForField(
+  field: LayerFieldInfo
+): EditableFieldColumn[] {
+  const columns: EditableFieldColumn[] = [];
+  if (isFieldColumnEditable(field, "width")) {
+    columns.push("width");
+  }
+  if (isFieldColumnEditable(field, "precision")) {
+    columns.push("precision");
+  }
+  if (isFieldColumnEditable(field, "comment")) {
+    columns.push("comment");
+  }
+  return columns;
+}
+
+/**
  * @component LayerPropertiesDialog
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -601,6 +696,147 @@ export const LayerPropertiesDialog: React.FC = () => {
       updateLayerPropertiesDraft({ fields: updatedFields });
     },
     [activeId, layerFields]
+  );
+
+  const [editingCell, setEditingCell] = useState<{
+    fieldName: string;
+    column: EditableFieldColumn;
+  } | null>(null);
+  const [cellInputValue, setCellInputValue] = useState<string>("");
+  const isCancellingRef = useRef(false);
+
+  useEffect(() => {
+    setEditingCell(null);
+  }, [isEditing, activeId]);
+
+  /**
+   * @function commitCellEdit
+   * @description Commits staged inline cell edits (width, precision, comment) to draft state and marks userOverridden: true.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {string} fieldName - Target field identifier.
+   * @param {EditableFieldColumn} column - Column being edited.
+   * @param {string} rawValue - Raw user-entered string value.
+   * @returns {void}
+   */
+  const commitCellEdit = useCallback(
+    (fieldName: string, column: EditableFieldColumn, rawValue: string) => {
+      const field = layerFields.find((f) => f.name === fieldName);
+      if (!field) return;
+
+      const trimmed = rawValue.trim();
+      let updatedValue: number | string | undefined;
+
+      if (column === "width" || column === "precision") {
+        if (!trimmed) {
+          updatedValue = undefined;
+        } else {
+          const parsed = parseInt(trimmed, 10);
+          if (isNaN(parsed) || parsed < 0) {
+            updatedValue = field[column];
+          } else {
+            updatedValue = parsed;
+          }
+        }
+      } else {
+        updatedValue = rawValue;
+      }
+
+      const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
+        if (f.name === fieldName) {
+          return {
+            ...f,
+            [column]: updatedValue,
+            userOverridden: true,
+          };
+        }
+        return f;
+      });
+
+      updateLayerPropertiesDraft({ fields: updatedFields });
+    },
+    [layerFields]
+  );
+
+  /**
+   * @function handleCellBlur
+   * @description Handles inline input blur events, committing edits unless cancellation was requested.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {LayerFieldInfo} field - Target field metadata.
+   * @param {EditableFieldColumn} column - Active column.
+   * @param {string} value - Current input value.
+   * @returns {void}
+   */
+  const handleCellBlur = useCallback(
+    (field: LayerFieldInfo, column: EditableFieldColumn, value: string) => {
+      if (isCancellingRef.current) {
+        isCancellingRef.current = false;
+        return;
+      }
+      commitCellEdit(field.name, column, value);
+      setEditingCell(null);
+    },
+    [commitCellEdit]
+  );
+
+  /**
+   * @function handleCellKeyDown
+   * @description Handles inline editor keyboard navigation, trapping Enter, Escape, Tab, and Shift-Tab.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-03
+   * @updated 2026-11-03
+   * @since 0.1.0-dev
+   * @param {React.KeyboardEvent<HTMLInputElement>} e - Keyboard event.
+   * @param {LayerFieldInfo} field - Target field metadata.
+   * @param {EditableFieldColumn} column - Active column.
+   * @param {string} currentValue - Current input value.
+   * @returns {void}
+   */
+  const handleCellKeyDown = useCallback(
+    (
+      e: React.KeyboardEvent<HTMLInputElement>,
+      field: LayerFieldInfo,
+      column: EditableFieldColumn,
+      currentValue: string
+    ) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commitCellEdit(field.name, column, currentValue);
+        setEditingCell(null);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        isCancellingRef.current = true;
+        setEditingCell(null);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        commitCellEdit(field.name, column, currentValue);
+        const editableCols = getEditableColumnsForField(field);
+        const currentIndex = editableCols.indexOf(column);
+        if (e.shiftKey) {
+          if (currentIndex > 0) {
+            const prevCol = editableCols[currentIndex - 1];
+            setEditingCell({ fieldName: field.name, column: prevCol });
+            setCellInputValue(resolveFieldColumnStringValue(field, prevCol));
+          } else {
+            setEditingCell(null);
+          }
+        } else {
+          if (currentIndex >= 0 && currentIndex < editableCols.length - 1) {
+            const nextCol = editableCols[currentIndex + 1];
+            setEditingCell({ fieldName: field.name, column: nextCol });
+            setCellInputValue(resolveFieldColumnStringValue(field, nextCol));
+          } else {
+            setEditingCell(null);
+          }
+        }
+      }
+    },
+    [commitCellEdit]
   );
 
   const showNativeType = Boolean(
@@ -2206,38 +2442,155 @@ export const LayerPropertiesDialog: React.FC = () => {
                             </td>
                           )}
                           <td
+                            className={`layer-properties-field-cell-length ${isEditing && isSelected && isFieldColumnEditable(field, "width") ? "editable-cell" : ""}`}
+                            onClick={(e) => {
+                              if (isEditing && isSelected && isFieldColumnEditable(field, "width")) {
+                                e.stopPropagation();
+                                setEditingCell({ fieldName: field.name, column: "width" });
+                                setCellInputValue(resolveFieldColumnStringValue(field, "width"));
+                              }
+                            }}
                             style={{
-                              padding: "6px 10px",
+                              padding:
+                                editingCell?.fieldName === field.name && editingCell?.column === "width"
+                                  ? "2px 4px"
+                                  : "6px 10px",
                               borderLeft: "1px solid #e2e8f0",
                               borderRight: "1px solid #e2e8f0",
                               color: "#475569",
+                              cursor:
+                                isEditing && isSelected && isFieldColumnEditable(field, "width")
+                                  ? "text"
+                                  : "inherit",
                             }}>
-                            {field.width !== undefined && field.width > 0 ?
-                              field.width
-                            : ""}
+                            {editingCell?.fieldName === field.name && editingCell?.column === "width" ? (
+                              <input
+                                type='text'
+                                className='layer-field-cell-input layer-field-cell-input-width'
+                                aria-label={`Length for ${field.name}`}
+                                value={cellInputValue}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => handleCellKeyDown(e, field, "width", cellInputValue)}
+                                onBlur={() => handleCellBlur(field, "width", cellInputValue)}
+                                style={{
+                                  width: "100%",
+                                  boxSizing: "border-box",
+                                  padding: "2px 4px",
+                                  fontSize: "0.8125rem",
+                                  border: "1px solid #0284c7",
+                                  borderRadius: "2px",
+                                  outline: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#0f172a",
+                                }}
+                              />
+                            ) : (
+                              field.width !== undefined && field.width > 0 ?
+                                field.width
+                              : ""
+                            )}
                           </td>
                           <td
+                            className={`layer-properties-field-cell-precision ${isEditing && isSelected && isFieldColumnEditable(field, "precision") ? "editable-cell" : ""}`}
+                            onClick={(e) => {
+                              if (isEditing && isSelected && isFieldColumnEditable(field, "precision")) {
+                                e.stopPropagation();
+                                setEditingCell({ fieldName: field.name, column: "precision" });
+                                setCellInputValue(resolveFieldColumnStringValue(field, "precision"));
+                              }
+                            }}
                             style={{
-                              padding: "6px 10px",
+                              padding:
+                                editingCell?.fieldName === field.name && editingCell?.column === "precision"
+                                  ? "2px 4px"
+                                  : "6px 10px",
                               borderLeft: "1px solid #e2e8f0",
                               borderRight: "1px solid #e2e8f0",
                               color: "#475569",
+                              cursor:
+                                isEditing && isSelected && isFieldColumnEditable(field, "precision")
+                                  ? "text"
+                                  : "inherit",
                             }}>
-                            {(
-                              field.precision !== undefined
-                              && field.precision > 0
-                            ) ?
-                              field.precision
-                            : ""}
+                            {editingCell?.fieldName === field.name && editingCell?.column === "precision" ? (
+                              <input
+                                type='text'
+                                className='layer-field-cell-input layer-field-cell-input-precision'
+                                aria-label={`Precision for ${field.name}`}
+                                value={cellInputValue}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => handleCellKeyDown(e, field, "precision", cellInputValue)}
+                                onBlur={() => handleCellBlur(field, "precision", cellInputValue)}
+                                style={{
+                                  width: "100%",
+                                  boxSizing: "border-box",
+                                  padding: "2px 4px",
+                                  fontSize: "0.8125rem",
+                                  border: "1px solid #0284c7",
+                                  borderRadius: "2px",
+                                  outline: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#0f172a",
+                                }}
+                              />
+                            ) : (
+                              field.precision !== undefined && field.precision > 0 ?
+                                field.precision
+                              : ""
+                            )}
                           </td>
                           <td
+                            className={`layer-properties-field-cell-comment ${isEditing && isSelected && isFieldColumnEditable(field, "comment") ? "editable-cell" : ""}`}
+                            onClick={(e) => {
+                              if (isEditing && isSelected && isFieldColumnEditable(field, "comment")) {
+                                e.stopPropagation();
+                                setEditingCell({ fieldName: field.name, column: "comment" });
+                                setCellInputValue(resolveFieldColumnStringValue(field, "comment"));
+                              }
+                            }}
                             style={{
-                              padding: "6px 10px",
+                              padding:
+                                editingCell?.fieldName === field.name && editingCell?.column === "comment"
+                                  ? "2px 4px"
+                                  : "6px 10px",
                               borderLeft: "1px solid #e2e8f0",
                               borderRight: "1px solid #e2e8f0",
                               color: "#64748b",
+                              cursor:
+                                isEditing && isSelected && isFieldColumnEditable(field, "comment")
+                                  ? "text"
+                                  : "inherit",
                             }}>
-                            {field.comment || ""}
+                            {editingCell?.fieldName === field.name && editingCell?.column === "comment" ? (
+                              <input
+                                type='text'
+                                className='layer-field-cell-input layer-field-cell-input-comment'
+                                aria-label={`Comment for ${field.name}`}
+                                value={cellInputValue}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setCellInputValue(e.target.value)}
+                                onKeyDown={(e) => handleCellKeyDown(e, field, "comment", cellInputValue)}
+                                onBlur={() => handleCellBlur(field, "comment", cellInputValue)}
+                                style={{
+                                  width: "100%",
+                                  boxSizing: "border-box",
+                                  padding: "2px 4px",
+                                  fontSize: "0.8125rem",
+                                  border: "1px solid #0284c7",
+                                  borderRadius: "2px",
+                                  outline: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#0f172a",
+                                }}
+                              />
+                            ) : (
+                              field.comment || ""
+                            )}
                           </td>
                         </tr>
                       );

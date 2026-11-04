@@ -30,6 +30,9 @@ const { mdiTablePlus } = jiti('@mdi/js');
 const {
   LayerPropertiesDialog,
   useRawStyleTextEditorHistory,
+  isFieldColumnEditable,
+  getEditableColumnsForField,
+  resolveFieldColumnStringValue,
 } = jiti('../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx');
 const {
   renderStylePreviewToCanvas,
@@ -2443,6 +2446,15 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           ],
         },
       ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Schema Editing Layer',
+          type: 'vector',
+          source: '/data/schema.shp',
+          fields: (projectLayersSignal.value[0] as any).fields,
+        },
+      ];
     });
 
     afterEach(() => {
@@ -2548,6 +2560,15 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
               userOverridden: true,
             },
           ],
+        },
+      ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Schema Editing Layer',
+          type: 'vector',
+          source: '/data/schema.shp',
+          fields: (projectLayersSignal.value[0] as any).fields,
         },
       ];
     });
@@ -2668,6 +2689,15 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           ],
         },
       ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Schema Editing Layer',
+          type: 'vector',
+          source: '/data/schema.shp',
+          fields: (projectLayersSignal.value[0] as any).fields,
+        },
+      ];
     });
 
     afterEach(() => {
@@ -2758,6 +2788,15 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           ],
         },
       ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Schema Editing Layer',
+          type: 'vector',
+          source: '/data/schema.shp',
+          fields: (projectLayersSignal.value[0] as any).fields,
+        },
+      ];
     });
 
     afterEach(() => {
@@ -2819,6 +2858,313 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       await openLayerPropertiesDialog(testLayerId);
       closeLayerPropertiesDialog();
       assert.ok(editableLayerIdsSignal.value.has(testLayerId), 'Closing dialog must not disable layer edit mode');
+    });
+  });
+
+  describe('Editable Length, Precision, and Comments in Fields Tab (Ticket #151)', () => {
+    const testLayerId = 'layer-editable-schema-151';
+
+    beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = null;
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Schema Editing Layer',
+          type: 'vector',
+          source: '/data/schema.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'str_col',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              originalInferredType: 'string' as const,
+              width: 80,
+              precision: 0,
+              comment: 'Text note',
+              userOverridden: false,
+            },
+            {
+              index: 1,
+              name: 'int_col',
+              nativeType: 'Integer',
+              inferredType: 'integer' as const,
+              originalInferredType: 'integer' as const,
+              width: 10,
+              precision: 0,
+              comment: 'Count column',
+              userOverridden: false,
+            },
+            {
+              index: 2,
+              name: 'real_col',
+              nativeType: 'Real',
+              inferredType: 'real' as const,
+              originalInferredType: 'real' as const,
+              width: 18,
+              precision: 6,
+              comment: 'Measurement',
+              userOverridden: false,
+            },
+            {
+              index: 3,
+              name: 'bool_col',
+              nativeType: 'Boolean',
+              inferredType: 'boolean' as const,
+              originalInferredType: 'boolean' as const,
+              comment: 'Flag',
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+      projectTreeSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Schema Editing Layer',
+          type: 'vector',
+          source: '/data/schema.shp',
+          fields: (projectLayersSignal.value[0] as any).fields,
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = null;
+    });
+
+    it('isFieldColumnEditable correctly constrains Length, Precision, and Comments by field type', () => {
+      const strField = { name: 'f1', nativeType: 'String', inferredType: 'string' as const };
+      const intField = { name: 'f2', nativeType: 'Integer', inferredType: 'integer' as const };
+      const realField = { name: 'f3', nativeType: 'Real', inferredType: 'real' as const };
+      const boolField = { name: 'f4', nativeType: 'Boolean', inferredType: 'boolean' as const };
+
+      // Length (width): string, integer, real enabled; boolean disabled
+      assert.strictEqual(isFieldColumnEditable(strField, 'width'), true);
+      assert.strictEqual(isFieldColumnEditable(intField, 'width'), true);
+      assert.strictEqual(isFieldColumnEditable(realField, 'width'), true);
+      assert.strictEqual(isFieldColumnEditable(boolField, 'width'), false);
+
+      // Precision: real exclusively enabled; string, integer, boolean disabled
+      assert.strictEqual(isFieldColumnEditable(realField, 'precision'), true);
+      assert.strictEqual(isFieldColumnEditable(strField, 'precision'), false);
+      assert.strictEqual(isFieldColumnEditable(intField, 'precision'), false);
+      assert.strictEqual(isFieldColumnEditable(boolField, 'precision'), false);
+
+      // Comment: enabled for all types
+      assert.strictEqual(isFieldColumnEditable(strField, 'comment'), true);
+      assert.strictEqual(isFieldColumnEditable(intField, 'comment'), true);
+      assert.strictEqual(isFieldColumnEditable(realField, 'comment'), true);
+      assert.strictEqual(isFieldColumnEditable(boolField, 'comment'), true);
+    });
+
+    it('getEditableColumnsForField returns correct column sequences for each type', () => {
+      const strField = { name: 'f1', nativeType: 'String', inferredType: 'string' as const };
+      const intField = { name: 'f2', nativeType: 'Integer', inferredType: 'integer' as const };
+      const realField = { name: 'f3', nativeType: 'Real', inferredType: 'real' as const };
+      const boolField = { name: 'f4', nativeType: 'Boolean', inferredType: 'boolean' as const };
+
+      assert.deepStrictEqual(getEditableColumnsForField(realField), ['width', 'precision', 'comment']);
+      assert.deepStrictEqual(getEditableColumnsForField(strField), ['width', 'comment']);
+      assert.deepStrictEqual(getEditableColumnsForField(intField), ['width', 'comment']);
+      assert.deepStrictEqual(getEditableColumnsForField(boolField), ['comment']);
+    });
+
+    it('resolveFieldColumnStringValue extracts string values for input initialization', () => {
+      const field = {
+        name: 'test_col',
+        nativeType: 'Real',
+        inferredType: 'real' as const,
+        width: 42,
+        precision: 3,
+        comment: 'Documentation note',
+      };
+
+      assert.strictEqual(resolveFieldColumnStringValue(field, 'width'), '42');
+      assert.strictEqual(resolveFieldColumnStringValue(field, 'precision'), '3');
+      assert.strictEqual(resolveFieldColumnStringValue(field, 'comment'), 'Documentation note');
+
+      const emptyField = {
+        name: 'empty_col',
+        nativeType: 'String',
+        inferredType: 'string' as const,
+      };
+
+      assert.strictEqual(resolveFieldColumnStringValue(emptyField, 'width'), '');
+      assert.strictEqual(resolveFieldColumnStringValue(emptyField, 'precision'), '');
+      assert.strictEqual(resolveFieldColumnStringValue(emptyField, 'comment'), '');
+    });
+
+    it('renders Length, Precision, and Comments as static text when not editing or unselected', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Check rendered values in cells
+      assert.ok(html.includes('>80</td>'), 'Length 80 must be rendered');
+      assert.ok(html.includes('>18</td>'), 'Length 18 must be rendered');
+      assert.ok(html.includes('>6</td>'), 'Precision 6 must be rendered');
+      assert.ok(html.includes('>Measurement</td>'), 'Comment must be rendered');
+
+      // No inline input controls when edit mode is off
+      assert.ok(!html.includes('layer-field-cell-input'), 'No cell inputs rendered when edit mode is off');
+      assert.ok(!html.includes('editable-cell'), 'No editable-cell class when edit mode is off');
+    });
+
+    it('staged modifications to Length, Precision, and Comments update draft and commit to projectStores', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      let updateLayerFieldsCalled = false;
+      let updatedPayload: any = null;
+      let updatedLayerId: string | null = null;
+      (globalThis as any).window.electronAPI.updateLayerFields = async (id: string, fields: any) => {
+        updateLayerFieldsCalled = true;
+        updatedLayerId = id;
+        updatedPayload = fields;
+      };
+
+      // Stage modified fields in draft
+      const modifiedFields = [
+        {
+          index: 0,
+          name: 'str_col',
+          nativeType: 'String',
+          inferredType: 'string' as const,
+          width: 120,
+          precision: 0,
+          comment: 'Updated documentation',
+          userOverridden: true,
+        },
+        {
+          index: 1,
+          name: 'int_col',
+          nativeType: 'Integer',
+          inferredType: 'integer' as const,
+          width: 12,
+          precision: 0,
+          comment: 'Count column',
+          userOverridden: true,
+        },
+        {
+          index: 2,
+          name: 'real_col',
+          nativeType: 'Real',
+          inferredType: 'real' as const,
+          width: 24,
+          precision: 4,
+          comment: 'Refined decimal precision',
+          userOverridden: true,
+        },
+        {
+          index: 3,
+          name: 'bool_col',
+          nativeType: 'Boolean',
+          inferredType: 'boolean' as const,
+          comment: 'Active flag',
+          userOverridden: true,
+        },
+      ];
+
+      updateLayerPropertiesDraft({ fields: modifiedFields });
+
+      // Before apply: project state untouched
+      const projectLayerBefore = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.strictEqual(projectLayerBefore?.fields?.[0].width, 80);
+      assert.strictEqual(projectLayerBefore?.fields?.[2].precision, 6);
+
+      // Commit via apply
+      const success = await applyLayerPropertiesEdits();
+      assert.strictEqual(success, true);
+
+      // After apply: project state updated
+      const projectLayerAfter = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.strictEqual(projectLayerAfter?.fields?.[0].width, 120);
+      assert.strictEqual(projectLayerAfter?.fields?.[0].comment, 'Updated documentation');
+      assert.strictEqual(projectLayerAfter?.fields?.[2].width, 24);
+      assert.strictEqual(projectLayerAfter?.fields?.[2].precision, 4);
+      assert.strictEqual(projectLayerAfter?.fields?.[3].comment, 'Active flag');
+
+      // IPC invoked
+      assert.strictEqual(updateLayerFieldsCalled, true);
+      assert.strictEqual(updatedLayerId, testLayerId);
+      assert.strictEqual(updatedPayload?.length, 4);
+      assert.strictEqual(updatedPayload[2].precision, 4);
+    });
+
+    it('cancelling edits discards unapplied adjustments to Length, Precision, and Comments', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Stage adjustments
+      updateLayerPropertiesDraft({
+        fields: [
+          {
+            index: 0,
+            name: 'str_col',
+            nativeType: 'String',
+            inferredType: 'string' as const,
+            width: 999,
+            precision: 0,
+            comment: 'Temporary discard note',
+            userOverridden: true,
+          },
+        ],
+      });
+
+      assert.strictEqual(layerPropertiesDraftSignal.value.fields?.[0].width, 999);
+
+      // Cancel edits
+      cancelLayerPropertiesEdits();
+
+      // Project state remains original
+      const projectLayer = projectLayersSignal.value.find((l: any) => l.id === testLayerId);
+      assert.strictEqual(projectLayer?.fields?.[0].width, 80);
+      assert.strictEqual(projectLayer?.fields?.[0].comment, 'Text note');
+    });
+
+    it('Data Type reset button preserves custom Length, Precision, and Comments', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // Field has custom length, precision, comment and overridden inferredType
+      const fieldWithCustomSchema = {
+        index: 2,
+        name: 'real_col',
+        nativeType: 'Real',
+        inferredType: 'string' as const,
+        originalInferredType: 'real' as const,
+        width: 250,
+        precision: 8,
+        comment: 'Preserved documentation',
+        userOverridden: true,
+      };
+
+      updateLayerPropertiesDraft({ fields: [fieldWithCustomSchema] });
+
+      // Reset inferred type
+      const resetFields = (layerPropertiesDraftSignal.value.fields ?? []).map((f: any) => {
+        if (f.name === 'real_col') {
+          return {
+            ...f,
+            inferredType: f.originalInferredType ?? f.inferredType,
+            userOverridden: false,
+          };
+        }
+        return f;
+      });
+
+      updateLayerPropertiesDraft({ fields: resetFields });
+
+      const updated = layerPropertiesDraftSignal.value.fields?.[0];
+      assert.strictEqual(updated?.inferredType, 'real', 'inferredType must revert to originalInferredType');
+      assert.strictEqual(updated?.width, 250, 'Length must be preserved');
+      assert.strictEqual(updated?.precision, 8, 'Precision must be preserved');
+      assert.strictEqual(updated?.comment, 'Preserved documentation', 'Comment must be preserved');
     });
   });
 });
