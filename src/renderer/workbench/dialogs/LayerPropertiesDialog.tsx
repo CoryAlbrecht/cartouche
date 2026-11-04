@@ -66,6 +66,11 @@ import {
   preferencesMapSignal,
   updatePreference,
 } from "@renderer/state/preferencesSignals";
+import {
+  editableLayerIdsSignal,
+  toggleLayerEditingAction,
+  isLayerInEditMode,
+} from "@renderer/state/gisSignals";
 import { Dialog } from "./Dialog";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
 import { SimpleModeEditor } from "./SimpleModeEditor";
@@ -511,12 +516,11 @@ export const LayerPropertiesDialog: React.FC = () => {
     info?.fields ??
     [];
 
-  const [isEditingFields, setIsEditingFields] = useState(false);
+  const isEditing = isLayerInEditMode(activeId, editableLayerIdsSignal.value);
   const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
   const [isNewFieldOpen, setIsNewFieldOpen] = useState(false);
 
   useEffect(() => {
-    setIsEditingFields(false);
     setSelectedFieldName(null);
     setIsNewFieldOpen(false);
   }, [activeId]);
@@ -531,11 +535,11 @@ export const LayerPropertiesDialog: React.FC = () => {
    * @returns {void}
    */
   const handleDeleteSelectedField = useCallback(() => {
-    if (!isEditingFields || !selectedFieldName || !activeId) return;
+    if (!isEditing || !selectedFieldName || !activeId) return;
     const updatedFields = layerFields.filter((f) => f.name !== selectedFieldName);
     updateLayerPropertiesDraft({ fields: updatedFields });
     setSelectedFieldName(null);
-  }, [isEditingFields, selectedFieldName, activeId, layerFields]);
+  }, [isEditing, selectedFieldName, activeId, layerFields]);
 
   /**
    * @function handleFieldTypeChange
@@ -1821,20 +1825,24 @@ export const LayerPropertiesDialog: React.FC = () => {
                 }}>
                 <button
                   type='button'
-                  className={`layer-prop-toolbar-btn toggle-edit ${isEditingFields ? "active toolbar-btn" : ""}`}
+                  className={`layer-prop-toolbar-btn toggle-edit ${isEditing ? "active toolbar-btn" : ""}`}
                   title={t("layer_properties_fields_toggle_edit")}
                   aria-label={t("layer_properties_fields_toggle_edit")}
-                  aria-pressed={isEditingFields}
-                  onClick={() => setIsEditingFields((prev) => !prev)}
+                  aria-pressed={isEditing}
+                  onClick={() => {
+                    if (activeId) {
+                      toggleLayerEditingAction(activeId);
+                    }
+                  }}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: isEditingFields ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                    border: isEditing ? "1px solid #0284c7" : "1px solid #cbd5e1",
                     borderRadius: "3px",
-                    backgroundColor: isEditingFields ? "#e0f2fe" : "#ffffff",
-                    color: isEditingFields ? "#0369a1" : "#334155",
+                    backgroundColor: isEditing ? "#e0f2fe" : "#ffffff",
+                    color: isEditing ? "#0369a1" : "#334155",
                     cursor: "pointer",
                     fontSize: "0.75rem",
                   }}>
@@ -1845,9 +1853,9 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn new-field'
                   title={t("layer_properties_fields_new_field")}
                   aria-label={t("layer_properties_fields_new_field")}
-                  disabled={!isEditingFields}
+                  disabled={!isEditing}
                   onClick={() => {
-                    if (isEditingFields) {
+                    if (isEditing) {
                       setIsNewFieldOpen(true);
                     }
                   }}
@@ -1857,12 +1865,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     alignItems: "center",
                     justifyContent: "center",
                     border: "1px solid",
-                    borderColor: isEditingFields ? "#cbd5e1" : "#e2e8f0",
+                    borderColor: isEditing ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: isEditingFields ? "#ffffff" : "#f8fafc",
-                    cursor: isEditingFields ? "pointer" : "not-allowed",
-                    color: isEditingFields ? "#334155" : "#94a3b8",
-                    opacity: isEditingFields ? 1 : 0.5,
+                    backgroundColor: isEditing ? "#ffffff" : "#f8fafc",
+                    cursor: isEditing ? "pointer" : "not-allowed",
+                    color: isEditing ? "#334155" : "#94a3b8",
+                    opacity: isEditing ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTablePlus} size='14px' />
@@ -1872,7 +1880,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn delete-field'
                   title={t("layer_properties_fields_delete_field")}
                   aria-label={t("layer_properties_fields_delete_field")}
-                  disabled={!isEditingFields || !selectedFieldName}
+                  disabled={!isEditing || !selectedFieldName}
                   onClick={handleDeleteSelectedField}
                   style={{
                     padding: "4px 8px",
@@ -1881,16 +1889,16 @@ export const LayerPropertiesDialog: React.FC = () => {
                     justifyContent: "center",
                     border: "1px solid",
                     borderColor:
-                      isEditingFields && selectedFieldName ? "#cbd5e1" : "#e2e8f0",
+                      isEditing && selectedFieldName ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
                     backgroundColor:
-                      isEditingFields && selectedFieldName ? "#ffffff" : "#f8fafc",
+                      isEditing && selectedFieldName ? "#ffffff" : "#f8fafc",
                     cursor:
-                      isEditingFields && selectedFieldName ? "pointer" : "not-allowed",
+                      isEditing && selectedFieldName ? "pointer" : "not-allowed",
                     color:
-                      isEditingFields && selectedFieldName ? "#334155" : "#94a3b8",
+                      isEditing && selectedFieldName ? "#334155" : "#94a3b8",
                     opacity:
-                      isEditingFields && selectedFieldName ? 1 : 0.5,
+                      isEditing && selectedFieldName ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTrashCanOutline} size='14px' />
@@ -1900,19 +1908,19 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn calculate'
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
-                  disabled={!isEditingFields}
+                  disabled={!isEditing}
                   style={{
                     padding: "4px 8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     border: "1px solid",
-                    borderColor: isEditingFields ? "#cbd5e1" : "#e2e8f0",
+                    borderColor: isEditing ? "#cbd5e1" : "#e2e8f0",
                     borderRadius: "3px",
-                    backgroundColor: isEditingFields ? "#ffffff" : "#f8fafc",
-                    cursor: isEditingFields ? "pointer" : "not-allowed",
-                    color: isEditingFields ? "#334155" : "#94a3b8",
-                    opacity: isEditingFields ? 1 : 0.5,
+                    backgroundColor: isEditing ? "#ffffff" : "#f8fafc",
+                    cursor: isEditing ? "pointer" : "not-allowed",
+                    color: isEditing ? "#334155" : "#94a3b8",
+                    opacity: isEditing ? 1 : 0.5,
                     fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiCalculator} size='14px' />
@@ -2095,7 +2103,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 <select
                                   className='layer-field-type-select'
                                   aria-label={`Field type for ${field.name}`}
-                                  disabled={!isEditingFields}
+                                  disabled={!isEditing}
                                   value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
                                   onClick={(e) => e.stopPropagation()}
                                   onChange={(e) =>
@@ -2112,19 +2120,19 @@ export const LayerPropertiesDialog: React.FC = () => {
                                     fontWeight: field.userOverridden ? 600 : 400,
                                     color:
                                       field.userOverridden ? "#047857"
-                                      : !isEditingFields ? "#94a3b8"
+                                      : !isEditing ? "#94a3b8"
                                       : "#0f766e",
                                     backgroundColor:
                                       field.userOverridden ? "#f0fdf4"
-                                      : !isEditingFields ? "#f8fafc"
+                                      : !isEditing ? "#f8fafc"
                                       : "#ffffff",
                                     border:
                                       field.userOverridden ? "1px solid #10b981"
-                                      : !isEditingFields ? "1px solid #e2e8f0"
+                                      : !isEditing ? "1px solid #e2e8f0"
                                       : "1px solid #cbd5e1",
                                     borderRadius: "3px",
-                                    cursor: !isEditingFields ? "not-allowed" : "pointer",
-                                    opacity: !isEditingFields ? 0.8 : 1,
+                                    cursor: !isEditing ? "not-allowed" : "pointer",
+                                    opacity: !isEditing ? 0.8 : 1,
                                   }}>
                                   {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
                                     <option key={typeOption} value={typeOption}>
@@ -2155,7 +2163,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                       (field.originalInferredType &&
                                         field.inferredType !== field.originalInferredType)
                                   );
-                                  const isResetEnabled = isEditingFields && isOverridden;
+                                  const isResetEnabled = isEditing && isOverridden;
                                   return (
                                     <button
                                       type='button'

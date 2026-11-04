@@ -35,6 +35,7 @@ import {
 import {
   projectTreeSignal,
   projectLayersSignal,
+  activeLayerIdSignal,
   isProjectDirtySignal,
   resolveLayerStyleItem,
   applyStyleToLayers,
@@ -254,10 +255,10 @@ export function collectAllLayerIds(
 }
 
 /**
- * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata.
+ * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata and synchronizing activeLayerIdSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-03
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier to inspect.
  * @returns {Promise<void>}
@@ -265,6 +266,7 @@ export function collectAllLayerIds(
 export async function openLayerPropertiesDialog(
   layerId: string
 ): Promise<void> {
+  activeLayerIdSignal.value = layerId;
   activeLayerPropertiesIdSignal.value = layerId;
   isLayerPropertiesLoadingSignal.value = true;
 

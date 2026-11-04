@@ -66,7 +66,12 @@ const {
   updatePreference,
 } = jiti('../../../src/renderer/state/preferencesSignals.ts');
 const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
-const { undoStackSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
+const {
+  undoStackSignal,
+  activeLayerIdSignal,
+  editableLayerIdsSignal,
+  toggleLayerEditingAction,
+} = jiti('../../../src/renderer/state/gisSignals.ts');
 
 describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)', () => {
   let originalDocument: typeof globalThis.document;
@@ -2039,6 +2044,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     ];
 
     beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
       projectLayersSignal.value = [
         {
           id: testLayerId,
@@ -2419,6 +2425,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     const testLayerId = 'layer-fields-toggle-146';
 
     beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
       projectLayersSignal.value = [
         {
           id: testLayerId,
@@ -2516,6 +2523,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     const testLayerId = 'layer-fields-reset-147';
 
     beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
       projectLayersSignal.value = [
         {
           id: testLayerId,
@@ -2628,6 +2636,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     const testLayerId = 'layer-fields-148';
 
     beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
       projectLayersSignal.value = [
         {
           id: testLayerId,
@@ -2723,6 +2732,93 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       // With isNewFieldOpen defaulting to false, newFieldWindow portal is closed
       assert.ok(!html.includes('new-field-dialog-cancel-btn'), 'New Field dialog controls not rendered when closed');
+    });
+  });
+
+  describe('Unified Layer Edit Mode & Workbench Active Layer Synchronization (Ticket #150)', () => {
+    const testLayerId = 'layer-unified-edit-150';
+
+    beforeEach(() => {
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = null;
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Unified Edit Layer',
+          type: 'vector',
+          source: '/data/unified.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'city_name',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+              userOverridden: false,
+            },
+          ],
+        },
+      ];
+    });
+
+    afterEach(() => {
+      closeLayerPropertiesDialog();
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = null;
+    });
+
+    it('opening LayerPropertiesDialog synchronizes Workbench activeLayerIdSignal', async () => {
+      assert.equal(activeLayerIdSignal.value, null);
+      await openLayerPropertiesDialog(testLayerId);
+      assert.equal(activeLayerIdSignal.value, testLayerId, 'activeLayerIdSignal must match opened layer ID');
+    });
+
+    it('Fields tab toggle edit button reflects editableLayerIdsSignal state and enables controls', async () => {
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      // 1. Off by default
+      let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('aria-pressed="false"'));
+      assert.ok(!html.includes('toggle-edit active'));
+      assert.ok(html.includes('disabled=""') || html.includes('disabled'));
+
+      // 2. Toggled on via toggleLayerEditingAction
+      toggleLayerEditingAction(testLayerId);
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId));
+
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('aria-pressed="true"'), 'Toggle edit button must be pressed when layer is in edit mode');
+      assert.ok(html.includes('toggle-edit active toolbar-btn'), 'Toggle edit button must have active class');
+
+      // Dropdown is no longer disabled
+      const selectMatch = html.match(/<select[^>]*class="[^"]*layer-field-type-select[^"]*"[^>]*>/);
+      assert.ok(selectMatch, 'Must find type select');
+      assert.ok(!selectMatch[0].includes('disabled'), 'Type select must not be disabled when layer edit mode is on');
+
+      // 3. Toggled off again
+      toggleLayerEditingAction(testLayerId);
+      assert.ok(!editableLayerIdsSignal.value.has(testLayerId));
+
+      html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+      assert.ok(html.includes('aria-pressed="false"'));
+      assert.ok(!html.includes('toggle-edit active'));
+    });
+
+    it('closing or cancelling LayerPropertiesDialog preserves Layer Edit Mode on the layer', async () => {
+      editableLayerIdsSignal.value = new Set([testLayerId]);
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'fields';
+
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId));
+
+      // Cancel edits
+      cancelLayerPropertiesEdits();
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId), 'Cancelling edits must not disable layer edit mode');
+
+      // Re-open and close
+      await openLayerPropertiesDialog(testLayerId);
+      closeLayerPropertiesDialog();
+      assert.ok(editableLayerIdsSignal.value.has(testLayerId), 'Closing dialog must not disable layer edit mode');
     });
   });
 });
