@@ -474,12 +474,21 @@ export function compileStyleFunction(
         }),
       });
     } else if (component.type === "simple-line") {
+      if (component.dashPattern === "no-line") {
+        return null;
+      }
       created = new Style({
         stroke: new Stroke({
           color: component.color,
           width: component.width,
+          ...(component.cap ? { lineCap: component.cap } : {}),
+          ...(component.join ? { lineJoin: component.join } : {}),
+          ...(component.offset !== undefined ? { offset: component.offset } : {}),
           ...(component.dashArray && component.dashArray.length > 0
             ? { lineDash: component.dashArray }
+            : {}),
+          ...(component.dashOffset !== undefined
+            ? { lineDashOffset: component.dashOffset }
             : {}),
         }),
       });

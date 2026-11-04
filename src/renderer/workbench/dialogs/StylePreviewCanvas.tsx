@@ -4,7 +4,7 @@
  * @description Real-time 120×120px HTML5 Canvas 2D preview renderer displaying sample geometries styled with Cartouche Symbology, OpenLayers Flat Style, or OGC SLD rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link StylePreviewCanvas}
  * @see {@link renderStylePreviewToCanvas}
@@ -40,7 +40,7 @@ export interface StylePreviewOptions {
  * @description Draws a representative polygon, line, or point marker on the provided CanvasRenderingContext2D.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {CanvasRenderingContext2D} ctx - HTML5 Canvas 2D rendering context.
  * @param {StylePreviewOptions} options - Style preview parameters and active style definition.
@@ -123,6 +123,10 @@ export function renderStylePreviewToCanvas(
             ctx.fillStyle = comp.color || "#3388ff";
             ctx.fill();
           } else if (comp.type === "simple-line") {
+            if (comp.dashPattern === "no-line") {
+              ctx.restore();
+              continue;
+            }
             if (isLine) {
               traceLine();
             } else {
@@ -130,10 +134,19 @@ export function renderStylePreviewToCanvas(
             }
             ctx.strokeStyle = comp.color || "#000000";
             ctx.lineWidth = comp.width ?? 1;
+            if (comp.cap) {
+              ctx.lineCap = comp.cap;
+            }
+            if (comp.join) {
+              ctx.lineJoin = comp.join;
+            }
             if (Array.isArray(comp.dashArray) && comp.dashArray.length > 0) {
               ctx.setLineDash(comp.dashArray);
             } else {
               ctx.setLineDash([]);
+            }
+            if (comp.dashOffset !== undefined) {
+              ctx.lineDashOffset = comp.dashOffset;
             }
             ctx.stroke();
           } else if (comp.type === "simple-marker") {
@@ -183,8 +196,19 @@ export function renderStylePreviewToCanvas(
           }
           ctx.strokeStyle = String(rule["stroke-color"]);
           ctx.lineWidth = Number(rule["stroke-width"] ?? 1);
+          if (rule["stroke-line-cap"]) {
+            ctx.lineCap = rule["stroke-line-cap"];
+          }
+          if (rule["stroke-line-join"]) {
+            ctx.lineJoin = rule["stroke-line-join"];
+          }
           if (Array.isArray(rule["stroke-line-dash"])) {
             ctx.setLineDash(rule["stroke-line-dash"]);
+          } else {
+            ctx.setLineDash([]);
+          }
+          if (rule["stroke-line-dash-offset"] !== undefined) {
+            ctx.lineDashOffset = Number(rule["stroke-line-dash-offset"]);
           }
           ctx.stroke();
         }
@@ -225,6 +249,15 @@ export function renderStylePreviewToCanvas(
       const strokeDashMatch = content.match(
         /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke-dasharray['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
       );
+      const strokeCapMatch = content.match(
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke-linecap['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
+      );
+      const strokeJoinMatch = content.match(
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke-linejoin['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
+      );
+      const strokeDashOffsetMatch = content.match(
+        /<(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)\s+name=['"]stroke-dashoffset['"][^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?(?:CssParameter|SvgParameter)>/i
+      );
       const sizeMatch = content.match(
         /<(?:[a-zA-Z0-9_-]+:)?Size[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?Size>/i
       );
@@ -234,6 +267,15 @@ export function renderStylePreviewToCanvas(
       const strokeWidth = strokeWidthMatch
         ? parseFloat(strokeWidthMatch[1].replace(/<[^>]+>/g, "").trim()) || 1
         : 1;
+      const strokeCap = strokeCapMatch
+        ? strokeCapMatch[1].replace(/<[^>]+>/g, "").trim()
+        : null;
+      const strokeJoin = strokeJoinMatch
+        ? strokeJoinMatch[1].replace(/<[^>]+>/g, "").trim()
+        : null;
+      const strokeDashOffset = strokeDashOffsetMatch
+        ? parseFloat(strokeDashOffsetMatch[1].replace(/<[^>]+>/g, "").trim())
+        : undefined;
       const sizeVal = sizeMatch
         ? parseFloat(sizeMatch[1].replace(/<[^>]+>/g, "").trim())
         : null;
@@ -268,6 +310,12 @@ export function renderStylePreviewToCanvas(
           }
           ctx.strokeStyle = strokeColor;
           ctx.lineWidth = strokeWidth;
+          if (strokeCap) {
+            ctx.lineCap = strokeCap as CanvasLineCap;
+          }
+          if (strokeJoin) {
+            ctx.lineJoin = strokeJoin as CanvasLineJoin;
+          }
           if (strokeDashMatch) {
             const rawDash = strokeDashMatch[1].replace(/<[^>]+>/g, "").trim();
             const dashes = rawDash
@@ -277,6 +325,9 @@ export function renderStylePreviewToCanvas(
             if (dashes.length > 0) {
               ctx.setLineDash(dashes);
             }
+          }
+          if (strokeDashOffset !== undefined && !isNaN(strokeDashOffset)) {
+            ctx.lineDashOffset = strokeDashOffset;
           }
           ctx.stroke();
         }

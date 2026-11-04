@@ -4,7 +4,7 @@
  * @description Unit tests for renderer styleCompiler verifying Cartouche Symbology compilation, OpenLayers StyleFunction closure caching, painter execution order, disabled component filtering, and format routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -211,6 +211,80 @@ describe('styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       const result3 = compileCartoucheLayerStyleSync({ format: 'cartouche', content: '{"format": "unknown"}' });
       assert.equal(result3.isFallback, true);
+    });
+  });
+
+  describe('Advanced SimpleLineComponent Stroke Options (Ticket #156)', () => {
+    it('maps lineCap, lineJoin, offset, lineDash, lineDashOffset, and float width to ol/style/Stroke', () => {
+      const advancedLineStyle: CartoucheLayerStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'line-adv',
+            type: 'simple-line',
+            enabled: true,
+            color: '#10b981',
+            width: 3.5,
+            offset: -4.5,
+            cap: 'square',
+            join: 'miter',
+            dashPattern: 'custom',
+            dashArray: [12, 6, 3, 6],
+            dashOffset: 2.5
+          }
+        ]
+      };
+
+      const styleFunction = compileStyleFunction(advancedLineStyle);
+      const styles = styleFunction(new Feature(), 1) as import('ol/style/Style').default[];
+
+      assert.equal(styles.length, 1);
+      const stroke = styles[0].getStroke();
+      assert.ok(stroke);
+      assert.equal(stroke.getColor(), '#10b981');
+      assert.equal(stroke.getWidth(), 3.5);
+      assert.equal(stroke.getLineCap(), 'square');
+      assert.equal(stroke.getLineJoin(), 'miter');
+      assert.equal(stroke.getOffset(), -4.5);
+      assert.deepEqual(stroke.getLineDash(), [12, 6, 3, 6]);
+      assert.equal(stroke.getLineDashOffset(), 2.5);
+    });
+
+    it('suppresses stroke rendering when dashPattern === "no-line" while preserving component in style definition', () => {
+      const noLineStyle: CartoucheLayerStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'fill-1',
+            type: 'simple-fill',
+            enabled: true,
+            color: '#3b82f6'
+          },
+          {
+            id: 'line-suppressed',
+            type: 'simple-line',
+            enabled: true,
+            color: '#ef4444',
+            width: 2,
+            dashPattern: 'no-line'
+          }
+        ]
+      };
+
+      // Verify component remains intact in the style definition
+      assert.equal(noLineStyle.components.length, 2);
+      assert.equal(noLineStyle.components[1].type, 'simple-line');
+      assert.equal((noLineStyle.components[1] as any).dashPattern, 'no-line');
+
+      // Verify compiled output has no stroke (only the fill style is returned)
+      const styleFunction = compileStyleFunction(noLineStyle);
+      const styles = styleFunction(new Feature(), 1) as import('ol/style/Style').default[];
+
+      assert.equal(styles.length, 1);
+      assert.ok(styles[0].getFill());
+      assert.equal(styles[0].getStroke(), null);
     });
   });
 
