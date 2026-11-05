@@ -87,6 +87,7 @@ import {
 import {
   openPreferencesDialog,
   loadPreferences,
+  updatePreference,
   prefsUiBaseFontSize,
   prefsUiIconSize,
 } from "@renderer/state/preferencesSignals";
@@ -570,6 +571,40 @@ export const Workbench: React.FC = () => {
         } as any);
       } else {
         const dockItemMatch = getWidgetDockItem(id);
+        if (dockItemMatch?.containerId) {
+          const containerPanel = dockviewApi.getPanel(dockItemMatch.containerId);
+          if (containerPanel) {
+            containerPanel.api.setActive();
+            addConsoleLog("info", `Focused existing tab container for panel: ${title}`, "Dockview");
+            return;
+          }
+          // If container is not active in Dockview, restore as independent widget with axisRatio = 1
+          const dock = dockItemMatch.dock;
+          const current = widgetDocksSignal.value;
+          const nextState = JSON.parse(JSON.stringify(current));
+          nextState[dock] = nextState[dock].map((item: any) => {
+            if (item.id === dockItemMatch.containerId) {
+              return {
+                ...item,
+                tabChildren: (item.tabChildren || []).filter((cid: string) => cid !== id),
+              };
+            }
+            return item;
+          });
+          const restoredItem = {
+            id,
+            dock,
+            order: nextState[dock].length,
+            axisRatio: 1,
+            dimensions: {},
+            visible: true,
+            isOverlapContainer: false,
+          };
+          nextState[dock].push(restoredItem);
+          widgetDocksSignal.value = nextState;
+          updatePreference("ui.workbench.widgetDocks", nextState);
+        }
+
         const panels = dockviewApi.panels;
         const mapPanels = panels.filter(
           (p) =>

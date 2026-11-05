@@ -4,12 +4,12 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { Widget, type WidgetProps } from "./Widget";
 import Icon from "@renderer/components/common/Icon";
@@ -24,6 +24,11 @@ import {
   prefsUiBaseFontSize,
   prefsUiIconSize,
 } from "@renderer/state/preferencesSignals";
+import { resolveWidgetDropZone, type WidgetDropZone } from "./widgetDropTarget";
+import {
+  getWidgetDockItem,
+  createOverlapContainer,
+} from "../../state/widgetDockSignals";
 
 import type { IDockviewPanelProps } from "dockview-react";
 
@@ -54,6 +59,7 @@ function parsePxValue(
  * @property {React.ReactNode} [children] - Content rendered inside body.
  * @property {DockviewApi} [containerApi] - Optional parent Dockview container API instance.
  * @property {DockviewPanelApi} [panelApi] - Optional Dockview panel API instance.
+ * @property {(targetId: string, draggedId: string) => void} [onOverlapBundle] - Callback fired when an overlappable widget is dropped onto this widget to create a tab group.
  */
 export interface BasicWidgetProps
   extends Omit<WidgetProps, "children">, Partial<IDockviewPanelProps> {
@@ -63,6 +69,7 @@ export interface BasicWidgetProps
   children?: React.ReactNode;
   containerApi?: DockviewApi;
   panelApi?: DockviewPanelApi;
+  onOverlapBundle?: (targetId: string, draggedId: string) => void;
 }
 
 /**
@@ -70,7 +77,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -126,15 +133,109 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
         [new PanelTransfer(viewId, groupId, panelId)],
         PanelTransfer.prototype
       );
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", panelId);
-      }
+    }
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", panelId);
+      e.dataTransfer.setData(
+        "application/x-cartouche-widget",
+        JSON.stringify({
+          widgetId: name,
+          panelId,
+          overlappable: !!overlappable,
+        })
+      );
     }
   };
 
   const handleHeaderDragEnd = () => {
     LocalSelectionTransfer.getInstance().clearData(PanelTransfer.prototype);
+  };
+
+  const [activeDropZone, setActiveDropZone] = useState<WidgetDropZone>("none");
+
+  const handleWidgetDragOver = (e: React.DragEvent) => {
+    const isWidgetDrag =
+      e.dataTransfer.types.includes("application/x-cartouche-widget") ||
+      e.dataTransfer.types.includes("application/x-cartouche-tab-extract") ||
+      e.dataTransfer.types.includes("text/plain");
+
+    if (!isWidgetDrag) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    let draggedOverlappable = false;
+    let draggedWidgetId: string | undefined;
+
+    try {
+      const raw = e.dataTransfer.getData("application/x-cartouche-widget");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        draggedOverlappable = !!parsed.overlappable;
+        draggedWidgetId = parsed.widgetId;
+      }
+    } catch {
+      // Data may be masked during dragover
+    }
+
+    const zone = resolveWidgetDropZone({
+      rect,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      targetOverlappable: !!overlappable,
+      draggedOverlappable: draggedOverlappable || !!overlappable,
+      isTargetOverlapContainer: false,
+      draggedWidgetId,
+      targetWidgetId: name,
+    });
+
+    if (zone !== "none") {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setActiveDropZone(zone);
+    } else if (activeDropZone !== "none") {
+      setActiveDropZone("none");
+    }
+  };
+
+  const handleWidgetDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setActiveDropZone("none");
+    }
+  };
+
+  const handleWidgetDrop = async (e: React.DragEvent) => {
+    const zone = activeDropZone;
+    setActiveDropZone("none");
+
+    let draggedId = "";
+
+    try {
+      const widgetData = e.dataTransfer.getData("application/x-cartouche-widget");
+      if (widgetData) {
+        const parsed = JSON.parse(widgetData);
+        draggedId = parsed.widgetId || parsed.panelId;
+      }
+    } catch {
+      // fallback
+    }
+
+    if (!draggedId) {
+      draggedId = e.dataTransfer.getData("text/plain");
+    }
+
+    if (!draggedId || draggedId === name) return;
+
+    if (zone === "center-overlap") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (props.onOverlapBundle) {
+        props.onOverlapBundle(name, draggedId);
+      } else {
+        const match = getWidgetDockItem(name);
+        const dockId = match ? match.dock : "left";
+        await createOverlapContainer(dockId, name, draggedId);
+      }
+    }
   };
 
   const canClose = !!(onClose || effectivePanelApi);
@@ -196,12 +297,110 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       onUndock={onUndock}
       containerApi={effectiveContainerApi}
       panelApi={effectivePanelApi}
+      onDragOver={handleWidgetDragOver}
+      onDragLeave={handleWidgetDragLeave}
+      onDrop={handleWidgetDrop}
       style={{
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
+        position: "relative",
         ...style,
       }}>
+      {/* Drop Target Visual Cues */}
+      {activeDropZone === "center-overlap" && (
+        <div
+          className='widget-drop-overlay is-center-overlap'
+          data-testid='drop-overlay-center'
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundColor: "rgba(37, 99, 235, 0.12)",
+            border: "2px dashed #2563eb",
+            zIndex: 50,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+          <div
+            style={{
+              backgroundColor: "#2563eb",
+              color: "#ffffff",
+              padding: "4px 10px",
+              borderRadius: "4px",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+            }}>
+            Group as Tabs
+          </div>
+        </div>
+      )}
+      {activeDropZone === "edge-top" && (
+        <div
+          className='widget-drop-indicator is-edge-top'
+          data-testid='drop-indicator-top'
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            backgroundColor: "#2563eb",
+            zIndex: 50,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {activeDropZone === "edge-bottom" && (
+        <div
+          className='widget-drop-indicator is-edge-bottom'
+          data-testid='drop-indicator-bottom'
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            backgroundColor: "#2563eb",
+            zIndex: 50,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {activeDropZone === "edge-left" && (
+        <div
+          className='widget-drop-indicator is-edge-left'
+          data-testid='drop-indicator-left'
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: "3px",
+            backgroundColor: "#2563eb",
+            zIndex: 50,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {activeDropZone === "edge-right" && (
+        <div
+          className='widget-drop-indicator is-edge-right'
+          data-testid='drop-indicator-right'
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: "3px",
+            backgroundColor: "#2563eb",
+            zIndex: 50,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {/* Header Row: Label + Close Button */}
       <div
         className='basic-widget-header'

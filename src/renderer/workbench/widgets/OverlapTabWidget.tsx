@@ -4,7 +4,7 @@
  * @description Tabbed container subclass of BasicWidget hosting multiple tool widgets, managing tab selection, drag-and-drop tab extraction, and single-child auto-dissolution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see docs/adr/0025-flex-proportional-docking-and-overlap-tab-widgets.md (ADR 0025)
@@ -13,6 +13,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
 import { logging } from "../../../shared/logging";
+import { resolveWidgetDropZone, type WidgetDropZone } from "./widgetDropTarget";
+import {
+  appendTabToOverlapContainer,
+  dissolveOverlapContainer,
+} from "../../state/widgetDockSignals";
 
 /**
  * Known human-friendly titles for Cartouche built-in dockable panels.
@@ -29,7 +34,7 @@ const DEFAULT_TAB_TITLES: Record<string, string> = {
  * @description Item specification for a child tab within OverlapTabWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @property {string} id - Unique identifier of the child widget.
  * @property {string} title - Label rendered on the tab strip button.
@@ -51,7 +56,7 @@ export interface OverlapTabItem {
  * @description Properties passed to OverlapTabWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @property {OverlapTabItem[]} [tabs] - Explicit list of child tab definitions.
  * @property {string} [activeTabId] - Initial or controlled active tab identifier.
@@ -77,7 +82,7 @@ export interface OverlapTabWidgetProps extends Partial<BasicWidgetProps> {
  * @description Subclass of BasicWidget providing a tabbed container for grouping overlappable tool widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @param {OverlapTabWidgetProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered tabbed container element or null when empty.
@@ -189,16 +194,119 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
     }
   };
 
-  const handleMasterClose = () => {
+  const handleMasterClose = async () => {
     if (onGroupClose) {
       onGroupClose();
     }
+    await dissolveOverlapContainer(name);
     if (onClose) {
       onClose();
     } else if (props.panelApi || (props as any).api) {
       (props.panelApi || (props as any).api).close();
     }
     setTabs([]);
+  };
+
+  const [activeDropZone, setActiveDropZone] = useState<WidgetDropZone>("none");
+
+  const handleContainerDragOver = (e: React.DragEvent) => {
+    const isWidgetDrag =
+      e.dataTransfer.types.includes("application/x-cartouche-widget") ||
+      e.dataTransfer.types.includes("application/x-cartouche-tab-extract") ||
+      e.dataTransfer.types.includes("text/plain");
+
+    if (!isWidgetDrag) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    let draggedOverlappable = false;
+    let draggedWidgetId: string | undefined;
+
+    try {
+      const raw = e.dataTransfer.getData("application/x-cartouche-widget");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        draggedOverlappable = !!parsed.overlappable;
+        draggedWidgetId = parsed.widgetId;
+      }
+    } catch {
+      // mask
+    }
+
+    const zone = resolveWidgetDropZone({
+      rect,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      targetOverlappable: true,
+      draggedOverlappable: draggedOverlappable || true,
+      isTargetOverlapContainer: true,
+      draggedWidgetId,
+      targetWidgetId: name,
+    });
+
+    if (zone !== "none") {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setActiveDropZone(zone);
+    } else if (activeDropZone !== "none") {
+      setActiveDropZone("none");
+    }
+  };
+
+  const handleContainerDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setActiveDropZone("none");
+    }
+  };
+
+  const handleContainerDrop = async (e: React.DragEvent) => {
+    const zone = activeDropZone;
+    setActiveDropZone("none");
+
+    let draggedId = "";
+    try {
+      const widgetData = e.dataTransfer.getData("application/x-cartouche-widget");
+      if (widgetData) {
+        const parsed = JSON.parse(widgetData);
+        draggedId = parsed.widgetId || parsed.panelId;
+      }
+    } catch {
+      // fallback
+    }
+
+    if (!draggedId) {
+      draggedId = e.dataTransfer.getData("text/plain");
+    }
+
+    if (!draggedId || draggedId === name || tabs.some((t) => t.id === draggedId)) return;
+
+    if (zone === "center-overlap") {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const newTab: OverlapTabItem = {
+        id: draggedId,
+        title: DEFAULT_TAB_TITLES[draggedId] || draggedId,
+        render: (renderProps) => {
+          const resolve = (props as any).resolveComponent;
+          const Component = resolve ? resolve(draggedId) : undefined;
+          if (Component) {
+            return <Component {...(props as any)} {...renderProps} />;
+          }
+          return (
+            <div className='unknown-widget-tab' style={{ padding: "16px" }}>
+              Widget {draggedId}
+            </div>
+          );
+        },
+      };
+
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(draggedId);
+      await appendTabToOverlapContainer(name, draggedId);
+      if (onTabChange) {
+        onTabChange(draggedId);
+      }
+    }
   };
 
   const handleTabDragStart = (e: React.DragEvent, tabId: string) => {
@@ -248,13 +356,47 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
       {...restBasicWidgetProps}>
       <div
         className='overlap-tab-container'
+        onDragOver={handleContainerDragOver}
+        onDragLeave={handleContainerDragLeave}
+        onDrop={handleContainerDrop}
         style={{
           display: "flex",
           flexDirection: "column",
           height: "100%",
           width: "100%",
           overflow: "hidden",
+          position: "relative",
         }}>
+        {/* Drop Target Visual Cue */}
+        {activeDropZone === "center-overlap" && (
+          <div
+            className='widget-drop-overlay is-center-overlap'
+            data-testid='tab-drop-overlay-center'
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(37, 99, 235, 0.12)",
+              border: "2px dashed #2563eb",
+              zIndex: 50,
+              pointerEvents: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+            <div
+              style={{
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                padding: "4px 10px",
+                borderRadius: "4px",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+              }}>
+              Add Tab to Group
+            </div>
+          </div>
+        )}
         {/* Tab Strip */}
         <div
           className='overlap-tab-strip'
