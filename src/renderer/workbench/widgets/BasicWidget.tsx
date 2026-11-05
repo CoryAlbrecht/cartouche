@@ -1,19 +1,19 @@
 /**
  * @file BasicWidget.tsx
  * @module renderer/workbench/widgets/BasicWidget
- * @description Standard subclass of Widget featuring a 3-control header bar (label, minimize toggle, close button) and collapsable content body.
+ * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-22
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
 
-import React, { useRef, useEffect } from "react";
-import { useSignals, useSignal } from "@preact/signals-react/runtime";
+import React, { useEffect } from "react";
+import { useSignals } from "@preact/signals-react/runtime";
 import { Widget, type WidgetProps } from "./Widget";
 import Icon from "@renderer/components/common/Icon";
-import { mdiWindowMinimize, mdiWindowRestore, mdiClose } from "@mdi/js";
+import { mdiClose } from "@mdi/js";
 import {
   PanelTransfer,
   LocalSelectionTransfer,
@@ -29,6 +29,11 @@ import type { IDockviewPanelProps } from "dockview-react";
 
 /**
  * Helper to parse pixel values from number or CSS string representations.
+ * @function parsePxValue
+ * @description Parses pixel numbers from CSS length strings or numeric representations.
+ * @param {number | string | undefined} val - Raw pixel or CSS value.
+ * @param {number} defaultVal - Default fallback value if parsing fails.
+ * @returns {number} Parsed numeric pixel value.
  */
 function parsePxValue(
   val: number | string | undefined,
@@ -60,10 +65,10 @@ export interface BasicWidgetProps
 
 /**
  * @component BasicWidget
- * @description Subclasses Widget to provide a collapsable panel container with a title header bar and minimize/close controls.
+ * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-22
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -95,29 +100,6 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const baseFontSizePt = prefsUiBaseFontSize.value ?? 12;
   const iconSize = prefsUiIconSize.value ?? 24;
   const headerIconSize = Math.round(iconSize * 0.8);
-
-  /**
-   * @signal isBasicWidgetMinimizedSignal
-   * @description Reactive signal tracking minimize toggle state of BasicWidget container.
-   * @author Cory Albrecht <cory@albrecht.name>
-   * @date 2026-09-22
-   * @updated 2026-10-01
-   * @since 0.1.0-dev
-   * @type {Signal<boolean>}
-   */
-  const isBasicWidgetMinimizedSignal = useSignal<boolean>(false);
-  const isMinimized = isBasicWidgetMinimizedSignal.value;
-  const savedBoundsRef = useRef<{
-    maxWidth: number | string;
-    maxHeight: number | string;
-  }>({ maxWidth, maxHeight });
-
-  const toggleMinimize = () => {
-    if (!isBasicWidgetMinimizedSignal.value) {
-      savedBoundsRef.current = { maxWidth, maxHeight };
-    }
-    isBasicWidgetMinimizedSignal.value = !isBasicWidgetMinimizedSignal.value;
-  };
 
   const handleClose = () => {
     if (onClose) {
@@ -152,20 +134,15 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     LocalSelectionTransfer.getInstance().clearData(PanelTransfer.prototype);
   };
 
-  const activeMaxWidth =
-    isMinimized ? "100%" : savedBoundsRef.current.maxWidth || maxWidth;
-  const activeMaxHeight =
-    isMinimized ? "1.875em" : savedBoundsRef.current.maxHeight || maxHeight;
-
   const canClose = !!(onClose || effectivePanelApi);
 
   // Dynamic minimum width floor calculation: border + padding + button controls + title margin + buffer + 4rem
   const borderPx = 2 * parsePxValue(border, 1);
   const paddingPx = 2 * parsePxValue(padding, 4);
 
-  const buttonCount = canClose ? 2 : 1;
+  const buttonCount = canClose ? 1 : 0;
   const buttonPaddingPx = 4; // 2px left + 2px right per control button
-  const buttonGapPx = buttonCount > 1 ? 4 : 0;
+  const buttonGapPx = 0;
   const headerPaddingPx = 16; // 8px left + 8px right inner header padding
   const titleMarginPx = 8; // 8px right margin on the title span
   const safetyBufferPx = 16; // Extra buffer to prevent cutoff from panel borders or scrollbars
@@ -208,10 +185,10 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       padding={padding}
       location={location}
       minWidth={effectiveMinWidth}
-      maxWidth={activeMaxWidth}
-      minHeight={isMinimized ? "1.875em" : minHeight}
-      maxHeight={activeMaxHeight}
-      className={`basic-widget ${name} ${isMinimized ? "is-minimized" : ""} ${className}`}
+      maxWidth={maxWidth}
+      minHeight={minHeight}
+      maxHeight={maxHeight}
+      className={`basic-widget ${name} ${className}`}
       onClose={canClose ? handleClose : undefined}
       onUndock={onUndock}
       containerApi={effectiveContainerApi}
@@ -220,10 +197,9 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
-        transition: "max-height 0.2s ease, min-height 0.2s ease",
         ...style,
       }}>
-      {/* Header Row: Label + Minimize Toggle + Close Button */}
+      {/* Header Row: Label + Close Button */}
       <div
         className='basic-widget-header'
         draggable={!!effectivePanelApi}
@@ -235,7 +211,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           justifyContent: "space-between",
           backgroundColor: "#faf8fc",
           padding: "4px 8px",
-          borderBottom: isMinimized ? "none" : "1px solid #e2e8f0",
+          borderBottom: "1px solid #e2e8f0",
           minHeight:
             "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
           userSelect: "none",
@@ -265,36 +241,6 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             gap: "4px",
             flexShrink: 0,
           }}>
-          <button
-            type='button'
-            className='widget-control-btn'
-            title={isMinimized ? "Restore" : "Minimize"}
-            draggable={false}
-            onMouseDown={(e) => e.stopPropagation()}
-            onDragStart={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMinimize();
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "2px",
-              color: "#64748b",
-              borderRadius: "2px",
-              display: "flex",
-              alignItems: "center",
-            }}>
-            <Icon
-              path={isMinimized ? mdiWindowRestore : mdiWindowMinimize}
-              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-            />
-          </button>
-
           {canClose && (
             <button
               type='button'
@@ -330,13 +276,11 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       </div>
 
       {/* Widget Content Body */}
-      {!isMinimized && (
-        <div
-          className='basic-widget-body'
-          style={{ flex: 1, overflow: "auto", position: "relative" }}>
-          {children}
-        </div>
-      )}
+      <div
+        className='basic-widget-body'
+        style={{ flex: 1, overflow: "auto", position: "relative" }}>
+        {children}
+      </div>
     </Widget>
   );
 };
