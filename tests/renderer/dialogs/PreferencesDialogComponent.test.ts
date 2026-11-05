@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-10-27
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -640,5 +640,24 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       html.includes('preference-unit-badge'),
       'Must render px unit badge for snappingDistance'
     );
+  });
+
+  it('renders sidebar category tab icons at 100% ui.icon.size without 0.75 multiplier (Ticket #172)', () => {
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    const tabBtnMatches = [...html.matchAll(/<button[^>]*class="[^"]*preferences-tab-btn[^"]*"[^>]*>(.*?)<\/button>/g)];
+    assert.ok(tabBtnMatches.length > 0, 'Must render sidebar category tab buttons');
+
+    for (const match of tabBtnMatches) {
+      const buttonHtml = match[0];
+      assert.ok(
+        buttonHtml.includes('width:var(--cartouche-ui-icon-size, 24px)'),
+        'Sidebar tab icon must render at 100% ui.icon.size'
+      );
+      assert.ok(
+        !buttonHtml.includes('* 0.75'),
+        'Sidebar tab icon must not have 0.75 downscaling multiplier'
+      );
+    }
   });
 });

@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -3846,6 +3846,30 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
       assert.ok(html.includes('stroke-dasharray="12 3 2 3"'), 'custom must render custom dashArray in 128px sample');
+    });
+  });
+
+  describe('Sidebar Navigation Tab Bar Icons (Ticket #172)', () => {
+    it('renders sidebar tab icons at 100% ui.icon.size without 0.75 multiplier', () => {
+      projectLayersSignal.value = [{ id: 'layer-test-172', name: 'Test Layer 172', geometryKind: 'Polygon' }];
+      openLayerPropertiesDialog('layer-test-172');
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      const tabBtnMatches = [...html.matchAll(/<button[^>]*class="[^"]*layer-properties-tab-btn[^"]*"[^>]*>(.*?)<\/button>/g)];
+      assert.ok(tabBtnMatches.length > 0, 'Must render sidebar tab buttons');
+
+      for (const match of tabBtnMatches) {
+        const buttonHtml = match[0];
+        assert.ok(
+          buttonHtml.includes('width:var(--cartouche-ui-icon-size, 24px)'),
+          'Sidebar tab icon must render at 100% ui.icon.size'
+        );
+        assert.ok(
+          !buttonHtml.includes('* 0.75'),
+          'Sidebar tab icon must not have 0.75 downscaling multiplier'
+        );
+      }
     });
   });
 });

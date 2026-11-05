@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-01
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -168,7 +168,7 @@ function resolveDescription(key: string, item: PreferenceItem): string {
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-27
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -1079,7 +1079,7 @@ export const PreferencesDialog: React.FC = () => {
                   onClick={() => {
                     activeCategorySignal.value = cat.id;
                   }}>
-                  <Icon path={cat.icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)' />
+                  <Icon path={cat.icon} />
                   <span>{tabLabel}</span>
                 </button>
               );

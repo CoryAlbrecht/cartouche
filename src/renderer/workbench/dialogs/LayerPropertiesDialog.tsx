@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -593,7 +593,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1210,10 +1210,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   textAlign: "left",
                   width: "100%",
                 }}>
-                <Icon
-                  path={tab.icon}
-                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)'
-                />
+                <Icon path={tab.icon} />
                 <span>{t(tab.labelKey)}</span>
               </button>
             );
