@@ -153,7 +153,7 @@ function resolveCustomSvgIconSync(basename: string): ParsedSvgIcon | null {
 export const Icon: React.FC<IconProps> = ({
   path,
   name,
-  size = "var(--cartouche-ui-icon-size, 24px)",
+  size = "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))",
   color = "currentColor",
   className,
   title,
@@ -164,7 +164,8 @@ export const Icon: React.FC<IconProps> = ({
       size <= 4 ?
         `${size * 24}px`
       : `${size}px`
-    : size || "var(--cartouche-ui-icon-size, 24px)";
+    : size
+      || "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))";
 
   // Determine if we should use name or path. The Action Registry might send 'file:...' into the 'path' prop.
   const targetStr = name || path || "";
@@ -193,13 +194,16 @@ export const Icon: React.FC<IconProps> = ({
         }
       })
       .catch((err) => {
-        logging.warn('Failed to load custom icon', err, { icon: `${basename}.svg`, scope: 'Icon' });
+        logging.warn("Failed to load custom icon", err, {
+          icon: `${basename}.svg`,
+          scope: "Icon",
+        });
       });
   }, [isFileIcon, basename]);
 
   const isCssExpression =
-    typeof dimension === "string" &&
-    (dimension.includes("var(") || dimension.includes("calc("));
+    typeof dimension === "string"
+    && (dimension.includes("var(") || dimension.includes("calc("));
 
   const baseStyle: React.CSSProperties = {
     display: "inline-block",

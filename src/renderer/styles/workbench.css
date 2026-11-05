@@ -385,16 +385,20 @@
   align-items: center;
   justify-content: center;
   width: calc(
-    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-icon-scaling, 1) + 6px
+    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1) +
+      6px
   );
   height: calc(
-    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-icon-scaling, 1) + 6px
+    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1) +
+      6px
   );
   min-width: calc(
-    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-icon-scaling, 1) + 6px
+    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1) +
+      6px
   );
   min-height: calc(
-    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-icon-scaling, 1) + 6px
+    var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1) +
+      6px
   );
   border: 1px solid transparent;
   border-radius: 3px;
