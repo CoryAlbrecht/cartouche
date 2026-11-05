@@ -50,6 +50,7 @@ function parsePxValue(
  * @extends WidgetProps
  * @property {string} [name='basic-widget'] - Widget identifier string.
  * @property {string} [displayName='Basic'] - Title label text rendered in header.
+ * @property {boolean} [overlappable=false] - Whether this widget can be grouped into an OverlapTabWidget container.
  * @property {React.ReactNode} [children] - Content rendered inside body.
  * @property {DockviewApi} [containerApi] - Optional parent Dockview container API instance.
  * @property {DockviewPanelApi} [panelApi] - Optional Dockview panel API instance.
@@ -58,6 +59,7 @@ export interface BasicWidgetProps
   extends Omit<WidgetProps, "children">, Partial<IDockviewPanelProps> {
   name?: string;
   displayName?: string;
+  readonly overlappable?: boolean;
   children?: React.ReactNode;
   containerApi?: DockviewApi;
   panelApi?: DockviewPanelApi;
@@ -77,6 +79,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const {
     name = "basic-widget",
     displayName = "Basic",
+    overlappable = false,
     background = "#f3f3f3",
     borderColor = background,
     border = 1,
@@ -188,7 +191,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       maxWidth={maxWidth}
       minHeight={minHeight}
       maxHeight={maxHeight}
-      className={`basic-widget ${name} ${className}`}
+      className={`basic-widget ${name} ${overlappable ? "is-overlappable" : ""} ${className}`}
       onClose={canClose ? handleClose : undefined}
       onUndock={onUndock}
       containerApi={effectiveContainerApi}
@@ -202,6 +205,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       {/* Header Row: Label + Close Button */}
       <div
         className='basic-widget-header'
+        data-overlappable={overlappable}
         draggable={!!effectivePanelApi}
         onDragStart={handleHeaderDragStart}
         onDragEnd={handleHeaderDragEnd}
