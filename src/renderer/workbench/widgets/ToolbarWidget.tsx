@@ -4,7 +4,7 @@
  * @description Dockable toolbar widget subclass of Widget featuring MDI grabber drag handles, divider icons, and drag-and-drop reordering indicators.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link resolveToolbarDropPosition}
@@ -32,12 +32,14 @@ import {
  * @property {ToolbarId} id - Toolbar identifier string ('project' | 'map_view' | 'selection' | 'digitizing' | 'snapping').
  * @property {ToolbarZone} [zone='top'] - Active dock zone placement ('top' | 'bottom' | 'left' | 'right').
  * @property {ToolbarDropPosition | null} [dropPosition] - Explicit drop placement indicator for preview and testing.
+ * @property {number} [scaling=1.0] - Toolbar scaling multiplier cascaded via --cartouche-ui-icon-scaling to child controls and icons.
  * @property {React.ReactNode} [children] - Toolbar action buttons and controls.
  */
 export interface ToolbarWidgetProps {
   id: ToolbarId;
   zone?: ToolbarZone;
   dropPosition?: ToolbarDropPosition | null;
+  scaling?: number;
   children?: React.ReactNode;
 }
 
@@ -46,7 +48,7 @@ export interface ToolbarWidgetProps {
  * @description Individual toolbar container widget rendered inside outer panel zones with drag handles, drop target indicators, and orientation awareness.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @param {ToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Rendered toolbar widget element.
@@ -55,10 +57,15 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   id,
   zone = "top",
   dropPosition: propDropPosition,
+  scaling = 1.0,
   children,
 }) => {
   useSignals();
   const isHorizontal = zone === "top" || zone === "bottom";
+  const effectiveScaling =
+    typeof scaling === "number" && Number.isFinite(scaling) && scaling > 0
+      ? scaling
+      : 1.0;
 
   /**
    * @signal dropPositionSignal
@@ -181,6 +188,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
       onDrop={handleDrop}
       style={{
         display: "inline-flex",
+        ["--cartouche-ui-icon-scaling" as string]: effectiveScaling,
         position:
           dropPosition &&
           (dropPosition === "new-row-above" ||
@@ -196,8 +204,16 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         border={1}
         borderColor='#e2e8f0'
         location={zone}
-        minWidth={isHorizontal ? "auto" : "calc(var(--cartouche-ui-icon-size, 24px) + 12px)"}
-        minHeight={isHorizontal ? "calc(var(--cartouche-ui-icon-size, 24px) + 12px)" : "auto"}
+        minWidth={
+          isHorizontal
+            ? "auto"
+            : "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)"
+        }
+        minHeight={
+          isHorizontal
+            ? "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)"
+            : "auto"
+        }
         style={{
           display: "inline-flex",
           flexDirection: isHorizontal ? "row" : "column",
