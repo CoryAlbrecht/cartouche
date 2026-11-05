@@ -4,7 +4,7 @@
  * @description Dockview panel component displaying system event logs, execution warnings, and error messages.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-30
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  */
@@ -16,16 +16,25 @@ import { consoleLogsSignal, addConsoleLog } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
 
 /**
+ * @typedef {Object} ConsolePanelProps
+ * @extends Partial<IDockviewPanelProps>
+ * @property {boolean} [overlappable=true] - Whether this widget can be grouped into an OverlapTabWidget container.
+ */
+export interface ConsolePanelProps extends Partial<IDockviewPanelProps> {
+  readonly overlappable?: boolean;
+}
+
+/**
  * @component ConsolePanel
  * @description Renders output logs list panel inside Dockview layout.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-09-22
+ * @updated 2026-11-04
  * @since 0.1.0-dev
- * @param {Partial<IDockviewPanelProps>} props - Dockview panel properties.
+ * @param {ConsolePanelProps} props - Dockview panel properties.
  * @returns {React.ReactElement} ConsolePanel element.
  */
-export const ConsolePanel: React.FC<Partial<IDockviewPanelProps>> = (props) => {
+export const ConsolePanel: React.FC<ConsolePanelProps> = (props) => {
   useSignals();
   const logs = consoleLogsSignal.value;
 
@@ -46,6 +55,7 @@ export const ConsolePanel: React.FC<Partial<IDockviewPanelProps>> = (props) => {
       name='console-widget'
       displayName={`Console (${logs.length})`}
       minHeight={120}
+      overlappable={props.overlappable ?? true}
       {...props}>
       <div
         className='console-panel'

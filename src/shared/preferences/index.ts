@@ -4,12 +4,12 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
 
-import type { PreferenceMap } from '../types';
+import { type PreferenceMap, DEFAULT_WORKBENCH_WIDGET_DOCKS } from '../types';
 
 /**
  * @description Dropdown options for log line colorization scope pattern preference.
@@ -311,6 +311,16 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     hidden: true,
     category: 'ui',
     type: 'boolean'
+  },
+  'ui.workbench.widgetDocks': {
+    displayName: 'Workbench Widget Docks Configuration',
+    value: DEFAULT_WORKBENCH_WIDGET_DOCKS,
+    defaultValue: DEFAULT_WORKBENCH_WIDGET_DOCKS,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'object',
+    description: 'Flex-proportional dock layout assignments, ratios, order, and overlap containers for workbench panels.'
   },
   'ui.preferencesDialog.location.x': {
     displayName: 'Preferences Dialog X Position',

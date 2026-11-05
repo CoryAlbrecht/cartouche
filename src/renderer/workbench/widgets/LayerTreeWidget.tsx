@@ -162,10 +162,12 @@ const MOUSE_CLICK_HOLD_TIMEOUT_MS = 800;
 
 /**
  * @typedef {Object} LayerTreeWidgetProps
+ * @property {boolean} [overlappable=true] - Whether this widget can be grouped into an OverlapTabWidget container.
  * @property {() => void} [onClose] - Callback when widget is closed.
  * @property {() => void} [onUndock] - Callback when widget is undocked.
  */
 export interface LayerTreeWidgetProps extends Partial<IDockviewPanelProps> {
+  readonly overlappable?: boolean;
   onClose?: () => void;
   onUndock?: () => void;
 }
@@ -1234,6 +1236,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       name='layer-tree-widget'
       displayName={displayName}
       className='layer-tree-panel-widget'
+      overlappable={props.overlappable ?? true}
       {...props}>
       <div
         className='layer-tree-container'

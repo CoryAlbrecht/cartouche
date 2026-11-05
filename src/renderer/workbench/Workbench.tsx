@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -87,6 +87,7 @@ import {
 import {
   openPreferencesDialog,
   loadPreferences,
+  updatePreference,
   prefsUiBaseFontSize,
   prefsUiIconSize,
 } from "@renderer/state/preferencesSignals";
@@ -99,6 +100,16 @@ import { SnappingOptionsDialog } from "./dialogs/SnappingOptionsDialog";
 import { handleWorkbenchKeyDown, executeWorkbenchAction } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
+import type { WidgetDockId } from "../../shared/types";
+import {
+  widgetDocksSignal,
+  getWidgetDockItem,
+  setWidgetDockItemVisibility,
+} from "../state/widgetDockSignals";
+import {
+  rebalanceDockOnResize,
+  detectAndSyncSashDrag,
+} from "./dockLayoutEngine";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 const SAVED_PANEL_STATES_KEY = "cartouche_workbench_panel_states_v1";
@@ -202,7 +213,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-01
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -520,6 +531,7 @@ export const Workbench: React.FC = () => {
         "Default GIS layout initialized: Layers Panel (Left), Map Viewport (Center).",
         "Dockview"
       );
+      setWidgetDockItemVisibility("layer-tree", true);
       updateOpenPanelsState(api);
     },
     [updateOpenPanelsState]
@@ -558,21 +570,91 @@ export const Workbench: React.FC = () => {
           priority: "low",
         } as any);
       } else {
+        const dockItemMatch = getWidgetDockItem(id);
+        if (dockItemMatch?.containerId) {
+          const containerPanel = dockviewApi.getPanel(dockItemMatch.containerId);
+          if (containerPanel) {
+            containerPanel.api.setActive();
+            addConsoleLog("info", `Focused existing tab container for panel: ${title}`, "Dockview");
+            return;
+          }
+          // If container is not active in Dockview, restore as independent widget with axisRatio = 1
+          const dock = dockItemMatch.dock;
+          const current = widgetDocksSignal.value;
+          const nextState = JSON.parse(JSON.stringify(current));
+          nextState[dock] = nextState[dock].map((item: any) => {
+            if (item.id === dockItemMatch.containerId) {
+              return {
+                ...item,
+                tabChildren: (item.tabChildren || []).filter((cid: string) => cid !== id),
+              };
+            }
+            return item;
+          });
+          const restoredItem = {
+            id,
+            dock,
+            order: nextState[dock].length,
+            axisRatio: 1,
+            dimensions: {},
+            visible: true,
+            isOverlapContainer: false,
+          };
+          nextState[dock].push(restoredItem);
+          widgetDocksSignal.value = nextState;
+          updatePreference("ui.workbench.widgetDocks", nextState);
+        }
+
         const panels = dockviewApi.panels;
         const mapPanels = panels.filter(
           (p) =>
             p.id.startsWith("map-viewport")
             || (p as any).view?.contentComponent === "map-viewport"
         );
-        const refPanelId =
-          savedState?.referencePanelId
-          || (mapPanels.length > 0 ? mapPanels[0].id : panels[0]?.id);
-        const targetRefPanel =
-          refPanelId ? dockviewApi.getPanel(refPanelId) : undefined;
-        const targetDir = savedState?.direction || (direction as any) || "left";
+        const mapRefPanel = mapPanels.length > 0 ? mapPanels[0] : panels[0];
 
-        const initialWidth = savedState?.width || 260;
-        const initialHeight = savedState?.height || 200;
+        let targetRefPanel: IDockviewPanel | undefined =
+          savedState?.referencePanelId ?
+            dockviewApi.getPanel(savedState.referencePanelId)
+          : mapRefPanel;
+        let targetDir: "left" | "right" | "above" | "below" =
+          savedState?.direction || (direction as any) || "left";
+
+        let initialWidth = savedState?.width || 260;
+        let initialHeight = savedState?.height || 200;
+
+        if (dockItemMatch) {
+          const dock = dockItemMatch.dock;
+          const isVertical = dock === "left" || dock === "right";
+          const openPanelsInDock = (widgetDocksSignal.value[dock] || [])
+            .filter((d) => d.id !== id && dockviewApi.getPanel(d.id) !== undefined)
+            .sort((a, b) => a.order - b.order);
+
+          if (openPanelsInDock.length > 0) {
+            const lastOpenItem = openPanelsInDock[openPanelsInDock.length - 1];
+            targetRefPanel = dockviewApi.getPanel(lastOpenItem.id);
+            targetDir = isVertical ? "below" : "right";
+          } else {
+            targetRefPanel = mapRefPanel;
+            targetDir =
+              dock === "left" ? "left"
+              : dock === "right" ? "right"
+              : dock === "top" ? "above"
+              : "below";
+          }
+
+          if (isVertical) {
+            initialWidth =
+              openPanelsInDock[0]?.dimensions.width
+              || dockItemMatch.item.dimensions.width
+              || 260;
+          } else {
+            initialHeight =
+              openPanelsInDock[0]?.dimensions.height
+              || dockItemMatch.item.dimensions.height
+              || 200;
+          }
+        }
 
         newPanel = dockviewApi.addPanel({
           id,
@@ -587,7 +669,25 @@ export const Workbench: React.FC = () => {
           priority: "low",
         } as any);
 
-        if (savedState?.width || savedState?.height) {
+        if (dockItemMatch) {
+          setWidgetDockItemVisibility(id, true);
+          const isVertical =
+            dockItemMatch.dock === "left" || dockItemMatch.dock === "right";
+          const openInDock = (widgetDocksSignal.value[dockItemMatch.dock] || []).filter(
+            (d) => dockviewApi.getPanel(d.id) !== undefined
+          );
+          if (openInDock.length > 1) {
+            setTimeout(() => {
+              const totalLength = openInDock.reduce((sum, item) => {
+                const p = dockviewApi.getPanel(item.id);
+                return sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0));
+              }, 0);
+              if (totalLength > 0) {
+                rebalanceDockOnResize(dockItemMatch.dock, totalLength, dockviewApi);
+              }
+            }, 0);
+          }
+        } else if (savedState?.width || savedState?.height) {
           setTimeout(() => {
             try {
               newPanel.api.setSize({
@@ -631,6 +731,32 @@ export const Workbench: React.FC = () => {
   useEffect(() => {
     registerTogglePanelHandler(togglePanel);
   }, [togglePanel]);
+
+  // Proportional rebalance on window resize
+  useEffect(() => {
+    if (!dockviewApi) return;
+    const handleWindowResize = () => {
+      const docks: WidgetDockId[] = ["left", "right", "top", "bottom"];
+      for (const dock of docks) {
+        const items = (widgetDocksSignal.value[dock] || []).filter(
+          (item) => item.visible && dockviewApi.getPanel(item.id) !== undefined
+        );
+        if (items.length > 1) {
+          const isVertical = dock === "left" || dock === "right";
+          const totalLength = items.reduce((sum, item) => {
+            const p = dockviewApi.getPanel(item.id);
+            return sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0));
+          }, 0);
+          if (totalLength > 0) {
+            rebalanceDockOnResize(dock, totalLength, dockviewApi);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, [dockviewApi]);
 
   const onReady = useCallback(
     (event: DockviewReadyEvent) => {
@@ -678,6 +804,25 @@ export const Workbench: React.FC = () => {
             }
           }
           originalClose();
+          setWidgetDockItemVisibility(panel.id, false);
+          const match = getWidgetDockItem(panel.id);
+          if (match) {
+            const isVertical = match.dock === "left" || match.dock === "right";
+            const remainingOpen = (widgetDocksSignal.value[match.dock] || []).filter(
+              (d) => d.id !== panel.id && api.getPanel(d.id) !== undefined
+            );
+            if (remainingOpen.length > 0) {
+              setTimeout(() => {
+                const totalLength = remainingOpen.reduce((sum, item) => {
+                  const p = api.getPanel(item.id);
+                  return sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0));
+                }, 0);
+                if (totalLength > 0) {
+                  rebalanceDockOnResize(match.dock, totalLength, api);
+                }
+              }, 0);
+            }
+          }
           updateOpenPanelsState(api);
         };
       };
@@ -732,6 +877,14 @@ export const Workbench: React.FC = () => {
         enforceWidgetHeaderHiding(api);
         capturePanelStates(api);
         updateOpenPanelsState(api);
+
+        const docks: WidgetDockId[] = ["left", "right", "top", "bottom"];
+        for (const d of docks) {
+          detectAndSyncSashDrag(d, api).catch((err) => {
+            logging.warn("Failed to sync sash drag for dock", err, { dock: d, scope: "Workbench" });
+          });
+        }
+
         try {
           const json = api.toJSON();
           localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(json));

@@ -1,10 +1,10 @@
 /**
  * @file BasicWidgetHeaderIcons.test.ts
  * @module tests/renderer/widgets/BasicWidgetHeaderIcons.test
- * @description Unit and component tests verifying BasicWidget header bar control icons (minimize/restore and close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and react to prefsUiIconSize signal changes.
+ * @description Unit and component tests verifying BasicWidget 2-control header bar control icons (close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and react to prefsUiIconSize signal changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-22
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link prefsUiIconSize}
@@ -434,7 +434,7 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     });
 
     const svgs = findAllNodes(container, el => el.tagName === 'SVG');
-    assert.strictEqual(svgs.length, 2, 'Should render 2 header action icons (minimize and close)');
+    assert.strictEqual(svgs.length, 1, 'Should render 1 header action icon (close)');
 
     for (const svg of svgs) {
       assert.ok(
@@ -512,43 +512,25 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     }
   });
 
-  it('preserves 80% CSS icon sizing when widget is minimized and restored', async () => {
+  it('renders strictly title and close button, omitting minimize/restore button from header bar', async () => {
     await act(async () => {
       root!.render(
         React.createElement(BasicWidget, {
           name: 'test-widget-toggle',
-          displayName: 'Toggle Widget',
+          displayName: '2-Control Widget',
           onClose: () => {}
         })
       );
     });
 
-    const minimizeBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && el.attributes.title === 'Minimize')[0];
-    assert.ok(minimizeBtn, 'Minimize button must be present');
+    const minimizeBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && (el.attributes.title === 'Minimize' || el.attributes.title === 'Restore'))[0];
+    assert.strictEqual(minimizeBtn, undefined, 'Minimize/restore button must not be present');
 
-    // Click minimize button
-    await act(async () => {
-      minimizeBtn.dispatchEvent({
-        type: 'click',
-        stopPropagation: () => {},
-        preventDefault: () => {}
-      });
-    });
-
-    // Check restore button rendered with 80% icon sizing
-    const restoreBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && el.attributes.title === 'Restore')[0];
-    assert.ok(restoreBtn, 'Restore button must be present after minimizing');
-
-    const restoreSvg = findAllNodes(restoreBtn, el => el.tagName === 'SVG')[0];
-    assert.ok(restoreSvg, 'Restore icon SVG must be present');
-    assert.ok(
-      restoreSvg.style.width.includes('calc(') && restoreSvg.style.width.includes('--cartouche-ui-icon-size') && restoreSvg.style.width.includes('0.5'),
-      `Restore icon style width must scale to 50%, got: ${restoreSvg.style.width}`
-    );
-    assert.strictEqual(restoreSvg.style.aspectRatio, '1');
+    const closeBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && el.attributes.title === 'Close')[0];
+    assert.ok(closeBtn, 'Close button must be present');
   });
 
-  it('renders single minimize header icon scaled to 80% when onClose is not provided', async () => {
+  it('renders 0 header action icons when onClose is not provided and no panelApi exists', async () => {
     await act(async () => {
       root!.render(
         React.createElement(BasicWidget, {
@@ -559,11 +541,8 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     });
 
     const svgs = findAllNodes(container, el => el.tagName === 'SVG');
-    assert.strictEqual(svgs.length, 1, 'Should render exactly 1 header icon when panel cannot close');
-    assert.ok(
-      svgs[0].style.width.includes('calc(') && svgs[0].style.width.includes('--cartouche-ui-icon-size') && svgs[0].style.width.includes('0.5'),
-      `Single minimize icon style width must scale to 50%, got: ${svgs[0].style.width}`
-    );
-    assert.strictEqual(svgs[0].style.aspectRatio, '1');
+    assert.strictEqual(svgs.length, 0, 'Should render 0 header icons when panel cannot close');
+    const btns = findAllNodes(container, el => el.tagName === 'BUTTON');
+    assert.strictEqual(btns.length, 0, 'Should render 0 buttons when panel cannot close');
   });
 });

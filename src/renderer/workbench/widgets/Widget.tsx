@@ -4,7 +4,7 @@
  * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link PopupMenu}
  */
@@ -51,6 +51,9 @@ export interface WidgetContextMenuItem {
  * @property {() => void} [onClose] - Callback when widget is closed.
  * @property {() => void} [onUndock] - Callback when widget is undocked.
  * @property {WidgetContextMenuItem[]} [customContextMenuItems] - Optional array of context menu items.
+ * @property {React.DragEventHandler<HTMLDivElement>} [onDragOver] - Optional drag over handler.
+ * @property {React.DragEventHandler<HTMLDivElement>} [onDragLeave] - Optional drag leave handler.
+ * @property {React.DragEventHandler<HTMLDivElement>} [onDrop] - Optional drop handler.
  * @property {DockviewApi} [containerApi] - Optional parent Dockview container API instance.
  * @property {DockviewPanelApi} [panelApi] - Optional Dockview panel API instance.
  */
@@ -73,6 +76,9 @@ export interface WidgetProps {
   customContextMenuItems?: WidgetContextMenuItem[];
   containerApi?: DockviewApi;
   panelApi?: DockviewPanelApi;
+  onDragOver?: React.DragEventHandler<HTMLDivElement>;
+  onDragLeave?: React.DragEventHandler<HTMLDivElement>;
+  onDrop?: React.DragEventHandler<HTMLDivElement>;
 }
 
 /**
@@ -80,7 +86,7 @@ export interface WidgetProps {
  * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @param {WidgetProps} props - Component properties.
  * @returns {React.ReactElement} Base widget container element.
@@ -102,6 +108,9 @@ export const Widget: React.FC<WidgetProps> = ({
   onClose,
   onUndock,
   customContextMenuItems = [],
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }) => {
   useSignals();
   /**
@@ -210,6 +219,9 @@ export const Widget: React.FC<WidgetProps> = ({
       data-current-height={dimensions.height}
       className={`cartouche-widget ${className} ${isUndocked ? "is-undocked" : ""}`}
       onContextMenu={handleContextMenu}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
       style={{
         backgroundColor: background,
         borderWidth: typeof border === "number" ? `${border}px` : border,
