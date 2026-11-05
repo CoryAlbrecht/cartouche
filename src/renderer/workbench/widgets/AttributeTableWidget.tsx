@@ -11,7 +11,7 @@
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { BasicWidget } from "../widgets/BasicWidget";
+import { BasicWidget } from "./BasicWidget";
 import {
   activeLayerSignal,
   activeLayerFeaturesSignal,
@@ -20,6 +20,7 @@ import {
   clearSelection,
 } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
+import { mdiTable } from "@mdi/js";
 
 /**
  * @typedef {Object} AttributeTablePanelProps
@@ -62,6 +63,7 @@ export const AttributeTablePanel: React.FC<AttributeTablePanelProps> = (
       displayName={displayName}
       minHeight={150}
       overlappable={props.overlappable ?? true}
+      icon={mdiTable}
       {...props}>
       <div
         className='attribute-table-container'

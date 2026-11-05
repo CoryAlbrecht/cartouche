@@ -15,7 +15,7 @@ import React from "react";
 import type { IDockviewPanelProps } from "dockview-react";
 import { MapViewportPanel } from "./panels/MapViewportPanel";
 import { LayerTreeWidget } from "./widgets/LayerTreeWidget";
-import { AttributeTablePanel } from "./panels/AttributeTablePanel";
+import { AttributeTablePanel } from "./widgets/AttributeTableWidget";
 import { ConsolePanel } from "./panels/ConsolePanel";
 import { OverlapTabWidget } from "./widgets/OverlapTabWidget";
 

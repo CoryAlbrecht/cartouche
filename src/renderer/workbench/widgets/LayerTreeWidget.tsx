@@ -39,6 +39,7 @@ import {
   mdiContentSaveOutline,
   mdiContentCopy,
   mdiContentPaste,
+  mdiLayersTripleOutline,
 } from "@mdi/js";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
 import {
@@ -1237,6 +1238,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       displayName={displayName}
       className='layer-tree-panel-widget'
       overlappable={props.overlappable ?? true}
+      icon={mdiLayersTripleOutline}
       {...props}>
       <div
         className='layer-tree-container'
