@@ -34,6 +34,7 @@ import {
   mdiTrashCanOutline,
   mdiFolderPlusOutline,
   mdiPencilOutline,
+  mdiClockOutline,
   mdiLayersOutline,
   mdiContentSaveOutline,
   mdiContentCopy,
@@ -931,6 +932,9 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         projectLayersSignal.value.find((l) => l.id === layer.id)
       : undefined;
     const resolvedFeatureCount = layer.featureCount ?? layerDesc?.featureCount;
+    const hasTemporal = Boolean(
+      layer.temporalEnabled ?? layerDesc?.temporalEnabled
+    );
 
     return (
       <React.Fragment key={layer.id}>
@@ -1037,6 +1041,21 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
               </span>
             )}
           </span>
+
+          {hasTemporal && (
+            <span
+              className='tree-icon-slot tree-temporal-icon-slot'
+              style={{ color: "#2563eb" }}
+              title={
+                t("tree_node_layer_temporal_enabled")
+                || "Dynamic temporal control enabled"
+              }>
+              <Icon
+                path={mdiClockOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+              />
+            </span>
+          )}
         </div>
         {isDropTarget
           && dragOverState?.position === "after"

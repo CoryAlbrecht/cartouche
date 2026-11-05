@@ -306,7 +306,7 @@ const {
 
 const { editableLayerIdsSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
-const { mdiPencilOutline } = jiti('@mdi/js');
+const { mdiPencilOutline, mdiClockOutline } = jiti('@mdi/js');
 
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
 
@@ -323,7 +323,8 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     activeLayerIdSignal.value = null;
     editableLayerIdsSignal.value = new Set();
     dictionarySignal.value = {
-      tree_node_layer_in_edit_mode: 'Layer is in edit mode'
+      tree_node_layer_in_edit_mode: 'Layer is in edit mode',
+      tree_node_layer_temporal_enabled: 'Dynamic temporal control enabled'
     };
 
     projectTreeSignal.value = [
@@ -376,7 +377,8 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     activeLayerIdSignal.value = null;
     editableLayerIdsSignal.value = new Set();
     dictionarySignal.value = {
-      tree_node_layer_in_edit_mode: 'Layer is in edit mode'
+      tree_node_layer_in_edit_mode: 'Layer is in edit mode',
+      tree_node_layer_temporal_enabled: 'Dynamic temporal control enabled'
     };
   });
 
@@ -694,5 +696,134 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     lakesRow = layerRows[0];
     editIcons = findAllNodes(lakesRow, el => el.className.includes('tree-edit-icon-slot'));
     assert.strictEqual(editIcons.length, 0, 'Pencil icon reactively removed when edit mode is toggled off');
+  });
+
+  it('renders MDI clock-outline icon immediately following title when dynamic temporal control is enabled and updates reactively (Ticket #163)', async () => {
+    // 1. Initial render without temporal control
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    let layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    let lakesRow = layerRows[0];
+    let clockIcons = findAllNodes(lakesRow, el => el.className.includes('tree-temporal-icon-slot'));
+    assert.strictEqual(clockIcons.length, 0, 'No clock icon when temporal control is disabled');
+
+    // Group and project root rows must not have clock icon
+    const groupRows = findAllNodes(container!, el => el.className.includes('tree-node-group'));
+    assert.ok(groupRows.length > 0, 'Group row exists');
+    const groupClockIcons = findAllNodes(groupRows[0], el => el.className.includes('tree-temporal-icon-slot'));
+    assert.strictEqual(groupClockIcons.length, 0, 'Group row must never render clock icon');
+
+    const projectRow = findAllNodes(container!, el => el.className.includes('tree-node-project'))[0];
+    assert.ok(projectRow, 'Project root row must exist');
+    const rootClockIcons = findAllNodes(projectRow, el => el.className.includes('tree-temporal-icon-slot'));
+    assert.strictEqual(rootClockIcons.length, 0, 'Project root must never render clock icon');
+
+    // 2. Enable dynamic temporal control on Lakes layer in projectTreeSignal
+    await act(async () => {
+      projectTreeSignal.value = [
+        {
+          id: 'group-water',
+          name: 'Hydrography',
+          visible: true,
+          expanded: true,
+          children: [
+            {
+              id: 'layer-lakes',
+              name: 'Major Lakes',
+              type: 'vector',
+              source: '/data/lakes.shp',
+              visible: true,
+              geometryKind: 'Polygon',
+              featureCount: 1353,
+              temporalEnabled: true
+            },
+            {
+              id: 'layer-rivers-loading',
+              name: 'Rivers and Streams',
+              type: 'vector',
+              source: '/data/rivers.shp',
+              visible: true,
+              geometryKind: 'LineString',
+              temporalEnabled: false
+            }
+          ]
+        }
+      ];
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    lakesRow = layerRows[0];
+    const riversRow = layerRows[1];
+
+    clockIcons = findAllNodes(lakesRow, el => el.className.includes('tree-temporal-icon-slot'));
+    assert.strictEqual(clockIcons.length, 1, 'Clock icon rendered when temporalEnabled is true');
+
+    const clockSpan = clockIcons[0];
+    assert.strictEqual(
+      clockSpan.attributes['title'],
+      'Dynamic temporal control enabled',
+      'Clock icon must have accessible tooltip'
+    );
+    assert.strictEqual(clockSpan.style.color, '#2563eb', 'Clock icon must use #2563eb accent color');
+
+    // Verify SVG icon path
+    const svgPath = findAllNodes(clockSpan, el => el.tagName === 'PATH')[0];
+    assert.ok(svgPath, 'SVG path must be present in temporal icon slot');
+    assert.strictEqual(svgPath.attributes['d'], mdiClockOutline, 'Must render mdiClockOutline path');
+
+    // Positioning check: clock icon must appear AFTER .tree-node-title in childNodes
+    const lakesRowChildClasses = lakesRow.childNodes
+      .filter(c => c.nodeType === 1)
+      .map(c => c.className || '');
+    const titleIndex = lakesRowChildClasses.findIndex(c => c.includes('tree-node-title'));
+    const clockIndex = lakesRowChildClasses.findIndex(c => c.includes('tree-temporal-icon-slot'));
+    assert.ok(titleIndex !== -1, 'tree-node-title exists');
+    assert.ok(clockIndex !== -1, 'tree-temporal-icon-slot exists');
+    assert.ok(
+      clockIndex > titleIndex,
+      `Clock icon must be positioned after tree-node-title (clock=${clockIndex}, title=${titleIndex})`
+    );
+
+    // Feature count badge positioning check
+    const titleNode = lakesRow.childNodes.find(c => c.className && c.className.includes('tree-node-title'));
+    const countBadge = findAllNodes(titleNode, el => el.className.includes('tree-node-count'))[0];
+    assert.ok(countBadge, 'Vector feature count badge must be within tree-node-title');
+
+    // Rivers has temporalEnabled: false, so must not render clock icon
+    const riverClockIcons = findAllNodes(riversRow, el => el.className.includes('tree-temporal-icon-slot'));
+    assert.strictEqual(riverClockIcons.length, 0, 'Disabled temporal layer must not render clock icon');
+
+    // 3. Reactively disable temporal control
+    await act(async () => {
+      projectTreeSignal.value = [
+        {
+          id: 'group-water',
+          name: 'Hydrography',
+          visible: true,
+          expanded: true,
+          children: [
+            {
+              id: 'layer-lakes',
+              name: 'Major Lakes',
+              type: 'vector',
+              source: '/data/lakes.shp',
+              visible: true,
+              geometryKind: 'Polygon',
+              featureCount: 1353,
+              temporalEnabled: false
+            }
+          ]
+        }
+      ];
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    layerRows = findAllNodes(container!, el => el.className.includes('tree-node-layer'));
+    lakesRow = layerRows[0];
+    clockIcons = findAllNodes(lakesRow, el => el.className.includes('tree-temporal-icon-slot'));
+    assert.strictEqual(clockIcons.length, 0, 'Clock icon reactively removed when temporalEnabled is false');
   });
 });

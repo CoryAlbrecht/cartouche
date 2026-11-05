@@ -1047,6 +1047,10 @@
   margin-left: 2px;
 }
 
+.tree-temporal-icon-slot {
+  margin-left: 4px;
+}
+
 .tree-node-title,
 .project-title {
   flex: 0 0 auto;
