@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -18,6 +18,7 @@ export * from './project';
 export * from './styling';
 export * from './i18n';
 export * from './layers';
+export * from './docks';
 export * from '../dialogs';
 
 /**
@@ -265,7 +266,7 @@ export interface PreferenceItem<T = any> {
   unit?: string;
   category?: 'ui' | 'rendering' | 'plugins' | 'general' | 'map_tools';
   description?: string;
-  type?: 'string' | 'number' | 'boolean' | 'select';
+  type?: 'string' | 'number' | 'boolean' | 'select' | 'object';
   controls?: PreferenceControlType[];
   i18nId?: string;
   patterns?: string[];
