@@ -33,6 +33,7 @@ import {
  * @property {ToolbarZone} [zone='top'] - Active dock zone placement ('top' | 'bottom' | 'left' | 'right').
  * @property {ToolbarDropPosition | null} [dropPosition] - Explicit drop placement indicator for preview and testing.
  * @property {number} [scaling=1.0] - Toolbar scaling multiplier cascaded via --cartouche-ui-icon-scaling to child controls and icons.
+ * @property {boolean} [showGrabber=true] - Whether to render the MDI drag grabber handle. Set to false in embedded widget toolstrips.
  * @property {React.ReactNode} [children] - Toolbar action buttons and controls.
  */
 export interface ToolbarWidgetProps {
@@ -40,12 +41,13 @@ export interface ToolbarWidgetProps {
   zone?: ToolbarZone;
   dropPosition?: ToolbarDropPosition | null;
   scaling?: number;
+  showGrabber?: boolean;
   children?: React.ReactNode;
 }
 
 /**
  * @component ToolbarWidget
- * @description Individual toolbar container widget rendered inside outer panel zones with drag handles, drop target indicators, and orientation awareness.
+ * @description Individual toolbar container widget rendered inside outer panel zones or embedded widget toolstrips with drag handles, drop target indicators, and orientation awareness.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
  * @updated 2026-11-05
@@ -58,6 +60,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   zone = "top",
   dropPosition: propDropPosition,
   scaling = 1.0,
+  showGrabber = true,
   children,
 }) => {
   useSignals();
@@ -225,22 +228,24 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
           cursor: "default",
         }}>
         {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with low contrast */}
-        <span
-          className='toolbar-grabber'
-          title='Drag toolbar to reorder or move to another edge'
-          draggable={true}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "grab",
-            userSelect: "none",
-            padding: isHorizontal ? "0 2px" : "2px 0",
-          }}>
-          <Icon path={isHorizontal ? mdiDrag : mdiDragHorizontal} />
-        </span>
+        {showGrabber && (
+          <span
+            className='toolbar-grabber'
+            title='Drag toolbar to reorder or move to another edge'
+            draggable={true}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "grab",
+              userSelect: "none",
+              padding: isHorizontal ? "0 2px" : "2px 0",
+            }}>
+            <Icon path={isHorizontal ? mdiDrag : mdiDragHorizontal} />
+          </span>
+        )}
 
         {/* Child Controls */}
         {children}

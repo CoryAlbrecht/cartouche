@@ -4,7 +4,7 @@
  * @description Toolbar widget hosting spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link SplitToolButton}
@@ -40,9 +40,13 @@ import { ToolbarWidget } from "../ToolbarWidget";
 /**
  * @typedef {Object} SelectionToolbarWidgetProps
  * @property {ToolbarZone} [zone='top'] - Outer panel dock zone.
+ * @property {number} [scaling=1.0] - Toolbar scaling multiplier cascaded via --cartouche-ui-icon-scaling.
+ * @property {boolean} [showGrabber=true] - Whether to render the grabber handle.
  */
 export interface SelectionToolbarWidgetProps {
   zone?: ToolbarZone;
+  scaling?: number;
+  showGrabber?: boolean;
 }
 
 /**
@@ -98,13 +102,15 @@ export function isDeselectAllDisabled(
  * @description Renders spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @param {SelectionToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} SelectionToolbarWidget instance.
  */
 export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
   zone = "top",
+  scaling = 1.0,
+  showGrabber = true,
 }) => {
   useSignals();
   const { t } = useTranslation();
@@ -157,7 +163,11 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
   const deselectDisabled = isDeselectAllDisabled(selectedFeatureIdsSignal.value);
 
   return (
-    <ToolbarWidget id='selection' zone={zone}>
+    <ToolbarWidget
+      id='selection'
+      zone={zone}
+      scaling={scaling}
+      showGrabber={showGrabber}>
       <SplitToolButton
         activeAction={activeSelectionModeSignal.value}
         options={SELECTION_TOOL_OPTIONS}

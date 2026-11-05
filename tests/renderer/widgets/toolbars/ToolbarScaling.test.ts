@@ -1,12 +1,14 @@
 /**
  * @file ToolbarScaling.test.ts
  * @module tests/renderer/widgets/toolbars/ToolbarScaling.test
- * @description Unit and component tests verifying ToolbarWidget scaling prop, CSS custom property inheritance, and container dimension adjustments.
+ * @description Unit and component tests verifying ToolbarWidget, SelectionToolbarWidget, and DigitizingToolbarWidget scaling and showGrabber props.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
  * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
+ * @see {@link SelectionToolbarWidget}
+ * @see {@link DigitizingToolbarWidget}
  */
 
 import { describe, it } from 'node:test';
@@ -16,6 +18,8 @@ import createJiti from 'jiti';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/ToolbarWidget';
+import type { SelectionToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/toolbars/SelectionToolbarWidget';
+import type { DigitizingToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/toolbars/DigitizingToolbarWidget';
 
 const jiti = createJiti(import.meta.url, {
   jsx: true,
@@ -29,6 +33,18 @@ const { ToolbarWidget } = jiti(
   '../../../../src/renderer/workbench/widgets/ToolbarWidget'
 ) as {
   ToolbarWidget: React.FC<ToolbarWidgetProps>;
+};
+
+const { SelectionToolbarWidget } = jiti(
+  '../../../../src/renderer/workbench/widgets/toolbars/SelectionToolbarWidget'
+) as {
+  SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps>;
+};
+
+const { DigitizingToolbarWidget } = jiti(
+  '../../../../src/renderer/workbench/widgets/toolbars/DigitizingToolbarWidget'
+) as {
+  DigitizingToolbarWidget: React.FC<DigitizingToolbarWidgetProps>;
 };
 
 describe('ToolbarWidget Scaling Prop & CSS Property Inheritance', () => {
@@ -128,6 +144,99 @@ describe('ToolbarWidget Scaling Prop & CSS Property Inheritance', () => {
         'min-width:calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)'
       ),
       'Vertical toolbar must calculate minWidth incorporating icon scaling'
+    );
+  });
+
+  it('renders grabber handle when showGrabber is true or omitted', () => {
+    const htmlDefault = renderToStaticMarkup(
+      React.createElement(ToolbarWidget, { id: 'project', zone: 'top' }, 'TestControls')
+    );
+    assert.ok(
+      htmlDefault.includes('toolbar-grabber'),
+      'Toolbar must include grabber handle when showGrabber is omitted'
+    );
+
+    const htmlExplicit = renderToStaticMarkup(
+      React.createElement(
+        ToolbarWidget,
+        { id: 'project', zone: 'top', showGrabber: true },
+        'TestControls'
+      )
+    );
+    assert.ok(
+      htmlExplicit.includes('toolbar-grabber'),
+      'Toolbar must include grabber handle when showGrabber is explicitly true'
+    );
+  });
+
+  it('omits grabber handle when showGrabber is false', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(
+        ToolbarWidget,
+        { id: 'project', zone: 'top', showGrabber: false },
+        'TestControls'
+      )
+    );
+    assert.strictEqual(
+      html.includes('toolbar-grabber'),
+      false,
+      'Toolbar must not include grabber handle when showGrabber is false'
+    );
+  });
+
+  it('passes scaling and showGrabber through SelectionToolbarWidget', () => {
+    const htmlWithGrabber = renderToStaticMarkup(
+      React.createElement(SelectionToolbarWidget, { zone: 'top', scaling: 0.667 })
+    );
+    assert.ok(
+      htmlWithGrabber.includes('--cartouche-ui-icon-scaling:0.667') ||
+        htmlWithGrabber.includes('--cartouche-ui-icon-scaling: 0.667'),
+      'SelectionToolbarWidget must pass scaling down to ToolbarWidget'
+    );
+    assert.ok(
+      htmlWithGrabber.includes('toolbar-grabber'),
+      'SelectionToolbarWidget must include grabber by default'
+    );
+
+    const htmlWithoutGrabber = renderToStaticMarkup(
+      React.createElement(SelectionToolbarWidget, {
+        zone: 'top',
+        scaling: 0.667,
+        showGrabber: false,
+      })
+    );
+    assert.strictEqual(
+      htmlWithoutGrabber.includes('toolbar-grabber'),
+      false,
+      'SelectionToolbarWidget must suppress grabber when showGrabber is false'
+    );
+  });
+
+  it('passes scaling and showGrabber through DigitizingToolbarWidget', () => {
+    const htmlWithGrabber = renderToStaticMarkup(
+      React.createElement(DigitizingToolbarWidget, { zone: 'top', scaling: 0.667 })
+    );
+    assert.ok(
+      htmlWithGrabber.includes('--cartouche-ui-icon-scaling:0.667') ||
+        htmlWithGrabber.includes('--cartouche-ui-icon-scaling: 0.667'),
+      'DigitizingToolbarWidget must pass scaling down to ToolbarWidget'
+    );
+    assert.ok(
+      htmlWithGrabber.includes('toolbar-grabber'),
+      'DigitizingToolbarWidget must include grabber by default'
+    );
+
+    const htmlWithoutGrabber = renderToStaticMarkup(
+      React.createElement(DigitizingToolbarWidget, {
+        zone: 'top',
+        scaling: 0.667,
+        showGrabber: false,
+      })
+    );
+    assert.strictEqual(
+      htmlWithoutGrabber.includes('toolbar-grabber'),
+      false,
+      'DigitizingToolbarWidget must suppress grabber when showGrabber is false'
     );
   });
 });
