@@ -1,12 +1,14 @@
 /**
- * @file AttributeTablePanel.tsx
- * @module renderer/workbench/panels/AttributeTablePanel
- * @description Dockview panel component displaying tabular feature properties and attribute records for active spatial layers.
+ * @file AttributeTableWidget.tsx
+ * @module renderer/workbench/widgets/AttributeTableWidget
+ * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
+ * @see {@link SelectionToolbarWidget}
+ * @see {@link DigitizingToolbarWidget}
  */
 
 import React from "react";
@@ -17,31 +19,38 @@ import {
   activeLayerFeaturesSignal,
   selectedFeatureIdsSignal,
   toggleFeatureSelection,
-  clearSelection,
 } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
 import { mdiTable } from "@mdi/js";
+import { SelectionToolbarWidget } from "./toolbars/SelectionToolbarWidget";
+import { DigitizingToolbarWidget } from "./toolbars/DigitizingToolbarWidget";
 
 /**
- * @typedef {Object} AttributeTablePanelProps
+ * @typedef {Object} AttributeTableWidgetProps
  * @extends Partial<IDockviewPanelProps>
  * @property {boolean} [overlappable=true] - Whether this widget can be grouped into an OverlapTabWidget container.
  */
-export interface AttributeTablePanelProps extends Partial<IDockviewPanelProps> {
+export interface AttributeTableWidgetProps extends Partial<IDockviewPanelProps> {
   readonly overlappable?: boolean;
 }
 
 /**
- * @component AttributeTablePanel
- * @description Renders interactive attribute table for inspecting and selecting feature records of active GIS layers.
+ * Backward compatibility alias for AttributeTableWidgetProps.
+ * @typedef {AttributeTableWidgetProps} AttributeTablePanelProps
+ */
+export type AttributeTablePanelProps = AttributeTableWidgetProps;
+
+/**
+ * @component AttributeTableWidget
+ * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
- * @param {AttributeTablePanelProps} props - Dockview panel properties.
- * @returns {React.ReactElement} AttributeTablePanel element.
+ * @param {AttributeTableWidgetProps} props - Dockview panel properties.
+ * @returns {React.ReactElement} AttributeTableWidget element.
  */
-export const AttributeTablePanel: React.FC<AttributeTablePanelProps> = (
+export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   props
 ) => {
   useSignals();
@@ -78,29 +87,24 @@ export const AttributeTablePanel: React.FC<AttributeTablePanelProps> = (
             <div
               className='attribute-table-header'
               style={{
-                padding: "6px 10px",
+                padding: "2px 4px",
                 backgroundColor: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
                 display: "flex",
-                justifyContent: "space-between",
                 alignItems: "center",
+                flexWrap: "wrap",
+                gap: "4px",
               }}>
-              <span
-                className='table-title'
-                style={{ fontSize: "0.8333rem", color: "#334155" }}>
-                <strong>{activeLayer.name}</strong> — {features.length} features
-                ({selectedIds.size} selected)
-              </span>
-              <div className='table-actions'>
-                {selectedIds.size > 0 && (
-                  <button
-                    className='small-action-btn'
-                    onClick={clearSelection}
-                    style={{ fontSize: "0.75rem", padding: "2px 8px" }}>
-                    Deselect All
-                  </button>
-                )}
-              </div>
+              <SelectionToolbarWidget
+                zone='top'
+                scaling={0.667}
+                showGrabber={false}
+              />
+              <DigitizingToolbarWidget
+                zone='top'
+                scaling={0.667}
+                showGrabber={false}
+              />
             </div>
 
             <div
@@ -171,4 +175,10 @@ export const AttributeTablePanel: React.FC<AttributeTablePanelProps> = (
   );
 };
 
-AttributeTablePanel.displayName = "AttributeTablePanel";
+AttributeTableWidget.displayName = "AttributeTableWidget";
+
+/**
+ * Backward compatibility alias for AttributeTableWidget.
+ * @component AttributeTablePanel
+ */
+export const AttributeTablePanel = AttributeTableWidget;

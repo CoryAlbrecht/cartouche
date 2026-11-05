@@ -1,0 +1,397 @@
+/**
+ * @file AttributeTableWidget.test.ts
+ * @module tests/renderer/widgets/AttributeTableWidget.test
+ * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-05
+ * @updated 2026-11-05
+ * @since 0.1.0-dev
+ * @see {@link AttributeTableWidget}
+ */
+
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import createJiti from 'jiti';
+import React, { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import type { AttributeTableWidgetProps } from '../../../src/renderer/workbench/widgets/AttributeTableWidget';
+import type { GisLayer } from '../../../src/renderer/state/gisSignals';
+
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+/**
+ * Lightweight mock DOM Element representation for headless React 19 testing in Node.js.
+ */
+class MockElement {
+  nodeType = 1;
+  tagName: string;
+  nodeName: string;
+  ownerDocument: any = null;
+  parentNode: any = null;
+  childNodes: any[] = [];
+  style: Record<string, string> & {
+    setProperty: (name: string, val: string) => void;
+    removeProperty: (name: string) => void;
+    getPropertyValue: (name: string) => string;
+  };
+  className = '';
+  attributes: Record<string, string> = {};
+  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+
+  constructor(tag = 'div') {
+    this.tagName = tag.toUpperCase();
+    this.nodeName = tag.toUpperCase();
+    const styleProps: Record<string, string> = {};
+    this.style = Object.assign(styleProps, {
+      setProperty: (name: string, val: string) => {
+        styleProps[name] = String(val);
+      },
+      removeProperty: (name: string) => {
+        delete styleProps[name];
+      },
+      getPropertyValue: (name: string) => styleProps[name] || '',
+    });
+  }
+
+  setAttribute(name: string, val: any): void {
+    this.attributes[name] = String(val);
+    if (name === 'class') this.className = String(val);
+    if (name === 'id') (this as any).id = String(val);
+  }
+
+  getAttribute(name: string): string | null {
+    if (name === 'class') return this.className || null;
+    if (name === 'id') return (this as any).id || null;
+    return this.attributes[name] ?? null;
+  }
+
+  removeAttribute(name: string): void {
+    delete this.attributes[name];
+    if (name === 'class') this.className = '';
+    if (name === 'id') delete (this as any).id;
+  }
+
+  hasAttribute(name: string): boolean {
+    return name in this.attributes;
+  }
+
+  appendChild(child: any): any {
+    if (child.parentNode) {
+      child.parentNode.removeChild(child);
+    }
+    child.parentNode = this;
+    this.childNodes.push(child);
+    return child;
+  }
+
+  removeChild(child: any): any {
+    const idx = this.childNodes.indexOf(child);
+    if (idx !== -1) {
+      this.childNodes.splice(idx, 1);
+      child.parentNode = null;
+    }
+    return child;
+  }
+
+  insertBefore(newChild: any, refChild: any): any {
+    if (!refChild) return this.appendChild(newChild);
+    const idx = this.childNodes.indexOf(refChild);
+    if (idx !== -1) {
+      if (newChild.parentNode) newChild.parentNode.removeChild(newChild);
+      newChild.parentNode = this;
+      this.childNodes.splice(idx, 0, newChild);
+    }
+    return newChild;
+  }
+
+  addEventListener(type: string, cb: (e: any) => void, capture = false): void {
+    if (!this.eventListeners[type]) this.eventListeners[type] = [];
+    this.eventListeners[type].push({ cb, capture });
+  }
+
+  removeEventListener(type: string, cb: (e: any) => void): void {
+    if (!this.eventListeners[type]) return;
+    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+  }
+
+  contains(node: any): boolean {
+    if (node === this) return true;
+    for (const child of this.childNodes) {
+      if (child.contains && child.contains(node)) return true;
+    }
+    return false;
+  }
+
+  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
+    return { width: 300, height: 200, top: 0, left: 0, right: 300, bottom: 200 };
+  }
+}
+
+let doc: any;
+let container: MockElement;
+let root: Root | null = null;
+let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+
+function setupDom(): void {
+  windowListeners = {};
+  const documentElement = new MockElement('html');
+  const body = new MockElement('body');
+  documentElement.appendChild(body);
+
+  doc = {
+    nodeType: 9,
+    documentElement,
+    body,
+    createElement: (tag: string) => {
+      const el = new MockElement(tag);
+      el.ownerDocument = doc;
+      return el;
+    },
+    createElementNS: (_ns: string, tag: string) => {
+      const el = new MockElement(tag);
+      el.ownerDocument = doc;
+      return el;
+    },
+    createTextNode: (text: string) => ({
+      nodeType: 3,
+      nodeValue: text,
+      ownerDocument: doc,
+      parentNode: null,
+    }),
+    createComment: (data: string) => ({
+      nodeType: 8,
+      data,
+      ownerDocument: doc,
+      parentNode: null,
+    }),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    defaultView: null as any,
+  };
+  documentElement.ownerDocument = doc;
+  body.ownerDocument = doc;
+
+  const win: any = {
+    innerWidth: 1024,
+    innerHeight: 768,
+    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+      if (!windowListeners[type]) windowListeners[type] = [];
+      windowListeners[type].push({ cb, capture: Boolean(capture) });
+    },
+    removeEventListener: (type: string, cb: (e: any) => void) => {
+      if (!windowListeners[type]) return;
+      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+    },
+    document: doc,
+    HTMLElement: MockElement,
+    Element: MockElement,
+    getComputedStyle: () => ({ getPropertyValue: () => '' }),
+  };
+
+  doc.defaultView = win;
+  (globalThis as any).window = win;
+  (globalThis as any).document = doc;
+  (globalThis as any).HTMLIFrameElement = win.HTMLIFrameElement = class {};
+  (globalThis as any).HTMLElement = MockElement;
+  (globalThis as any).Element = MockElement;
+  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+
+  container = doc.createElement('div');
+  body.appendChild(container);
+  root = createRoot(container as any);
+}
+
+function tearDownDom(): void {
+  if (root) {
+    try {
+      act(() => {
+        root!.unmount();
+      });
+    } catch {
+      // Ignored
+    }
+    root = null;
+  }
+}
+
+function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+  const result: MockElement[] = [];
+  if (predicate(rootNode)) result.push(rootNode);
+  for (const child of rootNode.childNodes) {
+    if (child && child.nodeType === 1) {
+      result.push(...findAllNodes(child, predicate));
+    }
+  }
+  return result;
+}
+
+const jiti = createJiti(import.meta.url, {
+  jsx: true,
+  alias: {
+    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
+    '@shared': path.resolve(process.cwd(), 'src/shared'),
+    '@main': path.resolve(process.cwd(), 'src/main'),
+  },
+});
+
+const {
+  AttributeTableWidget,
+  AttributeTablePanel,
+} = jiti('../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx') as {
+  AttributeTableWidget: React.FC<AttributeTableWidgetProps>;
+  AttributeTablePanel: React.FC<AttributeTableWidgetProps>;
+};
+
+const {
+  activeLayerIdSignal,
+  layersSignal,
+  projectLayersSignal,
+  projectTreeSignal,
+  featuresSignal,
+  activeToolSignal,
+  activeSelectionModeSignal,
+  editableLayerIdsSignal,
+  selectedFeatureIdsSignal,
+} = jiti('../../../src/renderer/state/gisSignals.ts') as {
+  activeLayerIdSignal: { value: string | null };
+  layersSignal: { value: GisLayer[] };
+  projectLayersSignal: { value: GisLayer[] };
+  projectTreeSignal: { value: any[] };
+  featuresSignal: { value: any[] };
+  activeToolSignal: { value: string };
+  activeSelectionModeSignal: { value: string };
+  editableLayerIdsSignal: { value: Set<string> };
+  selectedFeatureIdsSignal: { value: Set<string | number> };
+};
+
+describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
+  beforeEach(() => {
+    setupDom();
+    activeLayerIdSignal.value = null;
+    layersSignal.value = [];
+    projectLayersSignal.value = [];
+    projectTreeSignal.value = [];
+    featuresSignal.value = [];
+    activeToolSignal.value = 'pan';
+    activeSelectionModeSignal.value = 'select_feature';
+    editableLayerIdsSignal.value = new Set();
+    selectedFeatureIdsSignal.value = new Set();
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it('exports AttributeTableWidget and retains AttributeTablePanel alias', () => {
+    assert.strictEqual(typeof AttributeTableWidget, 'function');
+    assert.strictEqual(AttributeTablePanel, AttributeTableWidget);
+  });
+
+  it('renders empty message when no active layer is selected', async () => {
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget, {}));
+    });
+
+    const emptyMsg = findAllNodes(container, el => el.className.includes('empty-panel-message'))[0];
+    assert.ok(emptyMsg, 'Empty panel message must be rendered when active layer is null');
+  });
+
+  it('renders embedded Selection and Digitizing toolbars in header when layer is active', async () => {
+    const mockLayer: GisLayer = {
+      id: 'layer-parcels',
+      name: 'Parcels',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1.0,
+      color: '#3b82f6',
+      featureCount: 1,
+    };
+
+    layersSignal.value = [mockLayer];
+    activeLayerIdSignal.value = 'layer-parcels';
+    featuresSignal.value = [
+      { id: 1, layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel A', area: 1200 } },
+    ];
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget, {}));
+    });
+
+    const header = findAllNodes(container, el => el.className.includes('attribute-table-header'))[0];
+    assert.ok(header, 'Attribute table header container must exist');
+
+    // Verify redundant title text is absent
+    const redundantTitle = findAllNodes(container, el => el.className.includes('table-title'))[0];
+    assert.strictEqual(redundantTitle, undefined, 'Redundant table title text must not be rendered in header');
+
+    // Verify SelectionToolbarWidget is embedded
+    const selectionToolbar = findAllNodes(container, el => el.getAttribute('id') === 'toolbar-widget-selection')[0];
+    assert.ok(selectionToolbar, 'SelectionToolbarWidget must be embedded inside attribute table header');
+
+    // Verify DigitizingToolbarWidget is embedded
+    const digitizingToolbar = findAllNodes(container, el => el.getAttribute('id') === 'toolbar-widget-digitizing')[0];
+    assert.ok(digitizingToolbar, 'DigitizingToolbarWidget must be embedded inside attribute table header');
+
+    // Verify grabber handles are suppressed in both toolbars
+    const grabbers = findAllNodes(header, el => el.className.includes('toolbar-grabber'));
+    assert.strictEqual(grabbers.length, 0, 'Embedded toolbars must suppress grabber handles (showGrabber={false})');
+
+    // Verify scaling is set to 0.667 on toolbar wrappers
+    const toolbarsWithScaling = findAllNodes(header, el => {
+      const scalingVal = (el.style as any)['--cartouche-ui-icon-scaling'] || el.style.getPropertyValue('--cartouche-ui-icon-scaling');
+      return scalingVal === '0.667' || scalingVal === 0.667;
+    });
+    assert.strictEqual(
+      toolbarsWithScaling.length >= 2,
+      true,
+      'Both embedded toolbars must apply --cartouche-ui-icon-scaling: 0.667'
+    );
+  });
+
+  it('reflects reactive state changes across active tools and layer edit mode', async () => {
+    const mockLayer: GisLayer = {
+      id: 'layer-rivers',
+      name: 'Rivers',
+      kind: 'vector',
+      geometryKind: 'LineString',
+      visible: true,
+      opacity: 1.0,
+      color: '#06b6d4',
+      featureCount: 0,
+    };
+
+    layersSignal.value = [mockLayer];
+    activeLayerIdSignal.value = 'layer-rivers';
+    featuresSignal.value = [];
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget, {}));
+    });
+
+    const toggleBtn = findAllNodes(container, el => el.getAttribute('id') === 'toolbar-tool-toggle-layer-editing')[0];
+    assert.ok(toggleBtn, 'Toggle layer editing button must exist');
+    assert.strictEqual(
+      toggleBtn.className.includes('active'),
+      false,
+      'Toggle editing button must not be active when edit mode is off'
+    );
+
+    // Toggle edit mode in signals
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set(['layer-rivers']);
+    });
+
+    assert.strictEqual(
+      toggleBtn.className.includes('active'),
+      true,
+      'Toggle editing button must become active immediately when editableLayerIdsSignal changes'
+    );
+  });
+});
