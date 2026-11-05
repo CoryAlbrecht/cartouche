@@ -8,17 +8,21 @@
 /* Noto Sans Math (Regular 400 - Scoped to Mathematical and Greek Unicode ranges) */
 @font-face {
   font-family: "Noto Sans Math";
-  src: url("../../../assets/fonts/noto-sans-math/NotoSansMath-Regular.woff2") format("woff2");
+  src: url("../../../assets/fonts/noto-sans-math/NotoSansMath-Regular.woff2")
+    format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0370-03FF, U+2100-214F, U+2200-22FF, U+2300-23FF, U+25A0-25FF, U+27C0-27EF, U+2980-2AFF, U+1D400-1D7FF;
+  unicode-range:
+    U+0370-03FF, U+2100-214F, U+2200-22FF, U+2300-23FF, U+25A0-25FF,
+    U+27C0-27EF, U+2980-2AFF, U+1D400-1D7FF;
 }
 
 /* Noto Sans (Regular 400, Bold 700, Italic) */
 @font-face {
   font-family: "Noto Sans";
-  src: url("../../../assets/fonts/noto-sans/NotoSans-Regular.woff2") format("woff2");
+  src: url("../../../assets/fonts/noto-sans/NotoSans-Regular.woff2")
+    format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -26,7 +30,8 @@
 
 @font-face {
   font-family: "Noto Sans";
-  src: url("../../../assets/fonts/noto-sans/NotoSans-Bold.woff2") format("woff2");
+  src: url("../../../assets/fonts/noto-sans/NotoSans-Bold.woff2")
+    format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -34,7 +39,8 @@
 
 @font-face {
   font-family: "Noto Sans";
-  src: url("../../../assets/fonts/noto-sans/NotoSans-Italic.woff2") format("woff2");
+  src: url("../../../assets/fonts/noto-sans/NotoSans-Italic.woff2")
+    format("woff2");
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -43,7 +49,8 @@
 /* Noto Sans Mono (Regular 400, Bold 700) */
 @font-face {
   font-family: "Noto Sans Mono";
-  src: url("../../../assets/fonts/noto-sans-mono/NotoSansMono-Regular.woff2") format("woff2");
+  src: url("../../../assets/fonts/noto-sans-mono/NotoSansMono-Regular.woff2")
+    format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -51,7 +58,8 @@
 
 @font-face {
   font-family: "Noto Sans Mono";
-  src: url("../../../assets/fonts/noto-sans-mono/NotoSansMono-Bold.woff2") format("woff2");
+  src: url("../../../assets/fonts/noto-sans-mono/NotoSansMono-Bold.woff2")
+    format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -68,6 +76,7 @@
     "Courier New", monospace;
   --cartouche-ui-basefont-size: 12pt;
   --cartouche-ui-icon-size: 24px;
+  --cartouche-ui-icon-scaling: 1;
 
   /* Window / Menubar Palette */
   --cartouche-menubar-bg: #1b446c;
