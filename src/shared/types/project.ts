@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -184,10 +184,11 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {LayerFieldInfo[]} [fields] - Attribute field schema definitions.
  * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
  * @property {number} [featureCount] - Total number of features in the dataset.
+ * @property {boolean} [temporalEnabled] - Whether dynamic temporal control is enabled on the layer.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -210,6 +211,7 @@ export interface ProjectLayerItem {
   customProperties?: Record<string, unknown>;
   extent?: BoundingBox;
   featureCount?: number;
+  temporalEnabled?: boolean;
 }
 
 /**

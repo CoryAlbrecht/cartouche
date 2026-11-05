@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -118,7 +118,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-11-01
+   * @updated 2026-11-04
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -364,6 +364,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
         selectable:
           raw["@_selectable"] !== "false" && raw["@_selectable"] !== false,
         readOnly: raw["@_readOnly"] === "true" || raw["@_readOnly"] === true,
+        temporalEnabled:
+          raw["@_temporalEnabled"] === "true"
+          || raw["@_temporalEnabled"] === true
+          || raw["@_temporalEnabled"] === "1",
         layerKind: raw["@_layerKind"] || undefined,
         geometryKind: raw["@_geometryKind"] || undefined,
         style,
@@ -577,7 +581,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-04
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
    * @returns {string} XML project document string.
@@ -698,6 +702,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
       }
       if (layer.selectable !== undefined) {
         attrs.push(`selectable="${layer.selectable !== false}"`);
+      }
+      if (layer.temporalEnabled !== undefined) {
+        attrs.push(`temporalEnabled="${layer.temporalEnabled === true}"`);
       }
 
       res.push(`${pad}<layer ${attrs.join(" ")}>`);

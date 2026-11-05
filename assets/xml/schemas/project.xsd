@@ -162,6 +162,7 @@
     <xs:attribute name="selectable" type="xs:boolean" default="true" />
     <xs:attribute name="minScale" type="xs:double" />
     <xs:attribute name="maxScale" type="xs:double" />
+    <xs:attribute name="temporalEnabled" type="xs:boolean" default="false" />
   </xs:complexType>
 
   <!-- Layer Attribute Fields Collection Type -->

@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -593,7 +593,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -2634,7 +2634,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     <input
                       id='layer-prop-time-enable'
                       type='checkbox'
-                      defaultChecked={false}
+                      checked={draft.temporalEnabled ?? false}
+                      onChange={(e) =>
+                        updateLayerPropertiesDraft({
+                          temporalEnabled: e.target.checked,
+                        })
+                      }
                     />
                     <span>{t("layer_properties_time_enable")}</span>
                   </label>

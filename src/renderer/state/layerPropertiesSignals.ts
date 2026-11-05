@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -14,7 +14,7 @@
  * @see {@link discardUnappliedFieldChanges}
  */
 
-import { signal, type Signal } from "@preact/signals-react";
+import { signal, batch, type Signal } from "@preact/signals-react";
 import type {
   LayerDetailedInfo,
   ProjectLayerItem,
@@ -70,6 +70,7 @@ export type LayerPropertiesTabId =
  * @property {string | null} styleValidationError - Validation error message for style content, or null if valid.
  * @property {LayerVisualSymbolizer} visualSymbolizer - Active draft visual symbolizer control parameters.
  * @property {number} opacity - Draft layer opacity between 0.0 and 1.0.
+ * @property {boolean} temporalEnabled - Whether dynamic temporal control is enabled on the layer.
  * @property {Record<string, string>} [formatCache] - In-memory style text cache indexed by format key across switches.
  * @property {LayerFieldInfo[]} [fields] - Draft array of layer attribute field definitions.
  */
@@ -85,6 +86,7 @@ export interface LayerPropertiesDraft {
   styleValidationError: string | null;
   visualSymbolizer: LayerVisualSymbolizer;
   opacity: number;
+  temporalEnabled: boolean;
   formatCache?: Record<string, string>;
   fields?: LayerFieldInfo[];
 }
@@ -186,7 +188,7 @@ export const isLayerPropertiesLoadingSignal: Signal<boolean> =
  * @description Holds uncommitted draft modifications for the active layer properties session across tab transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-31
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @type {Signal<LayerPropertiesDraft>}
  */
@@ -203,6 +205,7 @@ export const layerPropertiesDraftSignal: Signal<LayerPropertiesDraft> =
     styleValidationError: null,
     visualSymbolizer: {},
     opacity: 1,
+    temporalEnabled: false,
     formatCache: {},
   });
 
@@ -273,7 +276,7 @@ export function collectAllLayerIds(
  * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata and synchronizing activeLayerIdSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier to inspect.
  * @returns {Promise<void>}
@@ -328,6 +331,8 @@ export async function openLayerPropertiesDialog(
     : "";
   const initialOpacity =
     typeof currentLayer?.opacity === "number" ? currentLayer.opacity : 1;
+  const initialTemporal =
+    currentLayer?.temporalEnabled ?? currentProjectLayer?.temporalEnabled ?? false;
 
   const resolvedStyleItem = resolveLayerStyleItem(layerId);
   const initialFormat = resolvedStyleItem.format || "openlayers";
@@ -389,6 +394,7 @@ export async function openLayerPropertiesDialog(
     styleValidationError: null,
     visualSymbolizer: initialVisual,
     opacity: initialOpacity,
+    temporalEnabled: initialTemporal,
     formatCache: initialCache,
     fields: initialFields,
   };
@@ -452,7 +458,7 @@ export async function openLayerPropertiesDialog(
  * @description Closes the LayerPropertiesDialog and resets session state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -473,6 +479,7 @@ export function closeLayerPropertiesDialog(): void {
     styleValidationError: null,
     visualSymbolizer: {},
     opacity: 1,
+    temporalEnabled: false,
     formatCache: {},
     fields: undefined,
   };
@@ -756,10 +763,10 @@ export function updateLayerPropertiesInTree(
 }
 
 /**
- * @description Commits active draft modifications (name, ID, CRS, filter, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
+ * @description Commits active draft modifications (name, ID, CRS, filter, temporalEnabled, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-03
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -822,6 +829,7 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
       id: trimmedId,
       name: trimmedName,
       crs: updatedCrs,
+      temporalEnabled: draft.temporalEnabled,
       customProperties: {
         ...(currentLayer.customProperties || {}),
         featureFilter: draft.featureFilter.trim(),
@@ -830,9 +838,28 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
   );
 
   // Update active ID signal and draft state to reflect confirmed new layer ID
-  activeLayerPropertiesIdSignal.value = trimmedId;
-  projectTreeSignal.value = updatedTree;
-  isProjectDirtySignal.value = true;
+  batch(() => {
+    activeLayerPropertiesIdSignal.value = trimmedId;
+    projectTreeSignal.value = updatedTree;
+    if (projectLayersSignal.value.some((l) => l.id === activeId)) {
+      projectLayersSignal.value = projectLayersSignal.value.map((desc) =>
+        desc.id === activeId
+          ? {
+              ...desc,
+              id: trimmedId,
+              name: trimmedName,
+              crs: updatedCrs,
+              temporalEnabled: draft.temporalEnabled,
+              customProperties: {
+                ...(desc.customProperties || {}),
+                featureFilter: draft.featureFilter.trim(),
+              },
+            }
+          : desc
+      );
+    }
+    isProjectDirtySignal.value = true;
+  });
 
   // 4. Apply transactional draft style and opacity to layer
   if (draft.styleContent) {

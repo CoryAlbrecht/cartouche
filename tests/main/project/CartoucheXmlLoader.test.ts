@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-02
+ * @updated 2026-11-04
  * @since 0.1.0-dev
  */
 
@@ -931,6 +931,81 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const validation = validateXmlAgainstSchema(xmlWithInvalidType);
     assert.equal(validation.valid, false, 'Schema validation should fail for invalid inferredType "timestamp"');
     assert.match(validation.error || '', /inferredType|timestamp/);
+  });
+
+  it('serializes, deserializes, and validates temporalEnabled attribute against schema (Ticket #162)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'temporal-test.cproj');
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'Temporal Test Project',
+        creator: 'Cory Albrecht',
+        description: 'Verifies dynamic temporal control persistence.',
+        date: '2026-11-04',
+        createdAt: '2026-11-04T12:00:00.000Z',
+        updatedAt: '2026-11-04T12:00:00.000Z',
+        appVersion: '0.1.0-dev'
+      },
+      crs: {
+        authId: 'EPSG:4326',
+        srid: 4326,
+        description: 'WGS 84'
+      },
+      layers: [
+        {
+          id: 'layer-temporal-on',
+          name: 'Temporal Enabled Layer',
+          type: 'geojson',
+          source: '/data/temporal-on.geojson',
+          visible: true,
+          temporalEnabled: true
+        },
+        {
+          id: 'layer-temporal-off',
+          name: 'Temporal Disabled Layer',
+          type: 'geojson',
+          source: '/data/temporal-off.geojson',
+          visible: true,
+          temporalEnabled: false
+        },
+        {
+          id: 'layer-temporal-omitted',
+          name: 'Temporal Omitted Layer',
+          type: 'geojson',
+          source: '/data/temporal-omitted.geojson',
+          visible: true
+        }
+      ]
+    };
+
+    await loader.save(model, testFile);
+    const xmlContent = fs.readFileSync(testFile, 'utf-8');
+
+    // 1. Verify schema validity
+    const validation = validateXmlAgainstSchema(xmlContent);
+    assert.equal(validation.valid, true, `Schema validation failed: ${validation.error}`);
+
+    // 2. Verify serialized attributes
+    assert.match(xmlContent, /<layer[^>]*id="layer-temporal-on"[^>]*temporalEnabled="true"/);
+    assert.match(xmlContent, /<layer[^>]*id="layer-temporal-off"[^>]*temporalEnabled="false"/);
+
+    // 3. Verify deserialization roundtrip
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.layers.length, 3);
+
+    const l1 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.equal(l1.id, 'layer-temporal-on');
+    assert.equal(l1.temporalEnabled, true);
+
+    const l2 = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.equal(l2.id, 'layer-temporal-off');
+    assert.equal(l2.temporalEnabled, false);
+
+    const l3 = loaded.layers[2] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.equal(l3.id, 'layer-temporal-omitted');
+    assert.equal(l3.temporalEnabled, false); // Defaults to false
   });
 });
 

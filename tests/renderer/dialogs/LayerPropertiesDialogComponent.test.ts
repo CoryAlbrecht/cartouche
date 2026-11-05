@@ -15,6 +15,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import createJiti from 'jiti';
+import type { ProjectLayerItem } from '../../../src/shared/types';
 
 const jiti = createJiti(import.meta.url, {
   jsx: true,
@@ -505,7 +506,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert(html.includes('colSpan="7"') || html.includes('colspan="7"'), 'Empty state should span 7 columns when Native Type is shown');
   });
 
-  it('renders appearance-only temporal master checkbox and mode selectors on Time Filter tab', async () => {
+  it('renders dynamic temporal control master checkbox and mode selectors on Time Filter tab', async () => {
     await openLayerPropertiesDialog('layer-lakes-1');
     activeLayerPropertiesTabSignal.value = 'time_filter';
 
@@ -518,6 +519,51 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert(html.includes('Fixed Time Range'), 'Should render fixed time range option');
     assert(html.includes('Start Field / Timestamp Field'), 'Should render start field picker label');
     assert(html.includes('End Field'), 'Should render end field picker label');
+  });
+
+  it('binds dynamic temporal control checkbox to draft and commits temporalEnabled to projectTreeSignal and projectLayersSignal (Ticket #162)', async () => {
+    const mockLayer: ProjectLayerItem = {
+      id: 'layer-temporal-layer',
+      name: 'Temporal Test Layer',
+      type: 'vector',
+      source: 'test.shp',
+      visible: true,
+      temporalEnabled: false,
+    };
+    projectLayersSignal.value = [mockLayer];
+    projectTreeSignal.value = [mockLayer];
+
+    await openLayerPropertiesDialog('layer-temporal-layer');
+    activeLayerPropertiesTabSignal.value = 'time_filter';
+
+    // 1. Initial state: temporalEnabled is false
+    assert.equal(layerPropertiesDraftSignal.value.temporalEnabled, false);
+    let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert.match(html, /id="layer-prop-time-enable"/);
+    assert.doesNotMatch(html, /id="layer-prop-time-enable"[^>]*checked/);
+
+    // 2. Toggle draft to true
+    updateLayerPropertiesDraft({ temporalEnabled: true });
+    assert.equal(layerPropertiesDraftSignal.value.temporalEnabled, true);
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert.match(html, /id="layer-prop-time-enable"[^>]*checked/);
+
+    // 3. Commit edits
+    const success = await applyLayerPropertiesEdits();
+    assert.equal(success, true);
+
+    // 4. Verify temporalEnabled persisted to projectTreeSignal and projectLayersSignal
+    const updatedTreeLayer = projectTreeSignal.value.find(
+      (l: ProjectLayerItem) => l.id === 'layer-temporal-layer'
+    );
+    assert.ok(updatedTreeLayer);
+    assert.equal(updatedTreeLayer.temporalEnabled, true);
+
+    const updatedDesc = projectLayersSignal.value.find(
+      (l: ProjectLayerItem) => l.id === 'layer-temporal-layer'
+    );
+    assert.ok(updatedDesc);
+    assert.equal(updatedDesc.temporalEnabled, true);
   });
 
   it('commits draft edits and updates isProjectDirtySignal via applyLayerPropertiesEdits', async () => {
