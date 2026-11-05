@@ -1,10 +1,10 @@
 /**
  * @file BasicWidgetHeaderIcons.test.ts
  * @module tests/renderer/widgets/BasicWidgetHeaderIcons.test
- * @description Unit and component tests verifying BasicWidget 2-control header bar control icons (close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and react to prefsUiIconSize signal changes.
+ * @description Unit and component tests verifying BasicWidget 2-control header bar control icons (close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties, optional title bar icon parameter scales to 50% of --cartouche-ui-icon-size, and react to prefsUiIconSize signal changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-04
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link prefsUiIconSize}
@@ -544,5 +544,106 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     assert.strictEqual(svgs.length, 0, 'Should render 0 header icons when panel cannot close');
     const btns = findAllNodes(container, el => el.tagName === 'BUTTON');
     assert.strictEqual(btns.length, 0, 'Should render 0 buttons when panel cannot close');
+  });
+
+  describe('Optional Header Icon Parameter (Ticket #173)', () => {
+    it('renders optional MDI string icon at 50% ui.icon.size to the left of the title', async () => {
+      const dummyPath = 'M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z';
+      await act(async () => {
+        root!.render(
+          React.createElement(BasicWidget, {
+            name: 'icon-widget',
+            displayName: 'Icon Widget',
+            icon: dummyPath,
+            onClose: () => {}
+          })
+        );
+      });
+
+      const iconContainers = findAllNodes(container, el => el.className === 'basic-widget-icon');
+      assert.strictEqual(iconContainers.length, 1, 'Should render one basic-widget-icon wrapper');
+      assert.strictEqual(iconContainers[0].style.marginRight, '6px', 'Icon wrapper must have 6px right margin');
+
+      const svgs = findAllNodes(iconContainers[0], el => el.tagName === 'SVG');
+      assert.strictEqual(svgs.length, 1, 'Should render an SVG icon within the icon wrapper');
+      assert.ok(
+        svgs[0].style.width.includes('calc(')
+          && svgs[0].style.width.includes('--cartouche-ui-icon-size')
+          && svgs[0].style.width.includes('0.5'),
+        `Expected header icon width to scale to 50% of --cartouche-ui-icon-size, got: ${svgs[0].style.width}`
+      );
+    });
+
+    it('renders custom React.ReactNode icon directly to the left of the title', async () => {
+      await act(async () => {
+        root!.render(
+          React.createElement(BasicWidget, {
+            name: 'custom-node-widget',
+            displayName: 'Custom Node Widget',
+            icon: React.createElement('span', { className: 'custom-rendered-icon' }, '★')
+          })
+        );
+      });
+
+      const iconContainers = findAllNodes(container, el => el.className === 'basic-widget-icon');
+      assert.strictEqual(iconContainers.length, 1, 'Should render icon container');
+      const customElements = findAllNodes(container, el => el.className === 'custom-rendered-icon');
+      assert.strictEqual(customElements.length, 1, 'Custom ReactNode should be rendered');
+    });
+
+    it('omits basic-widget-icon container when icon is unset/omitted', async () => {
+      await act(async () => {
+        root!.render(
+          React.createElement(BasicWidget, {
+            name: 'plain-widget',
+            displayName: 'Plain Widget'
+          })
+        );
+      });
+
+      const iconContainers = findAllNodes(container, el => el.className === 'basic-widget-icon');
+      assert.strictEqual(iconContainers.length, 0, 'No basic-widget-icon container should be rendered when icon is omitted');
+    });
+
+    it('factors header icon into minimum width floor calculation', async () => {
+      let plainWidth = 0;
+      let iconWidth = 0;
+
+      await act(async () => {
+        root!.render(
+          React.createElement(BasicWidget, {
+            name: 'widget-no-icon',
+            displayName: 'No Icon',
+            minWidth: 10
+          })
+        );
+      });
+      const plainWidgetEl = findAllNodes(container, el => el.className.includes('widget-no-icon'))[0];
+      plainWidth = parseInt(plainWidgetEl.style.minWidth, 10);
+
+      await act(async () => {
+        root!.render(
+          React.createElement(BasicWidget, {
+            name: 'widget-with-icon',
+            displayName: 'With Icon',
+            icon: 'M0,0H10V10H0Z',
+            minWidth: 10
+          })
+        );
+      });
+      const iconWidgetEl = findAllNodes(container, el => el.className.includes('widget-with-icon'))[0];
+      iconWidth = parseInt(iconWidgetEl.style.minWidth, 10);
+
+      // Icon size at default (24px) is 12px + 6px margin = 18px difference
+      assert.ok(
+        iconWidth > plainWidth,
+        `Expected widget with icon to have larger minWidth than without icon (${iconWidth} > ${plainWidth})`
+      );
+      assert.strictEqual(
+        iconWidth - plainWidth,
+        18,
+        `Expected minWidth difference to match 50% icon (12px) + 6px spacing = 18px, got ${iconWidth - plainWidth}`
+      );
+    });
   });
 });

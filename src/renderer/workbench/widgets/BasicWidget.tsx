@@ -55,6 +55,7 @@ function parsePxValue(
  * @extends WidgetProps
  * @property {string} [name='basic-widget'] - Widget identifier string.
  * @property {string} [displayName='Basic'] - Title label text rendered in header.
+ * @property {string | React.ReactNode} [icon] - Optional MDI SVG path string or custom icon node rendered to the left of the title at 50% ui.icon.size.
  * @property {boolean} [overlappable=false] - Whether this widget can be grouped into an OverlapTabWidget container.
  * @property {React.ReactNode} [children] - Content rendered inside body.
  * @property {DockviewApi} [containerApi] - Optional parent Dockview container API instance.
@@ -65,6 +66,7 @@ export interface BasicWidgetProps
   extends Omit<WidgetProps, "children">, Partial<IDockviewPanelProps> {
   name?: string;
   displayName?: string;
+  icon?: string | React.ReactNode;
   readonly overlappable?: boolean;
   children?: React.ReactNode;
   containerApi?: DockviewApi;
@@ -86,6 +88,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const {
     name = "basic-widget",
     displayName = "Basic",
+    icon,
     overlappable = false,
     background = "#f3f3f3",
     borderColor = background,
@@ -240,7 +243,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
 
   const canClose = !!(onClose || effectivePanelApi);
 
-  // Dynamic minimum width floor calculation: border + padding + button controls + title margin + buffer + 4rem
+  // Dynamic minimum width floor calculation: border + padding + button controls + header icon + title margin + buffer + 4rem
   const borderPx = 2 * parsePxValue(border, 1);
   const paddingPx = 2 * parsePxValue(padding, 4);
 
@@ -250,10 +253,13 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
   const headerPaddingPx = 16; // 8px left + 8px right inner header padding
   const titleMarginPx = 8; // 8px right margin on the title span
   const safetyBufferPx = 16; // Extra buffer to prevent cutoff from panel borders or scrollbars
+  const headerIcon50Px = Math.round(iconSize * 0.5);
+  const headerIconSpacingPx = icon ? headerIcon50Px + 6 : 0; // Icon width + 6px right margin
   const buttonControlsWidth =
     buttonCount * (headerIconSize + buttonPaddingPx)
     + buttonGapPx
     + headerPaddingPx
+    + headerIconSpacingPx
     + titleMarginPx
     + safetyBufferPx;
 
@@ -420,21 +426,51 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           userSelect: "none",
           cursor: effectivePanelApi ? "grab" : "default",
         }}>
-        <span
-          className='basic-widget-title'
+        <div
+          className='widget-header-title-box'
           style={{
-            fontWeight: 600,
-            fontSize: "0.875rem",
-            color: "#1e293b",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            display: "flex",
+            alignItems: "center",
             flex: 1,
             minWidth: 0,
             marginRight: "8px",
+            overflow: "hidden",
           }}>
-          {displayName}
-        </span>
+          {icon && (
+            <span
+              className='basic-widget-icon'
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                marginRight: "6px",
+              }}>
+              {typeof icon === "string" ? (
+                <Icon
+                  path={icon}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+                />
+              ) : (
+                icon
+              )}
+            </span>
+          )}
+          <span
+            className='basic-widget-title'
+            style={{
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              color: "#1e293b",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flex: 1,
+              minWidth: 0,
+            }}>
+            {displayName}
+          </span>
+        </div>
 
         <div
           className='basic-widget-controls'
