@@ -339,13 +339,13 @@ describe('Icon Component CSS Custom Property & Sizing Support', () => {
     const svg = svgs[0];
     assert.strictEqual(
       svg.style.width,
-      'var(--cartouche-ui-icon-size, 24px)',
-      'style.width should default to var(--cartouche-ui-icon-size, 24px)'
+      'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))',
+      'style.width should default to scaled icon size expression'
     );
     assert.strictEqual(
       svg.style.height,
-      'var(--cartouche-ui-icon-size, 24px)',
-      'style.height should default to var(--cartouche-ui-icon-size, 24px)'
+      'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))',
+      'style.height should default to scaled icon size expression'
     );
   });
 
@@ -432,8 +432,8 @@ describe('Icon Component CSS Custom Property & Sizing Support', () => {
     const svg = svgs[0];
     assert.strictEqual(svg.style.opacity, '0.8');
     assert.strictEqual(svg.style.margin, '2px');
-    assert.strictEqual(svg.style.width, 'var(--cartouche-ui-icon-size, 24px)');
-    assert.strictEqual(svg.style.height, 'var(--cartouche-ui-icon-size, 24px)');
+    assert.strictEqual(svg.style.width, 'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))');
+    assert.strictEqual(svg.style.height, 'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))');
   });
 
   it('pre-caches select-primary-click in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments', async () => {

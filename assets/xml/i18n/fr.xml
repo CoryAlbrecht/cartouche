@@ -245,4 +245,16 @@
     <string name="layer_properties_component_type_marker">Marqueur simple</string>
     <string name="layer_properties_component_options">Options de style</string>
     <string name="layer_properties_component_locked_notice">Ce composant est verrouillé contre les modifications.</string>
+    <string name="filter_dropdown_label">Filtrer les entités</string>
+    <string name="filter_show_all">Afficher toutes les entités</string>
+    <string name="filter_show_selected">Afficher les entités sélectionnées</string>
+    <string name="filter_show_visible">Afficher les entités visibles sur la carte</string>
+    <string name="filter_show_edited_new">Afficher les entités modifiées et nouvelles</string>
+    <string name="attribute_table_select_layer_prompt">Sélectionnez une couche dans le panneau Couches pour inspecter les attributs.</string>
+    <string name="attribute_table_empty_filtered">Aucune entité ne correspond au filtre actuel.</string>
+    <string name="attribute_table_title">Table d'attributs</string>
+    <string name="attribute_table_title_format">Attributs — {name} ({count} entités)</string>
+    <string name="attribute_table_col_counter">#</string>
+    <string name="attribute_table_col_id">ID</string>
+    <string name="attribute_table_col_type">Type</string>
 </ci18n:localization>

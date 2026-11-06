@@ -54,9 +54,10 @@ describe('Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
   it('scopes Noto Sans Math via explicit mathematical unicode-range in theme.css', () => {
     const themeCss = fs.readFileSync(themeCssPath, 'utf-8');
 
+    const normalizedThemeCss = themeCss.replace(/\s+/g, ' ');
     const expectedRange = 'unicode-range: U+0370-03FF, U+2100-214F, U+2200-22FF, U+2300-23FF, U+25A0-25FF, U+27C0-27EF, U+2980-2AFF, U+1D400-1D7FF;';
     assert.ok(
-      themeCss.includes(expectedRange),
+      normalizedThemeCss.includes(expectedRange),
       'Noto Sans Math @font-face rule must be scoped with the canonical mathematical and Greek unicode-range'
     );
   });

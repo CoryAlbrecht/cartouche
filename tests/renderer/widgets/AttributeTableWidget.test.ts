@@ -36,7 +36,7 @@ class MockElement {
     getPropertyValue: (name: string) => string;
   };
   className = '';
-  textContent = '';
+  private _textContent?: string;
   attributes: Record<string, string> = {};
   eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
 
@@ -58,12 +58,49 @@ class MockElement {
   focus(): void {}
   blur(): void {}
 
+  get textContent(): string {
+    if (this._textContent !== undefined) return this._textContent;
+    let text = '';
+    for (const child of this.childNodes) {
+      if (child.nodeType === 3) {
+        text += child.textContent || child.nodeValue || '';
+      } else if (child.textContent) {
+        text += child.textContent;
+      }
+    }
+    return text;
+  }
+
+  set textContent(v: string) {
+    this._textContent = String(v);
+  }
+
   get value(): string {
-    return (this as any).__value ?? '';
+    if (this.tagName === 'SELECT') {
+      const selected = this.options.find((o: any) => o.selected);
+      if (selected) return selected.value;
+      if (this.options.length > 0) return this.options[0].value;
+    }
+    return (this as any).__value ?? this.attributes['value'] ?? '';
   }
 
   set value(v: any) {
     (this as any).__value = String(v);
+  }
+
+  get options(): any[] {
+    const opts: any[] = [];
+    const traverse = (el: MockElement) => {
+      for (const child of el.childNodes) {
+        if (child && child.tagName === 'OPTION') {
+          opts.push(child);
+        } else if (child && child.childNodes) {
+          traverse(child);
+        }
+      }
+    };
+    traverse(this);
+    return opts;
   }
 
   setAttribute(name: string, val: any): void {
@@ -278,9 +315,15 @@ const jiti = createJiti(import.meta.url, {
 const {
   AttributeTableWidget,
   AttributeTablePanel,
+  isFeatureInExtent,
+  getFeatureBoundingBox,
+  computeAttributeTableMinHeight,
 } = jiti('../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx') as {
   AttributeTableWidget: React.FC<AttributeTableWidgetProps>;
   AttributeTablePanel: React.FC<AttributeTableWidgetProps>;
+  isFeatureInExtent: (feature: any, extent: [number, number, number, number]) => boolean;
+  getFeatureBoundingBox: (coords: unknown) => [number, number, number, number] | null;
+  computeAttributeTableMinHeight: () => string;
 };
 
 const {
@@ -295,6 +338,8 @@ const {
   selectedFeatureIdsSignal,
   editedFeatureIdsSignal,
   isProjectDirtySignal,
+  viewportExtentSignal,
+  openDockPanelsSignal,
   saveActiveLayerAction,
   toggleLayerEditingAction,
 } = jiti('../../../src/renderer/state/gisSignals.ts') as {
@@ -309,8 +354,16 @@ const {
   selectedFeatureIdsSignal: { value: Set<string | number> };
   editedFeatureIdsSignal: { value: Set<string | number> };
   isProjectDirtySignal: { value: boolean };
+  viewportExtentSignal: { value: [number, number, number, number] };
+  openDockPanelsSignal: { value: { attributes: boolean; layers: boolean } };
   saveActiveLayerAction: () => void;
   toggleLayerEditingAction: (layerId?: string | null, options?: any) => void;
+};
+
+const { dictionarySignal } = jiti(
+  '../../../src/renderer/state/i18nSignals.ts'
+) as {
+  dictionarySignal: { value: Record<string, string> };
 };
 
 describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
@@ -611,5 +664,384 @@ describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
       toggleLayerEditingAction('layer-parcels', { force: true });
     });
     assert.strictEqual(editedFeatureIdsSignal.value.size, 0, 'toggleLayerEditingAction disabling edit mode must clear editedFeatureIdsSignal');
+  });
+});
+
+describe('AttributeTableWidget Filtering, minHeight, and Localization (Ticket #179)', () => {
+  beforeEach(() => {
+    setupDom();
+    activeLayerIdSignal.value = null;
+    layersSignal.value = [];
+    projectLayersSignal.value = [];
+    projectTreeSignal.value = [];
+    featuresSignal.value = [];
+    activeToolSignal.value = 'pan';
+    activeSelectionModeSignal.value = 'select_feature';
+    editableLayerIdsSignal.value = new Set();
+    selectedFeatureIdsSignal.value = new Set();
+    editedFeatureIdsSignal.value = new Set();
+    isProjectDirtySignal.value = false;
+    viewportExtentSignal.value = [-180, -90, 180, 90];
+    openDockPanelsSignal.value = { attributes: true, layers: true };
+    dictionarySignal.value = {};
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it('computes dynamic minHeight CSS string accommodating header, toolbars, table header, 2 feature rows, and filter bar', async () => {
+    const minHeightExpr = computeAttributeTableMinHeight();
+    assert.ok(minHeightExpr.includes('var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px'), 'Should account for widget header');
+    assert.ok(minHeightExpr.includes('var(--cartouche-ui-icon-size, 24px) * 0.667 + 12px'), 'Should account for embedded toolbars');
+    assert.ok(minHeightExpr.includes('var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 8px'), 'Should account for table header');
+    assert.ok(minHeightExpr.includes('2 * (var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 8px)'), 'Should account for at least 2 feature rows');
+    assert.ok(minHeightExpr.includes('var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 16px'), 'Should account for footer filter bar');
+
+    // Mount AttributeTableWidget and verify BasicWidget receives computed minHeight
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+
+    const basicWidgetNode = findAllNodes(container, el => el.className.includes('cartouche-widget'))[0];
+    assert.ok(basicWidgetNode, 'BasicWidget cartouche-widget container should be present');
+    assert.strictEqual(basicWidgetNode.style.minHeight, minHeightExpr, 'BasicWidget should have dynamic minHeight applied');
+  });
+
+  it('evaluates spatial intersection between feature geometry and viewport extent correctly', () => {
+    assert.deepStrictEqual(getFeatureBoundingBox([50, 50]), [50, 50, 50, 50]);
+    assert.deepStrictEqual(
+      getFeatureBoundingBox([
+        [-10, 20],
+        [30, 40],
+      ]),
+      [-10, 20, 30, 40]
+    );
+
+    const extent: [number, number, number, number] = [0, 0, 100, 100];
+
+    // Point inside
+    const ptInside = {
+      id: 'p1',
+      layerId: 'l1',
+      geometryType: 'point' as const,
+      properties: {},
+      coordinates: [50, 50],
+    };
+    assert.strictEqual(isFeatureInExtent(ptInside, extent), true, 'Point inside extent should return true');
+
+    // Point outside
+    const ptOutside = {
+      id: 'p2',
+      layerId: 'l1',
+      geometryType: 'point' as const,
+      properties: {},
+      coordinates: [150, 50],
+    };
+    assert.strictEqual(isFeatureInExtent(ptOutside, extent), false, 'Point outside extent should return false');
+
+    // LineString intersecting
+    const lineIntersecting = {
+      id: 'l1',
+      layerId: 'l1',
+      geometryType: 'linestring' as const,
+      properties: {},
+      coordinates: [[-10, 50], [50, 50]],
+    };
+    assert.strictEqual(isFeatureInExtent(lineIntersecting, extent), true, 'LineString intersecting extent should return true');
+
+    // Polygon outside
+    const polyOutside = {
+      id: 'poly1',
+      layerId: 'l1',
+      geometryType: 'polygon' as const,
+      properties: {},
+      coordinates: [[[200, 200], [300, 200], [300, 300], [200, 300], [200, 200]]],
+    };
+    assert.strictEqual(isFeatureInExtent(polyOutside, extent), false, 'Polygon outside extent should return false');
+
+    // Null or invalid coordinates
+    const invalidFeature = {
+      id: 'inv',
+      layerId: 'l1',
+      geometryType: 'point' as const,
+      properties: {},
+      coordinates: null,
+    };
+    assert.strictEqual(isFeatureInExtent(invalidFeature, extent), false, 'Null coordinates should return false');
+  });
+
+  it('renders an unlabelled filter dropdown at the bottom-left with all 4 filter options and correct localization', async () => {
+    dictionarySignal.value = {
+      filter_dropdown_label: 'Filter features',
+      filter_show_all: 'Show all features',
+      filter_show_selected: 'Show selected features',
+      filter_show_visible: 'Show features visible on map',
+      filter_show_edited_new: 'Show edited and new features',
+    };
+
+    const layer: GisLayer = {
+      id: 'layer-test',
+      name: 'Test Layer',
+      kind: 'vector',
+      geometryKind: 'Point',
+      visible: true,
+      opacity: 1,
+      color: '#3b82f6',
+      featureCount: 1,
+    };
+    layersSignal.value = [layer];
+    activeLayerIdSignal.value = 'layer-test';
+    featuresSignal.value = [
+      {
+        id: 'f1',
+        layerId: 'layer-test',
+        geometryType: 'point',
+        properties: { name: 'Alpha' },
+        coordinates: [10, 10],
+      },
+    ];
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+
+    const footerNode = findAllNodes(container, el => el.className.includes('attribute-table-footer'))[0];
+    assert.ok(footerNode, 'Footer bar should be rendered');
+
+    const selectEls = findAllNodes(footerNode, el => el.className.includes('attribute-table-filter-select'));
+    assert.strictEqual(selectEls.length, 1, 'Filter select dropdown should be rendered');
+
+    const selectEl = selectEls[0];
+    assert.strictEqual(selectEl.getAttribute('aria-label'), 'Filter features', 'Filter dropdown should have localized aria-label');
+
+    const options = (selectEl as any).options;
+    assert.strictEqual(options.length, 4, 'Filter dropdown should contain 4 options');
+    assert.strictEqual(options[0].getAttribute('value'), 'all');
+    assert.strictEqual(options[0].textContent, 'Show all features');
+    assert.strictEqual(options[1].getAttribute('value'), 'selected');
+    assert.strictEqual(options[1].textContent, 'Show selected features');
+    assert.strictEqual(options[2].getAttribute('value'), 'visible');
+    assert.strictEqual(options[2].textContent, 'Show features visible on map');
+    assert.strictEqual(options[3].getAttribute('value'), 'edited_new');
+    assert.strictEqual(options[3].textContent, 'Show edited and new features');
+  });
+
+  it('filters rows correctly for all four filter modes', async () => {
+    const layer: GisLayer = {
+      id: 'layer-filter',
+      name: 'Filter Layer',
+      kind: 'vector',
+      geometryKind: 'Point',
+      visible: true,
+      opacity: 1,
+      color: '#3b82f6',
+      featureCount: 3,
+    };
+    layersSignal.value = [layer];
+    activeLayerIdSignal.value = 'layer-filter';
+
+    // 3 features:
+    // f1: [10, 10] - inside extent [0, 0, 100, 100], not selected, not edited
+    // f2: [50, 50] - inside extent [0, 0, 100, 100], selected, edited
+    // f3: [200, 200] - outside extent [0, 0, 100, 100], not selected, not edited
+    featuresSignal.value = [
+      {
+        id: 'f1',
+        layerId: 'layer-filter',
+        geometryType: 'point',
+        properties: { name: 'Item 1' },
+        coordinates: [10, 10],
+      },
+      {
+        id: 'f2',
+        layerId: 'layer-filter',
+        geometryType: 'point',
+        properties: { name: 'Item 2' },
+        coordinates: [50, 50],
+      },
+      {
+        id: 'f3',
+        layerId: 'layer-filter',
+        geometryType: 'point',
+        properties: { name: 'Item 3' },
+        coordinates: [200, 200],
+      },
+    ];
+    selectedFeatureIdsSignal.value = new Set(['f2']);
+    editedFeatureIdsSignal.value = new Set(['f2']);
+    viewportExtentSignal.value = [0, 0, 100, 100];
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+
+    const selectEl = findAllNodes(container, el => el.className.includes('attribute-table-filter-select'))[0];
+    const getRenderedRows = () => findAllNodes(container, el => el.tagName === 'TR').filter(r => findAllNodes(r, c => c.className.includes('cell-counter')).length > 0);
+
+    // Mode 1: 'all' (default)
+    let rows = getRenderedRows();
+    assert.strictEqual(rows.length, 3, 'Show all features should render 3 rows');
+
+    // Mode 2: 'selected'
+    await act(async () => {
+      const propKey = Object.keys(selectEl).find(k => k.startsWith('__reactProps'))!;
+      (selectEl as any)[propKey].onChange({ target: { value: 'selected' } });
+    });
+    rows = getRenderedRows();
+    assert.strictEqual(rows.length, 1, 'Show selected features should render 1 row');
+    assert.ok(rows[0].textContent.includes('Item 2'), 'Rendered row should be Item 2');
+
+    // Mode 3: 'visible' (f1 and f2 are inside [0, 0, 100, 100])
+    await act(async () => {
+      const propKey = Object.keys(selectEl).find(k => k.startsWith('__reactProps'))!;
+      (selectEl as any)[propKey].onChange({ target: { value: 'visible' } });
+    });
+    rows = getRenderedRows();
+    assert.strictEqual(rows.length, 2, 'Show features visible on map should render 2 rows');
+
+    // Mode 4: 'edited_new'
+    await act(async () => {
+      const propKey = Object.keys(selectEl).find(k => k.startsWith('__reactProps'))!;
+      (selectEl as any)[propKey].onChange({ target: { value: 'edited_new' } });
+    });
+    rows = getRenderedRows();
+    assert.strictEqual(rows.length, 1, 'Show edited and new features should render 1 row');
+    assert.ok(rows[0].textContent.includes('Item 2'));
+
+    // When no features match filter, render empty-filter-message
+    await act(async () => {
+      editedFeatureIdsSignal.value = new Set();
+    });
+    rows = getRenderedRows();
+    assert.strictEqual(rows.length, 0, 'No rows should match when editedFeatureIdsSignal is empty');
+    const emptyMsgEl = findAllNodes(container, el => el.className.includes('empty-filter-message'))[0];
+    assert.ok(emptyMsgEl, 'Empty filter message element should be displayed');
+  });
+
+  it('defaults dropdown selection to "Show all features" when AttributeTableWidget is unhidden via View -> Panels', async () => {
+    const layer: GisLayer = {
+      id: 'layer-unhide',
+      name: 'Unhide Layer',
+      kind: 'vector',
+      geometryKind: 'Point',
+      visible: true,
+      opacity: 1,
+      color: '#3b82f6',
+      featureCount: 2,
+    };
+    layersSignal.value = [layer];
+    activeLayerIdSignal.value = 'layer-unhide';
+    featuresSignal.value = [
+      {
+        id: 'f1',
+        layerId: 'layer-unhide',
+        geometryType: 'point',
+        properties: { name: 'Item 1' },
+        coordinates: [10, 10],
+      },
+      {
+        id: 'f2',
+        layerId: 'layer-unhide',
+        geometryType: 'point',
+        properties: { name: 'Item 2' },
+        coordinates: [20, 20],
+      },
+    ];
+    selectedFeatureIdsSignal.value = new Set(['f1']);
+    openDockPanelsSignal.value = { attributes: true, layers: true };
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+
+    const selectEl = findAllNodes(container, el => el.className.includes('attribute-table-filter-select'))[0];
+
+    // Change filter mode to 'selected'
+    await act(async () => {
+      const propKey = Object.keys(selectEl).find(k => k.startsWith('__reactProps'))!;
+      (selectEl as any)[propKey].onChange({ target: { value: 'selected' } });
+    });
+
+    let renderedCounters = findAllNodes(container, el => el.className.includes('cell-counter'));
+    assert.strictEqual(renderedCounters.length, 1, 'Should filter to 1 selected row');
+
+    // Simulate panel hidden then unhidden via View -> Panels
+    await act(async () => {
+      openDockPanelsSignal.value = { attributes: false, layers: true };
+    });
+    await act(async () => {
+      openDockPanelsSignal.value = { attributes: true, layers: true };
+    });
+
+    // Verify filter dropdown reset to 'all' and both rows are displayed
+    renderedCounters = findAllNodes(container, el => el.className.includes('cell-counter'));
+    assert.strictEqual(renderedCounters.length, 2, 'Should reset to Show all features (2 rows)');
+    const updatedSelect = findAllNodes(container, el => el.className.includes('attribute-table-filter-select'))[0];
+    assert.strictEqual((updatedSelect as any).value, 'all', 'Dropdown value should be "all"');
+  });
+
+  it('localizes all UI strings in AttributeTableWidget when dictionary changes', async () => {
+    dictionarySignal.value = {
+      attribute_table_select_layer_prompt: 'Sélectionnez une couche dans le panneau Couches pour inspecter les attributs.',
+      attribute_table_empty_filtered: 'Aucune entité ne correspond au filtre actuel.',
+      attribute_table_title: "Table d'attributs",
+      attribute_table_title_format: 'Attributs — {name} ({count} entités)',
+      attribute_table_col_counter: '#',
+      attribute_table_col_id: 'Identifiant',
+      attribute_table_col_type: 'Genre',
+      filter_dropdown_label: 'Filtrer les entités',
+      filter_show_all: 'Afficher toutes les entités',
+      filter_show_selected: 'Afficher les entités sélectionnées',
+      filter_show_visible: 'Afficher les entités visibles sur la carte',
+      filter_show_edited_new: 'Afficher les entités modifiées et nouvelles',
+    };
+
+    // Case 1: No active layer -> renders French empty prompt and title
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+
+    const emptyPanelMsg = findAllNodes(container, el => el.className.includes('empty-panel-message'))[0];
+    assert.strictEqual(
+      emptyPanelMsg.textContent,
+      'Sélectionnez une couche dans le panneau Couches pour inspecter les attributs.'
+    );
+
+    // Case 2: Active layer -> renders French title format, table column headers, and filter options
+    const layer: GisLayer = {
+      id: 'layer-fr',
+      name: 'Régions',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1,
+      color: '#3b82f6',
+      featureCount: 1,
+    };
+    await act(async () => {
+      layersSignal.value = [layer];
+      activeLayerIdSignal.value = 'layer-fr';
+      featuresSignal.value = [
+        {
+          id: 'fr-1',
+          layerId: 'layer-fr',
+          geometryType: 'polygon',
+          properties: { nom: 'Bretagne' },
+          coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+        },
+      ];
+    });
+
+    const thEls = findAllNodes(container, el => el.tagName === 'TH');
+    assert.strictEqual(thEls[0].textContent, '#');
+    assert.strictEqual(thEls[1].textContent, 'Identifiant');
+    assert.strictEqual(thEls[2].textContent, 'Genre');
+
+    const options = (findAllNodes(container, el => el.className.includes('attribute-table-filter-select'))[0] as any).options;
+    assert.strictEqual(options[0].textContent, 'Afficher toutes les entités');
+    assert.strictEqual(options[1].textContent, 'Afficher les entités sélectionnées');
+    assert.strictEqual(options[2].textContent, 'Afficher les entités visibles sur la carte');
+    assert.strictEqual(options[3].textContent, 'Afficher les entités modifiées et nouvelles');
   });
 });
