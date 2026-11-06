@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -24,6 +24,8 @@ import { geospatialService } from './worker/GeospatialService';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
 import {
+  clearLayerEdits,
+  getDirtyLayerIds,
   getLayerInfo,
   loadStyleFile,
   pathExists,
@@ -32,6 +34,7 @@ import {
   resolveDialogDefaultPath,
   saveStyleFile,
   setLayerStyle,
+  stageFeatureEdit,
   updateDialogLocation,
   updateLayerFields
 } from "./api/ApiFunctions";
@@ -124,7 +127,7 @@ Categories=Graphics;Science;Geoscience;
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -659,6 +662,18 @@ function startApp(): void {
 
   handleIpc('layers:queryExtent', async (_event, layerId: string, options?: any, targetProjection?: string) => {
     return await queryExtent(layerId, options, targetProjection);
+  });
+
+  handleIpc('layers:stageFeatureEdit', async (_event, layerId: string, edit: any) => {
+    await stageFeatureEdit(layerId, edit);
+  });
+
+  handleIpc('layers:clearLayerEdits', async (_event, layerId: string) => {
+    await clearLayerEdits(layerId);
+  });
+
+  handleIpc('layers:getDirtyLayerIds', async () => {
+    return getDirtyLayerIds();
   });
 
   handleIpc('layers:getLayerInfo', async (_event, layerId: string) => {

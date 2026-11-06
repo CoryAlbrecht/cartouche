@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link logging}
@@ -94,7 +94,7 @@ export function handleWorkerUnhandledRejection(port: any, reason: any): void {
  * @description Registers the message handler, lifecycle hooks, and error traps on the parent port for geospatial dataset requests.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-18
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {any} [port] - Parent communication port (defaults to process.parentPort).
  * @param {GeospatialEngine} [customEngine] - Optional custom GeospatialEngine instance for testing or isolation.
@@ -170,23 +170,48 @@ export function initGeospatialWorker(
             `Querying extent for layer "${request.layerId}"...`
           );
           const queryOptions = request.options ?? request.extent;
-          const { layerId, buffer, transferList } = await engine.queryExtent(
-            request.layerId,
-            queryOptions,
-            request.targetProjection
-          );
+          const { layerId, buffer, totalMatched, transferList } =
+            await engine.queryExtent(
+              request.layerId,
+              queryOptions,
+              request.targetProjection
+            );
           logging.debug(
             `Contiguous binary packet generated for layer "${layerId}" (${buffer.byteLength} bytes)`
           );
 
           postResponse(
             port,
-            { id: request.id, success: true, result: { layerId, buffer } },
+            {
+              id: request.id,
+              success: true,
+              result: { layerId, buffer, totalMatched },
+            },
             transferList
           );
           logging.debug(
             `Response dispatched for layer "${layerId}"`
           );
+          break;
+        }
+
+        case "stageFeatureEdit": {
+          engine.stageFeatureEdit(request.layerId, request.edit);
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: { success: true },
+          });
+          break;
+        }
+
+        case "clearLayerEdits": {
+          engine.clearLayerEdits(request.layerId);
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: { success: true },
+          });
           break;
         }
 

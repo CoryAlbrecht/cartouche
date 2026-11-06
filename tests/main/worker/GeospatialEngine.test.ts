@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -1179,6 +1179,130 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       assert.equal(demotedLayerId, 'lakes-demote-event');
       const updatedNameField = demotedFields.find(f => f.name === 'name');
       assert.equal(updatedNameField?.inferredType, 'string');
+    });
+  });
+
+  describe('Pagination (start/max), Feature ID Filtering, and Staged Edit Interception', () => {
+    let engine: GeospatialEngine;
+
+    beforeEach(async () => {
+      engine = new GeospatialEngine();
+      engine.setBackgroundScanEnabled(false);
+      await engine.openDataset('lakes-paginated', lakesShpPath);
+    });
+
+    afterEach(() => {
+      engine.closeAll();
+    });
+
+    it('slices returned features and binary buffer using start and max options while reporting totalMatched', async () => {
+      const fullResult = await engine.queryExtent('lakes-paginated', {
+        extent: [-100, 40, -80, 50]
+      });
+      assert.equal(fullResult.features.length, 34);
+      assert.equal(fullResult.totalMatched, 34);
+
+      const page1 = await engine.queryExtent('lakes-paginated', {
+        extent: [-100, 40, -80, 50],
+        start: 0,
+        max: 10
+      });
+      assert.equal(page1.features.length, 10);
+      assert.equal(page1.totalMatched, 34);
+      assert.deepEqual(
+        page1.features.map((f) => f.id),
+        fullResult.features.slice(0, 10).map((f) => f.id)
+      );
+
+      // Verify binary packet header count matches sliced chunk length
+      const view1 = new DataView(page1.buffer);
+      assert.equal(view1.getUint32(8, true), 10);
+
+      const page4 = await engine.queryExtent('lakes-paginated', {
+        extent: [-100, 40, -80, 50],
+        start: 30,
+        max: 10
+      });
+      assert.equal(page4.features.length, 4);
+      assert.equal(page4.totalMatched, 34);
+      assert.deepEqual(
+        page4.features.map((f) => f.id),
+        fullResult.features.slice(30, 34).map((f) => f.id)
+      );
+    });
+
+    it('filters features by featureIds whitelist combined with start and max pagination', async () => {
+      const allInExtent = await engine.queryExtent('lakes-paginated', {
+        extent: [-100, 40, -80, 50]
+      });
+      const targetIds = [
+        allInExtent.features[1].id,
+        allInExtent.features[3].id,
+        allInExtent.features[5].id,
+        allInExtent.features[7].id
+      ];
+
+      const filtered = await engine.queryExtent('lakes-paginated', {
+        extent: [-100, 40, -80, 50],
+        featureIds: targetIds,
+        start: 1,
+        max: 2
+      });
+
+      assert.equal(filtered.totalMatched, 4);
+      assert.equal(filtered.features.length, 2);
+      assert.deepEqual(
+        filtered.features.map((f) => f.id),
+        [targetIds[1], targetIds[2]]
+      );
+    });
+
+    it('intercepts features as they are read, applies staged property edits, appends new features, and clears on clearLayerEdits', async () => {
+      const page1Before = await engine.queryExtent('lakes-paginated', {
+        start: 0,
+        max: 5
+      });
+      const targetFeature = page1Before.features[2];
+      const originalName = targetFeature.properties?.name;
+
+      // Stage an edit on feature at index 2 and add a new feature
+      engine.stageFeatureEdit('lakes-paginated', {
+        id: targetFeature.id,
+        properties: { name: 'Edited Lake Name' }
+      });
+      engine.stageFeatureEdit('lakes-paginated', {
+        id: 999999,
+        isNew: true,
+        properties: { name: 'Brand New Lake', scalerank: 1 }
+      });
+
+      // Query first chunk and verify modified feature is intercepted
+      const page1After = await engine.queryExtent('lakes-paginated', {
+        start: 0,
+        max: 5
+      });
+      assert.equal(page1After.totalMatched, 1354);
+      assert.equal(page1After.features[2].properties?.name, 'Edited Lake Name');
+
+      // Query end of stream and verify newly added feature is appended at index 1353
+      const lastPage = await engine.queryExtent('lakes-paginated', {
+        start: 1350,
+        max: 10
+      });
+      assert.equal(lastPage.totalMatched, 1354);
+      assert.equal(lastPage.features.length, 4);
+      const addedFeature = lastPage.features[3];
+      assert.equal(addedFeature.id, 999999);
+      assert.equal(addedFeature.properties?.name, 'Brand New Lake');
+
+      // Clear edits and verify original state is restored
+      engine.clearLayerEdits('lakes-paginated');
+      const page1Cleared = await engine.queryExtent('lakes-paginated', {
+        start: 0,
+        max: 5
+      });
+      assert.equal(page1Cleared.totalMatched, 1353);
+      assert.equal(page1Cleared.features[2].properties?.name, originalName);
     });
   });
 });

@@ -4,7 +4,7 @@
  * @description Integration tests for queryExtent spatial query pipeline, OGC WKB buffer extraction, projection transformations, and sequential concurrency.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-16
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -16,7 +16,12 @@ import WKB from 'ol/format/WKB.js';
 import { projectStore } from '../../../../src/main/project/ProjectStore';
 import { geospatialService } from '../../../../src/main/worker/GeospatialService';
 import { addLayer } from '../../../../src/main/api/layers/addLayer';
-import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
+import {
+  queryExtent,
+  stageFeatureEdit,
+  clearLayerEdits,
+  getDirtyLayerIds
+} from '../../../../src/main/api/layers/queryExtent';
 import type { BoundingBox } from '../../../../src/shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,6 +114,27 @@ describe('queryExtent Spatial Pipeline', () => {
       },
       /Layer session not found/
     );
+  });
+
+  it('stages feature edits, tracks dirty layer IDs, intercepts paginated queries, and clears edits via API handlers', async () => {
+    assert.deepEqual(getDirtyLayerIds(), []);
+
+    const beforeChunk = await queryExtent(layerId, { start: 0, max: 3 });
+    assert.equal(beforeChunk.features.length, 3);
+    assert.equal(beforeChunk.totalMatched, 1353);
+    const targetId = beforeChunk.features[0].id;
+
+    await stageFeatureEdit(layerId, {
+      id: targetId,
+      properties: { name: 'API Staged Lake' }
+    });
+    assert.deepEqual(getDirtyLayerIds(), [layerId]);
+
+    const afterChunk = await queryExtent(layerId, { start: 0, max: 3 });
+    assert.equal(afterChunk.features[0].properties?.name, 'API Staged Lake');
+
+    await clearLayerEdits(layerId);
+    assert.deepEqual(getDirtyLayerIds(), []);
   });
 });
 

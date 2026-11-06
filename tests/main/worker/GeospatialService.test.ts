@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialService process lifecycle, correlated request-response message bridge, timeout handling, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-16
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  */
@@ -704,6 +704,161 @@ describe('GeospatialService In-Process Engine Fallback on Repeated Crashes', () 
     const res = await service.queryExtent('lake-spawn-fail');
     assert.equal(res.layerId, 'lake-spawn-fail');
     assert.equal(res.features.length, 1200);
+
+    service.dispose();
+  });
+
+  it('maintains authoritative edit cache in Main process, forwards edits to Worker, and replays all cached edits on Worker crash recovery before retrying queries', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      defaultTimeoutMs: 1000
+    });
+
+    const worker1 = spawnedWorkers[0];
+
+    // 1. Open layer on worker 1
+    const openP = service.openDataset('layer-edits-1', lakesShpPath);
+    worker1.replySuccess(worker1.messages[0].id, {
+      layerId: 'layer-edits-1',
+      name: 'lakes',
+      extent: [-180, -90, 180, 90],
+      featureCount: 1353,
+      geometryKind: 'Polygon'
+    });
+    await openP;
+
+    assert.deepEqual(service.getDirtyLayerIds(), []);
+
+    // 2. Stage a modified feature and a newly added feature
+    const stage1P = service.stageFeatureEdit('layer-edits-1', {
+      id: 0,
+      properties: { name: 'Crash Resilient Lake' }
+    });
+    const stageMsg1 = worker1.messages[worker1.messages.length - 1];
+    assert.equal(stageMsg1.type, 'stageFeatureEdit');
+    assert.equal((stageMsg1 as any).layerId, 'layer-edits-1');
+    assert.deepEqual((stageMsg1 as any).edit, {
+      id: 0,
+      properties: { name: 'Crash Resilient Lake' }
+    });
+    worker1.replySuccess(stageMsg1.id, { success: true });
+    await stage1P;
+
+    const stage2P = service.stageFeatureEdit('layer-edits-1', {
+      id: 888888,
+      isNew: true,
+      properties: { name: 'New Staged Lake' }
+    });
+    const stageMsg2 = worker1.messages[worker1.messages.length - 1];
+    assert.equal(stageMsg2.type, 'stageFeatureEdit');
+    worker1.replySuccess(stageMsg2.id, { success: true });
+    await stage2P;
+
+    assert.deepEqual(service.getDirtyLayerIds(), ['layer-edits-1']);
+
+    // 3. Issue a paginated query and simulate Worker 1 crash while query is in flight
+    const queryP = service.queryExtent('layer-edits-1', { start: 0, max: 10 });
+    worker1.emit('exit', 139);
+
+    assert.equal(spawnedWorkers.length, 2);
+    const worker2 = spawnedWorkers[1];
+
+    // 4. Worker 2 receives rehydrate first
+    const rehydrateMsg = worker2.messages.find((m) => m.type === 'rehydrate');
+    assert.ok(rehydrateMsg, 'Worker 2 must receive rehydrate first');
+    worker2.replySuccess(rehydrateMsg.id, { rehydrated: ['layer-edits-1'], failed: [] });
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // 5. Worker 2 must receive replayed stageFeatureEdit messages BEFORE the retried queryExtent
+    const replayEdit1 = worker2.messages.find(
+      (m) => m.type === 'stageFeatureEdit' && (m as any).edit?.id === 0
+    );
+    assert.ok(replayEdit1, 'Worker 2 must receive replayed modified feature edit');
+    worker2.replySuccess(replayEdit1.id, { success: true });
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const replayEdit2 = worker2.messages.find(
+      (m) => m.type === 'stageFeatureEdit' && (m as any).edit?.id === 888888
+    );
+    assert.ok(replayEdit2, 'Worker 2 must receive replayed added feature edit');
+    worker2.replySuccess(replayEdit2.id, { success: true });
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // 6. Now Worker 2 receives the retried queryExtent
+    const retriedQuery = worker2.messages.find((m) => m.type === 'queryExtent');
+    assert.ok(retriedQuery, 'Worker 2 must receive retried queryExtent after edit replay');
+    worker2.replySuccess(retriedQuery.id, {
+      layerId: 'layer-edits-1',
+      features: [{ id: 0, properties: { name: 'Crash Resilient Lake' } }],
+      totalMatched: 1354
+    });
+
+    const queryRes = await queryP;
+    assert.equal(queryRes.features[0].properties?.name, 'Crash Resilient Lake');
+    assert.equal(queryRes.totalMatched, 1354);
+
+    // 7. Clearing layer edits removes layer from dirty list and forwards clearLayerEdits
+    const clearP = service.clearLayerEdits('layer-edits-1');
+    const clearMsg = worker2.messages[worker2.messages.length - 1];
+    assert.equal(clearMsg.type, 'clearLayerEdits');
+    worker2.replySuccess(clearMsg.id, { success: true });
+    await clearP;
+
+    assert.deepEqual(service.getDirtyLayerIds(), []);
+
+    service.dispose();
+  });
+
+  it('replays cached edits into in-process fallback engine when worker crash threshold is exceeded', async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const mockWorkerFactory = () => {
+      const w = new MockWorker();
+      spawnedWorkers.push(w);
+      return w;
+    };
+
+    const service = new GeospatialService({
+      mockWorkerFactory,
+      maxConsecutiveWorkerCrashes: 1,
+      defaultTimeoutMs: 2000
+    });
+
+    const openP = service.openDataset('lake-fallback-edits', lakesShpPath);
+    spawnedWorkers[0].replySuccess(spawnedWorkers[0].messages[0].id, {
+      layerId: 'lake-fallback-edits',
+      name: 'lakes',
+      extent: [-180, -90, 180, 90],
+      featureCount: 1353,
+      geometryKind: 'Polygon'
+    });
+    await openP;
+
+    const stageP = service.stageFeatureEdit('lake-fallback-edits', {
+      id: 0,
+      properties: { name: 'Fallback Edited Lake' }
+    });
+    const stageMsg = spawnedWorkers[0].messages[spawnedWorkers[0].messages.length - 1];
+    spawnedWorkers[0].replySuccess(stageMsg.id, { success: true });
+    await stageP;
+
+    // Trigger crash hitting threshold (1 >= 1) -> activates in-process fallback and replays edits
+    const queryP = service.queryExtent('lake-fallback-edits', { start: 0, max: 5 });
+    spawnedWorkers[0].emit('exit', 139);
+
+    const res = await queryP;
+    assert.equal(service.isInProcessFallback(), true);
+    assert.equal(res.features.length, 5);
+    assert.equal(res.features[0].properties?.name, 'Fallback Edited Lake');
 
     service.dispose();
   });

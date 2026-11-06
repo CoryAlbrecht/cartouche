@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -19,10 +19,12 @@ import type {
   InferredFieldType,
   InferredScalarFieldType,
   LayerDetailedInfo,
+  LayerEditCacheEntry,
   LayerFieldInfo,
   ProjectCrs,
   QueryExtentFeature,
   QueryExtentOptions,
+  StagedFeatureEdit,
 } from "../../shared/types";
 import { classifyDriverDialect } from "../../shared/layers/queryDialect";
 import {
@@ -568,7 +570,7 @@ interface BackgroundScanState {
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export class GeospatialEngine {
@@ -576,8 +578,94 @@ export class GeospatialEngine {
   private queues = new Map<string, Promise<unknown>>();
   private activeScans = new Map<string, BackgroundScanState>();
   private pendingQueries = new Map<string, number>();
+  private layerEdits = new Map<string, LayerEditCacheEntry>();
   public backgroundScanEnabled: boolean = true;
   public onFieldDemoted?: (layerId: string, updatedFields: LayerFieldInfo[]) => void;
+
+  /**
+   * @description Stages an uncommitted feature modification or newly added feature into the engine's per-layer edit cache so subsequent queries reflect the edit immediately.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @param {StagedFeatureEdit} edit - Feature edit or addition payload.
+   * @returns {void}
+   */
+  public stageFeatureEdit(layerId: string, edit: StagedFeatureEdit): void {
+    let entry = this.layerEdits.get(layerId);
+    if (!entry) {
+      entry = {
+        modifiedFeatures: new Map<string, StagedFeatureEdit>(),
+        addedFeatures: [],
+      };
+      this.layerEdits.set(layerId, entry);
+    }
+
+    const idKey = String(edit.id);
+    const existingAddedIdx = entry.addedFeatures.findIndex(
+      (f) => String(f.id) === idKey
+    );
+
+    if (edit.isNew || existingAddedIdx !== -1) {
+      if (existingAddedIdx !== -1) {
+        const prev = entry.addedFeatures[existingAddedIdx];
+        entry.addedFeatures[existingAddedIdx] = {
+          ...prev,
+          ...edit,
+          isNew: true,
+          properties: {
+            ...(prev.properties ?? {}),
+            ...(edit.properties ?? {}),
+          },
+        };
+      } else {
+        entry.addedFeatures.push({
+          ...edit,
+          isNew: true,
+          properties: { ...(edit.properties ?? {}) },
+        });
+      }
+      return;
+    }
+
+    const prevMod = entry.modifiedFeatures.get(idKey);
+    entry.modifiedFeatures.set(idKey, {
+      ...prevMod,
+      ...edit,
+      id: edit.id,
+      properties: {
+        ...(prevMod?.properties ?? {}),
+        ...(edit.properties ?? {}),
+      },
+    });
+  }
+
+  /**
+   * @description Clears all staged uncommitted feature modifications and newly added features for a specific layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @returns {void}
+   */
+  public clearLayerEdits(layerId: string): void {
+    this.layerEdits.delete(layerId);
+  }
+
+  /**
+   * @description Retrieves the current staged feature edit cache entry for a layer, if any.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @returns {LayerEditCacheEntry | undefined} Staged edit entry or undefined.
+   */
+  public getLayerEdits(layerId: string): LayerEditCacheEntry | undefined {
+    return this.layerEdits.get(layerId);
+  }
 
   /**
    * @description Opens a spatial dataset from disk, extracts metadata, and registers the session.
@@ -1182,7 +1270,7 @@ export class GeospatialEngine {
    * @description Atomically re-keys an active layer session identifier without closing underlying dataset handles.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-23
-   * @updated 2026-10-23
+   * @updated 2026-11-06
    * @since 0.1.0-dev
    * @param {string} oldLayerId - Existing layer UUID.
    * @param {string} newLayerId - New target layer UUID.
@@ -1195,6 +1283,11 @@ export class GeospatialEngine {
       scan.layerId = newLayerId;
       this.activeScans.set(newLayerId, scan);
     }
+    const edits = this.layerEdits.get(oldLayerId);
+    if (edits) {
+      this.layerEdits.delete(oldLayerId);
+      this.layerEdits.set(newLayerId, edits);
+    }
     const session = this.sessions.get(oldLayerId);
     if (!session) {
       return;
@@ -1204,15 +1297,15 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, serializing features as a contiguous binary WKB packet buffer.
+   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters and optional start/max pagination, and serializing features as a contiguous binary WKB packet buffer.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-02
+   * @updated 2026-11-06
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
-   * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy bounding box [minX, minY, maxX, maxY].
-   * @param {string} [targetProjection] - CRS authority of query bounding box (e.g. "EPSG:3857").
-   * @returns {Promise<{ layerId: string; buffer: ArrayBuffer; features: QueryExtentFeature[]; transferList: ArrayBuffer[] }>} Query results, contiguous binary packet, and transferable ArrayBuffers.
+   * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy extent [minX, minY, maxX, maxY].
+   * @param {string} [targetProjection] - CRS authority of query extent (e.g. "EPSG:3857").
+   * @returns {Promise<{ layerId: string; buffer: ArrayBuffer; features: QueryExtentFeature[]; totalMatched: number; transferList: ArrayBuffer[] }>} Query results, contiguous binary packet, total matched feature count, and transferable ArrayBuffers.
    * @throws {Error} If no active session exists for the layer identifier.
    */
   public async queryExtent(
@@ -1223,6 +1316,7 @@ export class GeospatialEngine {
     layerId: string;
     buffer: ArrayBuffer;
     features: QueryExtentFeature[];
+    totalMatched: number;
     transferList: ArrayBuffer[];
   }> {
     const session = this.sessions.get(layerId);
@@ -1258,6 +1352,9 @@ export class GeospatialEngine {
         let proj: string | undefined = targetProjection;
         let includeGeometry = true;
         let fields: string[] | undefined = undefined;
+        let startOpt: number | undefined = undefined;
+        let maxOpt: number | undefined = undefined;
+        let featureIdsOpt: Array<string | number> | undefined = undefined;
 
         if (Array.isArray(options)) {
           extentBox = options;
@@ -1268,7 +1365,24 @@ export class GeospatialEngine {
             includeGeometry = options.includeGeometry;
           }
           fields = options.fields;
+          startOpt = options.start;
+          maxOpt = options.max;
+          featureIdsOpt = options.featureIds;
         }
+
+        const sliceStart =
+          startOpt !== undefined && Number.isFinite(startOpt)
+            ? Math.max(0, Math.floor(startOpt))
+            : 0;
+        const sliceEnd =
+          maxOpt !== undefined && Number.isFinite(maxOpt)
+            ? sliceStart + Math.max(0, Math.floor(maxOpt))
+            : Infinity;
+        const allowedIdSet =
+          featureIdsOpt !== undefined
+            ? new Set(featureIdsOpt.map((id) => String(id)))
+            : null;
+        const layerEditEntry = this.layerEdits.get(layerId);
 
         let shouldFilter = false;
         let filterExtent: BoundingBox = [0, 0, 0, 0];
@@ -1319,24 +1433,48 @@ export class GeospatialEngine {
         const encoder = new TextEncoder();
         const extracted: ExtractedRecord[] = [];
         const features: QueryExtentFeature[] = [];
+        let totalMatched = 0;
 
         layer.features.forEach((feature) => {
           try {
-            const fid = BigInt(feature.fid);
+            const rawFid = feature.fid;
+            const fidKey = String(rawFid);
+
+            if (allowedIdSet !== null && !allowedIdSet.has(fidKey)) {
+              return;
+            }
+
+            const matchedIndex = totalMatched;
+            totalMatched++;
+
+            if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
+              return;
+            }
+
+            const stagedEdit = layerEditEntry?.modifiedFeatures.get(fidKey);
+            const fid = BigInt(rawFid);
             let wkbBytes: Uint8Array | null = null;
 
             if (includeGeometry) {
-              const geom = feature.getGeometry();
-              if (geom) {
-                try {
-                  const rawWkb = geom.toWKB();
-                  wkbBytes = new Uint8Array(
-                    rawWkb.buffer,
-                    rawWkb.byteOffset,
-                    rawWkb.byteLength
-                  );
-                } catch {
-                  // Fallback if WKB extraction fails
+              if (stagedEdit?.wkb) {
+                wkbBytes = new Uint8Array(
+                  stagedEdit.wkb.buffer,
+                  stagedEdit.wkb.byteOffset,
+                  stagedEdit.wkb.byteLength
+                );
+              } else {
+                const geom = feature.getGeometry();
+                if (geom) {
+                  try {
+                    const rawWkb = geom.toWKB();
+                    wkbBytes = new Uint8Array(
+                      rawWkb.buffer,
+                      rawWkb.byteOffset,
+                      rawWkb.byteLength
+                    );
+                  } catch {
+                    // Fallback if WKB extraction fails
+                  }
                 }
               }
             }
@@ -1350,20 +1488,33 @@ export class GeospatialEngine {
               for (const [k, v] of Object.entries(rawProps)) {
                 properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
               }
+              if (stagedEdit?.properties) {
+                for (const [k, v] of Object.entries(stagedEdit.properties)) {
+                  properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
+                }
+              }
               propsBytes = encoder.encode(JSON.stringify(properties));
             } else if (fields.length > 0) {
               for (const f of fields) {
-                try {
-                  const val = feature.fields.get(f);
-                  if (val !== undefined) {
-                    properties[f] = transformFeatureProperty(
-                      f,
-                      val,
-                      fieldTypeMap
-                    );
+                if (stagedEdit?.properties && f in stagedEdit.properties) {
+                  properties[f] = transformFeatureProperty(
+                    f,
+                    stagedEdit.properties[f],
+                    fieldTypeMap
+                  );
+                } else {
+                  try {
+                    const val = feature.fields.get(f);
+                    if (val !== undefined) {
+                      properties[f] = transformFeatureProperty(
+                        f,
+                        val,
+                        fieldTypeMap
+                      );
+                    }
+                  } catch {
+                    // Field might not exist
                   }
-                } catch {
-                  // Field might not exist
                 }
               }
               propsBytes = encoder.encode(JSON.stringify(properties));
@@ -1376,8 +1527,9 @@ export class GeospatialEngine {
             extracted.push({ fid, wkbBytes, propsBytes, properties });
 
             features.push({
-              id: feature.fid,
+              id: rawFid,
               wkb: wkbBytes ?? undefined,
+              ...(stagedEdit?.geojson ? { geojson: stagedEdit.geojson } : {}),
               properties,
             });
           } catch (featErr) {
@@ -1387,6 +1539,89 @@ export class GeospatialEngine {
             });
           }
         });
+
+        // Append staged newly added features to the end of the stream
+        if (layerEditEntry && layerEditEntry.addedFeatures.length > 0) {
+          for (const added of layerEditEntry.addedFeatures) {
+            const addedIdKey = String(added.id);
+            if (allowedIdSet !== null && !allowedIdSet.has(addedIdKey)) {
+              continue;
+            }
+
+            if (shouldFilter && added.wkb) {
+              try {
+                const geom = gdal.Geometry.fromWKB(Buffer.from(added.wkb));
+                const env = geom.getEnvelope();
+                const intersects =
+                  env.minX <= filterExtent[2]
+                  && env.maxX >= filterExtent[0]
+                  && env.minY <= filterExtent[3]
+                  && env.maxY >= filterExtent[1];
+                if (!intersects) {
+                  continue;
+                }
+              } catch {
+                // If WKB envelope cannot be parsed, include by default
+              }
+            }
+
+            const matchedIndex = totalMatched;
+            totalMatched++;
+
+            if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
+              continue;
+            }
+
+            const numericFid =
+              typeof added.id === "number"
+                ? BigInt(Math.trunc(added.id))
+                : /^-?\d+$/.test(addedIdKey)
+                  ? BigInt(addedIdKey)
+                  : BigInt(0);
+
+            const wkbBytes =
+              includeGeometry && added.wkb
+                ? new Uint8Array(
+                    added.wkb.buffer,
+                    added.wkb.byteOffset,
+                    added.wkb.byteLength
+                  )
+                : null;
+
+            let propsBytes: Uint8Array | null = null;
+            let properties: Record<string, unknown> = {};
+
+            if (fields === undefined) {
+              for (const [k, v] of Object.entries(added.properties ?? {})) {
+                properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
+              }
+              propsBytes = encoder.encode(JSON.stringify(properties));
+            } else if (fields.length > 0) {
+              const srcProps = added.properties ?? {};
+              for (const f of fields) {
+                if (f in srcProps) {
+                  properties[f] = transformFeatureProperty(
+                    f,
+                    srcProps[f],
+                    fieldTypeMap
+                  );
+                }
+              }
+              propsBytes = encoder.encode(JSON.stringify(properties));
+            } else {
+              propsBytes = null;
+              properties = {};
+            }
+
+            extracted.push({ fid: numericFid, wkbBytes, propsBytes, properties });
+            features.push({
+              id: added.id,
+              wkb: wkbBytes ?? undefined,
+              ...(added.geojson ? { geojson: added.geojson } : {}),
+              properties,
+            });
+          }
+        }
 
         let hasGeometry = false;
         let hasProperties = false;
@@ -1444,6 +1679,7 @@ export class GeospatialEngine {
           layerId,
           buffer: packetBuffer,
           features,
+          totalMatched,
           transferList: [packetBuffer],
         };
       } finally {
@@ -1472,7 +1708,7 @@ export class GeospatialEngine {
    * @description Closes a specific native dataset session and disposes its handles.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-02
+   * @updated 2026-11-06
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @returns {boolean} True if dataset was found and closed, false otherwise.
@@ -1480,6 +1716,7 @@ export class GeospatialEngine {
   public closeDataset(layerId: string): boolean {
     this.cancelBackgroundScan(layerId);
     this.pendingQueries.delete(layerId);
+    this.layerEdits.delete(layerId);
 
     const session = this.sessions.get(layerId);
     if (!session) {
@@ -1507,13 +1744,14 @@ export class GeospatialEngine {
    * @description Closes all open native datasets and clears all sessions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-02
+   * @updated 2026-11-06
    * @since 0.1.0-dev
    * @returns {void}
    */
   public closeAll(): void {
     this.cancelAllBackgroundScans();
     this.pendingQueries.clear();
+    this.layerEdits.clear();
     for (const layerId of Array.from(this.sessions.keys())) {
       this.closeDataset(layerId);
     }

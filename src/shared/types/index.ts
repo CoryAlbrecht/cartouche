@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -322,9 +322,12 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerIds: string[], style: import('./project').ProjectLayerStyleItem | undefined, opacity?: number) => Promise<void>} [setLayerStyle] - Assigns a layer style container to one or more vector layers, promoting shared styles when applied to multiple layers.
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
  * @property {(style: import('./project').ProjectLayerStyleItem, defaultPath?: string) => Promise<string | null>} [saveStyleFile] - Saves a ProjectLayerStyleItem to disk via explicit path or native save dialog.
+ * @property {(layerId: string, edit: import('./project').StagedFeatureEdit) => Promise<void>} [stageFeatureEdit] - Stages an uncommitted feature modification or addition into Main's crash-resilient edit cache.
+ * @property {(layerId: string) => Promise<void>} [clearLayerEdits] - Clears all staged uncommitted feature edits for a layer.
+ * @property {() => Promise<string[]>} [getDirtyLayerIds] - Retrieves the list of layer identifiers with uncommitted feature edits.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-29
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -436,6 +439,15 @@ export interface ElectronAPI {
     style: import('./project').ProjectLayerStyleItem,
     defaultPath?: string
   ) => Promise<string | null>;
+  /** @ipc layers:stageFeatureEdit */
+  stageFeatureEdit?: (
+    layerId: string,
+    edit: import('./project').StagedFeatureEdit
+  ) => Promise<void>;
+  /** @ipc layers:clearLayerEdits */
+  clearLayerEdits?: (layerId: string) => Promise<void>;
+  /** @ipc layers:getDirtyLayerIds */
+  getDirtyLayerIds?: () => Promise<string[]>;
   /** @ipc gis:execute-renderer-action */
   onExecuteRendererAction?: (callback: (actionName: string) => void) => () => void;
   /** @ipc gis:log */

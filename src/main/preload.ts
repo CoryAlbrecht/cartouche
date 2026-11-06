@@ -4,19 +4,19 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DropPosition, ElectronAPI, ProjectLayerStyleItem } from '@shared/types';
+import type { DropPosition, ElectronAPI, ProjectLayerStyleItem, StagedFeatureEdit } from '@shared/types';
 
 /**
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -85,6 +85,15 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:saveStyleFile */
   saveStyleFile: (style: ProjectLayerStyleItem, defaultPath?: string) =>
     ipcRenderer.invoke('layers:saveStyleFile', style, defaultPath),
+  /** @ipc layers:stageFeatureEdit */
+  stageFeatureEdit: (layerId: string, edit: StagedFeatureEdit) =>
+    ipcRenderer.invoke('layers:stageFeatureEdit', layerId, edit),
+  /** @ipc layers:clearLayerEdits */
+  clearLayerEdits: (layerId: string) =>
+    ipcRenderer.invoke('layers:clearLayerEdits', layerId),
+  /** @ipc layers:getDirtyLayerIds */
+  getDirtyLayerIds: () =>
+    ipcRenderer.invoke('layers:getDirtyLayerIds'),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc dialog:save-file */
