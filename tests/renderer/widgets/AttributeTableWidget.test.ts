@@ -1045,3 +1045,316 @@ describe('AttributeTableWidget Filtering, minHeight, and Localization (Ticket #1
     assert.strictEqual(options[3].textContent, 'Afficher les entités modifiées et nouvelles');
   });
 });
+
+describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (Ticket #184)', () => {
+  beforeEach(() => {
+    setupDom();
+    activeLayerIdSignal.value = null;
+    layersSignal.value = [];
+    projectLayersSignal.value = [];
+    projectTreeSignal.value = [];
+    featuresSignal.value = [];
+    activeToolSignal.value = 'pan';
+    activeSelectionModeSignal.value = 'select_feature';
+    editableLayerIdsSignal.value = new Set();
+    selectedFeatureIdsSignal.value = new Set();
+    editedFeatureIdsSignal.value = new Set();
+    isProjectDirtySignal.value = false;
+    viewportExtentSignal.value = [-180, -90, 180, 90];
+    openDockPanelsSignal.value = { attributes: true, layers: true };
+    dictionarySignal.value = {};
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it('derives column headers from activeLayer.fields even when the layer has 0 features', async () => {
+    const emptyLayerWithSchema: GisLayer = {
+      id: 'layer-empty-schema',
+      name: 'Empty Schema Layer',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1,
+      color: '#2563eb',
+      featureCount: 0,
+      fields: [
+        { name: 'parcel_code', nativeType: 'String', inferredType: 'string', nullable: false },
+        { name: 'assessed_val', nativeType: 'Real', inferredType: 'real', nullable: true },
+        { name: 'zoning_class', nativeType: 'String', inferredType: 'string', nullable: true }
+      ]
+    };
+
+    layersSignal.value = [emptyLayerWithSchema];
+    activeLayerIdSignal.value = 'layer-empty-schema';
+    featuresSignal.value = [];
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+
+    const thEls = findAllNodes(container, el => el.tagName === 'TH');
+    const headerTexts = thEls.map(th => th.textContent);
+    assert.deepStrictEqual(headerTexts.slice(3), ['parcel_code', 'assessed_val', 'zoning_class']);
+  });
+
+  it('deserializes binary CART WKB packet buffer returned by queryExtent', async () => {
+    const {
+      WKB_PACKET_MAGIC,
+      WKB_PACKET_VERSION,
+      WKB_FLAG_HAS_GEOMETRY,
+      WKB_FLAG_HAS_PROPERTIES
+    } = await import('../../../src/shared/types/project');
+
+    const pointWkb = new Uint8Array(21);
+    const wkbView = new DataView(pointWkb.buffer);
+    pointWkb[0] = 1; // little endian
+    wkbView.setUint32(1, 1, true); // Point (1)
+    wkbView.setFloat64(5, -75.69, true);
+    wkbView.setFloat64(13, 45.42, true);
+
+    const propsBytes = new TextEncoder().encode(JSON.stringify({ city_name: 'Ottawa' }));
+    const totalSize = 12 + 8 + 4 + pointWkb.byteLength + 4 + propsBytes.byteLength;
+    const binaryPacket = new ArrayBuffer(totalSize);
+    const view = new DataView(binaryPacket);
+    const uint8View = new Uint8Array(binaryPacket);
+    view.setUint32(0, WKB_PACKET_MAGIC, true);
+    view.setUint16(4, WKB_PACKET_VERSION, true);
+    view.setUint16(6, WKB_FLAG_HAS_GEOMETRY | WKB_FLAG_HAS_PROPERTIES, true);
+    view.setUint32(8, 1, true);
+    let offset = 12;
+    view.setBigInt64(offset, 77n, true);
+    offset += 8;
+    view.setUint32(offset, pointWkb.byteLength, true);
+    offset += 4;
+    uint8View.set(pointWkb, offset);
+    offset += pointWkb.byteLength;
+    view.setUint32(offset, propsBytes.byteLength, true);
+    offset += 4;
+    uint8View.set(propsBytes, offset);
+
+    (globalThis as any).window.electronAPI = {
+      ...(globalThis as any).window.electronAPI,
+      queryExtent: async (layerId: string) => ({
+        layerId,
+        buffer: binaryPacket,
+        totalMatched: 1
+      })
+    };
+
+    try {
+      const layer: GisLayer = {
+        id: 'layer-wkb-buf',
+        name: 'WKB Buffer Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1,
+        color: '#2563eb',
+        featureCount: 1,
+        fields: [{ name: 'city_name', nativeType: 'String', inferredType: 'string', nullable: false }]
+      };
+      layersSignal.value = [layer];
+      activeLayerIdSignal.value = 'layer-wkb-buf';
+
+      await act(async () => {
+        root!.render(React.createElement(AttributeTableWidget));
+      });
+
+      const tdEls = findAllNodes(container, el => el.tagName === 'TD');
+      assert.deepStrictEqual(tdEls.map(td => td.textContent), ['1', '77', 'Point', 'Ottawa']);
+    } finally {
+      delete (globalThis as any).window.electronAPI.queryExtent;
+    }
+  });
+
+  it('hydrates feature chunks via window.electronAPI.queryExtent, paginates with 4 MDI buttons, numbers counter as start + rowIndex + 1, and does not re-fetch on selection change', async () => {
+    const { prefsAttributeTableMaxRows } = await import(
+      '../../../src/renderer/state/preferencesSignals'
+    );
+    prefsAttributeTableMaxRows.value = 2;
+
+    const queryCalls: Array<{ layerId: string; options: any }> = [];
+    const dataset = [
+      { id: 101, properties: { title: 'Row 1' }, geometryType: 'Point', coordinates: [1, 1] },
+      { id: 102, properties: { title: 'Row 2' }, geometryType: 'Point', coordinates: [2, 2] },
+      { id: 103, properties: { title: 'Row 3' }, geometryType: 'Point', coordinates: [3, 3] },
+      { id: 104, properties: { title: 'Row 4' }, geometryType: 'Point', coordinates: [4, 4] },
+      { id: 105, properties: { title: 'Row 5' }, geometryType: 'Point', coordinates: [5, 5] }
+    ];
+
+    (globalThis as any).window.electronAPI = {
+      ...(globalThis as any).window.electronAPI,
+      queryExtent: async (layerId: string, options: any) => {
+        queryCalls.push({ layerId, options });
+        const start = options?.start ?? 0;
+        const max = options?.max ?? 5000;
+        return {
+          layerId,
+          features: dataset.slice(start, start + max),
+          totalMatched: dataset.length
+        };
+      }
+    };
+
+    try {
+      const layer: GisLayer = {
+        id: 'layer-paged',
+        name: 'Paged Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1,
+        color: '#2563eb',
+        featureCount: 5,
+        fields: [{ name: 'title', nativeType: 'String', inferredType: 'string', nullable: false }]
+      };
+      layersSignal.value = [layer];
+      activeLayerIdSignal.value = 'layer-paged';
+
+      await act(async () => {
+        root!.render(React.createElement(AttributeTableWidget));
+      });
+
+      assert.strictEqual(queryCalls.length, 1);
+      assert.strictEqual(queryCalls[0].options.start, 0);
+      assert.strictEqual(queryCalls[0].options.max, 2);
+      assert.strictEqual(queryCalls[0].options.includeGeometry, true);
+
+      let counterCells = findAllNodes(container, el => el.className.includes('cell-counter'));
+      assert.deepStrictEqual(counterCells.map(c => c.textContent), ['1', '2']);
+
+      const firstBtn = findAllNodes(container, el => el.className.includes('attribute-table-page-first'))[0];
+      const prevBtn = findAllNodes(container, el => el.className.includes('attribute-table-page-prev'))[0];
+      const nextBtn = findAllNodes(container, el => el.className.includes('attribute-table-page-next'))[0];
+      const lastBtn = findAllNodes(container, el => el.className.includes('attribute-table-page-last'))[0];
+      assert.ok(firstBtn && prevBtn && nextBtn && lastBtn, 'All 4 MDI pagination buttons must be rendered in footer');
+      assert.strictEqual(firstBtn.textContent, '', 'First page button must be icon-only without text');
+      assert.strictEqual(prevBtn.textContent, '', 'Prev page button must be icon-only without text');
+      assert.strictEqual(nextBtn.textContent, '', 'Next page button must be icon-only without text');
+      assert.strictEqual(lastBtn.textContent, '', 'Last page button must be icon-only without text');
+      assert.strictEqual(firstBtn.getAttribute('disabled') !== null || (firstBtn as any).disabled === true, true);
+      assert.strictEqual(prevBtn.getAttribute('disabled') !== null || (prevBtn as any).disabled === true, true);
+
+      // Click Next page -> start = 2
+      await act(async () => {
+        nextBtn.dispatchEvent({ type: 'click', stopPropagation: () => {} });
+      });
+
+      assert.strictEqual(queryCalls.length, 2);
+      assert.strictEqual(queryCalls[1].options.start, 2);
+      assert.strictEqual(queryCalls[1].options.max, 2);
+      counterCells = findAllNodes(container, el => el.className.includes('cell-counter'));
+      assert.deepStrictEqual(counterCells.map(c => c.textContent), ['3', '4']);
+
+      // Selecting a feature on page 2 must NOT trigger a new queryExtent call
+      await act(async () => {
+        counterCells[0].dispatchEvent({
+          type: 'click',
+          stopPropagation: () => {},
+          ctrlKey: false,
+          metaKey: false,
+          shiftKey: false
+        });
+      });
+      assert.strictEqual(queryCalls.length, 2, 'Selecting a feature must not re-fetch features');
+      assert.deepStrictEqual(Array.from(selectedFeatureIdsSignal.value), [103]);
+
+      // Click Last page -> start = 4 (only 1 feature: 105)
+      await act(async () => {
+        lastBtn.dispatchEvent({ type: 'click', stopPropagation: () => {} });
+      });
+      assert.strictEqual(queryCalls.length, 3);
+      assert.strictEqual(queryCalls[2].options.start, 4);
+      counterCells = findAllNodes(container, el => el.className.includes('cell-counter'));
+      assert.deepStrictEqual(counterCells.map(c => c.textContent), ['5']);
+      assert.strictEqual(nextBtn.getAttribute('disabled') !== null || (nextBtn as any).disabled === true, true);
+      assert.strictEqual(lastBtn.getAttribute('disabled') !== null || (lastBtn as any).disabled === true, true);
+
+      // Click First page -> start = 0
+      await act(async () => {
+        firstBtn.dispatchEvent({ type: 'click', stopPropagation: () => {} });
+      });
+      assert.strictEqual(queryCalls.length, 4);
+      assert.strictEqual(queryCalls[3].options.start, 0);
+      counterCells = findAllNodes(container, el => el.className.includes('cell-counter'));
+      assert.deepStrictEqual(counterCells.map(c => c.textContent), ['1', '2']);
+
+      // Switch filter mode to 'selected' -> passes featureIds: [103] to queryExtent
+      const filterSelect = findAllNodes(container, el => el.className.includes('attribute-table-filter-select'))[0];
+      await act(async () => {
+        const propKey = Object.keys(filterSelect).find(k => k.startsWith('__reactProps'))!;
+        (filterSelect as any)[propKey].onChange({ target: { value: 'selected' } });
+      });
+      assert.strictEqual(queryCalls.length, 5);
+      assert.deepStrictEqual(queryCalls[4].options.featureIds, [103]);
+    } finally {
+      await act(async () => {
+        prefsAttributeTableMaxRows.value = 5000;
+      });
+      delete (globalThis as any).window.electronAPI.queryExtent;
+    }
+  });
+
+  it('stages inline cell edits to Main process via window.electronAPI.stageFeatureEdit', async () => {
+    const stagedCalls: Array<{ layerId: string; edit: any }> = [];
+    (globalThis as any).window.electronAPI = {
+      ...(globalThis as any).window.electronAPI,
+      stageFeatureEdit: async (layerId: string, edit: any) => {
+        stagedCalls.push({ layerId, edit });
+      }
+    };
+
+    try {
+      const layer: GisLayer = {
+        id: 'layer-edit-stage',
+        name: 'Editable Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1,
+        color: '#2563eb',
+        featureCount: 1,
+        fields: [{ name: 'label', nativeType: 'String', inferredType: 'string', nullable: false }]
+      };
+      layersSignal.value = [layer];
+      activeLayerIdSignal.value = 'layer-edit-stage';
+      editableLayerIdsSignal.value = new Set(['layer-edit-stage']);
+      featuresSignal.value = [
+        { id: 42, layerId: 'layer-edit-stage', geometryType: 'Point', properties: { label: 'Before' }, coordinates: [0, 0] }
+      ];
+
+      await act(async () => {
+        root!.render(React.createElement(AttributeTableWidget));
+      });
+
+      const dataCell = findAllNodes(container, el => el.className.includes('cell-attribute-data'))[0];
+      await act(async () => {
+        dataCell.dispatchEvent({ type: 'click', stopPropagation: () => {} });
+      });
+
+      const inputEl = findAllNodes(container, el => el.className.includes('cell-editor-input'))[0];
+      assert.ok(inputEl, 'Inline cell editor input must appear');
+
+      await act(async () => {
+        const propKey = Object.keys(inputEl).find(k => k.startsWith('__reactProps'))!;
+        (inputEl as any)[propKey].onChange({ target: { value: 'After Edit' } });
+      });
+
+      await act(async () => {
+        const propKey = Object.keys(inputEl).find(k => k.startsWith('__reactProps'))!;
+        (inputEl as any)[propKey].onKeyDown({ key: 'Enter', preventDefault: () => {} });
+      });
+
+      assert.strictEqual(stagedCalls.length, 1);
+      assert.strictEqual(stagedCalls[0].layerId, 'layer-edit-stage');
+      assert.deepStrictEqual(stagedCalls[0].edit, {
+        id: 42,
+        properties: { label: 'After Edit' }
+      });
+    } finally {
+      delete (globalThis as any).window.electronAPI.stageFeatureEdit;
+    }
+  });
+});
