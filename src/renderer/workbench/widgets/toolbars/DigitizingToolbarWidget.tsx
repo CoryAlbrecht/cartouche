@@ -4,7 +4,7 @@
  * @description Toolbar widget providing vector feature digitizing tools (Point, Line, Polygon), layer edit mode toggles, vertex editing, and spatial feature clipboard / deletion actions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-03
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -50,9 +50,13 @@ import { ToolbarWidget } from "../ToolbarWidget";
 /**
  * @typedef {Object} DigitizingToolbarWidgetProps
  * @property {ToolbarZone} [zone='top'] - Outer panel dock zone.
+ * @property {number} [scaling=1.0] - Toolbar scaling multiplier cascaded via --cartouche-ui-icon-scaling.
+ * @property {boolean} [showGrabber=true] - Whether to render the grabber handle.
  */
 export interface DigitizingToolbarWidgetProps {
   zone?: ToolbarZone;
+  scaling?: number;
+  showGrabber?: boolean;
 }
 
 /**
@@ -220,14 +224,14 @@ export function getButtonClass(
  * @description Renders spatial digitizing and vector editing buttons for toggling edit mode, saving active layer, drawing new features (Point, Line, Polygon), vertex editing, feature deletion, and clipboard operations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-03
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @param {DigitizingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} DigitizingToolbarWidget instance.
  */
 export const DigitizingToolbarWidget: React.FC<
   DigitizingToolbarWidgetProps
-> = ({ zone = "top" }) => {
+> = ({ zone = "top", scaling = 1.0, showGrabber = true }) => {
   useSignals();
   const { t } = useTranslation();
 
@@ -297,7 +301,11 @@ export const DigitizingToolbarWidget: React.FC<
   const pasteTitle = pasteKey ? `${pasteLabel} (${pasteKey})` : pasteLabel;
 
   return (
-    <ToolbarWidget id='digitizing' zone={zone}>
+    <ToolbarWidget
+      id='digitizing'
+      zone={zone}
+      scaling={scaling}
+      showGrabber={showGrabber}>
       <button
         type='button'
         id='toolbar-tool-toggle-layer-editing'

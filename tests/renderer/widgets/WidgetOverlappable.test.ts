@@ -272,7 +272,7 @@ const jiti = createJiti(import.meta.url, {
 
 const { BasicWidget } = jiti('../../../src/renderer/workbench/widgets/BasicWidget.tsx');
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
-const { AttributeTablePanel } = jiti('../../../src/renderer/workbench/panels/AttributeTablePanel.tsx');
+const { AttributeTableWidget: AttributeTablePanel } = jiti('../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx');
 const { ConsolePanel } = jiti('../../../src/renderer/workbench/panels/ConsolePanel.tsx');
 
 describe('Widget overlappable Property & Built-in Tool Defaults (Ticket #167)', () => {

@@ -651,7 +651,8 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     for (const match of tabBtnMatches) {
       const buttonHtml = match[0];
       assert.ok(
-        buttonHtml.includes('width:var(--cartouche-ui-icon-size, 24px)'),
+        buttonHtml.includes('width:calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))') ||
+          buttonHtml.includes('width:var(--cartouche-ui-icon-size, 24px)'),
         'Sidebar tab icon must render at 100% ui.icon.size'
       );
       assert.ok(

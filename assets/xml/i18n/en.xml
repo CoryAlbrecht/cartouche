@@ -270,4 +270,16 @@
     <string name="layer_properties_component_type_marker">Simple Marker</string>
     <string name="layer_properties_component_options">Style Options</string>
     <string name="layer_properties_component_locked_notice">This component is locked against edits.</string>
+    <string name="filter_dropdown_label">Filter features</string>
+    <string name="filter_show_all">Show all features</string>
+    <string name="filter_show_selected">Show selected features</string>
+    <string name="filter_show_visible">Show features visible on map</string>
+    <string name="filter_show_edited_new">Show edited and new features</string>
+    <string name="attribute_table_select_layer_prompt">Select a layer from the Layers panel to inspect attributes.</string>
+    <string name="attribute_table_empty_filtered">No features match the current filter.</string>
+    <string name="attribute_table_title">Attribute Table</string>
+    <string name="attribute_table_title_format">Attributes — {name} ({count} features)</string>
+    <string name="attribute_table_col_counter">#</string>
+    <string name="attribute_table_col_id">ID</string>
+    <string name="attribute_table_col_type">Type</string>
 </ci18n:localization>

@@ -853,6 +853,17 @@ export const layersSignal = signal<GisLayer[]>(initialLayers);
 export const selectedFeatureIdsSignal = signal<Set<string | number>>(new Set());
 
 /**
+ * @signal editedFeatureIdsSignal
+ * @description Reactive set signal tracking spatial feature record IDs that have been edited or newly created.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-05
+ * @updated 2026-11-05
+ * @since 0.1.0-dev
+ * @type {Signal<Set<string | number>>}
+ */
+export const editedFeatureIdsSignal = signal<Set<string | number>>(new Set());
+
+/**
  * @signal featuresSignal
  * @description Array signal containing loaded spatial feature objects across layers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -2106,12 +2117,13 @@ export async function closeProjectAction(): Promise<boolean> {
  * @description Action handler saving active layer modifications to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-05
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function saveActiveLayerAction(): void {
   if (!activeLayerIdSignal.value) return;
+  editedFeatureIdsSignal.value = new Set();
   addConsoleLog('info', `Save Active Layer requested for "${activeLayerIdSignal.value}".`, 'Layers');
 }
 
@@ -2673,6 +2685,7 @@ export function toggleLayerEditingAction(
     }
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
+    editedFeatureIdsSignal.value = new Set();
     if (
       activeLayerIdSignal.value === targetId &&
       (activeToolSignal.value === 'point' ||
