@@ -94,6 +94,8 @@
     <string name="prefs_ui_basefont_size_descr">Taille de police par défaut de l'établi sur l'ensemble des panneaux et des commandes</string>
     <string name="prefs_ui_icon_size">Taille des Icônes de Barre d'Outils</string>
     <string name="prefs_ui_icon_size_descr">Dimensions des icônes d'action des panneaux et barres d'outils</string>
+    <string name="prefs_ui_attribute_table_max_rows">Lignes Maximales de la Table d'Attributs</string>
+    <string name="prefs_ui_attribute_table_max_rows_descr">Nombre maximal de lignes d'entités récupérées et affichées par page dans la table d'attributs.</string>
     <string name="prefs_ui_layer_properties_fields_show_native_type">Afficher le type natif dans les champs de couche</string>
     <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Bascule la visibilité des types de stockage natifs bruts dans l'onglet Champs des propriétés de la couche.</string>
     <string name="prefs_rendering_simplification_threshold">Seuil de Simplification</string>
@@ -257,4 +259,9 @@
     <string name="attribute_table_col_counter">#</string>
     <string name="attribute_table_col_id">ID</string>
     <string name="attribute_table_col_type">Type</string>
+    <string name="attribute_table_page_first">Première page</string>
+    <string name="attribute_table_page_prev">Page précédente</string>
+    <string name="attribute_table_page_next">Page suivante</string>
+    <string name="attribute_table_page_last">Dernière page</string>
+    <string name="attribute_table_page_range">{start}–{end} sur {total}</string>
 </ci18n:localization>

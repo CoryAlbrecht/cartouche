@@ -119,6 +119,8 @@
     <string name="prefs_ui_basefont_size_descr">Default workbench font size across panels and controls</string>
     <string name="prefs_ui_icon_size">Toolbar Icon Size</string>
     <string name="prefs_ui_icon_size_descr">Dimensions for toolbar and panel action icons</string>
+    <string name="prefs_ui_attribute_table_max_rows">Attribute Table Maximum Rows</string>
+    <string name="prefs_ui_attribute_table_max_rows_descr">Maximum number of feature rows fetched and displayed per page in the Attribute Table.</string>
     <string name="prefs_ui_layer_properties_fields_show_native_type">Show Native Type in Layer Fields</string>
     <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Toggles visibility of raw native storage types in the Layer Properties Fields tab.</string>
     <string name="prefs_rendering_simplification_threshold">Simplification Threshold</string>
@@ -282,4 +284,9 @@
     <string name="attribute_table_col_counter">#</string>
     <string name="attribute_table_col_id">ID</string>
     <string name="attribute_table_col_type">Type</string>
+    <string name="attribute_table_page_first">First page</string>
+    <string name="attribute_table_page_prev">Previous page</string>
+    <string name="attribute_table_page_next">Next page</string>
+    <string name="attribute_table_page_last">Last page</string>
+    <string name="attribute_table_page_range">{start}–{end} of {total}</string>
 </ci18n:localization>

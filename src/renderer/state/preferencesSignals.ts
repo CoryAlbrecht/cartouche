@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-28
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -81,12 +81,24 @@ export const prefsUiIconSize = signal<number | undefined>(undefined);
 export const prefsGeneralMapViewportZoomAmount = signal<number | undefined>(undefined);
 
 /**
+ * @signal prefsAttributeTableMaxRows
+ * @description Signal holding the maximum number of feature rows per chunk in AttributeTableWidget.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @type {Signal<number>}
+ */
+export const prefsAttributeTableMaxRows = signal<number>(5000);
+
+/**
  * @description Lookup dictionary mapping preference key strings to exported Preact Signal instances.
  */
 const PREFERENCE_SIGNALS_MAP: Record<string, Signal<any>> = {
   'ui.basefont.size': prefsUiBaseFontSize,
   'ui.icon.size': prefsUiIconSize,
-  'general.mapViewport.zoomAmount': prefsGeneralMapViewportZoomAmount
+  'general.mapViewport.zoomAmount': prefsGeneralMapViewportZoomAmount,
+  'ui.attributeTable.maxRows': prefsAttributeTableMaxRows
 };
 
 /**

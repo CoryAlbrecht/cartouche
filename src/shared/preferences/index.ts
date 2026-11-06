@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-04
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -29,7 +29,7 @@ const LOG_PATTERN_OPTIONS = [
  * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -264,6 +264,24 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     group: 'display',
     groupOrder: 1,
     order: 2
+  },
+  'ui.attributeTable.maxRows': {
+    displayName: 'Attribute Table Maximum Rows',
+    value: 5000,
+    defaultValue: 5000,
+    minimum: 100,
+    maximum: 100000,
+    step: 100,
+    ephemeral: false,
+    hidden: false,
+    category: 'ui',
+    description: 'Maximum number of feature rows fetched and displayed per page in the Attribute Table.',
+    type: 'number',
+    controls: ['spinner'],
+    i18nId: 'prefs_ui_attribute_table_max_rows',
+    group: 'display',
+    groupOrder: 1,
+    order: 3
   },
   'ui.workbench.location.x': {
     displayName: 'Workbench Window X Position',
