@@ -264,4 +264,10 @@
     <string name="attribute_table_page_next">Page suivante</string>
     <string name="attribute_table_page_last">Dernière page</string>
     <string name="attribute_table_page_range">{start}–{end} sur {total}</string>
+    <string name="unsaved_changes_title">Modifications non enregistrées</string>
+    <string name="unsaved_layer_changes_prompt">La couche « {name} » comporte des modifications non enregistrées. Voulez-vous les enregistrer avant de continuer ?</string>
+    <string name="unsaved_project_changes_prompt">Le projet « {name} » comporte des modifications non enregistrées. Voulez-vous les enregistrer avant de continuer ?</string>
+    <string name="unsaved_changes_cancel">Annuler</string>
+    <string name="unsaved_changes_dont_save">Ne pas enregistrer les modifications</string>
+    <string name="unsaved_changes_save">Enregistrer les modifications</string>
 </ci18n:localization>

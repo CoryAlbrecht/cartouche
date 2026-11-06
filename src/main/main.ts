@@ -59,6 +59,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
+let isConfirmedClose = false;
 
 /**
  * @description Resolves the application icon file path across development, packaged assets, and system resource directories.
@@ -190,6 +191,7 @@ function createWindow() {
     mainWindowOptions.y = Math.floor(savedWbY);
   }
 
+  isConfirmedClose = false;
   mainWindow = new BrowserWindow(mainWindowOptions);
   mainWindow.setMenu(null);
   mainWindow.setAutoHideMenuBar(true);
@@ -268,7 +270,13 @@ function createWindow() {
   mainWindow.on('resized', saveWorkbenchBounds);
   mainWindow.on('move', saveWorkbenchBounds);
   mainWindow.on('moved', saveWorkbenchBounds);
-  mainWindow.on('close', saveWorkbenchBounds);
+  mainWindow.on('close', (event) => {
+    saveWorkbenchBounds();
+    if (!isConfirmedClose && mainWindow && !mainWindow.isDestroyed() && !process.argv.includes('--test-boot')) {
+      event.preventDefault();
+      mainWindow.webContents.send('app:request-close');
+    }
+  });
 
   if (process.platform === 'linux') {
     mainWindow.setIcon(iconImage.isEmpty() ? iconPath : iconImage);
@@ -402,7 +410,7 @@ function createWindow() {
  * @description Initializes and boots the main application lifecycle, logging hub, and window managers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -474,7 +482,16 @@ function startApp(): void {
   });
 
   onIpc('window-close', () => {
-    if (mainWindow) mainWindow.close();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    }
+  });
+
+  onIpc('window-confirm-close', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      isConfirmedClose = true;
+      mainWindow.close();
+    }
   });
 
   handleIpc('window-is-maximized', () => {

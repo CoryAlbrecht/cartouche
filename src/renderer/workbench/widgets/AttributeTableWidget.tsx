@@ -22,6 +22,7 @@ import {
   selectedFeatureIdsSignal,
   editableLayerIdsSignal,
   editedFeatureIdsSignal,
+  dirtyLayerIdsSignal,
   featuresSignal,
   isProjectDirtySignal,
   viewportExtentSignal,
@@ -527,10 +528,15 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
         ?.catch?.(() => {});
     }
 
-    // Track modified feature ID in editedFeatureIdsSignal
+    // Track modified feature ID in editedFeatureIdsSignal and layer in dirtyLayerIdsSignal
     const nextEdited = new Set(editedFeatureIdsSignal.value);
     nextEdited.add(featureId);
     editedFeatureIdsSignal.value = nextEdited;
+    if (activeLayer) {
+      const nextDirtyLayers = new Set(dirtyLayerIdsSignal.value);
+      nextDirtyLayers.add(activeLayer.id);
+      dirtyLayerIdsSignal.value = nextDirtyLayers;
+    }
 
     // Set Layer Dirty State on project
     isProjectDirtySignal.value = true;

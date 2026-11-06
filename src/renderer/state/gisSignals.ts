@@ -2104,23 +2104,247 @@ export async function saveAsProjectAction(): Promise<boolean> {
 }
 
 /**
- * @description Action handler requesting project close flow. If project is dirty, prompts to save first.
- * If saved or clean, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
+ * @typedef {'cancel' | 'discard' | 'save'} UnsavedChangesChoice
+ * @description User action choice selected in the Layer Dirty State or Project Dirty State confirmation modal dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ */
+export type UnsavedChangesChoice = 'cancel' | 'discard' | 'save';
+
+/**
+ * @typedef {Object} UnsavedChangesPromptState
+ * @property {'layer' | 'project'} targetType - Whether the confirmation prompt targets an individual dirty layer or the project.
+ * @property {string} [layerId] - Target layer identifier when `targetType === 'layer'`.
+ * @property {string} targetName - Display name of the dirty layer or project shown in the modal prompt.
+ * @property {(choice: UnsavedChangesChoice) => void} resolve - Promise resolver callback invoked when the user chooses an action.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ */
+export interface UnsavedChangesPromptState {
+  targetType: 'layer' | 'project';
+  layerId?: string;
+  targetName: string;
+  resolve: (choice: UnsavedChangesChoice) => void;
+}
+
+/**
+ * @signal dirtyLayerIdsSignal
+ * @description Reactive signal tracking the set of layer IDs with uncommitted feature edits in the Renderer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @type {Signal<Set<string>>}
+ */
+export const dirtyLayerIdsSignal = signal<Set<string>>(new Set());
+
+/**
+ * @signal unsavedChangesModalSignal
+ * @description Reactive signal holding the active sequential Layer Dirty State or Project Dirty State confirmation prompt state or null when closed.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @type {Signal<UnsavedChangesPromptState | null>}
+ */
+export const unsavedChangesModalSignal = signal<UnsavedChangesPromptState | null>(null);
+
+/**
+ * @function resolveUnsavedChangesModal
+ * @description Resolves the currently active Layer Dirty State or Project Dirty State modal prompt with the given user choice and clears the modal state.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {UnsavedChangesChoice} choice - Selected user action ('cancel' | 'discard' | 'save').
+ * @returns {void}
+ */
+export function resolveUnsavedChangesModal(choice: UnsavedChangesChoice): void {
+  const active = unsavedChangesModalSignal.value;
+  if (!active) return;
+  unsavedChangesModalSignal.value = null;
+  active.resolve(choice);
+}
+
+/**
+ * @function promptUnsavedChanges
+ * @description Opens the confirmation modal dialog for a Layer Dirty State or Project Dirty State target and returns a Promise resolving to the user's choice.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {'layer' | 'project'} targetType - Target kind ('layer' | 'project').
+ * @param {string} targetName - Display name of the layer or project.
+ * @param {string} [layerId] - Layer ID when prompting for a layer.
+ * @returns {Promise<UnsavedChangesChoice>} Resolved user choice.
+ */
+export function promptUnsavedChanges(
+  targetType: 'layer' | 'project',
+  targetName: string,
+  layerId?: string
+): Promise<UnsavedChangesChoice> {
+  return new Promise<UnsavedChangesChoice>((resolve) => {
+    unsavedChangesModalSignal.value = {
+      targetType,
+      layerId,
+      targetName,
+      resolve
+    };
+  });
+}
+
+/**
+ * @function discardLayerChangesAction
+ * @description Discards uncommitted feature edits for the specified layer in Main, Worker, and Renderer state.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {string} layerId - Target layer identifier.
+ * @returns {Promise<void>}
+ */
+export async function discardLayerChangesAction(layerId: string): Promise<void> {
+  const nextDirty = new Set(dirtyLayerIdsSignal.value);
+  nextDirty.delete(layerId);
+  dirtyLayerIdsSignal.value = nextDirty;
+  if (activeLayerIdSignal.value === layerId) {
+    editedFeatureIdsSignal.value = new Set();
+  }
+  const api = (globalThis as any).window?.electronAPI;
+  if (typeof api?.clearLayerEdits === 'function') {
+    await api.clearLayerEdits(layerId);
+  }
+  addConsoleLog('info', `Discarded uncommitted edits for layer "${layerId}".`, 'Layers');
+}
+
+/**
+ * @function saveLayerChangesAction
+ * @description Stub action saving uncommitted feature edits for the specified layer and clearing its Layer Dirty State.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {string} layerId - Target layer identifier.
+ * @returns {Promise<void>}
+ */
+export async function saveLayerChangesAction(layerId: string): Promise<void> {
+  const nextDirty = new Set(dirtyLayerIdsSignal.value);
+  nextDirty.delete(layerId);
+  dirtyLayerIdsSignal.value = nextDirty;
+  if (activeLayerIdSignal.value === layerId) {
+    editedFeatureIdsSignal.value = new Set();
+  }
+  const api = (globalThis as any).window?.electronAPI;
+  if (typeof api?.clearLayerEdits === 'function') {
+    await api.clearLayerEdits(layerId);
+  }
+  addConsoleLog('info', `Saved changes (stub) for layer "${layerId}".`, 'Layers');
+}
+
+/**
+ * @function confirmUnsavedChangesFlow
+ * @description Sequentially prompts the user with a <<Cancel, Don't Save Changes, Save Changes>> modal for each dirty layer followed by the dirty project.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @returns {Promise<boolean>} True if all dirty layers and the project were saved or discarded, false if canceled.
+ */
+export async function confirmUnsavedChangesFlow(): Promise<boolean> {
+  const api = (globalThis as any).window?.electronAPI;
+  let ipcDirtyIds: string[] = [];
+  if (typeof api?.getDirtyLayerIds === 'function') {
+    try {
+      const res = await api.getDirtyLayerIds();
+      if (Array.isArray(res)) {
+        ipcDirtyIds = res;
+      }
+    } catch {
+      ipcDirtyIds = [];
+    }
+  }
+
+  const combinedDirtySet = new Set<string>([
+    ...ipcDirtyIds,
+    ...dirtyLayerIdsSignal.value
+  ]);
+  if (editedFeatureIdsSignal.value.size > 0 && activeLayerIdSignal.value) {
+    combinedDirtySet.add(activeLayerIdSignal.value);
+  }
+
+  // Order dirty layers by their appearance in layersSignal, followed by any remaining IDs
+  const orderedDirtyLayerIds: string[] = [];
+  for (const layer of layersSignal.value) {
+    if (combinedDirtySet.has(layer.id)) {
+      orderedDirtyLayerIds.push(layer.id);
+      combinedDirtySet.delete(layer.id);
+    }
+  }
+  for (const remainingId of combinedDirtySet) {
+    orderedDirtyLayerIds.push(remainingId);
+  }
+
+  // 1. Sequential per-layer confirmation modals
+  for (const layerId of orderedDirtyLayerIds) {
+    const layer = layersSignal.value.find((l) => l.id === layerId);
+    const layerName = layer ? (layer.name || getLayerDisplayName(layer)) : layerId;
+    const choice = await promptUnsavedChanges('layer', layerName, layerId);
+
+    if (choice === 'cancel') {
+      addConsoleLog('info', `Close/exit aborted by user at layer "${layerName}".`, 'Layers');
+      return false;
+    }
+    if (choice === 'discard') {
+      await discardLayerChangesAction(layerId);
+    } else if (choice === 'save') {
+      await saveLayerChangesAction(layerId);
+    }
+  }
+
+  // 2. Project confirmation modal (if project has Project Dirty State)
+  if (isProjectDirtySignal.value) {
+    const projName = projectNameSignal.value || 'Untitled Project';
+    const choice = await promptUnsavedChanges('project', projName);
+
+    if (choice === 'cancel') {
+      addConsoleLog('info', 'Close/exit aborted by user at project prompt.', 'Project');
+      return false;
+    }
+    if (choice === 'discard') {
+      isProjectDirtySignal.value = false;
+    } else if (choice === 'save') {
+      const saved = await saveProjectAction();
+      if (!saved) {
+        addConsoleLog('info', 'Close/exit aborted: unsaved project changes were not saved.', 'Project');
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * @description Action handler requesting project close flow. Sequentially prompts for each dirty layer and dirty project before closing.
+ * If saved or discarded, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-28
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project closed, false if aborted.
  */
 export async function closeProjectAction(): Promise<boolean> {
-  if (!hasProjectSignal.value) return true;
+  if (!hasProjectSignal.value && dirtyLayerIdsSignal.value.size === 0 && !isProjectDirtySignal.value) {
+    return true;
+  }
 
-  if (isProjectDirtySignal.value) {
-    const saved = await saveProjectAction();
-    if (!saved) {
-      addConsoleLog('info', 'Close project aborted: unsaved changes were not saved.', 'Project');
-      return false;
-    }
+  const confirmed = await confirmUnsavedChangesFlow();
+  if (!confirmed) {
+    return false;
   }
 
   if (window.electronAPI?.executeAction) {
@@ -2132,6 +2356,9 @@ export async function closeProjectAction(): Promise<boolean> {
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;
+  dirtyLayerIdsSignal.value = new Set();
+  editedFeatureIdsSignal.value = new Set();
+  editableLayerIdsSignal.value = new Set();
   closeProjectPropertiesDialog();
   layersSignal.value = [];
   layerGroupsSignal.value = [];
@@ -2148,6 +2375,35 @@ export async function closeProjectAction(): Promise<boolean> {
 }
 
 /**
+ * @function requestAppExitAction
+ * @description Intercepts application exit requests (menubar close button, Quit Action, or OS window close event),
+ * runs sequential per-layer and project confirmation modals for Layer Dirty State and Project Dirty State, and invokes `confirmCloseWindow` if not canceled.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @returns {Promise<boolean>} True if application exit was confirmed and initiated, false if canceled.
+ */
+export async function requestAppExitAction(): Promise<boolean> {
+  if (unsavedChangesModalSignal.value !== null) {
+    return false;
+  }
+
+  const confirmed = await confirmUnsavedChangesFlow();
+  if (!confirmed) {
+    return false;
+  }
+
+  const api = (globalThis as any).window?.electronAPI;
+  if (typeof api?.confirmCloseWindow === 'function') {
+    api.confirmCloseWindow();
+  } else if (typeof api?.closeWindow === 'function') {
+    api.closeWindow();
+  }
+  return true;
+}
+
+/**
  * @description Action handler saving active layer modifications to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
@@ -2158,12 +2414,7 @@ export async function closeProjectAction(): Promise<boolean> {
 export function saveActiveLayerAction(): void {
   const targetId = activeLayerIdSignal.value;
   if (!targetId) return;
-  editedFeatureIdsSignal.value = new Set();
-  const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.clearLayerEdits === 'function') {
-    api.clearLayerEdits(targetId)?.catch?.(() => {});
-  }
-  addConsoleLog('info', `Save Active Layer requested for "${targetId}".`, 'Layers');
+  void saveLayerChangesAction(targetId);
 }
 
 /**

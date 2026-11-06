@@ -30,6 +30,16 @@ const electronAPI: ElectronAPI = {
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   /** @ipc window-close */
   closeWindow: () => ipcRenderer.send('window-close'),
+  /** @ipc window-confirm-close */
+  confirmCloseWindow: () => ipcRenderer.send('window-confirm-close'),
+  /** @ipc app:request-close */
+  onRequestClose: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('app:request-close', handler);
+    return () => {
+      ipcRenderer.removeListener('app:request-close', handler);
+    };
+  },
   /** @ipc window-is-maximized */
   isWindowMaximized: () => ipcRenderer.invoke('window-is-maximized'),
   /** @ipc window-maximized-state */

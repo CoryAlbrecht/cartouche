@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -54,7 +54,8 @@ import {
   snapToVerticesSignal,
   snapToMidpointSignal,
   snapToSegmentSignal,
-  openSnappingOptionsDialog
+  openSnappingOptionsDialog,
+  requestAppExitAction
 } from '../state/gisSignals';
 import { openPreferencesDialog } from '../state/preferencesSignals';
 import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
@@ -102,7 +103,7 @@ export function matchesKeyCombination(
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
@@ -173,7 +174,7 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
  * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {string} actionName - Registered action name identifier.
  * @returns {void}
@@ -189,6 +190,10 @@ export function executeWorkbenchAction(actionName: string): void {
       break;
     case 'close_project':
       if (hasProjectSignal.value) closeProjectAction();
+      break;
+    case 'quit':
+    case 'quit_app':
+      void requestAppExitAction();
       break;
     case 'save_project':
       if (hasProjectSignal.value && (!projectFilePathSignal.value || isProjectDirtySignal.value)) {

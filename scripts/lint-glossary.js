@@ -4,7 +4,7 @@
  * @description Linter and pre-commit validator that parses prohibited domain terms from GLOSSARY.md and enforces canonical domain lexicon across staged diffs and source files.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -119,6 +119,21 @@ export const ALLOWED_COMPOUND_PHRASES = Object.freeze([
       'shape:',
       '} shape',
       'shape -'
+    ])
+  }),
+  Object.freeze({
+    avoid: 'Unsaved changes',
+    allowedPhrases: Object.freeze([
+      'unsaved_changes',
+      'unsaved_layer_changes',
+      'unsaved_project_changes',
+      'Unsaved Changes Modals',
+      'Unsaved Changes modal',
+      'UnsavedChangesModal',
+      'unsaved-changes',
+      'has unsaved changes',
+      "'Unsaved Changes'",
+      '"Unsaved Changes"'
     ])
   })
 ]);

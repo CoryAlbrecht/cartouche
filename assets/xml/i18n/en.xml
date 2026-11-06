@@ -289,4 +289,10 @@
     <string name="attribute_table_page_next">Next page</string>
     <string name="attribute_table_page_last">Last page</string>
     <string name="attribute_table_page_range">{start}–{end} of {total}</string>
+    <string name="unsaved_changes_title">Unsaved Changes</string>
+    <string name="unsaved_layer_changes_prompt">Layer "{name}" has unsaved changes. Do you want to save them before continuing?</string>
+    <string name="unsaved_project_changes_prompt">Project "{name}" has unsaved changes. Do you want to save them before continuing?</string>
+    <string name="unsaved_changes_cancel">Cancel</string>
+    <string name="unsaved_changes_dont_save">Don't Save Changes</string>
+    <string name="unsaved_changes_save">Save Changes</string>
 </ci18n:localization>

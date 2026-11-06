@@ -1357,4 +1357,58 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
       delete (globalThis as any).window.electronAPI.stageFeatureEdit;
     }
   });
+
+  it('renders UnsavedChangesModal with Cancel, Don\'t Save Changes, and Save Changes buttons and resolves choices (Ticket #185)', async () => {
+    const { UnsavedChangesModal } = jiti(
+      '../../../src/renderer/workbench/dialogs/ModalDialog.tsx'
+    ) as { UnsavedChangesModal: React.FC };
+    const {
+      promptUnsavedChanges,
+      unsavedChangesModalSignal
+    } = await import('../../../src/renderer/state/gisSignals');
+
+    dictionarySignal.value = {
+      unsaved_changes_title: 'Unsaved Changes',
+      unsaved_layer_changes_prompt: 'Layer "{name}" has unsaved changes. Do you want to save them before continuing?',
+      unsaved_project_changes_prompt: 'Project "{name}" has unsaved changes. Do you want to save them before continuing?',
+      unsaved_changes_cancel: 'Cancel',
+      unsaved_changes_dont_save: "Don't Save Changes",
+      unsaved_changes_save: 'Save Changes'
+    };
+
+    try {
+      await act(async () => {
+        root!.render(React.createElement(UnsavedChangesModal));
+      });
+
+      let choicePromise!: Promise<string>;
+      await act(async () => {
+        choicePromise = promptUnsavedChanges('layer', 'Parcels Layer', 'layer-parcels');
+      });
+
+      const msgEl = findAllNodes(document.body as unknown as MockElement, el =>
+        el.className.includes('unsaved-changes-modal-message')
+      )[0];
+      assert.ok(msgEl, 'UnsavedChangesModal message must be rendered in document.body portal');
+      assert.strictEqual(
+        msgEl.textContent,
+        'Layer "Parcels Layer" has unsaved changes. Do you want to save them before continuing?'
+      );
+
+      const buttons = findAllNodes(document.body as unknown as MockElement, el => el.tagName === 'BUTTON');
+      assert.deepStrictEqual(
+        buttons.map(b => b.textContent),
+        ['Cancel', "Don't Save Changes", 'Save Changes']
+      );
+
+      // Click "Don't Save Changes"
+      await act(async () => {
+        buttons[1].dispatchEvent({ type: 'click', stopPropagation: () => {} });
+      });
+      assert.strictEqual(await choicePromise, 'discard');
+      assert.strictEqual(unsavedChangesModalSignal.value, null);
+    } finally {
+      unsavedChangesModalSignal.value = null;
+    }
+  });
 });

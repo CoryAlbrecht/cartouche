@@ -306,6 +306,8 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {() => void} minimizeWindow - Minimizes main window.
  * @property {() => void} maximizeWindow - Toggles window maximization.
  * @property {() => void} closeWindow - Closes main window.
+ * @property {() => void} [confirmCloseWindow] - Confirms Workbench closure after Layer Dirty State and Project Dirty State checks pass.
+ * @property {(callback: () => void) => () => void} [onRequestClose] - Registers listener for OS or window-level close requests.
  * @property {() => Promise<boolean>} isWindowMaximized - Queries window maximized state.
  * @property {(callback: (isMaximized: boolean) => void) => () => void} onMaximizedState - Registers window maximized state change listener.
  * @property {(layerId: string) => Promise<FlatGeobufLayerPayload | null>} fetchLayerFlatGeobuf - Fetches binary layer FlatGeobuf data.
@@ -343,6 +345,10 @@ export interface ElectronAPI {
   maximizeWindow: () => void;
   /** @ipc window-close */
   closeWindow: () => void;
+  /** @ipc window-confirm-close */
+  confirmCloseWindow?: () => void;
+  /** @ipc app:request-close */
+  onRequestClose?: (callback: () => void) => () => void;
   /** @ipc window-is-maximized */
   isWindowMaximized: () => Promise<boolean>;
   /** @ipc window-maximized-state */
