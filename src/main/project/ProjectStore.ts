@@ -4,7 +4,7 @@
  * @description Central in-memory store maintaining authoritative active Cartouche project state in the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  */
@@ -21,7 +21,7 @@ import { logging } from '../../shared/logging';
  * @description In-memory store managing active Cartouche project state, active file path, and dirty modification flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-07
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export class ProjectStore {
@@ -30,6 +30,7 @@ export class ProjectStore {
   private projectFilePath: string | null = null;
   private isProjectDirtyState: boolean = false;
   private rootGroup: LayerGroup = new LayerGroup('root', 'root');
+  private selectedFeaturesByLayer: Map<string, Array<string | number>> = new Map();
 
   private constructor() {}
 
@@ -138,13 +139,14 @@ export class ProjectStore {
    * Recursively disposes of all loaded layers to free C++ memory bounds.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-13
+   * @updated 2026-11-06
    * @since 0.1.0-dev
    * @returns {void}
    */
   public closeProject(): void {
     this.rootGroup[Symbol.dispose]();
     this.rootGroup = new LayerGroup('root', 'root');
+    this.selectedFeaturesByLayer.clear();
     
     this.currentProject = null;
     this.projectFilePath = null;
@@ -279,6 +281,50 @@ export class ProjectStore {
    */
   public setDirty(dirty: boolean): void {
     this.setProjectDirty(dirty);
+  }
+
+  /**
+   * @description Updates the selected spatial feature IDs for a target layer (or clears all selections when layerId is null and array is empty).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string | null} layerId - Target layer identifier, or null for global selection reset.
+   * @param {Array<string | number>} selectedFeatureIds - Selected feature identifiers.
+   * @returns {void}
+   */
+  public setFeatureSelection(layerId: string | null, selectedFeatureIds: Array<string | number>): void {
+    if (!layerId) {
+      if (selectedFeatureIds.length === 0) {
+        this.selectedFeaturesByLayer.clear();
+      }
+      return;
+    }
+    if (selectedFeatureIds.length === 0) {
+      this.selectedFeaturesByLayer.delete(layerId);
+    } else {
+      this.selectedFeaturesByLayer.set(layerId, [...selectedFeatureIds]);
+    }
+  }
+
+  /**
+   * @description Retrieves the currently selected spatial feature IDs for a specific layer or across all layers.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string | null} [layerId] - Optional layer identifier filter.
+   * @returns {Array<string | number>} Selected feature identifiers.
+   */
+  public getFeatureSelection(layerId?: string | null): Array<string | number> {
+    if (layerId) {
+      return [...(this.selectedFeaturesByLayer.get(layerId) || [])];
+    }
+    const all: Array<string | number> = [];
+    for (const ids of this.selectedFeaturesByLayer.values()) {
+      all.push(...ids);
+    }
+    return all;
   }
 }
 

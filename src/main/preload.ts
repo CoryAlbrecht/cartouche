@@ -158,6 +158,9 @@ const electronAPI: ElectronAPI = {
   setNodeVisibility: (nodeId: string, visible: boolean) => ipcRenderer.invoke('gis:set-node-visibility', nodeId, visible),
   /** @ipc gis:set-node-selection */
   setNodeSelection: (selectedNodeIds: string[]) => ipcRenderer.invoke('gis:set-node-selection', selectedNodeIds),
+  /** @ipc gis:set-feature-selection */
+  setFeatureSelection: (layerId: string | null, selectedFeatureIds: Array<string | number>) =>
+    ipcRenderer.invoke('gis:set-feature-selection', layerId, selectedFeatureIds),
   /** @ipc gis:remove-nodes */
   removeNodes: (nodeIds: string[]) => ipcRenderer.invoke('gis:remove-nodes', nodeIds),
   /** @ipc gis:create-group */

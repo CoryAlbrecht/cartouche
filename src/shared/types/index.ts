@@ -117,9 +117,10 @@ export interface GisLayerGroup {
  * @property {number} featureCount - Count of loaded spatial feature records.
  * @property {OlFlatStyle} [flatStyle] - Compiled OpenLayers flat style rules.
  * @property {ArrayBuffer} [flatGeobufBuffer] - Zero-copy binary FlatGeobuf vector payload buffer.
+ * @property {import('./layers').LayerFieldInfo[]} [fields] - Vector attribute field schema definitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-08
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export interface GisLayer {
@@ -137,6 +138,7 @@ export interface GisLayer {
   featureCount: number;
   flatStyle?: OlFlatStyle;
   flatGeobufBuffer?: ArrayBuffer;
+  fields?: import('./layers').LayerFieldInfo[];
 }
 
 /**
@@ -325,6 +327,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerId: string, edit: import('./project').StagedFeatureEdit) => Promise<void>} [stageFeatureEdit] - Stages an uncommitted feature modification or addition into Main's crash-resilient edit cache.
  * @property {(layerId: string) => Promise<void>} [clearLayerEdits] - Clears all staged uncommitted feature edits for a layer.
  * @property {() => Promise<string[]>} [getDirtyLayerIds] - Retrieves the list of layer identifiers with uncommitted feature edits.
+ * @property {(layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>} [setFeatureSelection] - Synchronizes selected feature IDs for the active or target layer to the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-11-06
@@ -410,6 +413,8 @@ export interface ElectronAPI {
   setNodeVisibility?: (nodeId: string, visible: boolean) => Promise<void>;
   /** @ipc gis:set-node-selection */
   setNodeSelection?: (selectedNodeIds: string[]) => Promise<void>;
+  /** @ipc gis:set-feature-selection */
+  setFeatureSelection?: (layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>;
   /** @ipc gis:remove-nodes */
   removeNodes?: (nodeIds: string[]) => Promise<void>;
   /** @ipc gis:create-group */

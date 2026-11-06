@@ -42,6 +42,7 @@ import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
   setNodeSelection,
+  setFeatureSelection,
   removeNodes,
   createGroup,
   reorderNodes
@@ -715,6 +716,13 @@ function startApp(): void {
   handleIpc('gis:set-node-selection', async (_event, selectedNodeIds: string[]) => {
     setNodeSelection(selectedNodeIds);
   });
+
+  handleIpc(
+    'gis:set-feature-selection',
+    async (_event, layerId: string | null, selectedFeatureIds: Array<string | number>) => {
+      setFeatureSelection(layerId, selectedFeatureIds);
+    }
+  );
 
   handleIpc('gis:remove-nodes', async (_event, nodeIds: string[]) => {
     removeNodes(nodeIds);

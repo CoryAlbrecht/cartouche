@@ -4,7 +4,7 @@
  * @description Unit tests for Main process layer tree mutation API handlers (visibility, selection, deletion, group creation, reordering).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-19
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -16,6 +16,7 @@ import { Layer } from '../../../../src/main/project/models/Layer';
 import {
   setNodeVisibility,
   setNodeSelection,
+  setFeatureSelection,
   removeNodes,
   createGroup,
   reorderNodes
@@ -237,6 +238,22 @@ describe('layerTreeOperations', () => {
     unsubscribe();
     projectStore.setProjectDirty(true);
     assert.deepEqual(notifications, [true, false]);
+  });
+
+  it('setFeatureSelection stores and clears selected feature IDs per layer in ProjectStore', () => {
+    setFeatureSelection('layer-parcels', ['f-1', 'f-2', 3]);
+    assert.deepEqual(projectStore.getFeatureSelection('layer-parcels'), ['f-1', 'f-2', 3]);
+
+    setFeatureSelection('layer-roads', ['r-10']);
+    assert.deepEqual(projectStore.getFeatureSelection('layer-roads'), ['r-10']);
+    assert.deepEqual(projectStore.getFeatureSelection(), ['f-1', 'f-2', 3, 'r-10']);
+
+    setFeatureSelection('layer-parcels', []);
+    assert.deepEqual(projectStore.getFeatureSelection('layer-parcels'), []);
+    assert.deepEqual(projectStore.getFeatureSelection(), ['r-10']);
+
+    setFeatureSelection(null, []);
+    assert.deepEqual(projectStore.getFeatureSelection(), []);
   });
 });
 

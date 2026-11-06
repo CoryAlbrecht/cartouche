@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -658,12 +658,12 @@ describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
     });
     assert.strictEqual(editedFeatureIdsSignal.value.size, 0, 'saveActiveLayerAction must reset editedFeatureIdsSignal');
 
-    // Re-add to editedFeatureIdsSignal and verify toggling editing off clears it
+    // Re-add to editedFeatureIdsSignal and verify toggling editing off preserves it (#182)
     await act(async () => {
       editedFeatureIdsSignal.value = new Set(['f-101']);
       toggleLayerEditingAction('layer-parcels', { force: true });
     });
-    assert.strictEqual(editedFeatureIdsSignal.value.size, 0, 'toggleLayerEditingAction disabling edit mode must clear editedFeatureIdsSignal');
+    assert.strictEqual(editedFeatureIdsSignal.value.size, 1, 'toggleLayerEditingAction disabling edit mode must preserve editedFeatureIdsSignal');
   });
 });
 

@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -292,7 +292,7 @@ export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> 
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
@@ -309,7 +309,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
@@ -360,7 +360,7 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
@@ -846,11 +846,23 @@ export const layersSignal = signal<GisLayer[]>(initialLayers);
  * @description Set signal of selected spatial feature record IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {Signal<Set<string | number>>}
  */
 export const selectedFeatureIdsSignal = signal<Set<string | number>>(new Set());
+
+let isInitialFeatureSelectionSync = true;
+selectedFeatureIdsSignal.subscribe((ids) => {
+  if (isInitialFeatureSelectionSync) {
+    isInitialFeatureSelectionSync = false;
+    return;
+  }
+  const api = (globalThis as any).window?.electronAPI;
+  if (typeof api?.setFeatureSelection === 'function') {
+    api.setFeatureSelection(activeLayerIdSignal.value, Array.from(ids))?.catch?.(() => {});
+  }
+});
 
 /**
  * @signal editedFeatureIdsSignal
@@ -917,7 +929,7 @@ export function getLayerDisplayName(layer: GisLayer): string {
  * Checks layersSignal first, then falls back to projectLayersSignal or projectTreeSignal item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
@@ -927,21 +939,41 @@ export const activeLayerSignal = computed<GisLayer | ProjectLayerItem | null>(()
 
   const inLayers = layersSignal.value.find((l) => l.id === activeId);
   if (inLayers) {
-    if (!inLayers.geometryKind) {
-      const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
-      if (inProjectLayers?.geometryKind) {
-        return { ...inLayers, geometryKind: inProjectLayers.geometryKind };
-      }
-      const inTree = findItemInTree(projectTreeSignal.value, activeId);
-      if (inTree && !('children' in inTree) && (inTree as ProjectLayerItem).geometryKind) {
-        return { ...inLayers, geometryKind: (inTree as ProjectLayerItem).geometryKind };
-      }
+    const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
+    const inTree = findItemInTree(projectTreeSignal.value, activeId);
+    const inTreeLayer = inTree && !('children' in inTree) ? (inTree as ProjectLayerItem) : undefined;
+
+    const geometryKind = inLayers.geometryKind || inProjectLayers?.geometryKind || inTreeLayer?.geometryKind;
+    const fields = inTreeLayer?.fields ?? inProjectLayers?.fields ?? inLayers.fields;
+    const featureCount =
+      inProjectLayers?.featureCount ??
+      inTreeLayer?.featureCount ??
+      inLayers.featureCount;
+
+    if (
+      (geometryKind && geometryKind !== inLayers.geometryKind) ||
+      (fields !== undefined && fields !== inLayers.fields) ||
+      (featureCount !== undefined && featureCount !== inLayers.featureCount)
+    ) {
+      return {
+        ...inLayers,
+        ...(geometryKind ? { geometryKind } : {}),
+        ...(fields !== undefined ? { fields } : {}),
+        ...(featureCount !== undefined ? { featureCount } : {})
+      };
     }
     return inLayers;
   }
 
   const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
-  if (inProjectLayers) return inProjectLayers;
+  if (inProjectLayers) {
+    const inTree = findItemInTree(projectTreeSignal.value, activeId);
+    const inTreeLayer = inTree && !('children' in inTree) ? (inTree as ProjectLayerItem) : undefined;
+    if (inTreeLayer?.fields && !inProjectLayers.fields) {
+      return { ...inProjectLayers, fields: inTreeLayer.fields };
+    }
+    return inProjectLayers;
+  }
 
   const inTree = findItemInTree(projectTreeSignal.value, activeId);
   if (inTree && !('children' in inTree)) {
@@ -1130,7 +1162,7 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
  * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
@@ -1213,7 +1245,7 @@ export function toggleToolbar(id: ToolbarId): void {
  * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
@@ -1744,7 +1776,8 @@ export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayer
           visible: item.visible !== false,
           opacity: item.opacity ?? 1.0,
           color: '#2563eb',
-          featureCount: 0
+          featureCount: (item as any).featureCount || 0,
+          ...(item.fields ? { fields: item.fields } : {})
         });
       }
     }
@@ -1796,6 +1829,7 @@ function extractDescriptorsAndStyles(
           geometryKind: item.geometryKind || 'Unknown',
           style: item.style,
           crs: item.crs,
+          ...(item.fields ? { fields: item.fields } : {}),
           customProperties: item.customProperties,
           extent: (item as any).extent || [0, 0, 0, 0],
           featureCount: (item as any).featureCount || 0
@@ -2117,14 +2151,19 @@ export async function closeProjectAction(): Promise<boolean> {
  * @description Action handler saving active layer modifications to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function saveActiveLayerAction(): void {
-  if (!activeLayerIdSignal.value) return;
+  const targetId = activeLayerIdSignal.value;
+  if (!targetId) return;
   editedFeatureIdsSignal.value = new Set();
-  addConsoleLog('info', `Save Active Layer requested for "${activeLayerIdSignal.value}".`, 'Layers');
+  const api = (globalThis as any).window?.electronAPI;
+  if (typeof api?.clearLayerEdits === 'function') {
+    api.clearLayerEdits(targetId)?.catch?.(() => {});
+  }
+  addConsoleLog('info', `Save Active Layer requested for "${targetId}".`, 'Layers');
 }
 
 /**
@@ -2663,7 +2702,7 @@ export function pasteFeaturesAction(): void {
  * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-03
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
  * @param {Object} [options] - Optional toggle execution settings.
@@ -2685,7 +2724,6 @@ export function toggleLayerEditingAction(
     }
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
-    editedFeatureIdsSignal.value = new Set();
     if (
       activeLayerIdSignal.value === targetId &&
       (activeToolSignal.value === 'point' ||
