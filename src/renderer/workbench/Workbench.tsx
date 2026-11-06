@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -14,6 +14,7 @@
  * @see {@link ProjectPropertiesDialog}
  * @see {@link SelectByValueDialog}
  * @see {@link SnappingOptionsDialog}
+ * @see {@link UnsavedChangesModal}
  */
 
 import React, { useCallback, useEffect, useRef } from "react";
@@ -78,6 +79,7 @@ import {
   resetToolbarsToDefault,
   registerTogglePanelHandler,
   openAddLayersDialog,
+  requestAppExitAction,
 } from "@renderer/state/gisSignals";
 import {
   loadActionsFromMain,
@@ -97,6 +99,7 @@ import { LayerPropertiesDialog } from "./dialogs/LayerPropertiesDialog";
 import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { SelectByValueDialog } from "./dialogs/SelectByValueDialog";
 import { SnappingOptionsDialog } from "./dialogs/SnappingOptionsDialog";
+import { UnsavedChangesModal } from "./dialogs/ModalDialog";
 import { handleWorkbenchKeyDown, executeWorkbenchAction } from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
@@ -213,7 +216,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -389,16 +392,22 @@ export const Workbench: React.FC = () => {
     const unsubscribeAction = window.electronAPI?.onExecuteRendererAction?.((actionName) => {
       executeWorkbenchAction(actionName);
     });
+    const unsubscribeRequestClose = window.electronAPI?.onRequestClose?.(() => {
+      void requestAppExitAction();
+    });
     return () => {
       window.removeEventListener("keydown", handleWorkbenchKeyDown, true);
       unsubscribeAction?.();
+      unsubscribeRequestClose?.();
     };
   }, []);
 
   // Frameless window controls
   const handleMinimize = () => window.electronAPI?.minimizeWindow();
   const handleMaximize = () => window.electronAPI?.maximizeWindow();
-  const handleClose = () => window.electronAPI?.closeWindow();
+  const handleClose = () => {
+    void requestAppExitAction();
+  };
   const handleMenubarDblClick = (e: React.MouseEvent) => {
     if (
       (e.target as HTMLElement).closest(
@@ -1785,6 +1794,9 @@ export const Workbench: React.FC = () => {
 
       {/* Snapping Options Modeless Dialog */}
       <SnappingOptionsDialog />
+
+      {/* Sequential Confirmation Modal for Layer Dirty State and Project Dirty State */}
+      <UnsavedChangesModal />
     </div>
   );
 };

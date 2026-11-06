@@ -4,7 +4,7 @@
  * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -18,6 +18,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { XMLParser } from 'fast-xml-parser';
 import { BUILTIN_PREFERENCES } from '../../../src/shared/preferences/index';
+import {
+  prefsAttributeTableMaxRows,
+  loadPreferences,
+  updatePreference
+} from '../../../src/renderer/state/preferencesSignals';
 import type { PreferenceItem, PreferenceControlType } from '../../../src/shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -182,6 +187,70 @@ describe('Extensible Preferences Subsystem Contracts', () => {
     assert.equal(pref.value, false);
     assert.equal(pref.hidden, true);
     assert.equal(pref.i18nId, 'prefs_ui_layer_properties_fields_show_native_type');
+  });
+
+  it('validates ui.attributeTable.maxRows preference definition, reactive signal synchronization, and pagination i18n keys (#183)', async () => {
+    const pref = BUILTIN_PREFERENCES['ui.attributeTable.maxRows'];
+    assert.ok(pref, 'ui.attributeTable.maxRows must be registered in BUILTIN_PREFERENCES');
+    assert.equal(pref.category, 'ui');
+    assert.equal(pref.group, 'display');
+    assert.equal(pref.type, 'number');
+    assert.deepEqual(pref.controls, ['spinner']);
+    assert.equal(pref.defaultValue, 5000);
+    assert.equal(pref.value, 5000);
+    assert.equal(pref.minimum, 100);
+    assert.equal(pref.maximum, 100000);
+    assert.equal(pref.step, 100);
+    assert.equal(pref.hidden, false);
+    assert.equal(pref.ephemeral, false);
+    assert.equal(pref.i18nId, 'prefs_ui_attribute_table_max_rows');
+
+    const requiredI18nKeys = [
+      'prefs_ui_attribute_table_max_rows',
+      'prefs_ui_attribute_table_max_rows_descr',
+      'attribute_table_page_first',
+      'attribute_table_page_prev',
+      'attribute_table_page_next',
+      'attribute_table_page_last',
+      'attribute_table_page_range'
+    ];
+    for (const key of requiredI18nKeys) {
+      assert.ok(enDict.has(key), `en.xml must contain key '${key}'`);
+      assert.ok(frDict.has(key), `fr.xml must contain key '${key}'`);
+    }
+
+    assert.equal(prefsAttributeTableMaxRows.value, 5000);
+
+    const prevWindow = (globalThis as any).window;
+    (globalThis as any).window = {
+      ...(prevWindow || {}),
+      electronAPI: {
+        ...(prevWindow?.electronAPI || {}),
+        getPreferenceValue: async () => ({
+          'ui.attributeTable.maxRows': {
+            ...pref,
+            value: 2000
+          }
+        }),
+        setPreferenceValue: async (_name: string, val: any) => ({
+          'ui.attributeTable.maxRows': {
+            ...pref,
+            value: val
+          }
+        })
+      }
+    };
+
+    try {
+      await loadPreferences('ui.attributeTable.maxRows');
+      assert.equal(prefsAttributeTableMaxRows.value, 2000);
+
+      await updatePreference('ui.attributeTable.maxRows', 10000);
+      assert.equal(prefsAttributeTableMaxRows.value, 10000);
+    } finally {
+      prefsAttributeTableMaxRows.value = 5000;
+      (globalThis as any).window = prevWindow;
+    }
   });
 
   it('validates canonical control types across all built-in preferences', () => {

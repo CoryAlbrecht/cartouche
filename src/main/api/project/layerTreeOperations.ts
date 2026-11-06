@@ -4,7 +4,7 @@
  * @description Main Process API functions for layer tree visibility, selection, deletion, group creation, and reordering operations on the authoritative ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-10-29
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link LayerGroup}
@@ -130,6 +130,23 @@ export function setNodeSelection(selectedNodeIds: string[]): void {
   }
 
   broadcastProjectLayersTree();
+}
+
+/**
+ * @description Synchronizes selected spatial feature identifiers for a layer into the authoritative ProjectStore.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {string | null} layerId - Target layer identifier or null.
+ * @param {Array<string | number>} selectedFeatureIds - Selected feature identifiers.
+ * @returns {void}
+ */
+export function setFeatureSelection(
+  layerId: string | null,
+  selectedFeatureIds: Array<string | number>
+): void {
+  projectStore.setFeatureSelection(layerId, selectedFeatureIds || []);
 }
 
 /**

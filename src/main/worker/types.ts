@@ -4,7 +4,7 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -14,7 +14,8 @@ import type {
   LayerFieldInfo,
   ProjectCrs,
   QueryExtentFeature,
-  QueryExtentOptions
+  QueryExtentOptions,
+  StagedFeatureEdit
 } from '@shared/types';
 
 
@@ -48,9 +49,10 @@ export interface GeospatialLayerMetadata {
  * @property {QueryExtentFeature[]} features - Intersecting spatial feature records.
  * @property {ArrayBuffer} [buffer] - Contiguous binary WKB feature packet buffer.
  * @property {Uint8Array} [packedFeatures] - Legacy packed binary features buffer.
+ * @property {number} [totalMatched] - Total count of features matching spatial and ID filters prior to start/max slicing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-24
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export interface GeospatialQueryResult {
@@ -58,6 +60,7 @@ export interface GeospatialQueryResult {
   features: QueryExtentFeature[];
   buffer?: ArrayBuffer;
   packedFeatures?: Uint8Array;
+  totalMatched?: number;
 }
 
 /**
@@ -211,7 +214,41 @@ export interface SetBackgroundScanEnabledRequest {
 }
 
 /**
- * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest | SetBackgroundScanEnabledRequest} WorkerRequest
+ * @typedef {Object} StageFeatureEditRequest
+ * @property {string} id - Unique correlation identifier.
+ * @property {'stageFeatureEdit'} type - Request message discriminator.
+ * @property {string} layerId - Target layer UUID.
+ * @property {StagedFeatureEdit} edit - Staged feature modification or new feature addition.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ */
+export interface StageFeatureEditRequest {
+  id: string;
+  type: 'stageFeatureEdit';
+  layerId: string;
+  edit: StagedFeatureEdit;
+}
+
+/**
+ * @typedef {Object} ClearLayerEditsRequest
+ * @property {string} id - Unique correlation identifier.
+ * @property {'clearLayerEdits'} type - Request message discriminator.
+ * @property {string} layerId - Target layer UUID.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ */
+export interface ClearLayerEditsRequest {
+  id: string;
+  type: 'clearLayerEdits';
+  layerId: string;
+}
+
+/**
+ * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest | SetBackgroundScanEnabledRequest | StageFeatureEditRequest | ClearLayerEditsRequest} WorkerRequest
  * Discriminated union of all request messages dispatched from Main to the Geospatial Worker.
  */
 export type WorkerRequest =
@@ -223,7 +260,9 @@ export type WorkerRequest =
   | CloseAllRequest
   | RehydrateRequest
   | PingRequest
-  | SetBackgroundScanEnabledRequest;
+  | SetBackgroundScanEnabledRequest
+  | StageFeatureEditRequest
+  | ClearLayerEditsRequest;
 
 /**
  * Distributive omit helper creating request payload types without correlation identifier.

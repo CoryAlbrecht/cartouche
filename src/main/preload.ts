@@ -4,19 +4,19 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DropPosition, ElectronAPI, ProjectLayerStyleItem } from '@shared/types';
+import type { DropPosition, ElectronAPI, ProjectLayerStyleItem, StagedFeatureEdit } from '@shared/types';
 
 /**
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -30,6 +30,16 @@ const electronAPI: ElectronAPI = {
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   /** @ipc window-close */
   closeWindow: () => ipcRenderer.send('window-close'),
+  /** @ipc window-confirm-close */
+  confirmCloseWindow: () => ipcRenderer.send('window-confirm-close'),
+  /** @ipc app:request-close */
+  onRequestClose: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('app:request-close', handler);
+    return () => {
+      ipcRenderer.removeListener('app:request-close', handler);
+    };
+  },
   /** @ipc window-is-maximized */
   isWindowMaximized: () => ipcRenderer.invoke('window-is-maximized'),
   /** @ipc window-maximized-state */
@@ -85,6 +95,15 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:saveStyleFile */
   saveStyleFile: (style: ProjectLayerStyleItem, defaultPath?: string) =>
     ipcRenderer.invoke('layers:saveStyleFile', style, defaultPath),
+  /** @ipc layers:stageFeatureEdit */
+  stageFeatureEdit: (layerId: string, edit: StagedFeatureEdit) =>
+    ipcRenderer.invoke('layers:stageFeatureEdit', layerId, edit),
+  /** @ipc layers:clearLayerEdits */
+  clearLayerEdits: (layerId: string) =>
+    ipcRenderer.invoke('layers:clearLayerEdits', layerId),
+  /** @ipc layers:getDirtyLayerIds */
+  getDirtyLayerIds: () =>
+    ipcRenderer.invoke('layers:getDirtyLayerIds'),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc dialog:save-file */
@@ -149,6 +168,9 @@ const electronAPI: ElectronAPI = {
   setNodeVisibility: (nodeId: string, visible: boolean) => ipcRenderer.invoke('gis:set-node-visibility', nodeId, visible),
   /** @ipc gis:set-node-selection */
   setNodeSelection: (selectedNodeIds: string[]) => ipcRenderer.invoke('gis:set-node-selection', selectedNodeIds),
+  /** @ipc gis:set-feature-selection */
+  setFeatureSelection: (layerId: string | null, selectedFeatureIds: Array<string | number>) =>
+    ipcRenderer.invoke('gis:set-feature-selection', layerId, selectedFeatureIds),
   /** @ipc gis:remove-nodes */
   removeNodes: (nodeIds: string[]) => ipcRenderer.invoke('gis:remove-nodes', nodeIds),
   /** @ipc gis:create-group */

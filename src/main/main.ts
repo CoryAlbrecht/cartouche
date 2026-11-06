@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -24,6 +24,8 @@ import { geospatialService } from './worker/GeospatialService';
 import { defaultLayerStyles } from '@shared/styles/defaultLayerStyles';
 import { fileTypeRegistry } from './filetypes/FileTypeRegistry';
 import {
+  clearLayerEdits,
+  getDirtyLayerIds,
   getLayerInfo,
   loadStyleFile,
   pathExists,
@@ -32,6 +34,7 @@ import {
   resolveDialogDefaultPath,
   saveStyleFile,
   setLayerStyle,
+  stageFeatureEdit,
   updateDialogLocation,
   updateLayerFields
 } from "./api/ApiFunctions";
@@ -39,6 +42,7 @@ import { addLayers } from "./api/layers/addLayer";
 import {
   setNodeVisibility,
   setNodeSelection,
+  setFeatureSelection,
   removeNodes,
   createGroup,
   reorderNodes
@@ -55,6 +59,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
+let isConfirmedClose = false;
 
 /**
  * @description Resolves the application icon file path across development, packaged assets, and system resource directories.
@@ -124,7 +129,7 @@ Categories=Graphics;Science;Geoscience;
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -186,6 +191,7 @@ function createWindow() {
     mainWindowOptions.y = Math.floor(savedWbY);
   }
 
+  isConfirmedClose = false;
   mainWindow = new BrowserWindow(mainWindowOptions);
   mainWindow.setMenu(null);
   mainWindow.setAutoHideMenuBar(true);
@@ -264,7 +270,13 @@ function createWindow() {
   mainWindow.on('resized', saveWorkbenchBounds);
   mainWindow.on('move', saveWorkbenchBounds);
   mainWindow.on('moved', saveWorkbenchBounds);
-  mainWindow.on('close', saveWorkbenchBounds);
+  mainWindow.on('close', (event) => {
+    saveWorkbenchBounds();
+    if (!isConfirmedClose && mainWindow && !mainWindow.isDestroyed() && !process.argv.includes('--test-boot')) {
+      event.preventDefault();
+      mainWindow.webContents.send('app:request-close');
+    }
+  });
 
   if (process.platform === 'linux') {
     mainWindow.setIcon(iconImage.isEmpty() ? iconPath : iconImage);
@@ -398,7 +410,7 @@ function createWindow() {
  * @description Initializes and boots the main application lifecycle, logging hub, and window managers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-01
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -470,7 +482,16 @@ function startApp(): void {
   });
 
   onIpc('window-close', () => {
-    if (mainWindow) mainWindow.close();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    }
+  });
+
+  onIpc('window-confirm-close', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      isConfirmedClose = true;
+      mainWindow.close();
+    }
   });
 
   handleIpc('window-is-maximized', () => {
@@ -661,6 +682,18 @@ function startApp(): void {
     return await queryExtent(layerId, options, targetProjection);
   });
 
+  handleIpc('layers:stageFeatureEdit', async (_event, layerId: string, edit: any) => {
+    await stageFeatureEdit(layerId, edit);
+  });
+
+  handleIpc('layers:clearLayerEdits', async (_event, layerId: string) => {
+    await clearLayerEdits(layerId);
+  });
+
+  handleIpc('layers:getDirtyLayerIds', async () => {
+    return getDirtyLayerIds();
+  });
+
   handleIpc('layers:getLayerInfo', async (_event, layerId: string) => {
     return await getLayerInfo(layerId);
   });
@@ -700,6 +733,13 @@ function startApp(): void {
   handleIpc('gis:set-node-selection', async (_event, selectedNodeIds: string[]) => {
     setNodeSelection(selectedNodeIds);
   });
+
+  handleIpc(
+    'gis:set-feature-selection',
+    async (_event, layerId: string | null, selectedFeatureIds: Array<string | number>) => {
+      setFeatureSelection(layerId, selectedFeatureIds);
+    }
+  );
 
   handleIpc('gis:remove-nodes', async (_event, nodeIds: string[]) => {
     removeNodes(nodeIds);

@@ -1,16 +1,23 @@
 /**
  * @file ModalDialog.tsx
  * @module renderer/workbench/dialogs/ModalDialog
- * @description Standardized React portal-based modal dialog to block interaction with parent window.
+ * @description Standardized React portal-based modal dialog to block interaction with parent window, plus the sequential UnsavedChangesModal confirmation component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-10-13
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @component ModalDialog
+ * @see {@link UnsavedChangesModal}
  */
 
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { useSignals } from '@preact/signals-react/runtime';
+import { useTranslation } from '@renderer/hooks/useTranslation';
+import {
+  unsavedChangesModalSignal,
+  resolveUnsavedChangesModal
+} from '@renderer/state/gisSignals';
 
 /**
  * @typedef {Object} ModalDialogProps
@@ -35,7 +42,7 @@ export interface ModalDialogProps {
  * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-10-13
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {ModalDialogProps} props - Component properties.
  * @returns {React.ReactPortal | null} Rendered portal or null when closed.
@@ -141,5 +148,57 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
       </div>
     </div>,
     document.body
+  );
+};
+
+/**
+ * @component UnsavedChangesModal
+ * @description Sequential confirmation modal dialog rendered for each individual dirty layer and dirty project before project close or application exit.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @returns {JSX.Element | null} Rendered modal dialog or null when inactive.
+ */
+export const UnsavedChangesModal: React.FC = () => {
+  useSignals();
+  const { t } = useTranslation();
+  const promptState = unsavedChangesModalSignal.value;
+
+  if (!promptState) {
+    return null;
+  }
+
+  const message =
+    promptState.targetType === 'layer'
+      ? t('unsaved_layer_changes_prompt', { name: promptState.targetName })
+      : t('unsaved_project_changes_prompt', { name: promptState.targetName });
+
+  return (
+    <ModalDialog
+      title={t('unsaved_changes_title')}
+      isOpen={true}
+      width="480px"
+      onClose={() => resolveUnsavedChangesModal('cancel')}
+      buttons={[
+        {
+          label: t('unsaved_changes_cancel'),
+          onClick: () => resolveUnsavedChangesModal('cancel')
+        },
+        {
+          label: t('unsaved_changes_dont_save'),
+          onClick: () => resolveUnsavedChangesModal('discard')
+        },
+        {
+          label: t('unsaved_changes_save'),
+          primary: true,
+          onClick: () => resolveUnsavedChangesModal('save')
+        }
+      ]}
+    >
+      <p className="unsaved-changes-modal-message" style={{ margin: 0, fontSize: '1rem' }}>
+        {message}
+      </p>
+    </ModalDialog>
   );
 };

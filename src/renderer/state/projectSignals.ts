@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -699,8 +699,13 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
           const desc = projectLayersSignal.value.find((l) => l.id === item.id);
           const currentInTree = findItemInTree(projectTreeSignal.value, item.id) as ProjectLayerItem | null;
           const count = (item as ProjectLayerItem).featureCount ?? desc?.featureCount ?? currentInTree?.featureCount;
-          if (count !== undefined) {
-            return { ...item, featureCount: count };
+          const fields = (item as ProjectLayerItem).fields ?? desc?.fields ?? currentInTree?.fields;
+          if (count !== undefined || fields !== undefined) {
+            return {
+              ...item,
+              ...(count !== undefined ? { featureCount: count } : {}),
+              ...(fields !== undefined ? { fields } : {})
+            };
           }
         }
         return item;
@@ -728,6 +733,7 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
           return {
             ...desc,
             ...(treeItem.featureCount !== undefined ? { featureCount: treeItem.featureCount } : {}),
+            ...(treeItem.fields !== undefined ? { fields: treeItem.fields } : {}),
             ...(treeItem.style !== undefined ? { style: treeItem.style } : {}),
             ...(treeItem.styleId !== undefined ? { styleId: treeItem.styleId } : {}),
             ...(treeItem.opacity !== undefined ? { opacity: treeItem.opacity } : {})
@@ -781,13 +787,13 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChan
 
 /**
  * @description Ingests a new LayerDescriptor into renderer state, updating layerStylesSignal, projectLayersSignal, and projectTreeSignal.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-13
- * @updated 2026-10-26
- * @since 0.1.0-dev
- * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
- * @returns {void}
- */
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-13
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
+   * @returns {void}
+   */
 export function handleLayerAdded(descriptor: LayerDescriptor): void {
   batch(() => {
     // 1. Parse and register style into layerStylesSignal FIRST before projectLayersSignal triggers MapController sync
@@ -828,7 +834,12 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
             };
           }
           if (item.id === descriptor.id) {
-            return { ...item, featureCount: descriptor.featureCount, extent: descriptor.extent };
+            return {
+              ...item,
+              featureCount: descriptor.featureCount,
+              extent: descriptor.extent,
+              ...(descriptor.fields !== undefined ? { fields: descriptor.fields } : {})
+            };
           }
           return item;
         });

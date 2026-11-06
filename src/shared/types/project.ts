@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-04
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -188,7 +188,7 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-04
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
@@ -328,17 +328,53 @@ export interface QueryExtentFeature {
 }
 
 /**
+ * @typedef {Object} StagedFeatureEdit
+ * @property {number | string} id - Unique feature identifier.
+ * @property {Record<string, unknown>} [properties] - Modified or initial attribute properties for the feature.
+ * @property {Uint8Array} [wkb] - Optional updated OGC Well-Known Binary geometry bytes.
+ * @property {Record<string, unknown>} [geojson] - Optional updated GeoJSON geometry object.
+ * @property {boolean} [isNew] - True if the feature is newly added and not yet persisted in the dataset.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ */
+export interface StagedFeatureEdit {
+  id: number | string;
+  properties?: Record<string, unknown>;
+  wkb?: Uint8Array;
+  geojson?: Record<string, unknown>;
+  isNew?: boolean;
+}
+
+/**
+ * @typedef {Object} LayerEditCacheEntry
+ * @property {Map<string, StagedFeatureEdit>} modifiedFeatures - Staged modifications for existing dataset features keyed by stringified feature ID.
+ * @property {StagedFeatureEdit[]} addedFeatures - Ordered list of newly created features not yet written to disk.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ */
+export interface LayerEditCacheEntry {
+  modifiedFeatures: Map<string, StagedFeatureEdit>;
+  addedFeatures: StagedFeatureEdit[];
+}
+
+/**
  * @typedef {Object} QueryExtentResult
  * @property {string} layerId - Unique layer identifier.
  * @property {QueryExtentFeature[]} features - Intersecting spatial features.
+ * @property {number} [totalMatched] - Total count of features matching spatial and ID filters prior to start/max slicing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export interface QueryExtentResult {
   layerId: string;
   features: QueryExtentFeature[];
+  totalMatched?: number;
 }
 
 /**
@@ -383,13 +419,16 @@ export const WKB_FLAG_HAS_PROPERTIES = 0x02;
 
 /**
  * @typedef {Object} QueryExtentOptions
- * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box filter.
+ * @property {BoundingBox} [extent] - Geographic or projected spatial extent filter.
  * @property {string} [targetProjection] - Target coordinate reference system (e.g. "EPSG:3857").
  * @property {boolean} [includeGeometry] - Whether to extract and include OGC WKB geometry bytes (defaults to true).
  * @property {string[]} [fields] - Attribute column projection list: undefined for all, [] for none (FID only), or specific keys.
+ * @property {number} [start] - Zero-based feature offset for stateless chunk pagination.
+ * @property {number} [max] - Maximum number of matching features to return in a single chunk.
+ * @property {Array<string | number>} [featureIds] - Optional whitelist of feature identifiers to filter by.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export interface QueryExtentOptions {
@@ -397,19 +436,24 @@ export interface QueryExtentOptions {
   targetProjection?: string;
   includeGeometry?: boolean;
   fields?: string[];
+  start?: number;
+  max?: number;
+  featureIds?: Array<string | number>;
 }
 
 /**
  * @typedef {Object} QueryExtentBinaryResult
  * @property {string} layerId - Unique layer identifier.
  * @property {ArrayBuffer} buffer - Contiguous binary WKB feature packet buffer.
+ * @property {number} [totalMatched] - Total count of features matching spatial and ID filters prior to start/max slicing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export interface QueryExtentBinaryResult {
   layerId: string;
   buffer: ArrayBuffer;
+  totalMatched?: number;
 }
 

@@ -4,7 +4,7 @@
  * @description Master aggregation barrel module re-exporting main process core API actions for project management, editing, layers, and preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link newProject}
  * @see {@link openProject}
@@ -49,7 +49,12 @@ export { default as selectFeaturesByValue } from './layers/selectFeaturesByValue
 export { default as getPreferenceValue } from './ui/preferences/GetPreferenceValue';
 export { default as setPreferenceValue } from './ui/preferences/SetPreferenceValue';
 export { addLayer, addLayers } from './layers/addLayer';
-export { queryExtent } from './layers/queryExtent';
+export {
+  queryExtent,
+  stageFeatureEdit,
+  clearLayerEdits,
+  getDirtyLayerIds
+} from './layers/queryExtent';
 export { default as getLayerInfo } from './layers/getLayerInfo';
 export { default as updateLayerFields } from './layers/updateLayerFields';
 export { default as rekeyLayer } from './layers/rekeyLayer';

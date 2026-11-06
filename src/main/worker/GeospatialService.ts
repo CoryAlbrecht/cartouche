@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -16,7 +16,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
-import type { BoundingBox, LayerDetailedInfo, LayerFieldInfo, QueryExtentOptions } from '@shared/types';
+import type {
+  BoundingBox,
+  LayerDetailedInfo,
+  LayerEditCacheEntry,
+  LayerFieldInfo,
+  QueryExtentOptions,
+  StagedFeatureEdit
+} from '@shared/types';
 import { GeospatialEngine } from './GeospatialEngine';
 import { projectStore } from '../project/ProjectStore';
 import { LoggingHub, loggingHub as defaultLoggingHub } from '../logging/LoggingHub';
@@ -79,7 +86,7 @@ export interface GeospatialServiceOptions {
  * @description Manages the background geospatial utility process, dispatches correlated requests, and falls back to in-process execution in headless test environments.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-21
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 export class GeospatialService {
@@ -87,6 +94,7 @@ export class GeospatialService {
   private engine: GeospatialEngine | null = null;
   private pendingRequests = new Map<string, PendingRequestEntry>();
   private activeLayers = new Map<string, string>();
+  private layerEdits = new Map<string, LayerEditCacheEntry>();
   private circuitBreaker = new Map<string, number>();
   private consecutiveWorkerCrashes = 0;
   private isDisposed = false;
@@ -583,6 +591,16 @@ export class GeospatialService {
       }
     }
 
+    // Replay all cached uncommitted feature edits into the in-process fallback engine
+    for (const [layerId, editEntry] of this.layerEdits.entries()) {
+      for (const edit of editEntry.modifiedFeatures.values()) {
+        this.engine!.stageFeatureEdit(layerId, edit);
+      }
+      for (const added of editEntry.addedFeatures) {
+        this.engine!.stageFeatureEdit(layerId, { ...added, isNew: true });
+      }
+    }
+
     this.isReady = true;
 
     // Transparently execute pending requests against the in-process fallback engine
@@ -652,6 +670,24 @@ export class GeospatialService {
           logging.warn('Some layers failed to rehydrate upon worker restart', {
             scope: 'GeospatialService',
             failedLayers: rehydrateRes.failed
+          });
+        }
+      }
+
+      // Replay all cached uncommitted feature edits into the restarted worker before processing queries
+      for (const [layerId, editEntry] of this.layerEdits.entries()) {
+        for (const edit of editEntry.modifiedFeatures.values()) {
+          await this.sendInternalRequest({
+            type: 'stageFeatureEdit',
+            layerId,
+            edit
+          });
+        }
+        for (const added of editEntry.addedFeatures) {
+          await this.sendInternalRequest({
+            type: 'stageFeatureEdit',
+            layerId,
+            edit: { ...added, isNew: true }
           });
         }
       }
@@ -832,20 +868,33 @@ export class GeospatialService {
           result = {
             layerId: queryRes.layerId,
             buffer: queryRes.buffer,
-            features: queryRes.features
+            features: queryRes.features,
+            totalMatched: queryRes.totalMatched
           };
           break;
         }
 
+        case 'stageFeatureEdit':
+          this.engine.stageFeatureEdit(req.layerId, req.edit);
+          result = { success: true };
+          break;
+
+        case 'clearLayerEdits':
+          this.engine.clearLayerEdits(req.layerId);
+          result = { success: true };
+          break;
+
         case 'closeDataset':
           result = { closed: this.engine.closeDataset(req.layerId) };
           this.activeLayers.delete(req.layerId);
+          this.layerEdits.delete(req.layerId);
           this.circuitBreaker.delete(req.layerId);
           break;
 
         case 'closeAll':
           this.engine.closeAll();
           this.activeLayers.clear();
+          this.layerEdits.clear();
           this.circuitBreaker.clear();
           result = { closed: true };
           break;
@@ -930,7 +979,7 @@ export class GeospatialService {
    * @description Atomically re-keys an active layer session identifier without closing underlying dataset handles.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-23
-   * @updated 2026-10-24
+   * @updated 2026-11-06
    * @since 0.1.0-dev
    * @param {string} oldLayerId - Existing layer UUID.
    * @param {string} newLayerId - Target layer UUID.
@@ -942,6 +991,11 @@ export class GeospatialService {
       this.activeLayers.delete(oldLayerId);
       this.activeLayers.set(newLayerId, path);
     }
+    const edits = this.layerEdits.get(oldLayerId);
+    if (edits) {
+      this.layerEdits.delete(oldLayerId);
+      this.layerEdits.set(newLayerId, edits);
+    }
     const cb = this.circuitBreaker.get(oldLayerId);
     if (cb) {
       this.circuitBreaker.delete(oldLayerId);
@@ -951,10 +1005,114 @@ export class GeospatialService {
   }
 
   /**
-   * @description Queries spatial feature slices intersecting an extent bounding box.
+   * @description Stages a feature modification or new feature addition into Main's crash-resilient edit cache and forwards it to the Geospatial Worker.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @param {StagedFeatureEdit} edit - Feature edit or addition payload.
+   * @param {number} [timeoutMs] - Optional timeout override.
+   * @returns {Promise<void>}
+   */
+  public async stageFeatureEdit(
+    layerId: string,
+    edit: StagedFeatureEdit,
+    timeoutMs?: number
+  ): Promise<void> {
+    let entry = this.layerEdits.get(layerId);
+    if (!entry) {
+      entry = {
+        modifiedFeatures: new Map<string, StagedFeatureEdit>(),
+        addedFeatures: []
+      };
+      this.layerEdits.set(layerId, entry);
+    }
+
+    const idKey = String(edit.id);
+    const existingAddedIdx = entry.addedFeatures.findIndex(
+      (f) => String(f.id) === idKey
+    );
+
+    if (edit.isNew || existingAddedIdx !== -1) {
+      if (existingAddedIdx !== -1) {
+        const prev = entry.addedFeatures[existingAddedIdx];
+        entry.addedFeatures[existingAddedIdx] = {
+          ...prev,
+          ...edit,
+          isNew: true,
+          properties: {
+            ...(prev.properties ?? {}),
+            ...(edit.properties ?? {})
+          }
+        };
+      } else {
+        entry.addedFeatures.push({
+          ...edit,
+          isNew: true,
+          properties: { ...(edit.properties ?? {}) }
+        });
+      }
+    } else {
+      const prevMod = entry.modifiedFeatures.get(idKey);
+      entry.modifiedFeatures.set(idKey, {
+        ...prevMod,
+        ...edit,
+        id: edit.id,
+        properties: {
+          ...(prevMod?.properties ?? {}),
+          ...(edit.properties ?? {})
+        }
+      });
+    }
+
+    await this.sendRequest(
+      { type: 'stageFeatureEdit', layerId, edit },
+      timeoutMs
+    );
+  }
+
+  /**
+   * @description Clears all staged uncommitted feature edits and newly added features for a layer in Main's cache and the Geospatial Worker.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @param {number} [timeoutMs] - Optional timeout override.
+   * @returns {Promise<void>}
+   */
+  public async clearLayerEdits(layerId: string, timeoutMs?: number): Promise<void> {
+    this.layerEdits.delete(layerId);
+    await this.sendRequest(
+      { type: 'clearLayerEdits', layerId },
+      timeoutMs
+    );
+  }
+
+  /**
+   * @description Returns the list of layer identifiers that currently have uncommitted feature modifications or newly added features in Main's edit cache.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-06
+   * @updated 2026-11-06
+   * @since 0.1.0-dev
+   * @returns {string[]} Array of dirty layer identifiers.
+   */
+  public getDirtyLayerIds(): string[] {
+    const dirty: string[] = [];
+    for (const [layerId, entry] of this.layerEdits.entries()) {
+      if (entry.modifiedFeatures.size > 0 || entry.addedFeatures.length > 0) {
+        dirty.push(layerId);
+      }
+    }
+    return dirty;
+  }
+
+  /**
+   * @description Queries spatial feature slices intersecting an extent.
    * Resets circuit breaker failure count on success.
    * @param {string} layerId - Unique layer identifier.
-   * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or bounding box [minX, minY, maxX, maxY].
+   * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or extent [minX, minY, maxX, maxY].
    * @param {string} [targetProjection] - Input CRS authority (e.g. "EPSG:3857").
    * @param {number} [timeoutMs] - Optional timeout override.
    * @returns {Promise<GeospatialQueryResult>} Collection of intersecting features with WKB buffers.
@@ -985,6 +1143,7 @@ export class GeospatialService {
       timeoutMs
     );
     this.activeLayers.delete(layerId);
+    this.layerEdits.delete(layerId);
     this.circuitBreaker.delete(layerId);
     return res.closed;
   }
@@ -997,6 +1156,7 @@ export class GeospatialService {
   public async closeAll(timeoutMs?: number): Promise<void> {
     await this.sendRequest<{ closed: boolean }>({ type: 'closeAll' }, timeoutMs);
     this.activeLayers.clear();
+    this.layerEdits.clear();
     this.circuitBreaker.clear();
   }
 
@@ -1189,6 +1349,7 @@ export class GeospatialService {
     }
     this.pendingRequests.clear();
     this.activeLayers.clear();
+    this.layerEdits.clear();
     this.circuitBreaker.clear();
 
     if (this.worker) {

@@ -4,13 +4,14 @@
  * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-28
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  */
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { effect } from "@preact/signals-react";
+import * as gisSignals from "../../../src/renderer/state/gisSignals";
 import {
   hasProjectSignal,
   projectNameSignal,
@@ -216,7 +217,10 @@ describe("Project Lifecycle Signals & Actions", () => {
     // Simulate save dialog cancellation
     mockSaveFileResult = null;
 
-    const result = await closeProjectAction();
+    const closePromise = closeProjectAction();
+    await Promise.resolve();
+    (gisSignals as any).resolveUnsavedChangesModal?.("save");
+    const result = await closePromise;
     assert.equal(result, false); // Close aborted!
     assert.equal(hasProjectSignal.value, true); // Project remains open!
     assert.equal(isProjectDirtySignal.value, true);
@@ -230,7 +234,10 @@ describe("Project Lifecycle Signals & Actions", () => {
     // Simulate user completing save dialog
     mockSaveFileResult = "/path/saved.cproj";
 
-    const result = await closeProjectAction();
+    const closePromise = closeProjectAction();
+    await Promise.resolve();
+    (gisSignals as any).resolveUnsavedChangesModal?.("save");
+    const result = await closePromise;
     assert.equal(result, true);
     assert.equal(hasProjectSignal.value, false); // Project closed!
     assert.equal(projectNameSignal.value, null);
@@ -397,7 +404,10 @@ describe("Project Lifecycle Signals & Actions", () => {
     isProjectDirtySignal.value = true;
     mockSaveFileResult = null; // User cancels save dialog
 
-    const success = await newProjectAction();
+    const newPromise = newProjectAction();
+    await Promise.resolve();
+    (gisSignals as any).resolveUnsavedChangesModal?.("save");
+    const success = await newPromise;
     assert.equal(success, false);
     assert.equal(hasProjectSignal.value, true);
     assert.equal(projectNameSignal.value, "Existing Dirty Project");
@@ -473,6 +483,195 @@ describe("Project Lifecycle Signals & Actions", () => {
       );
     } finally {
       dispose();
+    }
+  });
+});
+
+describe("Sequential Per-Layer and Project Unsaved Changes Modals (Ticket #185)", () => {
+  let clearedLayers: string[] = [];
+  let dirtyLayersInMain: string[] = [];
+  let confirmedCloseCount = 0;
+  let savedProjects: string[] = [];
+
+  async function waitForModal() {
+    for (let i = 0; i < 10; i++) {
+      if ((gisSignals as any).unsavedChangesModalSignal?.value) {
+        return (gisSignals as any).unsavedChangesModalSignal.value;
+      }
+      await Promise.resolve();
+    }
+    return (gisSignals as any).unsavedChangesModalSignal?.value ?? null;
+  }
+
+  beforeEach(() => {
+    hasProjectSignal.value = false;
+    projectNameSignal.value = null;
+    projectFilePathSignal.value = null;
+    isProjectDirtySignal.value = false;
+    layersSignal.value = [];
+    activeLayerIdSignal.value = null;
+    if ((gisSignals as any).dirtyLayerIdsSignal) {
+      (gisSignals as any).dirtyLayerIdsSignal.value = new Set();
+    }
+    if ((gisSignals as any).unsavedChangesModalSignal) {
+      (gisSignals as any).unsavedChangesModalSignal.value = null;
+    }
+
+    clearedLayers = [];
+    dirtyLayersInMain = [];
+    confirmedCloseCount = 0;
+    savedProjects = [];
+
+    (globalThis as any).window = {
+      electronAPI: {
+        getDirtyLayerIds: async () => [...dirtyLayersInMain],
+        clearLayerEdits: async (layerId: string) => {
+          clearedLayers.push(layerId);
+          dirtyLayersInMain = dirtyLayersInMain.filter((id) => id !== layerId);
+        },
+        saveProject: async (filePath: string) => {
+          savedProjects.push(filePath);
+          return true;
+        },
+        executeAction: async () => {},
+        confirmCloseWindow: () => {
+          confirmedCloseCount++;
+        },
+      },
+    };
+  });
+
+  it("presents sequential modals for each dirty layer followed by the dirty project on closeProjectAction", async () => {
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      filePath: "/path/multi-dirty.cproj",
+      metadata: { title: "Multi Dirty Project" },
+      layers: [
+        { id: "layer-a", name: "Roads Layer", type: "vector", source: "/data/roads.shp" },
+        { id: "layer-b", name: "Parcels Layer", type: "vector", source: "/data/parcels.shp" },
+      ],
+    });
+    dirtyLayersInMain = ["layer-a", "layer-b"];
+    isProjectDirtySignal.value = true;
+
+    const closePromise = closeProjectAction();
+
+    // 1st modal: layer-a ("Roads Layer") -> Choose Don't Save Changes ('discard')
+    const modal1 = await waitForModal();
+    assert.ok(modal1, "First modal must be open for layer-a");
+    assert.equal(modal1.targetType, "layer");
+    assert.equal(modal1.layerId, "layer-a");
+    assert.equal(modal1.targetName, "Roads Layer");
+
+    (gisSignals as any).resolveUnsavedChangesModal("discard");
+
+    // 2nd modal: layer-b ("Parcels Layer") -> Choose Save Changes ('save')
+    const modal2 = await waitForModal();
+    assert.deepEqual(clearedLayers, ["layer-a"]);
+    assert.ok(modal2, "Second modal must be open for layer-b");
+    assert.equal(modal2.targetType, "layer");
+    assert.equal(modal2.layerId, "layer-b");
+    assert.equal(modal2.targetName, "Parcels Layer");
+
+    (gisSignals as any).resolveUnsavedChangesModal("save");
+
+    // 3rd modal: project ("Multi Dirty Project") -> Choose Save Changes ('save')
+    const modal3 = await waitForModal();
+    assert.deepEqual(clearedLayers, ["layer-a", "layer-b"]);
+    assert.ok(modal3, "Third modal must be open for the dirty project");
+    assert.equal(modal3.targetType, "project");
+    assert.equal(modal3.targetName, "Multi Dirty Project");
+
+    (gisSignals as any).resolveUnsavedChangesModal("save");
+    const closed = await closePromise;
+
+    assert.equal(closed, true);
+    assert.equal(hasProjectSignal.value, false);
+    assert.deepEqual(savedProjects, ["/path/multi-dirty.cproj"]);
+  });
+
+  it("aborts immediately when Cancel is selected on any layer or project modal", async () => {
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      filePath: "/path/cancel-test.cproj",
+      metadata: { title: "Cancel Test Project" },
+      layers: [
+        { id: "layer-1", name: "Rivers", type: "vector", source: "/data/rivers.shp" },
+        { id: "layer-2", name: "Lakes", type: "vector", source: "/data/lakes.shp" },
+      ],
+    });
+    dirtyLayersInMain = ["layer-1", "layer-2"];
+    isProjectDirtySignal.value = true;
+
+    const closePromise = closeProjectAction();
+
+    const modal1 = await waitForModal();
+    assert.ok(modal1);
+    assert.equal(modal1.layerId, "layer-1");
+
+    // Select Cancel on the first layer modal
+    (gisSignals as any).resolveUnsavedChangesModal("cancel");
+    const closed = await closePromise;
+
+    assert.equal(closed, false, "closeProjectAction must return false when canceled");
+    assert.equal(hasProjectSignal.value, true, "Project must remain open");
+    assert.deepEqual(clearedLayers, [], "No layer edits should be cleared on cancel");
+    assert.equal((gisSignals as any).unsavedChangesModalSignal.value, null);
+  });
+
+  it("intercepts application exit via requestAppExitAction, processes Don't Save Changes on project, and invokes confirmCloseWindow", async () => {
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      filePath: "/path/exit-test.cproj",
+      metadata: { title: "Exit Test Project" },
+      layers: [
+        { id: "layer-x", name: "Points Layer", type: "vector", source: "/data/pts.shp" },
+      ],
+    });
+    dirtyLayersInMain = ["layer-x"];
+    isProjectDirtySignal.value = true;
+
+    const exitPromise = (gisSignals as any).requestAppExitAction();
+
+    // 1. Layer modal -> Save Changes
+    const layerModal = await waitForModal();
+    assert.ok(layerModal);
+    assert.equal(layerModal.targetType, "layer");
+    assert.equal(layerModal.targetName, "Points Layer");
+    (gisSignals as any).resolveUnsavedChangesModal("save");
+
+    // 2. Project modal -> Don't Save Changes ('discard')
+    const projModal = await waitForModal();
+    assert.ok(projModal);
+    assert.equal(projModal.targetType, "project");
+    assert.equal(projModal.targetName, "Exit Test Project");
+    (gisSignals as any).resolveUnsavedChangesModal("discard");
+
+    const exited = await exitPromise;
+    assert.equal(exited, true);
+    assert.equal(isProjectDirtySignal.value, false);
+    assert.equal(savedProjects.length, 0, "Project must not be saved when Don't Save Changes is chosen");
+    assert.equal(confirmedCloseCount, 1, "confirmCloseWindow must be invoked after all prompts succeed");
+  });
+
+  it("defines all 6 Unsaved Changes modal localization strings in en.xml and fr.xml", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const enXml = fs.readFileSync(path.resolve(process.cwd(), "assets/xml/i18n/en.xml"), "utf-8");
+    const frXml = fs.readFileSync(path.resolve(process.cwd(), "assets/xml/i18n/fr.xml"), "utf-8");
+
+    const requiredKeys = [
+      "unsaved_changes_title",
+      "unsaved_layer_changes_prompt",
+      "unsaved_project_changes_prompt",
+      "unsaved_changes_cancel",
+      "unsaved_changes_dont_save",
+      "unsaved_changes_save",
+    ];
+
+    for (const key of requiredKeys) {
+      assert.ok(enXml.includes(`name="${key}"`), `en.xml must contain ${key}`);
+      assert.ok(frXml.includes(`name="${key}"`), `fr.xml must contain ${key}`);
     }
   });
 });
