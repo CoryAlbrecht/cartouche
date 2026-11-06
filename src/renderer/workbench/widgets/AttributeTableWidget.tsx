@@ -11,13 +11,17 @@
  * @see {@link DigitizingToolbarWidget}
  */
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "./BasicWidget";
 import {
   activeLayerSignal,
   activeLayerFeaturesSignal,
   selectedFeatureIdsSignal,
+  editableLayerIdsSignal,
+  editedFeatureIdsSignal,
+  featuresSignal,
+  isProjectDirtySignal,
 } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
 import { mdiTable } from "@mdi/js";
@@ -64,6 +68,59 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const attributeKeys =
     features.length > 0 ? Object.keys(features[0].properties) : [];
+
+  const isLayerEditable =
+    activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
+
+  // Active inline cell editing state: { featureId, key } or null
+  const [editingCell, setEditingCell] = useState<{
+    featureId: string | number;
+    key: string;
+  } | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+
+  const startEditingCell = (
+    featureId: string | number,
+    key: string,
+    initialVal: any
+  ) => {
+    if (!isLayerEditable) return;
+    setEditingCell({ featureId, key });
+    setEditValue(String(initialVal ?? ""));
+  };
+
+  const commitEditingCell = () => {
+    if (!editingCell) return;
+    const { featureId, key } = editingCell;
+
+    // Update features in featuresSignal
+    featuresSignal.value = featuresSignal.value.map((f) => {
+      if (f.id === featureId) {
+        return {
+          ...f,
+          properties: {
+            ...f.properties,
+            [key]: editValue,
+          },
+        };
+      }
+      return f;
+    });
+
+    // Track modified feature ID in editedFeatureIdsSignal
+    const nextEdited = new Set(editedFeatureIdsSignal.value);
+    nextEdited.add(featureId);
+    editedFeatureIdsSignal.value = nextEdited;
+
+    // Set Layer Dirty State on project
+    isProjectDirtySignal.value = true;
+
+    setEditingCell(null);
+  };
+
+  const cancelEditingCell = () => {
+    setEditingCell(null);
+  };
 
   // Selection range anchor reference (feature ID)
   const selectionAnchorRef = useRef<string | number | null>(null);
@@ -208,11 +265,62 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                         <td style={{ padding: "4px 8px" }}>
                           {feature.geometryType}
                         </td>
-                        {attributeKeys.map((key) => (
-                          <td key={key} style={{ padding: "4px 8px" }}>
-                            {String(feature.properties[key] ?? "")}
-                          </td>
-                        ))}
+                        {attributeKeys.map((key) => {
+                          const isCellEditing =
+                            editingCell?.featureId === feature.id &&
+                            editingCell?.key === key;
+                          const cellVal = feature.properties[key];
+
+                          return (
+                            <td
+                              key={key}
+                              className='cell-attribute-data'
+                              onClick={() => {
+                                if (isLayerEditable && !isCellEditing) {
+                                  startEditingCell(feature.id, key, cellVal);
+                                }
+                              }}
+                              onDoubleClick={() => {
+                                if (isLayerEditable && !isCellEditing) {
+                                  startEditingCell(feature.id, key, cellVal);
+                                }
+                              }}
+                              style={{
+                                padding: "4px 8px",
+                                cursor: isLayerEditable ? "text" : "default",
+                              }}>
+                              {isCellEditing ?
+                                <input
+                                  type='text'
+                                  className='cell-editor-input'
+                                  autoFocus
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={commitEditingCell}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      commitEditingCell();
+                                    } else if (e.key === "Escape") {
+                                      e.preventDefault();
+                                      cancelEditingCell();
+                                    }
+                                  }}
+                                  style={{
+                                    width: "100%",
+                                    boxSizing: "border-box",
+                                    padding: "2px 4px",
+                                    fontSize: "0.8333rem",
+                                    border: "1px solid #0284c7",
+                                    borderRadius: "2px",
+                                    outline: "none",
+                                    backgroundColor: "#ffffff",
+                                  }}
+                                />
+                              : String(cellVal ?? "")}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}

@@ -55,10 +55,22 @@ class MockElement {
     });
   }
 
+  focus(): void {}
+  blur(): void {}
+
+  get value(): string {
+    return (this as any).__value ?? '';
+  }
+
+  set value(v: any) {
+    (this as any).__value = String(v);
+  }
+
   setAttribute(name: string, val: any): void {
     this.attributes[name] = String(val);
     if (name === 'class') this.className = String(val);
     if (name === 'id') (this as any).id = String(val);
+    if (name === 'value') (this as any).__value = String(val);
   }
 
   getAttribute(name: string): string | null {
@@ -281,6 +293,10 @@ const {
   activeSelectionModeSignal,
   editableLayerIdsSignal,
   selectedFeatureIdsSignal,
+  editedFeatureIdsSignal,
+  isProjectDirtySignal,
+  saveActiveLayerAction,
+  toggleLayerEditingAction,
 } = jiti('../../../src/renderer/state/gisSignals.ts') as {
   activeLayerIdSignal: { value: string | null };
   layersSignal: { value: GisLayer[] };
@@ -291,6 +307,10 @@ const {
   activeSelectionModeSignal: { value: string };
   editableLayerIdsSignal: { value: Set<string> };
   selectedFeatureIdsSignal: { value: Set<string | number> };
+  editedFeatureIdsSignal: { value: Set<string | number> };
+  isProjectDirtySignal: { value: boolean };
+  saveActiveLayerAction: () => void;
+  toggleLayerEditingAction: (layerId?: string | null, options?: any) => void;
 };
 
 describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
@@ -305,6 +325,8 @@ describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
     activeSelectionModeSignal.value = 'select_feature';
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
+    editedFeatureIdsSignal.value = new Set();
+    isProjectDirtySignal.value = false;
   });
 
   afterEach(() => {
@@ -494,5 +516,100 @@ describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
 
     const selectedRows = findAllNodes(container, el => el.className.includes('selected-row'));
     assert.strictEqual(selectedRows.length, 2, 'Two rows must have selected-row class');
+  });
+
+  it('gates data cell editing by layer edit mode and tracks modified features in editedFeatureIdsSignal', async () => {
+    const mockLayer: GisLayer = {
+      id: 'layer-parcels',
+      name: 'Parcels',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1.0,
+      color: '#3b82f6',
+      featureCount: 2,
+    };
+
+    layersSignal.value = [mockLayer];
+    activeLayerIdSignal.value = 'layer-parcels';
+    featuresSignal.value = [
+      { id: 'f-101', layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel 101', zoning: 'Commercial' } },
+      { id: 'f-102', layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel 102', zoning: 'Residential' } },
+    ];
+
+    // Case 1: Edit mode is OFF
+    editableLayerIdsSignal.value = new Set();
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget, {}));
+    });
+
+    const dataCells = findAllNodes(container, el => el.className.includes('cell-attribute-data'));
+    assert.ok(dataCells.length >= 2, 'Data cells must exist');
+
+    // Click data cell when not in edit mode
+    await act(async () => {
+      dataCells[0].dispatchEvent({
+        type: 'click',
+        stopPropagation: () => {},
+      });
+    });
+
+    let inputEls = findAllNodes(container, el => el.className.includes('cell-editor-input'));
+    assert.strictEqual(inputEls.length, 0, 'No inline cell editor input should appear when edit mode is OFF');
+
+    // Case 2: Enable edit mode
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set(['layer-parcels']);
+    });
+
+    // Click data cell when edit mode is ON
+    await act(async () => {
+      dataCells[0].dispatchEvent({
+        type: 'click',
+        stopPropagation: () => {},
+      });
+    });
+
+    inputEls = findAllNodes(container, el => el.className.includes('cell-editor-input'));
+    assert.strictEqual(inputEls.length, 1, 'Inline cell editor input should appear when edit mode is ON');
+    assert.strictEqual((inputEls[0] as any).value, 'Parcel 101');
+
+    // Type a new value into the input and commit via Enter key
+    await act(async () => {
+      const propKey = Object.keys(inputEls[0]).find(k => k.startsWith('__reactProps'))!;
+      (inputEls[0] as any)[propKey].onChange({ target: { value: 'Parcel 101 Revised' } });
+    });
+
+    // Re-acquire input with updated state and simulate Enter keydown
+    inputEls = findAllNodes(container, el => el.className.includes('cell-editor-input'));
+    await act(async () => {
+      const propKey = Object.keys(inputEls[0]).find(k => k.startsWith('__reactProps'))!;
+      (inputEls[0] as any)[propKey].onKeyDown({
+        key: 'Enter',
+        preventDefault: () => {},
+      });
+    });
+
+    // Verify feature property was updated in featuresSignal
+    const updatedFeature = featuresSignal.value.find(f => f.id === 'f-101');
+    assert.strictEqual(updatedFeature?.properties.name, 'Parcel 101 Revised');
+
+    // Verify editedFeatureIdsSignal contains 'f-101'
+    assert.ok(editedFeatureIdsSignal.value.has('f-101'), 'editedFeatureIdsSignal must track modified feature ID');
+    assert.strictEqual(isProjectDirtySignal.value, true, 'isProjectDirtySignal must be set to true on cell edit');
+
+    // Verify saving active layer resets editedFeatureIdsSignal
+    await act(async () => {
+      saveActiveLayerAction();
+    });
+    assert.strictEqual(editedFeatureIdsSignal.value.size, 0, 'saveActiveLayerAction must reset editedFeatureIdsSignal');
+
+    // Re-add to editedFeatureIdsSignal and verify toggling editing off clears it
+    await act(async () => {
+      editedFeatureIdsSignal.value = new Set(['f-101']);
+      toggleLayerEditingAction('layer-parcels', { force: true });
+    });
+    assert.strictEqual(editedFeatureIdsSignal.value.size, 0, 'toggleLayerEditingAction disabling edit mode must clear editedFeatureIdsSignal');
   });
 });
