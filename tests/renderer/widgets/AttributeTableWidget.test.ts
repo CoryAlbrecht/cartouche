@@ -36,6 +36,7 @@ class MockElement {
     getPropertyValue: (name: string) => string;
   };
   className = '';
+  textContent = '';
   attributes: Record<string, string> = {};
   eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
 
@@ -115,6 +116,24 @@ class MockElement {
     this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
   }
 
+  dispatchEvent(event: any): boolean {
+    event.target = event.target || this;
+    event.currentTarget = this;
+    const origStop = event.stopPropagation;
+    event.stopPropagation = () => {
+      event.cancelBubble = true;
+      if (origStop) origStop.call(event);
+    };
+    const listeners = (this.eventListeners[event.type] || []).slice();
+    for (const { cb } of listeners) {
+      cb(event);
+    }
+    if (event.bubbles !== false && this.parentNode && !event.cancelBubble) {
+      this.parentNode.dispatchEvent(event);
+    }
+    return !event.defaultPrevented;
+  }
+
   contains(node: any): boolean {
     if (node === this) return true;
     for (const child of this.childNodes) {
@@ -153,12 +172,16 @@ function setupDom(): void {
       el.ownerDocument = doc;
       return el;
     },
-    createTextNode: (text: string) => ({
-      nodeType: 3,
-      nodeValue: text,
-      ownerDocument: doc,
-      parentNode: null,
-    }),
+    createTextNode: (text: string) => {
+      const node = {
+        nodeType: 3,
+        nodeValue: String(text),
+        textContent: String(text),
+        ownerDocument: doc,
+        parentNode: null as any,
+      };
+      return node;
+    },
     createComment: (data: string) => ({
       nodeType: 8,
       data,
@@ -393,5 +416,83 @@ describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
       true,
       'Toggle editing button must become active immediately when editableLayerIdsSignal changes'
     );
+  });
+
+  it('supports single click, Ctrl-click toggle, and Shift-click range selection on the counter column', async () => {
+    const mockLayer: GisLayer = {
+      id: 'layer-parcels',
+      name: 'Parcels',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1.0,
+      color: '#3b82f6',
+      featureCount: 4,
+    };
+
+    layersSignal.value = [mockLayer];
+    activeLayerIdSignal.value = 'layer-parcels';
+    featuresSignal.value = [
+      { id: 'f-1', layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel 1' } },
+      { id: 'f-2', layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel 2' } },
+      { id: 'f-3', layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel 3' } },
+      { id: 'f-4', layerId: 'layer-parcels', geometryType: 'Polygon', properties: { name: 'Parcel 4' } },
+    ];
+
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget, {}));
+    });
+
+    const counterCells = findAllNodes(container, el => el.className.includes('cell-counter'));
+    assert.strictEqual(counterCells.length, 4, 'Must render 4 counter cells');
+    assert.strictEqual(counterCells[0].textContent, '1', 'First row counter must be 1');
+    assert.strictEqual(counterCells[3].textContent, '4', 'Fourth row counter must be 4');
+
+    // 1. Single click on row 2 (index 1, id 'f-2')
+    await act(async () => {
+      counterCells[1].dispatchEvent({
+        type: 'click',
+        stopPropagation: () => {},
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      });
+    });
+
+    assert.deepStrictEqual(Array.from(selectedFeatureIdsSignal.value), ['f-2']);
+
+    // 2. Ctrl-click on row 4 (index 3, id 'f-4') to toggle it in
+    await act(async () => {
+      counterCells[3].dispatchEvent({
+        type: 'click',
+        stopPropagation: () => {},
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+      });
+    });
+
+    assert.deepStrictEqual(Array.from(selectedFeatureIdsSignal.value).sort(), ['f-2', 'f-4']);
+
+    // 3. Shift-click from anchor (now 'f-4' at index 3) backwards to row 2 (index 1)
+    await act(async () => {
+      counterCells[1].dispatchEvent({
+        type: 'click',
+        stopPropagation: () => {},
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: true,
+      });
+    });
+
+    assert.deepStrictEqual(Array.from(selectedFeatureIdsSignal.value).sort(), ['f-2', 'f-3', 'f-4']);
+
+    // 4. Verify existing selections render with .selected-row
+    await act(async () => {
+      selectedFeatureIdsSignal.value = new Set(['f-1', 'f-3']);
+    });
+
+    const selectedRows = findAllNodes(container, el => el.className.includes('selected-row'));
+    assert.strictEqual(selectedRows.length, 2, 'Two rows must have selected-row class');
   });
 });

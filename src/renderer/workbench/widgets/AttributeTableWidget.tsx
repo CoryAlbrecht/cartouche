@@ -11,14 +11,13 @@
  * @see {@link DigitizingToolbarWidget}
  */
 
-import React from "react";
+import React, { useRef } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "./BasicWidget";
 import {
   activeLayerSignal,
   activeLayerFeaturesSignal,
   selectedFeatureIdsSignal,
-  toggleFeatureSelection,
 } from "@renderer/state/gisSignals";
 import type { IDockviewPanelProps } from "dockview-react";
 import { mdiTable } from "@mdi/js";
@@ -65,6 +64,51 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const attributeKeys =
     features.length > 0 ? Object.keys(features[0].properties) : [];
+
+  // Selection range anchor reference (feature ID)
+  const selectionAnchorRef = useRef<string | number | null>(null);
+
+  /**
+   * Handles primary-click on the leftmost counter (#) cell with multi-selection semantics:
+   * - Ctrl/Cmd-click: toggle feature in/out of current selection set
+   * - Shift-click: select contiguous range between selectionAnchorRef and clicked feature
+   * - Regular click: select single feature
+   */
+  const handleCounterCellClick = (
+    e: React.MouseEvent,
+    featureId: string | number,
+    featureIndex: number
+  ) => {
+    e.stopPropagation();
+
+    if (e.ctrlKey || e.metaKey) {
+      const next = new Set(selectedFeatureIdsSignal.value);
+      if (next.has(featureId)) {
+        next.delete(featureId);
+      } else {
+        next.add(featureId);
+      }
+      selectedFeatureIdsSignal.value = next;
+      selectionAnchorRef.current = featureId;
+    } else if (e.shiftKey && selectionAnchorRef.current !== null) {
+      const anchorIdx = features.findIndex((f) => f.id === selectionAnchorRef.current);
+      if (anchorIdx !== -1) {
+        const start = Math.min(anchorIdx, featureIndex);
+        const end = Math.max(anchorIdx, featureIndex);
+        const rangeIds = new Set<string | number>();
+        for (let i = start; i <= end; i++) {
+          rangeIds.add(features[i].id);
+        }
+        selectedFeatureIdsSignal.value = rangeIds;
+      } else {
+        selectedFeatureIdsSignal.value = new Set([featureId]);
+        selectionAnchorRef.current = featureId;
+      }
+    } else {
+      selectedFeatureIdsSignal.value = new Set([featureId]);
+      selectionAnchorRef.current = featureId;
+    }
+  };
 
   return (
     <BasicWidget
@@ -143,14 +187,21 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                       <tr
                         key={feature.id}
                         className={isSelected ? "selected-row" : ""}
-                        onClick={() => toggleFeatureSelection(feature.id)}
                         style={{
-                          cursor: "pointer",
                           backgroundColor:
                             isSelected ? "#e0f2fe" : "transparent",
+                          color: isSelected ? "#0369a1" : "inherit",
                           borderBottom: "1px solid #f1f5f9",
                         }}>
-                        <td style={{ textAlign: "center", padding: "4px 8px" }}>
+                        <td
+                          className='cell-counter'
+                          onClick={(e) => handleCounterCellClick(e, feature.id, idx)}
+                          style={{
+                            textAlign: "center",
+                            padding: "4px 8px",
+                            cursor: "pointer",
+                            userSelect: "none",
+                          }}>
                           {idx + 1}
                         </td>
                         <td style={{ padding: "4px 8px" }}>{feature.id}</td>
