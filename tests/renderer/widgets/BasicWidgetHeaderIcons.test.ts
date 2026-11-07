@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying BasicWidget 2-control header bar control icons (close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties, optional title bar icon parameter scales to 50% of --cartouche-ui-icon-size, and react to prefsUiIconSize signal changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-05
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link prefsUiIconSize}
@@ -405,7 +405,10 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
 
   it('theme.css defines --cartouche-ui-icon-size: 24px in :root fallback', () => {
     const themeCssPath = path.resolve(process.cwd(), 'src/renderer/styles/theme.css');
-    const content = fs.readFileSync(themeCssPath, 'utf-8');
+    const defaultThemeCssPath = path.resolve(process.cwd(), 'src/renderer/styles/themes/theme-default.css');
+    const content = fs.existsSync(defaultThemeCssPath)
+      ? fs.readFileSync(defaultThemeCssPath, 'utf-8')
+      : fs.readFileSync(themeCssPath, 'utf-8');
     assert.match(
       content,
       /--cartouche-ui-icon-size:\s*24px;/,

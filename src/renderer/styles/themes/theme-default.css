@@ -1,0 +1,267 @@
+/**
+ * @file theme-default.css
+ * @module renderer/styles/themes/theme-default
+ * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-07
+ * @updated 2026-11-07
+ * @since 0.1.0-dev
+ */
+
+/* =========================================================================
+   Cartouche Statically Bundled Fonts (ADR 0013)
+   ========================================================================= */
+
+/* Noto Sans Math (Regular 400 - Scoped to Mathematical and Greek Unicode ranges) */
+@font-face {
+  font-family: "Noto Sans Math";
+  src: url("../../../../assets/fonts/noto-sans-math/NotoSansMath-Regular.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0370-03FF, U+2100-214F, U+2200-22FF, U+2300-23FF, U+25A0-25FF,
+    U+27C0-27EF, U+2980-2AFF, U+1D400-1D7FF;
+}
+
+/* Noto Sans (Regular 400, Bold 700, Italic) */
+@font-face {
+  font-family: "Noto Sans";
+  src: url("../../../../assets/fonts/noto-sans/NotoSans-Regular.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  src: url("../../../../assets/fonts/noto-sans/NotoSans-Bold.woff2")
+    format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  src: url("../../../../assets/fonts/noto-sans/NotoSans-Italic.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Noto Sans Mono (Regular 400, Bold 700) */
+@font-face {
+  font-family: "Noto Sans Mono";
+  src: url("../../../../assets/fonts/noto-sans-mono/NotoSansMono-Regular.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans Mono";
+  src: url("../../../../assets/fonts/noto-sans-mono/NotoSansMono-Bold.woff2")
+    format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================================================================
+   Cartouche Design Tokens (Two-Tier Architecture - ADR 0027)
+   ========================================================================= */
+:root {
+  /* =========================================================================
+     Typography & Sizing Tokens (ADR 0013)
+     ========================================================================= */
+  --cartouche-theme-font-family:
+    "Noto Sans Math", "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --cartouche-theme-font-family-mono:
+    "Noto Sans Mono", ui-monospace, SFMono-Regular, "Cascadia Code",
+    "Source Code Pro", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  --cartouche-ui-basefont-size: 12pt;
+  --cartouche-ui-icon-size: 24px;
+  --cartouche-ui-icon-scaling: 1;
+
+  /* =========================================================================
+     Tier 1: Theme Primitives (Foundational Palette)
+     ========================================================================= */
+  /* Primary & Brand Accents */
+  --cartouche-theme-primary: #1b446c;
+  --cartouche-theme-primary-hover: #24588c;
+  --cartouche-theme-primary-active: #133346;
+
+  /* Base Backgrounds & Surfaces */
+  --cartouche-theme-bg: #ffffff;
+  --cartouche-theme-surface: #ffffff;
+  --cartouche-theme-surface-subtle: #f8fafc;
+  --cartouche-theme-surface-widget: #f3f3f3;
+  --cartouche-theme-surface-alt: #f1f5f9;
+  --cartouche-theme-surface-hover: #f1f5f9;
+  --cartouche-theme-surface-active: #e2e8f0;
+
+  /* Borders & Dividers */
+  --cartouche-theme-border: #e2e8f0;
+  --cartouche-theme-border-subtle: #f1f5f9;
+  --cartouche-theme-border-strong: #cbd5e1;
+  --cartouche-theme-border-widget: #f3f3f3;
+  --cartouche-theme-border-dark: #133346;
+  --cartouche-theme-border-dropdown: #cccccc;
+
+  /* Foreground & Typography */
+  --cartouche-theme-fg: #000000;
+  --cartouche-theme-fg-muted: #64748b;
+  --cartouche-theme-fg-subtle: #94a3b8;
+  --cartouche-theme-fg-inverted: #ffffff;
+  --cartouche-theme-fg-primary: #0f172a;
+
+  /* Accent & Interaction States */
+  --cartouche-theme-accent: #1b446c;
+  --cartouche-theme-accent-hover: #24588c;
+  --cartouche-theme-accent-subtle: rgba(27, 68, 108, 0.08);
+  --cartouche-theme-accent-focus: rgba(27, 68, 108, 0.25);
+
+  /* Status Colors */
+  --cartouche-theme-danger: #dc2626;
+  --cartouche-theme-danger-hover: #b91c1c;
+  --cartouche-theme-danger-subtle: #fef2f2;
+  --cartouche-theme-warning: #f59e0b;
+  --cartouche-theme-warning-subtle: #fffbeb;
+  --cartouche-theme-success: #16a34a;
+  --cartouche-theme-success-subtle: #f0fdf4;
+  --cartouche-theme-info: #0284c7;
+  --cartouche-theme-info-subtle: #f0f9ff;
+
+  /* =========================================================================
+     Tier 2: Component Tokens (Mapped to Tier 1 Primitives)
+     ========================================================================= */
+  /* Menubar */
+  --cartouche-menubar-bg: var(--cartouche-theme-primary);
+  --cartouche-menubar-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-menubar-hover: rgba(255, 255, 255, 0.2);
+  --cartouche-menubar-border: var(--cartouche-theme-border-dark);
+
+  /* Status Bar */
+  --cartouche-theme-status-bar-bg: var(--cartouche-theme-primary);
+  --cartouche-theme-status-bar-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-theme-status-bar-border: var(--cartouche-theme-border-dark);
+
+  /* Activity Bar */
+  --cartouche-theme-activity-bar-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-theme-activity-bar-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-theme-activity-bar-inactive-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-theme-activity-bar-active-border: var(--cartouche-theme-primary);
+
+  /* Side Bar & Panels */
+  --cartouche-theme-side-bar-bg: var(--cartouche-theme-surface);
+  --cartouche-theme-side-bar-fg: var(--cartouche-theme-fg);
+  --cartouche-theme-side-bar-border: var(--cartouche-theme-border);
+  --cartouche-theme-editor-bg: var(--cartouche-theme-surface);
+  --cartouche-theme-panel-bg: var(--cartouche-theme-surface);
+  --cartouche-theme-panel-border: var(--cartouche-theme-border);
+
+  /* Tab Groups & Headers */
+  --cartouche-theme-tab-active-bg: var(--cartouche-theme-surface);
+  --cartouche-theme-tab-inactive-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-theme-tab-active-fg: var(--cartouche-theme-fg);
+  --cartouche-theme-tab-inactive-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-theme-tab-border: var(--cartouche-theme-border);
+
+  /* Buttons & Badges */
+  --cartouche-theme-badge-bg: var(--cartouche-theme-primary);
+  --cartouche-theme-badge-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-theme-button-bg: var(--cartouche-theme-primary);
+  --cartouche-theme-button-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-theme-button-hover-bg: var(--cartouche-theme-primary-hover);
+
+  /* Dockview Theme Overrides */
+  --dockview-theme-background-color: var(--cartouche-theme-surface);
+  --dockview-theme-foreground-color: var(--cartouche-theme-fg);
+  --dockview-theme-border-color: var(--cartouche-theme-border);
+  --dockview-theme-separator-color: var(--cartouche-theme-border);
+  --dockview-theme-splitter-color: transparent;
+  --dockview-theme-active-border-color: var(--cartouche-theme-primary);
+  --dockview-tab-height: 2em;
+  --dockview-tab-font-size: 0.9rem;
+
+  /* Widgets */
+  --cartouche-widget-bg: var(--cartouche-theme-surface-widget);
+  --cartouche-widget-border: var(--cartouche-theme-border-widget);
+  --cartouche-widget-header-bg: var(--cartouche-theme-surface-widget);
+  --cartouche-widget-header-fg: var(--cartouche-theme-fg);
+  --cartouche-widget-header-border: var(--cartouche-theme-border);
+  --cartouche-widget-content-bg: var(--cartouche-theme-surface);
+  --cartouche-widget-content-fg: var(--cartouche-theme-fg);
+
+  /* Menus & Dropdowns */
+  --cartouche-menu-bg: var(--cartouche-theme-surface);
+  --cartouche-menu-fg: var(--cartouche-theme-fg);
+  --cartouche-menu-border: var(--cartouche-theme-border-dropdown);
+  --cartouche-menu-item-hover-bg: var(--cartouche-theme-primary);
+  --cartouche-menu-item-hover-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-menu-separator: var(--cartouche-theme-border);
+
+  /* Toolbars */
+  --cartouche-toolbar-bg: var(--cartouche-theme-surface);
+  --cartouche-toolbar-fg: var(--cartouche-theme-fg);
+  --cartouche-toolbar-border: var(--cartouche-theme-border);
+  --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-toolbar-item-active-bg: var(--cartouche-theme-surface-active);
+
+  /* Dialogs & Modals */
+  --cartouche-dialog-bg: var(--cartouche-theme-surface);
+  --cartouche-dialog-fg: var(--cartouche-theme-fg);
+  --cartouche-dialog-border: var(--cartouche-theme-border);
+  --cartouche-dialog-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-dialog-header-fg: var(--cartouche-theme-fg);
+  --cartouche-dialog-header-border: var(--cartouche-theme-border);
+  --cartouche-dialog-backdrop: rgba(0, 0, 0, 0.4);
+
+  /* Tables */
+  --cartouche-table-bg: var(--cartouche-theme-surface);
+  --cartouche-table-fg: var(--cartouche-theme-fg);
+  --cartouche-table-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-table-header-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-table-border: var(--cartouche-theme-border);
+  --cartouche-table-row-hover-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-table-row-selected-bg: var(--cartouche-theme-accent-subtle);
+  --cartouche-table-row-alt-bg: var(--cartouche-theme-surface-subtle);
+
+  /* Form Inputs & Controls */
+  --cartouche-input-bg: var(--cartouche-theme-surface);
+  --cartouche-input-fg: var(--cartouche-theme-fg);
+  --cartouche-input-border: var(--cartouche-theme-border-strong);
+  --cartouche-input-focus-border: var(--cartouche-theme-primary);
+  --cartouche-input-focus-ring: var(--cartouche-theme-accent-focus);
+
+  /* Drop Targets & Highlights */
+  --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
+  --cartouche-drop-target-border: var(--cartouche-theme-primary);
+}
+
+/* Global Reset & Theme Root Application */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--cartouche-theme-font-family);
+  font-size: var(--cartouche-ui-basefont-size);
+  background-color: var(--cartouche-theme-bg);
+  color: var(--cartouche-theme-fg);
+  user-select: none;
+}
