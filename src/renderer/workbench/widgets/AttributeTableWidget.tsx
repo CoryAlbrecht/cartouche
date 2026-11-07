@@ -1264,7 +1264,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                             width: counterWidth,
                             textAlign: "center",
                             padding: "4px 8px",
-                            borderRight: "1px solid #e2e8f0",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                             boxSizing: "border-box",
                             position: "relative",
                           }}>
@@ -1303,7 +1303,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                           style={{
                             width: idWidth,
                             padding: "4px 8px",
-                            borderRight: "1px solid #e2e8f0",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                             boxSizing: "border-box",
                             position: "relative",
                           }}>
@@ -1332,7 +1332,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                           style={{
                             width: typeWidth,
                             padding: "4px 8px",
-                            borderRight: "1px solid #e2e8f0",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                             boxSizing: "border-box",
                             position: "relative",
                           }}>
@@ -1382,7 +1382,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                               style={{
                                 width: colW,
                                 padding: "4px 8px",
-                                borderRight: "1px solid #e2e8f0",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                 boxSizing: "border-box",
                                 position: "relative",
                                 textAlign: isNumeric ? "right" : "left",
@@ -1454,7 +1454,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                   padding: "4px 8px",
                                   cursor: "pointer",
                                   userSelect: "none",
-                                  borderRight: "1px solid #e2e8f0",
+                                  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                   boxSizing: "border-box",
                                 }}>
                                 {pageStart + idx + 1}
@@ -1462,7 +1462,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                               <td
                                 style={{
                                   padding: "4px 8px",
-                                  borderRight: "1px solid #e2e8f0",
+                                  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                   boxSizing: "border-box",
                                 }}>
                                 {feature.id}
@@ -1470,7 +1470,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                               <td
                                 style={{
                                   padding: "4px 8px",
-                                  borderRight: "1px solid #e2e8f0",
+                                  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                   boxSizing: "border-box",
                                 }}>
                                 {feature.geometryType}
@@ -1511,7 +1511,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                     style={{
                                       padding: "4px 8px",
                                       cursor: isLayerEditable ? "text" : "default",
-                                      borderRight: "1px solid #e2e8f0",
+                                      borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                       boxSizing: "border-box",
                                       textAlign: isNumeric ? "right" : "left",
                                     }}>

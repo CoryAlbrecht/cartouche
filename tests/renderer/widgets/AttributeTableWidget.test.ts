@@ -1674,7 +1674,7 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         assert.strictEqual(thNodes.length, 5, 'must render 3 system columns (#, ID, Type) + 2 attribute columns');
 
         for (const th of thNodes) {
-          assert.strictEqual(th.style.borderRight, '1px solid #e2e8f0', 'all th cells must have 1px solid #e2e8f0 border-right');
+          assert.strictEqual(th.style.borderRight, '1px solid var(--cartouche-menubar-bg, #1b446c)', 'all th cells must have 1px solid var(--cartouche-menubar-bg, #1b446c) border-right');
           assert.ok(th.style.width, 'all th cells must have explicit initial width');
         }
 
@@ -1688,7 +1688,18 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         assert.strictEqual(tdNodesRow1.length, 5, 'data row must render 5 td cells');
 
         for (const td of tdNodesRow1) {
-          assert.strictEqual(td.style.borderRight, '1px solid #e2e8f0', 'all td cells must have 1px solid #e2e8f0 border-right');
+          assert.strictEqual(td.style.borderRight, '1px solid var(--cartouche-menubar-bg, #1b446c)', 'all td cells must have 1px solid var(--cartouche-menubar-bg, #1b446c) border-right');
+        }
+
+        // Verify column dividers persist when row is selected (Ticket #192)
+        await act(async () => {
+          selectedFeatureIdsSignal.value = new Set(['f-1']);
+        });
+        const selectedRow = findAllNodes(tableEl, el => el.tagName === 'TR' && el.className?.includes('selected-row'))[0];
+        assert.ok(selectedRow, 'selected row must have selected-row class');
+        const selectedTds = findAllNodes(selectedRow, el => el.tagName === 'TD');
+        for (const td of selectedTds) {
+          assert.strictEqual(td.style.borderRight, '1px solid var(--cartouche-menubar-bg, #1b446c)', 'selected row cells must retain 1px solid var(--cartouche-menubar-bg, #1b446c) border-right');
         }
       } finally {
         delete (globalThis as any).window.electronAPI.queryExtent;

@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -593,7 +593,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1441,6 +1441,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_name")}
                         </th>
@@ -1448,6 +1450,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_native_type")}
                         </th>
@@ -1455,6 +1459,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_inferred_type")}
                         </th>
@@ -1462,6 +1468,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_length")}
                         </th>
@@ -1469,6 +1477,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_precision")}
                         </th>
@@ -1476,6 +1486,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_nullable")}
                         </th>
@@ -1491,6 +1503,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                               textAlign: "center",
                               color: "#64748b",
                               fontStyle: "italic",
+                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                             }}>
                             No attribute fields found for this layer.
                           </td>
@@ -1500,11 +1514,21 @@ export const LayerPropertiesDialog: React.FC = () => {
                             key={field.name}
                             style={{ borderBottom: "1px solid #e2e8f0" }}>
                             <td
-                              style={{ padding: "6px 10px", fontWeight: 500 }}>
+                              style={{
+                                padding: "6px 10px",
+                                fontWeight: 500,
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              }}>
                               {field.name}
                             </td>
                             <td
-                              style={{ padding: "6px 10px", color: "#475569" }}>
+                              style={{
+                                padding: "6px 10px",
+                                color: "#475569",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              }}>
                               {field.nativeType}
                             </td>
                             <td
@@ -1514,6 +1538,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   "var(--cartouche-theme-font-family-mono, monospace)",
                                 color: field.userOverridden ? "#047857" : "#0f766e",
                                 fontWeight: field.userOverridden ? 600 : 400,
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                               }}>
                               {field.inferredType ?? field.mappedType}
                               {field.userOverridden && (
@@ -1535,13 +1561,23 @@ export const LayerPropertiesDialog: React.FC = () => {
                               )}
                             </td>
                             <td
-                              style={{ padding: "6px 10px", color: "#475569" }}>
+                              style={{
+                                padding: "6px 10px",
+                                color: "#475569",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              }}>
                               {field.width !== undefined && field.width > 0 ?
                                 field.width
                               : ""}
                             </td>
                             <td
-                              style={{ padding: "6px 10px", color: "#475569" }}>
+                              style={{
+                                padding: "6px 10px",
+                                color: "#475569",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              }}>
                               {(
                                 field.precision !== undefined
                                 && field.precision > 0
@@ -1549,7 +1585,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 field.precision
                               : ""}
                             </td>
-                            <td style={{ padding: "6px 10px" }}>
+                            <td
+                              style={{
+                                padding: "6px 10px",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              }}>
                               {field.nullable ?
                                 t("layer_properties_yes")
                               : t("layer_properties_no")}
@@ -2212,8 +2253,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid #cbd5e1",
-                          borderRight: "1px solid #cbd5e1",
+                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           width: "48px",
                           textAlign: "right",
                         }}>
@@ -2223,8 +2264,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid #cbd5e1",
-                          borderRight: "1px solid #cbd5e1",
+                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                         }}>
                         {t("layer_properties_field_col_name")}
                       </th>
@@ -2232,8 +2273,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid #cbd5e1",
-                          borderRight: "1px solid #cbd5e1",
+                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                         }}>
                         {t("layer_properties_fields_col_data_type")}
                       </th>
@@ -2242,8 +2283,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                           style={{
                             padding: "6px 10px",
                             borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid #cbd5e1",
-                            borderRight: "1px solid #cbd5e1",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           {t("layer_properties_field_col_native_type")}
                         </th>
@@ -2252,8 +2293,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid #cbd5e1",
-                          borderRight: "1px solid #cbd5e1",
+                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                         }}>
                         {t("layer_properties_field_col_length")}
                       </th>
@@ -2261,8 +2302,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid #cbd5e1",
-                          borderRight: "1px solid #cbd5e1",
+                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                         }}>
                         {t("layer_properties_field_col_precision")}
                       </th>
@@ -2270,8 +2311,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                         style={{
                           padding: "6px 10px",
                           borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid #cbd5e1",
-                          borderRight: "1px solid #cbd5e1",
+                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                         }}>
                         {t("layer_properties_fields_col_comment")}
                       </th>
@@ -2287,8 +2328,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                             textAlign: "center",
                             color: "#64748b",
                             fontStyle: "italic",
-                            borderLeft: "1px solid #e2e8f0",
-                            borderRight: "1px solid #e2e8f0",
+                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                           }}>
                           No attribute fields found.
                         </td>
@@ -2312,8 +2353,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                             <td
                               style={{
                                 padding: "6px 10px",
-                                borderLeft: "1px solid #e2e8f0",
-                                borderRight: "1px solid #e2e8f0",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                 textAlign: "right",
                                 fontFamily:
                                   "var(--cartouche-theme-font-family-mono, monospace)",
@@ -2324,8 +2365,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                             <td
                               style={{
                                 padding: "6px 10px",
-                                borderLeft: "1px solid #e2e8f0",
-                                borderRight: "1px solid #e2e8f0",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                 fontWeight: 500,
                               }}>
                               {field.name}
@@ -2333,8 +2374,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                             <td
                               style={{
                                 padding: "6px 10px",
-                                borderLeft: "1px solid #e2e8f0",
-                                borderRight: "1px solid #e2e8f0",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                 fontFamily:
                                   "var(--cartouche-theme-font-family-mono, monospace)",
                                 color: "#0f766e",
@@ -2438,8 +2479,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                             <td
                               style={{
                                 padding: "6px 10px",
-                                borderLeft: "1px solid #e2e8f0",
-                                borderRight: "1px solid #e2e8f0",
+                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                                 color: "#475569",
                               }}>
                               {field.nativeType}
@@ -2459,8 +2500,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 editingCell?.fieldName === field.name && editingCell?.column === "width"
                                   ? "2px 4px"
                                   : "6px 10px",
-                              borderLeft: "1px solid #e2e8f0",
-                              borderRight: "1px solid #e2e8f0",
+                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                               color: "#475569",
                               cursor:
                                 isEditing && isSelected && isFieldColumnEditable(field, "width")
@@ -2510,8 +2551,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 editingCell?.fieldName === field.name && editingCell?.column === "precision"
                                   ? "2px 4px"
                                   : "6px 10px",
-                              borderLeft: "1px solid #e2e8f0",
-                              borderRight: "1px solid #e2e8f0",
+                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                               color: "#475569",
                               cursor:
                                 isEditing && isSelected && isFieldColumnEditable(field, "precision")
@@ -2561,8 +2602,8 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 editingCell?.fieldName === field.name && editingCell?.column === "comment"
                                   ? "2px 4px"
                                   : "6px 10px",
-                              borderLeft: "1px solid #e2e8f0",
-                              borderRight: "1px solid #e2e8f0",
+                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
                               color: "#64748b",
                               cursor:
                                 isEditing && isSelected && isFieldColumnEditable(field, "comment")

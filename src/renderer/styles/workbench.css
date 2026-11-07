@@ -1244,14 +1244,14 @@
   text-align: left;
   padding: 6px 10px;
   border-bottom: 1px solid #cbd5e1;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid var(--cartouche-menubar-bg, #1b446c);
   font-weight: 600;
 }
 
 .gis-data-table td {
   padding: 5px 10px;
   border-bottom: 1px solid #f1f5f9;
-  border-right: 1px solid #f1f5f9;
+  border-right: 1px solid var(--cartouche-menubar-bg, #1b446c);
   color: #1e293b;
   white-space: nowrap;
 }

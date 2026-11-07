@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -2432,24 +2432,76 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
 
-      // Header cells must have border-left and border-right #cbd5e1
+      // Header cells must have border-left and border-right with menubar background color
       assert.ok(
-        html.includes('border-left:1px solid #cbd5e1') || html.includes('borderLeft:1px solid #cbd5e1'),
-        'th elements must have border-left #cbd5e1'
+        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'th elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
       );
       assert.ok(
-        html.includes('border-right:1px solid #cbd5e1') || html.includes('borderRight:1px solid #cbd5e1'),
-        'th elements must have border-right #cbd5e1'
+        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'th elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
       );
 
-      // Body cells must have border-left and border-right #e2e8f0
+      // Body cells must have border-left and border-right with menubar background color
       assert.ok(
-        html.includes('border-left:1px solid #e2e8f0') || html.includes('borderLeft:1px solid #e2e8f0'),
-        'td elements must have border-left #e2e8f0'
+        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'td elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
       );
       assert.ok(
-        html.includes('border-right:1px solid #e2e8f0') || html.includes('borderRight:1px solid #e2e8f0'),
-        'td elements must have border-right #e2e8f0'
+        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'td elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
+      );
+    });
+
+    it('renders vertical grid lines with border-left and border-right across all cells in Information tab fields table', async () => {
+      projectLayersSignal.value = [
+        {
+          id: testLayerId,
+          name: 'Grid Lines Layer',
+          type: 'vector',
+          source: '/data/gridlines.shp',
+          fields: [
+            {
+              index: 0,
+              name: 'code',
+              nativeType: 'String',
+              inferredType: 'string' as const,
+            },
+          ],
+        },
+      ];
+
+      await openLayerPropertiesDialog(testLayerId);
+      activeLayerPropertiesTabSignal.value = 'information';
+
+      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+      // Header cells in Information tab fields table must have border-left and border-right
+      assert.ok(
+        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'Information tab th elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
+      );
+      assert.ok(
+        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'Information tab th elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
+      );
+
+      // Body cells in Information tab fields table must have border-left and border-right
+      assert.ok(
+        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'Information tab td elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
+      );
+      assert.ok(
+        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
+          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
+        'Information tab td elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
       );
     });
 
