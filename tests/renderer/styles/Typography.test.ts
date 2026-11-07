@@ -185,7 +185,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
     );
     assert.ok(
       workbenchCss.includes(
-        ".console-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background-color: #ffffff;\n  font-family: var(--cartouche-theme-font-family-mono);"
+        ".console-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background-color: var(--cartouche-theme-surface);\n  font-family: var(--cartouche-theme-font-family-mono);"
       ),
       ".console-panel must use var(--cartouche-theme-font-family-mono)"
     );

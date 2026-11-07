@@ -82,6 +82,9 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-theme-success-subtle',
       '--cartouche-theme-info',
       '--cartouche-theme-info-subtle',
+      '--cartouche-theme-shadow',
+      '--cartouche-theme-shadow-subtle',
+      '--cartouche-theme-shadow-strong',
     ];
 
     for (const token of tier1Primitives) {
@@ -247,6 +250,45 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     assert.ok(
       content.includes('href="./styles/themes/theme-default.css"'),
       'index.html must reference ./styles/themes/theme-default.css'
+    );
+  });
+
+  it('verifies that @import "./theme.css" is removed from workbench.css (Ticket #198)', () => {
+    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+    assert.ok(
+      !content.includes('@import "./theme.css"'),
+      'workbench.css must not import ./theme.css'
+    );
+    assert.ok(
+      !content.includes("@import './theme.css'"),
+      'workbench.css must not import ./theme.css'
+    );
+  });
+
+  it('asserts that 0 bare hex, rgb, or rgba color literals remain in workbench.css outside comments (Ticket #198)', () => {
+    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+    // Strip multi-line comments preserving line counts
+    const noComments = content.replace(/\/\*[\s\S]*?\*\//g, (m) =>
+      m.replace(/[^\n]/g, ' ')
+    );
+    const lines = noComments.split('\n');
+    const origLines = content.split('\n');
+    const bareColorRegex = /(#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\))/g;
+
+    const bareColorViolations: string[] = [];
+    lines.forEach((line, idx) => {
+      const match = line.match(bareColorRegex);
+      if (match) {
+        bareColorViolations.push(
+          `Line ${idx + 1}: ${origLines[idx].trim()} (matched: ${match.join(', ')})`
+        );
+      }
+    });
+
+    assert.deepEqual(
+      bareColorViolations,
+      [],
+      `workbench.css must contain 0 bare color literals. Found ${bareColorViolations.length} violations:\n${bareColorViolations.join('\n')}`
     );
   });
 });

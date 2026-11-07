@@ -139,6 +139,11 @@
   --cartouche-theme-info: #0284c7;
   --cartouche-theme-info-subtle: #f0f9ff;
 
+  /* Box Shadows & Overlays */
+  --cartouche-theme-shadow: rgba(0, 0, 0, 0.16);
+  --cartouche-theme-shadow-subtle: rgba(0, 0, 0, 0.06);
+  --cartouche-theme-shadow-strong: rgba(0, 0, 0, 0.24);
+
   /* =========================================================================
      Tier 2: Component Tokens (Mapped to Tier 1 Primitives)
      ========================================================================= */
