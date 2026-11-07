@@ -666,143 +666,196 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
             <div
               className='table-scroll-wrapper'
               style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <table
-                className='gis-data-table'
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "0.8333rem",
-                }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#f1f5f9", textAlign: "left" }}>
-                    <th
-                      style={{
-                        width: 40,
-                        textAlign: "center",
-                        padding: "4px 8px",
-                      }}>
-                      {t("attribute_table_col_counter")}
-                    </th>
-                    <th style={{ width: 60, padding: "4px 8px" }}>
-                      {t("attribute_table_col_id")}
-                    </th>
-                    <th style={{ width: 90, padding: "4px 8px" }}>
-                      {t("attribute_table_col_type")}
-                    </th>
-                    {attributeKeys.map((key) => (
-                      <th key={key} style={{ padding: "4px 8px" }}>
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedFeatures.length === 0 ?
-                    <tr>
-                      <td
-                        colSpan={attributeKeys.length + 3}
-                        className='empty-filter-message'
-                        style={{
-                          textAlign: "center",
-                          padding: "16px",
-                          color: "#64748b",
-                        }}>
-                        {t("attribute_table_empty_filtered")}
-                      </td>
-                    </tr>
-                  : displayedFeatures.map((feature, idx) => {
-                      const isSelected = selectedIds.has(feature.id);
-                      return (
-                        <tr
-                          key={feature.id}
-                          className={isSelected ? "selected-row" : ""}
+              {(() => {
+                const counterWidth = 50;
+                const idWidth = 80;
+                const typeWidth = 100;
+                const defaultAttrWidth = 120;
+                const totalTableWidth =
+                  counterWidth +
+                  idWidth +
+                  typeWidth +
+                  attributeKeys.length * defaultAttrWidth;
+
+                return (
+                  <table
+                    className='gis-data-table'
+                    style={{
+                      width: totalTableWidth,
+                      minWidth: "100%",
+                      tableLayout: "fixed",
+                      borderCollapse: "collapse",
+                      fontSize: "0.8333rem",
+                    }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#f1f5f9", textAlign: "left" }}>
+                        <th
                           style={{
-                            backgroundColor:
-                              isSelected ? "#e0f2fe" : "transparent",
-                            color: isSelected ? "#0369a1" : "inherit",
-                            borderBottom: "1px solid #f1f5f9",
+                            width: counterWidth,
+                            textAlign: "center",
+                            padding: "4px 8px",
+                            borderRight: "1px solid #e2e8f0",
+                            boxSizing: "border-box",
                           }}>
+                          {t("attribute_table_col_counter")}
+                        </th>
+                        <th
+                          style={{
+                            width: idWidth,
+                            padding: "4px 8px",
+                            borderRight: "1px solid #e2e8f0",
+                            boxSizing: "border-box",
+                          }}>
+                          {t("attribute_table_col_id")}
+                        </th>
+                        <th
+                          style={{
+                            width: typeWidth,
+                            padding: "4px 8px",
+                            borderRight: "1px solid #e2e8f0",
+                            boxSizing: "border-box",
+                          }}>
+                          {t("attribute_table_col_type")}
+                        </th>
+                        {attributeKeys.map((key) => (
+                          <th
+                            key={key}
+                            style={{
+                              width: defaultAttrWidth,
+                              padding: "4px 8px",
+                              borderRight: "1px solid #e2e8f0",
+                              boxSizing: "border-box",
+                            }}>
+                            {key}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedFeatures.length === 0 ?
+                        <tr>
                           <td
-                            className='cell-counter'
-                            onClick={(e) =>
-                              handleCounterCellClick(e, feature.id, idx)
-                            }
+                            colSpan={attributeKeys.length + 3}
+                            className='empty-filter-message'
                             style={{
                               textAlign: "center",
-                              padding: "4px 8px",
-                              cursor: "pointer",
-                              userSelect: "none",
+                              padding: "16px",
+                              color: "#64748b",
                             }}>
-                            {pageStart + idx + 1}
+                            {t("attribute_table_empty_filtered")}
                           </td>
-                          <td style={{ padding: "4px 8px" }}>{feature.id}</td>
-                          <td style={{ padding: "4px 8px" }}>
-                            {feature.geometryType}
-                          </td>
-                          {attributeKeys.map((key) => {
-                            const isCellEditing =
-                              editingCell?.featureId === feature.id &&
-                              editingCell?.key === key;
-                            const cellVal = feature.properties[key];
-
-                            return (
+                        </tr>
+                      : displayedFeatures.map((feature, idx) => {
+                          const isSelected = selectedIds.has(feature.id);
+                          return (
+                            <tr
+                              key={feature.id}
+                              className={isSelected ? "selected-row" : ""}
+                              style={{
+                                backgroundColor:
+                                  isSelected ? "#e0f2fe" : "transparent",
+                                color: isSelected ? "#0369a1" : "inherit",
+                                borderBottom: "1px solid #f1f5f9",
+                              }}>
                               <td
-                                key={key}
-                                className='cell-attribute-data'
-                                onClick={() => {
-                                  if (isLayerEditable && !isCellEditing) {
-                                    startEditingCell(feature.id, key, cellVal);
-                                  }
-                                }}
-                                onDoubleClick={() => {
-                                  if (isLayerEditable && !isCellEditing) {
-                                    startEditingCell(feature.id, key, cellVal);
-                                  }
-                                }}
+                                className='cell-counter'
+                                onClick={(e) =>
+                                  handleCounterCellClick(e, feature.id, idx)
+                                }
+                                style={{
+                                  textAlign: "center",
+                                  padding: "4px 8px",
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                  borderRight: "1px solid #e2e8f0",
+                                  boxSizing: "border-box",
+                                }}>
+                                {pageStart + idx + 1}
+                              </td>
+                              <td
                                 style={{
                                   padding: "4px 8px",
-                                  cursor: isLayerEditable ? "text" : "default",
+                                  borderRight: "1px solid #e2e8f0",
+                                  boxSizing: "border-box",
                                 }}>
-                                {isCellEditing ?
-                                  <input
-                                    type='text'
-                                    className='cell-editor-input'
-                                    autoFocus
-                                    value={editValue}
-                                    onChange={(e) =>
-                                      setEditValue(e.target.value)
-                                    }
-                                    onBlur={commitEditingCell}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        commitEditingCell();
-                                      } else if (e.key === "Escape") {
-                                        e.preventDefault();
-                                        cancelEditingCell();
+                                {feature.id}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "4px 8px",
+                                  borderRight: "1px solid #e2e8f0",
+                                  boxSizing: "border-box",
+                                }}>
+                                {feature.geometryType}
+                              </td>
+                              {attributeKeys.map((key) => {
+                                const isCellEditing =
+                                  editingCell?.featureId === feature.id &&
+                                  editingCell?.key === key;
+                                const cellVal = feature.properties[key];
+
+                                return (
+                                  <td
+                                    key={key}
+                                    className='cell-attribute-data'
+                                    onClick={() => {
+                                      if (isLayerEditable && !isCellEditing) {
+                                        startEditingCell(feature.id, key, cellVal);
+                                      }
+                                    }}
+                                    onDoubleClick={() => {
+                                      if (isLayerEditable && !isCellEditing) {
+                                        startEditingCell(feature.id, key, cellVal);
                                       }
                                     }}
                                     style={{
-                                      width: "100%",
+                                      padding: "4px 8px",
+                                      cursor: isLayerEditable ? "text" : "default",
+                                      borderRight: "1px solid #e2e8f0",
                                       boxSizing: "border-box",
-                                      padding: "2px 4px",
-                                      fontSize: "0.8333rem",
-                                      border: "1px solid #0284c7",
-                                      borderRadius: "2px",
-                                      outline: "none",
-                                      backgroundColor: "#ffffff",
-                                    }}
-                                  />
-                                : String(cellVal ?? "")}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })
-                  }
-                </tbody>
-              </table>
+                                    }}>
+                                    {isCellEditing ?
+                                      <input
+                                        type='text'
+                                        className='cell-editor-input'
+                                        autoFocus
+                                        value={editValue}
+                                        onChange={(e) =>
+                                          setEditValue(e.target.value)
+                                        }
+                                        onBlur={commitEditingCell}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            commitEditingCell();
+                                          } else if (e.key === "Escape") {
+                                            e.preventDefault();
+                                            cancelEditingCell();
+                                          }
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          boxSizing: "border-box",
+                                          padding: "2px 4px",
+                                          fontSize: "0.8333rem",
+                                          border: "1px solid #0284c7",
+                                          borderRadius: "2px",
+                                          outline: "none",
+                                          backgroundColor: "#ffffff",
+                                        }}
+                                      />
+                                    : String(cellVal ?? "")}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })
+                      }
+                    </tbody>
+                  </table>
+                );
+              })()}
             </div>
 
             <div

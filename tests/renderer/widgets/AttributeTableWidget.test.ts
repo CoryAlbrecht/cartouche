@@ -1577,4 +1577,89 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
     assert.ok(sizesPassed.length > 0, 'panelApi.setSize must be called to grow panel');
     assert.strictEqual(sizesPassed[sizesPassed.length - 1].height, 192.208, 'panelApi must grow height to 192.208px');
   });
+
+  describe('AttributeTableWidget Vertical Column Dividers and Fixed Layout (Ticket #188)', () => {
+    it('renders table with table-layout fixed, explicit initial column widths, and vertical border dividers on all header and body cells', async () => {
+      const mockLayer: GisLayer = {
+        id: 'layer-grid-test',
+        name: 'Grid Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 2,
+        fields: [
+          { name: 'name', nativeType: 'String', inferredType: 'string', nullable: false },
+          { name: 'category', nativeType: 'String', inferredType: 'string', nullable: true },
+        ],
+      };
+
+      const mockFeatures = [
+        {
+          id: 'f-1',
+          properties: { name: 'Alpha', category: 'CatA' },
+          geometryType: 'Point',
+          coordinates: [0, 0],
+        },
+        {
+          id: 'f-2',
+          properties: { name: 'Beta', category: 'CatB' },
+          geometryType: 'Point',
+          coordinates: [1, 1],
+        },
+      ];
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: mockFeatures,
+          totalMatched: 2,
+        }),
+      };
+
+      layersSignal.value = [mockLayer];
+      activeLayerIdSignal.value = 'layer-grid-test';
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        assert.ok(tableEl, 'table element must be rendered');
+        assert.strictEqual(tableEl.style.tableLayout, 'fixed', 'table must use table-layout: fixed');
+        assert.strictEqual(tableEl.style.borderCollapse, 'collapse', 'table must have border-collapse: collapse');
+
+        const scrollWrapperEl = findAllNodes(container, el => el.className.includes('table-scroll-wrapper'))[0];
+        assert.ok(scrollWrapperEl, 'table scroll wrapper must be present');
+        assert.strictEqual(scrollWrapperEl.style.overflow, 'auto', 'scroll wrapper must enable overflow auto for horizontal scrolling');
+
+        // Check header cells
+        const thNodes = findAllNodes(tableEl, el => el.tagName === 'TH');
+        assert.strictEqual(thNodes.length, 5, 'must render 3 system columns (#, ID, Type) + 2 attribute columns');
+
+        for (const th of thNodes) {
+          assert.strictEqual(th.style.borderRight, '1px solid #e2e8f0', 'all th cells must have 1px solid #e2e8f0 border-right');
+          assert.ok(th.style.width, 'all th cells must have explicit initial width');
+        }
+
+        // Check body rows and cells
+        const trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        // header row + 2 data rows
+        assert.strictEqual(trNodes.length, 3, 'must render 1 header row and 2 feature data rows');
+
+        const dataRow1 = trNodes[1];
+        const tdNodesRow1 = findAllNodes(dataRow1, el => el.tagName === 'TD');
+        assert.strictEqual(tdNodesRow1.length, 5, 'data row must render 5 td cells');
+
+        for (const td of tdNodesRow1) {
+          assert.strictEqual(td.style.borderRight, '1px solid #e2e8f0', 'all td cells must have 1px solid #e2e8f0 border-right');
+        }
+      } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+  });
 });
