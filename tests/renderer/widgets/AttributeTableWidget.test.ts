@@ -58,6 +58,18 @@ class MockElement {
   focus(): void {}
   blur(): void {}
 
+  getContext(contextId: string): any {
+    if (contextId === '2d') {
+      return {
+        font: '',
+        measureText: (text: string) => ({
+          width: String(text).length * 8,
+        }),
+      };
+    }
+    return null;
+  }
+
   get textContent(): string {
     if (this._textContent !== undefined) return this._textContent;
     let text = '';
@@ -237,8 +249,14 @@ function setupDom(): void {
       ownerDocument: doc,
       parentNode: null,
     }),
-    addEventListener: () => {},
-    removeEventListener: () => {},
+    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+      if (!windowListeners[type]) windowListeners[type] = [];
+      windowListeners[type].push({ cb, capture: Boolean(capture) });
+    },
+    removeEventListener: (type: string, cb: (e: any) => void) => {
+      if (!windowListeners[type]) return;
+      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+    },
     defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
@@ -1657,6 +1675,298 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         for (const td of tdNodesRow1) {
           assert.strictEqual(td.style.borderRight, '1px solid #e2e8f0', 'all td cells must have 1px solid #e2e8f0 border-right');
         }
+      } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+  });
+
+  describe('AttributeTableWidget Interactive Column Resizing and Auto-Fit (Ticket #189)', () => {
+    it('renders interactive column resize drag handles on each column header with col-resize cursor', async () => {
+      const mockLayer: GisLayer = {
+        id: 'layer-resize-test',
+        name: 'Resize Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 1,
+        fields: [{ name: 'title', nativeType: 'String', inferredType: 'string', nullable: false }],
+      };
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: [{ id: '1', properties: { title: 'Test' }, geometryType: 'Point', coordinates: [0, 0] }],
+          totalMatched: 1,
+        }),
+      };
+
+      layersSignal.value = [mockLayer];
+      activeLayerIdSignal.value = 'layer-resize-test';
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const handles = findAllNodes(container, el => el.className.includes('column-resize-handle'));
+        // 3 system columns + 1 attribute column = 4 handles
+        assert.strictEqual(handles.length, 4, 'each column header must have a column resize separator');
+        for (const h of handles) {
+          assert.strictEqual(h.style.cursor, 'col-resize', 'handle must have col-resize cursor');
+        }
+      } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+
+    it('drags column resize separator to adjust column width independently and hard-clamps at minimum text width', async () => {
+      const mockLayer: GisLayer = {
+        id: 'layer-drag-test',
+        name: 'Drag Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 1,
+        fields: [
+          { name: 'col_a', nativeType: 'String', inferredType: 'string', nullable: false },
+          { name: 'very_long_column_name_header', nativeType: 'String', inferredType: 'string', nullable: false },
+        ],
+      };
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: [{ id: '1', properties: { col_a: 'Val', very_long_column_name_header: 'LongVal' }, geometryType: 'Point', coordinates: [0, 0] }],
+          totalMatched: 1,
+        }),
+      };
+
+      layersSignal.value = [mockLayer];
+      activeLayerIdSignal.value = 'layer-drag-test';
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        const thNodes = findAllNodes(tableEl, el => el.tagName === 'TH');
+        const colATh = thNodes[3]; // col_a header
+        const longColTh = thNodes[4]; // very_long_column_name_header
+        const handleColA = findAllNodes(colATh, el => el.className.includes('column-resize-handle'))[0];
+        const handleLongCol = findAllNodes(longColTh, el => el.className.includes('column-resize-handle'))[0];
+        assert.ok(handleColA, 'col_a header must have column resize separator');
+        assert.ok(handleLongCol, 'longCol header must have column resize separator');
+
+        const initialWidth = parseInt(colATh.style.width, 10);
+
+        // 1. Drag expand col_a by +80px
+        await act(async () => {
+          handleColA.dispatchEvent({ type: 'mousedown', clientX: 100, preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        const moveListeners = windowListeners['mousemove'] || [];
+        assert.ok(moveListeners.length > 0, 'mousemove listener must be registered on drag start');
+
+        await act(async () => {
+          for (const l of moveListeners) {
+            l.cb({ clientX: 180 });
+          }
+        });
+
+        const upListeners = windowListeners['mouseup'] || [];
+        await act(async () => {
+          for (const l of upListeners) {
+            l.cb({ clientX: 180 });
+          }
+        });
+
+        const expandedWidth = parseInt(colATh.style.width, 10);
+        assert.strictEqual(expandedWidth, initialWidth + 80, 'column width should expand by 80px');
+
+        // 2. Drag shrink col_a: minimum width is 5 chars * 8 = 40 + 24 = 64px
+        await act(async () => {
+          handleColA.dispatchEvent({ type: 'mousedown', clientX: 180, preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        const moveListeners2 = windowListeners['mousemove'] || [];
+        await act(async () => {
+          for (const l of moveListeners2) {
+            l.cb({ clientX: -200 });
+          }
+        });
+
+        const upListeners2 = windowListeners['mouseup'] || [];
+        await act(async () => {
+          for (const l of upListeners2) {
+            l.cb({ clientX: -200 });
+          }
+        });
+
+        const clampedWidthColA = parseInt(colATh.style.width, 10);
+        assert.strictEqual(clampedWidthColA, 64, 'col_a must clamp to its calculated minimum width (64px)');
+
+        // 3. Test long column header clamping: 28 chars * 8 = 224 + 24 = 248px
+        await act(async () => {
+          handleLongCol.dispatchEvent({ type: 'mousedown', clientX: 200, preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        const moveListeners3 = windowListeners['mousemove'] || [];
+        await act(async () => {
+          for (const l of moveListeners3) {
+            l.cb({ clientX: 0 }); // Attempt to shrink by 200px
+          }
+        });
+
+        const upListeners3 = windowListeners['mouseup'] || [];
+        await act(async () => {
+          for (const l of upListeners3) {
+            l.cb({ clientX: 0 });
+          }
+        });
+
+        const clampedWidthLongCol = parseInt(longColTh.style.width, 10);
+        assert.ok(clampedWidthLongCol >= 240, `long column must clamp to its header width >= 240px (got ${clampedWidthLongCol})`);
+      } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+
+    it('double clicks column resize separator to auto-fit column to widest visible content', async () => {
+      const mockLayer: GisLayer = {
+        id: 'layer-autofit-test',
+        name: 'AutoFit Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 2,
+        fields: [{ name: 'desc', nativeType: 'String', inferredType: 'string', nullable: false }],
+      };
+
+      const longText = 'This is a substantially long description text that requires wide column auto-fit';
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: [
+            { id: '1', properties: { desc: 'Short' }, geometryType: 'Point', coordinates: [0, 0] },
+            { id: '2', properties: { desc: longText }, geometryType: 'Point', coordinates: [1, 1] },
+          ],
+          totalMatched: 2,
+        }),
+      };
+
+      layersSignal.value = [mockLayer];
+      activeLayerIdSignal.value = 'layer-autofit-test';
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        const thNodes = findAllNodes(tableEl, el => el.tagName === 'TH');
+        const attrTh = thNodes[3];
+        const handle = findAllNodes(attrTh, el => el.className.includes('column-resize-handle'))[0];
+
+        await act(async () => {
+          handle.dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        const autoFittedWidth = parseInt(attrTh.style.width, 10);
+        // longText is 79 characters * 8 = 632 + padding >= 650
+        assert.ok(autoFittedWidth >= 600, `auto-fit width should accommodate widest cell text (got ${autoFittedWidth})`);
+      } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+
+    it('persists customized column widths in session cache per layer across layer switches', async () => {
+      const layer1: GisLayer = {
+        id: 'layer-cache-1',
+        name: 'Layer One',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 1,
+        fields: [{ name: 'field_a', nativeType: 'String', inferredType: 'string', nullable: false }],
+      };
+
+      const layer2: GisLayer = {
+        id: 'layer-cache-2',
+        name: 'Layer Two',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#ef4444',
+        featureCount: 1,
+        fields: [{ name: 'field_b', nativeType: 'String', inferredType: 'string', nullable: false }],
+      };
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: [{ id: '1', properties: { field_a: 'ValA', field_b: 'ValB' }, geometryType: 'Point', coordinates: [0, 0] }],
+          totalMatched: 1,
+        }),
+      };
+
+      layersSignal.value = [layer1, layer2];
+      activeLayerIdSignal.value = 'layer-cache-1';
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        // Resize field_a on layer-cache-1
+        let tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        let thNodes = findAllNodes(tableEl, el => el.tagName === 'TH');
+        let handle = findAllNodes(thNodes[3], el => el.className.includes('column-resize-handle'))[0];
+
+        await act(async () => {
+          handle.dispatchEvent({ type: 'mousedown', clientX: 100, preventDefault: () => {}, stopPropagation: () => {} });
+        });
+        const moveListeners = windowListeners['mousemove'] || [];
+        await act(async () => {
+          for (const l of moveListeners) l.cb({ clientX: 350 }); // +250px
+        });
+        const upListeners = windowListeners['mouseup'] || [];
+        await act(async () => {
+          for (const l of upListeners) l.cb({ clientX: 350 });
+        });
+
+        const customizedWidth = parseInt(thNodes[3].style.width, 10);
+        assert.ok(customizedWidth > 300, `customized width should be >300 (got ${customizedWidth})`);
+
+        // Switch to layer-cache-2
+        await act(async () => {
+          activeLayerIdSignal.value = 'layer-cache-2';
+        });
+
+        // Switch back to layer-cache-1
+        await act(async () => {
+          activeLayerIdSignal.value = 'layer-cache-1';
+        });
+
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        thNodes = findAllNodes(tableEl, el => el.tagName === 'TH');
+        const restoredWidth = parseInt(thNodes[3].style.width, 10);
+        assert.strictEqual(restoredWidth, customizedWidth, 'customized column width must be restored from per-layer session cache');
       } finally {
         delete (globalThis as any).window.electronAPI.queryExtent;
       }

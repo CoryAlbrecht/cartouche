@@ -329,6 +329,64 @@ export function deserializeQueryExtentFeatures(
 }
 
 /**
+ * In-memory session cache of customized column widths keyed by layer ID.
+ * @type {Map<string, Record<string, number>>}
+ */
+export const layerColumnWidthsCache = new Map<string, Record<string, number>>();
+
+let cachedCanvas: HTMLCanvasElement | null = null;
+
+/**
+ * Measures text width using an offscreen canvas or character-based fallback in headless environments.
+ * @function measureTextWidth
+ * @description Measures text rendered width in pixels for column auto-sizing and minimum width clamping.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {string} text - Text string to measure.
+ * @param {string} [font='0.8333rem sans-serif'] - CSS font specification.
+ * @returns {number} Measured width in pixels.
+ */
+export function measureTextWidth(
+  text: string,
+  font = "0.8333rem sans-serif"
+): number {
+  if (typeof document === "undefined")
+    return Math.max(String(text).length * 8, 20);
+  try {
+    if (!cachedCanvas) {
+      cachedCanvas = document.createElement("canvas");
+    }
+    const ctx = cachedCanvas?.getContext?.("2d");
+    if (ctx) {
+      ctx.font = font;
+      const metrics = ctx.measureText(String(text));
+      if (typeof metrics?.width === "number" && metrics.width > 0) {
+        return metrics.width;
+      }
+    }
+  } catch {
+    // Fallback for headless environments
+  }
+  return Math.max(String(text).length * 8, 20);
+}
+
+/**
+ * Default explicit width allocations for system columns.
+ */
+const DEFAULT_SYSTEM_COLUMN_WIDTHS: Record<string, number> = {
+  __counter__: 50,
+  __id__: 80,
+  __geometryType__: 100,
+};
+
+/**
+ * Default explicit width allocation for attribute data columns.
+ */
+const DEFAULT_ATTRIBUTE_COL_WIDTH = 120;
+
+/**
  * @component AttributeTableWidget
  * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -487,6 +545,114 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const isLayerEditable =
     activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
+
+  // In-memory per-layer column widths state
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!activeLayer) {
+      setColumnWidths({});
+      return;
+    }
+    const cached = layerColumnWidthsCache.get(activeLayer.id);
+    if (cached) {
+      setColumnWidths({ ...cached });
+    } else {
+      setColumnWidths({});
+    }
+  }, [activeLayer?.id]);
+
+  const getColWidth = (colKey: string, defaultW: number): number => {
+    return columnWidths[colKey] ?? defaultW;
+  };
+
+  const getMinColWidth = (title: string, fallbackMin = 40): number => {
+    const textW = measureTextWidth(title);
+    return Math.max(textW + 24, fallbackMin);
+  };
+
+  const [resizingCol, setResizingCol] = useState<{
+    colKey: string;
+    startX: number;
+    startWidth: number;
+    minWidth: number;
+  } | null>(null);
+
+  const startColumnResize = (
+    e: React.MouseEvent,
+    colKey: string,
+    currentWidth: number,
+    minWidth: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingCol({
+      colKey,
+      startX: e.clientX,
+      startWidth: currentWidth,
+      minWidth,
+    });
+  };
+
+  useEffect(() => {
+    if (!resizingCol) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizingCol.startX;
+      const nextWidth = Math.max(
+        resizingCol.minWidth,
+        resizingCol.startWidth + deltaX
+      );
+      setColumnWidths((prev) => {
+        const updated = { ...prev, [resizingCol.colKey]: nextWidth };
+        if (activeLayer) {
+          layerColumnWidthsCache.set(activeLayer.id, updated);
+        }
+        return updated;
+      });
+    };
+
+    const handleMouseUp = () => {
+      setResizingCol(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [resizingCol, activeLayer?.id]);
+
+  const autoFitColumn = (
+    e: React.MouseEvent,
+    colKey: string,
+    title: string,
+    getValue: (feature: GisFeature, idx: number) => any
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const minW = getMinColWidth(title);
+    let maxContentW = minW;
+
+    for (let i = 0; i < displayedFeatures.length; i++) {
+      const val = getValue(displayedFeatures[i], i);
+      const strVal = String(val ?? "");
+      const valW = measureTextWidth(strVal) + 24;
+      if (valW > maxContentW) {
+        maxContentW = valW;
+      }
+    }
+
+    const nextWidth = Math.ceil(maxContentW);
+    setColumnWidths((prev) => {
+      const updated = { ...prev, [colKey]: nextWidth };
+      if (activeLayer) {
+        layerColumnWidthsCache.set(activeLayer.id, updated);
+      }
+      return updated;
+    });
+  };
 
   // Active inline cell editing state: { featureId, key } or null
   const [editingCell, setEditingCell] = useState<{
@@ -667,15 +833,35 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
               className='table-scroll-wrapper'
               style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
               {(() => {
-                const counterWidth = 50;
-                const idWidth = 80;
-                const typeWidth = 100;
-                const defaultAttrWidth = 120;
+                const counterTitle = t("attribute_table_col_counter");
+                const idTitle = t("attribute_table_col_id");
+                const typeTitle = t("attribute_table_col_type");
+
+                const counterWidth = getColWidth(
+                  "__counter__",
+                  DEFAULT_SYSTEM_COLUMN_WIDTHS.__counter__
+                );
+                const idWidth = getColWidth(
+                  "__id__",
+                  DEFAULT_SYSTEM_COLUMN_WIDTHS.__id__
+                );
+                const typeWidth = getColWidth(
+                  "__geometryType__",
+                  DEFAULT_SYSTEM_COLUMN_WIDTHS.__geometryType__
+                );
+
+                const counterMinWidth = getMinColWidth(counterTitle, 36);
+                const idMinWidth = getMinColWidth(idTitle, 40);
+                const typeMinWidth = getMinColWidth(typeTitle, 50);
+
                 const totalTableWidth =
                   counterWidth +
                   idWidth +
                   typeWidth +
-                  attributeKeys.length * defaultAttrWidth;
+                  attributeKeys.reduce(
+                    (acc, k) => acc + getColWidth(k, DEFAULT_ATTRIBUTE_COL_WIDTH),
+                    0
+                  );
 
                 return (
                   <table
@@ -696,8 +882,38 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                             padding: "4px 8px",
                             borderRight: "1px solid #e2e8f0",
                             boxSizing: "border-box",
+                            position: "relative",
                           }}>
-                          {t("attribute_table_col_counter")}
+                          {counterTitle}
+                          <div
+                            className='column-resize-handle'
+                            onMouseDown={(e) =>
+                              startColumnResize(
+                                e,
+                                "__counter__",
+                                counterWidth,
+                                counterMinWidth
+                              )
+                            }
+                            onDoubleClick={(e) =>
+                              autoFitColumn(
+                                e,
+                                "__counter__",
+                                counterTitle,
+                                (_, idx) => pageStart + idx + 1
+                              )
+                            }
+                            style={{
+                              position: "absolute",
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: "6px",
+                              cursor: "col-resize",
+                              userSelect: "none",
+                              zIndex: 1,
+                            }}
+                          />
                         </th>
                         <th
                           style={{
@@ -705,8 +921,28 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                             padding: "4px 8px",
                             borderRight: "1px solid #e2e8f0",
                             boxSizing: "border-box",
+                            position: "relative",
                           }}>
-                          {t("attribute_table_col_id")}
+                          {idTitle}
+                          <div
+                            className='column-resize-handle'
+                            onMouseDown={(e) =>
+                              startColumnResize(e, "__id__", idWidth, idMinWidth)
+                            }
+                            onDoubleClick={(e) =>
+                              autoFitColumn(e, "__id__", idTitle, (f) => f.id)
+                            }
+                            style={{
+                              position: "absolute",
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: "6px",
+                              cursor: "col-resize",
+                              userSelect: "none",
+                              zIndex: 1,
+                            }}
+                          />
                         </th>
                         <th
                           style={{
@@ -714,21 +950,83 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                             padding: "4px 8px",
                             borderRight: "1px solid #e2e8f0",
                             boxSizing: "border-box",
+                            position: "relative",
                           }}>
-                          {t("attribute_table_col_type")}
-                        </th>
-                        {attributeKeys.map((key) => (
-                          <th
-                            key={key}
+                          {typeTitle}
+                          <div
+                            className='column-resize-handle'
+                            onMouseDown={(e) =>
+                              startColumnResize(
+                                e,
+                                "__geometryType__",
+                                typeWidth,
+                                typeMinWidth
+                              )
+                            }
+                            onDoubleClick={(e) =>
+                              autoFitColumn(
+                                e,
+                                "__geometryType__",
+                                typeTitle,
+                                (f) => f.geometryType
+                              )
+                            }
                             style={{
-                              width: defaultAttrWidth,
-                              padding: "4px 8px",
-                              borderRight: "1px solid #e2e8f0",
-                              boxSizing: "border-box",
-                            }}>
-                            {key}
-                          </th>
-                        ))}
+                              position: "absolute",
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: "6px",
+                              cursor: "col-resize",
+                              userSelect: "none",
+                              zIndex: 1,
+                            }}
+                          />
+                        </th>
+                        {attributeKeys.map((key) => {
+                          const colW = getColWidth(
+                            key,
+                            DEFAULT_ATTRIBUTE_COL_WIDTH
+                          );
+                          const minW = getMinColWidth(key, 40);
+                          return (
+                            <th
+                              key={key}
+                              style={{
+                                width: colW,
+                                padding: "4px 8px",
+                                borderRight: "1px solid #e2e8f0",
+                                boxSizing: "border-box",
+                                position: "relative",
+                              }}>
+                              {key}
+                              <div
+                                className='column-resize-handle'
+                                onMouseDown={(e) =>
+                                  startColumnResize(e, key, colW, minW)
+                                }
+                                onDoubleClick={(e) =>
+                                  autoFitColumn(
+                                    e,
+                                    key,
+                                    key,
+                                    (f) => f.properties[key]
+                                  )
+                                }
+                                style={{
+                                  position: "absolute",
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: "6px",
+                                  cursor: "col-resize",
+                                  userSelect: "none",
+                                  zIndex: 1,
+                                }}
+                              />
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody>
