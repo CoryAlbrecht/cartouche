@@ -378,10 +378,11 @@ const {
   toggleLayerEditingAction: (layerId?: string | null, options?: any) => void;
 };
 
-const { dictionarySignal } = jiti(
+const { dictionarySignal, activeLocaleSignal } = jiti(
   '../../../src/renderer/state/i18nSignals.ts'
 ) as {
   dictionarySignal: { value: Record<string, string> };
+  activeLocaleSignal: { value: string };
 };
 
 describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
@@ -398,6 +399,7 @@ describe('AttributeTableWidget Header Embedded Toolbars (Ticket #176)', () => {
     selectedFeatureIdsSignal.value = new Set();
     editedFeatureIdsSignal.value = new Set();
     isProjectDirtySignal.value = false;
+    activeLocaleSignal.value = 'en';
   });
 
   afterEach(() => {
@@ -1968,6 +1970,137 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const restoredWidth = parseInt(thNodes[3].style.width, 10);
         assert.strictEqual(restoredWidth, customizedWidth, 'customized column width must be restored from per-layer session cache');
       } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+  });
+
+  describe('AttributeTableWidget Inferred Type Formatting and Locale Reactivity (Ticket #190)', () => {
+    it('formats date, time, datetime, integer, real, boolean, and null values according to active locale and inferred schema', async () => {
+      const mockLayer: GisLayer = {
+        id: 'layer-formatting-test',
+        name: 'Formatting Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 2,
+        fields: [
+          { name: 'date_col', nativeType: 'Date', inferredType: 'date', nullable: false },
+          { name: 'time_col', nativeType: 'Time', inferredType: 'time', nullable: false },
+          { name: 'datetime_col', nativeType: 'DateTime', inferredType: 'datetime', nullable: false },
+          { name: 'int_col', nativeType: 'Integer', inferredType: 'integer', nullable: false },
+          { name: 'real_col', nativeType: 'Real', inferredType: 'real', nullable: false },
+          { name: 'bool_col', nativeType: 'Boolean', inferredType: 'boolean', nullable: false },
+          { name: 'null_col', nativeType: 'String', inferredType: 'string', nullable: true },
+        ],
+      };
+
+      const mockFeatures = [
+        {
+          id: 'feat-1',
+          properties: {
+            date_col: '2026-11-06',
+            time_col: '14:30:00',
+            datetime_col: '2026-11-06T14:30:00Z',
+            int_col: 1250000,
+            real_col: 9876.54,
+            bool_col: true,
+            null_col: null,
+          },
+          geometryType: 'Point',
+          coordinates: [0, 0],
+        },
+        {
+          id: 'feat-2',
+          properties: {
+            date_col: '2026-05-15',
+            time_col: '08:15:00',
+            datetime_col: '2026-05-15T08:15:00Z',
+            int_col: -42,
+            real_col: 0.125,
+            bool_col: false,
+            null_col: undefined,
+          },
+          geometryType: 'Point',
+          coordinates: [1, 1],
+        },
+      ];
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: mockFeatures,
+          totalMatched: 2,
+        }),
+      };
+
+      activeLocaleSignal.value = 'en';
+      layersSignal.value = [mockLayer];
+      activeLayerIdSignal.value = 'layer-formatting-test';
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        const trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        const row1 = trNodes[1];
+        const tdRow1 = findAllNodes(row1, el => el.tagName === 'TD');
+
+        // Indices: 0: counter, 1: id, 2: type, 3: date_col, 4: time_col, 5: datetime_col, 6: int_col, 7: real_col, 8: bool_col, 9: null_col
+        const expectedDate = new Intl.DateTimeFormat('en', { year: 'numeric', month: 'numeric', day: 'numeric' }).format(new Date(2026, 10, 6));
+        assert.strictEqual(tdRow1[3].textContent, expectedDate, 'date_col must format via Intl.DateTimeFormat');
+
+        // int_col: 1,250,000 with right alignment
+        const expectedInt = new Intl.NumberFormat('en', { maximumFractionDigits: 0 }).format(1250000);
+        assert.strictEqual(tdRow1[6].textContent, expectedInt, 'integer must format via Intl.NumberFormat');
+        assert.strictEqual(tdRow1[6].style.textAlign, 'right', 'integer cell must be right-aligned');
+
+        // real_col: 9,876.54 with right alignment
+        const expectedReal = new Intl.NumberFormat('en').format(9876.54);
+        assert.strictEqual(tdRow1[7].textContent, expectedReal, 'real must format via Intl.NumberFormat');
+        assert.strictEqual(tdRow1[7].style.textAlign, 'right', 'real cell must be right-aligned');
+
+        // bool_col: "True"
+        assert.strictEqual(tdRow1[8].textContent, 'True', 'bool_col true must display as True');
+
+        // null_col: cell-null-value span with text NULL
+        const nullSpan = findAllNodes(tdRow1[9], el => el.className.includes('cell-null-value'))[0];
+        assert.ok(nullSpan, 'null_col must render .cell-null-value element');
+        assert.strictEqual(nullSpan.textContent, 'NULL');
+        assert.strictEqual(nullSpan.style.fontStyle, 'italic');
+
+        // Row 2 checks
+        const row2 = trNodes[2];
+        const tdRow2 = findAllNodes(row2, el => el.tagName === 'TD');
+        assert.strictEqual(tdRow2[8].textContent, 'False', 'bool_col false must display as False');
+        const undefinedSpan = findAllNodes(tdRow2[9], el => el.className.includes('cell-null-value'))[0];
+        assert.ok(undefinedSpan, 'undefined value must render .cell-null-value element');
+        assert.strictEqual(undefinedSpan.textContent, 'NULL');
+
+        // Reactive locale update
+        await act(async () => {
+          activeLocaleSignal.value = 'fr';
+          dictionarySignal.value = {
+            boolean_true: 'Vrai',
+            boolean_false: 'Faux',
+          };
+        });
+
+        // In French locale:
+        // bool_col: "Vrai"
+        assert.strictEqual(tdRow1[8].textContent, 'Vrai', 'boolean field must reactively update to localized string on activeLocaleSignal change');
+        assert.strictEqual(tdRow2[8].textContent, 'Faux', 'boolean field must reactively update to localized string on activeLocaleSignal change');
+
+        // Number grouping in French uses non-breaking space
+        const expectedIntFr = new Intl.NumberFormat('fr', { maximumFractionDigits: 0 }).format(1250000);
+        assert.strictEqual(tdRow1[6].textContent, expectedIntFr, 'integer field must reactively update to French locale formatting');
+      } finally {
+        activeLocaleSignal.value = 'en';
         delete (globalThis as any).window.electronAPI.queryExtent;
       }
     });

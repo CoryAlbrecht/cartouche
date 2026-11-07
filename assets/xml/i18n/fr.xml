@@ -270,4 +270,6 @@
     <string name="unsaved_changes_cancel">Annuler</string>
     <string name="unsaved_changes_dont_save">Ne pas enregistrer les modifications</string>
     <string name="unsaved_changes_save">Enregistrer les modifications</string>
+    <string name="boolean_true">Vrai</string>
+    <string name="boolean_false">Faux</string>
 </ci18n:localization>

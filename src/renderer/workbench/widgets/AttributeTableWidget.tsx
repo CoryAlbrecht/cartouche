@@ -11,7 +11,7 @@
  * @see {@link DigitizingToolbarWidget}
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import WKB from "ol/format/WKB.js";
 import { BasicWidget } from "./BasicWidget";
@@ -29,12 +29,14 @@ import {
   openDockPanelsSignal,
 } from "@renderer/state/gisSignals";
 import { prefsAttributeTableMaxRows } from "@renderer/state/preferencesSignals";
+import { activeLocaleSignal } from "@renderer/state/i18nSignals";
 import {
   WKB_PACKET_MAGIC,
   type BoundingBox,
   type GeometryKind,
   type GisFeature,
   type LayerFieldInfo,
+  type InferredFieldType,
 } from "@shared/types";
 import type { IDockviewPanelProps } from "dockview-react";
 import type { DockviewPanelApi } from "dockview-core";
@@ -387,6 +389,206 @@ const DEFAULT_SYSTEM_COLUMN_WIDTHS: Record<string, number> = {
 const DEFAULT_ATTRIBUTE_COL_WIDTH = 120;
 
 /**
+ * Parses a raw value into a Date object for date-only formatting.
+ * @function parseDateValue
+ * @description Extracts a normalized Date object from strings, numbers, or Date instances.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {unknown} val - Raw attribute value.
+ * @returns {Date | null} Parsed Date or null if invalid.
+ */
+export function parseDateValue(val: unknown): Date | null {
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [y, m, d] = trimmed.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) return d;
+  }
+  if (typeof val === "number") {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+/**
+ * Parses a raw value into a Date object for time-only formatting.
+ * @function parseTimeValue
+ * @description Extracts a normalized Date object from time strings or Date instances.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {unknown} val - Raw attribute value.
+ * @returns {Date | null} Parsed Date or null if invalid.
+ */
+export function parseTimeValue(val: unknown): Date | null {
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    const timeMatch = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(trimmed);
+    if (timeMatch) {
+      const hours = Number(timeMatch[1]);
+      const minutes = Number(timeMatch[2]);
+      const seconds = Number(timeMatch[3] || 0);
+      return new Date(2000, 0, 1, hours, minutes, seconds);
+    }
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+/**
+ * Parses a raw value into a Date object for datetime formatting.
+ * @function parseDateTimeValue
+ * @description Extracts a normalized Date object from timestamp strings, epoch numbers, or Date instances.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {unknown} val - Raw attribute value.
+ * @returns {Date | null} Parsed Date or null if invalid.
+ */
+export function parseDateTimeValue(val: unknown): Date | null {
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val === "string" || typeof val === "number") {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+/**
+ * Formats a feature attribute value based on its inferred schema field type and active locale.
+ * @function formatAttributeCellValue
+ * @description Applies Intl.DateTimeFormat, Intl.NumberFormat, boolean localization, and NULL styling to attribute values.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {unknown} value - Raw feature property value.
+ * @param {InferredFieldType | undefined} inferredType - Inferred field data type.
+ * @param {string} locale - Active BCP 47 locale tag (e.g. 'en', 'fr').
+ * @param {(key: string) => string} t - Translation function.
+ * @returns {React.ReactNode} Formatted React node or string.
+ */
+export function formatAttributeCellValue(
+  value: unknown,
+  inferredType: InferredFieldType | undefined,
+  locale: string,
+  t: (key: string) => string
+): React.ReactNode {
+  if (value === null || value === undefined) {
+    return (
+      <span
+        className='cell-null-value'
+        style={{ color: "#94a3b8", fontStyle: "italic", userSelect: "none" }}>
+        NULL
+      </span>
+    );
+  }
+
+  // Handle boolean type
+  if (inferredType === "boolean" || typeof value === "boolean") {
+    const isTrue = Boolean(value);
+    const key = isTrue ? "boolean_true" : "boolean_false";
+    const translated = t(key);
+    if (translated === key) {
+      return isTrue ? "True" : "False";
+    }
+    return translated;
+  }
+
+  // Handle numeric types
+  if (inferredType === "integer") {
+    const num = typeof value === "number" ? value : Number(value);
+    if (!isNaN(num)) {
+      try {
+        return new Intl.NumberFormat(locale, {
+          maximumFractionDigits: 0,
+        }).format(Math.trunc(num));
+      } catch {
+        return String(Math.trunc(num));
+      }
+    }
+    return String(value);
+  }
+
+  if (inferredType === "real") {
+    const num = typeof value === "number" ? value : Number(value);
+    if (!isNaN(num)) {
+      try {
+        return new Intl.NumberFormat(locale).format(num);
+      } catch {
+        return String(num);
+      }
+    }
+    return String(value);
+  }
+
+  // Handle temporal types
+  if (inferredType === "date") {
+    const dateObj = parseDateValue(value);
+    if (dateObj) {
+      try {
+        return new Intl.DateTimeFormat(locale, {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+        }).format(dateObj);
+      } catch {
+        // Fallback
+      }
+    }
+    return String(value);
+  }
+
+  if (inferredType === "time") {
+    const dateObj = parseTimeValue(value);
+    if (dateObj) {
+      try {
+        return new Intl.DateTimeFormat(locale, {
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+        }).format(dateObj);
+      } catch {
+        // Fallback
+      }
+    }
+    return String(value);
+  }
+
+  if (inferredType === "datetime") {
+    const dateObj = parseDateTimeValue(value);
+    if (dateObj) {
+      try {
+        return new Intl.DateTimeFormat(locale, {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+        }).format(dateObj);
+      } catch {
+        // Fallback
+      }
+    }
+    return String(value);
+  }
+
+  return String(value);
+}
+
+/**
  * @component AttributeTableWidget
  * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -401,6 +603,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 ) => {
   useSignals();
   const { t } = useTranslation();
+  const currentLocale = activeLocaleSignal.value || "en";
   const activeLayer = activeLayerSignal.value;
   const features = activeLayerFeaturesSignal.value;
   const selectedIds = selectedFeatureIdsSignal.value;
@@ -536,6 +739,17 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const schemaFields = (activeLayer as any)?.fields as
     | LayerFieldInfo[]
     | undefined;
+
+  const fieldTypesMap = useMemo(() => {
+    const map: Record<string, InferredFieldType> = {};
+    if (schemaFields) {
+      for (const f of schemaFields) {
+        map[f.name] = f.inferredType;
+      }
+    }
+    return map;
+  }, [schemaFields]);
+
   const attributeKeys =
     schemaFields && schemaFields.length > 0
       ? schemaFields.map((f) => f.name)
@@ -628,7 +842,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     e: React.MouseEvent,
     colKey: string,
     title: string,
-    getValue: (feature: GisFeature, idx: number) => any
+    getValue: (feature: GisFeature, idx: number) => any,
+    fieldType?: InferredFieldType
   ) => {
     e.preventDefault();
     e.stopPropagation();
@@ -637,7 +852,67 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
     for (let i = 0; i < displayedFeatures.length; i++) {
       const val = getValue(displayedFeatures[i], i);
-      const strVal = String(val ?? "");
+      let strVal = "";
+      if (val === null || val === undefined) {
+        strVal = "NULL";
+      } else if (fieldType === "boolean" || typeof val === "boolean") {
+        strVal = Boolean(val)
+          ? t("boolean_true") === "boolean_true"
+            ? "True"
+            : t("boolean_true")
+          : t("boolean_false") === "boolean_false"
+          ? "False"
+          : t("boolean_false");
+      } else if (fieldType === "integer") {
+        const num = typeof val === "number" ? val : Number(val);
+        strVal =
+          !isNaN(num)
+            ? new Intl.NumberFormat(currentLocale, {
+                maximumFractionDigits: 0,
+              }).format(Math.trunc(num))
+            : String(val);
+      } else if (fieldType === "real") {
+        const num = typeof val === "number" ? val : Number(val);
+        strVal =
+          !isNaN(num)
+            ? new Intl.NumberFormat(currentLocale).format(num)
+            : String(val);
+      } else if (fieldType === "date") {
+        const d = parseDateValue(val);
+        strVal =
+          d
+            ? new Intl.DateTimeFormat(currentLocale, {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+              }).format(d)
+            : String(val);
+      } else if (fieldType === "time") {
+        const d = parseTimeValue(val);
+        strVal =
+          d
+            ? new Intl.DateTimeFormat(currentLocale, {
+                hour: "numeric",
+                minute: "numeric",
+                second: "numeric",
+              }).format(d)
+            : String(val);
+      } else if (fieldType === "datetime") {
+        const d = parseDateTimeValue(val);
+        strVal =
+          d
+            ? new Intl.DateTimeFormat(currentLocale, {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                second: "numeric",
+              }).format(d)
+            : String(val);
+      } else {
+        strVal = String(val ?? "");
+      }
       const valW = measureTextWidth(strVal) + 24;
       if (valW > maxContentW) {
         maxContentW = valW;
@@ -989,6 +1264,9 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                             DEFAULT_ATTRIBUTE_COL_WIDTH
                           );
                           const minW = getMinColWidth(key, 40);
+                          const fieldType = fieldTypesMap[key];
+                          const isNumeric =
+                            fieldType === "integer" || fieldType === "real";
                           return (
                             <th
                               key={key}
@@ -998,6 +1276,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                 borderRight: "1px solid #e2e8f0",
                                 boxSizing: "border-box",
                                 position: "relative",
+                                textAlign: isNumeric ? "right" : "left",
                               }}>
                               {key}
                               <div
@@ -1010,7 +1289,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                     e,
                                     key,
                                     key,
-                                    (f) => f.properties[key]
+                                    (f) => f.properties[key],
+                                    fieldType
                                   )
                                 }
                                 style={{
@@ -1091,6 +1371,9 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                   editingCell?.featureId === feature.id &&
                                   editingCell?.key === key;
                                 const cellVal = feature.properties[key];
+                                const fieldType = fieldTypesMap[key];
+                                const isNumeric =
+                                  fieldType === "integer" || fieldType === "real";
 
                                 return (
                                   <td
@@ -1111,6 +1394,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                       cursor: isLayerEditable ? "text" : "default",
                                       borderRight: "1px solid #e2e8f0",
                                       boxSizing: "border-box",
+                                      textAlign: isNumeric ? "right" : "left",
                                     }}>
                                     {isCellEditing ?
                                       <input
@@ -1142,7 +1426,12 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                           backgroundColor: "#ffffff",
                                         }}
                                       />
-                                    : String(cellVal ?? "")}
+                                    : formatAttributeCellValue(
+                                        cellVal,
+                                        fieldType,
+                                        currentLocale,
+                                        t
+                                      )}
                                   </td>
                                 );
                               })}

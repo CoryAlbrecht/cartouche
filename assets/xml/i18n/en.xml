@@ -295,4 +295,6 @@
     <string name="unsaved_changes_cancel">Cancel</string>
     <string name="unsaved_changes_dont_save">Don't Save Changes</string>
     <string name="unsaved_changes_save">Save Changes</string>
+    <string name="boolean_true">True</string>
+    <string name="boolean_false">False</string>
 </ci18n:localization>
