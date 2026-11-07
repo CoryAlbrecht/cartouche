@@ -1254,6 +1254,8 @@
   border-right: 1px solid var(--cartouche-menubar-bg, #1b446c);
   color: #1e293b;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gis-data-table tr:hover {

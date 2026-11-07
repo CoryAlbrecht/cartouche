@@ -389,6 +389,18 @@ const DEFAULT_SYSTEM_COLUMN_WIDTHS: Record<string, number> = {
 const DEFAULT_ATTRIBUTE_COL_WIDTH = 120;
 
 /**
+ * Shared base styling applied to all table data cells ensuring clean truncation and column dividers.
+ */
+const BASE_DATA_CELL_STYLE: React.CSSProperties = {
+  padding: "4px 8px",
+  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+  boxSizing: "border-box",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+/**
  * Parses a raw value into a Date object for date-only formatting.
  * @function parseDateValue
  * @description Extracts a normalized Date object from strings, numbers, or Date instances.
@@ -585,6 +597,36 @@ export function formatAttributeCellValue(
     return String(value);
   }
 
+  return String(value);
+}
+
+/**
+ * Resolves the string tooltip for a table cell.
+ * @function getCellTooltipText
+ * @description Extracts full unclipped text representation of a cell value for native title tooltip inspection.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {unknown} value - Raw feature property value.
+ * @param {InferredFieldType | undefined} inferredType - Inferred field data type.
+ * @param {string} locale - Active BCP 47 locale tag (e.g. 'en', 'fr').
+ * @param {(key: string) => string} t - Translation function.
+ * @returns {string} Formatted or raw string representation for tooltip inspection.
+ */
+export function getCellTooltipText(
+  value: unknown,
+  inferredType: InferredFieldType | undefined,
+  locale: string,
+  t: (key: string) => string
+): string {
+  if (value === null || value === undefined) {
+    return "NULL";
+  }
+  const formatted = formatAttributeCellValue(value, inferredType, locale, t);
+  if (typeof formatted === "string") {
+    return formatted;
+  }
   return String(value);
 }
 
@@ -1449,30 +1491,25 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                 onClick={(e) =>
                                   handleCounterCellClick(e, feature.id, idx)
                                 }
+                                title={String(pageStart + idx + 1)}
                                 style={{
+                                  ...BASE_DATA_CELL_STYLE,
                                   textAlign: "center",
-                                  padding: "4px 8px",
                                   cursor: "pointer",
                                   userSelect: "none",
-                                  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                  boxSizing: "border-box",
                                 }}>
                                 {pageStart + idx + 1}
                               </td>
                               <td
-                                style={{
-                                  padding: "4px 8px",
-                                  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                  boxSizing: "border-box",
-                                }}>
+                                className='cell-id'
+                                title={String(feature.id)}
+                                style={BASE_DATA_CELL_STYLE}>
                                 {feature.id}
                               </td>
                               <td
-                                style={{
-                                  padding: "4px 8px",
-                                  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                  boxSizing: "border-box",
-                                }}>
+                                className='cell-geometry-type'
+                                title={String(feature.geometryType)}
+                                style={BASE_DATA_CELL_STYLE}>
                                 {feature.geometryType}
                               </td>
                               {attributeKeys.map((key) => {
@@ -1483,11 +1520,20 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                 const fieldType = fieldTypesMap[key];
                                 const isNumeric =
                                   fieldType === "integer" || fieldType === "real";
+                                const cellTooltip = isCellEditing
+                                  ? undefined
+                                  : getCellTooltipText(
+                                      cellVal,
+                                      fieldType,
+                                      currentLocale,
+                                      t
+                                    );
 
                                 return (
                                   <td
                                     key={key}
                                     className='cell-attribute-data'
+                                    title={cellTooltip}
                                     onClick={() => {
                                       if (isLayerEditable && !isCellEditing) {
                                         startEditingCell(
@@ -1509,10 +1555,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                       }
                                     }}
                                     style={{
-                                      padding: "4px 8px",
+                                      ...BASE_DATA_CELL_STYLE,
                                       cursor: isLayerEditable ? "text" : "default",
-                                      borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                      boxSizing: "border-box",
                                       textAlign: isNumeric ? "right" : "left",
                                     }}>
                                     {isCellEditing ?

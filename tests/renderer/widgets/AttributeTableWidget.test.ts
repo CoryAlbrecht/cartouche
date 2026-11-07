@@ -124,18 +124,29 @@ class MockElement {
     this.attributes['type'] = String(v);
   }
 
+  get title(): string {
+    return (this as any).__title ?? this.attributes['title'] ?? '';
+  }
+
+  set title(v: any) {
+    (this as any).__title = String(v);
+    this.attributes['title'] = String(v);
+  }
+
   setAttribute(name: string, val: any): void {
     this.attributes[name] = String(val);
     if (name === 'class') this.className = String(val);
     if (name === 'id') (this as any).id = String(val);
     if (name === 'value') (this as any).__value = String(val);
     if (name === 'type') (this as any).__type = String(val);
+    if (name === 'title') (this as any).__title = String(val);
   }
 
   getAttribute(name: string): string | null {
     if (name === 'class') return this.className || null;
     if (name === 'id') return (this as any).id || null;
     if (name === 'type') return (this as any).__type ?? this.attributes['type'] ?? null;
+    if (name === 'title') return (this as any).__title ?? this.attributes['title'] ?? null;
     return this.attributes[name] ?? null;
   }
 
@@ -143,6 +154,7 @@ class MockElement {
     delete this.attributes[name];
     if (name === 'class') this.className = '';
     if (name === 'id') delete (this as any).id;
+    if (name === 'title') delete (this as any).__title;
   }
 
   hasAttribute(name: string): boolean {
@@ -2396,6 +2408,212 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         assert.strictEqual(stagedEdits.length, 6);
         assert.strictEqual(stagedEdits[5].feature.properties.bool_field, false, 'boolean editor must commit boolean primitive false');
+      } finally {
+        editableLayerIdsSignal.value = new Set();
+        delete (globalThis as any).window.electronAPI.queryExtent;
+        delete (globalThis as any).window.electronAPI.stageFeatureEdit;
+      }
+    });
+  });
+
+  describe('AttributeTableWidget Cell Truncation and Tooltip Titles (Ticket #193)', () => {
+    it('enforces overflow ellipsis truncation styles and native title tooltips on all table data cells while keeping inline editors fully usable', async () => {
+      const truncLayer: GisLayer = {
+        id: 'layer-trunc-193',
+        name: 'Truncation Test Layer',
+        kind: 'vector',
+        geometryKind: 'Polygon',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 1,
+        fields: [
+          { name: 'long_desc', nativeType: 'String', inferredType: 'string' },
+          { name: 'population', nativeType: 'Integer', inferredType: 'integer' },
+          { name: 'active_flag', nativeType: 'Boolean', inferredType: 'boolean' },
+          { name: 'notes', nativeType: 'String', inferredType: 'string' },
+        ],
+      };
+
+      const testFeature = {
+        id: 'feat-trunc-1',
+        layerId: 'layer-trunc-193',
+        geometryType: 'Polygon',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]],
+        },
+        properties: {
+          long_desc: '123 Very Long Street Avenue, Building 4A, Suite 500, Metro City, ST 99999',
+          population: 1250,
+          active_flag: true,
+          notes: null,
+        },
+      };
+
+      const stagedEdits: Array<{ layerId: string; feature: any }> = [];
+      if (!(globalThis as any).window.electronAPI) {
+        (globalThis as any).window.electronAPI = {};
+      }
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string) => ({
+          layerId,
+          features: [testFeature],
+          totalMatched: 1,
+        }),
+        stageFeatureEdit: async (layerId: string, feature: any) => {
+          stagedEdits.push({ layerId, feature });
+          return { success: true };
+        },
+      };
+
+      try {
+        activeLocaleSignal.value = 'en';
+        layersSignal.value = [truncLayer];
+        activeLayerIdSignal.value = truncLayer.id;
+        editableLayerIdsSignal.value = new Set([truncLayer.id]);
+        featuresSignal.value = [testFeature];
+
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        assert.ok(tableEl, 'table element must be rendered');
+
+        const trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        // 1 header row + 1 data row
+        assert.strictEqual(trNodes.length, 2, 'table must render 1 header row and 1 data row');
+
+        const dataRow = trNodes[1];
+        const tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+        // System cols: counter, id, geometryType (3) + 4 attribute cols = 7
+        assert.strictEqual(tdCells.length, 7, 'must render 7 td cells for feature row');
+
+        // 1. Verify overflow, text-overflow, and white-space styles on all td cells
+        for (let i = 0; i < tdCells.length; i++) {
+          const td = tdCells[i];
+          assert.strictEqual(
+            td.style.overflow,
+            'hidden',
+            `cell index ${i} must enforce overflow: hidden`
+          );
+          assert.strictEqual(
+            td.style.textOverflow,
+            'ellipsis',
+            `cell index ${i} must enforce text-overflow: ellipsis`
+          );
+          assert.strictEqual(
+            td.style.whiteSpace,
+            'nowrap',
+            `cell index ${i} must enforce white-space: nowrap`
+          );
+        }
+
+        // 2. Verify native title tooltips on rendered cells
+        // System counter cell
+        assert.strictEqual(
+          tdCells[0].getAttribute('title'),
+          '1',
+          'counter cell must have native title matching row number'
+        );
+        // System feature ID cell
+        assert.strictEqual(
+          tdCells[1].getAttribute('title'),
+          'feat-trunc-1',
+          'feature id cell must have native title matching feature id'
+        );
+        // System geometry type cell
+        assert.strictEqual(
+          tdCells[2].getAttribute('title'),
+          'Polygon',
+          'geometry type cell must have native title matching geometry type'
+        );
+        // Long string attribute cell: full unclipped text
+        assert.strictEqual(
+          tdCells[3].getAttribute('title'),
+          '123 Very Long Street Avenue, Building 4A, Suite 500, Metro City, ST 99999',
+          'long string cell must have native title with full unclipped text'
+        );
+        // Formatted integer cell
+        assert.strictEqual(
+          tdCells[4].getAttribute('title'),
+          '1,250',
+          'integer cell must have native title with formatted number'
+        );
+        // Localized boolean cell
+        assert.strictEqual(
+          tdCells[5].getAttribute('title'),
+          'True',
+          'boolean cell must have native title True'
+        );
+        // Null attribute cell
+        assert.strictEqual(
+          tdCells[6].getAttribute('title'),
+          'NULL',
+          'null cell must have native title NULL'
+        );
+
+        // 3. Verify active inline editor controls remain fully visible and usable
+        // Double click long_desc to edit text
+        await act(async () => {
+          tdCells[3].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        let textInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        assert.ok(textInput, 'text input must be active in cell editor');
+        assert.strictEqual(textInput.style.width, '100%', 'editor input must have width 100%');
+        assert.strictEqual(textInput.style.boxSizing, 'border-box', 'editor input must have boxSizing border-box');
+
+        const triggerChange = (el: any, val: string) => {
+          const propKey = Object.keys(el).find(k => k.startsWith('__reactProps'))!;
+          (el as any)[propKey].onChange({ target: { value: val } });
+        };
+        const triggerKeyDown = (el: any, key: string) => {
+          const propKey = Object.keys(el).find(k => k.startsWith('__reactProps'))!;
+          (el as any)[propKey].onKeyDown({ key, preventDefault: () => {} });
+        };
+        const triggerBlur = (el: any) => {
+          const propKey = Object.keys(el).find(k => k.startsWith('__reactProps'))!;
+          (el as any)[propKey].onBlur();
+        };
+
+        await act(async () => {
+          textInput.value = 'Updated Street Address';
+          triggerChange(textInput, 'Updated Street Address');
+        });
+        await act(async () => {
+          triggerKeyDown(textInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 1);
+        assert.strictEqual(stagedEdits[0].feature.properties.long_desc, 'Updated Street Address');
+
+        // Double click bool cell to edit boolean select
+        const updatedTableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        const updatedRow = findAllNodes(updatedTableEl, el => el.tagName === 'TR')[1];
+        const updatedTds = findAllNodes(updatedRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          updatedTds[5].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        const boolSelect = findAllNodes(container, el => el.tagName === 'SELECT' && el.className.includes('cell-editor-boolean'))[0];
+        assert.ok(boolSelect, 'boolean select must be active in cell editor');
+        assert.strictEqual(boolSelect.style.width, '100%', 'editor select must have width 100%');
+        assert.strictEqual(boolSelect.style.boxSizing, 'border-box', 'editor select must have boxSizing border-box');
+
+        await act(async () => {
+          boolSelect.value = 'false';
+          triggerChange(boolSelect, 'false');
+        });
+        await act(async () => {
+          triggerBlur(boolSelect);
+        });
+
+        assert.strictEqual(stagedEdits.length, 2);
+        assert.strictEqual(stagedEdits[1].feature.properties.active_flag, false);
       } finally {
         editableLayerIdsSignal.value = new Set();
         delete (globalThis as any).window.electronAPI.queryExtent;
