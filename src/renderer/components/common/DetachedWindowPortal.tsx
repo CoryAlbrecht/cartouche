@@ -4,7 +4,7 @@
  * @description React Portal component rendering React child elements into an isolated detached browser window pop-out with React StrictMode DEV double-invoke resilience.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 
@@ -37,7 +37,7 @@ export interface DetachedWindowPortalProps {
  * @description Renders child components into an isolated secondary window using React Portals, capturing child window keyboard and focus events, synchronizing parent document CSS stylesheets, and handling StrictMode re-mount cancellation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-28
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {DetachedWindowPortalProps} props - Component properties.
  * @returns {React.ReactElement} React Portal mounting container element into child window body.
@@ -104,7 +104,8 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
     }
     childWindow.document.body.style.margin = "0";
     childWindow.document.body.style.padding = "0";
-    childWindow.document.body.style.background = "#ffffff";
+    childWindow.document.body.style.background = "var(--cartouche-theme-bg, #ffffff)";
+    childWindow.document.body.style.color = "var(--cartouche-theme-fg, #000000)";
     childWindow.document.body.style.overflow = "hidden";
 
     // Copy parent document stylesheets to child window
@@ -136,9 +137,14 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
 
     syncRootStyles();
 
-    // Observe head changes for dynamic dev styles (e.g., Vite HMR)
+    // Observe head changes for dynamic dev styles (e.g., Vite HMR) and theme link href updates
     const observer = new MutationObserver(() => syncStyles());
-    observer.observe(document.head, { childList: true, subtree: true });
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["href"],
+    });
 
     // Observe root element style attribute for CSS variable updates
     const rootObserver = new MutationObserver(() => syncRootStyles());

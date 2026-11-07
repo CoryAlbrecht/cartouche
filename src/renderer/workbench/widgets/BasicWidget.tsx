@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -228,7 +228,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -239,9 +239,9 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     displayName = "Basic",
     icon,
     overlappable = false,
-    background = "#f3f3f3",
-    borderColor = background,
-    border = 1,
+    background,
+    borderColor,
+    border,
     padding = 4,
     location: propLocation,
     minWidth,
@@ -686,9 +686,10 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          backgroundColor: "#faf8fc",
+          backgroundColor: "var(--cartouche-widget-header-bg)",
+          color: "var(--cartouche-widget-header-fg)",
           padding: "4px 8px",
-          borderBottom: "1px solid #e2e8f0",
+          borderBottom: "1px solid var(--cartouche-widget-header-border)",
           minHeight:
             "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
           userSelect: "none",
