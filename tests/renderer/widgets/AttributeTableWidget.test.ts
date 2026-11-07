@@ -115,16 +115,27 @@ class MockElement {
     return opts;
   }
 
+  get type(): string {
+    return (this as any).__type ?? this.attributes['type'] ?? '';
+  }
+
+  set type(v: any) {
+    (this as any).__type = String(v);
+    this.attributes['type'] = String(v);
+  }
+
   setAttribute(name: string, val: any): void {
     this.attributes[name] = String(val);
     if (name === 'class') this.className = String(val);
     if (name === 'id') (this as any).id = String(val);
     if (name === 'value') (this as any).__value = String(val);
+    if (name === 'type') (this as any).__type = String(val);
   }
 
   getAttribute(name: string): string | null {
     if (name === 'class') return this.className || null;
     if (name === 'id') return (this as any).id || null;
+    if (name === 'type') return (this as any).__type ?? this.attributes['type'] ?? null;
     return this.attributes[name] ?? null;
   }
 
@@ -221,6 +232,8 @@ function setupDom(): void {
 
   doc = {
     nodeType: 9,
+    oninput: null,
+    onchange: null,
     documentElement,
     body,
     createElement: (tag: string) => {
@@ -2102,6 +2115,280 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
       } finally {
         activeLocaleSignal.value = 'en';
         delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+  });
+
+  describe('AttributeTableWidget Type-Specialized Cell Editors and Input Validation (Ticket #191)', () => {
+    it('activates specialized HTML5 inputs for dates, times, select for boolean, and validates numbers', async () => {
+      const mockLayer: GisLayer = {
+        id: 'layer-editors-test',
+        name: 'Editors Layer',
+        kind: 'vector',
+        geometryKind: 'Point',
+        visible: true,
+        opacity: 1.0,
+        color: '#3b82f6',
+        featureCount: 1,
+        fields: [
+          { name: 'date_field', nativeType: 'Date', inferredType: 'date', nullable: false },
+          { name: 'time_field', nativeType: 'Time', inferredType: 'time', nullable: false },
+          { name: 'datetime_field', nativeType: 'DateTime', inferredType: 'datetime', nullable: false },
+          { name: 'int_field', nativeType: 'Integer', inferredType: 'integer', nullable: false },
+          { name: 'real_field', nativeType: 'Real', inferredType: 'real', nullable: false },
+          { name: 'bool_field', nativeType: 'Boolean', inferredType: 'boolean', nullable: false },
+        ],
+      };
+
+      const stagedEdits: Array<{ layerId: string; feature: any }> = [];
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string, _options: any) => ({
+          layerId,
+          features: [
+            {
+              id: 'feat-100',
+              layerId,
+              geometryType: 'Point',
+              properties: {
+                date_field: '2026-11-06',
+                time_field: '14:30:00',
+                datetime_field: '2026-11-06T14:30',
+                int_field: 100,
+                real_field: 25.5,
+                bool_field: true,
+              },
+              coordinates: [0, 0],
+            },
+          ],
+          totalMatched: 1,
+        }),
+        stageFeatureEdit: async (layerId: string, feature: any) => {
+          stagedEdits.push({ layerId, feature });
+        },
+      };
+
+      layersSignal.value = [mockLayer];
+      activeLayerIdSignal.value = 'layer-editors-test';
+      editableLayerIdsSignal.value = new Set(['layer-editors-test']);
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        // 1. Double-click date field: activates <input type="date"> initialized with YYYY-MM-DD
+        let tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        let trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        let dataRow = trNodes[1];
+        let tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+        // Indices: 0: counter, 1: id, 2: type, 3: date, 4: time, 5: datetime, 6: int, 7: real, 8: bool
+
+        await act(async () => {
+          tdCells[3].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        let dateInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        assert.ok(dateInput, 'date input should be active');
+        assert.strictEqual(dateInput.getAttribute('type'), 'date', 'input must be type="date"');
+        assert.strictEqual(dateInput.value, '2026-11-06', 'date input must be initialized with YYYY-MM-DD');
+
+        const triggerChange = (el: any, val: string) => {
+          const propKey = Object.keys(el).find(k => k.startsWith('__reactProps'))!;
+          (el as any)[propKey].onChange({ target: { value: val } });
+        };
+        const triggerKeyDown = (el: any, key: string) => {
+          const propKey = Object.keys(el).find(k => k.startsWith('__reactProps'))!;
+          (el as any)[propKey].onKeyDown({ key, preventDefault: () => {} });
+        };
+        const triggerBlur = (el: any) => {
+          const propKey = Object.keys(el).find(k => k.startsWith('__reactProps'))!;
+          (el as any)[propKey].onBlur();
+        };
+
+        // Change date value and commit
+        await act(async () => {
+          dateInput.value = '2026-12-25';
+          triggerChange(dateInput, '2026-12-25');
+        });
+        await act(async () => {
+          triggerKeyDown(dateInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 1);
+        assert.strictEqual(stagedEdits[0].feature.properties.date_field, '2026-12-25');
+        assert.ok(editedFeatureIdsSignal.value.has('feat-100'));
+
+        // 2. Double-click time field: activates <input type="time"> initialized with HH:MM
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[4].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        let timeInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        assert.ok(timeInput, 'time input should be active');
+        assert.strictEqual(timeInput.getAttribute('type'), 'time', 'input must be type="time"');
+        assert.strictEqual(timeInput.value, '14:30', 'time input must be initialized with HH:MM');
+
+        await act(async () => {
+          timeInput.value = '18:45';
+          triggerChange(timeInput, '18:45');
+        });
+        await act(async () => {
+          triggerKeyDown(timeInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 2);
+        assert.strictEqual(stagedEdits[1].feature.properties.time_field, '18:45');
+
+        // 3. Double-click datetime field: activates <input type="datetime-local"> initialized with YYYY-MM-DDTHH:MM
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[5].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        let dtInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        assert.ok(dtInput, 'datetime input should be active');
+        assert.strictEqual(dtInput.getAttribute('type'), 'datetime-local', 'input must be type="datetime-local"');
+        assert.strictEqual(dtInput.value, '2026-11-06T14:30', 'datetime input initialized with YYYY-MM-DDTHH:MM');
+
+        await act(async () => {
+          dtInput.value = '2026-12-25T18:45';
+          triggerChange(dtInput, '2026-12-25T18:45');
+        });
+        await act(async () => {
+          triggerKeyDown(dtInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 3);
+        assert.strictEqual(stagedEdits[2].feature.properties.datetime_field, '2026-12-25T18:45');
+
+        // 4. Double-click integer field: parses localized number, truncates decimal, commits integer
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[6].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        let intInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        assert.ok(intInput, 'int input should be active');
+
+        await act(async () => {
+          intInput.value = '1,250.75';
+          triggerChange(intInput, '1,250.75');
+        });
+        await act(async () => {
+          triggerKeyDown(intInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 4);
+        assert.strictEqual(stagedEdits[3].feature.properties.int_field, 1250, 'integer must truncate decimals');
+
+        // Integer non-numeric validation: reverts cleanly without staging
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[6].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        intInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        await act(async () => {
+          intInput.value = 'invalid_abc';
+          triggerChange(intInput, 'invalid_abc');
+        });
+        await act(async () => {
+          triggerKeyDown(intInput, 'Enter');
+        });
+
+        // Staged edits should still be 4 (no new edit staged for invalid text!)
+        assert.strictEqual(stagedEdits.length, 4, 'invalid non-numeric input must not stage an edit');
+
+        // 5. Double-click real field: parses localized numeric input
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[7].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        let realInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        await act(async () => {
+          realInput.value = '1 250,5';
+          triggerChange(realInput, '1 250,5');
+        });
+        await act(async () => {
+          triggerKeyDown(realInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 5);
+        assert.strictEqual(stagedEdits[4].feature.properties.real_field, 1250.5);
+
+        // Real non-numeric validation: reverts cleanly
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[7].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        realInput = findAllNodes(container, el => el.tagName === 'INPUT')[0];
+        await act(async () => {
+          realInput.value = 'not_a_real';
+          triggerChange(realInput, 'not_a_real');
+        });
+        await act(async () => {
+          triggerKeyDown(realInput, 'Enter');
+        });
+
+        assert.strictEqual(stagedEdits.length, 5, 'invalid real text must not stage an edit');
+
+        // 6. Double-click boolean field: renders <select> with True/False options and commits boolean primitive
+        tableEl = findAllNodes(container, el => el.tagName === 'TABLE')[0];
+        trNodes = findAllNodes(tableEl, el => el.tagName === 'TR');
+        dataRow = trNodes[1];
+        tdCells = findAllNodes(dataRow, el => el.tagName === 'TD');
+
+        await act(async () => {
+          tdCells[8].dispatchEvent({ type: 'dblclick', preventDefault: () => {}, stopPropagation: () => {} });
+        });
+
+        const boolSelect = findAllNodes(container, el => el.tagName === 'SELECT' && el.className.includes('cell-editor-boolean'))[0];
+        assert.ok(boolSelect, '<select> dropdown must be active for boolean field');
+        const options = boolSelect.options;
+        assert.strictEqual(options.length, 2, 'boolean dropdown must have 2 options');
+
+        await act(async () => {
+          boolSelect.value = 'false';
+          triggerChange(boolSelect, 'false');
+        });
+        await act(async () => {
+          triggerBlur(boolSelect);
+        });
+
+        assert.strictEqual(stagedEdits.length, 6);
+        assert.strictEqual(stagedEdits[5].feature.properties.bool_field, false, 'boolean editor must commit boolean primitive false');
+      } finally {
+        editableLayerIdsSignal.value = new Set();
+        delete (globalThis as any).window.electronAPI.queryExtent;
+        delete (globalThis as any).window.electronAPI.stageFeatureEdit;
       }
     });
   });

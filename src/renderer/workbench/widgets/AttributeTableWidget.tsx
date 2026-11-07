@@ -589,6 +589,46 @@ export function formatAttributeCellValue(
 }
 
 /**
+ * Parses numeric string supporting standard and localized formatting (commas, periods, grouping spaces).
+ * @function parseNumericInput
+ * @description Flexible numeric parser converting localized or standard strings to float or null if invalid.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {string} text - Raw input text.
+ * @returns {number | null} Parsed numeric value or null if invalid non-numeric.
+ */
+export function parseNumericInput(text: string): number | null {
+  if (typeof text !== "string") return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  // Strip all non-breaking spaces, thin spaces, and regular spaces used for thousands grouping
+  let cleaned = trimmed.replace(/[\s\u00A0\u202F]/g, "");
+
+  const hasComma = cleaned.includes(",");
+  const hasDot = cleaned.includes(".");
+
+  if (hasComma && hasDot) {
+    if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+      // European format: "1.234,56" -> "1234.56"
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Standard format: "1,234.56" -> "1234.56"
+      cleaned = cleaned.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    // Single comma: e.g. "1250,5" -> "1250.5"
+    cleaned = cleaned.replace(",", ".");
+  }
+
+  const num = Number(cleaned);
+  if (isNaN(num)) return null;
+  return num;
+}
+
+/**
  * @component AttributeTableWidget
  * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -929,64 +969,133 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     });
   };
 
-  // Active inline cell editing state: { featureId, key } or null
+  // Active inline cell editing state: { featureId, key, fieldType, initialVal } or null
   const [editingCell, setEditingCell] = useState<{
     featureId: string | number;
     key: string;
+    fieldType?: InferredFieldType;
+    initialVal: any;
   } | null>(null);
   const [editValue, setEditValue] = useState<string>("");
 
   const startEditingCell = (
     featureId: string | number,
     key: string,
-    initialVal: any
+    initialVal: any,
+    fieldType?: InferredFieldType
   ) => {
     if (!isLayerEditable) return;
-    setEditingCell({ featureId, key });
-    setEditValue(String(initialVal ?? ""));
+    setEditingCell({ featureId, key, fieldType, initialVal });
+
+    if (fieldType === "date") {
+      const d = parseDateValue(initialVal);
+      if (d) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        setEditValue(`${yyyy}-${mm}-${dd}`);
+      } else {
+        setEditValue(initialVal ? String(initialVal) : "");
+      }
+    } else if (fieldType === "time") {
+      const d = parseTimeValue(initialVal);
+      if (d) {
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        setEditValue(`${hh}:${mm}`);
+      } else {
+        setEditValue(initialVal ? String(initialVal) : "");
+      }
+    } else if (fieldType === "datetime") {
+      const d = parseDateTimeValue(initialVal);
+      if (d) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        setEditValue(`${yyyy}-${mm}-${dd}T${hh}:${min}`);
+      } else {
+        setEditValue(initialVal ? String(initialVal) : "");
+      }
+    } else if (fieldType === "boolean") {
+      setEditValue(Boolean(initialVal) ? "true" : "false");
+    } else {
+      setEditValue(
+        initialVal !== null && initialVal !== undefined
+          ? String(initialVal)
+          : ""
+      );
+    }
   };
 
   const commitEditingCell = () => {
     if (!editingCell) return;
-    const { featureId, key } = editingCell;
+    const { featureId, key, fieldType, initialVal } = editingCell;
 
-    // Update features in featuresSignal
-    featuresSignal.value = featuresSignal.value.map((f) => {
-      if (f.id === featureId) {
-        return {
-          ...f,
-          properties: {
-            ...f.properties,
-            [key]: editValue,
-          },
-        };
+    let committedValue: any;
+
+    if (fieldType === "boolean") {
+      committedValue = editValue === "true";
+    } else if (fieldType === "integer") {
+      const parsed = parseNumericInput(editValue);
+      if (parsed === null) {
+        // Invalid non-numeric input: cancel/revert cleanly without staging
+        setEditingCell(null);
+        return;
       }
-      return f;
-    });
-
-    // Forward modification to Main's crash-resilient edit cache
-    const api = (globalThis as any).window?.electronAPI;
-    if (activeLayer && typeof api?.stageFeatureEdit === "function") {
-      api
-        .stageFeatureEdit(activeLayer.id, {
-          id: featureId,
-          properties: { [key]: editValue },
-        })
-        ?.catch?.(() => {});
+      committedValue = Math.trunc(parsed);
+    } else if (fieldType === "real") {
+      const parsed = parseNumericInput(editValue);
+      if (parsed === null) {
+        // Invalid non-numeric input: cancel/revert cleanly without staging
+        setEditingCell(null);
+        return;
+      }
+      committedValue = parsed;
+    } else {
+      committedValue = editValue;
     }
 
-    // Track modified feature ID in editedFeatureIdsSignal and layer in dirtyLayerIdsSignal
-    const nextEdited = new Set(editedFeatureIdsSignal.value);
-    nextEdited.add(featureId);
-    editedFeatureIdsSignal.value = nextEdited;
-    if (activeLayer) {
-      const nextDirtyLayers = new Set(dirtyLayerIdsSignal.value);
-      nextDirtyLayers.add(activeLayer.id);
-      dirtyLayerIdsSignal.value = nextDirtyLayers;
-    }
+    if (committedValue !== initialVal) {
+      // Update features in featuresSignal
+      featuresSignal.value = featuresSignal.value.map((f) => {
+        if (f.id === featureId) {
+          return {
+            ...f,
+            properties: {
+              ...f.properties,
+              [key]: committedValue,
+            },
+          };
+        }
+        return f;
+      });
 
-    // Set Layer Dirty State on project
-    isProjectDirtySignal.value = true;
+      // Forward modification to Main's crash-resilient edit cache
+      const api = (globalThis as any).window?.electronAPI;
+      if (activeLayer && typeof api?.stageFeatureEdit === "function") {
+        api
+          .stageFeatureEdit(activeLayer.id, {
+            id: featureId,
+            properties: { [key]: committedValue },
+          })
+          ?.catch?.(() => {});
+      }
+
+      // Track modified feature ID in editedFeatureIdsSignal and layer in dirtyLayerIdsSignal
+      const nextEdited = new Set(editedFeatureIdsSignal.value);
+      nextEdited.add(featureId);
+      editedFeatureIdsSignal.value = nextEdited;
+      if (activeLayer) {
+        const nextDirtyLayers = new Set(dirtyLayerIdsSignal.value);
+        nextDirtyLayers.add(activeLayer.id);
+        dirtyLayerIdsSignal.value = nextDirtyLayers;
+      }
+
+      // Set Layer Dirty State on project
+      isProjectDirtySignal.value = true;
+    }
 
     setEditingCell(null);
   };
@@ -1381,12 +1490,22 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                     className='cell-attribute-data'
                                     onClick={() => {
                                       if (isLayerEditable && !isCellEditing) {
-                                        startEditingCell(feature.id, key, cellVal);
+                                        startEditingCell(
+                                          feature.id,
+                                          key,
+                                          cellVal,
+                                          fieldType
+                                        );
                                       }
                                     }}
                                     onDoubleClick={() => {
                                       if (isLayerEditable && !isCellEditing) {
-                                        startEditingCell(feature.id, key, cellVal);
+                                        startEditingCell(
+                                          feature.id,
+                                          key,
+                                          cellVal,
+                                          fieldType
+                                        );
                                       }
                                     }}
                                     style={{
@@ -1397,35 +1516,78 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                       textAlign: isNumeric ? "right" : "left",
                                     }}>
                                     {isCellEditing ?
-                                      <input
-                                        type='text'
-                                        className='cell-editor-input'
-                                        autoFocus
-                                        value={editValue}
-                                        onChange={(e) =>
-                                          setEditValue(e.target.value)
-                                        }
-                                        onBlur={commitEditingCell}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            commitEditingCell();
-                                          } else if (e.key === "Escape") {
-                                            e.preventDefault();
-                                            cancelEditingCell();
+                                      fieldType === "boolean" ?
+                                        <select
+                                          className='cell-editor-input cell-editor-select cell-editor-boolean'
+                                          autoFocus
+                                          value={editValue}
+                                          onChange={(e) =>
+                                            setEditValue(e.target.value)
                                           }
-                                        }}
-                                        style={{
-                                          width: "100%",
-                                          boxSizing: "border-box",
-                                          padding: "2px 4px",
-                                          fontSize: "0.8333rem",
-                                          border: "1px solid #0284c7",
-                                          borderRadius: "2px",
-                                          outline: "none",
-                                          backgroundColor: "#ffffff",
-                                        }}
-                                      />
+                                          onBlur={commitEditingCell}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              e.preventDefault();
+                                              commitEditingCell();
+                                            } else if (e.key === "Escape") {
+                                              e.preventDefault();
+                                              cancelEditingCell();
+                                            }
+                                          }}
+                                          style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "2px 4px",
+                                            fontSize: "0.8333rem",
+                                            border: "1px solid #0284c7",
+                                            borderRadius: "2px",
+                                            outline: "none",
+                                            backgroundColor: "#ffffff",
+                                          }}>
+                                          <option value='true'>
+                                            {t("boolean_true")}
+                                          </option>
+                                          <option value='false'>
+                                            {t("boolean_false")}
+                                          </option>
+                                        </select>
+                                      : <input
+                                          type={
+                                            fieldType === "date" ? "date"
+                                            : fieldType === "time" ? "time"
+                                            : fieldType === "datetime" ?
+                                              "datetime-local"
+                                            : "text"
+                                          }
+                                          className={`cell-editor-input cell-editor-${fieldType || "text"}`}
+                                          autoFocus
+                                          value={editValue}
+                                          onChange={(e) =>
+                                            setEditValue(e.target.value)
+                                          }
+                                          onBlur={commitEditingCell}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              e.preventDefault();
+                                              commitEditingCell();
+                                            } else if (e.key === "Escape") {
+                                              e.preventDefault();
+                                              cancelEditingCell();
+                                            }
+                                          }}
+                                          style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "2px 4px",
+                                            fontSize: "0.8333rem",
+                                            border: "1px solid #0284c7",
+                                            borderRadius: "2px",
+                                            outline: "none",
+                                            backgroundColor: "#ffffff",
+                                            textAlign:
+                                              isNumeric ? "right" : "left",
+                                          }}
+                                        />
                                     : formatAttributeCellValue(
                                         cellVal,
                                         fieldType,
