@@ -4,7 +4,7 @@
  * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link PopupMenu}
  */
@@ -86,7 +86,7 @@ export interface WidgetProps {
  * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {WidgetProps} props - Component properties.
  * @returns {React.ReactElement} Base widget container element.
@@ -228,6 +228,8 @@ export const Widget: React.FC<WidgetProps> = ({
         borderStyle: border ? "solid" : "none",
         borderColor: borderColor,
         padding: typeof padding === "number" ? `${padding}px` : padding,
+        width: "100%",
+        height: "100%",
         minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth,
         maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth,
         minHeight: typeof minHeight === "number" ? `${minHeight}px` : minHeight,

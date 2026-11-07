@@ -1411,4 +1411,170 @@ describe('AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
       unsavedChangesModalSignal.value = null;
     }
   });
+
+  it('sizes widget to full dock dimensions and constrains table flex items with minHeight 0 to prevent dock overflowing (Ticket #186)', async () => {
+    const mockLayer: GisLayer = {
+      id: 'layer-overflow-check',
+      name: 'Overflow Layer',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1.0,
+      color: '#3b82f6',
+      featureCount: 251,
+      fields: [{ name: 'name', nativeType: 'String', inferredType: 'string', nullable: false }],
+    };
+
+    const features251 = Array.from({ length: 251 }, (_, i) => ({
+      id: `feat-${i + 1}`,
+      properties: { name: `Feature ${i + 1}` },
+      geometryType: 'Polygon',
+      coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+    }));
+
+    (globalThis as any).window.electronAPI = {
+      ...(globalThis as any).window.electronAPI,
+      queryExtent: async (layerId: string, options: any) => ({
+        layerId,
+        features: features251.slice(options?.start ?? 0, (options?.start ?? 0) + (options?.max ?? 5000)),
+        totalMatched: 251,
+      }),
+    };
+
+    layersSignal.value = [mockLayer];
+    activeLayerIdSignal.value = 'layer-overflow-check';
+
+    try {
+      await act(async () => {
+        root!.render(React.createElement(AttributeTableWidget));
+      });
+
+      // 1. Root cartouche-widget container sizing
+      const widgetEl = findAllNodes(container, el => el.className.includes('cartouche-widget'))[0];
+      assert.ok(widgetEl, 'cartouche-widget container must be rendered');
+      assert.strictEqual(widgetEl.style.width, '100%');
+      assert.strictEqual(widgetEl.style.height, '100%');
+
+      // 2. BasicWidget body flex containment
+      const bodyEl = findAllNodes(container, el => el.className.includes('basic-widget-body'))[0];
+      assert.ok(bodyEl, 'basic-widget-body must be rendered');
+      assert.strictEqual(bodyEl.style.display, 'flex');
+      assert.strictEqual(bodyEl.style.flexDirection, 'column');
+      assert.ok(bodyEl.style.minHeight === '0px' || bodyEl.style.minHeight === '0');
+      assert.strictEqual(bodyEl.style.overflow, 'hidden');
+
+      // 3. Attribute table container flex containment
+      const tableContainerEl = findAllNodes(container, el => el.className.includes('attribute-table-container'))[0];
+      assert.ok(tableContainerEl, 'attribute-table-container must be rendered');
+      assert.strictEqual(tableContainerEl.style.height, '100%');
+      assert.strictEqual(tableContainerEl.style.display, 'flex');
+      assert.strictEqual(tableContainerEl.style.flexDirection, 'column');
+      assert.ok(tableContainerEl.style.minHeight === '0px' || tableContainerEl.style.minHeight === '0');
+      assert.strictEqual(tableContainerEl.style.overflow, 'hidden');
+
+      // 4. Header toolbar flex-shrink
+      const headerEl = findAllNodes(container, el => el.className.includes('attribute-table-header'))[0];
+      assert.ok(headerEl, 'attribute-table-header must be rendered');
+      assert.ok(headerEl.style.flexShrink === '0' || headerEl.style.flexShrink === 0 as any);
+
+      // 5. Scroll wrapper flex and minHeight containment
+      const scrollWrapperEl = findAllNodes(container, el => el.className.includes('table-scroll-wrapper'))[0];
+      assert.ok(scrollWrapperEl, 'table-scroll-wrapper must be rendered');
+      assert.strictEqual(scrollWrapperEl.style.overflow, 'auto');
+      assert.ok(scrollWrapperEl.style.minHeight === '0px' || scrollWrapperEl.style.minHeight === '0');
+
+      // 6. Footer flex-shrink and controls presence
+      const footerEl = findAllNodes(container, el => el.className.includes('attribute-table-footer'))[0];
+      assert.ok(footerEl, 'attribute-table-footer must be rendered');
+      assert.ok(footerEl.style.flexShrink === '0' || footerEl.style.flexShrink === 0 as any);
+
+      const filterSelect = findAllNodes(footerEl, el => el.className.includes('attribute-table-filter-select'))[0];
+      assert.ok(filterSelect, 'filter dropdown must remain rendered in footer');
+
+      const paginationEl = findAllNodes(footerEl, el => el.className.includes('attribute-table-pagination'))[0];
+      assert.ok(paginationEl, 'pagination buttons must remain rendered in footer');
+    } finally {
+      delete (globalThis as any).window.electronAPI.queryExtent;
+    }
+  });
+
+  it('automatically grows dock panel and enforces Dockview constraints to meet largest minHeight (192.208px at 12pt/24px) when dock is smaller than minHeight (Ticket #186)', async () => {
+    const { prefsUiBaseFontSize, prefsUiIconSize } = await import(
+      '../../../src/renderer/state/preferencesSignals'
+    );
+    prefsUiBaseFontSize.value = 12;
+    prefsUiIconSize.value = 24;
+
+    const constraintsPassed: any[] = [];
+    const groupConstraintsPassed: any[] = [];
+    const sizesPassed: any[] = [];
+    const groupSizesPassed: any[] = [];
+
+    const mockPanelApi = {
+      id: 'attribute-table',
+      height: 100, // Starts smaller than minHeight of 192.208px
+      width: 500,
+      setConstraints: (c: any) => {
+        constraintsPassed.push(c);
+      },
+      setSize: (s: any) => {
+        sizesPassed.push(s);
+      },
+      group: {
+        api: {
+          height: 100,
+          width: 500,
+          setConstraints: (c: any) => {
+            groupConstraintsPassed.push(c);
+          },
+          setSize: (s: any) => {
+            groupSizesPassed.push(s);
+          },
+        },
+        panels: [],
+      },
+    };
+
+    const mockLayer: GisLayer = {
+      id: 'layer-dock-grow',
+      name: 'Dock Grow Layer',
+      kind: 'vector',
+      geometryKind: 'Polygon',
+      visible: true,
+      opacity: 1.0,
+      color: '#3b82f6',
+      featureCount: 1,
+      fields: [{ name: 'name', nativeType: 'String', inferredType: 'string', nullable: false }],
+    };
+
+    layersSignal.value = [mockLayer];
+    activeLayerIdSignal.value = 'layer-dock-grow';
+
+    await act(async () => {
+      root!.render(
+        React.createElement(AttributeTableWidget, {
+          api: mockPanelApi as any,
+          panelApi: mockPanelApi as any,
+          location: 'bottom',
+        })
+      );
+    });
+
+    // 1. Verify panel.api.setConstraints receives minimumHeight 192.208
+    assert.ok(constraintsPassed.length > 0, 'panel.api.setConstraints must be called');
+    const lastConstraint = constraintsPassed[constraintsPassed.length - 1];
+    assert.strictEqual(lastConstraint.minimumHeight, 192.208, 'panel.api minimumHeight must be 192.208px');
+
+    // 2. Verify groupApi.setConstraints receives minimumHeight 192.208
+    assert.ok(groupConstraintsPassed.length > 0, 'groupApi.setConstraints must be called');
+    const lastGroupConstraint = groupConstraintsPassed[groupConstraintsPassed.length - 1];
+    assert.strictEqual(lastGroupConstraint.minimumHeight, 192.208, 'groupApi minimumHeight must be 192.208px');
+
+    // 3. Verify dock panel automatically grows to 192.208px because current height (100px) was smaller
+    assert.ok(groupSizesPassed.length > 0, 'groupApi.setSize must be called to grow dock panel');
+    assert.strictEqual(groupSizesPassed[groupSizesPassed.length - 1].height, 192.208, 'groupApi must grow height to 192.208px');
+
+    assert.ok(sizesPassed.length > 0, 'panelApi.setSize must be called to grow panel');
+    assert.strictEqual(sizesPassed[sizesPassed.length - 1].height, 192.208, 'panelApi must grow height to 192.208px');
+  });
 });

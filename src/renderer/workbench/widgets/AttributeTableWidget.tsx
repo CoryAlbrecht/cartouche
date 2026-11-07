@@ -37,6 +37,7 @@ import {
   type LayerFieldInfo,
 } from "@shared/types";
 import type { IDockviewPanelProps } from "dockview-react";
+import type { DockviewPanelApi } from "dockview-core";
 import {
   mdiTable,
   mdiPageFirst,
@@ -137,9 +138,10 @@ export function isFeatureInExtent(
  * Computes dynamic minimum height CSS expression for AttributeTableWidget derived from UI icon and font size preferences.
  * Ensures vertical clearance for widget header, embedded toolbars, table header, 2 feature rows, and bottom filter bar.
  * @function computeAttributeTableMinHeight
+ * @description Computes dynamic minimum height CSS expression for AttributeTableWidget derived from UI icon and font size preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @returns {string} CSS calc expression for minimum widget height.
  */
@@ -160,10 +162,14 @@ export function computeAttributeTableMinHeight(): string {
  * @extends Partial<IDockviewPanelProps>
  * @property {boolean} [overlappable=true] - Whether this widget can be grouped into an OverlapTabWidget container.
  * @property {number | string} [minHeight] - Minimum height override.
+ * @property {DockviewPanelApi} [panelApi] - Optional Dockview panel API instance.
+ * @property {'top' | 'bottom' | 'left' | 'right'} [location] - Outer panel dock zone.
  */
 export interface AttributeTableWidgetProps extends Partial<IDockviewPanelProps> {
   readonly overlappable?: boolean;
   readonly minHeight?: number | string;
+  readonly panelApi?: DockviewPanelApi;
+  readonly location?: "top" | "bottom" | "left" | "right";
 }
 
 /**
@@ -619,7 +625,13 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
       {...props}>
       <div
         className='attribute-table-container'
-        style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+        style={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflow: "hidden",
+        }}>
         {!activeLayer ?
           <div
             className='empty-panel-message'
@@ -630,6 +642,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
             <div
               className='attribute-table-header'
               style={{
+                flexShrink: 0,
                 padding: "2px 4px",
                 backgroundColor: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
@@ -652,7 +665,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
             <div
               className='table-scroll-wrapper'
-              style={{ flex: 1, overflow: "auto" }}>
+              style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
               <table
                 className='gis-data-table'
                 style={{
@@ -795,6 +808,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
             <div
               className='attribute-table-footer'
               style={{
+                flexShrink: 0,
                 padding: "4px 8px",
                 backgroundColor: "#f8fafc",
                 borderTop: "1px solid #e2e8f0",

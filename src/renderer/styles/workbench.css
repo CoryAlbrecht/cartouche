@@ -587,6 +587,10 @@
    Widget System Styles
    ========================================================================= */
 .cartouche-widget {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
   transition: border-color 0.15s ease;
 }
 
@@ -595,8 +599,27 @@
   z-index: 1000;
 }
 
+.basic-widget {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
 .basic-widget-header {
+  flex-shrink: 0;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.basic-widget-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
 }
 
 .widget-control-btn:hover {
@@ -1175,10 +1198,13 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background-color: #ffffff;
 }
 
 .attribute-table-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1190,7 +1216,18 @@
 
 .table-scroll-wrapper {
   flex: 1;
+  min-height: 0;
   overflow: auto;
+}
+
+.attribute-table-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background-color: #f8fafc;
+  border-top: 1px solid #e2e8f0;
 }
 
 .gis-data-table {

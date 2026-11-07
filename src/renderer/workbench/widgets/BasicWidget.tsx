@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -28,6 +28,7 @@ import { resolveWidgetDropZone, type WidgetDropZone } from "./widgetDropTarget";
 import {
   getWidgetDockItem,
   createOverlapContainer,
+  widgetDocksSignal,
 } from "../../state/widgetDockSignals";
 
 import type { IDockviewPanelProps } from "dockview-react";
@@ -36,6 +37,10 @@ import type { IDockviewPanelProps } from "dockview-react";
  * Helper to parse pixel values from number or CSS string representations.
  * @function parsePxValue
  * @description Parses pixel numbers from CSS length strings or numeric representations.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-09-22
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
  * @param {number | string | undefined} val - Raw pixel or CSS value.
  * @param {number} defaultVal - Default fallback value if parsing fails.
  * @returns {number} Parsed numeric pixel value.
@@ -48,6 +53,150 @@ function parsePxValue(
   if (typeof val === "number") return val;
   const parsed = parseFloat(val);
   return isNaN(parsed) ? defaultVal : parsed;
+}
+
+/**
+ * Safely evaluates simple binary and parenthesized arithmetic expressions without eval or Function.
+ * @function evaluateSimpleMath
+ * @description Recursive-descent evaluator for basic arithmetic (+, -, *, /) with operator precedence.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {string} expr - Arithmetic formula string.
+ * @returns {number | null} Computed numeric value or null if parsing fails.
+ */
+function evaluateSimpleMath(expr: string): number | null {
+  const tokens = expr.match(/\d+(?:\.\d+)?|[+\-*/()]/g);
+  if (!tokens) return null;
+  let pos = 0;
+
+  function parsePrimary(): number {
+    const token = tokens![pos++];
+    if (token === "(") {
+      const val = parseAddSub();
+      if (tokens![pos++] !== ")") return NaN;
+      return val;
+    }
+    const num = parseFloat(token);
+    return isNaN(num) ? NaN : num;
+  }
+
+  function parseMulDiv(): number {
+    let left = parsePrimary();
+    while (
+      pos < tokens!.length &&
+      (tokens![pos] === "*" || tokens![pos] === "/")
+    ) {
+      const op = tokens![pos++];
+      const right = parsePrimary();
+      left = op === "*" ? left * right : left / right;
+    }
+    return left;
+  }
+
+  function parseAddSub(): number {
+    let left = parseMulDiv();
+    while (
+      pos < tokens!.length &&
+      (tokens![pos] === "+" || tokens![pos] === "-")
+    ) {
+      const op = tokens![pos++];
+      const right = parseMulDiv();
+      left = op === "+" ? left + right : left - right;
+    }
+    return left;
+  }
+
+  const result = parseAddSub();
+  return pos === tokens.length && !isNaN(result) ? result : null;
+}
+
+/**
+ * Evaluates a CSS length string, numeric pixel value, or calc expression into numeric pixels.
+ * Supports px, pt, rem units and Cartouche theme CSS custom properties.
+ * @function evaluateLengthPx
+ * @description Computes numeric pixel values from CSS length expressions, unit literals, or numeric inputs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {number | string | undefined} val - Raw length or calc expression.
+ * @param {number} defaultVal - Fallback numeric pixel value.
+ * @param {number} [baseFontSizePt=12] - Base font size in points.
+ * @param {number} [iconSize=24] - Base icon size in pixels.
+ * @returns {number} Evaluated numeric pixel length.
+ */
+export function evaluateLengthPx(
+  val: number | string | undefined,
+  defaultVal: number,
+  baseFontSizePt: number = 12,
+  iconSize: number = 24
+): number {
+  if (val === undefined || val === null) return defaultVal;
+  if (typeof val === "number") return val;
+  const baseFontSizePx = baseFontSizePt * (4 / 3);
+  let str = String(val).trim();
+  if (str.startsWith("calc(") && str.endsWith(")")) {
+    str = str.slice(5, -1);
+  }
+  // Substitute CSS custom property fallbacks
+  str = str.replace(/var\(--cartouche-ui-icon-size[^)]*\)/g, String(iconSize));
+  str = str.replace(
+    /var\(--cartouche-ui-basefont-size[^)]*\)/g,
+    String(baseFontSizePx)
+  );
+  // Substitute pt units (1pt = 4/3 px)
+  str = str.replace(/(\d+(?:\.\d+)?)\s*pt/g, (_, num) =>
+    String(parseFloat(num) * (4 / 3))
+  );
+  // Substitute rem units (1rem = base font size in px)
+  str = str.replace(/(\d+(?:\.\d+)?)\s*rem/g, (_, num) =>
+    String(parseFloat(num) * baseFontSizePx)
+  );
+  // Strip px units
+  str = str.replace(/px/g, "");
+  // Safely evaluate simple arithmetic expressions
+  if (/^[0-9+\-*/().\s]+$/.test(str)) {
+    const mathResult = evaluateSimpleMath(str);
+    if (mathResult !== null) {
+      return mathResult;
+    }
+  }
+  const parsed = parseFloat(str);
+  return isNaN(parsed) ? defaultVal : parsed;
+}
+
+/**
+ * Helper extracting the largest minimum width and height across an array of panels.
+ * @function findLargestPanelConstraints
+ * @description Scans panels for recorded cartouche minimum dimensions and returns the maximum constraints.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-06
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {any[]} panels - List of panel or API instances.
+ * @param {number} defaultMinW - Baseline minimum width.
+ * @param {number} defaultMinH - Baseline minimum height.
+ * @returns {{ largestMinW: number; largestMinH: number }} Highest minimum constraints.
+ */
+function findLargestPanelConstraints(
+  panels: any[],
+  defaultMinW: number,
+  defaultMinH: number
+): { largestMinW: number; largestMinH: number } {
+  let largestMinW = defaultMinW;
+  let largestMinH = defaultMinH;
+
+  for (const p of panels) {
+    if (!p) continue;
+    const pMinH = p.api?._cartoucheMinHeight ?? p._cartoucheMinHeight ?? 0;
+    const pMinW = p.api?._cartoucheMinWidth ?? p._cartoucheMinWidth ?? 0;
+    if (pMinH > largestMinH) largestMinH = pMinH;
+    if (pMinW > largestMinW) largestMinW = pMinW;
+  }
+
+  return { largestMinW, largestMinH };
 }
 
 /**
@@ -79,7 +228,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-06
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -94,7 +243,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     borderColor = background,
     border = 1,
     padding = 4,
-    location = "left",
+    location: propLocation,
     minWidth,
     maxWidth = "auto",
     minHeight = 120,
@@ -269,22 +418,139 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
 
   const computedMinWidthFloor =
     borderPx + paddingPx + buttonControlsWidth + fourRemPx;
-  const requestedMinWidth = parsePxValue(minWidth, 32);
+  const requestedMinWidth = evaluateLengthPx(
+    minWidth,
+    32,
+    baseFontSizePt,
+    iconSize
+  );
   const effectiveMinWidth = Math.max(
     requestedMinWidth,
     Math.ceil(computedMinWidthFloor)
   );
 
+  const borderHeightPx = parsePxValue(border, 1);
+  const requestedMinHeight = evaluateLengthPx(
+    minHeight,
+    32,
+    baseFontSizePt,
+    iconSize
+  );
+  const effectiveMinHeight =
+    requestedMinHeight +
+    (typeof minHeight === "string" && minHeight.includes("calc(") ?
+      borderHeightPx
+    : 0);
+
+  const resolvedDock =
+    propLocation ||
+    (effectivePanelApi ? getWidgetDockItem(effectivePanelApi.id)?.dock : undefined) ||
+    (name ? getWidgetDockItem(name.replace(/-widget$/, ""))?.dock : undefined) ||
+    (effectivePanelApi as any)?.location?.position ||
+    (effectivePanelApi as any)?.location?.type ||
+    "left";
+
   useEffect(() => {
-    if (effectivePanelApi) {
-      // DockviewPanelApi's setConstraints doesn't dynamically update the panel's minimum width due to a limitation in dockview-core.
-      // We must apply the constraints directly to the parent DockviewGroupPanel's API instead.
-      const groupApi = (effectivePanelApi as any).group?.api;
-      if (groupApi && typeof groupApi.setConstraints === "function") {
-        groupApi.setConstraints({ minimumWidth: effectiveMinWidth });
+    if (!effectivePanelApi) return;
+
+    const applyConstraintsAndSizing = () => {
+      // Record minimum constraints directly on panel API for cross-widget queries
+      (effectivePanelApi as any)._cartoucheMinHeight = effectiveMinHeight;
+      (effectivePanelApi as any)._cartoucheMinWidth = effectiveMinWidth;
+
+      if (typeof effectivePanelApi.setConstraints === "function") {
+        effectivePanelApi.setConstraints({
+          minimumWidth: effectiveMinWidth,
+          minimumHeight: effectiveMinHeight,
+        });
       }
-    }
-  }, [effectivePanelApi, effectiveMinWidth]);
+
+      const group = (effectivePanelApi as any).group;
+      const groupApi = group?.api;
+
+      // Determine dock location (top, bottom, left, right)
+      const dock = resolvedDock;
+
+      // Determine the largest minHeight and minWidth across all widgets in this dock panel / group
+      const panelsInGroup: any[] = group?.panels || [effectivePanelApi];
+      const allPanels: any[] = [...panelsInGroup];
+
+      if (
+        (dock === "top" ||
+          dock === "bottom" ||
+          dock === "left" ||
+          dock === "right") &&
+        effectiveContainerApi
+      ) {
+        const dockItems =
+          widgetDocksSignal.value[
+            dock as "top" | "bottom" | "left" | "right"
+          ] || [];
+        for (const item of dockItems) {
+          const p = effectiveContainerApi.getPanel(item.id) as any;
+          if (p) {
+            allPanels.push(p);
+          }
+        }
+      }
+
+      const { largestMinW, largestMinH } = findLargestPanelConstraints(
+        allPanels,
+        effectiveMinWidth,
+        effectiveMinHeight
+      );
+
+      if (groupApi && typeof groupApi.setConstraints === "function") {
+        groupApi.setConstraints({
+          minimumWidth: largestMinW,
+          minimumHeight: largestMinH,
+        });
+      }
+
+      // Automatically grow dock panels if smaller than the largest minimum constraint
+      if (dock === "top" || dock === "bottom") {
+        const currentHeight =
+          groupApi?.height ?? (effectivePanelApi as any).height ?? 0;
+        if (currentHeight < largestMinH) {
+          if (groupApi && typeof groupApi.setSize === "function") {
+            groupApi.setSize({ height: largestMinH });
+          }
+          if (typeof effectivePanelApi.setSize === "function") {
+            effectivePanelApi.setSize({ height: largestMinH });
+          }
+        }
+      } else if (dock === "left" || dock === "right") {
+        const currentWidth =
+          groupApi?.width ?? (effectivePanelApi as any).width ?? 0;
+        if (currentWidth < largestMinW) {
+          if (groupApi && typeof groupApi.setSize === "function") {
+            groupApi.setSize({ width: largestMinW });
+          }
+          if (typeof effectivePanelApi.setSize === "function") {
+            effectivePanelApi.setSize({ width: largestMinW });
+          }
+        }
+      }
+    };
+
+    applyConstraintsAndSizing();
+
+    const disposable =
+      typeof (effectivePanelApi as any).onDidGroupChange === "function" ?
+        (effectivePanelApi as any).onDidGroupChange(applyConstraintsAndSizing)
+      : undefined;
+
+    return () => {
+      disposable?.dispose?.();
+    };
+  }, [
+    effectivePanelApi,
+    effectiveContainerApi,
+    effectiveMinWidth,
+    effectiveMinHeight,
+    resolvedDock,
+    name,
+  ]);
 
   return (
     <Widget
@@ -293,7 +559,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       border={border}
       borderColor={borderColor}
       padding={padding}
-      location={location}
+      location={resolvedDock}
       minWidth={effectiveMinWidth}
       maxWidth={maxWidth}
       minHeight={minHeight}
@@ -309,6 +575,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       style={{
         display: "flex",
         flexDirection: "column",
+        height: "100%",
+        width: "100%",
         boxSizing: "border-box",
         position: "relative",
         ...style,
@@ -517,7 +785,14 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       {/* Widget Content Body */}
       <div
         className='basic-widget-body'
-        style={{ flex: 1, overflow: "auto", position: "relative" }}>
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflow: "hidden",
+          position: "relative",
+        }}>
         {children}
       </div>
     </Widget>
