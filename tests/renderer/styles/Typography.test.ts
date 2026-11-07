@@ -1,10 +1,10 @@
 /**
  * @file Typography.test.ts
  * @module tests/renderer/styles/Typography.test
- * @description Automated verification suite for Cartouche typography design tokens, statically bundled Noto WOFF2 font assets, @font-face declarations, unicode-range scoping, HTML preload links, and stylesheet monospace consistency (ADR 0013).
+ * @description Automated verification suite for Cartouche typography design tokens, statically bundled Noto WOFF2 font assets, @font-face declarations, unicode-range scoping, omission of redundant HTML font preloads in Electron, and stylesheet monospace consistency (ADR 0013).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-24
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 
@@ -100,7 +100,7 @@ describe('Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
     );
   });
 
-  it('hardens Content Security Policy with font-src and preloads base fonts in index.html', () => {
+  it('hardens Content Security Policy with font-src and omits redundant font preload tags in index.html', () => {
     const indexHtml = fs.readFileSync(indexHtmlPath, 'utf-8');
 
     // CSP directive
@@ -109,14 +109,18 @@ describe('Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
       "index.html Content-Security-Policy must explicitly include font-src 'self' data:;"
     );
 
-    // Preload tags
+    // Omit redundant font preload tags to avoid credentials mode mismatch and unused preload warnings on file://
     assert.ok(
-      indexHtml.includes('rel="preload" href="../../assets/fonts/noto-sans/NotoSans-Regular.woff2" as="font" type="font/woff2" crossorigin'),
-      'index.html must preload NotoSans-Regular.woff2'
+      !indexHtml.includes('as="font"'),
+      'index.html must not contain as="font" preload links in Electron desktop environment'
     );
     assert.ok(
-      indexHtml.includes('rel="preload" href="../../assets/fonts/noto-sans-mono/NotoSansMono-Regular.woff2" as="font" type="font/woff2" crossorigin'),
-      'index.html must preload NotoSansMono-Regular.woff2'
+      !indexHtml.includes('NotoSans-Regular.woff2'),
+      'index.html must not preload NotoSans-Regular.woff2'
+    );
+    assert.ok(
+      !indexHtml.includes('NotoSansMono-Regular.woff2'),
+      'index.html must not preload NotoSansMono-Regular.woff2'
     );
   });
 
