@@ -380,7 +380,6 @@ export function measureTextWidth(
 const DEFAULT_SYSTEM_COLUMN_WIDTHS: Record<string, number> = {
   __counter__: 50,
   __id__: 80,
-  __geometryType__: 100,
 };
 
 /**
@@ -1261,7 +1260,6 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
               {(() => {
                 const counterTitle = t("attribute_table_col_counter");
                 const idTitle = t("attribute_table_col_id");
-                const typeTitle = t("attribute_table_col_type");
 
                 const counterWidth = getColWidth(
                   "__counter__",
@@ -1271,19 +1269,13 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   "__id__",
                   DEFAULT_SYSTEM_COLUMN_WIDTHS.__id__
                 );
-                const typeWidth = getColWidth(
-                  "__geometryType__",
-                  DEFAULT_SYSTEM_COLUMN_WIDTHS.__geometryType__
-                );
 
                 const counterMinWidth = getMinColWidth(counterTitle, 36);
                 const idMinWidth = getMinColWidth(idTitle, 40);
-                const typeMinWidth = getMinColWidth(typeTitle, 50);
 
                 const totalTableWidth =
                   counterWidth +
                   idWidth +
-                  typeWidth +
                   attributeKeys.reduce(
                     (acc, k) => acc + getColWidth(k, DEFAULT_ATTRIBUTE_COL_WIDTH),
                     0
@@ -1370,45 +1362,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                             }}
                           />
                         </th>
-                        <th
-                          style={{
-                            width: typeWidth,
-                            padding: "4px 8px",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            boxSizing: "border-box",
-                            position: "relative",
-                          }}>
-                          {typeTitle}
-                          <div
-                            className='column-resize-handle'
-                            onMouseDown={(e) =>
-                              startColumnResize(
-                                e,
-                                "__geometryType__",
-                                typeWidth,
-                                typeMinWidth
-                              )
-                            }
-                            onDoubleClick={(e) =>
-                              autoFitColumn(
-                                e,
-                                "__geometryType__",
-                                typeTitle,
-                                (f) => f.geometryType
-                              )
-                            }
-                            style={{
-                              position: "absolute",
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: "6px",
-                              cursor: "col-resize",
-                              userSelect: "none",
-                              zIndex: 1,
-                            }}
-                          />
-                        </th>
+
                         {attributeKeys.map((key) => {
                           const colW = getColWidth(
                             key,
@@ -1506,12 +1460,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                 style={BASE_DATA_CELL_STYLE}>
                                 {feature.id}
                               </td>
-                              <td
-                                className='cell-geometry-type'
-                                title={String(feature.geometryType)}
-                                style={BASE_DATA_CELL_STYLE}>
-                                {feature.geometryType}
-                              </td>
+
                               {attributeKeys.map((key) => {
                                 const isCellEditing =
                                   editingCell?.featureId === feature.id &&
