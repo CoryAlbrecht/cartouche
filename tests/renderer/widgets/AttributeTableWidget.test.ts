@@ -1400,8 +1400,7 @@ describe("AttributeTableWidget Filtering, minHeight, and Localization (Ticket #1
 
     const thEls = findAllNodes(container, (el) => el.tagName === "TH");
     assert.strictEqual(thEls[0].textContent, "#");
-    assert.strictEqual(thEls[1].textContent, "Identifiant");
-    assert.strictEqual(thEls[2].textContent, "nom");
+    assert.strictEqual(thEls[1].textContent, "nom");
 
     const options = (
       findAllNodes(container, (el) =>
@@ -1489,7 +1488,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
     const thEls = findAllNodes(container, (el) => el.tagName === "TH");
     const headerTexts = thEls.map((th) => th.textContent);
-    assert.deepStrictEqual(headerTexts.slice(2), [
+    assert.deepStrictEqual(headerTexts.slice(1), [
       "parcel_code",
       "assessed_val",
       "zoning_class",
@@ -1572,7 +1571,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
       const tdEls = findAllNodes(container, (el) => el.tagName === "TD");
       assert.deepStrictEqual(
         tdEls.map((td) => td.textContent),
-        ["1", "77", "Ottawa"]
+        ["1", "Ottawa"]
       );
     } finally {
       delete (globalThis as any).window.electronAPI.queryExtent;
@@ -2301,8 +2300,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
         assert.strictEqual(
           thNodes.length,
-          4,
-          "must render 2 system columns (#, ID) + 2 attribute columns"
+          3,
+          "must render 1 system column (#) + 2 attribute columns"
         );
 
         for (const th of thNodes) {
@@ -2330,8 +2329,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const tdNodesRow1 = findAllNodes(dataRow1, (el) => el.tagName === "TD");
         assert.strictEqual(
           tdNodesRow1.length,
-          4,
-          "data row must render 4 td cells"
+          3,
+          "data row must render 3 td cells"
         );
 
         for (const td of tdNodesRow1) {
@@ -2416,10 +2415,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const handles = findAllNodes(container, (el) =>
           el.className.includes("column-resize-handle")
         );
-        // 2 system columns (#, ID) + 1 attribute column = 3 handles
+        // 1 system column (#) + 1 attribute column = 2 handles
         assert.strictEqual(
           handles.length,
-          3,
+          2,
           "each column header must have a column resize separator"
         );
         for (const h of handles) {
@@ -2492,8 +2491,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           (el) => el.tagName === "TABLE"
         )[0];
         const thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
-        const colATh = thNodes[2]; // col_a header
-        const longColTh = thNodes[3]; // very_long_column_name_header
+        const colATh = thNodes[1]; // col_a header
+        const longColTh = thNodes[2]; // very_long_column_name_header
         const handleColA = findAllNodes(colATh, (el) =>
           el.className.includes("column-resize-handle")
         )[0];
@@ -2667,7 +2666,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           (el) => el.tagName === "TABLE"
         )[0];
         const thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
-        const attrTh = thNodes[2];
+        const attrTh = thNodes[1];
         const handle = findAllNodes(attrTh, (el) =>
           el.className.includes("column-resize-handle")
         )[0];
@@ -2760,7 +2759,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           (el) => el.tagName === "TABLE"
         )[0];
         let thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
-        let handle = findAllNodes(thNodes[2], (el) =>
+        let handle = findAllNodes(thNodes[1], (el) =>
           el.className.includes("column-resize-handle")
         )[0];
 
@@ -2781,7 +2780,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           for (const l of upListeners) l.cb({ clientX: 350 });
         });
 
-        const customizedWidth = parseInt(thNodes[2].style.width, 10);
+        const customizedWidth = parseInt(thNodes[1].style.width, 10);
         assert.ok(
           customizedWidth > 300,
           `customized width should be >300 (got ${customizedWidth})`
@@ -2799,7 +2798,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         tableEl = findAllNodes(container, (el) => el.tagName === "TABLE")[0];
         thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
-        const restoredWidth = parseInt(thNodes[2].style.width, 10);
+        const restoredWidth = parseInt(thNodes[1].style.width, 10);
         assert.strictEqual(
           restoredWidth,
           customizedWidth,
@@ -2925,14 +2924,14 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const row1 = trNodes[1];
         const tdRow1 = findAllNodes(row1, (el) => el.tagName === "TD");
 
-        // Indices: 0: counter, 1: id, 2: date_col, 3: time_col, 4: datetime_col, 5: int_col, 6: real_col, 7: bool_col, 8: null_col
+        // Indices: 0: counter, 1: date_col, 2: time_col, 3: datetime_col, 4: int_col, 5: real_col, 6: bool_col, 7: null_col
         const expectedDate = new Intl.DateTimeFormat("en", {
           year: "numeric",
           month: "numeric",
           day: "numeric",
         }).format(new Date(2026, 10, 6));
         assert.strictEqual(
-          tdRow1[2].textContent,
+          tdRow1[1].textContent,
           expectedDate,
           "date_col must format via Intl.DateTimeFormat"
         );
@@ -2942,12 +2941,12 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           maximumFractionDigits: 0,
         }).format(1250000);
         assert.strictEqual(
-          tdRow1[5].textContent,
+          tdRow1[4].textContent,
           expectedInt,
           "integer must format via Intl.NumberFormat"
         );
         assert.strictEqual(
-          tdRow1[5].style.textAlign,
+          tdRow1[4].style.textAlign,
           "right",
           "integer cell must be right-aligned"
         );
@@ -2955,25 +2954,25 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         // real_col: 9,876.54 with right alignment
         const expectedReal = new Intl.NumberFormat("en").format(9876.54);
         assert.strictEqual(
-          tdRow1[6].textContent,
+          tdRow1[5].textContent,
           expectedReal,
           "real must format via Intl.NumberFormat"
         );
         assert.strictEqual(
-          tdRow1[6].style.textAlign,
+          tdRow1[5].style.textAlign,
           "right",
           "real cell must be right-aligned"
         );
 
         // bool_col: "True"
         assert.strictEqual(
-          tdRow1[7].textContent,
+          tdRow1[6].textContent,
           "True",
           "bool_col true must display as True"
         );
 
         // null_col: cell-null-value span with text NULL
-        const nullSpan = findAllNodes(tdRow1[8], (el) =>
+        const nullSpan = findAllNodes(tdRow1[7], (el) =>
           el.className.includes("cell-null-value")
         )[0];
         assert.ok(nullSpan, "null_col must render .cell-null-value element");
@@ -2984,11 +2983,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const row2 = trNodes[2];
         const tdRow2 = findAllNodes(row2, (el) => el.tagName === "TD");
         assert.strictEqual(
-          tdRow2[7].textContent,
+          tdRow2[6].textContent,
           "False",
           "bool_col false must display as False"
         );
-        const undefinedSpan = findAllNodes(tdRow2[8], (el) =>
+        const undefinedSpan = findAllNodes(tdRow2[7], (el) =>
           el.className.includes("cell-null-value")
         )[0];
         assert.ok(
@@ -3009,12 +3008,12 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         // In French locale:
         // bool_col: "Vrai"
         assert.strictEqual(
-          tdRow1[7].textContent,
+          tdRow1[6].textContent,
           "Vrai",
           "boolean field must reactively update to localized string on activeLocaleSignal change"
         );
         assert.strictEqual(
-          tdRow2[7].textContent,
+          tdRow2[6].textContent,
           "Faux",
           "boolean field must reactively update to localized string on activeLocaleSignal change"
         );
@@ -3024,7 +3023,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           maximumFractionDigits: 0,
         }).format(1250000);
         assert.strictEqual(
-          tdRow1[5].textContent,
+          tdRow1[4].textContent,
           expectedIntFr,
           "integer field must reactively update to French locale formatting"
         );
@@ -3131,10 +3130,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         let trNodes = findAllNodes(tableEl, (el) => el.tagName === "TR");
         let dataRow = trNodes[1];
         let tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
-        // Indices: 0: counter, 1: id, 2: date, 3: time, 4: datetime, 5: int, 6: real, 7: bool
+        // Indices: 0: counter, 1: date, 2: time, 3: datetime, 4: int, 5: real, 6: bool
 
         await act(async () => {
-          tdCells[2].dispatchEvent({
+          tdCells[1].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3199,7 +3198,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[3].dispatchEvent({
+          tdCells[2].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3243,7 +3242,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[4].dispatchEvent({
+          tdCells[3].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3287,7 +3286,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[5].dispatchEvent({
+          tdCells[4].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3322,7 +3321,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[5].dispatchEvent({
+          tdCells[4].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3352,7 +3351,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[6].dispatchEvent({
+          tdCells[5].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3384,7 +3383,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[6].dispatchEvent({
+          tdCells[5].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3413,7 +3412,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
 
         await act(async () => {
-          tdCells[7].dispatchEvent({
+          tdCells[6].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3555,11 +3554,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         const dataRow = trNodes[1];
         const tdCells = findAllNodes(dataRow, (el) => el.tagName === "TD");
-        // System cols: counter, id (2) + 4 attribute cols = 6
+        // System cols: counter (1) + 4 attribute cols = 5
         assert.strictEqual(
           tdCells.length,
-          6,
-          "must render 6 td cells for feature row"
+          5,
+          "must render 5 td cells for feature row"
         );
 
         // 1. Verify overflow, text-overflow, and white-space styles on all td cells
@@ -3589,33 +3588,27 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           "1",
           "counter cell must have native title matching row number"
         );
-        // System feature ID cell
-        assert.strictEqual(
-          tdCells[1].getAttribute("title"),
-          "feat-trunc-1",
-          "feature id cell must have native title matching feature id"
-        );
         // Long string attribute cell: full unclipped text
         assert.strictEqual(
-          tdCells[2].getAttribute("title"),
+          tdCells[1].getAttribute("title"),
           "123 Very Long Street Avenue, Building 4A, Suite 500, Metro City, ST 99999",
           "long string cell must have native title with full unclipped text"
         );
         // Formatted integer cell
         assert.strictEqual(
-          tdCells[3].getAttribute("title"),
+          tdCells[2].getAttribute("title"),
           "1,250",
           "integer cell must have native title with formatted number"
         );
         // Localized boolean cell
         assert.strictEqual(
-          tdCells[4].getAttribute("title"),
+          tdCells[3].getAttribute("title"),
           "True",
           "boolean cell must have native title True"
         );
         // Null attribute cell
         assert.strictEqual(
-          tdCells[5].getAttribute("title"),
+          tdCells[4].getAttribute("title"),
           "NULL",
           "null cell must have native title NULL"
         );
@@ -3623,7 +3616,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         // 3. Verify active inline editor controls remain fully visible and usable
         // Double click long_desc to edit text
         await act(async () => {
-          tdCells[2].dispatchEvent({
+          tdCells[1].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3694,7 +3687,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         );
 
         await act(async () => {
-          updatedTds[4].dispatchEvent({
+          updatedTds[3].dispatchEvent({
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
@@ -3822,11 +3815,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const thEls = findAllNodes(tableEl, (el) => el.tagName === "TH");
         const headerTexts = thEls.map((th) => th.textContent);
 
-        // Expected headers: '#', 'ID', and physical fields 'geom_type', 'feature_label'
-        // There must be NO synthetic 'Type' column header
+        // Expected headers: '#' and physical fields 'geom_type', 'feature_label' (single identity column '#')
+        // There must be NO synthetic 'Type' column header and NO 'ID' column when fidColumn is absent
         assert.deepStrictEqual(headerTexts, [
           "#",
-          "ID",
           "geom_type",
           "feature_label",
         ]);
@@ -3842,20 +3834,19 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const tdCells = findAllNodes(firstDataRow, (el) => el.tagName === "TD");
         assert.strictEqual(
           tdCells.length,
-          4,
-          "feature row must render exactly 4 cells"
+          3,
+          "feature row must render exactly 3 cells"
         );
 
-        // Cells: 0: counter, 1: id, 2: geom_type (physical attribute), 3: feature_label
+        // Cells: 0: counter, 1: geom_type (physical attribute), 2: feature_label
         assert.strictEqual(tdCells[0].textContent, "1", "row counter");
-        assert.strictEqual(tdCells[1].textContent, "f-1", "feature id");
         assert.strictEqual(
-          tdCells[2].textContent,
+          tdCells[1].textContent,
           "custom_polygon_code",
           "physical geom_type attribute value"
         );
         assert.strictEqual(
-          tdCells[3].textContent,
+          tdCells[2].textContent,
           "Feature One",
           "feature_label attribute value"
         );
@@ -3870,6 +3861,204 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           "cell-geometry-type must not be present in DOM"
         );
       } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+  });
+
+  describe("AttributeTableWidget Dual-Tier Identity Column and Capabilities (Ticket #202)", () => {
+    it("renders single persistent FID column when fidColumn is present and suppresses row counter '#'", async () => {
+      const mockLayerWithFid: GisLayer = {
+        id: "layer-fid-test",
+        name: "FID Layer",
+        kind: "vector",
+        geometryKind: "Polygon",
+        visible: true,
+        opacity: 1,
+        color: "#2563eb",
+        featureCount: 2,
+        fidColumn: "ogc_fid",
+        capabilities: {
+          randomWrite: true,
+          deleteFeature: true,
+          fastRandomRead: true,
+        },
+        fields: [
+          {
+            name: "ogc_fid",
+            nativeType: "Integer",
+            inferredType: "integer",
+            nullable: false,
+          },
+          {
+            name: "county_name",
+            nativeType: "String",
+            inferredType: "string",
+            nullable: false,
+          },
+        ],
+      };
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string) => ({
+          layerId,
+          features: [
+            {
+              id: "501",
+              properties: { ogc_fid: 501, county_name: "Arapahoe" },
+              geometryType: "Polygon",
+              coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+            },
+            {
+              id: "502",
+              properties: { ogc_fid: 502, county_name: "Boulder" },
+              geometryType: "Polygon",
+              coordinates: [[[1, 1], [2, 1], [2, 2], [1, 1]]],
+            },
+          ],
+          totalMatched: 2,
+        }),
+      };
+
+      layersSignal.value = [mockLayerWithFid];
+      activeLayerIdSignal.value = "layer-fid-test";
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, (el) => el.tagName === "TABLE")[0];
+        assert.ok(tableEl, "table element must render");
+
+        const thEls = findAllNodes(tableEl, (el) => el.tagName === "TH");
+        const headerTexts = thEls.map((th) => th.textContent);
+
+        // Header MUST render 'ogc_fid' (from fidColumn) and 'county_name', deduplicating ogc_fid from attributes.
+        // Counter '#' MUST be suppressed.
+        assert.deepStrictEqual(headerTexts, ["ogc_fid", "county_name"]);
+
+        const trNodes = findAllNodes(tableEl, (el) => el.tagName === "TR");
+        const row1 = trNodes[1];
+        const tdCells = findAllNodes(row1, (el) => el.tagName === "TD");
+
+        // Exactly 2 cells: FID cell and county_name cell
+        assert.strictEqual(tdCells.length, 2);
+        assert.strictEqual(tdCells[0].textContent, "501", "FID cell renders feature ID");
+        assert.strictEqual(tdCells[1].textContent, "Arapahoe", "county_name attribute value");
+
+        // Double-clicking FID cell must NOT activate an editor (identity columns are strictly read-only)
+        await act(async () => {
+          tdCells[0].dispatchEvent({
+            type: "dblclick",
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          });
+        });
+        const inputs = findAllNodes(container, (el) => el.tagName === "INPUT");
+        assert.strictEqual(inputs.length, 0, "identity cell must not activate an editor on double click");
+
+        // Single-clicking FID cell selects the row
+        await act(async () => {
+          tdCells[0].dispatchEvent({
+            type: "click",
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          });
+        });
+        assert.ok(selectedFeatureIdsSignal.value.has("501"), "clicking FID cell must select row");
+      } finally {
+        delete (globalThis as any).window.electronAPI.queryExtent;
+      }
+    });
+
+    it("renders single sequential counter '#' column when fidColumn is empty or undefined and suppresses 'ID'", async () => {
+      const mockLayerNoFid: GisLayer = {
+        id: "layer-no-fid-test",
+        name: "No FID Layer",
+        kind: "vector",
+        geometryKind: "Point",
+        visible: true,
+        opacity: 1,
+        color: "#10b981",
+        featureCount: 1,
+        fidColumn: "",
+        fields: [
+          {
+            name: "site_code",
+            nativeType: "String",
+            inferredType: "string",
+            nullable: false,
+          },
+        ],
+      };
+
+      (globalThis as any).window.electronAPI = {
+        ...(globalThis as any).window.electronAPI,
+        queryExtent: async (layerId: string) => ({
+          layerId,
+          features: [
+            {
+              id: "v-99",
+              properties: { site_code: "SITE-ALPHA" },
+              geometryType: "Point",
+              coordinates: [10, 20],
+            },
+          ],
+          totalMatched: 1,
+        }),
+      };
+
+      dictionarySignal.value = {
+        attribute_table_col_counter: "#",
+        attribute_table_col_id: "ID",
+      };
+      layersSignal.value = [mockLayerNoFid];
+      activeLayerIdSignal.value = "layer-no-fid-test";
+
+      try {
+        await act(async () => {
+          root!.render(React.createElement(AttributeTableWidget));
+        });
+
+        const tableEl = findAllNodes(container, (el) => el.tagName === "TABLE")[0];
+        const thEls = findAllNodes(tableEl, (el) => el.tagName === "TH");
+        const headerTexts = thEls.map((th) => th.textContent);
+
+        // Header MUST render '#' and 'site_code'. 'ID' MUST be suppressed.
+        assert.deepStrictEqual(headerTexts, ["#", "site_code"]);
+
+        const trNodes = findAllNodes(tableEl, (el) => el.tagName === "TR");
+        const row1 = trNodes[1];
+        const tdCells = findAllNodes(row1, (el) => el.tagName === "TD");
+
+        assert.strictEqual(tdCells.length, 2);
+        assert.strictEqual(tdCells[0].textContent, "1", "1-based sequential counter");
+        assert.strictEqual(tdCells[1].textContent, "SITE-ALPHA", "site_code attribute value");
+
+        // Double-clicking counter cell must NOT activate an editor
+        await act(async () => {
+          tdCells[0].dispatchEvent({
+            type: "dblclick",
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          });
+        });
+        const inputs = findAllNodes(container, (el) => el.tagName === "INPUT");
+        assert.strictEqual(inputs.length, 0, "counter cell must not activate an editor on double click");
+
+        // Single-clicking counter cell selects the row
+        await act(async () => {
+          tdCells[0].dispatchEvent({
+            type: "click",
+            preventDefault: () => {},
+            stopPropagation: () => {},
+          });
+        });
+        assert.ok(selectedFeatureIdsSignal.value.has("v-99"), "clicking counter cell must select row");
+      } finally {
+        dictionarySignal.value = {};
         delete (globalThis as any).window.electronAPI.queryExtent;
       }
     });

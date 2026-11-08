@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -18,6 +18,7 @@ import type {
   GeometryKind,
   InferredFieldType,
   InferredScalarFieldType,
+  LayerCapabilities,
   LayerDetailedInfo,
   LayerEditCacheEntry,
   LayerFieldInfo,
@@ -46,6 +47,8 @@ import type {
  * @property {string} filePath - Absolute path to underlying data file.
  * @property {LayerFieldInfo[]} [fields] - Inferred layer attribute field descriptors.
  * @property {number} [cursorVersion] - Monotonically increasing revision counter tracking spatial filter and cursor mutations.
+ * @property {string} [fidColumn] - Explicit database primary key column name if guaranteed by provider, or empty string.
+ * @property {LayerCapabilities} [capabilities] - Underlying provider mutation and random-access capabilities.
  */
 interface EngineSession {
   dataset: gdal.Dataset;
@@ -53,6 +56,8 @@ interface EngineSession {
   filePath: string;
   fields?: LayerFieldInfo[];
   cursorVersion?: number;
+  fidColumn?: string;
+  capabilities?: LayerCapabilities;
 }
 
 /**
@@ -570,7 +575,7 @@ interface BackgroundScanState {
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 export class GeospatialEngine {
@@ -716,7 +721,30 @@ export class GeospatialEngine {
     }
 
     const layer = dataset.layers.get(0);
-    this.sessions.set(layerId, { dataset, layer, filePath });
+
+    let fidColumn = "";
+    try {
+      fidColumn = typeof (layer as any).fidColumn === "string" ? (layer as any).fidColumn : "";
+    } catch {
+      // Ignore if provider doesn't report fidColumn
+    }
+
+    let capabilities: LayerCapabilities = {
+      randomWrite: false,
+      deleteFeature: false,
+      fastRandomRead: false,
+    };
+    try {
+      capabilities = {
+        randomWrite: Boolean(layer.testCapability((gdal as any).OLCRandomWrite)),
+        deleteFeature: Boolean(layer.testCapability((gdal as any).OLCDeleteFeature)),
+        fastRandomRead: Boolean(layer.testCapability((gdal as any).OLCRandomRead)),
+      };
+    } catch {
+      // Ignore if provider doesn't support testCapability
+    }
+
+    this.sessions.set(layerId, { dataset, layer, filePath, fidColumn, capabilities });
 
     const rawName = layer.name?.trim();
     const name =
@@ -796,7 +824,17 @@ export class GeospatialEngine {
       });
     }
 
-    return { layerId, name, extent, featureCount, crs, geometryKind, fields };
+    return {
+      layerId,
+      name,
+      extent,
+      featureCount,
+      crs,
+      geometryKind,
+      fields,
+      fidColumn,
+      capabilities,
+    };
   }
 
   /**
@@ -881,6 +919,32 @@ export class GeospatialEngine {
 
     const fields = this.inferLayerFields(dataset, layer, filePath);
 
+    let fidColumn = session.fidColumn;
+    if (fidColumn === undefined) {
+      try {
+        fidColumn = typeof (layer as any).fidColumn === "string" ? (layer as any).fidColumn : "";
+      } catch {
+        fidColumn = "";
+      }
+    }
+
+    let capabilities = session.capabilities;
+    if (!capabilities) {
+      try {
+        capabilities = {
+          randomWrite: Boolean(layer.testCapability((gdal as any).OLCRandomWrite)),
+          deleteFeature: Boolean(layer.testCapability((gdal as any).OLCDeleteFeature)),
+          fastRandomRead: Boolean(layer.testCapability((gdal as any).OLCRandomRead)),
+        };
+      } catch {
+        capabilities = {
+          randomWrite: false,
+          deleteFeature: false,
+          fastRandomRead: false,
+        };
+      }
+    }
+
     return {
       layerId,
       name,
@@ -892,6 +956,8 @@ export class GeospatialEngine {
       crsDescription,
       extent,
       fields,
+      fidColumn,
+      capabilities,
     };
   }
 

@@ -119,7 +119,7 @@ export const CANONICAL_INFERRED_FIELD_TYPES: readonly InferredFieldType[] = [
  * @property {'string' | 'number' | 'boolean' | 'Date' | 'unknown' | InferredFieldType} [mappedType] - Corresponding TypeScript runtime primitive type (legacy compatibility).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-03
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 export interface LayerFieldInfo {
@@ -142,6 +142,22 @@ export interface LayerFieldInfo {
 }
 
 /**
+ * @typedef {Object} LayerCapabilities
+ * @property {boolean} randomWrite - Provider capability to update features in place by FID (OLCRandomWrite).
+ * @property {boolean} deleteFeature - Provider capability to delete features by FID (OLCDeleteFeature).
+ * @property {boolean} fastRandomRead - Provider capability to fetch features efficiently by FID in random order (OLCRandomRead).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-07
+ * @updated 2026-11-07
+ * @since 0.1.0-dev
+ */
+export interface LayerCapabilities {
+  randomWrite: boolean;
+  deleteFeature: boolean;
+  fastRandomRead: boolean;
+}
+
+/**
  * @typedef {Object} LayerDetailedInfo
  * @property {string} layerId - Unique identifier of the layer.
  * @property {string} name - Display title of the layer.
@@ -153,6 +169,12 @@ export interface LayerFieldInfo {
  * @property {string} crsDescription - User-readable CRS description or authority string.
  * @property {BoundingBox} extent - Geographic or projected layer extent [minX, minY, maxX, maxY].
  * @property {LayerFieldInfo[]} fields - Schema attribute field definitions.
+ * @property {string} [fidColumn] - Explicit database primary key column name if guaranteed by provider, or empty string.
+ * @property {LayerCapabilities} [capabilities] - Underlying provider mutation and random-access capabilities.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-23
+ * @updated 2026-11-07
+ * @since 0.1.0-dev
  */
 export interface LayerDetailedInfo {
   layerId: string;
@@ -165,4 +187,6 @@ export interface LayerDetailedInfo {
   crsDescription: string;
   extent: BoundingBox;
   fields: LayerFieldInfo[];
+  fidColumn?: string;
+  capabilities?: LayerCapabilities;
 }

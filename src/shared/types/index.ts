@@ -118,9 +118,11 @@ export interface GisLayerGroup {
  * @property {OlFlatStyle} [flatStyle] - Compiled OpenLayers flat style rules.
  * @property {ArrayBuffer} [flatGeobufBuffer] - Zero-copy binary FlatGeobuf vector payload buffer.
  * @property {import('./layers').LayerFieldInfo[]} [fields] - Vector attribute field schema definitions.
+ * @property {string} [fidColumn] - Explicit database primary key column name if guaranteed by provider, or empty string.
+ * @property {import('./layers').LayerCapabilities} [capabilities] - Underlying provider mutation and random-access capabilities.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 export interface GisLayer {
@@ -139,6 +141,8 @@ export interface GisLayer {
   flatStyle?: OlFlatStyle;
   flatGeobufBuffer?: ArrayBuffer;
   fields?: import('./layers').LayerFieldInfo[];
+  fidColumn?: string;
+  capabilities?: import('./layers').LayerCapabilities;
 }
 
 /**

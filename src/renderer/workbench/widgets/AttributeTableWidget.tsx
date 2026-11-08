@@ -831,12 +831,32 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     return map;
   }, [schemaFields]);
 
-  const attributeKeys =
-    schemaFields && schemaFields.length > 0
-      ? schemaFields.map((f) => f.name)
-      : features.length > 0
-      ? Object.keys(features[0].properties)
-      : [];
+  const hasGuaranteedFid = Boolean(
+    activeLayer?.fidColumn && activeLayer.fidColumn.trim() !== ""
+  );
+  const fidColumnName = hasGuaranteedFid ? activeLayer!.fidColumn!.trim() : "";
+
+  const attributeKeys = useMemo(() => {
+    let keys: string[] = [];
+    if (schemaFields && schemaFields.length > 0) {
+      keys = schemaFields.map((f) => f.name);
+    } else if (features.length > 0) {
+      const keySet = new Set<string>();
+      for (const f of features) {
+        if (f.properties) {
+          for (const k of Object.keys(f.properties)) {
+            keySet.add(k);
+          }
+        }
+      }
+      keys = Array.from(keySet);
+    }
+    if (hasGuaranteedFid && fidColumnName) {
+      const lowerFid = fidColumnName.toLowerCase();
+      keys = keys.filter((k) => k.toLowerCase() !== lowerFid);
+    }
+    return keys;
+  }, [schemaFields, features, hasGuaranteedFid, fidColumnName]);
 
   const isLayerEditable =
     activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
@@ -1258,24 +1278,25 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
               className='table-scroll-wrapper'
               style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
               {(() => {
-                const counterTitle = t("attribute_table_col_counter");
-                const idTitle = t("attribute_table_col_id");
+                const identityColKey = hasGuaranteedFid ? "__id__" : "__counter__";
+                const identityTitle = hasGuaranteedFid
+                  ? fidColumnName.toLowerCase() === "id"
+                    ? t("attribute_table_col_id")
+                    : fidColumnName
+                  : t("attribute_table_col_counter");
 
-                const counterWidth = getColWidth(
-                  "__counter__",
-                  DEFAULT_SYSTEM_COLUMN_WIDTHS.__counter__
-                );
-                const idWidth = getColWidth(
-                  "__id__",
-                  DEFAULT_SYSTEM_COLUMN_WIDTHS.__id__
+                const identityWidth = getColWidth(
+                  identityColKey,
+                  DEFAULT_SYSTEM_COLUMN_WIDTHS[identityColKey]
                 );
 
-                const counterMinWidth = getMinColWidth(counterTitle, 36);
-                const idMinWidth = getMinColWidth(idTitle, 40);
+                const identityMinWidth = getMinColWidth(
+                  identityTitle,
+                  hasGuaranteedFid ? 40 : 36
+                );
 
                 const totalTableWidth =
-                  counterWidth +
-                  idWidth +
+                  identityWidth +
                   attributeKeys.reduce(
                     (acc, k) => acc + getColWidth(k, DEFAULT_ATTRIBUTE_COL_WIDTH),
                     0
@@ -1293,75 +1314,88 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                     }}>
                     <thead>
                       <tr style={{ backgroundColor: "#f1f5f9", textAlign: "left" }}>
-                        <th
-                          style={{
-                            width: counterWidth,
-                            textAlign: "center",
-                            padding: "4px 8px",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            boxSizing: "border-box",
-                            position: "relative",
-                          }}>
-                          {counterTitle}
-                          <div
-                            className='column-resize-handle'
-                            onMouseDown={(e) =>
-                              startColumnResize(
-                                e,
-                                "__counter__",
-                                counterWidth,
-                                counterMinWidth
-                              )
-                            }
-                            onDoubleClick={(e) =>
-                              autoFitColumn(
-                                e,
-                                "__counter__",
-                                counterTitle,
-                                (_, idx) => pageStart + idx + 1
-                              )
-                            }
+                        {hasGuaranteedFid ? (
+                          <th
                             style={{
-                              position: "absolute",
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: "6px",
-                              cursor: "col-resize",
-                              userSelect: "none",
-                              zIndex: 1,
-                            }}
-                          />
-                        </th>
-                        <th
-                          style={{
-                            width: idWidth,
-                            padding: "4px 8px",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            boxSizing: "border-box",
-                            position: "relative",
-                          }}>
-                          {idTitle}
-                          <div
-                            className='column-resize-handle'
-                            onMouseDown={(e) =>
-                              startColumnResize(e, "__id__", idWidth, idMinWidth)
-                            }
-                            onDoubleClick={(e) =>
-                              autoFitColumn(e, "__id__", idTitle, (f) => f.id)
-                            }
+                              width: identityWidth,
+                              padding: "4px 8px",
+                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              boxSizing: "border-box",
+                              position: "relative",
+                            }}>
+                            {identityTitle}
+                            <div
+                              className='column-resize-handle'
+                              onMouseDown={(e) =>
+                                startColumnResize(
+                                  e,
+                                  "__id__",
+                                  identityWidth,
+                                  identityMinWidth
+                                )
+                              }
+                              onDoubleClick={(e) =>
+                                autoFitColumn(
+                                  e,
+                                  "__id__",
+                                  identityTitle,
+                                  (f) => f.id
+                                )
+                              }
+                              style={{
+                                position: "absolute",
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: "6px",
+                                cursor: "col-resize",
+                                userSelect: "none",
+                                zIndex: 1,
+                              }}
+                            />
+                          </th>
+                        ) : (
+                          <th
                             style={{
-                              position: "absolute",
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: "6px",
-                              cursor: "col-resize",
-                              userSelect: "none",
-                              zIndex: 1,
-                            }}
-                          />
-                        </th>
+                              width: identityWidth,
+                              textAlign: "center",
+                              padding: "4px 8px",
+                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
+                              boxSizing: "border-box",
+                              position: "relative",
+                            }}>
+                            {identityTitle}
+                            <div
+                              className='column-resize-handle'
+                              onMouseDown={(e) =>
+                                startColumnResize(
+                                  e,
+                                  "__counter__",
+                                  identityWidth,
+                                  identityMinWidth
+                                )
+                              }
+                              onDoubleClick={(e) =>
+                                autoFitColumn(
+                                  e,
+                                  "__counter__",
+                                  identityTitle,
+                                  (_, idx) => pageStart + idx + 1
+                                )
+                              }
+                              style={{
+                                position: "absolute",
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: "6px",
+                                cursor: "col-resize",
+                                userSelect: "none",
+                                zIndex: 1,
+                              }}
+                            />
+                          </th>
+                        )}
 
                         {attributeKeys.map((key) => {
                           const colW = getColWidth(
@@ -1440,26 +1474,36 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                 color: isSelected ? "#0369a1" : "inherit",
                                 borderBottom: "1px solid #f1f5f9",
                               }}>
-                              <td
-                                className='cell-counter'
-                                onClick={(e) =>
-                                  handleCounterCellClick(e, feature.id, idx)
-                                }
-                                title={String(pageStart + idx + 1)}
-                                style={{
-                                  ...BASE_DATA_CELL_STYLE,
-                                  textAlign: "center",
-                                  cursor: "pointer",
-                                  userSelect: "none",
-                                }}>
-                                {pageStart + idx + 1}
-                              </td>
-                              <td
-                                className='cell-id'
-                                title={String(feature.id)}
-                                style={BASE_DATA_CELL_STYLE}>
-                                {feature.id}
-                              </td>
+                              {hasGuaranteedFid ? (
+                                <td
+                                  className='cell-id'
+                                  onClick={(e) =>
+                                    handleCounterCellClick(e, feature.id, idx)
+                                  }
+                                  title={String(feature.id)}
+                                  style={{
+                                    ...BASE_DATA_CELL_STYLE,
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                  }}>
+                                  {feature.id}
+                                </td>
+                              ) : (
+                                <td
+                                  className='cell-counter'
+                                  onClick={(e) =>
+                                    handleCounterCellClick(e, feature.id, idx)
+                                  }
+                                  title={String(pageStart + idx + 1)}
+                                  style={{
+                                    ...BASE_DATA_CELL_STYLE,
+                                    textAlign: "center",
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                  }}>
+                                  {pageStart + idx + 1}
+                                </td>
+                              )}
 
                               {attributeKeys.map((key) => {
                                 const isCellEditing =

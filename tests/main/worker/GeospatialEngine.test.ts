@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -39,6 +39,7 @@ const __dirname = path.dirname(__filename);
 const lakesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes_north_america.geojson');
 const lakesShpPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes.shp');
 const centrelinesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson');
+const timelineGpkgPath = path.resolve(__dirname, '../../../../test/files/timeline_level_0.gpkg');
 
 describe('GeospatialEngine Helper Functions', () => {
   it('mapGdalGeometryKind correctly maps GDAL geometry types', () => {
@@ -159,6 +160,42 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     assert.equal(metadata.layerId, 'centrelines-1');
     assert.equal(metadata.featureCount, 4176);
     assert.equal(metadata.geometryKind, 'LineString');
+  });
+
+  it('extracts layer.fidColumn and tests capabilities (Ticket #202)', async () => {
+    // 1. GeoPackage: persistent FID column 'fid' and capabilities
+    const gpkgMeta = await engine.openDataset('gpkg-test', timelineGpkgPath);
+    assert.equal(gpkgMeta.fidColumn, 'fid');
+    assert.deepEqual(gpkgMeta.capabilities, {
+      randomWrite: false,
+      deleteFeature: false,
+      fastRandomRead: true,
+    });
+
+    const gpkgInfo = await engine.getLayerInfo('gpkg-test');
+    assert.equal(gpkgInfo.fidColumn, 'fid');
+    assert.deepEqual(gpkgInfo.capabilities, {
+      randomWrite: false,
+      deleteFeature: false,
+      fastRandomRead: true,
+    });
+
+    // 2. Shapefile: virtual row index FID (empty fidColumn) and capabilities
+    const shpMeta = await engine.openDataset('shp-test', lakesShpPath);
+    assert.equal(shpMeta.fidColumn, '');
+    assert.deepEqual(shpMeta.capabilities, {
+      randomWrite: false,
+      deleteFeature: false,
+      fastRandomRead: true,
+    });
+
+    const shpInfo = await engine.getLayerInfo('shp-test');
+    assert.equal(shpInfo.fidColumn, '');
+    assert.deepEqual(shpInfo.capabilities, {
+      randomWrite: false,
+      deleteFeature: false,
+      fastRandomRead: true,
+    });
   });
 
   it('throws descriptive error on invalid or non-existent dataset file', async () => {

@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-02
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -31,7 +31,7 @@ export { mapGdalGeometryKind };
  * appends to ProjectStore, and broadcasts updated layer hierarchy over IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-02
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {AddLayerParams} params - Layer creation specifications.
  * @returns {Promise<Layer>} Created runtime Layer instance.
@@ -77,6 +77,8 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     crs?: import('@shared/types').ProjectCrs;
     geometryKind?: GeometryKind;
     fields?: import('@shared/types').LayerFieldInfo[];
+    fidColumn?: string;
+    capabilities?: import('@shared/types/layers').LayerCapabilities;
   } = {
     extent: [0, 0, 0, 0],
     featureCount: 0
@@ -118,6 +120,8 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   newLayer.extent = extent;
   newLayer.featureCount = featureCount;
   newLayer.fields = metadata.fields;
+  newLayer.fidColumn = metadata.fidColumn;
+  newLayer.capabilities = metadata.capabilities;
 
   const layerDescriptor: LayerDescriptor = {
     id: newLayer.id,
@@ -136,7 +140,9 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     fields: metadata.fields,
     customProperties: newLayer.customProperties,
     extent,
-    featureCount
+    featureCount,
+    fidColumn: metadata.fidColumn,
+    capabilities: metadata.capabilities,
   };
 
   // 6. Append to ProjectStore singleton

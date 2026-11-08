@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-04
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -228,6 +228,8 @@ export default async function openProject(
 
             extent = metadata.extent;
             featureCount = metadata.featureCount;
+            layer.fidColumn = metadata.fidColumn;
+            layer.capabilities = metadata.capabilities;
           } catch (loadErr) {
             logging.warn(
               "Failed to load dataset for layer in project",

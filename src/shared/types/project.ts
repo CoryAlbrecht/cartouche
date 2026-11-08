@@ -212,6 +212,8 @@ export interface ProjectLayerItem {
   extent?: BoundingBox;
   featureCount?: number;
   temporalEnabled?: boolean;
+  fidColumn?: string;
+  capabilities?: import('./layers').LayerCapabilities;
 }
 
 /**
@@ -368,7 +370,7 @@ export interface LayerEditCacheEntry {
  * @property {number} [totalMatched] - Total count of features matching spatial and ID filters prior to start/max slicing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 export interface QueryExtentResult {

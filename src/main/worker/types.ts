@@ -28,9 +28,11 @@ import type {
  * @property {ProjectCrs} [crs] - Resolved coordinate reference system metadata.
  * @property {GeometryKind} geometryKind - Mapped GIS geometry kind.
  * @property {LayerFieldInfo[]} [fields] - Inferred attribute column definitions.
+ * @property {string} [fidColumn] - Explicit database primary key column name if guaranteed by provider, or empty string.
+ * @property {import('../../shared/types/layers').LayerCapabilities} [capabilities] - Underlying provider mutation and random-access capabilities.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-02
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 export interface GeospatialLayerMetadata {
@@ -41,6 +43,8 @@ export interface GeospatialLayerMetadata {
   crs?: ProjectCrs;
   geometryKind: GeometryKind;
   fields?: LayerFieldInfo[];
+  fidColumn?: string;
+  capabilities?: import('../../shared/types/layers').LayerCapabilities;
 }
 
 /**
