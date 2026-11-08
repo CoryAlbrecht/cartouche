@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -417,7 +417,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(html.includes('class="preference-checkbox-group"'), 'renders checkbox-group');
   });
 
-  it('renders colour control as an accessible button with inner swatch (without chevron) and hidden input (Ticket #56)', () => {
+  it('renders colour control as an accessible button with inner swatch (without chevron) triggering ColourPickerDialog (Tickets #56, #206)', () => {
     preferencesMapSignal.value = {
       'general.logging.colours.level.warn': {
         displayName: 'Warning Level Color',
@@ -445,12 +445,6 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(
       !html.includes('preference-color-chevron'),
       'Must not contain dropdown chevron icon wrapper'
-    );
-
-    // Verify hidden input
-    assert.ok(
-      html.includes('type="color" tabindex="-1" aria-hidden="true" class="preference-hidden-color-input"'),
-      'Must include hidden native color input with tabIndex={-1} and aria-hidden="true"'
     );
   });
 

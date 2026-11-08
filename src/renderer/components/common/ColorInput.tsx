@@ -1,12 +1,13 @@
 /**
  * @file ColorInput.tsx
  * @module renderer/components/common/ColorInput
- * @description Reusable color input component pairing an editable CSS color / hex text input with an interactive swatch button triggering the native system color picker.
+ * @description Reusable color input component pairing an editable CSS color / hex text input with an interactive swatch button triggering ColourPickerDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link ColorInput}
+ * @see {@link ColourPickerDialog}
  * @see {@link CssColorsDatalist}
  * @see {@link isValidCssColor}
  * @see {@link resolveColorToHex}
@@ -20,6 +21,8 @@ import {
   isValidCssColor,
   resolveColorToHex,
 } from '@shared/colors/cssColors';
+import { parseCssColor, srgbToHex } from '@shared/colors/colorConversions';
+import { ColourPickerDialog } from '@renderer/workbench/dialogs/ColourPickerDialog';
 
 /**
  * @typedef {Object} ColorInputProps
@@ -89,7 +92,7 @@ export const ColorInput: React.FC<ColorInputProps> = ({
   fallbackColor = '#000000',
 }) => {
   const [textValue, setTextValue] = useState<string>(value || '');
-  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
 
   // Maintain reference to the most recent valid hex color to preserve swatch preview during invalid typing
   const initialResolved = resolveColorToHex(value) || fallbackColor;
@@ -104,7 +107,7 @@ export const ColorInput: React.FC<ColorInputProps> = ({
     }
   }, [value]);
 
-  const isValid = isValidCssColor(textValue);
+  const isValid = isValidCssColor(textValue) || parseCssColor(textValue) !== null;
 
   if (isValid) {
     const resolved = resolveColorToHex(textValue);
@@ -113,12 +116,16 @@ export const ColorInput: React.FC<ColorInputProps> = ({
     }
   }
 
-  const swatchColor = lastValidHexRef.current || fallbackColor;
+  const hexResolved = resolveColorToHex(textValue);
+  const parsed = parseCssColor(textValue);
+  const swatchColor =
+    hexResolved ||
+    (parsed ? srgbToHex(parsed.srgb, false) : lastValidHexRef.current || fallbackColor);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVal = e.target.value;
     setTextValue(newVal);
-    const valid = isValidCssColor(newVal);
+    const valid = isValidCssColor(newVal) || parseCssColor(newVal) !== null;
     if (valid) {
       const resolved = resolveColorToHex(newVal);
       if (resolved) {
@@ -128,24 +135,27 @@ export const ColorInput: React.FC<ColorInputProps> = ({
     onChange(newVal, valid);
   };
 
-  const handleNativeColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hex = e.target.value;
-    setTextValue(hex);
-    lastValidHexRef.current = hex;
-    onChange(hex, true);
-  };
-
   const handleButtonClick = () => {
-    if (!disabled && colorInputRef.current) {
-      colorInputRef.current.click();
+    if (!disabled) {
+      setIsPickerOpen(true);
     }
   };
 
   const handleButtonKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
       e.preventDefault();
-      colorInputRef.current?.click();
+      setIsPickerOpen(true);
     }
+  };
+
+  const handlePickerApply = (newColor: string) => {
+    setTextValue(newColor);
+    setIsPickerOpen(false);
+    onChange(newColor, true);
+  };
+
+  const handlePickerCancel = () => {
+    setIsPickerOpen(false);
   };
 
   return (
@@ -218,16 +228,16 @@ export const ColorInput: React.FC<ColorInputProps> = ({
             style={{ backgroundColor: swatchColor }}
           />
         </button>
-        <input
-          ref={colorInputRef}
-          type="color"
-          tabIndex={-1}
-          aria-hidden="true"
-          className="preference-hidden-color-input"
-          disabled={disabled}
-          value={swatchColor}
-          onChange={handleNativeColorChange}
-        />
+
+        {isPickerOpen && (
+          <ColourPickerDialog
+            isOpen={isPickerOpen}
+            initialColor={textValue || fallbackColor}
+            title={`Pick colour for ${ariaLabel}`}
+            onApply={handlePickerApply}
+            onCancel={handlePickerCancel}
+          />
+        )}
       </div>
     </div>
   );
