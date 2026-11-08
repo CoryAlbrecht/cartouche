@@ -1,7 +1,7 @@
 /**
  * @file ColourPickerWidget.tsx
  * @module renderer/workbench/widgets/ColourPickerWidget
- * @description Reusable custom color picker widget subclassing BasicWidget, featuring a 4 lh solid preview square, 2D shade/tint surface, hue and transparency strips, screen eyedropper, and synchronized multi-format inputs.
+ * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-08
@@ -83,7 +83,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
   displayName = 'Colour Picker',
   showHeader = true,
   minWidth = 260,
-  minHeight = 320,
+  minHeight = 420,
   className = '',
   style = {},
   ...basicWidgetProps
@@ -455,178 +455,22 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
         }}
       >
         {/* =========================================================================
-            Top Section: 4 lh Solid Preview Square + Eyedropper + Format + Inputs
+            Top Section: Full-Size Solid Preview Box (Opaque Color without Alpha)
             ========================================================================= */}
         <div
-          className='colour-picker-top-section'
+          className='colour-picker-preview-box'
+          title={`Solid Opaque Color: rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})`}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            width: '100%',
+            height: '140px',
+            minHeight: '120px',
+            backgroundColor: `rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})`,
+            border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
+            borderRadius: '4px',
+            flexShrink: 0,
+            boxSizing: 'border-box'
           }}
-        >
-          {/* 4 lh Solid Preview Box (Opaque Color without Alpha) */}
-          <div
-            className='colour-picker-preview-box'
-            title={`Solid Opaque Color: rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})`}
-            style={{
-              width: '4lh',
-              height: '4lh',
-              minWidth: '4lh',
-              minHeight: '4lh',
-              backgroundColor: `rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})`,
-              border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-              borderRadius: '4px',
-              flexShrink: 0,
-              boxSizing: 'border-box'
-            }}
-          />
-
-          {/* Controls Column: Eyedropper, Format Select, Channel/Hex Inputs */}
-          <div
-            className='colour-picker-top-controls'
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              flex: 1,
-              minWidth: 0
-            }}
-          >
-            {/* Row 1: Eyedropper Button + Format Dropdown */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <button
-                type='button'
-                className='colour-picker-eyedropper-btn'
-                disabled={!isEyeDropperSupported}
-                title={
-                  isEyeDropperSupported
-                    ? 'Sample color from screen'
-                    : 'Screen eyedropper is not supported in this environment'
-                }
-                onClick={handleEyeDropper}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '4px',
-                  backgroundColor: 'var(--cartouche-theme-surface-alt, #f1f5f9)',
-                  color: isEyeDropperSupported
-                    ? 'var(--cartouche-theme-fg-primary, #0f172a)'
-                    : 'var(--cartouche-theme-fg-muted, #94a3b8)',
-                  border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                  borderRadius: '3px',
-                  cursor: isEyeDropperSupported ? 'pointer' : 'not-allowed',
-                  opacity: isEyeDropperSupported ? 1 : 0.6,
-                  flexShrink: 0
-                }}
-              >
-                <Icon path={mdiEyedropper} size='1rem' />
-              </button>
-
-              <select
-                className='colour-picker-format-select'
-                value={activeFormat}
-                onChange={handleFormatChange}
-                style={{
-                  flex: 1,
-                  padding: '3px 6px',
-                  fontSize: '0.8125rem',
-                  backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-                  color: 'var(--cartouche-theme-fg, #000000)',
-                  border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                  borderRadius: '3px'
-                }}
-              >
-                {COLOR_FORMATS.map((fmt) => (
-                  <option key={fmt} value={fmt}>
-                    {fmt}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Row 2: Channel Inputs or Single HEX Input */}
-            <div
-              className='colour-picker-inputs-row'
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              {activeFormat === 'HEX' ? (
-                <input
-                  type='text'
-                  className='colour-picker-hex-input'
-                  value={srgbToHex(currentSrgb, true)}
-                  onChange={handleHexInputChange}
-                  onInput={handleHexInputChange}
-                  spellCheck={false}
-                  placeholder='#rrggbbaa'
-                  style={{
-                    width: '100%',
-                    padding: '3px 6px',
-                    fontSize: '0.8125rem',
-                    fontFamily: 'var(--cartouche-theme-font-family-mono, monospace)',
-                    backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-                    color: 'var(--cartouche-theme-fg, #000000)',
-                    border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                    borderRadius: '3px'
-                  }}
-                />
-              ) : (
-                channels.map((chan) => (
-                  <div
-                    key={chan.key}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      flex: 1,
-                      minWidth: 0
-                    }}
-                  >
-                    <input
-                      type='number'
-                      step={chan.step}
-                      className={`colour-picker-channel-input colour-picker-channel-${chan.key}`}
-                      value={chan.value}
-                      onChange={(e) => handleChannelInputChange(chan.key, e.target.value)}
-                      onInput={(e) => handleChannelInputChange(chan.key, (e.target as HTMLInputElement).value)}
-                      title={chan.label}
-                      style={{
-                        width: '100%',
-                        padding: '2px 4px',
-                        fontSize: '0.75rem',
-                        textAlign: 'center',
-                        backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-                        color: 'var(--cartouche-theme-fg, #000000)',
-                        border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                        borderRadius: '3px'
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: '0.6875rem',
-                        color: 'var(--cartouche-theme-fg-muted, #64748b)',
-                        marginTop: '1px'
-                      }}
-                    >
-                      {chan.label}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        />
 
         {/* =========================================================================
             Middle Section: 2D Saturation / Value Shade & Tint Surface
@@ -641,7 +485,6 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             position: 'relative',
             height: '140px',
             minHeight: '120px',
-            flex: 1,
             backgroundColor: `hsl(${hsv.h}, 100%, 50%)`,
             backgroundImage:
               'linear-gradient(to right, #ffffff, transparent), linear-gradient(to top, #000000, transparent)',
@@ -650,7 +493,8 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             cursor: 'crosshair',
             touchAction: 'none',
             userSelect: 'none',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            flexShrink: 0
           }}
         >
           {/* Circular Surface Reticle */}
@@ -671,15 +515,14 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
           />
         </div>
 
-        {/* =========================================================================
-            Bottom Section: Rainbow Hue Strip + Inkscape Transparency Strip
-            ========================================================================= */}
+        {/* Rainbow Hue Strip + Inkscape Transparency Strip */}
         <div
-          className='colour-picker-bottom-strips'
+          className='colour-picker-strips'
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px'
+            gap: '6px',
+            flexShrink: 0
           }}
         >
           {/* Rainbow Hue Strip (1.25 lh tall) */}
@@ -755,6 +598,153 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                 boxShadow: '0 0 2px rgba(0,0,0,0.5)'
               }}
             />
+          </div>
+        </div>
+
+        {/* =========================================================================
+            Bottom Section: Non-Graphical Controls (Eyedropper, Format, Inputs)
+            ========================================================================= */}
+        <div
+          className='colour-picker-bottom-controls'
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            flexShrink: 0
+          }}
+        >
+          {/* Row 1: Eyedropper Button + Format Dropdown */}
+          <div
+            className='colour-picker-format-row'
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <button
+              type='button'
+              className='colour-picker-eyedropper-btn'
+              disabled={!isEyeDropperSupported}
+              title={
+                isEyeDropperSupported
+                  ? 'Sample color from screen'
+                  : 'Screen eyedropper is not supported in this environment'
+              }
+              onClick={handleEyeDropper}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                backgroundColor: 'var(--cartouche-theme-surface-alt, #f1f5f9)',
+                color: isEyeDropperSupported
+                  ? 'var(--cartouche-theme-fg-primary, #0f172a)'
+                  : 'var(--cartouche-theme-fg-muted, #94a3b8)',
+                border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
+                borderRadius: '3px',
+                cursor: isEyeDropperSupported ? 'pointer' : 'not-allowed',
+                opacity: isEyeDropperSupported ? 1 : 0.6,
+                flexShrink: 0
+              }}
+            >
+              <Icon path={mdiEyedropper} size='1rem' />
+            </button>
+
+            <select
+              className='colour-picker-format-select'
+              value={activeFormat}
+              onChange={handleFormatChange}
+              style={{
+                flex: 1,
+                padding: '3px 6px',
+                fontSize: '0.8125rem',
+                backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
+                color: 'var(--cartouche-theme-fg, #000000)',
+                border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
+                borderRadius: '3px'
+              }}
+            >
+              {COLOR_FORMATS.map((fmt) => (
+                <option key={fmt} value={fmt}>
+                  {fmt}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Row 2: Channel Inputs or Single HEX Input */}
+          <div
+            className='colour-picker-inputs-row'
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {activeFormat === 'HEX' ? (
+              <input
+                type='text'
+                className='colour-picker-hex-input'
+                value={srgbToHex(currentSrgb, true)}
+                onChange={handleHexInputChange}
+                onInput={handleHexInputChange}
+                spellCheck={false}
+                placeholder='#rrggbbaa'
+                style={{
+                  width: '100%',
+                  padding: '3px 6px',
+                  fontSize: '0.8125rem',
+                  fontFamily: 'var(--cartouche-theme-font-family-mono, monospace)',
+                  backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
+                  color: 'var(--cartouche-theme-fg, #000000)',
+                  border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
+                  borderRadius: '3px'
+                }}
+              />
+            ) : (
+              channels.map((chan) => (
+                <div
+                  key={chan.key}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    flex: 1,
+                    minWidth: 0
+                  }}
+                >
+                  <input
+                    type='number'
+                    step={chan.step}
+                    className={`colour-picker-channel-input colour-picker-channel-${chan.key}`}
+                    value={chan.value}
+                    onChange={(e) => handleChannelInputChange(chan.key, e.target.value)}
+                    onInput={(e) => handleChannelInputChange(chan.key, (e.target as HTMLInputElement).value)}
+                    title={chan.label}
+                    style={{
+                      width: '100%',
+                      padding: '2px 4px',
+                      fontSize: '0.75rem',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
+                      color: 'var(--cartouche-theme-fg, #000000)',
+                      border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
+                      borderRadius: '3px'
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: '0.6875rem',
+                      color: 'var(--cartouche-theme-fg-muted, #64748b)',
+                      marginTop: '1px'
+                    }}
+                  >
+                    {chan.label}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

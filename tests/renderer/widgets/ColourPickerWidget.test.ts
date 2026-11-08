@@ -1,7 +1,7 @@
 /**
  * @file ColourPickerWidget.test.ts
  * @module tests/renderer/widgets/ColourPickerWidget.test
- * @description Component and unit tests verifying ColourPickerWidget 4 lh solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, and channel inputs.
+ * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, and bottom channel inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-08
@@ -305,7 +305,7 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
     const widgetEls = findElementsByClass(container, 'colour-picker-widget');
     assert.equal(widgetEls.length, 1, 'ColourPickerWidget should render container with .colour-picker-widget');
 
-    // 2. 4 lh Solid Preview Box (Opaque rgb(0, 255, 0))
+    // 2. Full-Size Solid Preview Box matching surface dimensions (Opaque rgb(0, 255, 0))
     const previewBoxes = findElementsByClass(container, 'colour-picker-preview-box');
     assert.equal(previewBoxes.length, 1, 'Must render preview box');
     assert.equal(
@@ -313,8 +313,9 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
       'rgb(0, 255, 0)',
       'Preview box must render pure opaque color without alpha'
     );
-    assert.equal(previewBoxes[0].style.width, '4lh');
-    assert.equal(previewBoxes[0].style.height, '4lh');
+    assert.equal(previewBoxes[0].style.width, '100%');
+    assert.equal(previewBoxes[0].style.height, '140px');
+    assert.equal(previewBoxes[0].style.minHeight, '120px');
 
     // 3. Format Select
     const formatSelects = findElementsByClass(container, 'colour-picker-format-select');
@@ -556,5 +557,72 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
 
     assert.ok(sampledColor.includes('123456'), `Sampled color must be emitted: ${sampledColor}`);
     delete (globalThis as any).window.EyeDropper;
+  });
+
+  it('reorganizes vertical layout with full-size preview at top and controls at bottom (Ticket #208)', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: '#123456ff'
+        })
+      );
+    });
+
+    const pickerContainer = findElementsByClass(container, 'colour-picker-container')[0];
+    assert.ok(pickerContainer, 'Must render .colour-picker-container');
+
+    // Child elements in order
+    const childNodes = pickerContainer.childNodes.filter((c: any) => c.nodeType === 1);
+    assert.equal(childNodes.length, 4, 'Should contain 4 top-level sections: preview, surface, strips, controls');
+
+    // Section 1: Preview box at the top
+    assert.ok(
+      childNodes[0].className.includes('colour-picker-preview-box'),
+      'First child must be the full-size solid preview box'
+    );
+    assert.equal(childNodes[0].style.width, '100%');
+    assert.equal(childNodes[0].style.height, '140px');
+
+    // Section 2: 2D surface directly below preview box
+    assert.ok(
+      childNodes[1].className.includes('colour-picker-surface'),
+      'Second child must be the 2D shade/tint surface'
+    );
+
+    // Section 3: Rainbow and alpha strips
+    assert.ok(
+      childNodes[2].className.includes('colour-picker-strips'),
+      'Third child must be the colour-picker-strips container'
+    );
+    const hueStrips = findElementsByClass(childNodes[2], 'colour-picker-hue-strip');
+    const alphaStrips = findElementsByClass(childNodes[2], 'colour-picker-alpha-strip');
+    assert.equal(hueStrips.length, 1, 'Strips section must contain hue strip');
+    assert.equal(alphaStrips.length, 1, 'Strips section must contain alpha strip');
+
+    // Section 4: Bottom controls container
+    assert.ok(
+      childNodes[3].className.includes('colour-picker-bottom-controls'),
+      'Fourth child must be the colour-picker-bottom-controls container'
+    );
+    const bottomRows = childNodes[3].childNodes.filter((c: any) => c.nodeType === 1);
+    assert.equal(bottomRows.length, 2, 'Bottom controls must have 2 rows');
+
+    // Row 1: Eyedropper + format select inline
+    assert.ok(
+      bottomRows[0].className.includes('colour-picker-format-row'),
+      'First bottom row must be format row'
+    );
+    const eyedropperBtns = findElementsByClass(bottomRows[0], 'colour-picker-eyedropper-btn');
+    const formatSelects = findElementsByClass(bottomRows[0], 'colour-picker-format-select');
+    assert.equal(eyedropperBtns.length, 1, 'Format row must contain eyedropper button');
+    assert.equal(formatSelects.length, 1, 'Format row must contain format dropdown');
+
+    // Row 2: Inputs row
+    assert.ok(
+      bottomRows[1].className.includes('colour-picker-inputs-row'),
+      'Second bottom row must be inputs row'
+    );
+    const hexInputs = findElementsByClass(bottomRows[1], 'colour-picker-hex-input');
+    assert.equal(hexInputs.length, 1, 'Inputs row must contain text input(s)');
   });
 });
