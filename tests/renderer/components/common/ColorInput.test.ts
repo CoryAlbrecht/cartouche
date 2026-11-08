@@ -4,7 +4,7 @@
  * @description Unit tests for ColorInput component verifying hex and CSS color rendering, validation error states, swatch preview preservation, disabled behavior, and chevron omission.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link ColorInput}
  * @see {@link CssColorsDatalist}
@@ -106,7 +106,7 @@ describe('ColorInput Component (Ticket #133)', () => {
 
     assert.ok(/id="disabled-color"[^>]*disabled=""/.test(html), 'Text input must have disabled attribute');
     assert.ok(/class="preference-color-button-wrapper"[^>]*disabled=""/.test(html), 'Swatch button must have disabled attribute');
-    assert.ok(/type="color"[^>]*disabled=""/.test(html), 'Hidden native color input must have disabled attribute');
+    assert.ok(!html.includes('type="color"'), 'Native type="color" input must be replaced by ColourPickerDialog');
   });
 
   it('renders CssColorsDatalist containing all 148 standard W3C CSS named colors', () => {
