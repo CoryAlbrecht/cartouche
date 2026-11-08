@@ -93,6 +93,7 @@ export const ColorInput: React.FC<ColorInputProps> = ({
 }) => {
   const [textValue, setTextValue] = useState<string>(value || '');
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   // Maintain reference to the most recent valid hex color to preserve swatch preview during invalid typing
   const initialResolved = resolveColorToHex(value) || fallbackColor;
@@ -210,6 +211,7 @@ export const ColorInput: React.FC<ColorInputProps> = ({
           position: 'relative',
         }}>
         <button
+          ref={buttonRef}
           type="button"
           tabIndex={0}
           aria-haspopup="dialog"
@@ -234,6 +236,7 @@ export const ColorInput: React.FC<ColorInputProps> = ({
             isOpen={isPickerOpen}
             initialColor={textValue || fallbackColor}
             title={`Pick colour for ${ariaLabel}`}
+            container={buttonRef.current?.ownerDocument?.body ?? null}
             onApply={handlePickerApply}
             onCancel={handlePickerCancel}
           />

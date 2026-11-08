@@ -1,7 +1,7 @@
 /**
  * @file ColourPickerDialog.tsx
  * @module renderer/workbench/dialogs/ColourPickerDialog
- * @description Modal dialog shell wrapping ColourPickerWidget with Apply and Cancel actions, keyboard dismissal, and outside click cancellation.
+ * @description Modal dialog shell wrapping ColourPickerWidget with Apply and Cancel actions, keyboard dismissal, outside click cancellation, and ownerDocument container targeting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-08
@@ -21,6 +21,7 @@ import type { ColorFormat } from '@shared/colors';
  * @property {string} [initialColor='#00ff00ff'] - Starting color string.
  * @property {ColorFormat} [format] - Starting color model format.
  * @property {string} [title='Colour Picker'] - Modal header title string.
+ * @property {HTMLElement | null} [container] - Optional DOM container element into which the modal dialog is portaled (defaults to document.body).
  * @property {(color: string) => void} onApply - Callback invoked with selected color when Apply is clicked.
  * @property {() => void} onCancel - Callback invoked when dismissed or cancelled.
  */
@@ -29,8 +30,22 @@ export interface ColourPickerDialogProps {
   initialColor?: string;
   format?: ColorFormat;
   title?: string;
+  container?: HTMLElement | null;
   onApply: (color: string) => void;
   onCancel: () => void;
+}
+
+/**
+ * @description Resolves the host Window object for a target container DOM node.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @param {HTMLElement | null} [targetContainer] - Target DOM container node.
+ * @returns {Window | null} Resolved Window context or fallback window.
+ */
+function resolveWindowContext(targetContainer?: HTMLElement | null): Window | null {
+  return targetContainer?.ownerDocument?.defaultView ?? (typeof window !== 'undefined' ? window : null);
 }
 
 /**
@@ -48,11 +63,15 @@ export const ColourPickerDialog: React.FC<ColourPickerDialogProps> = ({
   initialColor = '#00ff00ff',
   format,
   title = 'Colour Picker',
+  container,
   onApply,
   onCancel
 }) => {
   const [draftColor, setDraftColor] = useState<string>(initialColor);
   const dialogBoxRef = useRef<HTMLDivElement>(null);
+
+  const targetContainer = container ?? (typeof document !== 'undefined' ? document.body : null);
+  const targetWindow = resolveWindowContext(targetContainer);
 
   // Synchronize draft color whenever dialog opens or initialColor changes
   useEffect(() => {
@@ -61,20 +80,20 @@ export const ColourPickerDialog: React.FC<ColourPickerDialogProps> = ({
     }
   }, [isOpen, initialColor]);
 
-  // Keyboard Escape dismissal
+  // Keyboard Escape dismissal bound to target container's window context
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !targetWindow) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
       if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault?.();
+        e.stopPropagation?.();
         onCancel();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onCancel]);
+    targetWindow.addEventListener('keydown', handleKeyDown);
+    return () => targetWindow.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel, targetWindow]);
 
   if (!isOpen) return null;
 
@@ -239,7 +258,7 @@ export const ColourPickerDialog: React.FC<ColourPickerDialogProps> = ({
     </div>
   );
 
-  return typeof document !== 'undefined' ? createPortal(portalContent, document.body) : portalContent;
+  return targetContainer ? createPortal(portalContent, targetContainer) : portalContent;
 };
 
 export default ColourPickerDialog;

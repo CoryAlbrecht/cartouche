@@ -557,4 +557,149 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
     const remainingBackdrops = findElementsByClass(doc.body, 'colour-picker-dialog-backdrop');
     assert.equal(remainingBackdrops.length, 0, 'Dialog should close after apply');
   });
+
+/**
+ * @description Creates a lightweight mock detached child window and document environment.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @param {{ current: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> }} [listenersRef] - Optional event listener bag ref.
+ * @returns {{ childDoc: any; childWin: any }} Mock child document and window.
+ */
+function createMockSecondaryWindow(listenersRef: { current: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> } = { current: {} }): { childDoc: any; childWin: any } {
+  const childDocElement = new MockElement('html');
+  const childBody = new MockElement('body');
+  childDocElement.appendChild(childBody);
+
+  const childDoc: any = {
+    nodeType: 9,
+    documentElement: childDocElement,
+    body: childBody,
+    createElement: (tag: string) => {
+      const el = new MockElement(tag);
+      el.ownerDocument = childDoc;
+      return el;
+    },
+    createElementNS: (_ns: string, tag: string) => {
+      const el = new MockElement(tag);
+      el.ownerDocument = childDoc;
+      return el;
+    },
+    createTextNode: (text: string) => ({ nodeType: 3, nodeValue: text, ownerDocument: childDoc, parentNode: null }),
+    createComment: (data: string) => ({ nodeType: 8, data, ownerDocument: childDoc, parentNode: null }),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    defaultView: null as any
+  };
+  childDocElement.ownerDocument = childDoc;
+  childBody.ownerDocument = childDoc;
+
+  const childWin: any = {
+    innerWidth: 600,
+    innerHeight: 400,
+    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+      if (!listenersRef.current[type]) listenersRef.current[type] = [];
+      listenersRef.current[type].push({ cb, capture: Boolean(capture) });
+    },
+    removeEventListener: (type: string, cb: (e: any) => void) => {
+      if (!listenersRef.current[type]) return;
+      listenersRef.current[type] = listenersRef.current[type].filter((l) => l.cb !== cb);
+    },
+    dispatchEvent: (event: any) => {
+      const listeners = (listenersRef.current[event.type] || []).slice();
+      for (const { cb } of listeners) {
+        cb(event);
+      }
+      return !event.defaultPrevented;
+    },
+    document: childDoc,
+    HTMLIFrameElement: class {},
+    HTMLElement: MockElement,
+    Element: MockElement
+  };
+  childDoc.defaultView = childWin;
+
+  return { childDoc, childWin };
+}
+
+  it('portals into target container and listens to container window Escape key (Ticket #209)', async () => {
+    let wasCancelled = false;
+
+    // Create a secondary child window and document
+    const childListeners = { current: {} };
+    const { childDoc, childWin } = createMockSecondaryWindow(childListeners);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          initialColor: '#123456ff',
+          container: childDoc.body,
+          onApply: () => {},
+          onCancel: () => {
+            wasCancelled = true;
+          }
+        })
+      );
+    });
+
+    // Check that dialog is in childDoc.body, NOT in doc.body
+    const childBackdrops = findElementsByClass(childDoc.body, 'colour-picker-dialog-backdrop');
+    assert.equal(childBackdrops.length, 1, 'Modal must portal into childDoc.body');
+
+    const mainBackdrops = findElementsByClass(doc.body, 'colour-picker-dialog-backdrop');
+    assert.equal(mainBackdrops.length, 0, 'Modal must NOT portal into Workbench doc.body');
+
+    // Press Escape on childWin
+    await act(async () => {
+      childWin.dispatchEvent({
+        type: 'keydown',
+        key: 'Escape',
+        bubbles: true
+      });
+    });
+
+    assert.equal(wasCancelled, true, 'Escape key on childWin must trigger onCancel');
+  });
+
+  it('ColorInput resolves container from ownerDocument.body when rendered inside a secondary window (Ticket #209)', async () => {
+    // Create a secondary child window and document
+    const { childDoc } = createMockSecondaryWindow();
+
+    const childContainer = childDoc.createElement('div');
+    childDoc.body.appendChild(childContainer);
+    const childRoot = createRoot(childContainer as any);
+
+    await act(async () => {
+      childRoot.render(
+        React.createElement(ColorInput, {
+          value: '#336699',
+          onChange: () => {}
+        })
+      );
+    });
+
+    const swatchBtns = findElementsByClass(childContainer, 'preference-color-button-wrapper');
+    assert.ok(swatchBtns.length >= 1, 'Must render swatch button in child container');
+
+    // Click swatch button
+    await act(async () => {
+      swatchBtns[0].dispatchEvent({
+        type: 'click',
+        bubbles: true
+      });
+    });
+
+    // Dialog must be portaled into childDoc.body, NOT doc.body
+    const childBackdrops = findElementsByClass(childDoc.body, 'colour-picker-dialog-backdrop');
+    assert.equal(childBackdrops.length, 1, 'ColourPickerDialog must portal into childDoc.body');
+
+    const mainBackdrops = findElementsByClass(doc.body, 'colour-picker-dialog-backdrop');
+    assert.equal(mainBackdrops.length, 0, 'ColourPickerDialog must NOT portal into Workbench doc.body');
+
+    act(() => {
+      childRoot.unmount();
+    });
+  });
 });
