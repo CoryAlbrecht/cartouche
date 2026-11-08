@@ -23,6 +23,24 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
   );
   const indexHtmlPath = path.resolve(rootDir, "src/renderer/index.html");
 
+  /**
+   * Helper reading stylesheet content and following local relative `@import` declarations.
+   */
+  const readCssWithImports = (filePath: string): string => {
+    let content = fs.readFileSync(filePath, "utf-8");
+    const importRegex = /@import\s+['"]([^'"]+)['"];/g;
+    let match: RegExpExecArray | null;
+    while ((match = importRegex.exec(content)) !== null) {
+      if (match[1].startsWith(".")) {
+        const importedPath = path.resolve(path.dirname(filePath), match[1]);
+        if (fs.existsSync(importedPath)) {
+          content += "\n" + readCssWithImports(importedPath);
+        }
+      }
+    }
+    return content;
+  };
+
   it("ensures all statically bundled WOFF2 font assets exist and have non-zero size", () => {
     const requiredFonts = [
       "noto-sans/NotoSans-Regular.woff2",
@@ -48,7 +66,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
   });
 
   it("declares local @font-face rules with font-display: swap in theme.css", () => {
-    const themeCss = fs.readFileSync(themeCssPath, "utf-8");
+    const themeCss = readCssWithImports(themeCssPath);
 
     assert.ok(
       themeCss.includes("@font-face"),
@@ -76,7 +94,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
   });
 
   it("scopes Noto Sans Math via explicit mathematical unicode-range in theme.css", () => {
-    const themeCss = fs.readFileSync(themeCssPath, "utf-8");
+    const themeCss = readCssWithImports(themeCssPath);
 
     const normalizedThemeCss = themeCss.replace(/\s+/g, " ");
     const expectedRange =
@@ -88,7 +106,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
   });
 
   it("configures canonical --cartouche-theme-font-family with Noto Sans Math and Noto Sans cascade", () => {
-    const themeCss = fs.readFileSync(themeCssPath, "utf-8");
+    const themeCss = readCssWithImports(themeCssPath);
 
     assert.ok(
       themeCss.includes("--cartouche-theme-font-family:"),
@@ -107,7 +125,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
   });
 
   it("configures canonical --cartouche-theme-font-family-mono with Noto Sans Mono and modern monospace fallbacks", () => {
-    const themeCss = fs.readFileSync(themeCssPath, "utf-8");
+    const themeCss = readCssWithImports(themeCssPath);
 
     assert.ok(
       themeCss.includes("--cartouche-theme-font-family-mono:"),
@@ -167,7 +185,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
     );
     assert.ok(
       workbenchCss.includes(
-        ".console-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background-color: #ffffff;\n  font-family: var(--cartouche-theme-font-family-mono);"
+        ".console-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background-color: var(--cartouche-theme-surface);\n  font-family: var(--cartouche-theme-font-family-mono);"
       ),
       ".console-panel must use var(--cartouche-theme-font-family-mono)"
     );

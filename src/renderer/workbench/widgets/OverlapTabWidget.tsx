@@ -4,7 +4,7 @@
  * @description Tabbed container subclass of BasicWidget hosting multiple tool widgets, managing tab selection, drag-and-drop tab extraction, and single-child auto-dissolution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-05
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see docs/adr/0025-flex-proportional-docking-and-overlap-tab-widgets.md (ADR 0025)
@@ -34,7 +34,7 @@ const DEFAULT_TAB_TITLES: Record<string, string> = {
  * @description Item specification for a child tab within OverlapTabWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-05
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @property {string} id - Unique identifier of the child widget.
  * @property {string} title - Label rendered on the tab strip button.
@@ -56,7 +56,7 @@ export interface OverlapTabItem {
  * @description Properties passed to OverlapTabWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-05
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @property {OverlapTabItem[]} [tabs] - Explicit list of child tab definitions.
  * @property {string} [activeTabId] - Initial or controlled active tab identifier.
@@ -82,7 +82,7 @@ export interface OverlapTabWidgetProps extends Partial<BasicWidgetProps> {
  * @description Subclass of BasicWidget providing a tabbed container for grouping overlappable tool widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-05
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {OverlapTabWidgetProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered tabbed container element or null when empty.
@@ -375,8 +375,8 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
             style={{
               position: "absolute",
               inset: 0,
-              backgroundColor: "rgba(37, 99, 235, 0.12)",
-              border: "2px dashed #2563eb",
+              backgroundColor: "var(--cartouche-drop-target-bg)",
+              border: "2px dashed var(--cartouche-drop-target-border)",
               zIndex: 50,
               pointerEvents: "none",
               display: "flex",
@@ -385,13 +385,13 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
             }}>
             <div
               style={{
-                backgroundColor: "#2563eb",
-                color: "#ffffff",
+                backgroundColor: "var(--cartouche-drop-target-border)",
+                color: "var(--cartouche-theme-fg-inverted)",
                 padding: "4px 10px",
                 borderRadius: "4px",
                 fontSize: "0.75rem",
                 fontWeight: 600,
-                boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+                boxShadow: "0 2px 4px var(--cartouche-theme-shadow)",
               }}>
               Add Tab to Group
             </div>
@@ -404,8 +404,8 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
           style={{
             display: "flex",
             alignItems: "center",
-            backgroundColor: "#e2e8f0",
-            borderBottom: "1px solid #cbd5e1",
+            backgroundColor: "var(--cartouche-theme-surface-active)",
+            borderBottom: "1px solid var(--cartouche-theme-border-strong)",
             overflowX: "auto",
             flexShrink: 0,
             minHeight: "28px",
@@ -434,12 +434,12 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
                   padding: "4px 10px",
                   fontSize: "0.8125rem",
                   fontWeight: isActive ? 600 : 500,
-                  color: isActive ? "#0f172a" : "#475569",
-                  backgroundColor: isActive ? "#ffffff" : "#f1f5f9",
+                  color: isActive ? "var(--cartouche-theme-fg-primary)" : "var(--cartouche-theme-fg-muted)",
+                  backgroundColor: isActive ? "var(--cartouche-theme-surface)" : "var(--cartouche-theme-surface-alt)",
                   borderTopLeftRadius: "4px",
                   borderTopRightRadius: "4px",
-                  border: "1px solid #cbd5e1",
-                  borderBottom: isActive ? "1px solid #ffffff" : "1px solid #cbd5e1",
+                  border: "1px solid var(--cartouche-theme-border-strong)",
+                  borderBottom: isActive ? "1px solid var(--cartouche-theme-surface)" : "1px solid var(--cartouche-theme-border-strong)",
                   marginBottom: isActive ? "-1px" : "0",
                   cursor: "pointer",
                   display: "flex",
@@ -463,7 +463,7 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
             flexDirection: "column",
             overflow: "hidden",
             position: "relative",
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--cartouche-theme-surface)",
           }}>
           {activeTab &&
             activeTab.render({

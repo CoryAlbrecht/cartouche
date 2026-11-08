@@ -4,7 +4,7 @@
  * @description Base abstraction component for all non-map workbench UI containers, supporting resizing, custom context menus, and docking bounds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link PopupMenu}
  */
@@ -36,14 +36,14 @@ export interface WidgetContextMenuItem {
 /**
  * @typedef {Object} WidgetProps
  * @property {string} [id] - Unique container DOM element ID.
- * @property {string} [background='#f3f3f3'] - Background color hex or CSS string.
+ * @property {string} [background] - Optional background color hex or CSS string override (defaults to theme token).
  * @property {'top' | 'bottom' | 'left' | 'right'} [location='left'] - Outer panel dock zone.
  * @property {number | string} [minWidth=32] - Minimum width constraint in pixels or CSS.
  * @property {number | string} [maxWidth='auto'] - Maximum width constraint in pixels or CSS.
  * @property {number | string} [minHeight=32] - Minimum height constraint in pixels or CSS.
  * @property {number | string} [maxHeight='auto'] - Maximum height constraint in pixels or CSS.
- * @property {number | string} [border=0] - Border width in pixels or CSS string.
- * @property {string} [borderColor='#f3f3f3'] - Border color hex or CSS string.
+ * @property {number | string} [border] - Optional border width in pixels or CSS string override.
+ * @property {string} [borderColor] - Optional border color hex or CSS string override.
  * @property {number | string} [padding=0] - Inner padding in pixels or CSS string.
  * @property {string} [className] - Optional custom CSS class string.
  * @property {React.CSSProperties} [style] - Inline CSS style overrides.
@@ -86,21 +86,21 @@ export interface WidgetProps {
  * @description Base container widget establishing standardized drag handles, context menus, and responsive size observation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {WidgetProps} props - Component properties.
  * @returns {React.ReactElement} Base widget container element.
  */
 export const Widget: React.FC<WidgetProps> = ({
   id,
-  background = "#f3f3f3",
+  background,
   location = "left",
   minWidth = 32,
   maxWidth = "auto",
   minHeight = 32,
   maxHeight = "auto",
-  border = 0,
-  borderColor = background,
+  border,
+  borderColor,
   padding = 0,
   className = "",
   style = {},
@@ -210,6 +210,31 @@ export const Widget: React.FC<WidgetProps> = ({
     widgetContextMenuPositionSignal.value = null;
   };
 
+  const inlineStyles: React.CSSProperties = {
+    padding: typeof padding === "number" ? `${padding}px` : padding,
+    width: "100%",
+    height: "100%",
+    minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth,
+    maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth,
+    minHeight: typeof minHeight === "number" ? `${minHeight}px` : minHeight,
+    maxHeight: typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight,
+    position: "relative",
+    boxSizing: "border-box",
+    overflow: "hidden",
+    ...style,
+  };
+
+  if (background !== undefined) {
+    inlineStyles.backgroundColor = background;
+  }
+  if (border !== undefined) {
+    inlineStyles.borderWidth = typeof border === "number" ? `${border}px` : border;
+    inlineStyles.borderStyle = border ? "solid" : "none";
+  }
+  if (borderColor !== undefined) {
+    inlineStyles.borderColor = borderColor;
+  }
+
   return (
     <div
       ref={containerRef}
@@ -222,23 +247,7 @@ export const Widget: React.FC<WidgetProps> = ({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      style={{
-        backgroundColor: background,
-        borderWidth: typeof border === "number" ? `${border}px` : border,
-        borderStyle: border ? "solid" : "none",
-        borderColor: borderColor,
-        padding: typeof padding === "number" ? `${padding}px` : padding,
-        width: "100%",
-        height: "100%",
-        minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth,
-        maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth,
-        minHeight: typeof minHeight === "number" ? `${minHeight}px` : minHeight,
-        maxHeight: typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight,
-        position: "relative",
-        boxSizing: "border-box",
-        overflow: "hidden",
-        ...style,
-      }}>
+      style={inlineStyles}>
       {children}
 
       {/* Standardized Widget Background Context Menu */}

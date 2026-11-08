@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -228,7 +228,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -239,9 +239,9 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     displayName = "Basic",
     icon,
     overlappable = false,
-    background = "#f3f3f3",
-    borderColor = background,
-    border = 1,
+    background,
+    borderColor,
+    border,
     padding = 4,
     location: propLocation,
     minWidth,
@@ -589,8 +589,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           style={{
             position: "absolute",
             inset: 0,
-            backgroundColor: "rgba(37, 99, 235, 0.12)",
-            border: "2px dashed #2563eb",
+            backgroundColor: "var(--cartouche-drop-target-bg)",
+            border: "2px dashed var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
             display: "flex",
@@ -599,13 +599,13 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           }}>
           <div
             style={{
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
+              backgroundColor: "var(--cartouche-drop-target-border)",
+              color: "var(--cartouche-theme-fg-inverted)",
               padding: "4px 10px",
               borderRadius: "4px",
               fontSize: "0.75rem",
               fontWeight: 600,
-              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+              boxShadow: "0 2px 4px var(--cartouche-theme-shadow)",
             }}>
             Group as Tabs
           </div>
@@ -621,7 +621,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             left: 0,
             right: 0,
             height: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -637,7 +637,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             left: 0,
             right: 0,
             height: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -653,7 +653,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             bottom: 0,
             left: 0,
             width: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -669,7 +669,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             bottom: 0,
             right: 0,
             width: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -686,9 +686,10 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          backgroundColor: "#faf8fc",
+          backgroundColor: "var(--cartouche-widget-header-bg)",
+          color: "var(--cartouche-widget-header-fg)",
           padding: "4px 8px",
-          borderBottom: "1px solid #e2e8f0",
+          borderBottom: "1px solid var(--cartouche-widget-header-border)",
           minHeight:
             "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
           userSelect: "none",
@@ -729,7 +730,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             style={{
               fontWeight: 600,
               fontSize: "0.875rem",
-              color: "#1e293b",
+              color: "var(--cartouche-theme-fg-primary)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -768,7 +769,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                 border: "none",
                 cursor: "pointer",
                 padding: "2px",
-                color: "#64748b",
+                color: "var(--cartouche-theme-fg-muted)",
                 borderRadius: "2px",
                 display: "flex",
                 alignItems: "center",

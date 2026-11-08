@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-04
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -192,7 +192,7 @@ const TREE_NODE_ICON_STYLE: React.CSSProperties = {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-04
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -1250,7 +1250,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           }
         }}
         style={{
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--cartouche-theme-surface)",
           height: "100%",
           display: "flex",
           flexDirection: "column",
@@ -1303,7 +1303,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             flex: 1,
             overflowX: "auto",
             overflowY: "auto",
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--cartouche-theme-surface)",
             padding: "4px 0",
           }}>
           {hasProject && (

@@ -4,7 +4,7 @@
  * @description Unit and stylesheet tests for low-contrast idle toolbar grabbers and tail divider icons (Ticket #112).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
- * @updated 2026-10-31
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -55,7 +55,10 @@ describe('ToolbarChromeContrast (Ticket #112)', () => {
     assert.ok(grabberMatch, 'workbench.css must define .toolbar-grabber');
     const grabberRules = grabberMatch[1];
     assert.ok(grabberRules.includes('opacity: 0.5'), '.toolbar-grabber must specify opacity: 0.5');
-    assert.ok(grabberRules.includes('color: #94a3b8'), '.toolbar-grabber must specify color: #94a3b8');
+    assert.ok(
+      grabberRules.includes('color: var(--cartouche-theme-fg-subtle)'),
+      '.toolbar-grabber must specify color: var(--cartouche-theme-fg-subtle)'
+    );
     assert.ok(grabberRules.includes('transition:'), '.toolbar-grabber must specify transition for smooth hover');
   });
 
@@ -64,7 +67,10 @@ describe('ToolbarChromeContrast (Ticket #112)', () => {
     assert.ok(grabberHoverMatch, 'workbench.css must define .toolbar-grabber:hover');
     const grabberHoverRules = grabberHoverMatch[1];
     assert.ok(grabberHoverRules.includes('opacity: 1 !important'), '.toolbar-grabber:hover must specify opacity: 1 !important');
-    assert.ok(grabberHoverRules.includes('color: #0037b9 !important'), '.toolbar-grabber:hover must specify #0037b9');
+    assert.ok(
+      grabberHoverRules.includes('color: var(--cartouche-theme-info) !important'),
+      '.toolbar-grabber:hover must specify var(--cartouche-theme-info) !important'
+    );
   });
 
   it('declares .toolbar-divider in workbench.css with idle opacity 0.5 and non-interactive pointer-events', () => {
@@ -72,7 +78,10 @@ describe('ToolbarChromeContrast (Ticket #112)', () => {
     assert.ok(dividerMatch, 'workbench.css must define .toolbar-divider');
     const dividerRules = dividerMatch[1];
     assert.ok(dividerRules.includes('opacity: 0.5'), '.toolbar-divider must specify opacity: 0.5');
-    assert.ok(dividerRules.includes('color: #94a3b8'), '.toolbar-divider must specify color: #94a3b8');
+    assert.ok(
+      dividerRules.includes('color: var(--cartouche-theme-fg-subtle)'),
+      '.toolbar-divider must specify color: var(--cartouche-theme-fg-subtle)'
+    );
     assert.ok(dividerRules.includes('pointer-events: none'), '.toolbar-divider must specify pointer-events: none');
   });
 

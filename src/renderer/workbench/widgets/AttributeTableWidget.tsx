@@ -4,7 +4,7 @@
  * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link SelectionToolbarWidget}
@@ -143,7 +143,7 @@ export function isFeatureInExtent(
  * @description Computes dynamic minimum height CSS expression for AttributeTableWidget derived from UI icon and font size preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @returns {string} CSS calc expression for minimum widget height.
  */
@@ -187,7 +187,7 @@ export type AttributeTablePanelProps = AttributeTableWidgetProps;
  * @description Extracts GIS feature records from a Geospatial Worker queryExtent response.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier.
  * @param {GeometryKind} fallbackGeometryKind - Fallback layer geometry kind.
@@ -344,7 +344,7 @@ let cachedCanvas: HTMLCanvasElement | null = null;
  * @description Measures text rendered width in pixels for column auto-sizing and minimum width clamping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {string} text - Text string to measure.
  * @param {string} [font='0.8333rem sans-serif'] - CSS font specification.
@@ -406,7 +406,7 @@ const BASE_DATA_CELL_STYLE: React.CSSProperties = {
  * @description Extracts a normalized Date object from strings, numbers, or Date instances.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {unknown} val - Raw attribute value.
  * @returns {Date | null} Parsed Date or null if invalid.
@@ -435,7 +435,7 @@ export function parseDateValue(val: unknown): Date | null {
  * @description Extracts a normalized Date object from time strings or Date instances.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {unknown} val - Raw attribute value.
  * @returns {Date | null} Parsed Date or null if invalid.
@@ -463,7 +463,7 @@ export function parseTimeValue(val: unknown): Date | null {
  * @description Extracts a normalized Date object from timestamp strings, epoch numbers, or Date instances.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {unknown} val - Raw attribute value.
  * @returns {Date | null} Parsed Date or null if invalid.
@@ -483,7 +483,7 @@ export function parseDateTimeValue(val: unknown): Date | null {
  * @description Applies Intl.DateTimeFormat, Intl.NumberFormat, boolean localization, and NULL styling to attribute values.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {unknown} value - Raw feature property value.
  * @param {InferredFieldType | undefined} inferredType - Inferred field data type.
@@ -606,7 +606,7 @@ export function formatAttributeCellValue(
  * @description Extracts full unclipped text representation of a cell value for native title tooltip inspection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {unknown} value - Raw feature property value.
  * @param {InferredFieldType | undefined} inferredType - Inferred field data type.
@@ -636,7 +636,7 @@ export function getCellTooltipText(
  * @description Flexible numeric parser converting localized or standard strings to float or null if invalid.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {string} text - Raw input text.
  * @returns {number | null} Parsed numeric value or null if invalid non-numeric.
@@ -675,7 +675,7 @@ export function parseNumericInput(text: string): number | null {
  * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {AttributeTableWidgetProps} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTableWidget element.
@@ -1698,7 +1698,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                 }}>
                 <span
                   className='attribute-table-page-range'
-                  style={{ marginRight: "4px", color: "#475569" }}>
+                  style={{ marginRight: "4px", color: "var(--cartouche-theme-fg-muted)" }}>
                   {t("attribute_table_page_range", {
                     start: displayedFeatures.length > 0 ? pageStart + 1 : 0,
                     end: pageStart + displayedFeatures.length,
@@ -1717,9 +1717,9 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                     alignItems: "center",
                     justifyContent: "center",
                     padding: "2px 4px",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--cartouche-theme-border-strong)",
                     borderRadius: "3px",
-                    backgroundColor: isFirstDisabled ? "#f1f5f9" : "#ffffff",
+                    backgroundColor: isFirstDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
                     cursor: isFirstDisabled ? "not-allowed" : "pointer",
                     opacity: isFirstDisabled ? 0.5 : 1,
                   }}>
@@ -1739,9 +1739,9 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                     alignItems: "center",
                     justifyContent: "center",
                     padding: "2px 4px",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--cartouche-theme-border-strong)",
                     borderRadius: "3px",
-                    backgroundColor: isPrevDisabled ? "#f1f5f9" : "#ffffff",
+                    backgroundColor: isPrevDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
                     cursor: isPrevDisabled ? "not-allowed" : "pointer",
                     opacity: isPrevDisabled ? 0.5 : 1,
                   }}>
@@ -1759,9 +1759,9 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                     alignItems: "center",
                     justifyContent: "center",
                     padding: "2px 4px",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--cartouche-theme-border-strong)",
                     borderRadius: "3px",
-                    backgroundColor: isNextDisabled ? "#f1f5f9" : "#ffffff",
+                    backgroundColor: isNextDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
                     cursor: isNextDisabled ? "not-allowed" : "pointer",
                     opacity: isNextDisabled ? 0.5 : 1,
                   }}>
@@ -1779,9 +1779,9 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                     alignItems: "center",
                     justifyContent: "center",
                     padding: "2px 4px",
-                    border: "1px solid #cbd5e1",
+                    border: "1px solid var(--cartouche-theme-border-strong)",
                     borderRadius: "3px",
-                    backgroundColor: isLastDisabled ? "#f1f5f9" : "#ffffff",
+                    backgroundColor: isLastDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
                     cursor: isLastDisabled ? "not-allowed" : "pointer",
                     opacity: isLastDisabled ? 0.5 : 1,
                   }}>
