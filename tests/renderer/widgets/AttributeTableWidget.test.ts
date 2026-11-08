@@ -4,13 +4,14 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
 
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import createJiti from "jiti";
 import React, { act } from "react";
@@ -578,6 +579,29 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
       toolbarsWithScaling.length >= 2,
       true,
       "Both embedded toolbars must apply --cartouche-ui-icon-scaling: 0.667"
+    );
+
+    // Verify toolbars are left-aligned (flex-start) rather than separated across opposite edges (space-between) (Ticket #210)
+    assert.strictEqual(
+      header.style.justifyContent,
+      "flex-start",
+      "Attribute table header toolbars must be left-aligned (justify-content: flex-start) (Ticket #210)"
+    );
+
+    // Verify workbench.css defines justify-content: flex-start for .attribute-table-header (Ticket #210)
+    const workbenchCssPath = path.resolve(__dirname, "../../../src/renderer/styles/workbench.css");
+    const workbenchCss = fs.readFileSync(workbenchCssPath, "utf-8");
+    const headerCssMatch = workbenchCss.match(/\.attribute-table-header\s*\{[^}]*\}/);
+    assert.ok(headerCssMatch, ".attribute-table-header rule must exist in workbench.css");
+    assert.match(
+      headerCssMatch[0],
+      /justify-content:\s*flex-start;/,
+      ".attribute-table-header must specify justify-content: flex-start (Ticket #210)"
+    );
+    assert.doesNotMatch(
+      headerCssMatch[0],
+      /justify-content:\s*space-between;/,
+      ".attribute-table-header must not specify justify-content: space-between (Ticket #210)"
     );
   });
 

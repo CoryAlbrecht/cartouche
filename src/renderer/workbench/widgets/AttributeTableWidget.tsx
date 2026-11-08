@@ -4,7 +4,7 @@
  * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link SelectionToolbarWidget}
@@ -674,7 +674,7 @@ export function parseNumericInput(text: string): number | null {
  * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @param {AttributeTableWidgetProps} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTableWidget element.
@@ -1255,10 +1255,11 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
               style={{
                 flexShrink: 0,
                 padding: "2px 4px",
-                backgroundColor: "#f8fafc",
-                borderBottom: "1px solid #e2e8f0",
+                backgroundColor: "var(--cartouche-theme-surface-subtle)",
+                borderBottom: "1px solid var(--cartouche-theme-border)",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "flex-start",
                 flexWrap: "wrap",
                 gap: "4px",
               }}>
