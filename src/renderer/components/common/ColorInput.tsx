@@ -4,7 +4,7 @@
  * @description Reusable color input component pairing an editable CSS color / hex text input with an interactive swatch button triggering the native system color picker.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link ColorInput}
  * @see {@link CssColorsDatalist}
@@ -52,7 +52,7 @@ export interface ColorInputProps {
  * @description Shared HTML5 datalist providing autocomplete options for all 148 standard W3C CSS named colors.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @returns {React.ReactElement} The datalist element.
  */
@@ -71,7 +71,7 @@ export const CssColorsDatalist: React.FC = () => {
  * @description Unified workbench color input combining a hex/named CSS text field with an inline validation indicator and a clean square swatch button triggering the native color picker.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {ColorInputProps} props - Component properties.
  * @returns {React.ReactElement} The rendered color input component.
@@ -171,8 +171,8 @@ export const ColorInput: React.FC<ColorInputProps> = ({
             onChange={handleTextChange}
             className={`preference-input-text ${!isValid ? 'preference-input-invalid' : ''}`.trim()}
             style={{
-              ...(!isValid ? { color: '#ef4444' } : undefined),
-              ...(disabled ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9' } : undefined),
+              ...(!isValid ? { color: 'var(--cartouche-theme-danger)' } : undefined),
+              ...(disabled ? { cursor: 'not-allowed', backgroundColor: 'var(--cartouche-theme-surface-alt)' } : undefined),
               ...inputStyle,
             }}
             title={!isValid ? 'Invalid CSS color name or hex format' : undefined}
@@ -211,7 +211,7 @@ export const ColorInput: React.FC<ColorInputProps> = ({
           onKeyDown={handleButtonKeyDown}
           style={{
             padding: '3px 4px',
-            ...(disabled ? { cursor: 'not-allowed', opacity: 0.6, backgroundColor: '#f1f5f9' } : undefined),
+            ...(disabled ? { cursor: 'not-allowed', opacity: 0.6, backgroundColor: 'var(--cartouche-theme-surface-alt)' } : undefined),
           }}>
           <span
             className="preference-color-swatch"

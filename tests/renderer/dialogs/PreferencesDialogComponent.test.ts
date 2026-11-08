@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-11-05
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -512,8 +512,9 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       'Must apply aria-invalid="true" on invalid color input'
     );
     assert.ok(
-      html.includes('color:#ef4444'),
-      'Must color invalid text red (#ef4444)'
+      html.includes('color:var(--cartouche-theme-danger)') ||
+        html.includes('color:#ef4444'),
+      'Must color invalid text red with danger theme token'
     );
     assert.ok(
       html.includes('class="preference-input-error-icon"'),

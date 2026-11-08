@@ -4,7 +4,7 @@
  * @description Toolbar widget managing feature vertex and line segment snapping settings, discrete geometry mode toggles, and search tolerance during spatial digitizing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link SplitToolButton}
@@ -48,7 +48,7 @@ import { ToolbarWidget } from "../ToolbarWidget";
  * @property {ToolbarZone} [zone='top'] - Outer panel dock zone.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  */
 export interface SnappingToolbarWidgetProps {
@@ -59,7 +59,7 @@ export interface SnappingToolbarWidgetProps {
  * @description Available snapping scope options for the SplitToolButton composite control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @type {SplitToolOption[]}
  */
@@ -86,7 +86,7 @@ export const SNAPPING_SCOPE_OPTIONS: SplitToolOption[] = [
  * @description Computes the standard CSS class name string for toolbar toggle buttons.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {boolean} active - Whether the button is in an active state.
  * @param {boolean} disabled - Whether the button is disabled.
@@ -105,7 +105,7 @@ export function getSnappingButtonClass(active: boolean, disabled: boolean): stri
  * Child controls are disabled whenever master snapping is turned off.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {boolean} snappingEnabled - Whether snapping is globally enabled.
  * @returns {boolean} True if child controls should be disabled, false otherwise.
@@ -119,7 +119,7 @@ export function isSnappingToolbarDisabled(snappingEnabled: boolean): boolean {
  * @description Constrains a numeric snapping search tolerance distance within the valid range [0, 256] pixels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {number} value - Input distance value in pixels.
  * @returns {number} Clamped distance value integer.
@@ -134,7 +134,7 @@ export function clampSnappingDistance(value: number): number {
  * @description Handles selection of a snapping scope from the SplitToolButton PopupMenu.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {string} scope - Selected snapping scope identifier.
  * @returns {void}
@@ -153,7 +153,7 @@ export function handleSnappingScopeSelect(scope: string): void {
  * @description Handles execution of the active snapping scope primary button.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {string} scope - Active snapping scope identifier.
  * @returns {void}
@@ -171,7 +171,7 @@ export function handleSnappingScopeExecute(scope: string): void {
  * @description Renders snapping control buttons to toggle vertex, midpoint, and segment snapping, switch snapping scope, and configure tolerance.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-27
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {SnappingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} SnappingToolbarWidget instance.
@@ -214,7 +214,7 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
    * @description Handles tolerance number input changes and persists value to preferences.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-27
-   * @updated 2026-10-27
+   * @updated 2026-11-07
    * @since 0.1.0-dev
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event.
    * @returns {void}
@@ -335,7 +335,7 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
               width: "3.25rem",
               padding: "0.1rem 0.25rem",
               fontSize: "0.85rem",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--cartouche-input-border)",
               borderRadius: "0.2rem",
               textAlign: "right",
             }}
@@ -373,7 +373,7 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
               width: "2.5rem",
               padding: "0.1rem",
               fontSize: "0.75rem",
-              border: "1px solid #cbd5e1",
+              border: "1px solid var(--cartouche-input-border)",
               borderRadius: "0.2rem",
               textAlign: "center",
             }}

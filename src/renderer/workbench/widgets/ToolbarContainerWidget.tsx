@@ -4,7 +4,7 @@
  * @description Outer panel edge container widget managing masonry layout and drag-and-drop relocation for toolbars across 4 outer zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link resolveContainerDropPosition}
@@ -47,7 +47,7 @@ export interface ToolbarContainerWidgetProps {
  * @description Outer 4-edge panel container hosting docked ToolbarWidget items and handling dragover drop targets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-07
  * @since 0.1.0-dev
  * @param {ToolbarContainerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Toolbar container zone element.
@@ -76,7 +76,7 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
    * @description Reactive signal tracking resolved boundary drop position on container dragover.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-28
-   * @updated 2026-10-28
+   * @updated 2026-11-07
    * @since 0.1.0-dev
    * @type {Signal<ToolbarDropPosition | null>}
    */
@@ -162,8 +162,8 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     activeDraggedToolbarSignal.value = null;
   };
 
-  const activeBackground = isDragOver ? "#e0f2fe" : "#f8fafc";
-  const activeBorderColor = isDragOver ? "#0284c7" : "#f8fafc";
+  const activeBackground = isDragOver ? "var(--cartouche-drop-target-bg)" : "var(--cartouche-theme-surface-subtle)";
+  const activeBorderColor = isDragOver ? "var(--cartouche-drop-target-border)" : "var(--cartouche-theme-surface-subtle)";
 
   // Fast transition on drag-enter (0.05s), slow smooth transition on drag-leave (0.7s)
   const currentTransition =
@@ -217,9 +217,9 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
       }}>
       <Widget
         id={`toolbar-container-${zone}`}
-        background='#f8fafc'
+        background='var(--cartouche-theme-surface-subtle)'
         border={1}
-        borderColor='#f8fafc'
+        borderColor='var(--cartouche-theme-surface-subtle)'
         location={zone}
         minWidth={isHorizontal ? "100%" : 32}
         minHeight={isHorizontal ? 32 : "100%"}

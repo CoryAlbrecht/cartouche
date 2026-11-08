@@ -589,8 +589,8 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           style={{
             position: "absolute",
             inset: 0,
-            backgroundColor: "rgba(37, 99, 235, 0.12)",
-            border: "2px dashed #2563eb",
+            backgroundColor: "var(--cartouche-drop-target-bg)",
+            border: "2px dashed var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
             display: "flex",
@@ -599,13 +599,13 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
           }}>
           <div
             style={{
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
+              backgroundColor: "var(--cartouche-drop-target-border)",
+              color: "var(--cartouche-theme-fg-inverted)",
               padding: "4px 10px",
               borderRadius: "4px",
               fontSize: "0.75rem",
               fontWeight: 600,
-              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+              boxShadow: "0 2px 4px var(--cartouche-theme-shadow)",
             }}>
             Group as Tabs
           </div>
@@ -621,7 +621,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             left: 0,
             right: 0,
             height: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -637,7 +637,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             left: 0,
             right: 0,
             height: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -653,7 +653,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             bottom: 0,
             left: 0,
             width: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -669,7 +669,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             bottom: 0,
             right: 0,
             width: "3px",
-            backgroundColor: "#2563eb",
+            backgroundColor: "var(--cartouche-drop-target-border)",
             zIndex: 50,
             pointerEvents: "none",
           }}
@@ -730,7 +730,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             style={{
               fontWeight: 600,
               fontSize: "0.875rem",
-              color: "#1e293b",
+              color: "var(--cartouche-theme-fg-primary)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -769,7 +769,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                 border: "none",
                 cursor: "pointer",
                 padding: "2px",
-                color: "#64748b",
+                color: "var(--cartouche-theme-fg-muted)",
                 borderRadius: "2px",
                 display: "flex",
                 alignItems: "center",
