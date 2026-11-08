@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -206,6 +206,7 @@ function findLargestPanelConstraints(
  * @property {string} [displayName='Basic'] - Title label text rendered in header.
  * @property {string | React.ReactNode} [icon] - Optional MDI SVG path string or custom icon node rendered to the left of the title at 50% ui.icon.size.
  * @property {boolean} [overlappable=false] - Whether this widget can be grouped into an OverlapTabWidget container.
+ * @property {boolean} [showHeader=true] - Whether to render the 2-control title header bar.
  * @property {React.ReactNode} [children] - Content rendered inside body.
  * @property {DockviewApi} [containerApi] - Optional parent Dockview container API instance.
  * @property {DockviewPanelApi} [panelApi] - Optional Dockview panel API instance.
@@ -217,6 +218,7 @@ export interface BasicWidgetProps
   displayName?: string;
   icon?: string | React.ReactNode;
   readonly overlappable?: boolean;
+  showHeader?: boolean;
   children?: React.ReactNode;
   containerApi?: DockviewApi;
   panelApi?: DockviewPanelApi;
@@ -239,6 +241,7 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     displayName = "Basic",
     icon,
     overlappable = false,
+    showHeader = true,
     background,
     borderColor,
     border,
@@ -676,112 +679,114 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
         />
       )}
       {/* Header Row: Label + Close Button */}
-      <div
-        className='basic-widget-header'
-        data-overlappable={overlappable}
-        draggable={!!effectivePanelApi}
-        onDragStart={handleHeaderDragStart}
-        onDragEnd={handleHeaderDragEnd}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backgroundColor: "var(--cartouche-widget-header-bg)",
-          color: "var(--cartouche-widget-header-fg)",
-          padding: "4px 8px",
-          borderBottom: "1px solid var(--cartouche-widget-header-border)",
-          minHeight:
-            "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
-          userSelect: "none",
-          cursor: effectivePanelApi ? "grab" : "default",
-        }}>
+      {showHeader && (
         <div
-          className='widget-header-title-box'
+          className='basic-widget-header'
+          data-overlappable={overlappable}
+          draggable={!!effectivePanelApi}
+          onDragStart={handleHeaderDragStart}
+          onDragEnd={handleHeaderDragEnd}
           style={{
             display: "flex",
             alignItems: "center",
-            flex: 1,
-            minWidth: 0,
-            marginRight: "8px",
-            overflow: "hidden",
+            justifyContent: "space-between",
+            backgroundColor: "var(--cartouche-widget-header-bg)",
+            color: "var(--cartouche-widget-header-fg)",
+            padding: "4px 8px",
+            borderBottom: "1px solid var(--cartouche-widget-header-border)",
+            minHeight:
+              "max(1.625em, calc(var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px))",
+            userSelect: "none",
+            cursor: effectivePanelApi ? "grab" : "default",
           }}>
-          {icon && (
-            <span
-              className='basic-widget-icon'
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                marginRight: "6px",
-              }}>
-              {typeof icon === "string" ? (
-                <Icon
-                  path={icon}
-                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-                />
-              ) : (
-                icon
-              )}
-            </span>
-          )}
-          <span
-            className='basic-widget-title'
+          <div
+            className='widget-header-title-box'
             style={{
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              color: "var(--cartouche-theme-fg-primary)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              display: "flex",
+              alignItems: "center",
               flex: 1,
               minWidth: 0,
+              marginRight: "8px",
+              overflow: "hidden",
             }}>
-            {displayName}
-          </span>
-        </div>
-
-        <div
-          className='basic-widget-controls'
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            flexShrink: 0,
-          }}>
-          {canClose && (
-            <button
-              type='button'
-              className='widget-control-btn'
-              title='Close'
-              draggable={false}
-              onMouseDown={(e) => e.stopPropagation()}
-              onDragStart={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClose();
-              }}
+            {icon && (
+              <span
+                className='basic-widget-icon'
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginRight: "6px",
+                }}>
+                {typeof icon === "string" ? (
+                  <Icon
+                    path={icon}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+                  />
+                ) : (
+                  icon
+                )}
+              </span>
+            )}
+            <span
+              className='basic-widget-title'
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "2px",
-                color: "var(--cartouche-theme-fg-muted)",
-                borderRadius: "2px",
-                display: "flex",
-                alignItems: "center",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "var(--cartouche-theme-fg-primary)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                flex: 1,
+                minWidth: 0,
               }}>
-              <Icon
-                path={mdiClose}
-                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-              />
-            </button>
-          )}
+              {displayName}
+            </span>
+          </div>
+
+          <div
+            className='basic-widget-controls'
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              flexShrink: 0,
+            }}>
+            {canClose && (
+              <button
+                type='button'
+                className='widget-control-btn'
+                title='Close'
+                draggable={false}
+                onMouseDown={(e) => e.stopPropagation()}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose();
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "2px",
+                  color: "var(--cartouche-theme-fg-muted)",
+                  borderRadius: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                }}>
+                <Icon
+                  path={mdiClose}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+                />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Widget Content Body */}
       <div
