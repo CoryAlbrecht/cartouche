@@ -10,6 +10,7 @@
  * @see {@link compileCartoucheLayerStyleSync}
  * @see {@link compileStyleFunction}
  * @see {@link isCartoucheStyleDescriptor}
+ * @see {@link hasGradientFillStyle}
  * @see {@link extractStyleAttributes}
  */
 
@@ -73,9 +74,10 @@ const olStyleParser = new OlStyleParser();
  * @property {ProjectStyleFormat} format - Style dialect ("openlayers" or "sld").
  * @property {SldStyleVersion} [version] - SLD version ("1.0.0" or "1.1.0") when format is "sld".
  * @property {boolean} isFallback - True when the input was unstyled or invalid and fell back to the default random-color style.
+ * @property {boolean} [hasGradientFill] - True when the compiled style contains an active screen-anchored gradient fill component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  */
 export interface CompiledLayerStyleResult {
@@ -84,6 +86,7 @@ export interface CompiledLayerStyleResult {
   format: ProjectStyleFormat;
   version?: SldStyleVersion;
   isFallback: boolean;
+  hasGradientFill?: boolean;
 }
 
 /**
@@ -382,7 +385,7 @@ export function isSldStyleDescriptor(
  * @description Determines whether a given style descriptor, wrapper, or raw JSON represents Cartouche Symbology Specification (format="cartouche").
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {unknown} style - Style descriptor, ProjectLayerStyleItem container, or raw string/object.
  * @param {ProjectStyleItem[]} [sharedStyles] - Optional shared project styles catalog to resolve `#id` references.
@@ -442,6 +445,61 @@ export function isCartoucheStyleDescriptor(
     }
   }
   return false;
+}
+
+/**
+ * @description Inspects a raw style descriptor, wrapper, or parsed model to determine if it uses gradient fill symbology.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ * @param {unknown} style - Style descriptor, wrapper, or parsed CartoucheLayerStyle.
+ * @param {ProjectStyleItem[]} [sharedStyles] - Shared project styles catalog for resolving `#id` href references.
+ * @returns {boolean} True if the style contains an enabled gradient fill component.
+ */
+export function hasGradientFillStyle(
+  style: unknown,
+  sharedStyles?: ProjectStyleItem[]
+): boolean {
+  if (!style) {
+    return false;
+  }
+  let target = style;
+  if (isProjectLayerStyleWrapper(style)) {
+    if (style.href && !style.content && sharedStyles) {
+      const targetId = style.href.replace(/^#/, "");
+      const matched = sharedStyles.find((s) => s.id === targetId);
+      if (matched && matched.content) {
+        target = matched.content;
+      } else {
+        return false;
+      }
+    } else if (style.content) {
+      target = style.content;
+    }
+  }
+
+  let model: CartoucheLayerStyle | null = null;
+  if (typeof target === "string") {
+    try {
+      const parsed = JSON.parse(target.trim());
+      if (isCartoucheLayerStyle(parsed)) {
+        model = parsed;
+      }
+    } catch {
+      return false;
+    }
+  } else if (typeof target === "object" && isCartoucheLayerStyle(target)) {
+    model = target;
+  }
+
+  if (!model || !Array.isArray(model.components)) {
+    return false;
+  }
+
+  return model.components.some(
+    (c) => c.type === "gradient-fill" && c.enabled !== false
+  );
 }
 
 /**
@@ -762,7 +820,7 @@ export function compileStyleFunction(
  * Returns a fallback 3-rule random-color style if the input is unstyled or invalid.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {unknown} style - Raw Cartouche Symbology descriptor, JSON string, or ProjectLayerStyleItem wrapper.
  * @param {CompileLayerStyleOptions} [options] - Optional shared styles catalog and layer ID context.
@@ -860,12 +918,21 @@ export function compileCartoucheLayerStyleSync(
     };
   }
 
+  const hasGradientFill = Boolean(
+    cartoucheModel.components
+    && Array.isArray(cartoucheModel.components)
+    && cartoucheModel.components.some(
+      (c) => c.type === "gradient-fill" && c.enabled !== false
+    )
+  );
+
   const styleFunction = compileStyleFunction(cartoucheModel, options);
   return {
     compiledStyle: styleFunction,
     requiredFields: new Set<string>(),
     format: "cartouche",
     isFallback: false,
+    hasGradientFill,
   };
 }
 

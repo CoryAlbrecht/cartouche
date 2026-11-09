@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-02
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -128,9 +128,10 @@ export function flattenTreeLayers(
  * @property {unknown} [activeRawStyle] - Most recently applied raw style descriptor or wrapper.
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
  * @property {Record<string, InferredFieldType>} [fieldSchema] - Dictionary of attribute names to canonical inferred field types for lazy deserialization.
+ * @property {boolean} [hasGradientFill] - True if the layer currently utilizes an active screen-anchored gradient fill style.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-02
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
@@ -142,6 +143,7 @@ export interface VectorLayerEntry {
   activeRawStyle?: unknown;
   styleRevision?: number;
   fieldSchema?: Record<string, InferredFieldType>;
+  hasGradientFill?: boolean;
 }
 
 /**
@@ -320,10 +322,10 @@ export class MapController {
   }
 
   /**
-   * @description Attaches native OpenLayers event listeners for cursor tracking, resolution changes, and moveend.
+   * @description Attaches native OpenLayers event listeners for cursor tracking, resolution changes, moveend, and container resize invalidation.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @private
    * @returns {void}
@@ -356,7 +358,31 @@ export class MapController {
     this.map.on("moveend", () => {
       this.updateViewportSignals();
       this.updateScaleSignal(true);
+      this.refreshGradientFillLayers();
     });
+
+    // Invalidate gradient fills on viewport container resize
+    this.map.on("change:size", () => {
+      this.refreshGradientFillLayers();
+    });
+  }
+
+  /**
+   * @description Invalidates and triggers re-rendering on all registered vector layers configured with gradient fill symbology.
+   * Re-evaluates dynamic style functions to re-anchor canvas gradients to screen pixel coordinates after map movement or container resize.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-09
+   * @updated 2026-11-09
+   * @since 0.1.0-dev
+   * @public
+   * @returns {void}
+   */
+  public refreshGradientFillLayers(): void {
+    for (const entry of this.vectorLayers.values()) {
+      if (entry.hasGradientFill) {
+        entry.layer.changed();
+      }
+    }
   }
 
   /**
@@ -595,7 +621,7 @@ export class MapController {
    * @description Compiles and applies a style to a single vector layer entry, executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-11-01
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {unknown} rawStyle - Raw style descriptor or wrapper.
@@ -618,7 +644,9 @@ export class MapController {
       const cartoucheResult = compileCartoucheLayerStyleSync(rawStyle, {
         sharedStyles,
         layerId: entry.descriptor.id,
+        map: this.map,
       });
+      entry.hasGradientFill = Boolean(cartoucheResult.hasGradientFill);
       entry.layer.setStyle(cartoucheResult.compiledStyle as any);
       return;
     }
@@ -629,7 +657,9 @@ export class MapController {
       const flatResult = compileFlatLayerStyleSync(rawStyle, {
         sharedStyles,
         layerId: entry.descriptor.id,
+        map: this.map,
       });
+      entry.hasGradientFill = Boolean(flatResult.hasGradientFill);
 
       if (
         !this.requiresFieldReload(
@@ -663,10 +693,12 @@ export class MapController {
       const compiledResult = await compileLayerStyle(rawStyle, {
         sharedStyles,
         layerId: entry.descriptor.id,
+        map: this.map,
       });
       if (entry.styleRevision !== nextRevision) {
         return;
       }
+      entry.hasGradientFill = Boolean(compiledResult.hasGradientFill);
       if (
         this.requiresFieldReload(
           entry,
@@ -695,7 +727,7 @@ export class MapController {
    * @description Creates and registers an OpenLayers VectorImageLayer and VectorSource backed by allStrategy/bboxStrategy, wrapX: false, and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-02
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
@@ -745,15 +777,18 @@ export class MapController {
         compileCartoucheLayerStyleSync(initialRawStyle, {
           sharedStyles,
           layerId: descriptor.id,
+          map: this.map,
         })
       : isInitialSld ?
         compileFlatLayerStyleSync(null, {
           sharedStyles,
           layerId: descriptor.id,
+          map: this.map,
         })
       : compileFlatLayerStyleSync(initialRawStyle, {
           sharedStyles,
           layerId: descriptor.id,
+          map: this.map,
         });
 
     const currentFlat = flattenTreeLayers(
@@ -789,6 +824,7 @@ export class MapController {
       activeRawStyle: initialRawStyle,
       styleRevision: 0,
       fieldSchema,
+      hasGradientFill: Boolean(initialStyleResult.hasGradientFill),
     };
     this.vectorLayers.set(descriptor.id, entry);
 

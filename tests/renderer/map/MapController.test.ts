@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-02
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -1931,6 +1931,261 @@ describe('MapController SLD Compilation & Delayed Field-Subset Reload', () => {
       } finally {
         JSON.parse = originalJsonParse;
       }
+    });
+  });
+
+  describe('Ticket #221: Screen-Anchored Gradient Fill Viewport Navigation Invalidation and Re-Anchoring', () => {
+    let container: any;
+    let controller: MapController;
+
+    beforeEach(() => {
+      projectLayersSignal.value = [];
+      layerStylesSignal.value = {};
+      currentProjectSignal.value = null;
+
+      container = (globalThis as any).document.createElement('div');
+      controller = new MapController(container);
+    });
+
+    afterEach(() => {
+      controller.dispose();
+      projectLayersSignal.value = [];
+      layerStylesSignal.value = {};
+      currentProjectSignal.value = null;
+    });
+
+    it('tracks hasGradientFill on vector layers configured with Cartouche gradient fill styles', () => {
+      const gradientStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'gradient-fill' as const,
+            id: 'grad-1',
+            enabled: true,
+            angle: 45,
+            stops: ['#ffffff 0%', '#3388ff 100%'],
+          },
+        ],
+      };
+
+      const plainStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'simple-fill' as const,
+            id: 'fill-1',
+            enabled: true,
+            color: '#ff0000',
+          },
+        ],
+      };
+
+      const gradLayerDesc: LayerDescriptor = {
+        id: 'layer-grad-1',
+        name: 'Gradient Layer',
+        type: 'geojson',
+        source: '/path/to/grad.geojson',
+        geometryKind: 'Polygon',
+        layerKind: 'vector',
+        style: gradientStyle,
+        extent: [-100, 30, -70, 60],
+        featureCount: 10,
+      };
+
+      const plainLayerDesc: LayerDescriptor = {
+        id: 'layer-plain-1',
+        name: 'Plain Layer',
+        type: 'geojson',
+        source: '/path/to/plain.geojson',
+        geometryKind: 'Polygon',
+        layerKind: 'vector',
+        style: plainStyle,
+        extent: [-100, 30, -70, 60],
+        featureCount: 10,
+      };
+
+      const gradEntry = controller.createVectorLayer(gradLayerDesc);
+      const plainEntry = controller.createVectorLayer(plainLayerDesc);
+
+      assert.equal(gradEntry.hasGradientFill, true, 'Layer with gradient-fill component must have hasGradientFill === true');
+      assert.equal(plainEntry.hasGradientFill, false, 'Layer with simple-fill component must have hasGradientFill === false');
+    });
+
+    it('triggers changed() on gradient fill layers upon moveend and change:size events', () => {
+      const gradientStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'gradient-fill' as const,
+            id: 'grad-2',
+            enabled: true,
+            angle: 90,
+            stops: ['#ffffff 0%', '#000000 100%'],
+          },
+        ],
+      };
+
+      const plainStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'simple-fill' as const,
+            id: 'fill-2',
+            enabled: true,
+            color: '#00ff00',
+          },
+        ],
+      };
+
+      const gradEntry = controller.createVectorLayer({
+        id: 'layer-grad-2',
+        name: 'Gradient 2',
+        type: 'geojson',
+        source: '/path/to/grad2.geojson',
+        geometryKind: 'Polygon',
+        layerKind: 'vector',
+        style: gradientStyle,
+        extent: [-100, 30, -70, 60],
+        featureCount: 10,
+      });
+
+      const plainEntry = controller.createVectorLayer({
+        id: 'layer-plain-2',
+        name: 'Plain 2',
+        type: 'geojson',
+        source: '/path/to/plain2.geojson',
+        geometryKind: 'Polygon',
+        layerKind: 'vector',
+        style: plainStyle,
+        extent: [-100, 30, -70, 60],
+        featureCount: 10,
+      });
+
+      let gradChangedCount = 0;
+      let plainChangedCount = 0;
+
+      const origGradChanged = gradEntry.layer.changed.bind(gradEntry.layer);
+      gradEntry.layer.changed = () => {
+        gradChangedCount++;
+        origGradChanged();
+      };
+
+      const origPlainChanged = plainEntry.layer.changed.bind(plainEntry.layer);
+      plainEntry.layer.changed = () => {
+        plainChangedCount++;
+        origPlainChanged();
+      };
+
+      // Dispatch moveend on OpenLayers Map
+      controller.getMap().dispatchEvent('moveend');
+
+      assert.equal(gradChangedCount, 1, 'Gradient layer changed() must be called on moveend');
+      assert.equal(plainChangedCount, 0, 'Plain layer changed() must NOT be called on moveend');
+
+      // Dispatch change:size on OpenLayers Map
+      controller.getMap().dispatchEvent('change:size');
+
+      assert.equal(gradChangedCount, 2, 'Gradient layer changed() must be called on change:size');
+      assert.equal(plainChangedCount, 0, 'Plain layer changed() must NOT be called on change:size');
+    });
+
+    it('bypasses style invalidation and layer.changed() during active pointerdrag gestures to preserve 60 FPS pan performance', () => {
+      const gradientStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'gradient-fill' as const,
+            id: 'grad-3',
+            enabled: true,
+            angle: 0,
+            stops: ['#ffff00 0%', '#ff0000 100%'],
+          },
+        ],
+      };
+
+      const gradEntry = controller.createVectorLayer({
+        id: 'layer-grad-3',
+        name: 'Gradient 3',
+        type: 'geojson',
+        source: '/path/to/grad3.geojson',
+        geometryKind: 'Polygon',
+        layerKind: 'vector',
+        style: gradientStyle,
+        extent: [-100, 30, -70, 60],
+        featureCount: 10,
+      });
+
+      let gradChangedCount = 0;
+      const origGradChanged = gradEntry.layer.changed.bind(gradEntry.layer);
+      gradEntry.layer.changed = () => {
+        gradChangedCount++;
+        origGradChanged();
+      };
+
+      // Dispatch pointerdrag on OpenLayers Map (simulating active mouse dragging during pan)
+      controller.getMap().dispatchEvent('pointerdrag');
+
+      assert.equal(gradChangedCount, 0, 'layer.changed() must NOT be called during active pointerdrag gestures');
+    });
+
+    it('updates hasGradientFill dynamically when layer style transitions to and from gradient-fill', () => {
+      const plainStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'simple-fill' as const,
+            id: 'fill-dyn',
+            enabled: true,
+            color: '#123456',
+          },
+        ],
+      };
+
+      const entry = controller.createVectorLayer({
+        id: 'layer-dyn-1',
+        name: 'Dynamic Style Layer',
+        type: 'geojson',
+        source: '/path/to/dyn.geojson',
+        geometryKind: 'Polygon',
+        layerKind: 'vector',
+        style: plainStyle,
+        extent: [-100, 30, -70, 60],
+        featureCount: 10,
+      });
+
+      assert.equal(entry.hasGradientFill, false);
+
+      // Transition to gradient fill style
+      const gradientStyle = {
+        version: 1,
+        format: 'simple' as const,
+        components: [
+          {
+            type: 'gradient-fill' as const,
+            id: 'grad-dyn',
+            enabled: true,
+            angle: 180,
+            stops: ['#ffffff 0%', '#0000ff 100%'],
+          },
+        ],
+      };
+
+      controller.applyLayerStyles({ 'layer-dyn-1': gradientStyle });
+      assert.equal(entry.hasGradientFill, true, 'hasGradientFill transitions to true when gradient style is applied');
+
+      // Transition back to solid flat style
+      const flatStyle = {
+        'fill-color': '#abcdef',
+      };
+
+      controller.applyLayerStyles({ 'layer-dyn-1': flatStyle });
+      assert.equal(entry.hasGradientFill, false, 'hasGradientFill transitions to false when flat style is applied');
     });
   });
 });
