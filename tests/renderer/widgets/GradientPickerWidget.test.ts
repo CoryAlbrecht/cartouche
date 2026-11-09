@@ -749,3 +749,183 @@ describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
     assert.notEqual(parentStopsState[1], '#00ff00ff 100%', '100% stop color must be updated');
   });
 });
+
+describe('GradientPickerWidget Click-to-Select & Boundary Hit Targets (Ticket #223)', () => {
+  beforeEach(() => {
+    setupDom();
+    prefsUiIconSize.value = 20;
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it('single-clicking preview bar calculates relative position and activates nearest stop', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ['#000000ff 0%', '#008000ff 50%', '#00ff00ff 100%']
+        })
+      );
+    });
+
+    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    assert.ok(previewBar);
+
+    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(stopBtns.length, 3);
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true', 'Initial stop 0% is active');
+
+    // Click at clientX = 90 (45% on 200px bar -> closest to 50% stop)
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'click',
+        button: 0,
+        clientX: 90,
+        bubbles: true
+      });
+    });
+
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', '50% stop must be activated by click at 45%');
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+    assert.equal(stopBtns[2].getAttribute('aria-pressed'), 'false');
+
+    // Click at clientX = 180 (90% on 200px bar -> closest to 100% stop)
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'click',
+        button: 0,
+        clientX: 180,
+        bubbles: true
+      });
+    });
+
+    assert.equal(stopBtns[2].getAttribute('aria-pressed'), 'true', '100% stop must be activated by click at 90%');
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+  });
+
+  it('single-clicking near left and right extremities activates 0% and 100% boundary stops respectively', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ['#000000ff 0%', '#00ff00ff 100%']
+        })
+      );
+    });
+
+    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+
+    // Initially 0% is active
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true');
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+
+    // Click at far right extremity (clientX = 200, 100%)
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'click',
+        button: 0,
+        clientX: 200,
+        bubbles: true
+      });
+    });
+
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', '100% stop must be activated at right extremity');
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+
+    // Click at far left extremity (clientX = 0, 0%)
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'click',
+        button: 0,
+        clientX: 0,
+        bubbles: true
+      });
+    });
+
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true', '0% stop must be activated at left extremity');
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+  });
+
+  it('guide lines feature expanded 11px interactive hit area and select stop on click', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ['#000000ff 0%', '#00ff00ff 100%']
+        })
+      );
+    });
+
+    const guideLines = findElementsByClass(container, 'gradient-stop-guide-line');
+    assert.equal(guideLines.length, 2);
+
+    // Verify expanded 11px width
+    assert.equal(guideLines[0].style.width, '11px', 'Guide line container must have 11px expanded hit target');
+    assert.equal(guideLines[1].style.width, '11px', '100% guide line container must have 11px expanded hit target');
+
+    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true');
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+
+    // Click directly on 100% guide line
+    await act(async () => {
+      guideLines[1].dispatchEvent({
+        type: 'click',
+        button: 0,
+        bubbles: true
+      });
+    });
+
+    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', '100% stop must activate on clicking its guide line');
+    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+  });
+
+  it('double-clicking near boundary extremities activates boundary stops without spawning intermediate stops', async () => {
+    let latestStops: string[] = [];
+
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ['#000000ff 0%', '#00ff00ff 100%'],
+          onChange: (stops: string[]) => {
+            latestStops = stops;
+          }
+        })
+      );
+    });
+
+    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    const initialBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(initialBtns.length, 2);
+
+    // Double click at clientX = 199 (99.5% on 200px bar -> near 100% boundary)
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'dblclick',
+        clientX: 199,
+        bubbles: true
+      });
+    });
+
+    // Should NOT create a 3rd stop at 99.9%
+    const currentBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(currentBtns.length, 2, 'Must not spawn unwanted intermediate stop near 100% boundary');
+    assert.equal(currentBtns[1].getAttribute('aria-pressed'), 'true', '100% boundary stop must become active');
+    assert.equal(latestStops.length, 0, 'No onChange fired when double-clicking boundary');
+
+    // Double click at clientX = 1 (0.5% on 200px bar -> near 0% boundary)
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'dblclick',
+        clientX: 1,
+        bubbles: true
+      });
+    });
+
+    const finalBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(finalBtns.length, 2, 'Must not spawn unwanted intermediate stop near 0% boundary');
+    assert.equal(finalBtns[0].getAttribute('aria-pressed'), 'true', '0% boundary stop must become active');
+    assert.equal(latestStops.length, 0);
+  });
+});

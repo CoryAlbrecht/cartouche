@@ -314,6 +314,44 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   };
 
   /**
+   * @description Handles primary single-click on the gradient preview bar, activating the nearest existing stop.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-09
+   * @updated 2026-11-09
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent<HTMLDivElement>} e - Mouse event.
+   * @returns {void}
+   */
+  const handleBarClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+    if (e.button !== 0) return;
+    const bar = barRef.current;
+    if (!bar) return;
+
+    const rect = bar.getBoundingClientRect();
+    const width = rect.width || 1;
+    const clickX = e.clientX - rect.left;
+    const rawPct = (clickX / width) * 100;
+    const clickPct = clamp(Math.round(rawPct * 10) / 10, 0, 100);
+
+    const currentStops = stopsRef.current;
+    if (currentStops.length === 0) return;
+
+    let closestStop = currentStops[0];
+    let minDiff = Math.abs(currentStops[0].offset - clickPct);
+
+    for (let i = 1; i < currentStops.length; i++) {
+      const diff = Math.abs(currentStops[i].offset - clickPct);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestStop = currentStops[i];
+      }
+    }
+
+    setActiveStopId(closestStop.id);
+    activeStopIdRef.current = closestStop.id;
+  };
+
+  /**
    * @description Handles double-clicking anywhere on the gradient preview bar, inserting a new stop with linearly interpolated color at that position.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-08
@@ -330,6 +368,26 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     const width = rect.width || 1;
     const clickX = e.clientX - rect.left;
     const rawPct = (clickX / width) * 100;
+
+    // Prevent accidental creation of unwanted intermediate stops near boundaries
+    if (rawPct <= 2.0) {
+      const boundaryZero = stopsRef.current.find((s) => s.offset <= 0) || stopsRef.current[0];
+      if (boundaryZero) {
+        setActiveStopId(boundaryZero.id);
+        activeStopIdRef.current = boundaryZero.id;
+      }
+      return;
+    }
+    if (rawPct >= 98.0) {
+      const boundaryHundred =
+        stopsRef.current.find((s) => s.offset >= 100) || stopsRef.current[stopsRef.current.length - 1];
+      if (boundaryHundred) {
+        setActiveStopId(boundaryHundred.id);
+        activeStopIdRef.current = boundaryHundred.id;
+      }
+      return;
+    }
+
     const clickOffset = clamp(Math.round(rawPct * 10) / 10, 0.1, 99.9);
 
     // Find neighboring stops to interpolate color
@@ -537,8 +595,9 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       <div
         ref={barRef}
         className="gradient-picker-preview-bar"
+        onClick={handleBarClick}
         onDoubleClick={handleBarDoubleClick}
-        title="Double-click to add a gradient stop"
+        title="Click to select a stop, or double-click to add a gradient stop"
         style={{
           position: 'relative',
           height: '2lh',
@@ -561,18 +620,36 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
               key={`guide-${stop.id}`}
               className={`gradient-stop-guide-line ${isActive ? 'active' : ''}`}
               onPointerDown={(e) => handleStopPointerDown(e, stop)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveStopId(stop.id);
+                activeStopIdRef.current = stop.id;
+              }}
+              title={`Stop at ${stop.offset}%`}
               style={{
                 position: 'absolute',
                 top: 0,
                 bottom: 0,
                 left: `${stop.offset}%`,
                 transform: 'translateX(-50%)',
-                width: '1px',
-                backgroundColor: '#000000',
-                cursor: isStopBoundary ? 'default' : 'ew-resize',
-                zIndex: isActive ? 3 : 1
+                width: '11px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'stretch',
+                cursor: isStopBoundary ? 'pointer' : 'ew-resize',
+                zIndex: isActive ? 3 : 1,
+                boxSizing: 'border-box'
               }}
-            />
+            >
+              <div
+                style={{
+                  width: '1px',
+                  height: '100%',
+                  backgroundColor: '#000000',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
           );
         })}
       </div>
