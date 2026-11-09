@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -1651,8 +1651,9 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           onChange: () => {},
         })
       );
-      assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input for simple-fill');
-      assert.ok(html.includes('value="#123456"'), 'Must reflect fill color');
+      assert.ok(html.includes('id="layer-prop-fill-colour-picker"'), 'Must render fill colour picker container for simple-fill');
+      assert.ok(html.includes('colour-picker-widget'), 'Must embed ColourPickerWidget for simple-fill');
+      assert.ok(html.includes('value="#123456ff"'), 'Must reflect fill color');
 
       // 2. Simple Line options
       html = renderToStaticMarkup(
@@ -1675,7 +1676,8 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           onChange: () => {},
         })
       );
-      assert.ok(html.includes('id="layer-prop-stroke-color"'), 'Must render stroke color input for simple-line');
+      assert.ok(html.includes('id="layer-prop-stroke-colour-picker"'), 'Must render stroke colour picker container for simple-line');
+      assert.ok(html.includes('colour-picker-widget'), 'Must embed ColourPickerWidget for simple-line');
       assert.ok(html.includes('id="layer-prop-stroke-width"'), 'Must render stroke width input for simple-line');
       assert.ok(html.includes('id="layer-prop-line-offset"'), 'Must render line offset input for simple-line');
       assert.ok(html.includes('id="layer-prop-line-cap"'), 'Must render line cap select for simple-line');
@@ -1684,7 +1686,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('id="layer-prop-dash-offset"'), 'Must render dash offset input for simple-line');
       assert.ok(html.includes('id="layer-prop-dash-array-table"'), 'Must render dash array table for simple-line');
       assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Must render dash array add button for simple-line');
-      assert.ok(html.includes('value="#654321"'), 'Must reflect stroke color');
+      assert.ok(html.includes('value="#654321ff"'), 'Must reflect stroke color');
       assert.ok(html.includes('value="4"'), 'Must reflect stroke width');
 
       // 3. Simple Marker options
@@ -1736,16 +1738,46 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       // Active component is fill-2 (top component) which is locked
       assert.ok(html.includes('component-locked-banner'), 'Must render component locked banner');
-      assert.ok(html.includes('id="layer-prop-fill-color"'), 'Must render fill color input');
-      assert.ok(
-        /id="layer-prop-fill-color"[^>]*disabled=""/.test(html),
-        'Fill color input must be disabled'
-      );
+      assert.ok(html.includes('id="layer-prop-fill-colour-picker"'), 'Must render fill colour picker');
+      assert.ok(html.includes('colour-picker-widget disabled'), 'ColourPickerWidget must receive disabled class');
       assert.ok(html.includes('id="layer-prop-component-remove"'), 'Must render remove button');
       assert.ok(
         /id="layer-prop-component-remove"[^>]*disabled=""/.test(html),
         'Remove button must be disabled for locked component'
       );
+    });
+
+    it('anchors Simple Fill and Simple Line embedded ColourPickerWidgets with identical 280px widths preventing layout shift', () => {
+      // 1. Simple Fill
+      let html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'fill-1', type: 'simple-fill', enabled: true, color: '#3388ff' }],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-fill-colour-picker"'), 'Must render fill colour picker wrapper');
+      assert.ok(html.includes('width:280px') || html.includes('width: 280px'), 'Fill colour picker must have 280px width');
+
+      // 2. Simple Line
+      html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [{ id: 'line-1', type: 'simple-line', enabled: true, color: '#000000', width: 2 }],
+          }),
+          geometryKind: 'LineString',
+          onChange: () => {},
+        })
+      );
+      assert.ok(html.includes('id="layer-prop-stroke-colour-picker"'), 'Must render stroke colour picker wrapper');
+      assert.ok(html.includes('width:280px') || html.includes('width: 280px'), 'Stroke colour picker must have 280px width');
+      assert.ok(html.includes('layer-prop-line-options-container'), 'Must render 2-column container for simple-line');
     });
 
     it('safely parses style content or falls back to default style with parseCartoucheStyleSafe', () => {
