@@ -58,11 +58,13 @@ export const COLOR_FORMATS: ColorFormat[] = [
  * @property {string} [initialColor='#00ff00ff'] - Starting color string in any valid CSS format.
  * @property {ColorFormat} [format='HEX'] - Preferred initial color format.
  * @property {(color: string) => void} [onChange] - Callback fired whenever color changes with CSS string.
+ * @property {boolean} [disabled=false] - Whether color picking and interactive controls are disabled.
  */
 export interface ColourPickerWidgetProps extends Omit<BasicWidgetProps, 'children'> {
   initialColor?: string;
   format?: ColorFormat;
   onChange?: (color: string) => void;
+  disabled?: boolean;
 }
 
 /**
@@ -79,6 +81,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
   initialColor = '#00ff00ff',
   format: propFormat,
   onChange,
+  disabled = false,
   name = 'colour-picker-widget',
   displayName = 'Colour Picker',
   showHeader = true,
@@ -165,7 +168,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
     typeof window !== 'undefined' && 'EyeDropper' in (window as unknown as Record<string, unknown>);
 
   const handleEyeDropper = async () => {
-    if (!isEyeDropperSupported) return;
+    if (disabled || !isEyeDropperSupported) return;
     try {
       const EyeDropperClass = (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper;
       const eyeDropper = new EyeDropperClass();
@@ -184,7 +187,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
 
   // 2D Shade/Tint Surface Drag Handlers
   const handleSurfacePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+    if (disabled || e.button !== 0) return;
     isDraggingSurface.current = true;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     updateSurfaceFromEvent(e);
@@ -213,7 +216,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
 
   // Rainbow Hue Strip Drag Handlers
   const handleHuePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+    if (disabled || e.button !== 0) return;
     isDraggingHue.current = true;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     updateHueFromEvent(e);
@@ -240,7 +243,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
 
   // Alpha Checkerboard Strip Drag Handlers
   const handleAlphaPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+    if (disabled || e.button !== 0) return;
     isDraggingAlpha.current = true;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     updateAlphaFromEvent(e);
@@ -434,7 +437,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
       showHeader={showHeader}
       minWidth={minWidth}
       minHeight={minHeight}
-      className={`colour-picker-widget ${className}`}
+      className={`colour-picker-widget ${disabled ? 'disabled' : ''} ${className}`.trim()}
       style={{
         ...style,
         display: 'flex',
@@ -444,14 +447,22 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
       {...basicWidgetProps}
     >
       <div
-        className='colour-picker-container'
+        className={`colour-picker-container ${disabled ? 'disabled' : ''}`.trim()}
         style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
           padding: '8px',
           flex: 1,
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          ...(disabled
+            ? {
+                pointerEvents: 'none',
+                opacity: 0.55,
+                cursor: 'not-allowed',
+                userSelect: 'none'
+              }
+            : {})
         }}
       >
         {/* =========================================================================
@@ -625,9 +636,11 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             <button
               type='button'
               className='colour-picker-eyedropper-btn'
-              disabled={!isEyeDropperSupported}
+              disabled={disabled || !isEyeDropperSupported}
               title={
-                isEyeDropperSupported
+                disabled
+                  ? 'Color picker is disabled'
+                  : isEyeDropperSupported
                   ? 'Sample color from screen'
                   : 'Screen eyedropper is not supported in this environment'
               }
@@ -638,13 +651,13 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                 justifyContent: 'center',
                 padding: '4px',
                 backgroundColor: 'var(--cartouche-theme-surface-alt, #f1f5f9)',
-                color: isEyeDropperSupported
+                color: !disabled && isEyeDropperSupported
                   ? 'var(--cartouche-theme-fg-primary, #0f172a)'
                   : 'var(--cartouche-theme-fg-muted, #94a3b8)',
                 border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
                 borderRadius: '3px',
-                cursor: isEyeDropperSupported ? 'pointer' : 'not-allowed',
-                opacity: isEyeDropperSupported ? 1 : 0.6,
+                cursor: !disabled && isEyeDropperSupported ? 'pointer' : 'not-allowed',
+                opacity: !disabled && isEyeDropperSupported ? 1 : 0.6,
                 flexShrink: 0
               }}
             >
@@ -654,6 +667,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             <select
               className='colour-picker-format-select'
               value={activeFormat}
+              disabled={disabled}
               onChange={handleFormatChange}
               style={{
                 flex: 1,
@@ -686,6 +700,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               <input
                 type='text'
                 className='colour-picker-hex-input'
+                disabled={disabled}
                 value={srgbToHex(currentSrgb, true)}
                 onChange={handleHexInputChange}
                 onInput={handleHexInputChange}
@@ -717,6 +732,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                   <input
                     type='number'
                     step={chan.step}
+                    disabled={disabled}
                     className={`colour-picker-channel-input colour-picker-channel-${chan.key}`}
                     value={chan.value}
                     onChange={(e) => handleChannelInputChange(chan.key, e.target.value)}

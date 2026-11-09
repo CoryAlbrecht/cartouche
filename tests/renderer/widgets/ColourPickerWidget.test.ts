@@ -625,4 +625,52 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
     const hexInputs = findElementsByClass(bottomRows[1], 'colour-picker-hex-input');
     assert.equal(hexInputs.length, 1, 'Inputs row must contain text input(s)');
   });
+
+  it('disables interactive controls, applies pointer-events none, and dims opacity when disabled=true (Ticket #216)', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: '#123456ff',
+          disabled: true
+        })
+      );
+    });
+
+    const pickerContainer = findElementsByClass(container, 'colour-picker-container')[0];
+    assert.ok(pickerContainer, 'Must render .colour-picker-container');
+    assert.equal(pickerContainer.style.pointerEvents, 'none', 'Container must have pointerEvents none');
+    assert.equal(pickerContainer.style.opacity, '0.55', 'Container must have dimmed opacity 0.55');
+
+    // Format select is disabled
+    const formatSelect = findElementsByClass(pickerContainer, 'colour-picker-format-select')[0];
+    assert.ok(formatSelect, 'Must render format dropdown select');
+    assert.equal(formatSelect.disabled, true, 'Format select must be disabled');
+
+    // Eyedropper button is disabled
+    const eyedropperBtn = findElementsByClass(pickerContainer, 'colour-picker-eyedropper-btn')[0];
+    assert.ok(eyedropperBtn, 'Must render eyedropper button');
+    assert.equal(eyedropperBtn.disabled, true, 'Eyedropper button must be disabled');
+
+    // Hex input is disabled
+    const hexInput = findElementsByClass(pickerContainer, 'colour-picker-hex-input')[0];
+    assert.ok(hexInput, 'Must render hex text input');
+    assert.equal(hexInput.disabled, true, 'Hex input must be disabled');
+
+    // Rerender with RGB format to test channel inputs
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: 'rgb(255, 0, 0)',
+          format: 'RGB',
+          disabled: true
+        })
+      );
+    });
+
+    const channelInputs = findElementsByClass(container, 'colour-picker-channel-input');
+    assert.ok(channelInputs.length >= 3, 'Must render RGB channel inputs');
+    for (const input of channelInputs) {
+      assert.equal(input.disabled, true, 'Channel input must be disabled');
+    }
+  });
 });
