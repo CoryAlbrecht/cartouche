@@ -390,6 +390,58 @@ describe('Workbench Global Keyboard Listener', () => {
     assert.equal(openFilesCalled, false);
   });
 
+  it('dispatches layer_properties action when Ctrl+Shift+, is pressed and active layer exists', () => {
+    activeLayerIdSignal.value = 'layer-roads';
+    activeLayerPropertiesIdSignal.value = null;
+
+    registeredActionsSignal.value = [
+      {
+        name: 'layer_properties',
+        description: 'Opens layer properties dialog for the active layer',
+        keyCombination: { key: ',', ctrl: true, shift: true }
+      }
+    ];
+
+    // On standard keyboards, pressing Shift with comma emits key: '<' and code: 'Comma'
+    const event = createMockKeyEvent({
+      key: '<',
+      code: 'Comma',
+      ctrlKey: true,
+      shiftKey: true
+    });
+
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true, 'Keystroke event should be defaultPrevented');
+    assert.equal(event.propagationStopped, true, 'Keystroke event propagation should be stopped');
+    assert.equal(activeLayerPropertiesIdSignal.value, 'layer-roads', 'Layer properties dialog should open for active layer');
+  });
+
+  it('bypasses layer_properties opening when Ctrl+Shift+, is pressed without an active layer', () => {
+    activeLayerIdSignal.value = null;
+    activeLayerPropertiesIdSignal.value = null;
+
+    registeredActionsSignal.value = [
+      {
+        name: 'layer_properties',
+        description: 'Opens layer properties dialog for the active layer',
+        keyCombination: { key: ',', ctrl: true, shift: true }
+      }
+    ];
+
+    const event = createMockKeyEvent({
+      key: '<',
+      code: 'Comma',
+      ctrlKey: true,
+      shiftKey: true
+    });
+
+    handleWorkbenchKeyDown(event);
+
+    assert.equal(event.defaultPrevented, true, 'Event should match action and be handled');
+    assert.equal(activeLayerPropertiesIdSignal.value, null, 'Dialog should not open when activeLayerId is null');
+  });
+
   describe('executeWorkbenchAction', () => {
     it('executes open_project action when passed open_project action name', () => {
       let openFilesCalled = false;

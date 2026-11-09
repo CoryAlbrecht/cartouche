@@ -66,15 +66,59 @@ import { cancelTopDialog } from '../state/dialogSignals';
 import type { KeyCombination } from '@shared/types';
 
 /**
+ * @description Mapping of W3C KeyboardEvent physical code values to corresponding base character symbols.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @type {Record<string, string>}
+ */
+const CODE_TO_PUNCTUATION_KEY: Record<string, string> = {
+  comma: ',',
+  period: '.',
+  slash: '/',
+  semicolon: ';',
+  quote: "'",
+  bracketleft: '[',
+  bracketright: ']',
+  backslash: '\\',
+  minus: '-',
+  equal: '=',
+  backquote: '`'
+};
+
+/**
+ * @description Mapping of standard shifted glyphs to their base unshifted key symbols.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @type {Record<string, string>}
+ */
+const SHIFT_TO_UNSHIFTED_KEY: Record<string, string> = {
+  '<': ',',
+  '>': '.',
+  '?': '/',
+  ':': ';',
+  '"': "'",
+  '{': '[',
+  '}': ']',
+  '|': '\\',
+  '_': '-',
+  '+': '=',
+  '~': '`'
+};
+
+/**
  * @description Compares a registered key combination against native KeyboardEvent logical and physical key values.
- * Evaluates physical key code (e.code) as fallback for single letters and digits to support international layouts and AltGr combinations.
+ * Evaluates physical key code (e.code) as fallback for single letters, digits, and punctuation keys to support international layouts and AltGr/Shift combinations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @param {KeyCombination} combination - Action key combination definition.
  * @param {string} key - Normalized lowercase logical key string from KeyboardEvent.key.
- * @param {string} code - Physical key code from KeyboardEvent.code (e.g. 'KeyO', 'Digit1').
+ * @param {string} code - Physical key code from KeyboardEvent.code (e.g. 'KeyO', 'Digit1', 'Comma').
  * @returns {boolean} True if the logical key or physical key matches the combination trigger key.
  */
 export function matchesKeyCombination(
@@ -96,7 +140,14 @@ export function matchesKeyCombination(
       return true;
     }
   }
-  return code.toLowerCase() === targetKeyLower;
+  const codeLower = code.toLowerCase();
+  if (CODE_TO_PUNCTUATION_KEY[codeLower] === targetKeyLower) {
+    return true;
+  }
+  if (SHIFT_TO_UNSHIFTED_KEY[key] === targetKeyLower) {
+    return true;
+  }
+  return codeLower === targetKeyLower;
 }
 
 /**
