@@ -212,6 +212,7 @@
     <string name="layer_properties_style_syntax_error">Style syntax or validation error.</string>
     <string name="layer_properties_styling_visual_group">Visual Symbolizer</string>
     <string name="layer_properties_styling_fill_color">Fill Color</string>
+    <string name="layer_properties_styling_gradient_angle">Gradient Angle</string>
     <string name="layer_properties_styling_fill_opacity">Fill Opacity</string>
     <string name="layer_properties_styling_stroke_color">Stroke Color</string>
     <string name="layer_properties_styling_stroke_width">Stroke Width</string>
@@ -270,6 +271,7 @@
     <string name="layer_properties_component_unlock">Unlock</string>
     <string name="layer_properties_component_type">Component Type</string>
     <string name="layer_properties_component_type_fill">Simple Fill</string>
+    <string name="layer_properties_component_type_gradient_fill">Gradient Fill</string>
     <string name="layer_properties_component_type_line">Simple Line</string>
     <string name="layer_properties_component_type_marker">Simple Marker</string>
     <string name="layer_properties_component_options">Style Options</string>

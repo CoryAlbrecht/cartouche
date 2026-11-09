@@ -4,7 +4,7 @@
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring interactive stop toggle buttons, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link ColourPickerWidget}
@@ -46,18 +46,20 @@ export interface GradientStop {
  * @property {string[]} [initialStops] - Array of '<color> <percent>' stop definitions (defaults to ['#000000ff 0%', '#00ff00ff 100%']).
  * @property {ColorFormat} [format='HEX'] - Preferred initial color format for serialization and embedded color picker.
  * @property {(stops: string[]) => void} [onChange] - Callback fired whenever gradient stops change, with formatted strings.
+ * @property {boolean} [disabled=false] - Whether the gradient picker and stop controls are disabled against user interactions.
  */
 export interface GradientPickerWidgetProps extends Omit<BasicWidgetProps, 'children'> {
   initialStops?: string[];
   format?: ColorFormat;
   onChange?: (stops: string[]) => void;
+  disabled?: boolean;
 }
 
 /**
  * @description Parses an array of raw '<color> <percent>' CSS gradient stop strings into structured GradientStop objects.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {string[]} [rawStops] - Optional raw stop strings array.
  * @returns {GradientStop[]} Parsed gradient stop definitions sorted by offset ascending.
@@ -89,7 +91,7 @@ export function parseInitialStops(rawStops?: string[]): GradientStop[] {
  * @description Serializes an array of GradientStop objects into CSS-compatible '<color> <percent>' strings uniformly formatted in the given format.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {GradientStop[]} stops - Array of gradient stop definitions.
  * @param {ColorFormat} format - Target color format.
@@ -113,7 +115,7 @@ export function serializeGradientStops(stops: GradientStop[], format: ColorForma
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring interactive stop toggle buttons, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {GradientPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} GradientPickerWidget React component.
@@ -122,6 +124,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   initialStops,
   format: propFormat = 'HEX',
   onChange,
+  disabled = false,
   name = 'gradient-picker-widget',
   displayName = 'Gradient Picker',
   showHeader = true,
@@ -361,13 +364,14 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       showHeader={showHeader}
       minWidth={minWidth}
       minHeight={minHeight}
-      className={`gradient-picker-widget ${className}`.trim()}
+      className={`gradient-picker-widget ${disabled ? 'disabled' : ''} ${className}`.trim()}
       style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '0.5rem',
         padding: '0.5rem',
         boxSizing: 'border-box',
+        ...(disabled ? { opacity: 0.6, pointerEvents: 'none' } : {}),
         ...style
       }}
       {...basicWidgetProps}
@@ -508,6 +512,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
           showHeader={false}
           initialColor={activeStop.color}
           format={activeFormat}
+          disabled={disabled}
           onChange={handleColourChange}
           minWidth={240}
           minHeight={280}

@@ -1,10 +1,10 @@
 /**
  * @file styleCompiler.test.ts
  * @module tests/renderer/map/styleCompiler.test
- * @description Unit tests for renderer styleCompiler verifying Cartouche Symbology compilation, OpenLayers StyleFunction closure caching, painter execution order, disabled component filtering, and format routing.
+ * @description Unit tests for renderer styleCompiler verifying Cartouche Symbology compilation, OpenLayers StyleFunction closure caching, painter execution order, disabled component filtering, GradientFillComponent screen-anchored Canvas 2D gradients, and format routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-04
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  */
 
@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
+import Polygon from 'ol/geom/Polygon';
 import CircleStyle from 'ol/style/Circle';
 import {
   compileStyleFunction,
@@ -19,7 +20,7 @@ import {
   compileLayerStyle,
   isCartoucheStyleDescriptor
 } from '../../../src/renderer/map/styleCompiler';
-import type { CartoucheLayerStyle, ProjectStyleItem } from '../../../src/shared/types';
+import type { CartoucheLayerStyle, ProjectStyleItem, GradientFillComponent } from '../../../src/shared/types';
 
 describe('styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (Ticket #126)', () => {
   const sampleCartoucheStyle: CartoucheLayerStyle = {
@@ -297,6 +298,223 @@ describe('styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
       assert.equal(result.format, 'cartouche');
       assert.equal(result.isFallback, false);
       assert.equal(typeof result.compiledStyle, 'function');
+    });
+  });
+
+  describe('GradientFillComponent & Canvas 2D Gradient Rendering (Ticket #219)', () => {
+    /**
+     * Creates a mock HTML5 Canvas and 2D context tracking createLinearGradient calls.
+     */
+    function createMockCanvasContext() {
+      const gradientCalls: Array<{
+        x0: number;
+        y0: number;
+        x1: number;
+        y1: number;
+        stops: Array<{ offset: number; color: string }>;
+      }> = [];
+
+      const mockGradientInstance = {
+        addColorStop(offset: number, color: string) {
+          const current = gradientCalls[gradientCalls.length - 1];
+          if (current) {
+            current.stops.push({ offset, color });
+          }
+        }
+      };
+
+      const mockCtx = {
+        createLinearGradient(x0: number, y0: number, x1: number, y1: number) {
+          gradientCalls.push({ x0, y0, x1, y1, stops: [] });
+          return mockGradientInstance;
+        }
+      };
+
+      const mockCanvas = {
+        getContext(type: string) {
+          if (type === '2d') return mockCtx;
+          return null;
+        }
+      };
+
+      return { mockCanvas, mockCtx, gradientCalls, mockGradientInstance };
+    }
+
+    /**
+     * Creates a mock OpenLayers Map converting coordinates to screen pixels.
+     */
+    function createMockMap(mockCanvas: any) {
+      return {
+        getPixelFromCoordinate(coord: [number, number]): [number, number] {
+          // Linear mapping: x -> x * 2, y -> 500 - y * 2
+          return [coord[0] * 2, 500 - coord[1] * 2];
+        },
+        getViewport(): { querySelector: (sel: string) => any } {
+          return {
+            querySelector(selector: string) {
+              if (selector === 'canvas') return mockCanvas;
+              return null;
+            }
+          };
+        }
+      } as any;
+    }
+
+    const sampleGradientStyle: CartoucheLayerStyle = {
+      format: 'simple',
+      version: 1,
+      components: [
+        {
+          id: 'grad-1',
+          type: 'gradient-fill',
+          enabled: true,
+          angle: 0,
+          stops: ['#ff0000ff 0%', '#0000ffff 100%']
+        } as GradientFillComponent
+      ]
+    };
+
+    it('compiles GradientFillComponent with map into OpenLayers Style with CanvasGradient and normalized stops', () => {
+      const { mockCanvas, gradientCalls } = createMockCanvasContext();
+      const mockMap = createMockMap(mockCanvas);
+
+      const styleFunction = compileStyleFunction(sampleGradientStyle, { map: mockMap });
+      // Polygon with geographic coordinates [10, 10] to [110, 60]
+      // Top-left geographic: [10, 60] -> pixel: [20, 500 - 120] = [20, 380]
+      // Bottom-right geographic: [110, 10] -> pixel: [220, 500 - 20] = [220, 480]
+      // Center: cx = 120, cy = 430. Width w = 200, Height h = 100.
+      const poly = new Polygon([
+        [
+          [10, 10],
+          [110, 10],
+          [110, 60],
+          [10, 60],
+          [10, 10]
+        ]
+      ]);
+      const feature = new Feature(poly);
+
+      const styles = styleFunction(feature, 1) as import('ol/style/Style').default[];
+      assert.ok(Array.isArray(styles));
+      assert.equal(styles.length, 1);
+
+      const fill = styles[0].getFill();
+      assert.ok(fill);
+      assert.ok(fill.getColor());
+
+      // Verify createLinearGradient called
+      assert.equal(gradientCalls.length, 1);
+      const call = gradientCalls[0];
+
+      // For angle 0°: horizontal left to right across center cy=430, from cx - w/2 = 20 to cx + w/2 = 220
+      assert.ok(Math.abs(call.x0 - 20) < 1e-4, `Expected x0 ~ 20, got ${call.x0}`);
+      assert.ok(Math.abs(call.x1 - 220) < 1e-4, `Expected x1 ~ 220, got ${call.x1}`);
+      assert.ok(Math.abs(call.y0 - 430) < 1e-4, `Expected y0 ~ 430, got ${call.y0}`);
+      assert.ok(Math.abs(call.y1 - 430) < 1e-4, `Expected y1 ~ 430, got ${call.y1}`);
+
+      // Verify normalized stops: 0% -> 0.0, 100% -> 1.0
+      assert.equal(call.stops.length, 2);
+      assert.equal(call.stops[0].offset, 0);
+      assert.equal(call.stops[0].color, '#ff0000ff');
+      assert.equal(call.stops[1].offset, 1);
+      assert.equal(call.stops[1].color, '#0000ffff');
+    });
+
+    it('calculates rotated start and end coordinates accurately for 90° and 45° angles', () => {
+      const { mockCanvas, gradientCalls } = createMockCanvasContext();
+      const mockMap = createMockMap(mockCanvas);
+
+      // 90°: vertical top to bottom
+      const style90: CartoucheLayerStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'grad-90',
+            type: 'gradient-fill',
+            enabled: true,
+            angle: 90,
+            stops: ['#ffffff 0%', '#000000 100%']
+          } as GradientFillComponent
+        ]
+      };
+
+      const styleFunction90 = compileStyleFunction(style90, { map: mockMap });
+      const poly = new Polygon([
+        [
+          [10, 10],
+          [110, 10],
+          [110, 60],
+          [10, 60],
+          [10, 10]
+        ]
+      ]);
+      const feature = new Feature(poly);
+
+      styleFunction90(feature, 1);
+      assert.equal(gradientCalls.length, 1);
+      const call90 = gradientCalls[0];
+
+      // For 90°: along vertical center cx=120, from cy - h/2 = 380 to cy + h/2 = 480
+      assert.ok(Math.abs(call90.x0 - 120) < 1e-4, `Expected x0 ~ 120, got ${call90.x0}`);
+      assert.ok(Math.abs(call90.x1 - 120) < 1e-4, `Expected x1 ~ 120, got ${call90.x1}`);
+      assert.ok(Math.abs(call90.y0 - 380) < 1e-4, `Expected y0 ~ 380, got ${call90.y0}`);
+      assert.ok(Math.abs(call90.y1 - 480) < 1e-4, `Expected y1 ~ 480, got ${call90.y1}`);
+    });
+
+    it('gracefully falls back to solid fill of the first stop when map is omitted (headless execution)', () => {
+      const styleFunction = compileStyleFunction(sampleGradientStyle); // no map
+      const poly = new Polygon([
+        [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+          [0, 10],
+          [0, 0]
+        ]
+      ]);
+      const feature = new Feature(poly);
+
+      const styles = styleFunction(feature, 1) as import('ol/style/Style').default[];
+      assert.equal(styles.length, 1);
+      const fill = styles[0].getFill();
+      assert.ok(fill);
+      assert.equal(fill.getColor(), '#ff0000ff');
+    });
+
+    it('gracefully falls back to solid fill of the first stop when feature extent is degenerate (w=0, h=0)', () => {
+      const { mockCanvas } = createMockCanvasContext();
+      const mockMap = createMockMap(mockCanvas);
+
+      const styleFunction = compileStyleFunction(sampleGradientStyle, { map: mockMap });
+      const point = new Point([50, 50]);
+      const feature = new Feature(point);
+
+      const styles = styleFunction(feature, 1) as import('ol/style/Style').default[];
+      assert.equal(styles.length, 1);
+      const fill = styles[0].getFill();
+      assert.ok(fill);
+      assert.equal(fill.getColor(), '#ff0000ff');
+    });
+
+    it('excludes gradient-fill component when enabled is false', () => {
+      const disabledStyle: CartoucheLayerStyle = {
+        format: 'simple',
+        version: 1,
+        components: [
+          {
+            id: 'grad-disabled',
+            type: 'gradient-fill',
+            enabled: false,
+            angle: 0,
+            stops: ['#ff0000 0%', '#0000ff 100%']
+          } as GradientFillComponent
+        ]
+      };
+
+      const styleFunction = compileStyleFunction(disabledStyle);
+      const styles = styleFunction(new Feature(new Point([0, 0])), 1) as import('ol/style/Style').default[];
+      assert.equal(styles.length, 0);
     });
   });
 });

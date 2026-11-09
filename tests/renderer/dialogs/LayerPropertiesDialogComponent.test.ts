@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -897,6 +897,40 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.strictEqual(mockCtx.fillStyle, '#d8b4e2', 'SLD 1.1.0 fill color must match');
       assert.strictEqual(mockCtx.strokeStyle, '#6b21a8', 'SLD 1.1.0 stroke color must match');
       assert.strictEqual(mockCtx.lineWidth, 2, 'SLD 1.1.0 stroke width must match');
+
+      // 5. Gradient Fill preview with cartouche format
+      drawCalls.length = 0;
+      let createdGradient: any = null;
+      mockCtx.createLinearGradient = (x0: number, y0: number, x1: number, y1: number) => {
+        createdGradient = { x0, y0, x1, y1, stops: [] as any[] };
+        return {
+          addColorStop(offset: number, color: string) {
+            createdGradient.stops.push({ offset, color });
+          },
+        };
+      };
+      renderStylePreviewToCanvas(mockCtx, {
+        width: 120,
+        height: 120,
+        format: 'cartouche',
+        content: JSON.stringify({
+          version: 1,
+          format: 'simple',
+          components: [
+            {
+              id: 'grad-1',
+              type: 'gradient-fill',
+              enabled: true,
+              angle: 45,
+              stops: ['#ff0000 0%', '#0000ff 100%'],
+            },
+          ],
+        }),
+        geometryKind: 'Polygon',
+      });
+      assert.ok(drawCalls.includes('fill'), 'Gradient Fill render should call fill for polygon');
+      assert.ok(createdGradient, 'createLinearGradient must be invoked for gradient-fill');
+      assert.strictEqual(createdGradient.stops.length, 2, 'Stops must be added to gradient');
     });
 
     it('preserves pending draft edits across format switches via switchLayerPropertiesStyleFormat', async () => {
@@ -1593,6 +1627,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
       assert.ok(html.includes('value="simple-fill"'), 'Polygon must offer simple-fill');
+      assert.ok(html.includes('value="gradient-fill"'), 'Polygon must offer gradient-fill');
       assert.ok(html.includes('value="simple-line"'), 'Polygon must offer simple-line');
 
       // 2. LineString: must omit Fill components
@@ -1608,6 +1643,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
       assert.ok(!html.includes('value="simple-fill"'), 'LineString must NOT offer simple-fill');
+      assert.ok(!html.includes('value="gradient-fill"'), 'LineString must NOT offer gradient-fill');
       assert.ok(html.includes('value="simple-line"'), 'LineString must offer simple-line');
 
       // 3. Point: offers Marker and Line, omits Fill
@@ -1634,6 +1670,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
       assert.ok(!html.includes('value="simple-fill"'), 'Point must NOT offer simple-fill');
+      assert.ok(!html.includes('value="gradient-fill"'), 'Point must NOT offer gradient-fill');
       assert.ok(html.includes('value="simple-marker"'), 'Point must offer simple-marker');
       assert.ok(html.includes('value="simple-line"'), 'Point must offer simple-line');
     });
@@ -1718,6 +1755,63 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('id="layer-prop-marker-stroke-color"'), 'Must render marker stroke color for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-stroke-width"'), 'Must render marker stroke width for simple-marker');
       assert.ok(html.includes('value="8"'), 'Must reflect marker radius');
+    });
+
+    it('renders type-specific Style Options for Gradient Fill including angle spinner and embedded GradientPickerWidget', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'grad-1',
+                type: 'gradient-fill',
+                enabled: true,
+                angle: 45.5,
+                stops: ['#ff0000ff 0%', '#0000ffff 100%'],
+              },
+            ],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+
+      assert.ok(html.includes('id="layer-prop-gradient-options-container"'), 'Must render gradient options container');
+      assert.ok(html.includes('id="layer-prop-gradient-angle"'), 'Must render gradient angle spinner');
+      assert.ok(html.includes('value="45.5"'), 'Must reflect angle value');
+      assert.ok(html.includes('step="1"'), 'Spinner must step by 1');
+      assert.ok(html.includes('id="layer-prop-gradient-picker"'), 'Must render gradient picker container');
+      assert.ok(html.includes('gradient-picker-widget'), 'Must embed GradientPickerWidget');
+      assert.ok(html.includes('width:280px'), 'Gradient options container must adhere to standardized 280px width');
+    });
+
+    it('locking a Gradient Fill component disables both the angle spinner and embedded GradientPickerWidget', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(SimpleModeEditor, {
+          styleContent: JSON.stringify({
+            format: 'simple',
+            version: 1,
+            components: [
+              {
+                id: 'grad-locked',
+                type: 'gradient-fill',
+                enabled: true,
+                locked: true,
+                angle: 90,
+                stops: ['#000000ff 0%', '#ffffffff 100%'],
+              },
+            ],
+          }),
+          geometryKind: 'Polygon',
+          onChange: () => {},
+        })
+      );
+
+      assert.ok(html.includes('component-locked-banner'), 'Must render locked banner for gradient fill');
+      assert.ok(/id="layer-prop-gradient-angle"[^>]*disabled=""/.test(html), 'Angle spinner must be disabled when locked');
+      assert.ok(html.includes('gradient-picker-widget disabled'), 'GradientPickerWidget must receive disabled class when locked');
     });
 
     it('locking a component disables option controls, greys out remove button, and renders lock banner', () => {
