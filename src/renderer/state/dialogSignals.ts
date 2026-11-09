@@ -4,7 +4,7 @@
  * @description Preact reactive signals and registration stack for modeless detached dialog windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link DialogWindowName}
  * @see {@link Dialog}
@@ -21,7 +21,9 @@ import {
   isSelectByValueOpenSignal,
   closeSelectByValueDialog,
   isSnappingOptionsOpenSignal,
-  closeSnappingOptionsDialog
+  closeSnappingOptionsDialog,
+  isCreateLayerOpenSignal,
+  closeCreateLayerDialog
 } from './gisSignals';
 import { activeLayerPropertiesIdSignal, cancelLayerPropertiesEdits } from './layerPropertiesSignals';
 
@@ -133,6 +135,11 @@ export function cancelTopDialog(): boolean {
 
   if (isSnappingOptionsOpenSignal.value) {
     closeSnappingOptionsDialog();
+    return true;
+  }
+
+  if (isCreateLayerOpenSignal.value) {
+    closeCreateLayerDialog();
     return true;
   }
 

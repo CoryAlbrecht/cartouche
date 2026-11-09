@@ -4,7 +4,7 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  */
 
@@ -48,6 +48,7 @@ import {
   mdiRayVertex,
   mdiVectorLine,
   mdiRestore,
+  mdiPlusBoxOutline,
 } from "@mdi/js";
 
 /**
@@ -60,11 +61,23 @@ import {
  */
 export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
+    name: "create_layer",
+    description: "Opens create layer dialog",
+    icon: mdiPlusBoxOutline,
+    keyCombination: { key: "n", ctrl: true },
+  },
+  {
     name: "add_layers",
     description:
       "Opens the Add Layers dialog box to attach spatial data sources",
     icon: "file:layers-plus-outline.svg",
     keyCombination: { key: "l", ctrl: true },
+  },
+  {
+    name: "layer_properties",
+    description: "Opens layer properties dialog for the active layer",
+    icon: mdiLayersOutline,
+    keyCombination: { key: ",", ctrl: true, shift: true },
   },
   {
     name: "new_project",
@@ -174,6 +187,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     name: "project_properties",
     description: "Opens project properties dialog",
     icon: mdiFolderSettingsOutline,
+    keyCombination: { key: ",", ctrl: true, alt: true },
     functionCall: ApiFunctions.projectProperties,
   },
   {

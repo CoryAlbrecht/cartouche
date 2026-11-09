@@ -4,7 +4,7 @@
  * @description Unit tests verifying action registry parity, ensuring every BUILTIN_ACTION maps to a localized string in en.xml and has a valid functionCall where expected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link BUILTIN_ACTIONS}
  */
@@ -58,7 +58,9 @@ describe('actionParity', () => {
       'save_project',
       'save_as_project',
       'save_active_layer',
-      'save_active_layer_as'
+      'save_active_layer_as',
+      'create_layer',
+      'layer_properties'
     ];
 
     for (const key of coreProjectActions) {
@@ -92,6 +94,15 @@ describe('actionParity', () => {
 
     const saveActiveLayerAs = actionsMap.get('save_active_layer_as');
     assert.deepEqual(saveActiveLayerAs?.keyCombination, { key: 's', ctrl: true, shift: true });
+
+    const createLayer = actionsMap.get('create_layer');
+    assert.deepEqual(createLayer?.keyCombination, { key: 'n', ctrl: true });
+
+    const layerProperties = actionsMap.get('layer_properties');
+    assert.deepEqual(layerProperties?.keyCombination, { key: ',', ctrl: true, shift: true });
+
+    const projectProperties = actionsMap.get('project_properties');
+    assert.deepEqual(projectProperties?.keyCombination, { key: ',', ctrl: true, alt: true });
 
     const cancelAction = actionsMap.get('cancel_action');
     assert.deepEqual(cancelAction?.keyCombination, { key: 'Escape' });

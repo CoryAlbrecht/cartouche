@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -613,6 +613,44 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     value: 320,
     defaultValue: 320,
     minimum: 240,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.createLayer.location.x': {
+    displayName: 'Create Layer Dialog X Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.createLayer.location.y': {
+    displayName: 'Create Layer Dialog Y Coordinate',
+    value: -1,
+    defaultValue: -1,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.createLayer.location.width': {
+    displayName: 'Create Layer Dialog Width',
+    value: 640,
+    defaultValue: 640,
+    minimum: 400,
+    ephemeral: false,
+    hidden: true,
+    category: 'ui',
+    type: 'number'
+  },
+  'ui.createLayer.location.height': {
+    displayName: 'Create Layer Dialog Height',
+    value: 480,
+    defaultValue: 480,
+    minimum: 300,
     ephemeral: false,
     hidden: true,
     category: 'ui',

@@ -12,7 +12,9 @@
     <string name="save_as_project">Save Project As...</string>
     <string name="save_active_layer">Save Active Layer</string>
     <string name="save_active_layer_as">Save Active Layer As...</string>
+    <string name="create_layer">Create Layer...</string>
     <string name="add_layers">Add Layers...</string>
+    <string name="layer_properties">Layer Properties...</string>
     <string name="new_map_view">New Map View</string>
     <string name="pan_tool">Drag Map Canvas (Pan)</string>
     <string name="toggle_layers_widget">Toggle Layers Widget</string>

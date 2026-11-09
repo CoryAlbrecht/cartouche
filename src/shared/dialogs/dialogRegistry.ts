@@ -4,7 +4,7 @@
  * @description Centralized registry and specifications for detached child dialog windows in Cartouche GIS.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-10-27
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link Dialog}
  */
@@ -12,10 +12,10 @@
 /**
  * Valid frame name identifiers for detached dialog windows.
  *
- * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow' | 'snappingOptionsWindow' | 'newFieldWindow'} DialogWindowName
+ * @typedef {'preferencesWindow' | 'addLayersWindow' | 'layerPropertiesWindow' | 'projectPropertiesWindow' | 'selectByValueWindow' | 'snappingOptionsWindow' | 'newFieldWindow' | 'createLayerWindow'} DialogWindowName
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-03
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  */
 export type DialogWindowName =
@@ -25,7 +25,8 @@ export type DialogWindowName =
   | 'projectPropertiesWindow'
   | 'selectByValueWindow'
   | 'snappingOptionsWindow'
-  | 'newFieldWindow';
+  | 'newFieldWindow'
+  | 'createLayerWindow';
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -55,7 +56,7 @@ export interface DialogWindowSpec {
  * @description Central registry mapping dialog window frame names to their dimensional constraints and preference keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-03
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {Readonly<Record<DialogWindowName, DialogWindowSpec>>}
  */
@@ -115,6 +116,14 @@ export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindow
     defaultHeight: 320,
     minWidth: 360,
     minHeight: 240
+  }),
+  createLayerWindow: Object.freeze({
+    frameName: 'createLayerWindow',
+    locationKeyPrefix: 'ui.createLayer.location',
+    defaultWidth: 640,
+    defaultHeight: 480,
+    minWidth: 400,
+    minHeight: 300
   })
 });
 

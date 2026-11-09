@@ -4,7 +4,7 @@
  * @description Linter and pre-commit validator that parses prohibited domain terms from GLOSSARY.md and enforces canonical domain lexicon across staged diffs and source files.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  */
 
@@ -134,6 +134,17 @@ export const ALLOWED_COMPOUND_PHRASES = Object.freeze([
       'has unsaved changes',
       "'Unsaved Changes'",
       '"Unsaved Changes"'
+    ])
+  }),
+  Object.freeze({
+    avoid: 'Shortcut',
+    allowedPhrases: Object.freeze([
+      'menu-shortcut-slot',
+      'shortcut-slot',
+      'workbenchShortcuts',
+      'keyboard shortcut',
+      'keyboard shortcuts',
+      'keyboard_shortcuts'
     ])
   })
 ]);

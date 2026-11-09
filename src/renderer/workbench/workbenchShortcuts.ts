@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -55,8 +55,10 @@ import {
   snapToMidpointSignal,
   snapToSegmentSignal,
   openSnappingOptionsDialog,
+  openCreateLayerDialog,
   requestAppExitAction
 } from '../state/gisSignals';
+import { openLayerPropertiesDialog } from '../state/layerPropertiesSignals';
 import { openPreferencesDialog } from '../state/preferencesSignals';
 import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
 import { registeredActionsSignal } from '../state/actionSignals';
@@ -221,8 +223,16 @@ export function executeWorkbenchAction(actionName: string): void {
     case 'open_preferences':
       openPreferencesDialog();
       break;
+    case 'create_layer':
+      openCreateLayerDialog();
+      break;
     case 'add_layers':
       openAddLayersDialog();
+      break;
+    case 'layer_properties':
+      if (activeLayerIdSignal.value) {
+        openLayerPropertiesDialog(activeLayerIdSignal.value);
+      }
       break;
     case 'toggle_layers_widget':
       toggleLayersWidgetAction();

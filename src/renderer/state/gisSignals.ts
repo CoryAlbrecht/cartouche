@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -292,7 +292,7 @@ export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> 
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
@@ -309,7 +309,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
@@ -360,7 +360,7 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
@@ -846,7 +846,7 @@ export const layersSignal = signal<GisLayer[]>(initialLayers);
  * @description Set signal of selected spatial feature record IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {Signal<Set<string | number>>}
  */
@@ -929,7 +929,7 @@ export function getLayerDisplayName(layer: GisLayer): string {
  * Checks layersSignal first, then falls back to projectLayersSignal or projectTreeSignal item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
@@ -1172,7 +1172,7 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
  * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
@@ -1255,7 +1255,7 @@ export function toggleToolbar(id: ToolbarId): void {
  * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-07
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
@@ -3123,5 +3123,54 @@ export function closeProjectPropertiesDialog(): void {
  */
 export function projectPropertiesAction(): void {
   openProjectPropertiesDialog();
+}
+
+/**
+ * @signal isCreateLayerOpenSignal
+ * @description Modeless visibility toggle signal for the Create Layer dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const isCreateLayerOpenSignal = signal<boolean>(false);
+
+/**
+ * @description Opens modeless Create Layer dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function openCreateLayerDialog(): void {
+  isCreateLayerOpenSignal.value = true;
+  addConsoleLog('info', 'Create Layer dialog opened.', 'Layers');
+}
+
+/**
+ * @description Closes modeless Create Layer dialog box.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function closeCreateLayerDialog(): void {
+  isCreateLayerOpenSignal.value = false;
+  addConsoleLog('info', 'Create Layer dialog closed.', 'Layers');
+}
+
+/**
+ * @description Opens Create Layer dialog.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-08
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function createLayerAction(): void {
+  openCreateLayerDialog();
 }
 

@@ -4,12 +4,14 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
  * @see {@link WorkbenchStatusBar}
  * @see {@link PreferencesDialog}
+ * @see {@link AddLayersDialog}
+ * @see {@link CreateLayerDialog}
  * @see {@link LayerPropertiesDialog}
  * @see {@link ProjectPropertiesDialog}
  * @see {@link SelectByValueDialog}
@@ -37,7 +39,6 @@ import {
   mdiTableEdit,
   mdiMagnifyPlusOutline,
   mdiMagnifyMinusOutline,
-  mdiPlusBoxOutline,
   mdiInformationOutline,
   mdiCheck,
   mdiChevronRight,
@@ -79,8 +80,11 @@ import {
   resetToolbarsToDefault,
   registerTogglePanelHandler,
   openAddLayersDialog,
+  openProjectPropertiesDialog,
+  openCreateLayerDialog,
   requestAppExitAction,
 } from "@renderer/state/gisSignals";
+import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
 import {
   loadActionsFromMain,
   getActionFormattedKey,
@@ -95,6 +99,7 @@ import {
 } from "@renderer/state/preferencesSignals";
 import { PreferencesDialog } from "./dialogs/PreferencesDialog";
 import { AddLayersDialog } from "./dialogs/AddLayersDialog";
+import { CreateLayerDialog } from "./dialogs/CreateLayerDialog";
 import { LayerPropertiesDialog } from "./dialogs/LayerPropertiesDialog";
 import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { SelectByValueDialog } from "./dialogs/SelectByValueDialog";
@@ -1034,6 +1039,30 @@ export const Workbench: React.FC = () => {
                   </span>
                 </div>
 
+                {/* * Project Properties... $$ (greyed out if no project) */}
+                <div
+                  className={`menu-dropdown-item ${!hasProject ? "disabled" : ""}`}
+                  onClick={() =>
+                    hasProject
+                    && handleMenuClick(() => {
+                      window.electronAPI?.executeAction("project_properties");
+                      openProjectPropertiesDialog();
+                    })
+                  }>
+                  <span className='menu-item-icon-slot'>
+                    <Icon
+                      path={getActionIcon("project_properties")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
+                  </span>
+                  <span className='menu-item-label'>
+                    {t("project_properties")}
+                  </span>
+                  <span className='menu-shortcut-slot'>
+                    {getActionFormattedKey("project_properties")}
+                  </span>
+                </div>
+
                 <div className='menu-dropdown-separator' />
 
                 {/* * Save $$ (greyed out if no project or clean existing project) */}
@@ -1573,6 +1602,27 @@ export const Workbench: React.FC = () => {
             </div>
             {openMenu === "layers" && (
               <div className='menu-dropdown'>
+                {/* * Create Layer... $$ */}
+                <div
+                  className='menu-dropdown-item'
+                  onClick={() => {
+                    handleMenuClick(() => {
+                      window.electronAPI?.executeAction("create_layer");
+                      openCreateLayerDialog();
+                    });
+                  }}>
+                  <span className='menu-item-icon-slot'>
+                    <Icon
+                      path={getActionIcon("create_layer")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
+                  </span>
+                  <span className='menu-item-label'>{t("create_layer")}</span>
+                  <span className='menu-shortcut-slot'>
+                    {getActionFormattedKey("create_layer")}
+                  </span>
+                </div>
+
                 {/* * Add Layers... $$ */}
                 <div
                   className='menu-dropdown-item'
@@ -1591,23 +1641,32 @@ export const Workbench: React.FC = () => {
                   </span>
                 </div>
 
-                {/* * Create Layer */}
+                <div className='menu-dropdown-separator' />
+
+                {/* * Layer Properties... $$ (greyed out if no active layer) */}
                 <div
-                  className='menu-dropdown-item'
-                  onClick={() => {
-                    handleMenuClick(() => {
-                      addConsoleLog(
-                        "info",
-                        "Create Layer dialog requested.",
-                        "Layers"
-                      );
-                    });
-                  }}>
+                  className={`menu-dropdown-item ${!hasActiveLayer ? "disabled" : ""}`}
+                  onClick={() =>
+                    hasActiveLayer
+                    && handleMenuClick(() => {
+                      if (activeLayerIdSignal.value) {
+                        window.electronAPI?.executeAction("layer_properties");
+                        openLayerPropertiesDialog(activeLayerIdSignal.value);
+                      }
+                    })
+                  }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiPlusBoxOutline} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("layer_properties")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
-                  <span className='menu-item-label'>Create Layer...</span>
-                  <span className='menu-shortcut-slot' />
+                  <span className='menu-item-label'>
+                    {t("layer_properties")}
+                  </span>
+                  <span className='menu-shortcut-slot'>
+                    {getActionFormattedKey("layer_properties")}
+                  </span>
                 </div>
               </div>
             )}
@@ -1782,6 +1841,9 @@ export const Workbench: React.FC = () => {
 
       {/* Add Layers Non-Modal Dialog */}
       <AddLayersDialog />
+
+      {/* Create Layer Modeless Dialog */}
+      <CreateLayerDialog />
 
       {/* Layer Properties Modeless Dialog */}
       <LayerPropertiesDialog />

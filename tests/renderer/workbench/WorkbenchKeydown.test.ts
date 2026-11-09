@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-03
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  * @see {@link executeWorkbenchAction}
@@ -21,7 +21,9 @@ import {
   isProjectPropertiesOpenSignal,
   activeToolSignal,
   selectedFeatureIdsSignal,
-  isAddLayersOpenSignal
+  isAddLayersOpenSignal,
+  activeLayerIdSignal,
+  isCreateLayerOpenSignal
 } from '../../../src/renderer/state/gisSignals';
 import {
   editingNodeIdSignal,
@@ -451,6 +453,42 @@ describe('Workbench Global Keyboard Listener', () => {
 
       executeWorkbenchAction('custom_main_action');
       assert.equal(forwardedAction, 'custom_main_action');
+    });
+
+    it('executes project_properties when hasProject is true and ignores when false', () => {
+      isProjectPropertiesOpenSignal.value = false;
+      hasProjectSignal.value = false;
+
+      executeWorkbenchAction('project_properties');
+      assert.equal(isProjectPropertiesOpenSignal.value, false, 'project_properties must be a no-op when !hasProject');
+
+      hasProjectSignal.value = true;
+      executeWorkbenchAction('project_properties');
+      assert.equal(isProjectPropertiesOpenSignal.value, true, 'project_properties must open dialog when hasProject is true');
+      isProjectPropertiesOpenSignal.value = false;
+    });
+
+    it('executes layer_properties when activeLayerId is set and ignores when null', () => {
+      activeLayerPropertiesIdSignal.value = null;
+      activeLayerIdSignal.value = null;
+
+      executeWorkbenchAction('layer_properties');
+      assert.equal(activeLayerPropertiesIdSignal.value, null, 'layer_properties must be a no-op when activeLayerId is null');
+
+      activeLayerIdSignal.value = 'layer-test-123';
+      executeWorkbenchAction('layer_properties');
+      assert.equal(activeLayerPropertiesIdSignal.value, 'layer-test-123', 'layer_properties must open dialog for active layer');
+      activeLayerPropertiesIdSignal.value = null;
+      activeLayerIdSignal.value = null;
+    });
+
+    it('executes create_layer and opens Create Layer dialog regardless of hasProject', () => {
+      isCreateLayerOpenSignal.value = false;
+      hasProjectSignal.value = false;
+
+      executeWorkbenchAction('create_layer');
+      assert.equal(isCreateLayerOpenSignal.value, true, 'create_layer must open Create Layer dialog');
+      isCreateLayerOpenSignal.value = false;
     });
   });
 });
