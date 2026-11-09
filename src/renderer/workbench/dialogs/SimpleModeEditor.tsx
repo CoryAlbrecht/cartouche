@@ -4,7 +4,7 @@
  * @description Visual component stack manager and dynamic Style Options panel for Simple Cartouche Symbology mode in LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
@@ -436,6 +436,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
     switch (type) {
       case "simple-fill":
         return t("layer_properties_component_type_fill");
+      case "gradient-fill":
+        return t("layer_properties_component_type_gradient_fill") || "Gradient Fill";
       case "simple-line":
         return t("layer_properties_component_type_line");
       case "simple-marker":

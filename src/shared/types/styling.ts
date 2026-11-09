@@ -1,10 +1,10 @@
 /**
  * @file styling.ts
  * @module shared/types/styling
- * @description Centralized TypeScript type definitions and interfaces for the internal map feature styling system and Cartouche Symbology Specification.
+ * @description Centralized TypeScript type definitions and interfaces for the internal map feature styling system, Cartouche Symbology Specification, and screen-anchored gradient fills.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-30
- * @updated 2026-11-04
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  */
 
@@ -28,6 +28,28 @@ export interface SimpleFillComponent {
   enabled: boolean;
   locked?: boolean;
   color: string;
+}
+
+/**
+ * @typedef {Object} GradientFillComponent
+ * @property {string} id - Unique identifier of the gradient fill component.
+ * @property {'gradient-fill'} type - Component symbolizer discriminator.
+ * @property {boolean} enabled - Whether the component is rendered.
+ * @property {boolean} [locked] - Whether the component options are locked against accidental edits or deletion.
+ * @property {string[]} stops - Array of '<color> <percent>' gradient stop strings (e.g. ['#ffffffff 0%', '#3388ffff 100%']).
+ * @property {number} angle - Gradient rotation orientation in degrees [0.0, 360.0] (0° is horizontal left-to-right, 90° is vertical top-to-bottom).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ */
+export interface GradientFillComponent {
+  id: string;
+  type: 'gradient-fill';
+  enabled: boolean;
+  locked?: boolean;
+  stops: string[];
+  angle: number;
 }
 
 /**
@@ -170,15 +192,16 @@ export interface SimpleMarkerComponent {
 }
 
 /**
- * @typedef {SimpleFillComponent | SimpleLineComponent | SimpleMarkerComponent} StyleComponent
+ * @typedef {SimpleFillComponent | GradientFillComponent | SimpleLineComponent | SimpleMarkerComponent} StyleComponent
  * @description Tagged union of discrete symbolizer components stored in sequential painter's execution order.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  */
 export type StyleComponent =
   | SimpleFillComponent
+  | GradientFillComponent
   | SimpleLineComponent
   | SimpleMarkerComponent;
 

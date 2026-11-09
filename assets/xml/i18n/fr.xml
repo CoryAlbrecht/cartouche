@@ -245,6 +245,7 @@
     <string name="layer_properties_component_unlock">Déverrouiller</string>
     <string name="layer_properties_component_type">Type de composant</string>
     <string name="layer_properties_component_type_fill">Remplissage simple</string>
+    <string name="layer_properties_component_type_gradient_fill">Remplissage dégradé</string>
     <string name="layer_properties_component_type_line">Ligne simple</string>
     <string name="layer_properties_component_type_marker">Marqueur simple</string>
     <string name="layer_properties_component_options">Options de style</string>

@@ -270,6 +270,7 @@
     <string name="layer_properties_component_unlock">Unlock</string>
     <string name="layer_properties_component_type">Component Type</string>
     <string name="layer_properties_component_type_fill">Simple Fill</string>
+    <string name="layer_properties_component_type_gradient_fill">Gradient Fill</string>
     <string name="layer_properties_component_type_line">Simple Line</string>
     <string name="layer_properties_component_type_marker">Simple Marker</string>
     <string name="layer_properties_component_options">Style Options</string>

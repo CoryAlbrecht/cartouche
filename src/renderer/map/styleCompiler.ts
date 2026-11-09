@@ -1,10 +1,10 @@
 /**
  * @file styleCompiler.ts
  * @module renderer/map/styleCompiler
- * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
+ * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, screen-anchored Canvas 2D linear gradient fills, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-04
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link compileLayerStyle}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -21,6 +21,7 @@ import { SldStyleParser } from "geostyler-sld-parser";
 import { OlStyleParser } from "geostyler-openlayers-parser";
 import type { Style as GeoStylerStyle } from "geostyler-style";
 import { logging } from "../../shared/logging";
+import { clamp } from "../../shared/colors";
 import {
   createDefaultVectorLayerStyle,
   isProjectLayerStyleWrapper,
@@ -32,6 +33,7 @@ import type {
   ProjectStyleItem,
   CartoucheLayerStyle,
   StyleComponent,
+  GradientFillComponent,
 } from "../../shared/types";
 
 /**
@@ -89,15 +91,17 @@ export interface CompiledLayerStyleResult {
  * @property {ProjectStyleItem[]} [sharedStyles] - Shared project styles catalog for resolving `#id` href references.
  * @property {string} [layerId] - Optional layer identifier for diagnostic logging.
  * @property {string} [geometryKind] - Target layer geometry kind ('Polygon', 'LineString', 'Point', etc.) for fallback styling.
+ * @property {any} [map] - Optional active OpenLayers Map instance for screen-anchored gradient coordinate projections.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-04
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  */
 export interface CompileLayerStyleOptions {
   sharedStyles?: ProjectStyleItem[];
   layerId?: string;
   geometryKind?: string;
+  map?: any;
 }
 
 /**
@@ -441,17 +445,215 @@ export function isCartoucheStyleDescriptor(
 }
 
 /**
- * @description Compiles a Cartouche Symbology Specification style (CartoucheLayerStyle) into an OpenLayers StyleFunction closure with in-memory Style caching.
- * Resolves components in sequential painter's execution order (components[0] bottom, components[n - 1] top) and filters disabled components.
+ * @typedef {Object} CompiledGradientStop
+ * @property {string} color - Normalized CSS color string.
+ * @property {number} offset - Clamped offset in range [0, 1].
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ */
+export interface CompiledGradientStop {
+  color: string;
+  offset: number;
+}
+
+/**
+ * Parses raw CSS stop strings into structured CompiledGradientStop objects with offsets normalized to [0, 1].
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ * @param {string[]} [rawStops] - Array of '<color> <percent>' strings.
+ * @returns {CompiledGradientStop[]} Sorted gradient stop definitions.
+ */
+export function parseGradientStops(rawStops?: string[]): CompiledGradientStop[] {
+  if (!rawStops || rawStops.length === 0) {
+    return [
+      { color: "#ffffff", offset: 0 },
+      { color: "#3388ff", offset: 1 },
+    ];
+  }
+
+  const parsed = rawStops.map((stopStr, idx) => {
+    const trimmed = stopStr.trim();
+    const match = trimmed.match(/^(.*?)\s+([\d.]+)\s*%?\s*$/);
+    if (match) {
+      const color = match[1].trim();
+      const offset = clamp(parseFloat(match[2]) / 100, 0, 1);
+      return { color, offset };
+    }
+    const offset = rawStops.length > 1 ? idx / (rawStops.length - 1) : 0;
+    return { color: trimmed, offset: clamp(offset, 0, 1) };
+  });
+
+  return parsed.sort((a, b) => a.offset - b.offset);
+}
+
+/**
+ * Cached singleton offscreen canvas 2D rendering context used for gradient generation in headless/test environments.
+ * @type {CanvasRenderingContext2D | null}
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ */
+let sharedOffscreenContext: CanvasRenderingContext2D | null = null;
+
+/**
+ * Retrieves a CanvasRenderingContext2D instance from the active map viewport or falls back to an offscreen canvas context.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ * @param {any} [map] - Optional active OpenLayers Map instance.
+ * @returns {CanvasRenderingContext2D | null} Canvas 2D context or null if unavailable.
+ */
+function getCanvasContext(map?: any): CanvasRenderingContext2D | null {
+  if (map && typeof map.getViewport === "function") {
+    try {
+      const viewport = map.getViewport();
+      const canvas = viewport?.querySelector?.("canvas");
+      const ctx = canvas?.getContext?.("2d");
+      if (ctx) {
+        return ctx;
+      }
+    } catch {
+      // Fall through to shared context
+    }
+  }
+
+  if (!sharedOffscreenContext && typeof document !== "undefined" && typeof document.createElement === "function") {
+    try {
+      const canvas = document.createElement("canvas");
+      sharedOffscreenContext = canvas.getContext("2d");
+    } catch {
+      sharedOffscreenContext = null;
+    }
+  }
+
+  return sharedOffscreenContext;
+}
+
+/**
+ * Dynamically builds an OpenLayers Style instance containing a Canvas 2D linear gradient anchored to the feature's screen pixel bounding extent.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ * @param {GradientFillComponent} component - Declarative gradient fill component specification.
+ * @param {any} feature - Target OpenLayers Feature under evaluation.
+ * @param {any} [map] - Optional active OpenLayers Map instance.
+ * @returns {Style} OpenLayers Style with CanvasGradient fill or solid fallback.
+ */
+function createGradientComponentStyle(
+  component: GradientFillComponent,
+  feature: any,
+  map?: any
+): Style {
+  const stops = parseGradientStops(component.stops);
+  const fallbackColor = stops[0]?.color || "#3388ff";
+
+  if (!feature || typeof feature.getGeometry !== "function") {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  const geom = feature.getGeometry();
+  if (!geom || typeof geom.getExtent !== "function") {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  if (!map || typeof map.getPixelFromCoordinate !== "function") {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  const extent = geom.getExtent(); // [minX, minY, maxX, maxY]
+  const topLeftPixel = map.getPixelFromCoordinate([extent[0], extent[3]]);
+  const bottomRightPixel = map.getPixelFromCoordinate([extent[2], extent[1]]);
+
+  if (
+    !topLeftPixel ||
+    !bottomRightPixel ||
+    !Number.isFinite(topLeftPixel[0]) ||
+    !Number.isFinite(topLeftPixel[1]) ||
+    !Number.isFinite(bottomRightPixel[0]) ||
+    !Number.isFinite(bottomRightPixel[1])
+  ) {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  const pxWidth = Math.abs(bottomRightPixel[0] - topLeftPixel[0]);
+  const pxHeight = Math.abs(bottomRightPixel[1] - topLeftPixel[1]);
+
+  if (pxWidth <= 0 && pxHeight <= 0) {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  const cx = (topLeftPixel[0] + bottomRightPixel[0]) / 2;
+  const cy = (topLeftPixel[1] + bottomRightPixel[1]) / 2;
+
+  const angleDeg = Number.isFinite(component.angle) ? component.angle : 0;
+  const rad = (angleDeg * Math.PI) / 180;
+  const cosA = Math.cos(rad);
+  const sinA = Math.sin(rad);
+
+  const len = Math.abs(pxWidth * cosA) + Math.abs(pxHeight * sinA);
+  const halfLen = len > 0 ? len / 2 : Math.max(pxWidth, pxHeight) / 2 || 1;
+
+  const x0 = cx - halfLen * cosA;
+  const y0 = cy - halfLen * sinA;
+  const x1 = cx + halfLen * cosA;
+  const y1 = cy + halfLen * sinA;
+
+  if (Math.abs(x1 - x0) < 1e-6 && Math.abs(y1 - y0) < 1e-6) {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  const ctx = getCanvasContext(map);
+  if (!ctx || typeof ctx.createLinearGradient !== "function") {
+    return new Style({
+      fill: new Fill({ color: fallbackColor }),
+    });
+  }
+
+  const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const stop of stops) {
+    gradient.addColorStop(stop.offset, stop.color);
+  }
+
+  return new Style({
+    fill: new Fill({
+      color: gradient,
+    }),
+  });
+}
+
+/**
+ * @description Compiles an authoritative Cartouche Symbology model into an OpenLayers StyleFunction.
+ * Supports static Style closure caching for simple symbology and dynamic feature-anchored Canvas 2D linear gradients.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {CartoucheLayerStyle} cartoucheStyle - Authoritative Cartouche Symbology model.
- * @returns {StyleFunction} OpenLayers StyleFunction closure returning cached Style[] array.
+ * @param {CompileLayerStyleOptions} [options] - Optional compiler options including active OpenLayers Map reference.
+ * @returns {StyleFunction} OpenLayers StyleFunction closure returning Style[] array.
  */
 export function compileStyleFunction(
-  cartoucheStyle: CartoucheLayerStyle
+  cartoucheStyle: CartoucheLayerStyle,
+  options?: CompileLayerStyleOptions
 ): StyleFunction {
   const styleCache = new Map<string, Style>();
 
@@ -513,26 +715,45 @@ export function compileStyleFunction(
     return created;
   }
 
-  // Pre-resolve the cached Style[] array for simple symbology to eliminate allocations during 60 FPS rendering
+  const hasGradient =
+    "components" in cartoucheStyle &&
+    Array.isArray(cartoucheStyle.components) &&
+    cartoucheStyle.components.some(
+      (c) => c.type === "gradient-fill" && c.enabled !== false
+    );
+
+  // Pre-resolve the cached Style[] array for static symbology to eliminate allocations during 60 FPS rendering
   let resolvedStylesArray: Style[] | null = null;
 
-  return (_feature, _resolution): Style[] => {
-    if (resolvedStylesArray) {
+  return (feature, _resolution): Style[] => {
+    if (!hasGradient && resolvedStylesArray) {
       return resolvedStylesArray;
     }
 
     const styles: Style[] = [];
     if ("components" in cartoucheStyle && Array.isArray(cartoucheStyle.components)) {
       for (const comp of cartoucheStyle.components) {
-        const s = getOrCreateComponentStyle(comp);
-        if (s) {
-          styles.push(s);
+        if (!comp.enabled) {
+          continue;
+        }
+        if (comp.type === "gradient-fill") {
+          const s = createGradientComponentStyle(comp, feature, options?.map);
+          if (s) {
+            styles.push(s);
+          }
+        } else {
+          const s = getOrCreateComponentStyle(comp);
+          if (s) {
+            styles.push(s);
+          }
         }
       }
     }
 
-    resolvedStylesArray = styles;
-    return resolvedStylesArray;
+    if (!hasGradient) {
+      resolvedStylesArray = styles;
+    }
+    return styles;
   };
 }
 
@@ -639,7 +860,7 @@ export function compileCartoucheLayerStyleSync(
     };
   }
 
-  const styleFunction = compileStyleFunction(cartoucheModel);
+  const styleFunction = compileStyleFunction(cartoucheModel, options);
   return {
     compiledStyle: styleFunction,
     requiredFields: new Set<string>(),
