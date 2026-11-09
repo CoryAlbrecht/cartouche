@@ -4,7 +4,7 @@
  * @description Unit tests verifying Icon component support for CSS custom properties, calc expressions, and default --cartouche-ui-icon-size inheritance.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link Icon}
  */
@@ -455,5 +455,28 @@ describe('Icon Component CSS Custom Property & Sizing Support', () => {
     const paths = findAllNodes(svgs[0], el => el.tagName === 'PATH');
     assert.strictEqual(paths.length, 2);
     assert.ok(paths[1].attributes.d.includes('m14.0066 18.4021'));
+  });
+
+  it('pre-caches layers-cog-outline in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments with currentColor', async () => {
+    assert.ok(BUILTIN_CUSTOM_SVG_ICONS['layers-cog-outline'], 'layers-cog-outline must exist in BUILTIN_CUSTOM_SVG_ICONS');
+    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['layers-cog-outline'].viewBox, '0 0 24 24');
+    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['layers-cog-outline'].paths.length, 4);
+
+    await act(async () => {
+      root!.render(
+        React.createElement(Icon, {
+          name: 'file:layers-cog-outline.svg',
+          size: 24,
+          color: '#ffffff'
+        })
+      );
+    });
+
+    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    assert.strictEqual(svgs.length, 1);
+    assert.strictEqual(svgs[0].attributes.fill, '#ffffff');
+    const paths = findAllNodes(svgs[0], el => el.tagName === 'PATH');
+    assert.strictEqual(paths.length, 4);
+    assert.ok(paths[0].attributes.d.includes('m12 16-9-7'));
   });
 });

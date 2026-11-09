@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -19,7 +19,6 @@ import {
   mdiTuneVariant,
   mdiTable,
   mdiClockOutline,
-  mdiLayersOutline,
   mdiPencilOutline,
   mdiTablePlus,
   mdiTrashCanOutline,
@@ -593,7 +592,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1084,7 +1083,7 @@ export const LayerPropertiesDialog: React.FC = () => {
       <Dialog
         name='layerPropertiesWindow'
       title={dialogTitle}
-      icon={mdiLayersOutline}
+      icon='file:layers-cog-outline.svg'
       isOpen={Boolean(activeId)}
       onClose={handleClose}
       onCancel={handleCancel}

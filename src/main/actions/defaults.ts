@@ -74,7 +74,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: "layer_properties",
     description: "Opens layer properties dialog for the active layer",
-    icon: mdiLayersOutline,
+    icon: "file:layers-cog-outline.svg",
     keyCombination: { key: ",", ctrl: true, shift: true },
   },
   {

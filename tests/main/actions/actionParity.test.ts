@@ -107,6 +107,7 @@ describe('actionParity', () => {
 
     const layerProperties = actionsMap.get('layer_properties');
     assert.deepEqual(layerProperties?.keyCombination, { key: ',', ctrl: true, shift: true });
+    assert.equal(layerProperties?.icon, 'file:layers-cog-outline.svg');
 
     const projectProperties = actionsMap.get('project_properties');
     assert.deepEqual(projectProperties?.keyCombination, { key: ',', ctrl: true, alt: true });
