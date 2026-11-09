@@ -47,7 +47,6 @@ import {
   mdiRayVertex,
   mdiVectorLine,
   mdiRestore,
-  mdiPlusBoxOutline,
 } from "@mdi/js";
 
 /**
@@ -62,14 +61,14 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: "create_layer",
     description: "Opens create layer dialog",
-    icon: mdiPlusBoxOutline,
+    icon: "file:layers-plus-outline.svg",
     keyCombination: { key: "n", ctrl: true },
   },
   {
     name: "add_layers",
     description:
       "Opens the Add Layers dialog box to attach spatial data sources",
-    icon: "file:layers-plus-outline.svg",
+    icon: mdiLayersTripleOutline,
     keyCombination: { key: "l", ctrl: true },
   },
   {

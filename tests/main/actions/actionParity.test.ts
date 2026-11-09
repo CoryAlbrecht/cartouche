@@ -13,7 +13,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { mdiContentSaveAllOutline, mdiFolderCogOutline } from '@mdi/js';
+import { mdiContentSaveAllOutline, mdiFolderCogOutline, mdiLayersTripleOutline } from '@mdi/js';
 import { BUILTIN_ACTIONS } from '../../../src/main/actions/defaults';
 
 describe('actionParity', () => {
@@ -99,6 +99,11 @@ describe('actionParity', () => {
 
     const createLayer = actionsMap.get('create_layer');
     assert.deepEqual(createLayer?.keyCombination, { key: 'n', ctrl: true });
+    assert.equal(createLayer?.icon, 'file:layers-plus-outline.svg');
+
+    const addLayers = actionsMap.get('add_layers');
+    assert.deepEqual(addLayers?.keyCombination, { key: 'l', ctrl: true });
+    assert.equal(addLayers?.icon, mdiLayersTripleOutline);
 
     const layerProperties = actionsMap.get('layer_properties');
     assert.deepEqual(layerProperties?.keyCombination, { key: ',', ctrl: true, shift: true });

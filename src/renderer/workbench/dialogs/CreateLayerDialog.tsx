@@ -12,7 +12,6 @@
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiPlusBoxOutline } from "@mdi/js";
 import {
   isCreateLayerOpenSignal,
   closeCreateLayerDialog,
@@ -38,7 +37,7 @@ export const CreateLayerDialog: React.FC = () => {
     <Dialog
       name='createLayerWindow'
       title={t("create_layer") || "Create Layer..."}
-      icon={mdiPlusBoxOutline}
+      icon='file:layers-plus-outline.svg'
       isOpen={isOpen}
       onClose={closeCreateLayerDialog}
       defaultWidth={640}

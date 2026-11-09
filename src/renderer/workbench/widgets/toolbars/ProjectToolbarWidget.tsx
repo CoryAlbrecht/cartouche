@@ -22,6 +22,7 @@ import {
   mdiContentSaveAllOutline,
   mdiFolderCogOutline,
   mdiLayersOutline,
+  mdiLayersTripleOutline,
 } from "@mdi/js";
 import {
   type ToolbarZone,
@@ -202,7 +203,7 @@ export const ProjectToolbarWidget: React.FC<ProjectToolbarWidgetProps> = ({
         title={addLayersTitle}
         onClick={openAddLayersDialog}
         aria-label={t("add_layers")}>
-        <Icon path={getActionIcon("add_layers", "file:layers-plus-outline.svg")} />
+        <Icon path={getActionIcon("add_layers", mdiLayersTripleOutline)} />
       </button>
     </ToolbarWidget>
   );

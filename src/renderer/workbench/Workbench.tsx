@@ -43,6 +43,7 @@ import {
   mdiCheck,
   mdiChevronRight,
   mdiRestore,
+  mdiLayersTripleOutline,
 } from "@mdi/js";
 
 import { widgetComponents } from "./widgetRegistry";
@@ -221,7 +222,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -1633,7 +1634,10 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon name='file:layers-plus-outline.svg' size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("add_layers", mdiLayersTripleOutline)}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("add_layers")}</span>
                   <span className='menu-shortcut-slot'>

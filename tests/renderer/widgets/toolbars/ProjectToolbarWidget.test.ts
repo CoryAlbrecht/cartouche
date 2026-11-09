@@ -20,7 +20,8 @@ import {
   mdiFolderPlusOutline,
   mdiFolderOpenOutline,
   mdiContentSaveAllOutline,
-  mdiFolderCogOutline
+  mdiFolderCogOutline,
+  mdiLayersTripleOutline
 } from '@mdi/js';
 import {
   hasProjectSignal,
@@ -220,6 +221,7 @@ describe('ProjectToolbarWidget Component Rendering and Interactions', () => {
     assert.ok(html.includes(mdiFolderOpenOutline), 'Expected open_project to render mdiFolderOpenOutline');
     assert.ok(html.includes(mdiContentSaveAllOutline), 'Expected save_project to render mdiContentSaveAllOutline');
     assert.ok(html.includes(mdiFolderCogOutline), 'Expected project_properties to render mdiFolderCogOutline');
+    assert.ok(html.includes(mdiLayersTripleOutline), 'Expected add_layers to render mdiLayersTripleOutline');
   });
 
   it('renders save button disabled when no project open and enabled when project is dirty', () => {
