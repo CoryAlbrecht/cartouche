@@ -56,6 +56,26 @@ export interface GradientPickerWidgetProps extends Omit<BasicWidgetProps, 'child
 }
 
 /**
+ * @description Compares two arrays of serialized gradient stop strings for value equality.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-09
+ * @updated 2026-11-09
+ * @since 0.1.0-dev
+ * @param {string[]} [a] - First stop strings array.
+ * @param {string[] | null} [b] - Second stop strings array.
+ * @returns {boolean} True if both arrays contain identical strings in identical order.
+ */
+function areStopsEqual(a?: string[], b?: string[] | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/**
  * @description Parses an array of raw '<color> <percent>' CSS gradient stop strings into structured GradientStop objects.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
@@ -72,16 +92,25 @@ export function parseInitialStops(rawStops?: string[]): GradientStop[] {
     ];
   }
 
+  const offsetCounts = new Map<number, number>();
+
   const parsed = rawStops.map((stopStr, idx) => {
     const trimmed = stopStr.trim();
     const match = trimmed.match(/^(.*?)\s+([\d.]+)\s*%?\s*$/);
+    let color: string;
+    let rawOffset: number;
     if (match) {
-      const color = match[1].trim();
-      const offset = clamp(parseFloat(match[2]), 0, 100);
-      return { id: `stop-${idx}-${offset}`, color, offset };
+      color = match[1].trim();
+      rawOffset = parseFloat(match[2]);
+    } else {
+      color = trimmed;
+      rawOffset = rawStops.length > 1 ? (idx / (rawStops.length - 1)) * 100 : 0;
     }
-    const offset = rawStops.length > 1 ? (idx / (rawStops.length - 1)) * 100 : 0;
-    return { id: `stop-${idx}-${offset}`, color: trimmed, offset };
+    const offset = clamp(Math.round(rawOffset * 10) / 10, 0, 100);
+    const count = offsetCounts.get(offset) || 0;
+    offsetCounts.set(offset, count + 1);
+    const id = count === 0 ? `stop-${offset}` : `stop-${offset}-${count}`;
+    return { id, color, offset };
   });
 
   return parsed.sort((a, b) => a.offset - b.offset);
@@ -150,6 +179,19 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   const barRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // Synchronization and stability refs
+  const stopsRef = useRef<GradientStop[]>(stops);
+  stopsRef.current = stops;
+
+  const activeStopIdRef = useRef<string>(activeStopId);
+  activeStopIdRef.current = activeStopId;
+
+  const activeFormatRef = useRef<ColorFormat>(activeFormat);
+  activeFormatRef.current = activeFormat;
+
+  const prevInitialStopsRef = useRef<string[] | undefined>(initialStops);
+  const lastEmittedStopsRef = useRef<string[] | null>(null);
+
   // Sync format prop if changed externally
   useEffect(() => {
     if (propFormat && propFormat !== activeFormat) {
@@ -158,14 +200,33 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   }, [propFormat, activeFormat]);
 
   // Sync initialStops if changed externally
-  const prevInitialStopsRef = useRef(initialStops);
   useEffect(() => {
     if (initialStops !== prevInitialStopsRef.current) {
       prevInitialStopsRef.current = initialStops;
+
+      // If this prop update directly mirrors our last emitted serialization, avoid state churn
+      if (areStopsEqual(initialStops, lastEmittedStopsRef.current)) {
+        return;
+      }
+
+      const prevActive = stopsRef.current.find((s) => s.id === activeStopId);
       const nextStops = parseInitialStops(initialStops);
+      stopsRef.current = nextStops;
       setStops(nextStops);
+
+      // Preserve active stop selection across resync by ID or offset
       if (!nextStops.some((s) => s.id === activeStopId)) {
-        setActiveStopId(nextStops[0]?.id || 'stop-0');
+        const matchByOffset = prevActive
+          ? nextStops.find((s) => Math.abs(s.offset - prevActive.offset) < 0.05)
+          : undefined;
+        if (matchByOffset) {
+          setActiveStopId(matchByOffset.id);
+          activeStopIdRef.current = matchByOffset.id;
+        } else {
+          const fallbackId = nextStops[0]?.id || 'stop-0';
+          setActiveStopId(fallbackId);
+          activeStopIdRef.current = fallbackId;
+        }
       }
     }
   }, [initialStops, activeStopId]);
@@ -195,7 +256,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
    * @description Handles primary-click pointer down on a stop button or vertical guide line, selecting the stop and initializing horizontal dragging.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-08
-   * @updated 2026-11-08
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @param {React.PointerEvent} e - Pointer event.
    * @param {GradientStop} stop - Target gradient stop.
@@ -209,6 +270,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     e.stopPropagation();
 
     setActiveStopId(stop.id);
+    activeStopIdRef.current = stop.id;
 
     // Boundary stops at 0% and 100% are pinned in position and cannot be dragged
     if (stop.offset <= 0 || stop.offset >= 100) {
@@ -230,15 +292,16 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       const rawPct = ((moveEv.clientX - rect.left) / width) * 100;
       const clampedOffset = clamp(Math.round(rawPct * 10) / 10, 0.1, 99.9);
 
-      setStops((prevStops) => {
-        const nextStops = prevStops.map((s) =>
-          s.id === stop.id ? { ...s, offset: clampedOffset } : s
-        );
-        const sorted = nextStops.slice().sort((a, b) => a.offset - b.offset);
-        const serialized = serializeGradientStops(sorted, activeFormat);
-        onChange?.(serialized);
-        return nextStops;
-      });
+      const nextStops = stopsRef.current.map((s) =>
+        s.id === stop.id ? { ...s, offset: clampedOffset } : s
+      );
+      const sorted = nextStops.slice().sort((a, b) => a.offset - b.offset);
+      stopsRef.current = nextStops;
+      setStops(nextStops);
+
+      const serialized = serializeGradientStops(sorted, activeFormatRef.current);
+      lastEmittedStopsRef.current = serialized;
+      onChange?.(serialized);
     };
 
     const onPointerUp = () => {
@@ -254,7 +317,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
    * @description Handles double-clicking anywhere on the gradient preview bar, inserting a new stop with linearly interpolated color at that position.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-08
-   * @updated 2026-11-08
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @param {React.MouseEvent<HTMLDivElement>} e - Mouse event.
    * @returns {void}
@@ -270,7 +333,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     const clickOffset = clamp(Math.round(rawPct * 10) / 10, 0.1, 99.9);
 
     // Find neighboring stops to interpolate color
-    const sorted = stops.slice().sort((a, b) => a.offset - b.offset);
+    const sorted = stopsRef.current.slice().sort((a, b) => a.offset - b.offset);
     let leftStop = sorted[0];
     let rightStop = sorted[sorted.length - 1];
 
@@ -288,20 +351,24 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     const leftRgb = parseCssColor(leftStop.color)?.srgb ?? { r: 0, g: 0, b: 0, alpha: 1 };
     const rightRgb = parseCssColor(rightStop.color)?.srgb ?? { r: 0, g: 255, b: 0, alpha: 1 };
     const blendedRgb = interpolateColor(leftRgb, rightRgb, factor);
-    const newColorStr = formatCssColor(blendedRgb, activeFormat);
+    const newColorStr = formatCssColor(blendedRgb, activeFormatRef.current);
 
-    const newStopId = `stop-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const existingCount = stopsRef.current.filter((s) => s.offset === clickOffset).length;
+    const newStopId = existingCount === 0 ? `stop-${clickOffset}` : `stop-${clickOffset}-${existingCount}`;
     const newStop: GradientStop = {
       id: newStopId,
       color: newColorStr,
       offset: clickOffset
     };
 
-    const nextStops = [...stops, newStop].sort((a, b) => a.offset - b.offset);
+    const nextStops = [...stopsRef.current, newStop].sort((a, b) => a.offset - b.offset);
+    stopsRef.current = nextStops;
     setStops(nextStops);
     setActiveStopId(newStopId);
+    activeStopIdRef.current = newStopId;
 
-    const serialized = serializeGradientStops(nextStops, activeFormat);
+    const serialized = serializeGradientStops(nextStops, activeFormatRef.current);
+    lastEmittedStopsRef.current = serialized;
     onChange?.(serialized);
   };
 
@@ -309,22 +376,26 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
    * @description Deletes the currently active intermediate gradient stop.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-08
-   * @updated 2026-11-08
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @returns {void}
    */
   const handleDeleteActiveStop = (): void => {
     if (isDeleteDisabled) return;
 
-    const activeIndex = stops.findIndex((s) => s.id === activeStop.id);
-    const nextStops = stops.filter((s) => s.id !== activeStop.id);
+    const currentStops = stopsRef.current;
+    const activeIndex = currentStops.findIndex((s) => s.id === activeStop.id);
+    const nextStops = currentStops.filter((s) => s.id !== activeStop.id);
 
     const nextActiveIndex = Math.max(0, Math.min(activeIndex, nextStops.length - 1));
     const nextActiveStop = nextStops[nextActiveIndex];
     setActiveStopId(nextActiveStop.id);
+    activeStopIdRef.current = nextActiveStop.id;
+    stopsRef.current = nextStops;
     setStops(nextStops);
 
-    const serialized = serializeGradientStops(nextStops, activeFormat);
+    const serialized = serializeGradientStops(nextStops, activeFormatRef.current);
+    lastEmittedStopsRef.current = serialized;
     onChange?.(serialized);
   };
 
@@ -332,7 +403,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
    * @description Handles color changes originating from the embedded ColourPickerWidget.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-08
-   * @updated 2026-11-08
+   * @updated 2026-11-09
    * @since 0.1.0-dev
    * @param {string} newColor - New CSS color string.
    * @returns {void}
@@ -340,21 +411,22 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   const handleColourChange = useCallback(
     (newColor: string): void => {
       const parsed = parseCssColor(newColor);
-      const newFormat = parsed?.format ?? activeFormat;
-      if (newFormat !== activeFormat) {
+      const newFormat = parsed?.format ?? activeFormatRef.current;
+      if (newFormat !== activeFormatRef.current) {
         setActiveFormat(newFormat);
       }
 
-      setStops((prevStops) => {
-        const nextStops = prevStops.map((s) =>
-          s.id === activeStopId ? { ...s, color: newColor } : s
-        );
-        const serialized = serializeGradientStops(nextStops, newFormat);
-        onChange?.(serialized);
-        return nextStops;
-      });
+      const nextStops = stopsRef.current.map((s) =>
+        s.id === activeStopIdRef.current ? { ...s, color: newColor } : s
+      );
+      stopsRef.current = nextStops;
+      setStops(nextStops);
+
+      const serialized = serializeGradientStops(nextStops, newFormat);
+      lastEmittedStopsRef.current = serialized;
+      onChange?.(serialized);
     },
-    [activeStopId, activeFormat, onChange]
+    [onChange]
   );
 
   return (

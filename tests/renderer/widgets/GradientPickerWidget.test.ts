@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, and embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
  */
@@ -585,5 +585,167 @@ describe('GradientPickerWidget Component & Interactions (Ticket #207)', () => {
     assert.equal(parsed.length, 2);
     assert.equal(parsed[0].offset, 10);
     assert.equal(parsed[1].offset, 90);
+  });
+});
+
+describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #222)', () => {
+  beforeEach(() => {
+    setupDom();
+    prefsUiIconSize.value = 20;
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it('generates deterministic stop IDs matching default stops and across array re-indexing', () => {
+    // Default initial stops
+    const defaultStops = parseInitialStops();
+    assert.deepEqual(
+      defaultStops.map((s: any) => s.id),
+      ['stop-0', 'stop-100'],
+      'Default initial stops must produce stable IDs stop-0 and stop-100'
+    );
+
+    // Explicit 2-stop array
+    const parsedTwoStops = parseInitialStops(['#000000ff 0%', '#00ff00ff 100%']);
+    assert.deepEqual(
+      parsedTwoStops.map((s: any) => s.id),
+      ['stop-0', 'stop-100'],
+      'Parsed initial stops must match default initial stop IDs without index prefix divergence'
+    );
+
+    // 3-stop array: inserting intermediate stop must not alter 100% stop ID
+    const parsedThreeStops = parseInitialStops(['#000000ff 0%', '#008000ff 50%', '#00ff00ff 100%']);
+    assert.deepEqual(
+      parsedThreeStops.map((s: any) => s.id),
+      ['stop-0', 'stop-50', 'stop-100'],
+      '100% boundary stop must retain stop-100 ID regardless of intermediate stops count'
+    );
+  });
+
+  it('preserves selection of newly created stop across parent prop resynchronization', async () => {
+    // Stateful parent simulation mirroring SimpleModeEditor
+    let parentStopsState: string[] = ['#000000ff 0%', '#00ff00ff 100%'];
+
+    function ParentWrapper() {
+      const [currentStops, setCurrentStops] = React.useState(parentStopsState);
+
+      return React.createElement(GradientPickerWidget, {
+        initialStops: currentStops,
+        onChange: (newStops: string[]) => {
+          parentStopsState = newStops;
+          setCurrentStops(newStops);
+        }
+      });
+    }
+
+    await act(async () => {
+      root?.render(React.createElement(ParentWrapper));
+    });
+
+    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    assert.ok(previewBar);
+
+    // Double-click at 50%
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: 'dblclick',
+        clientX: 100, // 50% on 200px wide bar
+        bubbles: true
+      });
+    });
+
+    // Parent state should now have 3 stops
+    assert.equal(parentStopsState.length, 3);
+    assert.equal(parentStopsState[1], '#008000ff 50%');
+
+    // GradientPickerWidget should render 3 stop buttons
+    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(stopBtns.length, 3);
+
+    // The newly created 50% stop (middle button) must remain active (aria-pressed=true)
+    assert.equal(
+      stopBtns[1].getAttribute('aria-pressed'),
+      'true',
+      'Newly created 50% stop must remain active across parent initialStops resync'
+    );
+    assert.equal(
+      stopBtns[0].getAttribute('aria-pressed'),
+      'false',
+      '0% stop must NOT be active when a new stop was just created'
+    );
+  });
+
+  it('selecting 100% boundary stop and updating color via embedded ColourPickerWidget preserves 100% stop selection', async () => {
+    let parentStopsState: string[] = ['#000000ff 0%', '#00ff00ff 100%'];
+
+    function ParentWrapper() {
+      const [currentStops, setCurrentStops] = React.useState(parentStopsState);
+
+      return React.createElement(GradientPickerWidget, {
+        initialStops: currentStops,
+        onChange: (newStops: string[]) => {
+          parentStopsState = newStops;
+          setCurrentStops(newStops);
+        }
+      });
+    }
+
+    await act(async () => {
+      root?.render(React.createElement(ParentWrapper));
+    });
+
+    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(stopBtns.length, 2);
+
+    // Click 100% boundary stop button to select it
+    await act(async () => {
+      stopBtns[1].dispatchEvent({ type: 'click', bubbles: true });
+    });
+
+    assert.equal(
+      stopBtns[1].getAttribute('aria-pressed'),
+      'true',
+      '100% stop must be selected after click'
+    );
+    assert.equal(
+      stopBtns[0].getAttribute('aria-pressed'),
+      'false',
+      '0% stop must be unselected'
+    );
+
+    // Change color of 100% stop via embedded ColourPickerWidget surface
+    const surface = findElementsByClass(container, 'colour-picker-surface')[0];
+    assert.ok(surface, 'ColourPickerWidget surface must be rendered');
+
+    await act(async () => {
+      surface.dispatchEvent({
+        type: 'pointerdown',
+        button: 0,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 1,
+        currentTarget: surface
+      });
+    });
+
+    // Re-query stop buttons
+    const updatedStopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    assert.equal(
+      updatedStopBtns[1].getAttribute('aria-pressed'),
+      'true',
+      '100% stop must remain selected after color modification'
+    );
+    assert.equal(
+      updatedStopBtns[0].getAttribute('aria-pressed'),
+      'false',
+      '0% stop must not steal active selection on 100% color change'
+    );
+
+    // Verify parent state received updated color for 100% stop
+    assert.equal(parentStopsState.length, 2);
+    assert.equal(parentStopsState[1].endsWith(' 100%'), true);
+    assert.notEqual(parentStopsState[1], '#00ff00ff 100%', '100% stop color must be updated');
   });
 });
