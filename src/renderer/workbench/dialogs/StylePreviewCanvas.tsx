@@ -1,10 +1,10 @@
 /**
  * @file StylePreviewCanvas.tsx
  * @module renderer/workbench/dialogs/StylePreviewCanvas
- * @description Real-time 120×120px HTML5 Canvas 2D preview renderer displaying sample geometries styled with Cartouche Symbology, OpenLayers Flat Style, or OGC SLD rules.
+ * @description Real-time 120×120px HTML5 Canvas 2D preview renderer displaying sample geometries styled with Cartouche Symbology, screen-anchored gradient fills, OpenLayers Flat Style, or OGC SLD rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-04
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link StylePreviewCanvas}
  * @see {@link renderStylePreviewToCanvas}
@@ -12,6 +12,7 @@
 
 import React, { useEffect, useRef } from "react";
 import type { ProjectStyleFormat, SldStyleVersion } from "@shared/types";
+import { parseGradientStops } from "@renderer/map/styleCompiler";
 
 /**
  * @typedef {Object} StylePreviewOptions
@@ -121,6 +122,35 @@ export function renderStylePreviewToCanvas(
           if (comp.type === "simple-fill") {
             tracePolygon();
             ctx.fillStyle = comp.color || "#3388ff";
+            ctx.fill();
+          } else if (comp.type === "gradient-fill") {
+            tracePolygon();
+            const pxWidth = 88;
+            const pxHeight = 82;
+            const cx = 60;
+            const cy = 63;
+            const angleDeg = Number.isFinite(comp.angle) ? comp.angle : 0;
+            const rad = (angleDeg * Math.PI) / 180;
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+            const len = Math.abs(pxWidth * cosA) + Math.abs(pxHeight * sinA);
+            const halfLen = len > 0 ? len / 2 : 44;
+            const x0 = cx - halfLen * cosA;
+            const y0 = cy - halfLen * sinA;
+            const x1 = cx + halfLen * cosA;
+            const y1 = cy + halfLen * sinA;
+
+            if (typeof ctx.createLinearGradient === "function") {
+              const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+              const stops = parseGradientStops(comp.stops);
+              for (const stop of stops) {
+                grad.addColorStop(stop.offset, stop.color);
+              }
+              ctx.fillStyle = grad;
+            } else {
+              const stops = parseGradientStops(comp.stops);
+              ctx.fillStyle = stops[0]?.color || "#3388ff";
+            }
             ctx.fill();
           } else if (comp.type === "simple-line") {
             if (comp.dashPattern === "no-line") {

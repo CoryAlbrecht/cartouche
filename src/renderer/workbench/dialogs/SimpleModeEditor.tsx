@@ -23,6 +23,7 @@ import {
   CssColorsDatalist,
 } from "@renderer/components/common/ColorInput";
 import { ColourPickerWidget } from "@renderer/workbench/widgets/ColourPickerWidget";
+import { GradientPickerWidget } from "@renderer/workbench/widgets/GradientPickerWidget";
 import { parseCssColor } from "@shared/colors";
 import { DashPatternSelect } from "./DashPatternSelect";
 import {
@@ -41,6 +42,7 @@ import type {
   SimpleCartoucheStyle,
   StyleComponent,
   SimpleFillComponent,
+  GradientFillComponent,
   SimpleLineComponent,
   SimpleMarkerComponent,
 } from "@shared/types/styling";
@@ -211,6 +213,10 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
         label: t("layer_properties_component_type_fill"),
       },
       {
+        value: "gradient-fill",
+        label: t("layer_properties_component_type_gradient_fill") || "Gradient Fill",
+      },
+      {
         value: "simple-line",
         label: t("layer_properties_component_type_line"),
       },
@@ -283,6 +289,14 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
         type: "simple-fill",
         enabled: true,
         color: "#3b82f6",
+      };
+    } else if (typeToAdd === "gradient-fill") {
+      newComp = {
+        id: newId,
+        type: "gradient-fill",
+        enabled: true,
+        angle: 0,
+        stops: ["#ffffffff 0%", "#3388ffff 100%"],
       };
     } else if (typeToAdd === "simple-line") {
       newComp = {
@@ -374,6 +388,15 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
           enabled: activeComponent.enabled,
           locked: activeComponent.locked,
           color,
+        };
+      } else if (newType === "gradient-fill") {
+        morphed = {
+          id: activeComponent.id,
+          type: "gradient-fill",
+          enabled: activeComponent.enabled,
+          locked: activeComponent.locked,
+          angle: 0,
+          stops: ["#ffffffff 0%", "#3388ffff 100%"],
         };
       } else if (newType === "simple-line") {
         const color =
@@ -797,6 +820,84 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             )}
           </div>
         )}
+
+        {/* 2. Gradient Fill Options */}
+        {activeComponent?.type === "gradient-fill" && (() => {
+          const gradComp = activeComponent as GradientFillComponent;
+          return (
+            <div
+              id='layer-prop-gradient-options-container'
+              className='layer-prop-gradient-options-container'
+              style={{
+                width: "280px",
+                flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+              }}>
+              {/* Angle Spinner Control */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.5rem",
+                }}>
+                <label
+                  htmlFor='layer-prop-gradient-angle'
+                  style={{
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    color: "#334155",
+                  }}>
+                  {t("layer_properties_styling_gradient_angle") || "Gradient Angle"}:
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                  <input
+                    id='layer-prop-gradient-angle'
+                    type='number'
+                    min='0'
+                    max='360'
+                    step='1'
+                    disabled={activeComponent.locked}
+                    value={gradComp.angle ?? 0}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      updateActiveComponent({
+                        angle: isNaN(val) ? 0 : Math.min(360, Math.max(0, val)),
+                      });
+                    }}
+                    style={{
+                      width: "4.5rem",
+                      padding: "0.25rem 0.5rem",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "0.25rem",
+                      fontSize: "0.8125rem",
+                      textAlign: "right",
+                    }}
+                  />
+                  <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>°</span>
+                </div>
+              </div>
+
+              {/* Embedded GradientPickerWidget */}
+              <div
+                id='layer-prop-gradient-picker'
+                className='layer-prop-gradient-picker'
+                style={{ width: "280px" }}>
+                <GradientPickerWidget
+                  key={`gradient-picker-${gradComp.id}`}
+                  initialStops={gradComp.stops}
+                  disabled={activeComponent.locked}
+                  onChange={(newStops) => {
+                    if (activeComponent.locked) return;
+                    updateActiveComponent({ stops: newStops });
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 2. Simple Line Options */}
         {activeComponent?.type === "simple-line"

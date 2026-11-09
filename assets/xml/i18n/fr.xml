@@ -187,6 +187,7 @@
     <string name="layer_properties_style_syntax_error">Erreur de syntaxe ou de validation du style.</string>
     <string name="layer_properties_styling_visual_group">Symboliseur visuel</string>
     <string name="layer_properties_styling_fill_color">Couleur de remplissage</string>
+    <string name="layer_properties_styling_gradient_angle">Angle du dégradé</string>
     <string name="layer_properties_styling_fill_opacity">Opacité de remplissage</string>
     <string name="layer_properties_styling_stroke_color">Couleur de contour</string>
     <string name="layer_properties_styling_stroke_width">Épaisseur de contour</string>
