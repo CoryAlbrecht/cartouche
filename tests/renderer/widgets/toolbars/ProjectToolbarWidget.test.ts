@@ -4,7 +4,7 @@
  * @description Unit and component tests for ProjectToolbarWidget verifying project file actions, outline MDI icons, ProjectPropertiesDialog trigger, layer widget integration, save button disabled states, and toolbar layout migration.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link ProjectToolbarWidget}
  * @see {@link isProjectToolbarSaveDisabled}
@@ -19,8 +19,8 @@ import createJiti from 'jiti';
 import {
   mdiFolderPlusOutline,
   mdiFolderOpenOutline,
-  mdiFolderDownloadOutline,
-  mdiFolderSettingsOutline
+  mdiContentSaveAllOutline,
+  mdiFolderCogOutline
 } from '@mdi/js';
 import {
   hasProjectSignal,
@@ -218,8 +218,8 @@ describe('ProjectToolbarWidget Component Rendering and Interactions', () => {
     // Verify directory outline MDI icons are rendered
     assert.ok(html.includes(mdiFolderPlusOutline), 'Expected new_project to render mdiFolderPlusOutline');
     assert.ok(html.includes(mdiFolderOpenOutline), 'Expected open_project to render mdiFolderOpenOutline');
-    assert.ok(html.includes(mdiFolderDownloadOutline), 'Expected save_project to render mdiFolderDownloadOutline');
-    assert.ok(html.includes(mdiFolderSettingsOutline), 'Expected project_properties to render mdiFolderSettingsOutline');
+    assert.ok(html.includes(mdiContentSaveAllOutline), 'Expected save_project to render mdiContentSaveAllOutline');
+    assert.ok(html.includes(mdiFolderCogOutline), 'Expected project_properties to render mdiFolderCogOutline');
   });
 
   it('renders save button disabled when no project open and enabled when project is dirty', () => {

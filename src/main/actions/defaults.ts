@@ -14,7 +14,6 @@ import {
   mdiHandBackRightOutline,
   mdiFolderPlusOutline,
   mdiFolderOpenOutline,
-  mdiFolderDownloadOutline,
   mdiCloseCircleOutline,
   mdiContentSaveAll,
   mdiContentSaveOutline,
@@ -26,7 +25,7 @@ import {
   mdiMapPlus,
   mdiPencilOutline,
   mdiCancel,
-  mdiFolderSettingsOutline,
+  mdiFolderCogOutline,
   mdiMagnifyPlusOutline,
   mdiMagnifyMinusOutline,
   mdiLoupe,
@@ -55,7 +54,7 @@ import {
  * @description Array of built-in action descriptors defining names, descriptions, icons, keyboard shortcuts, and API handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @type {ActionDefinition[]}
  */
@@ -103,7 +102,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: "save_project",
     description: "Saves current active project state",
-    icon: mdiFolderDownloadOutline,
+    icon: mdiContentSaveAllOutline,
     keyCombination: { key: "s", ctrl: true, alt: true },
     functionCall: ApiFunctions.saveProject,
   },
@@ -186,7 +185,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: "project_properties",
     description: "Opens project properties dialog",
-    icon: mdiFolderSettingsOutline,
+    icon: mdiFolderCogOutline,
     keyCombination: { key: ",", ctrl: true, alt: true },
     functionCall: ApiFunctions.projectProperties,
   },

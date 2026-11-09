@@ -4,7 +4,7 @@
  * @description Modeless dialog window stub inspecting project metadata and coordinate reference settings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isProjectPropertiesOpenSignal}
@@ -12,7 +12,7 @@
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiFolderSettingsOutline } from "@mdi/js";
+import { mdiFolderCogOutline } from "@mdi/js";
 import {
   isProjectPropertiesOpenSignal,
   closeProjectPropertiesDialog,
@@ -25,7 +25,7 @@ import { Dialog } from "./Dialog";
  * @description Renders a modeless dialog stub inspecting project metadata and coordinate reference settings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Project Properties dialog window element or null if closed.
  */
@@ -38,7 +38,7 @@ export const ProjectPropertiesDialog: React.FC = () => {
     <Dialog
       name='projectPropertiesWindow'
       title={t("project_properties") || "Project Properties..."}
-      icon={mdiFolderSettingsOutline}
+      icon={mdiFolderCogOutline}
       isOpen={isOpen}
       onClose={closeProjectPropertiesDialog}
       defaultWidth={720}

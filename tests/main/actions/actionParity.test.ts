@@ -13,6 +13,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { mdiContentSaveAllOutline, mdiFolderCogOutline } from '@mdi/js';
 import { BUILTIN_ACTIONS } from '../../../src/main/actions/defaults';
 
 describe('actionParity', () => {
@@ -76,6 +77,7 @@ describe('actionParity', () => {
 
     const saveProject = actionsMap.get('save_project');
     assert.deepEqual(saveProject?.keyCombination, { key: 's', ctrl: true, alt: true });
+    assert.equal(saveProject?.icon, mdiContentSaveAllOutline);
 
     const saveAsProject = actionsMap.get('save_as_project');
     assert.deepEqual(saveAsProject?.keyCombination, { key: 's', ctrl: true, alt: true, shift: true });
@@ -103,6 +105,7 @@ describe('actionParity', () => {
 
     const projectProperties = actionsMap.get('project_properties');
     assert.deepEqual(projectProperties?.keyCombination, { key: ',', ctrl: true, alt: true });
+    assert.equal(projectProperties?.icon, mdiFolderCogOutline);
 
     const cancelAction = actionsMap.get('cancel_action');
     assert.deepEqual(cancelAction?.keyCombination, { key: 'Escape' });

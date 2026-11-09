@@ -4,7 +4,7 @@
  * @description Toolbar widget rendering project actions (New, Open, Save, Properties) and layer catalog integration tools.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link ProjectPropertiesDialog}
@@ -19,8 +19,8 @@ import Icon from "@renderer/components/common/Icon";
 import {
   mdiFolderPlusOutline,
   mdiFolderOpenOutline,
-  mdiFolderDownloadOutline,
-  mdiFolderSettingsOutline,
+  mdiContentSaveAllOutline,
+  mdiFolderCogOutline,
   mdiLayersOutline,
 } from "@mdi/js";
 import {
@@ -94,7 +94,7 @@ export function isProjectToolbarPropertiesDisabled(hasProject: boolean): boolean
  * @description Renders project file management actions, project properties dialog trigger, and layer catalog controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-10-28
+ * @updated 2026-11-08
  * @since 0.1.0-dev
  * @param {ProjectToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ProjectToolbarWidget instance.
@@ -176,7 +176,7 @@ export const ProjectToolbarWidget: React.FC<ProjectToolbarWidgetProps> = ({
         disabled={isSaveDisabled}
         onClick={handleSaveClick}
         aria-label={t("save_project")}>
-        <Icon path={getActionIcon("save_project", mdiFolderDownloadOutline)} />
+        <Icon path={getActionIcon("save_project", mdiContentSaveAllOutline)} />
       </button>
       <button
         className={`toolbar-btn ${isPropertiesDisabled ? "disabled" : ""}`}
@@ -188,7 +188,7 @@ export const ProjectToolbarWidget: React.FC<ProjectToolbarWidgetProps> = ({
           }
         }}
         aria-label={t("project_properties")}>
-        <Icon path={getActionIcon("project_properties", mdiFolderSettingsOutline)} />
+        <Icon path={getActionIcon("project_properties", mdiFolderCogOutline)} />
       </button>
       <button
         className={`toolbar-btn ${openDockPanelsSignal.value.layers ? "active" : ""}`}
