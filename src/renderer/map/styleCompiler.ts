@@ -1,7 +1,7 @@
 /**
  * @file styleCompiler.ts
  * @module renderer/map/styleCompiler
- * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, screen-anchored Canvas 2D linear gradient fills, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
+ * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, Canvas 2D linear gradient fills, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
  * @updated 2026-11-09
@@ -14,7 +14,7 @@
  * @see {@link extractStyleAttributes}
  */
 
-import Style, { type StyleFunction } from "ol/style/Style";
+import Style, { type StyleFunction, type RenderFunction } from "ol/style/Style";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import CircleStyle from "ol/style/Circle";
@@ -525,7 +525,9 @@ export interface CompiledGradientStop {
  * @param {string[]} [rawStops] - Array of '<color> <percent>' strings.
  * @returns {CompiledGradientStop[]} Sorted gradient stop definitions.
  */
-export function parseGradientStops(rawStops?: string[]): CompiledGradientStop[] {
+export function parseGradientStops(
+  rawStops?: string[]
+): CompiledGradientStop[] {
   if (!rawStops || rawStops.length === 0) {
     return [
       { color: "#ffffff", offset: 0 },
@@ -549,152 +551,162 @@ export function parseGradientStops(rawStops?: string[]): CompiledGradientStop[] 
 }
 
 /**
- * Cached singleton offscreen canvas 2D rendering context used for gradient generation in headless/test environments.
- * @type {CanvasRenderingContext2D | null}
+ * Normalizes OpenLayers pixel coordinates from Polygon or MultiPolygon render instructions into an array of linear rings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-09
  * @updated 2026-11-09
  * @since 0.1.0-dev
+ * @param {any} coords - Pixel coordinates from OpenLayers RenderFunction.
+ * @returns {Array<Array<[number, number]>>} Array of linear rings with canvas pixel coordinates.
  */
-let sharedOffscreenContext: CanvasRenderingContext2D | null = null;
-
-/**
- * Retrieves a CanvasRenderingContext2D instance from the active map viewport or falls back to an offscreen canvas context.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-09
- * @updated 2026-11-09
- * @since 0.1.0-dev
- * @param {any} [map] - Optional active OpenLayers Map instance.
- * @returns {CanvasRenderingContext2D | null} Canvas 2D context or null if unavailable.
- */
-function getCanvasContext(map?: any): CanvasRenderingContext2D | null {
-  if (map && typeof map.getViewport === "function") {
-    try {
-      const viewport = map.getViewport();
-      const canvas = viewport?.querySelector?.("canvas");
-      const ctx = canvas?.getContext?.("2d");
-      if (ctx) {
-        return ctx;
+function extractPolygonPixelRings(coords: any): Array<Array<[number, number]>> {
+  if (!Array.isArray(coords) || coords.length === 0) {
+    return [];
+  }
+  if (!Array.isArray(coords[0])) {
+    return [];
+  }
+  if (!Array.isArray(coords[0][0])) {
+    return [coords as Array<[number, number]>];
+  }
+  if (Array.isArray(coords[0][0][0])) {
+    const result: Array<Array<[number, number]>> = [];
+    for (const poly of coords) {
+      if (Array.isArray(poly)) {
+        for (const ring of poly) {
+          if (Array.isArray(ring)) {
+            result.push(ring);
+          }
+        }
       }
-    } catch {
-      // Fall through to shared context
     }
+    return result;
   }
-
-  if (!sharedOffscreenContext && typeof document !== "undefined" && typeof document.createElement === "function") {
-    try {
-      const canvas = document.createElement("canvas");
-      sharedOffscreenContext = canvas.getContext("2d");
-    } catch {
-      sharedOffscreenContext = null;
-    }
-  }
-
-  return sharedOffscreenContext;
+  return coords as Array<Array<[number, number]>>;
 }
 
 /**
- * Dynamically builds an OpenLayers Style instance containing a Canvas 2D linear gradient anchored to the feature's screen pixel bounding extent.
+ * Builds an OpenLayers Style instance with a custom renderer that renders a Canvas 2D linear gradient anchored to the feature geometry path in canvas pixel space.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-09
  * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {GradientFillComponent} component - Declarative gradient fill component specification.
- * @param {any} feature - Target OpenLayers Feature under evaluation.
- * @param {any} [map] - Optional active OpenLayers Map instance.
- * @returns {Style} OpenLayers Style with CanvasGradient fill or solid fallback.
+ * @returns {Style} OpenLayers Style with custom renderer and solid fallback fill.
  */
-function createGradientComponentStyle(
-  component: GradientFillComponent,
-  feature: any,
-  map?: any
-): Style {
+function createGradientComponentStyle(component: GradientFillComponent): Style {
   const stops = parseGradientStops(component.stops);
   const fallbackColor = stops[0]?.color || "#3388ff";
 
-  if (!feature || typeof feature.getGeometry !== "function") {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+  const customRenderer: RenderFunction = (
+    pixelCoordinates: any,
+    state: any
+  ) => {
+    const rings = extractPolygonPixelRings(pixelCoordinates);
+    if (rings.length === 0) {
+      return;
+    }
 
-  const geom = feature.getGeometry();
-  if (!geom || typeof geom.getExtent !== "function") {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+    const ctx = state?.context;
+    if (!ctx) {
+      return;
+    }
 
-  if (!map || typeof map.getPixelFromCoordinate !== "function") {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+    const tracePath = () => {
+      ctx.beginPath();
+      for (const ring of rings) {
+        if (!ring || ring.length === 0) continue;
+        ctx.moveTo(ring[0][0], ring[0][1]);
+        for (let i = 1; i < ring.length; ++i) {
+          ctx.lineTo(ring[i][0], ring[i][1]);
+        }
+        ctx.closePath();
+      }
+    };
 
-  const extent = geom.getExtent(); // [minX, minY, maxX, maxY]
-  const topLeftPixel = map.getPixelFromCoordinate([extent[0], extent[3]]);
-  const bottomRightPixel = map.getPixelFromCoordinate([extent[2], extent[1]]);
+    const fillFallback = () => {
+      tracePath();
+      ctx.fillStyle = fallbackColor;
+      ctx.fill();
+    };
 
-  if (
-    !topLeftPixel ||
-    !bottomRightPixel ||
-    !Number.isFinite(topLeftPixel[0]) ||
-    !Number.isFinite(topLeftPixel[1]) ||
-    !Number.isFinite(bottomRightPixel[0]) ||
-    !Number.isFinite(bottomRightPixel[1])
-  ) {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let hasPoints = false;
 
-  const pxWidth = Math.abs(bottomRightPixel[0] - topLeftPixel[0]);
-  const pxHeight = Math.abs(bottomRightPixel[1] - topLeftPixel[1]);
+    for (const ring of rings) {
+      for (const pt of ring) {
+        if (
+          Array.isArray(pt)
+          && Number.isFinite(pt[0])
+          && Number.isFinite(pt[1])
+        ) {
+          if (pt[0] < minX) minX = pt[0];
+          if (pt[0] > maxX) maxX = pt[0];
+          if (pt[1] < minY) minY = pt[1];
+          if (pt[1] > maxY) maxY = pt[1];
+          hasPoints = true;
+        }
+      }
+    }
 
-  if (pxWidth <= 0 && pxHeight <= 0) {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+    if (!hasPoints || !Number.isFinite(minX)) {
+      return;
+    }
 
-  const cx = (topLeftPixel[0] + bottomRightPixel[0]) / 2;
-  const cy = (topLeftPixel[1] + bottomRightPixel[1]) / 2;
+    const pxWidth = maxX - minX;
+    const pxHeight = maxY - minY;
 
-  const angleDeg = Number.isFinite(component.angle) ? component.angle : 0;
-  const rad = (angleDeg * Math.PI) / 180;
-  const cosA = Math.cos(rad);
-  const sinA = Math.sin(rad);
+    ctx.save();
+    try {
+      if (
+        pxWidth <= 0
+        || pxHeight <= 0
+        || typeof ctx.createLinearGradient !== "function"
+      ) {
+        fillFallback();
+        return;
+      }
 
-  const len = Math.abs(pxWidth * cosA) + Math.abs(pxHeight * sinA);
-  const halfLen = len > 0 ? len / 2 : Math.max(pxWidth, pxHeight) / 2 || 1;
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
 
-  const x0 = cx - halfLen * cosA;
-  const y0 = cy - halfLen * sinA;
-  const x1 = cx + halfLen * cosA;
-  const y1 = cy + halfLen * sinA;
+      const angleDeg = Number.isFinite(component.angle) ? component.angle : 0;
+      const rad = (angleDeg * Math.PI) / 180;
+      const cosA = Math.cos(rad);
+      const sinA = Math.sin(rad);
 
-  if (Math.abs(x1 - x0) < 1e-6 && Math.abs(y1 - y0) < 1e-6) {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+      const len = Math.abs(pxWidth * cosA) + Math.abs(pxHeight * sinA);
+      const halfLen = len > 0 ? len / 2 : Math.max(pxWidth, pxHeight) / 2 || 1;
 
-  const ctx = getCanvasContext(map);
-  if (!ctx || typeof ctx.createLinearGradient !== "function") {
-    return new Style({
-      fill: new Fill({ color: fallbackColor }),
-    });
-  }
+      const x0 = cx - halfLen * cosA;
+      const y0 = cy - halfLen * sinA;
+      const x1 = cx + halfLen * cosA;
+      const y1 = cy + halfLen * sinA;
 
-  const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-  for (const stop of stops) {
-    gradient.addColorStop(stop.offset, stop.color);
-  }
+      if (Math.abs(x1 - x0) < 1e-6 && Math.abs(y1 - y0) < 1e-6) {
+        fillFallback();
+        return;
+      }
+
+      const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+      for (const stop of stops) {
+        gradient.addColorStop(stop.offset, stop.color);
+      }
+
+      tracePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    } finally {
+      ctx.restore();
+    }
+  };
 
   return new Style({
-    fill: new Fill({
-      color: gradient,
-    }),
+    renderer: customRenderer,
+    fill: new Fill({ color: fallbackColor }),
   });
 }
 
@@ -711,7 +723,7 @@ function createGradientComponentStyle(
  */
 export function compileStyleFunction(
   cartoucheStyle: CartoucheLayerStyle,
-  options?: CompileLayerStyleOptions
+  _options?: CompileLayerStyleOptions
 ): StyleFunction {
   const styleCache = new Map<string, Style>();
 
@@ -728,11 +740,9 @@ export function compileStyleFunction(
 
     let created: Style | null = null;
     if (component.type === "simple-fill") {
-      created = new Style({
-        fill: new Fill({
-          color: component.color,
-        }),
-      });
+      created = new Style({ fill: new Fill({ color: component.color }) });
+    } else if (component.type === "gradient-fill") {
+      created = createGradientComponentStyle(component);
     } else if (component.type === "simple-line") {
       if (component.dashPattern === "no-line") {
         return null;
@@ -743,22 +753,22 @@ export function compileStyleFunction(
           width: component.width,
           ...(component.cap ? { lineCap: component.cap } : {}),
           ...(component.join ? { lineJoin: component.join } : {}),
-          ...(component.offset !== undefined ? { offset: component.offset } : {}),
-          ...(component.dashArray && component.dashArray.length > 0
-            ? { lineDash: component.dashArray }
-            : {}),
-          ...(component.dashOffset !== undefined
-            ? { lineDashOffset: component.dashOffset }
-            : {}),
+          ...(component.offset !== undefined ?
+            { offset: component.offset }
+          : {}),
+          ...(component.dashArray && component.dashArray.length > 0 ?
+            { lineDash: component.dashArray }
+          : {}),
+          ...(component.dashOffset !== undefined ?
+            { lineDashOffset: component.dashOffset }
+          : {}),
         }),
       });
     } else if (component.type === "simple-marker") {
       created = new Style({
         image: new CircleStyle({
           radius: component.radius,
-          fill: new Fill({
-            color: component.fillColor,
-          }),
+          fill: new Fill({ color: component.fillColor }),
           stroke: new Stroke({
             color: component.strokeColor,
             width: component.strokeWidth,
@@ -773,44 +783,31 @@ export function compileStyleFunction(
     return created;
   }
 
-  const hasGradient =
-    "components" in cartoucheStyle &&
-    Array.isArray(cartoucheStyle.components) &&
-    cartoucheStyle.components.some(
-      (c) => c.type === "gradient-fill" && c.enabled !== false
-    );
-
   // Pre-resolve the cached Style[] array for static symbology to eliminate allocations during 60 FPS rendering
   let resolvedStylesArray: Style[] | null = null;
 
-  return (feature, _resolution): Style[] => {
-    if (!hasGradient && resolvedStylesArray) {
+  return (_feature, _resolution): Style[] => {
+    if (resolvedStylesArray) {
       return resolvedStylesArray;
     }
 
     const styles: Style[] = [];
-    if ("components" in cartoucheStyle && Array.isArray(cartoucheStyle.components)) {
+    if (
+      "components" in cartoucheStyle
+      && Array.isArray(cartoucheStyle.components)
+    ) {
       for (const comp of cartoucheStyle.components) {
         if (!comp.enabled) {
           continue;
         }
-        if (comp.type === "gradient-fill") {
-          const s = createGradientComponentStyle(comp, feature, options?.map);
-          if (s) {
-            styles.push(s);
-          }
-        } else {
-          const s = getOrCreateComponentStyle(comp);
-          if (s) {
-            styles.push(s);
-          }
+        const s = getOrCreateComponentStyle(comp);
+        if (s) {
+          styles.push(s);
         }
       }
     }
 
-    if (!hasGradient) {
-      resolvedStylesArray = styles;
-    }
+    resolvedStylesArray = styles;
     return styles;
   };
 }
@@ -901,7 +898,10 @@ export function compileCartoucheLayerStyleSync(
         isFallback: true,
       };
     }
-  } else if (typeof rawTarget === "object" && isCartoucheLayerStyle(rawTarget)) {
+  } else if (
+    typeof rawTarget === "object"
+    && isCartoucheLayerStyle(rawTarget)
+  ) {
     cartoucheModel = rawTarget;
   }
 
