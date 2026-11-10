@@ -10,10 +10,11 @@
  * @see {@link TimestampSpinner}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
+ * @see {@link Icon}
  */
 
 import React, { useCallback, type ChangeEvent } from 'react';
-import Icon from '@mdi/react';
+import Icon from '@renderer/components/common/Icon';
 import {
   mdiClockTimeFourOutline,
   mdiMapClockOutline,

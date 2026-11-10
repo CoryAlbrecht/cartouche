@@ -11,6 +11,7 @@
  * @see {@link calculateActiveTemporalRange}
  * @see {@link widgetComponents}
  * @see {@link DEFAULT_WORKBENCH_WIDGET_DOCKS}
+ * @see {@link Icon}
  */
 
 import { describe, it, beforeEach } from 'node:test';
@@ -426,5 +427,32 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
     assert.ok(markup.includes('Years'), 'Markup must contain Years option');
     assert.ok(markup.includes('Months'), 'Markup must contain Months option');
     assert.ok(markup.includes('Days'), 'Markup must contain Days option');
+  });
+
+  it('renders all transport, auto-range, and stepper buttons with canonical Icon SVG elements without throwing (Ticket #236)', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    // Verify SVG icon elements rendered within buttons
+    assert.ok(
+      markup.includes('<svg'),
+      'Markup must render SVG elements from canonical Icon component'
+    );
+    assert.ok(
+      markup.includes('viewBox="0 0 24 24"'),
+      'SVG elements must define 24x24 MDI viewBox'
+    );
+
+    // Count rendered SVG icons:
+    // Header (1: clock), Toggle [A] (1), Auto-Range [B] (1), Transport [C, D, E, F] (4),
+    // Embedded TimestampSpinners (2 spinners * 2 chevrons = 4), Step Up/Down (2) = 13 total icons
+    const EXPECTED_SVG_ICON_COUNT = 13;
+    const svgCount = (markup.match(/<svg/g) || []).length;
+    assert.strictEqual(
+      svgCount,
+      EXPECTED_SVG_ICON_COUNT,
+      `Expected exactly ${EXPECTED_SVG_ICON_COUNT} SVG icons rendered in TimeFilterWidget, found ${svgCount}`
+    );
   });
 });
