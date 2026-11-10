@@ -42,6 +42,9 @@
       <!-- Optional Bookmarks Collection -->
       <xs:element name="bookmarks" type="BookmarksCollectionType" minOccurs="0" />
 
+      <!-- Optional Workbench Time Filter State -->
+      <xs:element name="timeFilter" type="TimeFilterType" minOccurs="0" />
+
       <!-- Extensible Project Properties / Key-Value Settings -->
       <xs:element name="customProperties" type="CustomPropertiesType" minOccurs="0" />
     </xs:sequence>
@@ -174,6 +177,16 @@
     <xs:attribute name="startOp" type="xs:string" />
     <xs:attribute name="endField" type="xs:string" />
     <xs:attribute name="endOp" type="xs:string" />
+  </xs:complexType>
+
+  <!-- Time Filter Type: Project-level temporal transport configuration -->
+  <xs:complexType name="TimeFilterType">
+    <xs:attribute name="enabled" type="xs:boolean" default="false" />
+    <xs:attribute name="from" type="xs:string" />
+    <xs:attribute name="to" type="xs:string" />
+    <xs:attribute name="current" type="xs:string" />
+    <xs:attribute name="step" type="xs:double" default="1.0" />
+    <xs:attribute name="unit" type="xs:string" default="Days" />
   </xs:complexType>
 
   <!-- Layer Attribute Fields Collection Type -->

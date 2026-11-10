@@ -28,6 +28,8 @@ import {
   type LayerFieldInfo,
   type InferredFieldType,
   type LayerTemporalConfig,
+  type ProjectTimeFilterConfig,
+  type TimeFilterUnit,
 } from "../../../shared/types";
 
 /**
@@ -580,6 +582,36 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     const customProperties = parseCustomProps(root.customProperties);
 
+    let timeFilter: ProjectTimeFilterConfig | undefined;
+    if (root.timeFilter) {
+      const tf = root.timeFilter;
+      const isEnabled =
+        tf["@_enabled"] === "true"
+        || tf["@_enabled"] === true
+        || tf["@_enabled"] === "1";
+      const parseNum = (val: unknown): number | undefined => {
+        if (val === undefined || val === null || val === "") return undefined;
+        if (typeof val === "number") return Number.isFinite(val) ? val : undefined;
+        const parsed = Number(val);
+        if (Number.isFinite(parsed)) return parsed;
+        const d = Date.parse(String(val));
+        return Number.isFinite(d) ? d : undefined;
+      };
+      timeFilter = {
+        enabled: isEnabled,
+        from: parseNum(tf["@_from"]),
+        to: parseNum(tf["@_to"]),
+        current: parseNum(tf["@_current"]),
+        step:
+          tf["@_step"] !== undefined ?
+            typeof tf["@_step"] === "number" ?
+              tf["@_step"]
+            : parseFloat(tf["@_step"])
+          : 1.0,
+        unit: (tf["@_unit"] as TimeFilterUnit) || "Days",
+      };
+    }
+
     return {
       format: this.id,
       filePath,
@@ -588,6 +620,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       viewport,
       layers,
       styles,
+      timeFilter,
       customProperties,
     };
   }
@@ -953,7 +986,31 @@ export class CartoucheXmlLoader implements IProjectLoader {
       lines.push("  <styles />");
     }
 
-    // 6. Custom Properties (optional)
+    // 6. Time Filter (optional)
+    if (project.timeFilter) {
+      const tf = project.timeFilter;
+      const tfAttrs: string[] = [
+        `enabled="${tf.enabled === true}"`,
+      ];
+      if (tf.from !== undefined) {
+        tfAttrs.push(`from="${escapeXml(String(tf.from))}"`);
+      }
+      if (tf.to !== undefined) {
+        tfAttrs.push(`to="${escapeXml(String(tf.to))}"`);
+      }
+      if (tf.current !== undefined) {
+        tfAttrs.push(`current="${escapeXml(String(tf.current))}"`);
+      }
+      if (tf.step !== undefined) {
+        tfAttrs.push(`step="${tf.step}"`);
+      }
+      if (tf.unit !== undefined) {
+        tfAttrs.push(`unit="${escapeXml(tf.unit)}"`);
+      }
+      lines.push(`  <timeFilter ${tfAttrs.join(" ")} />`);
+    }
+
+    // 7. Custom Properties (optional)
     if (
       project.customProperties
       && Object.keys(project.customProperties).length > 0

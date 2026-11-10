@@ -1128,5 +1128,60 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(l3.temporal.endField, 'valid_until');
     assert.equal(l3.temporal.endOp, '<');
   });
+
+  it('serializes, deserializes, and validates workbench <timeFilter> configuration against project.xsd (Ticket #235)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'timefilter-config-test.cproj');
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'Time Filter Persistence Test Project',
+        creator: 'Cory Albrecht',
+        description: 'Verifies project-level <timeFilter> tag persistence.',
+        date: '2026-11-10',
+        createdAt: '2026-11-10T12:00:00.000Z',
+        updatedAt: '2026-11-10T12:00:00.000Z',
+        appVersion: '0.1.0-dev'
+      },
+      crs: {
+        authId: 'EPSG:4326',
+        srid: 4326,
+        description: 'WGS 84'
+      },
+      layers: [],
+      timeFilter: {
+        enabled: true,
+        from: 1000000000000,
+        to: 2000000000000,
+        current: 1500000000000,
+        step: 0.000000031623,
+        unit: 'Years'
+      }
+    };
+
+    await loader.save(model, testFile);
+    const xmlContent = fs.readFileSync(testFile, 'utf-8');
+
+    // 1. Verify schema validity against project.xsd
+    const validation = validateXmlAgainstSchema(xmlContent);
+    assert.equal(validation.valid, true, `Schema validation failed: ${validation.error}`);
+
+    // 2. Verify serialized XML tags
+    assert.match(
+      xmlContent,
+      /<timeFilter enabled="true" from="1000000000000" to="2000000000000" current="1500000000000" step="(0\.000000031623|3\.1623e-8)" unit="Years" \/>/
+    );
+
+    // 3. Verify deserialization fidelity
+    const loaded = await loader.load(testFile);
+    assert.ok(loaded.timeFilter, 'Loaded project must contain timeFilter');
+    assert.equal(loaded.timeFilter.enabled, true);
+    assert.equal(loaded.timeFilter.from, 1000000000000);
+    assert.equal(loaded.timeFilter.to, 2000000000000);
+    assert.equal(loaded.timeFilter.current, 1500000000000);
+    assert.equal(loaded.timeFilter.step, 0.000000031623);
+    assert.equal(loaded.timeFilter.unit, 'Years');
+  });
 });
 

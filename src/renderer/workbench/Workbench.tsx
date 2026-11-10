@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -222,7 +222,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -311,7 +311,12 @@ export const Workbench: React.FC = () => {
   const updateOpenPanelsState = useCallback((api: DockviewApi) => {
     const hasAttr = !!api.getPanel("attribute-table");
     const hasLayers = !!api.getPanel("layer-tree");
-    openDockPanelsSignal.value = { attributes: hasAttr, layers: hasLayers };
+    const hasTimeFilter = !!api.getPanel("time-filter");
+    openDockPanelsSignal.value = {
+      attributes: hasAttr,
+      layers: hasLayers,
+      timeFilter: hasTimeFilter,
+    };
   }, []);
 
   // Close open dropdown on outside click or Escape
@@ -497,7 +502,10 @@ export const Workbench: React.FC = () => {
         isFloating,
         floatingBounds,
         referencePanelId: refId,
-        direction: panel.id === "layer-tree" ? "left" : "below",
+        direction:
+          panel.id === "layer-tree" ? "left"
+          : panel.id === "time-filter" ? "above"
+          : "below",
         width: width && width > 0 ? width : undefined,
         height: height && height > 0 ? height : undefined,
       });
@@ -541,12 +549,23 @@ export const Workbench: React.FC = () => {
         priority: "low",
       } as any);
 
+      // 3. Top: Time Filter Panel - low priority maintains fixed height on window resizes
+      api.addPanel({
+        id: "time-filter",
+        component: "time-filter",
+        title: "Time Filter",
+        position: { referencePanel: mapPanel, direction: "above" },
+        initialHeight: 74,
+        priority: "low",
+      } as any);
+
       addConsoleLog(
         "info",
-        "Default GIS layout initialized: Layers Panel (Left), Map Viewport (Center).",
+        "Default GIS layout initialized: LayerTreeWidget (Left), Time Filter (Top), Map Viewport (Center).",
         "Dockview"
       );
       setWidgetDockItemVisibility("layer-tree", true);
+      setWidgetDockItemVisibility("time-filter", true);
       updateOpenPanelsState(api);
     },
     [updateOpenPanelsState]
@@ -1412,6 +1431,27 @@ export const Workbench: React.FC = () => {
                           )}
                         </span>
                         <span className='menu-item-label'>Attributes</span>
+                      </div>
+
+                      {/* ? Time Filter */}
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={() => {
+                          togglePanel(
+                            "time-filter",
+                            "time-filter",
+                            "Time Filter",
+                            "above"
+                          );
+                          setOpenMenu(null);
+                          setActiveSubmenu(null);
+                        }}>
+                        <span className='menu-item-check-slot'>
+                          {openPanels.timeFilter && (
+                            <Icon path={mdiCheck} size={MENU_ITEM_ICON_SIZE} />
+                          )}
+                        </span>
+                        <span className='menu-item-label'>Time Filter</span>
                       </div>
 
                       {/* ? Layers */}
