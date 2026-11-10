@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
@@ -336,7 +336,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>} [setFeatureSelection] - Synchronizes selected feature IDs for the active or target layer to the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -394,7 +394,11 @@ export interface ElectronAPI {
   /** @ipc gis:get-current-project */
   getCurrentProject?: () => Promise<import('./project').ProjectModel | null>;
   /** @ipc gis:save-project */
-  saveProject?: (filePath?: string, viewport?: import('./project').ProjectViewport) => Promise<boolean>;
+  saveProject?: (
+    filePath?: string,
+    viewport?: import('./project').ProjectViewport,
+    timeFilter?: import('./project').ProjectTimeFilterConfig
+  ) => Promise<boolean>;
   /** @ipc project:loaded */
   onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
   /** @ipc project:layers-tree-updated */

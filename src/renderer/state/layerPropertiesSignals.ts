@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -24,6 +24,7 @@ import type {
   ProjectLayerStyleItem,
   LayerVisualSymbolizer,
   LayerFieldInfo,
+  LayerTemporalConfig,
 } from "@shared/types";
 import {
   parseStyleTextToGeoStyler,
@@ -71,6 +72,7 @@ export type LayerPropertiesTabId =
  * @property {LayerVisualSymbolizer} visualSymbolizer - Active draft visual symbolizer control parameters.
  * @property {number} opacity - Draft layer opacity between 0.0 and 1.0.
  * @property {boolean} temporalEnabled - Whether dynamic temporal control is enabled on the layer.
+ * @property {LayerTemporalConfig} [temporal] - Structured dynamic temporal configuration options.
  * @property {Record<string, string>} [formatCache] - In-memory style text cache indexed by format key across switches.
  * @property {LayerFieldInfo[]} [fields] - Draft array of layer attribute field definitions.
  */
@@ -87,6 +89,7 @@ export interface LayerPropertiesDraft {
   visualSymbolizer: LayerVisualSymbolizer;
   opacity: number;
   temporalEnabled: boolean;
+  temporal?: LayerTemporalConfig;
   formatCache?: Record<string, string>;
   fields?: LayerFieldInfo[];
 }
@@ -188,7 +191,7 @@ export const isLayerPropertiesLoadingSignal: Signal<boolean> =
  * @description Holds uncommitted draft modifications for the active layer properties session across tab transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {Signal<LayerPropertiesDraft>}
  */
@@ -206,6 +209,12 @@ export const layerPropertiesDraftSignal: Signal<LayerPropertiesDraft> =
     visualSymbolizer: {},
     opacity: 1,
     temporalEnabled: false,
+    temporal: {
+      enabled: false,
+      mode: "start_end",
+      startOp: ">=",
+      endOp: "<=",
+    },
     formatCache: {},
   });
 
@@ -276,7 +285,7 @@ export function collectAllLayerIds(
  * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata and synchronizing activeLayerIdSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier to inspect.
  * @returns {Promise<void>}
@@ -331,8 +340,21 @@ export async function openLayerPropertiesDialog(
     : "";
   const initialOpacity =
     typeof currentLayer?.opacity === "number" ? currentLayer.opacity : 1;
+  const rawTemporalConfig =
+    currentLayer?.temporal ?? currentProjectLayer?.temporal;
   const initialTemporal =
-    currentLayer?.temporalEnabled ?? currentProjectLayer?.temporalEnabled ?? false;
+    rawTemporalConfig ?
+      rawTemporalConfig.enabled
+    : (currentLayer?.temporalEnabled ?? currentProjectLayer?.temporalEnabled ?? false);
+  const initialTemporalConfig: LayerTemporalConfig =
+    rawTemporalConfig ?
+      { ...rawTemporalConfig }
+    : {
+        enabled: initialTemporal,
+        mode: "start_end",
+        startOp: ">=",
+        endOp: "<=",
+      };
 
   const resolvedStyleItem = resolveLayerStyleItem(layerId);
   const initialFormat = resolvedStyleItem.format || "openlayers";
@@ -395,6 +417,7 @@ export async function openLayerPropertiesDialog(
     visualSymbolizer: initialVisual,
     opacity: initialOpacity,
     temporalEnabled: initialTemporal,
+    temporal: initialTemporalConfig,
     formatCache: initialCache,
     fields: initialFields,
   };
@@ -458,7 +481,7 @@ export async function openLayerPropertiesDialog(
  * @description Closes the LayerPropertiesDialog and resets session state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -480,6 +503,12 @@ export function closeLayerPropertiesDialog(): void {
     visualSymbolizer: {},
     opacity: 1,
     temporalEnabled: false,
+    temporal: {
+      enabled: false,
+      mode: "start_end",
+      startOp: ">=",
+      endOp: "<=",
+    },
     formatCache: {},
     fields: undefined,
   };
@@ -588,7 +617,7 @@ export function cancelLayerPropertiesEdits(): void {
  * @description Updates a draft property in the active layer properties session.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-23
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {Partial<LayerPropertiesDraft>} updates - Changed draft properties.
  * @returns {void}
@@ -618,9 +647,35 @@ export function updateLayerPropertiesDraft(
     }
   }
 
+  let mergedTemporal = current.temporal;
+  let mergedTemporalEnabled = current.temporalEnabled;
+
+  if (updates.temporal !== undefined) {
+    mergedTemporal = {
+      ...(current.temporal ?? {
+        enabled: updates.temporal.enabled ?? current.temporalEnabled,
+        mode: "start_end",
+        startOp: ">=",
+        endOp: "<=",
+      }),
+      ...updates.temporal,
+    };
+    mergedTemporalEnabled = mergedTemporal.enabled;
+  } else if (updates.temporalEnabled !== undefined) {
+    mergedTemporalEnabled = updates.temporalEnabled;
+    if (mergedTemporal) {
+      mergedTemporal = {
+        ...mergedTemporal,
+        enabled: updates.temporalEnabled,
+      };
+    }
+  }
+
   layerPropertiesDraftSignal.value = {
     ...current,
     ...updates,
+    temporalEnabled: mergedTemporalEnabled,
+    temporal: mergedTemporal,
     idValidationError:
       updates.idValidationError !== undefined ?
         updates.idValidationError
@@ -766,7 +821,7 @@ export function updateLayerPropertiesInTree(
  * @description Commits active draft modifications (name, ID, CRS, filter, temporalEnabled, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -829,7 +884,9 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
       id: trimmedId,
       name: trimmedName,
       crs: updatedCrs,
-      temporalEnabled: draft.temporalEnabled,
+      temporalEnabled:
+        draft.temporal ? draft.temporal.enabled : draft.temporalEnabled,
+      temporal: draft.temporal ? { ...draft.temporal } : undefined,
       customProperties: {
         ...(currentLayer.customProperties || {}),
         featureFilter: draft.featureFilter.trim(),
@@ -849,7 +906,9 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
               id: trimmedId,
               name: trimmedName,
               crs: updatedCrs,
-              temporalEnabled: draft.temporalEnabled,
+              temporalEnabled:
+                draft.temporal ? draft.temporal.enabled : draft.temporalEnabled,
+              temporal: draft.temporal ? { ...draft.temporal } : undefined,
               customProperties: {
                 ...(desc.customProperties || {}),
                 featureFilter: draft.featureFilter.trim(),

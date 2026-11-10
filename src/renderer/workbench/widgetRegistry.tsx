@@ -4,11 +4,12 @@
  * @description Dockview widget registry component mapping dockview IDs to React widget components (MapViewportPanel, LayerTreeWidget, AttributeTablePanel, ConsolePanel, OverlapTabWidget).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link MapViewportPanel}
  * @see {@link LayerTreeWidget}
  * @see {@link OverlapTabWidget}
+ * @see {@link TimeFilterWidget}
  */
 
 import React from "react";
@@ -18,12 +19,13 @@ import { LayerTreeWidget } from "./widgets/LayerTreeWidget";
 import { AttributeTablePanel } from "./widgets/AttributeTableWidget";
 import { ConsolePanel } from "./panels/ConsolePanel";
 import { OverlapTabWidget } from "./widgets/OverlapTabWidget";
+import { TimeFilterWidget } from "./widgets/TimeFilterWidget";
 
 /**
  * @description Map of Dockview widget string identifiers to React widget components.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {Record<string, React.FC<IDockviewPanelProps>>}
  */
@@ -33,4 +35,5 @@ export const widgetComponents: Record<string, React.FC<IDockviewPanelProps>> = {
   "attribute-table": (props) => <AttributeTablePanel {...props} />,
   "console": (props) => <ConsolePanel {...props} />,
   "overlap-tab-widget": (props) => <OverlapTabWidget {...props} />,
+  "time-filter": (props) => <TimeFilterWidget {...props} />,
 };

@@ -4,7 +4,7 @@
  * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, Canvas 2D linear gradient fills, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-09
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link compileLayerStyle}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -12,6 +12,7 @@
  * @see {@link isCartoucheStyleDescriptor}
  * @see {@link hasGradientFillStyle}
  * @see {@link extractStyleAttributes}
+ * @see {@link wrapStyleWithTemporalFilter}
  */
 
 import Style, { type StyleFunction, type RenderFunction } from "ol/style/Style";
@@ -35,7 +36,9 @@ import type {
   CartoucheLayerStyle,
   StyleComponent,
   GradientFillComponent,
+  LayerTemporalConfig,
 } from "../../shared/types";
+import { evaluateTemporalPredicate } from "./temporalPredicate";
 
 /**
  * Cached SLD 1.0.0 parser singleton instance.
@@ -95,9 +98,10 @@ export interface CompiledLayerStyleResult {
  * @property {string} [layerId] - Optional layer identifier for diagnostic logging.
  * @property {string} [geometryKind] - Target layer geometry kind ('Polygon', 'LineString', 'Point', etc.) for fallback styling.
  * @property {any} [map] - Optional active OpenLayers Map instance for screen-anchored gradient coordinate projections.
+ * @property {LayerTemporalConfig} [temporal] - Optional layer dynamic temporal configuration for viewport filtering.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-09
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export interface CompileLayerStyleOptions {
@@ -105,6 +109,7 @@ export interface CompileLayerStyleOptions {
   layerId?: string;
   geometryKind?: string;
   map?: any;
+  temporal?: LayerTemporalConfig;
 }
 
 /**
@@ -813,11 +818,47 @@ export function compileStyleFunction(
 }
 
 /**
+ * @function wrapStyleWithTemporalFilter
+ * @description Wraps an OpenLayers style or StyleFunction with temporal predicate filtering, returning null when the feature fails the active temporal condition.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @param {any} baseStyle - Compiled OpenLayers style, Style array, or StyleFunction.
+ * @param {LayerTemporalConfig | undefined} temporal - Layer dynamic temporal configuration.
+ * @returns {any} Wrapped StyleFunction closure, or unmodified baseStyle if temporal control is not enabled.
+ */
+export function wrapStyleWithTemporalFilter(
+  baseStyle: any,
+  temporal?: LayerTemporalConfig
+): any {
+  if (!temporal || !temporal.enabled) {
+    return baseStyle;
+  }
+
+  if (typeof baseStyle === "function") {
+    return (feature: any, resolution: number): any => {
+      if (!evaluateTemporalPredicate(feature, temporal)) {
+        return null;
+      }
+      return baseStyle(feature, resolution);
+    };
+  }
+
+  return (feature: any, _resolution: number): any => {
+    if (!evaluateTemporalPredicate(feature, temporal)) {
+      return null;
+    }
+    return baseStyle;
+  };
+}
+
+/**
  * @description Synchronously compiles a Cartouche Symbology style into an executable OpenLayers StyleFunction.
  * Returns a fallback 3-rule random-color style if the input is unstyled or invalid.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-09
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {unknown} style - Raw Cartouche Symbology descriptor, JSON string, or ProjectLayerStyleItem wrapper.
  * @param {CompileLayerStyleOptions} [options] - Optional shared styles catalog and layer ID context.
@@ -927,9 +968,24 @@ export function compileCartoucheLayerStyleSync(
   );
 
   const styleFunction = compileStyleFunction(cartoucheModel, options);
+  const requiredFields = new Set<string>();
+  if (options?.temporal?.enabled) {
+    if (options.temporal.startField) {
+      requiredFields.add(options.temporal.startField);
+    }
+    if (options.temporal.endField) {
+      requiredFields.add(options.temporal.endField);
+    }
+  }
+
+  const finalCompiledStyle = wrapStyleWithTemporalFilter(
+    styleFunction,
+    options?.temporal
+  );
+
   return {
-    compiledStyle: styleFunction,
-    requiredFields: new Set<string>(),
+    compiledStyle: finalCompiledStyle,
+    requiredFields,
     format: "cartouche",
     isFallback: false,
     hasGradientFill,
@@ -989,7 +1045,7 @@ function isValidFlatStyleObject(candidate: unknown): boolean {
  * Returns a fallback 3-rule random-color style if the input is unstyled or invalid JSON.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {unknown} style - Raw OpenLayers Flat Style descriptor or wrapper.
  * @param {CompileLayerStyleOptions} [options] - Optional shared styles and layer ID context.
@@ -1011,9 +1067,18 @@ export function compileFlatLayerStyleSync(
   }
 
   if (typeof style === "function") {
+    const requiredFields = new Set<string>();
+    if (options?.temporal?.enabled) {
+      if (options.temporal.startField) {
+        requiredFields.add(options.temporal.startField);
+      }
+      if (options.temporal.endField) {
+        requiredFields.add(options.temporal.endField);
+      }
+    }
     return {
-      compiledStyle: style,
-      requiredFields: new Set<string>(),
+      compiledStyle: wrapStyleWithTemporalFilter(style, options?.temporal),
+      requiredFields,
       format: "openlayers",
       isFallback: false,
     };
@@ -1063,9 +1128,18 @@ export function compileFlatLayerStyleSync(
     try {
       const parsed = JSON.parse(rawTarget.trim());
       if (isValidFlatStyleObject(parsed)) {
+        const requiredFields = extractStyleAttributes(parsed);
+        if (options?.temporal?.enabled) {
+          if (options.temporal.startField) {
+            requiredFields.add(options.temporal.startField);
+          }
+          if (options.temporal.endField) {
+            requiredFields.add(options.temporal.endField);
+          }
+        }
         return {
-          compiledStyle: parsed,
-          requiredFields: extractStyleAttributes(parsed),
+          compiledStyle: wrapStyleWithTemporalFilter(parsed, options?.temporal),
+          requiredFields,
           format: "openlayers",
           isFallback: false,
         };
@@ -1096,9 +1170,18 @@ export function compileFlatLayerStyleSync(
   }
 
   if (isValidFlatStyleObject(rawTarget)) {
+    const requiredFields = extractStyleAttributes(rawTarget);
+    if (options?.temporal?.enabled) {
+      if (options.temporal.startField) {
+        requiredFields.add(options.temporal.startField);
+      }
+      if (options.temporal.endField) {
+        requiredFields.add(options.temporal.endField);
+      }
+    }
     return {
-      compiledStyle: rawTarget,
-      requiredFields: extractStyleAttributes(rawTarget),
+      compiledStyle: wrapStyleWithTemporalFilter(rawTarget, options?.temporal),
+      requiredFields,
       format: "openlayers",
       isFallback: false,
     };
@@ -1121,7 +1204,7 @@ export function compileFlatLayerStyleSync(
  * Fast-paths `'openlayers'` styles and compiles `'sld'` styles via cached `SldStyleParser` and `OlStyleParser` singletons.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {unknown} style - Raw style descriptor, ProjectLayerStyleItem wrapper, or OpenLayers Flat Style rules.
  * @param {CompileLayerStyleOptions} [options] - Optional shared styles and layer ID context.
@@ -1200,6 +1283,14 @@ export async function compileLayerStyle(
 
     const requiredFields = extractSldXmlAttributes(xmlContent);
     extractGeoStylerAttributes(readResult.output, requiredFields);
+    if (options?.temporal?.enabled) {
+      if (options.temporal.startField) {
+        requiredFields.add(options.temporal.startField);
+      }
+      if (options.temporal.endField) {
+        requiredFields.add(options.temporal.endField);
+      }
+    }
 
     const writeResult = await olStyleParser.writeStyle(readResult.output);
     if (writeResult.errors?.length || !writeResult.output) {
@@ -1222,7 +1313,10 @@ export async function compileLayerStyle(
     }
 
     return {
-      compiledStyle: writeResult.output,
+      compiledStyle: wrapStyleWithTemporalFilter(
+        writeResult.output,
+        options?.temporal
+      ),
       requiredFields,
       format: "sld",
       version: detectedVersion,

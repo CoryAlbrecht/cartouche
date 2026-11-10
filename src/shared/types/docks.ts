@@ -4,7 +4,7 @@
  * @description Type definitions and interfaces for flex-proportional dock layout state and docked widget items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link WorkbenchWidgetDocksState}
  */
@@ -14,7 +14,7 @@
  * @description Identifiers for the four outer perimeter dock zones surrounding the central map canvas.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export type WidgetDockId = 'left' | 'right' | 'top' | 'bottom';
@@ -24,7 +24,7 @@ export type WidgetDockId = 'left' | 'right' | 'top' | 'bottom';
  * @description Width and height pixel dimensions for docked widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @property {number} [width] - Explicit width in pixels.
  * @property {number} [height] - Explicit height in pixels.
@@ -39,7 +39,7 @@ export interface WidgetDockDimensions {
  * @description Model representing a single docked widget or overlap tab container within a perimeter dock.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @property {string} id - Unique identifier of the docked widget or container.
  * @property {WidgetDockId} dock - Current dock assignment ('left', 'right', 'top', or 'bottom').
@@ -68,7 +68,7 @@ export interface WidgetDockItem {
  * @description Comprehensive map of perimeter dock zones to arrays of docked widget items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export type WorkbenchWidgetDocksState = Record<WidgetDockId, WidgetDockItem[]>;
@@ -77,7 +77,7 @@ export type WorkbenchWidgetDocksState = Record<WidgetDockId, WidgetDockItem[]>;
  * @description Default flex-proportional dock layout assignments and ratios for Cartouche workbench panels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {WorkbenchWidgetDocksState}
  */
@@ -94,7 +94,17 @@ export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
     },
   ],
   right: [],
-  top: [],
+  top: [
+    {
+      id: 'time-filter',
+      dock: 'top',
+      order: 0,
+      axisRatio: 1,
+      dimensions: { height: 74 },
+      visible: true,
+      isOverlapContainer: false,
+    },
+  ],
   bottom: [
     {
       id: 'attribute-table',

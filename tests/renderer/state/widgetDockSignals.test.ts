@@ -4,7 +4,7 @@
  * @description Unit tests for widgetDockSignals store, verifying dock item retrieval, ratio updates, reordering, inter-dock transfers, visibility toggling, and preference hydration.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link widgetDocksSignal}
  */
@@ -69,6 +69,11 @@ describe('widgetDockSignals Reactive Store & Helper Operations', () => {
     assert.strictEqual(layerTreeMatch.dock, 'left');
     assert.strictEqual(layerTreeMatch.index, 0);
     assert.strictEqual(layerTreeMatch.item.id, 'layer-tree');
+
+    const timeFilterMatch = getWidgetDockItem('time-filter');
+    assert.ok(timeFilterMatch, 'time-filter must be located');
+    assert.strictEqual(timeFilterMatch.dock, 'top');
+    assert.strictEqual(timeFilterMatch.index, 0);
 
     const attrMatch = getWidgetDockItem('attribute-table');
     assert.ok(attrMatch, 'attribute-table must be located');

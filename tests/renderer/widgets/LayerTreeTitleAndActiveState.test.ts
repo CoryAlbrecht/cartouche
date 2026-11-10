@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality (Ticket #92, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -306,7 +306,7 @@ const {
 
 const { editableLayerIdsSignal } = jiti('../../../src/renderer/state/gisSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
-const { mdiPencilOutline, mdiClockOutline } = jiti('@mdi/js');
+const { mdiPencilOutline, mdiClockTimeFourOutline } = jiti('@mdi/js');
 
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
 
@@ -772,7 +772,7 @@ describe('LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     // Verify SVG icon path
     const svgPath = findAllNodes(clockSpan, el => el.tagName === 'PATH')[0];
     assert.ok(svgPath, 'SVG path must be present in temporal icon slot');
-    assert.strictEqual(svgPath.attributes['d'], mdiClockOutline, 'Must render mdiClockOutline path');
+    assert.strictEqual(svgPath.attributes['d'], mdiClockTimeFourOutline, 'Must render mdiClockTimeFourOutline path');
 
     // Positioning check: clock icon must appear AFTER .tree-node-title in childNodes
     const lakesRowChildClasses = lakesRow.childNodes

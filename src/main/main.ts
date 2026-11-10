@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -129,7 +129,7 @@ Categories=Graphics;Science;Geoscience;
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -591,10 +591,18 @@ function startApp(): void {
     return projectStore.getProject();
   });
 
-  handleIpc('gis:save-project', async (_event, filePath?: string, viewport?: import('../shared/types/project').ProjectViewport) => {
-    const { default: saveProject } = await import('./api/project/saveProject');
-    return saveProject(filePath, viewport);
-  });
+  handleIpc(
+    'gis:save-project',
+    async (
+      _event,
+      filePath?: string,
+      viewport?: import('../shared/types/project').ProjectViewport,
+      timeFilter?: import('../shared/types/project').ProjectTimeFilterConfig
+    ) => {
+      const { default: saveProject } = await import('./api/project/saveProject');
+      return saveProject(filePath, viewport, timeFilter);
+    }
+  );
 
   // Localization IPC Handlers
   handleIpc('gis:get-i18n-state', async () => {

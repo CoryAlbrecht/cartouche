@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget tree node line icons (layer geometry, group chevrons, folder outlines, and project root logo) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and adapt row line slot dimensions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link prefsUiIconSize}
@@ -33,7 +33,7 @@ require.extensions['.svg'] = (mod: any) => {
  * @description Lightweight mock DOM Element representation for headless React 19 testing in Node.js.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 class MockElement {
@@ -106,6 +106,18 @@ class MockElement {
    */
   getAttribute(k: string): string | undefined {
     return this.attributes[k];
+  }
+
+  /**
+   * @description Removes an attribute by key.
+   * @param {string} k - Attribute key.
+   * @returns {void}
+   */
+  removeAttribute(k: string): void {
+    delete this.attributes[k];
+    if (k === 'class') {
+      this.className = '';
+    }
   }
 
   /**
@@ -258,7 +270,7 @@ let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boole
  * @description Initializes mock window and document global objects for React DOM component testing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -345,7 +357,7 @@ function setupDom(): void {
  * @description Tears down mock window and document global objects.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -366,7 +378,7 @@ function tearDownDom(): void {
  * @description Traverses a MockElement DOM subtree and finds all elements matching a predicate.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {MockElement} rootNode - Root DOM node to traverse.
  * @param {(el: MockElement) => boolean} predicate - Match predicate function.
@@ -402,6 +414,8 @@ import {
 
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
 const { prefsUiIconSize } = jiti('../../../src/renderer/state/preferencesSignals.ts');
+const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const { mdiClockTimeFourOutline } = jiti('@mdi/js');
 
 describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
   beforeEach(() => {
@@ -410,6 +424,9 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     projectNameSignal.value = 'Test GIS Project';
     editingNodeIdSignal.value = null;
     prefsUiIconSize.value = undefined;
+    dictionarySignal.value = {
+      tree_node_layer_temporal_enabled: 'Dynamic temporal control enabled',
+    };
 
     // Populate a test layer tree with a group and a layer
     projectTreeSignal.value = [
@@ -632,5 +649,115 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     } finally {
       dispose();
     }
+  });
+
+  it('renders MDI clock-time-four-outline icon scaled with --cartouche-ui-icon-size when dynamic temporal control is enabled (Ticket #232)', async () => {
+    projectTreeSignal.value = [
+      {
+        id: 'l-temporal-on',
+        name: 'Temporal Enabled Layer',
+        type: 'vector',
+        source: 'temporal-on.geojson',
+        visible: true,
+        geometryKind: 'Polygon',
+        featureCount: 42,
+        temporalEnabled: true,
+      },
+      {
+        id: 'l-temporal-off',
+        name: 'Temporal Disabled Layer',
+        type: 'vector',
+        source: 'temporal-off.geojson',
+        visible: true,
+        geometryKind: 'Polygon',
+        featureCount: 100,
+        temporalEnabled: false,
+      },
+    ];
+
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const layerRows = findAllNodes(container, (el) =>
+      el.className.includes('tree-node-layer')
+    );
+    assert.strictEqual(layerRows.length, 2, 'Should render 2 layer rows');
+
+    // 1. Layer with temporalEnabled: true renders clock-time-four-outline icon immediately following feature count
+    const onRow = layerRows[0];
+    const clockIcons = findAllNodes(onRow, (el) =>
+      el.className.includes('tree-temporal-icon-slot')
+    );
+    assert.strictEqual(clockIcons.length, 1, 'Should render temporal icon on enabled layer');
+
+    const clockSpan = clockIcons[0];
+    assert.strictEqual(
+      clockSpan.attributes['title'],
+      'Dynamic temporal control enabled',
+      'Should display accessible tooltip'
+    );
+    assert.strictEqual(
+      clockSpan.style.color,
+      '#2563eb',
+      'Should use #2563eb accent color'
+    );
+
+    // Verify SVG icon path matches mdiClockTimeFourOutline
+    const svgPath = findAllNodes(clockSpan, (el) => el.tagName === 'PATH')[0];
+    assert.ok(svgPath, 'SVG path must be present in temporal icon slot');
+    assert.strictEqual(
+      svgPath.attributes['d'],
+      mdiClockTimeFourOutline,
+      'Must render mdiClockTimeFourOutline path'
+    );
+
+    // Verify icon size matches standard geometry icon dimensions: var(--cartouche-ui-icon-size, 24px)
+    const svg = findAllNodes(clockSpan, (el) => el.tagName === 'SVG')[0];
+    assert.ok(svg, 'SVG element must be present');
+    assert.ok(
+      svg.style.width.includes('var(--cartouche-ui-icon-size, 24px)'),
+      `Temporal icon width must match geometry icon size, got: ${svg.style.width}`
+    );
+
+    // 2. Layer with temporalEnabled: false must NOT render clock icon
+    const offRow = layerRows[1];
+    const offClockIcons = findAllNodes(offRow, (el) =>
+      el.className.includes('tree-temporal-icon-slot')
+    );
+    assert.strictEqual(
+      offClockIcons.length,
+      0,
+      'Should not render temporal icon on disabled layer'
+    );
+
+    // 3. Reactively toggling temporalEnabled to false removes the icon immediately
+    await act(async () => {
+      projectTreeSignal.value = [
+        {
+          id: 'l-temporal-on',
+          name: 'Temporal Enabled Layer',
+          type: 'vector',
+          source: 'temporal-on.geojson',
+          visible: true,
+          geometryKind: 'Polygon',
+          featureCount: 42,
+          temporalEnabled: false,
+        },
+      ];
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const updatedLayerRows = findAllNodes(container, (el) =>
+      el.className.includes('tree-node-layer')
+    );
+    const toggledClockIcons = findAllNodes(updatedLayerRows[0], (el) =>
+      el.className.includes('tree-temporal-icon-slot')
+    );
+    assert.strictEqual(
+      toggledClockIcons.length,
+      0,
+      'Icon must disappear immediately when temporal control is disabled'
+    );
   });
 });

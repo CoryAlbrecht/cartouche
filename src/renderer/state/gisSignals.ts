@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -58,6 +58,20 @@ import {
   hasUnappliedFieldChanges,
   isDiscardFieldChangesModalOpenSignal
 } from './layerPropertiesSignals';
+import {
+  isTimeFilterActiveSignal,
+  timeFilterFrameStartSignal,
+  timeFilterRangeStartSignal,
+  timeFilterRangeEndSignal,
+  timeFilterStepSignal,
+  timeFilterUnitSignal,
+  setTimeFilterActive,
+  setTimeFilterFrame,
+  setTimeFilterRange,
+  setTimeFilterStep,
+  resetTimeFilterState,
+} from './timeFilterSignals';
+import type { ProjectTimeFilterConfig } from '../../shared/types';
 import {
   getLayerToolbarPreference,
   setLayerToolbarPreference,
@@ -292,7 +306,7 @@ export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> 
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
@@ -309,7 +323,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
@@ -360,7 +374,7 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
@@ -660,13 +674,14 @@ export const isWindowMaximizedSignal = signal<boolean>(false);
  * @description Dockview panel open/closed visibility state signal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-10
  * @since 0.1.0-dev
- * @type {Signal<{ attributes: boolean; layers: boolean }>}
+ * @type {Signal<{ attributes: boolean; layers: boolean; timeFilter?: boolean }>}
  */
-export const openDockPanelsSignal = signal<{ attributes: boolean; layers: boolean }>({
+export const openDockPanelsSignal = signal<{ attributes: boolean; layers: boolean; timeFilter?: boolean }>({
   attributes: false,
-  layers: true
+  layers: true,
+  timeFilter: true,
 });
 
 // Map command action triggers (Zoom In, Zoom Out, Reset, Set Viewport, etc.)
@@ -846,7 +861,7 @@ export const layersSignal = signal<GisLayer[]>(initialLayers);
  * @description Set signal of selected spatial feature record IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {Signal<Set<string | number>>}
  */
@@ -929,7 +944,7 @@ export function getLayerDisplayName(layer: GisLayer): string {
  * Checks layersSignal first, then falls back to projectLayersSignal or projectTreeSignal item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
@@ -1172,7 +1187,7 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
  * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
@@ -1255,7 +1270,7 @@ export function toggleToolbar(id: ToolbarId): void {
  * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
@@ -1860,7 +1875,7 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-26
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
@@ -1908,6 +1923,24 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
         rotation: project.viewport.rotation,
         timestamp: Date.now()
       };
+    }
+
+    if (project.timeFilter) {
+      const tf = project.timeFilter;
+      setTimeFilterActive(tf.enabled === true);
+      if (tf.from !== undefined && tf.to !== undefined) {
+        setTimeFilterRange(tf.from, tf.to);
+      }
+      if (tf.current !== undefined) {
+        setTimeFilterFrame(tf.current, tf.current);
+      } else if (tf.from !== undefined) {
+        setTimeFilterFrame(tf.from, tf.from);
+      }
+      if (tf.step !== undefined) {
+        setTimeFilterStep(tf.step, tf.unit || 'Days');
+      }
+    } else {
+      resetTimeFilterState();
     }
   });
   addConsoleLog('info', `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`, 'Project');
@@ -1987,7 +2020,7 @@ export async function openProjectAction(): Promise<void> {
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2027,11 +2060,20 @@ export async function saveProjectAction(): Promise<boolean> {
       scale: scaleDenominatorSignal.value,
       rotation: 0
     };
+    const timeFilterConfig: ProjectTimeFilterConfig = {
+      enabled: isTimeFilterActiveSignal.value,
+      from: timeFilterRangeStartSignal.value,
+      to: timeFilterRangeEndSignal.value,
+      current: timeFilterFrameStartSignal.value,
+      step: timeFilterStepSignal.value,
+      unit: timeFilterUnitSignal.value,
+    };
     if (currentProjectSignal.value) {
       currentProjectSignal.value.viewport = viewport;
+      currentProjectSignal.value.timeFilter = timeFilterConfig;
     }
     if (window.electronAPI?.saveProject) {
-      const success = await window.electronAPI.saveProject(targetPath, viewport);
+      const success = await window.electronAPI.saveProject(targetPath, viewport, timeFilterConfig);
       if (!success) return false;
     }
     projectFilePathSignal.value = targetPath;
@@ -2056,7 +2098,7 @@ export async function saveProjectAction(): Promise<boolean> {
  * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2091,11 +2133,20 @@ export async function saveAsProjectAction(): Promise<boolean> {
       scale: scaleDenominatorSignal.value,
       rotation: 0
     };
+    const timeFilterConfig: ProjectTimeFilterConfig = {
+      enabled: isTimeFilterActiveSignal.value,
+      from: timeFilterRangeStartSignal.value,
+      to: timeFilterRangeEndSignal.value,
+      current: timeFilterFrameStartSignal.value,
+      step: timeFilterStepSignal.value,
+      unit: timeFilterUnitSignal.value,
+    };
     if (currentProjectSignal.value) {
       currentProjectSignal.value.viewport = viewport;
+      currentProjectSignal.value.timeFilter = timeFilterConfig;
     }
     if (window.electronAPI?.saveProject) {
-      const success = await window.electronAPI.saveProject(chosenPath, viewport);
+      const success = await window.electronAPI.saveProject(chosenPath, viewport, timeFilterConfig);
       if (!success) return false;
     }
     projectFilePathSignal.value = chosenPath;
@@ -2343,7 +2394,7 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
  * If saved or discarded, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project closed, false if aborted.
  */
@@ -2379,6 +2430,7 @@ export async function closeProjectAction(): Promise<boolean> {
   undoStackSignal.value = [];
   redoStackSignal.value = [];
   viewportExtentSignal.value = [-180, -90, 180, 90];
+  resetTimeFilterState();
 
   addConsoleLog('info', 'Project closed. Returned to blank slate.', 'Project');
   return true;

@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -27,6 +27,9 @@ import {
   type ProjectStyleFormat,
   type LayerFieldInfo,
   type InferredFieldType,
+  type LayerTemporalConfig,
+  type ProjectTimeFilterConfig,
+  type TimeFilterUnit,
 } from "../../../shared/types";
 
 /**
@@ -118,7 +121,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-11-04
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -350,6 +353,40 @@ export class CartoucheXmlLoader implements IProjectLoader {
         });
       }
 
+      let layerTemporal: LayerTemporalConfig | undefined;
+      let temporalEnabled = false;
+
+      if (raw.temporal) {
+        const isEnabled =
+          raw.temporal["@_enabled"] === "true"
+          || raw.temporal["@_enabled"] === true
+          || raw.temporal["@_enabled"] === "1"
+          || raw.temporal["@_enabled"] === undefined;
+        temporalEnabled = isEnabled;
+        layerTemporal = {
+          enabled: isEnabled,
+          mode:
+            (raw.temporal["@_mode"] as "start" | "end" | "start_end")
+            || "start_end",
+          startField: raw.temporal["@_startField"] || undefined,
+          startOp: (raw.temporal["@_startOp"] as ">" | ">=") || undefined,
+          endField: raw.temporal["@_endField"] || undefined,
+          endOp: (raw.temporal["@_endOp"] as "<" | "<=") || undefined,
+        };
+      } else if (
+        raw["@_temporalEnabled"] === "true"
+        || raw["@_temporalEnabled"] === true
+        || raw["@_temporalEnabled"] === "1"
+      ) {
+        temporalEnabled = true;
+        layerTemporal = {
+          enabled: true,
+          mode: "start_end",
+          startOp: ">=",
+          endOp: "<=",
+        };
+      }
+
       return {
         id: String(
           raw["@_id"]
@@ -364,10 +401,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
         selectable:
           raw["@_selectable"] !== "false" && raw["@_selectable"] !== false,
         readOnly: raw["@_readOnly"] === "true" || raw["@_readOnly"] === true,
-        temporalEnabled:
-          raw["@_temporalEnabled"] === "true"
-          || raw["@_temporalEnabled"] === true
-          || raw["@_temporalEnabled"] === "1",
+        temporalEnabled,
+        temporal: layerTemporal,
         layerKind: raw["@_layerKind"] || undefined,
         geometryKind: raw["@_geometryKind"] || undefined,
         style,
@@ -547,6 +582,36 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     const customProperties = parseCustomProps(root.customProperties);
 
+    let timeFilter: ProjectTimeFilterConfig | undefined;
+    if (root.timeFilter) {
+      const tf = root.timeFilter;
+      const isEnabled =
+        tf["@_enabled"] === "true"
+        || tf["@_enabled"] === true
+        || tf["@_enabled"] === "1";
+      const parseNum = (val: unknown): number | undefined => {
+        if (val === undefined || val === null || val === "") return undefined;
+        if (typeof val === "number") return Number.isFinite(val) ? val : undefined;
+        const parsed = Number(val);
+        if (Number.isFinite(parsed)) return parsed;
+        const d = Date.parse(String(val));
+        return Number.isFinite(d) ? d : undefined;
+      };
+      timeFilter = {
+        enabled: isEnabled,
+        from: parseNum(tf["@_from"]),
+        to: parseNum(tf["@_to"]),
+        current: parseNum(tf["@_current"]),
+        step:
+          tf["@_step"] !== undefined ?
+            typeof tf["@_step"] === "number" ?
+              tf["@_step"]
+            : parseFloat(tf["@_step"])
+          : 1.0,
+        unit: (tf["@_unit"] as TimeFilterUnit) || "Days",
+      };
+    }
+
     return {
       format: this.id,
       filePath,
@@ -555,6 +620,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       viewport,
       layers,
       styles,
+      timeFilter,
       customProperties,
     };
   }
@@ -563,7 +629,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Serializes an in-memory ProjectModel to an XML project document on disk conforming to project.xsd.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model to serialize.
    * @param {string} target - Destination file path.
@@ -581,7 +647,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-04
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
    * @returns {string} XML project document string.
@@ -703,8 +769,12 @@ export class CartoucheXmlLoader implements IProjectLoader {
       if (layer.selectable !== undefined) {
         attrs.push(`selectable="${layer.selectable !== false}"`);
       }
-      if (layer.temporalEnabled !== undefined) {
-        attrs.push(`temporalEnabled="${layer.temporalEnabled === true}"`);
+      if (layer.temporalEnabled !== undefined || layer.temporal !== undefined) {
+        const isEnabled =
+          layer.temporal ?
+            layer.temporal.enabled === true
+          : layer.temporalEnabled === true;
+        attrs.push(`temporalEnabled="${isEnabled}"`);
       }
 
       res.push(`${pad}<layer ${attrs.join(" ")}>`);
@@ -831,6 +901,26 @@ export class CartoucheXmlLoader implements IProjectLoader {
         res.push(`${pad}  </customProperties>`);
       }
 
+      if (layer.temporal) {
+        const tempAttrs: string[] = [
+          `enabled="${layer.temporal.enabled === true}"`,
+          `mode="${escapeXml(layer.temporal.mode || "start_end")}"`,
+        ];
+        if (layer.temporal.startField) {
+          tempAttrs.push(`startField="${escapeXml(layer.temporal.startField)}"`);
+        }
+        if (layer.temporal.startOp) {
+          tempAttrs.push(`startOp="${escapeXml(layer.temporal.startOp)}"`);
+        }
+        if (layer.temporal.endField) {
+          tempAttrs.push(`endField="${escapeXml(layer.temporal.endField)}"`);
+        }
+        if (layer.temporal.endOp) {
+          tempAttrs.push(`endOp="${escapeXml(layer.temporal.endOp)}"`);
+        }
+        res.push(`${pad}  <temporal ${tempAttrs.join(" ")} />`);
+      }
+
       res.push(`${pad}</layer>`);
       return res;
     };
@@ -896,7 +986,31 @@ export class CartoucheXmlLoader implements IProjectLoader {
       lines.push("  <styles />");
     }
 
-    // 6. Custom Properties (optional)
+    // 6. Time Filter (optional)
+    if (project.timeFilter) {
+      const tf = project.timeFilter;
+      const tfAttrs: string[] = [
+        `enabled="${tf.enabled === true}"`,
+      ];
+      if (tf.from !== undefined) {
+        tfAttrs.push(`from="${escapeXml(String(tf.from))}"`);
+      }
+      if (tf.to !== undefined) {
+        tfAttrs.push(`to="${escapeXml(String(tf.to))}"`);
+      }
+      if (tf.current !== undefined) {
+        tfAttrs.push(`current="${escapeXml(String(tf.current))}"`);
+      }
+      if (tf.step !== undefined) {
+        tfAttrs.push(`step="${tf.step}"`);
+      }
+      if (tf.unit !== undefined) {
+        tfAttrs.push(`unit="${escapeXml(tf.unit)}"`);
+      }
+      lines.push(`  <timeFilter ${tfAttrs.join(" ")} />`);
+    }
+
+    // 7. Custom Properties (optional)
     if (
       project.customProperties
       && Object.keys(project.customProperties).length > 0

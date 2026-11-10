@@ -4,7 +4,7 @@
  * @description Unit tests verifying registration, defaults, and descriptor constraints of ui.workbench.widgetDocks preference.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link DEFAULT_WORKBENCH_WIDGET_DOCKS}
@@ -47,9 +47,19 @@ describe('ui.workbench.widgetDocks Preference Registration', () => {
     assert.strictEqual(layerTree.isOverlapContainer, false);
     assert.strictEqual(layerTree.dimensions.width, 260);
 
-    // Right and Top docks start empty
+    // Right dock starts empty
     assert.strictEqual(docks.right.length, 0);
-    assert.strictEqual(docks.top.length, 0);
+
+    // Top dock contains time-filter (initially visible)
+    assert.strictEqual(docks.top.length, 1);
+    const timeFilter = docks.top[0];
+    assert.strictEqual(timeFilter.id, 'time-filter');
+    assert.strictEqual(timeFilter.dock, 'top');
+    assert.strictEqual(timeFilter.order, 0);
+    assert.strictEqual(timeFilter.axisRatio, 1);
+    assert.strictEqual(timeFilter.visible, true);
+    assert.strictEqual(timeFilter.isOverlapContainer, false);
+    assert.strictEqual(timeFilter.dimensions.height, 74);
 
     // Bottom dock contains attribute-table and console (both initially hidden)
     assert.strictEqual(docks.bottom.length, 2);

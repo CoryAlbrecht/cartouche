@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -34,7 +34,7 @@ import {
   mdiTrashCanOutline,
   mdiFolderPlusOutline,
   mdiPencilOutline,
-  mdiClockOutline,
+  mdiClockTimeFourOutline,
   mdiLayersOutline,
   mdiContentSaveOutline,
   mdiContentCopy,
@@ -192,7 +192,7 @@ const TREE_NODE_ICON_STYLE: React.CSSProperties = {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -936,7 +936,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
       : undefined;
     const resolvedFeatureCount = layer.featureCount ?? layerDesc?.featureCount;
     const hasTemporal = Boolean(
-      layer.temporalEnabled ?? layerDesc?.temporalEnabled
+      layer.temporal?.enabled
+      ?? layer.temporalEnabled
+      ?? layerDesc?.temporal?.enabled
+      ?? layerDesc?.temporalEnabled
     );
 
     return (
@@ -1054,8 +1057,8 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 || "Dynamic temporal control enabled"
               }>
               <Icon
-                path={mdiClockOutline}
-                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.8)'
+                path={mdiClockTimeFourOutline}
+                size='var(--cartouche-ui-icon-size, 24px)'
               />
             </span>
           )}
