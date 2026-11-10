@@ -1,12 +1,14 @@
 /**
  * @file GradientPickerWidget.test.ts
  * @module tests/renderer/widgets/GradientPickerWidget.test
- * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, and embedded ColourPickerWidget.
+ * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
+ * @see {@link prefsUiIconSize}
+ * @see {@link prefsUiBaseFontSize}
  */
 
 import { describe, it, beforeEach, afterEach } from "node:test";
@@ -379,7 +381,7 @@ const jiti = createJiti(import.meta.url, {
 const { GradientPickerWidget, parseInitialStops, serializeGradientStops } =
   jiti("../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx");
 
-const { prefsUiIconSize } = jiti(
+const { prefsUiIconSize, prefsUiBaseFontSize } = jiti(
   "../../../src/renderer/state/preferencesSignals.ts"
 );
 
@@ -1233,12 +1235,12 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
       "Gradient stop at 100%"
     );
 
-    // Top track margin matches preview bar inset (22px)
+    // Top track margin matches preview bar inset (20px iconSize + 6px gap = 26px)
     const track = findElementsByClass(container, "gradient-picker-track")[0];
     assert.ok(track, "Track must be rendered");
     assert.equal(
       track.style.margin,
-      "0 22px",
+      "0 26px",
       "Track margins must align horizontally with preview bar"
     );
 
@@ -1269,7 +1271,7 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
     assert.equal(guideLines[0].getAttribute("title"), "Stop at 50%");
   });
 
-  it("boundary buttons retain 16x16px size, swatches, and active indicator ring on click", async () => {
+  it("boundary buttons scale outer dimensions with prefsUiIconSize, retain swatches, and active indicator ring on click", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
@@ -1282,8 +1284,8 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
       container,
       "gradient-stop-boundary-btn"
     );
-    assert.equal(boundaryBtns[0].style.width, "16px");
-    assert.equal(boundaryBtns[0].style.height, "16px");
+    assert.equal(boundaryBtns[0].style.width, "20px");
+    assert.equal(boundaryBtns[0].style.height, "20px");
     assert.equal(boundaryBtns[0].getAttribute("aria-pressed"), "true");
     assert.ok(
       boundaryBtns[0].style.boxShadow.includes("rgba(27, 68, 108"),
@@ -1582,5 +1584,174 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
 
     assert.equal(selectEl.disabled, true, "Stop select must be disabled when widget is disabled");
     assert.equal(deleteBtn.disabled, true, "Delete button must be disabled when widget is disabled");
+  });
+});
+
+describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #228)", () => {
+  beforeEach(() => {
+    setupDom();
+    prefsUiIconSize.value = 24;
+    prefsUiBaseFontSize.value = 12;
+  });
+
+  afterEach(() => {
+    tearDownDom();
+    prefsUiIconSize.value = undefined;
+    prefsUiBaseFontSize.value = undefined;
+  });
+
+  it("aligns stops dropdown with gradient preview strip via actions spacer and aligns delete button with 100% boundary button", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
+        })
+      );
+    });
+
+    const previewRow = findElementsByClass(container, "gradient-picker-preview-row")[0];
+    const actionsRow = findElementsByClass(container, "gradient-picker-actions-row")[0];
+    assert.ok(previewRow, "Preview row must be present");
+    assert.ok(actionsRow, "Actions row must be present");
+
+    const boundaryBtns = findElementsByClass(previewRow, "gradient-stop-boundary-btn");
+    assert.equal(boundaryBtns.length, 2, "Preview row must have 2 boundary buttons");
+
+    const spacer = findElementsByClass(actionsRow, "gradient-picker-actions-spacer")[0];
+    assert.ok(spacer, "Actions row must have alignment spacer on the left");
+    assert.equal(spacer.style.width, "24px", "Spacer width must match ui.icon.size");
+    assert.equal(spacer.style.flexShrink, "0", "Spacer must not shrink");
+
+    const selectEl = findElementsByClass(actionsRow, "gradient-picker-stop-select")[0];
+    assert.ok(selectEl, "Stop selector select must be present");
+    assert.equal(selectEl.style.flex, "1", "Select must fill space between spacer and delete button");
+
+    const deleteBtn = findElementsByClass(actionsRow, "gradient-picker-delete-btn")[0];
+    assert.ok(deleteBtn, "Delete button must be present");
+    assert.equal(deleteBtn.style.width, "24px", "Delete button width must match ui.icon.size");
+    assert.equal(deleteBtn.style.height, "24px", "Delete button height must match ui.icon.size");
+    assert.equal(deleteBtn.style.flexShrink, "0", "Delete button must not shrink");
+
+    // Both rows must feature 6px gap to preserve identical column alignment
+    assert.equal(previewRow.style.gap, "6px", "Preview row gap must be 6px");
+    assert.equal(actionsRow.style.gap, "6px", "Actions row gap must be 6px");
+  });
+
+  it("scales 0% and 100% boundary stop buttons outer dimensions dynamically with prefsUiIconSize", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ffffff 100%"],
+        })
+      );
+    });
+
+    const boundaryBtns = findElementsByClass(container, "gradient-stop-boundary-btn");
+    assert.equal(boundaryBtns[0].style.width, "24px");
+    assert.equal(boundaryBtns[0].style.height, "24px");
+    assert.equal(boundaryBtns[1].style.width, "24px");
+    assert.equal(boundaryBtns[1].style.height, "24px");
+
+    // Swatches sized to 20% of 24 = 5px (Math.round(4.8) = 5)
+    const swatches = findElementsByClass(container, "gradient-stop-swatch");
+    assert.equal(swatches[0].style.width, "5px");
+    assert.equal(swatches[0].style.height, "5px");
+
+    // Dynamically update prefsUiIconSize signal to 32px
+    await act(async () => {
+      prefsUiIconSize.value = 32;
+    });
+
+    assert.equal(boundaryBtns[0].style.width, "32px");
+    assert.equal(boundaryBtns[0].style.height, "32px");
+    assert.equal(boundaryBtns[1].style.width, "32px");
+    assert.equal(boundaryBtns[1].style.height, "32px");
+    // Swatches sized to 20% of 32 = 6px (Math.round(6.4) = 6)
+    assert.equal(swatches[0].style.width, "6px");
+    assert.equal(swatches[0].style.height, "6px");
+
+    // Dynamically update prefsUiIconSize signal to 16px
+    await act(async () => {
+      prefsUiIconSize.value = 16;
+    });
+
+    assert.equal(boundaryBtns[0].style.width, "16px");
+    assert.equal(boundaryBtns[0].style.height, "16px");
+    assert.equal(boundaryBtns[1].style.width, "16px");
+    assert.equal(boundaryBtns[1].style.height, "16px");
+  });
+
+  it("sets stops dropdown font size to 1rem and reacts dynamically to prefsUiBaseFontSize updates", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ffffff 100%"],
+        })
+      );
+    });
+
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    assert.equal(selectEl.style.fontSize, "1rem", "Select font size must be 1rem");
+
+    // Changing prefsUiBaseFontSize signal triggers reactive re-render
+    await act(async () => {
+      prefsUiBaseFontSize.value = 16;
+    });
+
+    assert.equal(selectEl.style.fontSize, "1rem", "Select font size remains 1rem scaling with root rem");
+  });
+
+  it("scales delete button and trash can icon dynamically with prefsUiIconSize", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#ffffff 100%"],
+        })
+      );
+    });
+
+    const deleteBtn = findElementsByClass(container, "gradient-picker-delete-btn")[0];
+    assert.equal(deleteBtn.style.width, "24px", "Initial delete button width must be 24px");
+    assert.equal(deleteBtn.style.height, "24px", "Initial delete button height must be 24px");
+
+    const deleteIcon = deleteBtn.childNodes.find((c: any) => c.tagName?.toUpperCase() === "SVG");
+    assert.ok(deleteIcon, "Delete button must contain SVG icon");
+    assert.equal(deleteIcon.style.width, "24px", "Initial icon width must match ui.icon.size");
+    assert.equal(deleteIcon.style.height, "24px", "Initial icon height must match ui.icon.size");
+
+    // Dynamically update prefsUiIconSize signal to 28px
+    await act(async () => {
+      prefsUiIconSize.value = 28;
+    });
+
+    assert.equal(deleteBtn.style.width, "28px", "Delete button width must update to 28px");
+    assert.equal(deleteBtn.style.height, "28px", "Delete button height must update to 28px");
+    assert.equal(deleteIcon.style.width, "28px", "Icon width must update to 28px");
+    assert.equal(deleteIcon.style.height, "28px", "Icon height must update to 28px");
+  });
+
+  it("adjusts intermediate pin track horizontal margins dynamically to keep stops aligned with preview bar across icon size changes", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#ffffff 100%"],
+        })
+      );
+    });
+
+    const track = findElementsByClass(container, "gradient-picker-track")[0];
+    assert.equal(track.style.margin, "0 30px", "Track margin with iconSize=24 is 24 + 6 = 30px");
+
+    // Change icon size to 32px
+    await act(async () => {
+      prefsUiIconSize.value = 32;
+    });
+    assert.equal(track.style.margin, "0 38px", "Track margin with iconSize=32 is 32 + 6 = 38px");
+
+    // Change icon size to 16px
+    await act(async () => {
+      prefsUiIconSize.value = 16;
+    });
+    assert.equal(track.style.margin, "0 22px", "Track margin with iconSize=16 is 16 + 6 = 22px");
   });
 });

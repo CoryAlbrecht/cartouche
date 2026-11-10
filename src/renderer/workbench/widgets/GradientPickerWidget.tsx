@@ -10,6 +10,8 @@
  * @see {@link ColourPickerWidget}
  * @see {@link interpolateColor}
  * @see {@link formatCssColor}
+ * @see {@link prefsUiIconSize}
+ * @see {@link prefsUiBaseFontSize}
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -18,7 +20,10 @@ import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
 import { ColourPickerWidget } from "./ColourPickerWidget";
 import Icon from "@renderer/components/common/Icon";
 import { mdiTrashCanOutline } from "@mdi/js";
-import { prefsUiIconSize } from "@renderer/state/preferencesSignals";
+import {
+  prefsUiIconSize,
+  prefsUiBaseFontSize,
+} from "@renderer/state/preferencesSignals";
 import {
   type ColorFormat,
   type RgbColor,
@@ -256,9 +261,12 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   // Sorted stops ascending by offset for the stop selector dropdown
   const sortedStops = stops.slice().sort((a, b) => a.offset - b.offset);
 
-  // Swatch size is strictly 20% of prefsUiIconSize.value
+  // Sizing and layout geometry constants
+  const ROW_GAP_PX = 6;
   const iconSize = prefsUiIconSize.value ?? 24;
   const swatchSize = Math.max(4, Math.round(iconSize * 0.2));
+  // Subscribe to base font size preference signal for dynamic rem scaling
+  void prefsUiBaseFontSize.value;
 
   // CSS gradient preview string
   const gradientCss = stops
@@ -537,7 +545,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   );
 
   /**
-   * @description Renders a 16x16px boundary stop button flanking the preview bar.
+   * @description Renders a boundary stop button flanking the preview bar scaled to ui.icon.size.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-09
    * @updated 2026-11-09
@@ -559,8 +567,8 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         onPointerDown={(e) => handleStopPointerDown(e, stop)}
         onClick={() => setActiveStopId(stop.id)}
         style={{
-          width: "16px",
-          height: "16px",
+          width: `${iconSize}px`,
+          height: `${iconSize}px`,
           padding: 0,
           display: "flex",
           alignItems: "center",
@@ -612,7 +620,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         style={{
           position: "relative",
           height: "1.25rem",
-          margin: "0 22px",
+          margin: `0 ${iconSize + ROW_GAP_PX}px`,
           boxSizing: "border-box",
         }}>
         {intermediateStops.map((stop) => {
@@ -668,7 +676,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "6px",
+          gap: `${ROW_GAP_PX}px`,
           boxSizing: "border-box",
         }}>
         {/* Start (0%) Boundary Stop Button */}
@@ -744,9 +752,21 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "6px",
+          gap: `${ROW_GAP_PX}px`,
           boxSizing: "border-box",
         }}>
+        {/* Left spacer matching 0% boundary button width to align dropdown with gradient preview bar */}
+        <div
+          className='gradient-picker-actions-spacer'
+          aria-hidden='true'
+          style={{
+            width: `${iconSize}px`,
+            height: `${iconSize}px`,
+            flexShrink: 0,
+            pointerEvents: "none",
+          }}
+        />
+
         <select
           className='gradient-picker-stop-select'
           aria-label='Select gradient stop'
@@ -760,7 +780,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
           style={{
             flex: 1,
             padding: "3px 6px",
-            fontSize: "0.8125rem",
+            fontSize: "1rem",
             backgroundColor: "var(--cartouche-theme-surface, #ffffff)",
             color: "var(--cartouche-theme-fg, #000000)",
             border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
@@ -782,7 +802,9 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
           disabled={disabled || isDeleteDisabled}
           onClick={handleDeleteActiveStop}
           style={{
-            padding: "3px 6px",
+            width: `${iconSize}px`,
+            height: `${iconSize}px`,
+            padding: 0,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
@@ -795,8 +817,9 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
               ? "var(--cartouche-theme-fg-primary, #0f172a)"
               : "var(--cartouche-theme-fg-muted, #94a3b8)",
             flexShrink: 0,
+            boxSizing: "border-box",
           }}>
-          <Icon path={mdiTrashCanOutline} size={0.7} />
+          <Icon path={mdiTrashCanOutline} size={iconSize} />
         </button>
       </div>
 
