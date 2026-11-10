@@ -15,6 +15,7 @@
  */
 
 import React, { useCallback, type ChangeEvent } from 'react';
+import { useSignals } from '@preact/signals-react/runtime';
 import Icon from '@renderer/components/common/Icon';
 import {
   mdiClockTimeFourOutline,
@@ -69,6 +70,7 @@ export interface TimeFilterWidgetProps extends Omit<BasicWidgetProps, 'children'
  * @returns {React.ReactElement} Time filter widget element.
  */
 export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
+  useSignals();
   const isActive = isTimeFilterActiveSignal.value;
   const frameStart = timeFilterFrameStartSignal.value;
   const frameEnd = timeFilterFrameEndSignal.value;

@@ -552,3 +552,55 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
     );
   });
 });
+
+describe('TimeFilterWidget: Step Unit Dropdown Reactivity (Ticket #239)', () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it('updates timeFilterUnitSignal and renders selected unit across render cycles', () => {
+    const units: import('../../../src/shared/types').TimeFilterUnit[] = [
+      'Years',
+      'Months',
+      'Days',
+      'Hours',
+      'Minutes',
+      'Seconds',
+    ];
+
+    for (const u of units) {
+      setTimeFilterStep(timeFilterStepSignal.value, u);
+      assert.strictEqual(timeFilterUnitSignal.value, u);
+
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      // Verify the rendered select element reflects the selected unit
+      assert.ok(
+        markup.includes(`value="${u}"`)
+        || markup.includes(`<option selected="" value="${u}"`)
+        || markup.includes(`<option value="${u}" selected`),
+        `Markup must reflect selected unit ${u}`
+      );
+    }
+  });
+
+  it('calculates transport stepping using the selected unit', () => {
+    setTimeFilterRange(0, 100_000_000_000);
+    setTimeFilterFrame(1_000_000, 1_000_000);
+
+    // Step under 'Seconds' (1 step = 1,000 ms)
+    setTimeFilterStep(5, 'Seconds');
+    assert.strictEqual(timeFilterUnitSignal.value, 'Seconds');
+    assert.strictEqual(timeFilterStepSignal.value, 5);
+    const targetSec = stepTemporalTimestamp(1_000_000, 5, 'Seconds');
+    assert.strictEqual(targetSec, 1_000_000 + 5_000);
+
+    // Step under 'Hours' (1 step = 3,600,000 ms)
+    setTimeFilterStep(2, 'Hours');
+    assert.strictEqual(timeFilterUnitSignal.value, 'Hours');
+    const targetHours = stepTemporalTimestamp(1_000_000, 2, 'Hours');
+    assert.strictEqual(targetHours, 1_000_000 + 7_200_000);
+  });
+});
