@@ -1,7 +1,7 @@
 /**
  * @file GradientPickerWidget.test.ts
  * @module tests/renderer/widgets/GradientPickerWidget.test
- * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, and embedded ColourPickerWidget.
+ * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, and embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-09
@@ -9,12 +9,12 @@
  * @see {@link GradientPickerWidget}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import path from "node:path";
+import createJiti from "jiti";
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -34,21 +34,24 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
-  value = '';
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
+  value = "";
   disabled = false;
-  title = '';
+  title = "";
   multiple = false;
   selected = false;
   selectedIndex = 0;
 
   get options(): any[] {
-    return this.childNodes.filter((c) => c.tagName === 'OPTION');
+    return this.childNodes.filter((c) => c.tagName === "OPTION");
   }
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -60,23 +63,23 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
-    if (k === 'value') {
+    if (k === "value") {
       this.value = String(v);
     }
-    if (k === 'title') {
+    if (k === "title") {
       this.title = String(v);
     }
-    if (k === 'disabled') {
+    if (k === "disabled") {
       this.disabled = true;
     }
   }
@@ -87,10 +90,10 @@ class MockElement {
 
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
-    if (k === 'disabled') {
+    if (k === "disabled") {
       this.disabled = false;
     }
   }
@@ -120,7 +123,11 @@ class MockElement {
     return newNode;
   }
 
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -129,7 +136,9 @@ class MockElement {
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -166,7 +175,14 @@ class MockElement {
     return false;
   }
 
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
     return { width: 200, height: 40, top: 0, left: 0, right: 200, bottom: 40 };
   }
 }
@@ -174,12 +190,15 @@ class MockElement {
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
-let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let windowListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 
 function setupDom(): void {
   windowListeners = {};
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -200,17 +219,17 @@ function setupDom(): void {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -218,7 +237,11 @@ function setupDom(): void {
   const win: any = {
     innerWidth: 1024,
     innerHeight: 768,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
@@ -236,7 +259,7 @@ function setupDom(): void {
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
   doc.defaultView = win;
 
@@ -245,14 +268,19 @@ function setupDom(): void {
   (globalThis as any).HTMLIFrameElement = class {};
   (globalThis as any).HTMLElement = MockElement;
   (globalThis as any).Element = MockElement;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -269,7 +297,10 @@ function tearDownDom(): void {
 /**
  * Traverses element tree to collect elements matching a CSS class name.
  */
-function findElementsByClass(el: MockElement, className: string): MockElement[] {
+function findElementsByClass(
+  el: MockElement,
+  className: string
+): MockElement[] {
   const matches: MockElement[] = [];
   if (el.className && el.className.split(/\s+/).includes(className)) {
     matches.push(el);
@@ -282,25 +313,41 @@ function findElementsByClass(el: MockElement, className: string): MockElement[] 
   return matches;
 }
 
+/**
+ * @function getStopButtonsSorted
+ * @description Collects all gradient stop toggle buttons and returns them sorted by offset ascending.
+ * @param {MockElement} el - Container element.
+ * @returns {MockElement[]} Array of stop button elements sorted by offset.
+ */
+function getStopButtonsSorted(el: MockElement): MockElement[] {
+  const btns = findElementsByClass(el, "gradient-stop-toggle-btn");
+  return btns.slice().sort((a, b) => {
+    const parseOffset = (btn: MockElement) => {
+      const match = (btn.getAttribute("aria-label") || "").match(/([\d.]+)%/);
+      return match ? parseFloat(match[1]) : 0;
+    };
+    return parseOffset(a) - parseOffset(b);
+  });
+}
+
 // Load GradientPickerWidget using jiti
 const jiti = createJiti(import.meta.url, {
   jsx: true,
   alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
+    "@renderer": path.resolve(process.cwd(), "src/renderer"),
+    "@shared": path.resolve(process.cwd(), "src/shared"),
+    "@main": path.resolve(process.cwd(), "src/main"),
+  },
 });
 
-const {
-  GradientPickerWidget,
-  parseInitialStops,
-  serializeGradientStops
-} = jiti('../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx');
+const { GradientPickerWidget, parseInitialStops, serializeGradientStops } =
+  jiti("../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx");
 
-const { prefsUiIconSize } = jiti('../../../src/renderer/state/preferencesSignals.ts');
+const { prefsUiIconSize } = jiti(
+  "../../../src/renderer/state/preferencesSignals.ts"
+);
 
-describe('GradientPickerWidget Component & Interactions (Ticket #207)', () => {
+describe("GradientPickerWidget Component & Interactions (Ticket #207)", () => {
   beforeEach(() => {
     setupDom();
     prefsUiIconSize.value = 20; // 20% of 20 = 4px swatch
@@ -310,285 +357,377 @@ describe('GradientPickerWidget Component & Interactions (Ticket #207)', () => {
     tearDownDom();
   });
 
-  it('renders BasicWidget container, header, 2 lh preview bar, and default 0% and 100% boundary stops', async () => {
+  it("renders BasicWidget container, header, 2 lh preview bar, and default 0% and 100% boundary stops", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          displayName: 'Custom Gradient'
+          displayName: "Custom Gradient",
         })
       );
     });
 
     // Check widget container
-    const widgetEls = findElementsByClass(container, 'gradient-picker-widget');
-    assert.equal(widgetEls.length, 1, 'Must render outer GradientPickerWidget container');
+    const widgetEls = findElementsByClass(container, "gradient-picker-widget");
+    assert.equal(
+      widgetEls.length,
+      1,
+      "Must render outer GradientPickerWidget container"
+    );
 
     // Check 2 lh preview bar
-    const previewBars = findElementsByClass(container, 'gradient-picker-preview-bar');
-    assert.equal(previewBars.length, 1, 'Must render preview bar');
-    assert.equal(previewBars[0].style.height, '2lh', 'Preview bar height must be 2lh');
+    const previewBars = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    );
+    assert.equal(previewBars.length, 1, "Must render preview bar");
+    assert.equal(
+      previewBars[0].style.height,
+      "2lh",
+      "Preview bar height must be 2lh"
+    );
 
     // Check stop toggle buttons
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    assert.equal(stopBtns.length, 2, 'Must render 2 initial stop toggle buttons');
+    const stopBtns = getStopButtonsSorted(container);
+    assert.equal(
+      stopBtns.length,
+      2,
+      "Must render 2 initial stop toggle buttons"
+    );
 
-    // Check vertical guide lines
-    const guideLines = findElementsByClass(container, 'gradient-stop-guide-line');
-    assert.equal(guideLines.length, 2, 'Must render 2 guide lines extending through preview bar');
+    // Check flanking boundary stop buttons
+    const boundaryBtns = findElementsByClass(
+      container,
+      "gradient-stop-boundary-btn"
+    );
+    assert.equal(
+      boundaryBtns.length,
+      2,
+      "Must render 2 flanking boundary stop buttons"
+    );
+
+    // Check vertical guide lines (omitted for boundary stops)
+    const guideLines = findElementsByClass(
+      container,
+      "gradient-stop-guide-line"
+    );
+    assert.equal(
+      guideLines.length,
+      0,
+      "Must omit guide lines for 0% and 100% boundary stops"
+    );
 
     // Check swatches inside buttons
-    const swatches = findElementsByClass(container, 'gradient-stop-swatch');
-    assert.equal(swatches.length, 2, 'Must render inner swatch in each stop button');
+    const swatches = findElementsByClass(container, "gradient-stop-swatch");
+    assert.equal(
+      swatches.length,
+      2,
+      "Must render inner swatch in each stop button"
+    );
     // Swatch size = 20% of 20 = 4px
-    assert.equal(swatches[0].style.width, '4px', 'Swatch width must be 20% of icon size');
+    assert.equal(
+      swatches[0].style.width,
+      "4px",
+      "Swatch width must be 20% of icon size"
+    );
 
     // Check embedded ColourPickerWidget is present
-    const colourPickers = findElementsByClass(container, 'colour-picker-widget');
-    assert.equal(colourPickers.length, 1, 'Must render embedded ColourPickerWidget');
+    const colourPickers = findElementsByClass(
+      container,
+      "colour-picker-widget"
+    );
+    assert.equal(
+      colourPickers.length,
+      1,
+      "Must render embedded ColourPickerWidget"
+    );
   });
 
-  it('supports single-selection toggle button set where active stop cannot be untoggled', async () => {
+  it("supports single-selection toggle button set where active stop cannot be untoggled", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#ff0000ff 0%', '#0000ffff 100%']
+          initialStops: ["#ff0000ff 0%", "#0000ffff 100%"],
         })
       );
     });
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const stopBtns = findElementsByClass(container, "gradient-stop-toggle-btn");
     assert.equal(stopBtns.length, 2);
 
     // Initial stop 0 is active
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true');
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "true");
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
 
     // Click stop 1 to activate it
     await act(async () => {
-      stopBtns[1].dispatchEvent({ type: 'click', bubbles: true });
+      stopBtns[1].dispatchEvent({ type: "click", bubbles: true });
     });
 
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true');
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "true");
 
     // Click stop 1 again: cannot be untoggled
     await act(async () => {
-      stopBtns[1].dispatchEvent({ type: 'click', bubbles: true });
+      stopBtns[1].dispatchEvent({ type: "click", bubbles: true });
     });
 
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', 'Active stop cannot be untoggled');
+    assert.equal(
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "Active stop cannot be untoggled"
+    );
   });
 
-  it('prevents dragging or deleting boundary stops at 0% and 100%', async () => {
+  it("prevents dragging or deleting boundary stops at 0% and 100%", async () => {
     let changedStops: string[] | null = null;
 
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#ffffff 100%'],
+          initialStops: ["#000000ff 0%", "#ffffff 100%"],
           onChange: (stops: string[]) => {
             changedStops = stops;
-          }
+          },
         })
       );
     });
 
-    const deleteBtn = findElementsByClass(container, 'gradient-picker-delete-btn')[0];
-    assert.ok(deleteBtn, 'Delete button must be rendered');
-    assert.equal(deleteBtn.disabled, true, 'Delete button must be disabled when 0% boundary stop is active');
+    const deleteBtn = findElementsByClass(
+      container,
+      "gradient-picker-delete-btn"
+    )[0];
+    assert.ok(deleteBtn, "Delete button must be rendered");
+    assert.equal(
+      deleteBtn.disabled,
+      true,
+      "Delete button must be disabled when 0% boundary stop is active"
+    );
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const stopBtns = findElementsByClass(container, "gradient-stop-toggle-btn");
 
     // Try to drag 0% stop
     await act(async () => {
       stopBtns[0].dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 0,
         pointerId: 1,
-        bubbles: true
+        bubbles: true,
       });
     });
 
     // Dispatch window pointermove to 50px
     await act(async () => {
-      const listeners = windowListeners['pointermove'] || [];
+      const listeners = windowListeners["pointermove"] || [];
       for (const { cb } of listeners) {
         cb({ clientX: 50 });
       }
     });
 
-    assert.equal(changedStops, null, 'Dragging 0% boundary stop must be prevented');
+    assert.equal(
+      changedStops,
+      null,
+      "Dragging 0% boundary stop must be prevented"
+    );
   });
 
-  it('double-clicking the gradient preview bar creates a new stop with linearly interpolated color', async () => {
+  it("double-clicking the gradient preview bar creates a new stop with linearly interpolated color", async () => {
     let latestStops: string[] = [];
 
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#00ff00ff 100%'],
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
           onChange: (stops: string[]) => {
             latestStops = stops;
-          }
+          },
         })
       );
     });
 
-    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
     assert.ok(previewBar);
 
     // Double click at 50% (clientX = 100 on 200px wide bar)
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'dblclick',
+        type: "dblclick",
         clientX: 100,
-        bubbles: true
+        bubbles: true,
       });
     });
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    assert.equal(stopBtns.length, 3, 'Must create a 3rd stop on double click');
+    const stopBtns = getStopButtonsSorted(container);
+    assert.equal(stopBtns.length, 3, "Must create a 3rd stop on double click");
 
     // Stop at 50% is active
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', 'Newly created stop must become active');
+    assert.equal(
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "Newly created stop must become active"
+    );
 
     // Verify interpolated color: between #000000ff and #00ff00ff at 50% is #008000ff
     assert.equal(latestStops.length, 3);
-    assert.equal(latestStops[0], '#000000ff 0%');
-    assert.equal(latestStops[1], '#008000ff 50%');
-    assert.equal(latestStops[2], '#00ff00ff 100%');
+    assert.equal(latestStops[0], "#000000ff 0%");
+    assert.equal(latestStops[1], "#008000ff 50%");
+    assert.equal(latestStops[2], "#00ff00ff 100%");
   });
 
-  it('dragging an intermediate stop moves it horizontally and updates gradient and onChange', async () => {
+  it("dragging an intermediate stop moves it horizontally and updates gradient and onChange", async () => {
     let latestStops: string[] = [];
 
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#008000ff 50%', '#00ff00ff 100%'],
+          initialStops: ["#000000ff 0%", "#008000ff 50%", "#00ff00ff 100%"],
           onChange: (stops: string[]) => {
             latestStops = stops;
-          }
+          },
         })
       );
     });
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const stopBtns = getStopButtonsSorted(container);
     assert.equal(stopBtns.length, 3);
 
     // Pointer down on intermediate stop (50%)
     await act(async () => {
       stopBtns[1].dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 100,
         pointerId: 1,
-        bubbles: true
+        bubbles: true,
       });
     });
 
     // Move pointer to 150px (75% on 200px bar)
     await act(async () => {
-      const listeners = windowListeners['pointermove'] || [];
+      const listeners = windowListeners["pointermove"] || [];
       for (const { cb } of listeners) {
         cb({ clientX: 150 });
       }
     });
 
     assert.equal(latestStops.length, 3);
-    assert.equal(latestStops[1], '#008000ff 75%', 'Offset must update to 75% on drag');
+    assert.equal(
+      latestStops[1],
+      "#008000ff 75%",
+      "Offset must update to 75% on drag"
+    );
   });
 
-  it('delete button deletes the active intermediate stop and re-selects an adjacent stop', async () => {
+  it("delete button deletes the active intermediate stop and re-selects an adjacent stop", async () => {
     let latestStops: string[] = [];
 
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#008000ff 50%', '#00ff00ff 100%'],
+          initialStops: ["#000000ff 0%", "#008000ff 50%", "#00ff00ff 100%"],
           onChange: (stops: string[]) => {
             latestStops = stops;
-          }
+          },
         })
       );
     });
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    const deleteBtn = findElementsByClass(container, 'gradient-picker-delete-btn')[0];
+    const stopBtns = getStopButtonsSorted(container);
+    const deleteBtn = findElementsByClass(
+      container,
+      "gradient-picker-delete-btn"
+    )[0];
 
     // Select intermediate stop (50%)
     await act(async () => {
-      stopBtns[1].dispatchEvent({ type: 'click', bubbles: true });
+      stopBtns[1].dispatchEvent({ type: "click", bubbles: true });
     });
 
-    assert.equal(deleteBtn.disabled, false, 'Delete button must be enabled on intermediate stop');
+    assert.equal(
+      deleteBtn.disabled,
+      false,
+      "Delete button must be enabled on intermediate stop"
+    );
 
     // Click delete button
     await act(async () => {
-      deleteBtn.dispatchEvent({ type: 'click', bubbles: true });
+      deleteBtn.dispatchEvent({ type: "click", bubbles: true });
     });
 
-    const remainingBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    assert.equal(remainingBtns.length, 2, 'Stop must be removed');
+    const remainingBtns = findElementsByClass(
+      container,
+      "gradient-stop-toggle-btn"
+    );
+    assert.equal(remainingBtns.length, 2, "Stop must be removed");
     assert.equal(latestStops.length, 2);
-    assert.equal(deleteBtn.disabled, true, 'Delete button must be disabled after returning to 2 boundary stops');
+    assert.equal(
+      deleteBtn.disabled,
+      true,
+      "Delete button must be disabled after returning to 2 boundary stops"
+    );
   });
 
-  it('embedded ColourPickerWidget updates and controls the active stop color bidirectionally', async () => {
+  it("embedded ColourPickerWidget updates and controls the active stop color bidirectionally", async () => {
     let latestStops: string[] = [];
 
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#00ff00ff 100%'],
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
           onChange: (stops: string[]) => {
             latestStops = stops;
-          }
+          },
         })
       );
     });
 
     // Interact with embedded ColourPickerWidget surface to change color of active stop
-    const surface = findElementsByClass(container, 'colour-picker-surface')[0];
-    assert.ok(surface, 'Embedded ColourPickerWidget surface must exist');
+    const surface = findElementsByClass(container, "colour-picker-surface")[0];
+    assert.ok(surface, "Embedded ColourPickerWidget surface must exist");
 
     await act(async () => {
       surface.dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 50,
         clientY: 10,
         pointerId: 1,
-        currentTarget: surface
+        currentTarget: surface,
       });
     });
 
     assert.equal(latestStops.length, 2);
-    assert.equal(latestStops[0].endsWith(' 0%'), true);
-    assert.notEqual(latestStops[0], '#000000ff 0%', 'Active stop color must update from ColourPickerWidget');
+    assert.equal(latestStops[0].endsWith(" 0%"), true);
+    assert.notEqual(
+      latestStops[0],
+      "#000000ff 0%",
+      "Active stop color must update from ColourPickerWidget"
+    );
   });
 
-  it('serializes stops uniformly across various color formats', () => {
+  it("serializes stops uniformly across various color formats", () => {
     const stops = [
-      { id: 's1', color: '#ff0000ff', offset: 0 },
-      { id: 's2', color: '#00ff00ff', offset: 100 }
+      { id: "s1", color: "#ff0000ff", offset: 0 },
+      { id: "s2", color: "#00ff00ff", offset: 100 },
     ];
 
-    const hexSerialized = serializeGradientStops(stops, 'HEX');
-    assert.deepEqual(hexSerialized, ['#ff0000ff 0%', '#00ff00ff 100%']);
+    const hexSerialized = serializeGradientStops(stops, "HEX");
+    assert.deepEqual(hexSerialized, ["#ff0000ff 0%", "#00ff00ff 100%"]);
 
-    const rgbSerialized = serializeGradientStops(stops, 'RGB');
-    assert.deepEqual(rgbSerialized, ['rgb(255 0 0) 0%', 'rgb(0 255 0) 100%']);
+    const rgbSerialized = serializeGradientStops(stops, "RGB");
+    assert.deepEqual(rgbSerialized, ["rgb(255 0 0) 0%", "rgb(0 255 0) 100%"]);
 
-    const parsed = parseInitialStops(['#112233 10%', '#445566 90%']);
+    const parsed = parseInitialStops(["#112233 10%", "#445566 90%"]);
     assert.equal(parsed.length, 2);
     assert.equal(parsed[0].offset, 10);
     assert.equal(parsed[1].offset, 90);
   });
 });
 
-describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #222)', () => {
+describe("GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #222)", () => {
   beforeEach(() => {
     setupDom();
     prefsUiIconSize.value = 20;
@@ -598,35 +737,42 @@ describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
     tearDownDom();
   });
 
-  it('generates deterministic stop IDs matching default stops and across array re-indexing', () => {
+  it("generates deterministic stop IDs matching default stops and across array re-indexing", () => {
     // Default initial stops
     const defaultStops = parseInitialStops();
     assert.deepEqual(
       defaultStops.map((s: any) => s.id),
-      ['stop-0', 'stop-100'],
-      'Default initial stops must produce stable IDs stop-0 and stop-100'
+      ["stop-0", "stop-100"],
+      "Default initial stops must produce stable IDs stop-0 and stop-100"
     );
 
     // Explicit 2-stop array
-    const parsedTwoStops = parseInitialStops(['#000000ff 0%', '#00ff00ff 100%']);
+    const parsedTwoStops = parseInitialStops([
+      "#000000ff 0%",
+      "#00ff00ff 100%",
+    ]);
     assert.deepEqual(
       parsedTwoStops.map((s: any) => s.id),
-      ['stop-0', 'stop-100'],
-      'Parsed initial stops must match default initial stop IDs without index prefix divergence'
+      ["stop-0", "stop-100"],
+      "Parsed initial stops must match default initial stop IDs without index prefix divergence"
     );
 
     // 3-stop array: inserting intermediate stop must not alter 100% stop ID
-    const parsedThreeStops = parseInitialStops(['#000000ff 0%', '#008000ff 50%', '#00ff00ff 100%']);
+    const parsedThreeStops = parseInitialStops([
+      "#000000ff 0%",
+      "#008000ff 50%",
+      "#00ff00ff 100%",
+    ]);
     assert.deepEqual(
       parsedThreeStops.map((s: any) => s.id),
-      ['stop-0', 'stop-50', 'stop-100'],
-      '100% boundary stop must retain stop-100 ID regardless of intermediate stops count'
+      ["stop-0", "stop-50", "stop-100"],
+      "100% boundary stop must retain stop-100 ID regardless of intermediate stops count"
     );
   });
 
-  it('preserves selection of newly created stop across parent prop resynchronization', async () => {
+  it("preserves selection of newly created stop across parent prop resynchronization", async () => {
     // Stateful parent simulation mirroring SimpleModeEditor
-    let parentStopsState: string[] = ['#000000ff 0%', '#00ff00ff 100%'];
+    let parentStopsState: string[] = ["#000000ff 0%", "#00ff00ff 100%"];
 
     function ParentWrapper() {
       const [currentStops, setCurrentStops] = React.useState(parentStopsState);
@@ -636,7 +782,7 @@ describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
         onChange: (newStops: string[]) => {
           parentStopsState = newStops;
           setCurrentStops(newStops);
-        }
+        },
       });
     }
 
@@ -644,41 +790,44 @@ describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
       root?.render(React.createElement(ParentWrapper));
     });
 
-    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
     assert.ok(previewBar);
 
     // Double-click at 50%
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'dblclick',
+        type: "dblclick",
         clientX: 100, // 50% on 200px wide bar
-        bubbles: true
+        bubbles: true,
       });
     });
 
     // Parent state should now have 3 stops
     assert.equal(parentStopsState.length, 3);
-    assert.equal(parentStopsState[1], '#008000ff 50%');
+    assert.equal(parentStopsState[1], "#008000ff 50%");
 
     // GradientPickerWidget should render 3 stop buttons
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const stopBtns = getStopButtonsSorted(container);
     assert.equal(stopBtns.length, 3);
 
     // The newly created 50% stop (middle button) must remain active (aria-pressed=true)
     assert.equal(
-      stopBtns[1].getAttribute('aria-pressed'),
-      'true',
-      'Newly created 50% stop must remain active across parent initialStops resync'
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "Newly created 50% stop must remain active across parent initialStops resync"
     );
     assert.equal(
-      stopBtns[0].getAttribute('aria-pressed'),
-      'false',
-      '0% stop must NOT be active when a new stop was just created'
+      stopBtns[0].getAttribute("aria-pressed"),
+      "false",
+      "0% stop must NOT be active when a new stop was just created"
     );
   });
 
-  it('selecting 100% boundary stop and updating color via embedded ColourPickerWidget preserves 100% stop selection', async () => {
-    let parentStopsState: string[] = ['#000000ff 0%', '#00ff00ff 100%'];
+  it("selecting 100% boundary stop and updating color via embedded ColourPickerWidget preserves 100% stop selection", async () => {
+    let parentStopsState: string[] = ["#000000ff 0%", "#00ff00ff 100%"];
 
     function ParentWrapper() {
       const [currentStops, setCurrentStops] = React.useState(parentStopsState);
@@ -688,7 +837,7 @@ describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
         onChange: (newStops: string[]) => {
           parentStopsState = newStops;
           setCurrentStops(newStops);
-        }
+        },
       });
     }
 
@@ -696,61 +845,65 @@ describe('GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
       root?.render(React.createElement(ParentWrapper));
     });
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const stopBtns = getStopButtonsSorted(container);
     assert.equal(stopBtns.length, 2);
 
     // Click 100% boundary stop button to select it
     await act(async () => {
-      stopBtns[1].dispatchEvent({ type: 'click', bubbles: true });
+      stopBtns[1].dispatchEvent({ type: "click", bubbles: true });
     });
 
     assert.equal(
-      stopBtns[1].getAttribute('aria-pressed'),
-      'true',
-      '100% stop must be selected after click'
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "100% stop must be selected after click"
     );
     assert.equal(
-      stopBtns[0].getAttribute('aria-pressed'),
-      'false',
-      '0% stop must be unselected'
+      stopBtns[0].getAttribute("aria-pressed"),
+      "false",
+      "0% stop must be unselected"
     );
 
     // Change color of 100% stop via embedded ColourPickerWidget surface
-    const surface = findElementsByClass(container, 'colour-picker-surface')[0];
-    assert.ok(surface, 'ColourPickerWidget surface must be rendered');
+    const surface = findElementsByClass(container, "colour-picker-surface")[0];
+    assert.ok(surface, "ColourPickerWidget surface must be rendered");
 
     await act(async () => {
       surface.dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 100,
         clientY: 20,
         pointerId: 1,
-        currentTarget: surface
+        currentTarget: surface,
       });
     });
 
     // Re-query stop buttons
-    const updatedStopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const updatedStopBtns = getStopButtonsSorted(container);
     assert.equal(
-      updatedStopBtns[1].getAttribute('aria-pressed'),
-      'true',
-      '100% stop must remain selected after color modification'
+      updatedStopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "100% stop must remain selected after color modification"
     );
     assert.equal(
-      updatedStopBtns[0].getAttribute('aria-pressed'),
-      'false',
-      '0% stop must not steal active selection on 100% color change'
+      updatedStopBtns[0].getAttribute("aria-pressed"),
+      "false",
+      "0% stop must not steal active selection on 100% color change"
     );
 
     // Verify parent state received updated color for 100% stop
     assert.equal(parentStopsState.length, 2);
-    assert.equal(parentStopsState[1].endsWith(' 100%'), true);
-    assert.notEqual(parentStopsState[1], '#00ff00ff 100%', '100% stop color must be updated');
+    assert.equal(parentStopsState[1].endsWith(" 100%"), true);
+    assert.notEqual(
+      parentStopsState[1],
+      "#00ff00ff 100%",
+      "100% stop color must be updated"
+    );
   });
 });
 
-describe('GradientPickerWidget Click-to-Select & Boundary Hit Targets (Ticket #223)', () => {
+describe("GradientPickerWidget Click-to-Select & Boundary Hit Targets (Ticket #223)", () => {
   beforeEach(() => {
     setupDom();
     prefsUiIconSize.value = 20;
@@ -760,172 +913,397 @@ describe('GradientPickerWidget Click-to-Select & Boundary Hit Targets (Ticket #2
     tearDownDom();
   });
 
-  it('single-clicking preview bar calculates relative position and activates nearest stop', async () => {
+  it("single-clicking preview bar calculates relative position and activates nearest stop", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#008000ff 50%', '#00ff00ff 100%']
+          initialStops: ["#000000ff 0%", "#008000ff 50%", "#00ff00ff 100%"],
         })
       );
     });
 
-    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
     assert.ok(previewBar);
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const stopBtns = getStopButtonsSorted(container);
     assert.equal(stopBtns.length, 3);
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true', 'Initial stop 0% is active');
+    assert.equal(
+      stopBtns[0].getAttribute("aria-pressed"),
+      "true",
+      "Initial stop 0% is active"
+    );
 
     // Click at clientX = 90 (45% on 200px bar -> closest to 50% stop)
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'click',
+        type: "click",
         button: 0,
         clientX: 90,
-        bubbles: true
+        bubbles: true,
       });
     });
 
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', '50% stop must be activated by click at 45%');
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
-    assert.equal(stopBtns[2].getAttribute('aria-pressed'), 'false');
+    assert.equal(
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "50% stop must be activated by click at 45%"
+    );
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
+    assert.equal(stopBtns[2].getAttribute("aria-pressed"), "false");
 
     // Click at clientX = 180 (90% on 200px bar -> closest to 100% stop)
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'click',
+        type: "click",
         button: 0,
         clientX: 180,
-        bubbles: true
+        bubbles: true,
       });
     });
 
-    assert.equal(stopBtns[2].getAttribute('aria-pressed'), 'true', '100% stop must be activated by click at 90%');
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+    assert.equal(
+      stopBtns[2].getAttribute("aria-pressed"),
+      "true",
+      "100% stop must be activated by click at 90%"
+    );
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
   });
 
-  it('single-clicking near left and right extremities activates 0% and 100% boundary stops respectively', async () => {
+  it("single-clicking near left and right extremities activates 0% and 100% boundary stops respectively", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#00ff00ff 100%']
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
         })
       );
     });
 
-    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
+    const stopBtns = getStopButtonsSorted(container);
 
     // Initially 0% is active
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true');
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "true");
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
 
     // Click at far right extremity (clientX = 200, 100%)
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'click',
+        type: "click",
         button: 0,
         clientX: 200,
-        bubbles: true
+        bubbles: true,
       });
     });
 
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', '100% stop must be activated at right extremity');
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+    assert.equal(
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "100% stop must be activated at right extremity"
+    );
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
 
     // Click at far left extremity (clientX = 0, 0%)
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'click',
+        type: "click",
         button: 0,
         clientX: 0,
-        bubbles: true
+        bubbles: true,
       });
     });
 
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true', '0% stop must be activated at left extremity');
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+    assert.equal(
+      stopBtns[0].getAttribute("aria-pressed"),
+      "true",
+      "0% stop must be activated at left extremity"
+    );
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
   });
 
-  it('guide lines feature expanded 11px interactive hit area and select stop on click', async () => {
+  it("guide lines feature expanded 11px interactive hit area and select stop on click", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#00ff00ff 100%']
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
         })
       );
     });
 
-    const guideLines = findElementsByClass(container, 'gradient-stop-guide-line');
-    assert.equal(guideLines.length, 2);
+    const guideLines = findElementsByClass(
+      container,
+      "gradient-stop-guide-line"
+    );
+    assert.equal(
+      guideLines.length,
+      1,
+      "Only intermediate stops have vertical guide lines"
+    );
 
     // Verify expanded 11px width
-    assert.equal(guideLines[0].style.width, '11px', 'Guide line container must have 11px expanded hit target');
-    assert.equal(guideLines[1].style.width, '11px', '100% guide line container must have 11px expanded hit target');
+    assert.equal(
+      guideLines[0].style.width,
+      "11px",
+      "Guide line container must have 11px expanded hit target"
+    );
 
-    const stopBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'true');
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'false');
+    const stopBtns = getStopButtonsSorted(container);
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "true");
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
 
-    // Click directly on 100% guide line
+    // Click directly on 50% intermediate guide line
     await act(async () => {
-      guideLines[1].dispatchEvent({
-        type: 'click',
-        button: 0,
-        bubbles: true
-      });
+      guideLines[0].dispatchEvent({ type: "click", button: 0, bubbles: true });
     });
 
-    assert.equal(stopBtns[1].getAttribute('aria-pressed'), 'true', '100% stop must activate on clicking its guide line');
-    assert.equal(stopBtns[0].getAttribute('aria-pressed'), 'false');
+    assert.equal(
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "50% intermediate stop must activate on clicking its guide line"
+    );
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
   });
 
-  it('double-clicking near boundary extremities activates boundary stops without spawning intermediate stops', async () => {
+  it("double-clicking near boundary extremities activates boundary stops without spawning intermediate stops", async () => {
     let latestStops: string[] = [];
 
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
-          initialStops: ['#000000ff 0%', '#00ff00ff 100%'],
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
           onChange: (stops: string[]) => {
             latestStops = stops;
-          }
+          },
         })
       );
     });
 
-    const previewBar = findElementsByClass(container, 'gradient-picker-preview-bar')[0];
-    const initialBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
+    const initialBtns = getStopButtonsSorted(container);
     assert.equal(initialBtns.length, 2);
 
     // Double click at clientX = 199 (99.5% on 200px bar -> near 100% boundary)
     await act(async () => {
       previewBar.dispatchEvent({
-        type: 'dblclick',
+        type: "dblclick",
         clientX: 199,
-        bubbles: true
+        bubbles: true,
       });
     });
 
     // Should NOT create a 3rd stop at 99.9%
-    const currentBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    assert.equal(currentBtns.length, 2, 'Must not spawn unwanted intermediate stop near 100% boundary');
-    assert.equal(currentBtns[1].getAttribute('aria-pressed'), 'true', '100% boundary stop must become active');
-    assert.equal(latestStops.length, 0, 'No onChange fired when double-clicking boundary');
+    const currentBtns = getStopButtonsSorted(container);
+    assert.equal(
+      currentBtns.length,
+      2,
+      "Must not spawn unwanted intermediate stop near 100% boundary"
+    );
+    assert.equal(
+      currentBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "100% boundary stop must become active"
+    );
+    assert.equal(
+      latestStops.length,
+      0,
+      "No onChange fired when double-clicking boundary"
+    );
 
     // Double click at clientX = 1 (0.5% on 200px bar -> near 0% boundary)
     await act(async () => {
-      previewBar.dispatchEvent({
-        type: 'dblclick',
-        clientX: 1,
-        bubbles: true
-      });
+      previewBar.dispatchEvent({ type: "dblclick", clientX: 1, bubbles: true });
     });
 
-    const finalBtns = findElementsByClass(container, 'gradient-stop-toggle-btn');
-    assert.equal(finalBtns.length, 2, 'Must not spawn unwanted intermediate stop near 0% boundary');
-    assert.equal(finalBtns[0].getAttribute('aria-pressed'), 'true', '0% boundary stop must become active');
+    const finalBtns = getStopButtonsSorted(container);
+    assert.equal(
+      finalBtns.length,
+      2,
+      "Must not spawn unwanted intermediate stop near 0% boundary"
+    );
+    assert.equal(
+      finalBtns[0].getAttribute("aria-pressed"),
+      "true",
+      "0% boundary stop must become active"
+    );
     assert.equal(latestStops.length, 0);
+  });
+});
+
+describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (Ticket #225)", () => {
+  beforeEach(() => {
+    setupDom();
+    prefsUiIconSize.value = 20;
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it("renders 0% and 100% buttons flanking the preview bar with 6px gap in a preview row", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#ffffff 100%"],
+        })
+      );
+    });
+
+    const previewRow = findElementsByClass(
+      container,
+      "gradient-picker-preview-row"
+    )[0];
+    assert.ok(previewRow, "Preview row container must be rendered");
+    assert.equal(
+      previewRow.style.gap,
+      "6px",
+      "Preview row must separate buttons and bar with 6px gap"
+    );
+
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
+    assert.ok(previewBar, "Preview bar must be rendered");
+    assert.equal(
+      previewBar.style.flex,
+      "1",
+      "Preview bar must stretch to fill remaining row width"
+    );
+
+    const boundaryBtns = findElementsByClass(
+      container,
+      "gradient-stop-boundary-btn"
+    );
+    assert.equal(
+      boundaryBtns.length,
+      2,
+      "Must render exactly 2 boundary buttons"
+    );
+    assert.equal(
+      boundaryBtns[0].getAttribute("aria-label"),
+      "Gradient stop at 0%"
+    );
+    assert.equal(
+      boundaryBtns[1].getAttribute("aria-label"),
+      "Gradient stop at 100%"
+    );
+
+    // Top track margin matches preview bar inset (22px)
+    const track = findElementsByClass(container, "gradient-picker-track")[0];
+    assert.ok(track, "Track must be rendered");
+    assert.equal(
+      track.style.margin,
+      "0 22px",
+      "Track margins must align horizontally with preview bar"
+    );
+
+    // Track only contains intermediate stops
+    const trackBtns = track.childNodes.filter((c: any) =>
+      c.className?.includes("gradient-stop-toggle-btn")
+    );
+    assert.equal(
+      trackBtns.length,
+      1,
+      "Track must only contain the 50% intermediate stop"
+    );
+    assert.equal(
+      trackBtns[0].getAttribute("aria-label"),
+      "Gradient stop at 50%"
+    );
+
+    // Through-bar guide lines only render for intermediate stops
+    const guideLines = findElementsByClass(
+      container,
+      "gradient-stop-guide-line"
+    );
+    assert.equal(
+      guideLines.length,
+      1,
+      "Only intermediate stops must have through-bar vertical guide lines"
+    );
+    assert.equal(guideLines[0].getAttribute("title"), "Stop at 50%");
+  });
+
+  it("boundary buttons retain 16x16px size, swatches, and active indicator ring on click", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ffffff 100%"],
+        })
+      );
+    });
+
+    const boundaryBtns = findElementsByClass(
+      container,
+      "gradient-stop-boundary-btn"
+    );
+    assert.equal(boundaryBtns[0].style.width, "16px");
+    assert.equal(boundaryBtns[0].style.height, "16px");
+    assert.equal(boundaryBtns[0].getAttribute("aria-pressed"), "true");
+    assert.ok(
+      boundaryBtns[0].style.boxShadow.includes("rgba(27, 68, 108"),
+      "Active boundary stop must have ring shadow"
+    );
+
+    // Click 100% boundary button
+    await act(async () => {
+      boundaryBtns[1].dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    assert.equal(boundaryBtns[0].getAttribute("aria-pressed"), "false");
+    assert.equal(boundaryBtns[1].getAttribute("aria-pressed"), "true");
+    assert.ok(
+      boundaryBtns[1].style.boxShadow.includes("rgba(27, 68, 108"),
+      "100% stop must receive ring shadow when active"
+    );
+  });
+
+  it("primary clicking flanking boundary buttons updates embedded ColourPickerWidget", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#ff0000ff 0%", "#0000ffff 100%"],
+        })
+      );
+    });
+
+    const boundaryBtns = findElementsByClass(
+      container,
+      "gradient-stop-boundary-btn"
+    );
+    const hexInput = findElementsByClass(
+      container,
+      "colour-picker-hex-input"
+    )[0];
+    assert.ok(hexInput, "Colour picker hex input must exist");
+    assert.equal(
+      hexInput.value,
+      "#ff0000ff",
+      "Colour picker must reflect 0% stop color initially"
+    );
+
+    // Click 100% boundary stop
+    await act(async () => {
+      boundaryBtns[1].dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    const updatedHexInput = findElementsByClass(
+      container,
+      "colour-picker-hex-input"
+    )[0];
+    assert.equal(
+      updatedHexInput.value,
+      "#0000ffff",
+      "Colour picker must reflect 100% stop color after selection"
+    );
   });
 });

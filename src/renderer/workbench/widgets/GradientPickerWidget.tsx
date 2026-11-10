@@ -1,7 +1,7 @@
 /**
  * @file GradientPickerWidget.tsx
  * @module renderer/workbench/widgets/GradientPickerWidget
- * @description Reusable gradient picker widget subclassing BasicWidget, featuring interactive stop toggle buttons, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
+ * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-09
@@ -12,21 +12,21 @@
  * @see {@link formatCssColor}
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSignals } from '@preact/signals-react/runtime';
-import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
-import { ColourPickerWidget } from './ColourPickerWidget';
-import Icon from '@renderer/components/common/Icon';
-import { mdiTrashCanOutline } from '@mdi/js';
-import { prefsUiIconSize } from '@renderer/state/preferencesSignals';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSignals } from "@preact/signals-react/runtime";
+import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
+import { ColourPickerWidget } from "./ColourPickerWidget";
+import Icon from "@renderer/components/common/Icon";
+import { mdiTrashCanOutline } from "@mdi/js";
+import { prefsUiIconSize } from "@renderer/state/preferencesSignals";
 import {
   type ColorFormat,
   type RgbColor,
   clamp,
   parseCssColor,
   formatCssColor,
-  interpolateColor
-} from '@shared/colors';
+  interpolateColor,
+} from "@shared/colors";
 
 /**
  * @typedef {Object} GradientStop
@@ -48,7 +48,10 @@ export interface GradientStop {
  * @property {(stops: string[]) => void} [onChange] - Callback fired whenever gradient stops change, with formatted strings.
  * @property {boolean} [disabled=false] - Whether the gradient picker and stop controls are disabled against user interactions.
  */
-export interface GradientPickerWidgetProps extends Omit<BasicWidgetProps, 'children'> {
+export interface GradientPickerWidgetProps extends Omit<
+  BasicWidgetProps,
+  "children"
+> {
   initialStops?: string[];
   format?: ColorFormat;
   onChange?: (stops: string[]) => void;
@@ -87,8 +90,8 @@ function areStopsEqual(a?: string[], b?: string[] | null): boolean {
 export function parseInitialStops(rawStops?: string[]): GradientStop[] {
   if (!rawStops || rawStops.length === 0) {
     return [
-      { id: 'stop-0', color: '#000000ff', offset: 0 },
-      { id: 'stop-100', color: '#00ff00ff', offset: 100 }
+      { id: "stop-0", color: "#000000ff", offset: 0 },
+      { id: "stop-100", color: "#00ff00ff", offset: 100 },
     ];
   }
 
@@ -126,7 +129,10 @@ export function parseInitialStops(rawStops?: string[]): GradientStop[] {
  * @param {ColorFormat} format - Target color format.
  * @returns {string[]} Formatted CSS gradient stop strings.
  */
-export function serializeGradientStops(stops: GradientStop[], format: ColorFormat): string[] {
+export function serializeGradientStops(
+  stops: GradientStop[],
+  format: ColorFormat
+): string[] {
   return stops
     .slice()
     .sort((a, b) => a.offset - b.offset)
@@ -141,7 +147,7 @@ export function serializeGradientStops(stops: GradientStop[], format: ColorForma
 
 /**
  * @component GradientPickerWidget
- * @description Reusable gradient picker widget subclassing BasicWidget, featuring interactive stop toggle buttons, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
+ * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-09
@@ -151,25 +157,27 @@ export function serializeGradientStops(stops: GradientStop[], format: ColorForma
  */
 export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   initialStops,
-  format: propFormat = 'HEX',
+  format: propFormat = "HEX",
   onChange,
   disabled = false,
-  name = 'gradient-picker-widget',
-  displayName = 'Gradient Picker',
+  name = "gradient-picker-widget",
+  displayName = "Gradient Picker",
   showHeader = true,
   minWidth = 280,
   minHeight = 440,
-  className = '',
+  className = "",
   style = {},
   ...basicWidgetProps
 }) => {
   useSignals();
 
   // Internal stops array and currently active stop identifier
-  const [stops, setStops] = useState<GradientStop[]>(() => parseInitialStops(initialStops));
+  const [stops, setStops] = useState<GradientStop[]>(() =>
+    parseInitialStops(initialStops)
+  );
   const [activeStopId, setActiveStopId] = useState<string>(() => {
     const initial = parseInitialStops(initialStops);
-    return initial[0]?.id || 'stop-0';
+    return initial[0]?.id || "stop-0";
   });
 
   // Current color format
@@ -216,14 +224,15 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
 
       // Preserve active stop selection across resync by ID or offset
       if (!nextStops.some((s) => s.id === activeStopId)) {
-        const matchByOffset = prevActive
-          ? nextStops.find((s) => Math.abs(s.offset - prevActive.offset) < 0.05)
+        const matchByOffset =
+          prevActive ?
+            nextStops.find((s) => Math.abs(s.offset - prevActive.offset) < 0.05)
           : undefined;
         if (matchByOffset) {
           setActiveStopId(matchByOffset.id);
           activeStopIdRef.current = matchByOffset.id;
         } else {
-          const fallbackId = nextStops[0]?.id || 'stop-0';
+          const fallbackId = nextStops[0]?.id || "stop-0";
           setActiveStopId(fallbackId);
           activeStopIdRef.current = fallbackId;
         }
@@ -232,14 +241,17 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   }, [initialStops, activeStopId]);
 
   // Active stop reference
-  const activeStop = stops.find((s) => s.id === activeStopId) || stops[0] || {
-    id: 'stop-0',
-    color: '#000000ff',
-    offset: 0
-  };
+  const activeStop = stops.find((s) => s.id === activeStopId)
+    || stops[0] || { id: "stop-0", color: "#000000ff", offset: 0 };
 
   const isBoundaryStop = activeStop.offset <= 0 || activeStop.offset >= 100;
   const isDeleteDisabled = isBoundaryStop || stops.length <= 2;
+
+  // Boundary stops (start and end) and intermediate stops partition
+  const startBoundaryStop = stops.find((s) => s.offset <= 0) || stops[0];
+  const endBoundaryStop =
+    stops.find((s) => s.offset >= 100) || stops[stops.length - 1];
+  const intermediateStops = stops.filter((s) => s.offset > 0 && s.offset < 100);
 
   // Swatch size is strictly 20% of prefsUiIconSize.value
   const iconSize = prefsUiIconSize.value ?? 24;
@@ -250,7 +262,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     .slice()
     .sort((a, b) => a.offset - b.offset)
     .map((s) => `${s.color} ${s.offset}%`)
-    .join(', ');
+    .join(", ");
 
   /**
    * @description Handles primary-click pointer down on a stop button or vertical guide line, selecting the stop and initializing horizontal dragging.
@@ -299,18 +311,21 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       stopsRef.current = nextStops;
       setStops(nextStops);
 
-      const serialized = serializeGradientStops(sorted, activeFormatRef.current);
+      const serialized = serializeGradientStops(
+        sorted,
+        activeFormatRef.current
+      );
       lastEmittedStopsRef.current = serialized;
       onChange?.(serialized);
     };
 
     const onPointerUp = () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
     };
 
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
   };
 
   /**
@@ -371,7 +386,8 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
 
     // Prevent accidental creation of unwanted intermediate stops near boundaries
     if (rawPct <= 2.0) {
-      const boundaryZero = stopsRef.current.find((s) => s.offset <= 0) || stopsRef.current[0];
+      const boundaryZero =
+        stopsRef.current.find((s) => s.offset <= 0) || stopsRef.current[0];
       if (boundaryZero) {
         setActiveStopId(boundaryZero.id);
         activeStopIdRef.current = boundaryZero.id;
@@ -380,7 +396,8 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     }
     if (rawPct >= 98.0) {
       const boundaryHundred =
-        stopsRef.current.find((s) => s.offset >= 100) || stopsRef.current[stopsRef.current.length - 1];
+        stopsRef.current.find((s) => s.offset >= 100)
+        || stopsRef.current[stopsRef.current.length - 1];
       if (boundaryHundred) {
         setActiveStopId(boundaryHundred.id);
         activeStopIdRef.current = boundaryHundred.id;
@@ -396,7 +413,10 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     let rightStop = sorted[sorted.length - 1];
 
     for (let i = 0; i < sorted.length - 1; i++) {
-      if (sorted[i].offset <= clickOffset && sorted[i + 1].offset >= clickOffset) {
+      if (
+        sorted[i].offset <= clickOffset
+        && sorted[i + 1].offset >= clickOffset
+      ) {
         leftStop = sorted[i];
         rightStop = sorted[i + 1];
         break;
@@ -406,26 +426,46 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     const range = rightStop.offset - leftStop.offset;
     const factor = range > 0 ? (clickOffset - leftStop.offset) / range : 0;
 
-    const leftRgb = parseCssColor(leftStop.color)?.srgb ?? { r: 0, g: 0, b: 0, alpha: 1 };
-    const rightRgb = parseCssColor(rightStop.color)?.srgb ?? { r: 0, g: 255, b: 0, alpha: 1 };
+    const leftRgb = parseCssColor(leftStop.color)?.srgb ?? {
+      r: 0,
+      g: 0,
+      b: 0,
+      alpha: 1,
+    };
+    const rightRgb = parseCssColor(rightStop.color)?.srgb ?? {
+      r: 0,
+      g: 255,
+      b: 0,
+      alpha: 1,
+    };
     const blendedRgb = interpolateColor(leftRgb, rightRgb, factor);
     const newColorStr = formatCssColor(blendedRgb, activeFormatRef.current);
 
-    const existingCount = stopsRef.current.filter((s) => s.offset === clickOffset).length;
-    const newStopId = existingCount === 0 ? `stop-${clickOffset}` : `stop-${clickOffset}-${existingCount}`;
+    const existingCount = stopsRef.current.filter(
+      (s) => s.offset === clickOffset
+    ).length;
+    const newStopId =
+      existingCount === 0 ?
+        `stop-${clickOffset}`
+      : `stop-${clickOffset}-${existingCount}`;
     const newStop: GradientStop = {
       id: newStopId,
       color: newColorStr,
-      offset: clickOffset
+      offset: clickOffset,
     };
 
-    const nextStops = [...stopsRef.current, newStop].sort((a, b) => a.offset - b.offset);
+    const nextStops = [...stopsRef.current, newStop].sort(
+      (a, b) => a.offset - b.offset
+    );
     stopsRef.current = nextStops;
     setStops(nextStops);
     setActiveStopId(newStopId);
     activeStopIdRef.current = newStopId;
 
-    const serialized = serializeGradientStops(nextStops, activeFormatRef.current);
+    const serialized = serializeGradientStops(
+      nextStops,
+      activeFormatRef.current
+    );
     lastEmittedStopsRef.current = serialized;
     onChange?.(serialized);
   };
@@ -445,14 +485,20 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     const activeIndex = currentStops.findIndex((s) => s.id === activeStop.id);
     const nextStops = currentStops.filter((s) => s.id !== activeStop.id);
 
-    const nextActiveIndex = Math.max(0, Math.min(activeIndex, nextStops.length - 1));
+    const nextActiveIndex = Math.max(
+      0,
+      Math.min(activeIndex, nextStops.length - 1)
+    );
     const nextActiveStop = nextStops[nextActiveIndex];
     setActiveStopId(nextActiveStop.id);
     activeStopIdRef.current = nextActiveStop.id;
     stopsRef.current = nextStops;
     setStops(nextStops);
 
-    const serialized = serializeGradientStops(nextStops, activeFormatRef.current);
+    const serialized = serializeGradientStops(
+      nextStops,
+      activeFormatRef.current
+    );
     lastEmittedStopsRef.current = serialized;
     onChange?.(serialized);
   };
@@ -487,6 +533,57 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
     [onChange]
   );
 
+  /**
+   * @description Renders a 16x16px boundary stop button flanking the preview bar.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-09
+   * @updated 2026-11-09
+   * @since 0.1.0-dev
+   * @param {GradientStop} stop - Target boundary gradient stop.
+   * @returns {React.ReactElement} Stop button element.
+   */
+  const renderBoundaryButton = (stop: GradientStop): React.ReactElement => {
+    const isActive = stop.id === activeStopId;
+
+    return (
+      <button
+        key={stop.id}
+        type='button'
+        className={`gradient-stop-toggle-btn gradient-stop-boundary-btn ${isActive ? "gradient-stop-btn-active active" : ""}`}
+        aria-pressed={isActive}
+        aria-label={`Gradient stop at ${stop.offset}%`}
+        title={`Stop at ${stop.offset}%`}
+        onPointerDown={(e) => handleStopPointerDown(e, stop)}
+        onClick={() => setActiveStopId(stop.id)}
+        style={{
+          width: "16px",
+          height: "16px",
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: isActive ? "2px solid #1b446c" : "1px solid #777777",
+          borderRadius: "2px",
+          backgroundColor: "#ffffff",
+          boxShadow: isActive ? "0 0 0 2px rgba(27, 68, 108, 0.4)" : "none",
+          cursor: "pointer",
+          flexShrink: 0,
+          boxSizing: "border-box",
+        }}>
+        <div
+          className='gradient-stop-swatch'
+          style={{
+            width: `${swatchSize}px`,
+            height: `${swatchSize}px`,
+            backgroundColor: stop.color,
+            border: "1px solid rgba(0, 0, 0, 0.3)",
+            boxSizing: "border-box",
+          }}
+        />
+      </button>
+    );
+  };
+
   return (
     <BasicWidget
       name={name}
@@ -494,96 +591,98 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       showHeader={showHeader}
       minWidth={minWidth}
       minHeight={minHeight}
-      className={`gradient-picker-widget ${disabled ? 'disabled' : ''} ${className}`.trim()}
+      className={`gradient-picker-widget ${disabled ? "disabled" : ""} ${className}`.trim()}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem',
-        padding: '0.5rem',
-        boxSizing: 'border-box',
-        ...(disabled ? { opacity: 0.6, pointerEvents: 'none' } : {}),
-        ...style
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+        padding: "0.5rem",
+        boxSizing: "border-box",
+        ...(disabled ? { opacity: 0.6, pointerEvents: "none" } : {}),
+        ...style,
       }}
-      {...basicWidgetProps}
-    >
+      {...basicWidgetProps}>
       {/* Top Stop Management Header & Track */}
-      <div className="gradient-picker-stops-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Stops</span>
+      <div
+        className='gradient-picker-stops-header'
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+        <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Stops</span>
         <button
-          type="button"
-          className="gradient-picker-delete-btn"
-          title="Delete active stop"
-          aria-label="Delete active stop"
+          type='button'
+          className='gradient-picker-delete-btn'
+          title='Delete active stop'
+          aria-label='Delete active stop'
           disabled={isDeleteDisabled}
           onClick={handleDeleteActiveStop}
           style={{
-            padding: '2px 6px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            padding: "2px 6px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
             opacity: isDeleteDisabled ? 0.35 : 1,
-            cursor: isDeleteDisabled ? 'not-allowed' : 'pointer',
-            border: '1px solid #ccc',
-            borderRadius: '3px',
-            backgroundColor: '#f3f3f3'
-          }}
-        >
+            cursor: isDeleteDisabled ? "not-allowed" : "pointer",
+            border: "1px solid #ccc",
+            borderRadius: "3px",
+            backgroundColor: "#f3f3f3",
+          }}>
           <Icon path={mdiTrashCanOutline} size={0.7} />
         </button>
       </div>
 
-      {/* Stop Toggle Buttons Track */}
+      {/* Intermediate Stop Toggle Buttons Track */}
       <div
         ref={trackRef}
-        className="gradient-picker-track"
+        className='gradient-picker-track'
         style={{
-          position: 'relative',
-          height: '1.25rem',
-          margin: '0 8px',
-          boxSizing: 'border-box'
-        }}
-      >
-        {stops.map((stop) => {
+          position: "relative",
+          height: "1.25rem",
+          margin: "0 22px",
+          boxSizing: "border-box",
+        }}>
+        {intermediateStops.map((stop) => {
           const isActive = stop.id === activeStopId;
-          const isStopBoundary = stop.offset <= 0 || stop.offset >= 100;
 
           return (
             <button
               key={stop.id}
-              type="button"
-              className={`gradient-stop-toggle-btn ${isActive ? 'gradient-stop-btn-active active' : ''}`}
+              type='button'
+              className={`gradient-stop-toggle-btn ${isActive ? "gradient-stop-btn-active active" : ""}`}
               aria-pressed={isActive}
               aria-label={`Gradient stop at ${stop.offset}%`}
               title={`Stop at ${stop.offset}%`}
               onPointerDown={(e) => handleStopPointerDown(e, stop)}
               onClick={() => setActiveStopId(stop.id)}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 left: `${stop.offset}%`,
-                transform: 'translateX(-50%)',
-                width: '16px',
-                height: '16px',
+                transform: "translateX(-50%)",
+                width: "16px",
+                height: "16px",
                 padding: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: isActive ? '2px solid #1b446c' : '1px solid #777777',
-                borderRadius: '2px',
-                backgroundColor: '#ffffff',
-                boxShadow: isActive ? '0 0 0 2px rgba(27, 68, 108, 0.4)' : 'none',
-                cursor: isStopBoundary ? 'pointer' : 'ew-resize',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: isActive ? "2px solid #1b446c" : "1px solid #777777",
+                borderRadius: "2px",
+                backgroundColor: "#ffffff",
+                boxShadow:
+                  isActive ? "0 0 0 2px rgba(27, 68, 108, 0.4)" : "none",
+                cursor: "ew-resize",
                 zIndex: isActive ? 4 : 2,
-                boxSizing: 'border-box'
-              }}
-            >
+                boxSizing: "border-box",
+              }}>
               <div
-                className="gradient-stop-swatch"
+                className='gradient-stop-swatch'
                 style={{
                   width: `${swatchSize}px`,
                   height: `${swatchSize}px`,
                   backgroundColor: stop.color,
-                  border: '1px solid rgba(0, 0, 0, 0.3)',
-                  boxSizing: 'border-box'
+                  border: "1px solid rgba(0, 0, 0, 0.3)",
+                  boxSizing: "border-box",
                 }}
               />
             </button>
@@ -591,71 +690,86 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         })}
       </div>
 
-      {/* 2 lh Gradient Preview Bar with through-bar vertical guide lines */}
+      {/* Gradient Preview Row with flanking 0% and 100% boundary stops */}
       <div
-        ref={barRef}
-        className="gradient-picker-preview-bar"
-        onClick={handleBarClick}
-        onDoubleClick={handleBarDoubleClick}
-        title="Click to select a stop, or double-click to add a gradient stop"
+        className='gradient-picker-preview-row'
         style={{
-          position: 'relative',
-          height: '2lh',
-          margin: '0 8px',
-          borderRadius: '3px',
-          border: '1px solid #333333',
-          backgroundImage: `linear-gradient(to right, ${gradientCss}), repeating-conic-gradient(#808080 0% 25%, #ffffff 0% 50%)`,
-          backgroundSize: '100% 100%, 12px 12px',
-          cursor: 'crosshair',
-          userSelect: 'none',
-          boxSizing: 'border-box'
-        }}
-      >
-        {stops.map((stop) => {
-          const isActive = stop.id === activeStopId;
-          const isStopBoundary = stop.offset <= 0 || stop.offset >= 100;
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          boxSizing: "border-box",
+        }}>
+        {/* Start (0%) Boundary Stop Button */}
+        {startBoundaryStop && renderBoundaryButton(startBoundaryStop)}
 
-          return (
-            <div
-              key={`guide-${stop.id}`}
-              className={`gradient-stop-guide-line ${isActive ? 'active' : ''}`}
-              onPointerDown={(e) => handleStopPointerDown(e, stop)}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveStopId(stop.id);
-                activeStopIdRef.current = stop.id;
-              }}
-              title={`Stop at ${stop.offset}%`}
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: `${stop.offset}%`,
-                transform: 'translateX(-50%)',
-                width: '11px',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'stretch',
-                cursor: isStopBoundary ? 'pointer' : 'ew-resize',
-                zIndex: isActive ? 3 : 1,
-                boxSizing: 'border-box'
-              }}
-            >
+        {/* 2 lh Gradient Preview Bar with through-bar vertical guide lines */}
+        <div
+          ref={barRef}
+          className='gradient-picker-preview-bar'
+          onClick={handleBarClick}
+          onDoubleClick={handleBarDoubleClick}
+          title='Click to select a stop, or double-click to add a gradient stop'
+          style={{
+            position: "relative",
+            flex: 1,
+            height: "2lh",
+            borderRadius: "3px",
+            border: "1px solid #333333",
+            backgroundImage: `linear-gradient(to right, ${gradientCss}), repeating-conic-gradient(#808080 0% 25%, #ffffff 0% 50%)`,
+            backgroundSize: "100% 100%, 12px 12px",
+            cursor: "crosshair",
+            userSelect: "none",
+            boxSizing: "border-box",
+          }}>
+          {intermediateStops.map((stop) => {
+            const isActive = stop.id === activeStopId;
+
+            return (
               <div
-                style={{
-                  width: '1px',
-                  height: '100%',
-                  backgroundColor: '#000000',
-                  pointerEvents: 'none'
+                key={`guide-${stop.id}`}
+                className={`gradient-stop-guide-line ${isActive ? "active" : ""}`}
+                onPointerDown={(e) => handleStopPointerDown(e, stop)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveStopId(stop.id);
+                  activeStopIdRef.current = stop.id;
                 }}
-              />
-            </div>
-          );
-        })}
+                title={`Stop at ${stop.offset}%`}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  left: `${stop.offset}%`,
+                  transform: "translateX(-50%)",
+                  width: "11px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "stretch",
+                  cursor: "ew-resize",
+                  zIndex: isActive ? 3 : 1,
+                  boxSizing: "border-box",
+                }}>
+                <div
+                  style={{
+                    width: "1px",
+                    height: "100%",
+                    backgroundColor: "#000000",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* End (100%) Boundary Stop Button */}
+        {endBoundaryStop && renderBoundaryButton(endBoundaryStop)}
       </div>
 
       {/* Embedded ColourPickerWidget for active stop */}
-      <div className="gradient-picker-embedded-colour-picker" style={{ marginTop: '0.25rem' }}>
+      <div
+        className='gradient-picker-embedded-colour-picker'
+        style={{ marginTop: "0.25rem" }}>
         <ColourPickerWidget
           key={`picker-${activeStop.id}`}
           showHeader={false}
