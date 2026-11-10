@@ -274,6 +274,39 @@ export interface LayerTemporalConfig {
 }
 
 /**
+ * Supported time filter unit denominations for temporal stepping and range intervals.
+ * @typedef {'Years' | 'Months' | 'Days' | 'Hours' | 'Minutes' | 'Seconds'} TimeFilterUnit
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ */
+export type TimeFilterUnit = 'Years' | 'Months' | 'Days' | 'Hours' | 'Minutes' | 'Seconds';
+
+/**
+ * Structured project-level time filter configuration options for workbench transport control and viewport filtering.
+ * @typedef {Object} ProjectTimeFilterConfig
+ * @property {boolean} [enabled=false] - Whether dynamic temporal filtering is active in the map canvas.
+ * @property {number} [from] - Minimum boundary timestamp in UTC epoch milliseconds.
+ * @property {number} [to] - Maximum boundary timestamp in UTC epoch milliseconds.
+ * @property {number} [current] - Current active frame start timestamp in UTC epoch milliseconds.
+ * @property {number} [step=1.0] - Step increment value.
+ * @property {TimeFilterUnit} [unit='Days'] - Step unit denomination.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ */
+export interface ProjectTimeFilterConfig {
+  enabled?: boolean;
+  from?: number;
+  to?: number;
+  current?: number;
+  step?: number;
+  unit?: TimeFilterUnit;
+}
+
+/**
  * @typedef {Object} ProjectGroupItem
  * @property {string} [id] - Optional unique identifier for the layer group.
  * @property {string} name - Display name of the layer group.
@@ -322,10 +355,11 @@ export interface ProjectStyleItem {
  * @property {ProjectViewport} [viewport] - Initial map camera and extent parameters.
  * @property {Array<ProjectLayerItem | ProjectGroupItem>} layers - Hierarchical layer and group tree.
  * @property {ProjectStyleItem[]} [styles] - Project shared style collection.
+ * @property {ProjectTimeFilterConfig} [timeFilter] - Structured project time filter transport configuration.
  * @property {Record<string, unknown>} [customProperties] - Extensible project properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export interface ProjectModel {
@@ -336,6 +370,7 @@ export interface ProjectModel {
   viewport?: ProjectViewport;
   layers: Array<ProjectLayerItem | ProjectGroupItem>;
   styles?: ProjectStyleItem[];
+  timeFilter?: ProjectTimeFilterConfig;
   customProperties?: Record<string, unknown>;
 }
 

@@ -4,8 +4,13 @@
  * @description Unit tests for renderer styleCompiler verifying Cartouche Symbology compilation, OpenLayers StyleFunction closure caching, painter execution order, disabled component filtering, GradientFillComponent Canvas 2D linear gradients, and format routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-09
+ * @updated 2026-11-10
  * @since 0.1.0-dev
+ * @see {@link compileStyleFunction}
+ * @see {@link compileCartoucheLayerStyleSync}
+ * @see {@link compileLayerStyle}
+ * @see {@link isCartoucheStyleDescriptor}
+ * @see {@link wrapStyleWithTemporalFilter}
  */
 
 import { describe, it } from "node:test";
@@ -19,11 +24,18 @@ import {
   compileCartoucheLayerStyleSync,
   compileLayerStyle,
   isCartoucheStyleDescriptor,
+  wrapStyleWithTemporalFilter,
 } from "../../../src/renderer/map/styleCompiler";
+import {
+  setTimeFilterActive,
+  setTimeFilterFrame,
+  resetTimeFilterState,
+} from "../../../src/renderer/state/timeFilterSignals";
 import type {
   CartoucheLayerStyle,
   ProjectStyleItem,
   GradientFillComponent,
+  LayerTemporalConfig,
 } from "../../../src/shared/types";
 
 describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (Ticket #126)", () => {
@@ -795,6 +807,136 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
         1
       ) as import("ol/style/Style").default[];
       assert.equal(styles.length, 0);
+    });
+  });
+
+  describe("Temporal Predicate Feature Filtering (Ticket #234)", () => {
+    const simpleStyle: CartoucheLayerStyle = {
+      format: "simple",
+      version: 1,
+      components: [
+        { id: "fill-1", type: "simple-fill", enabled: true, color: "#10b981" },
+      ],
+    };
+
+    const temporalConfig: LayerTemporalConfig = {
+      enabled: true,
+      mode: "start_end",
+      startField: "start_date",
+      startOp: ">=",
+      endField: "end_date",
+      endOp: "<=",
+    };
+
+    it("populates requiredFields with temporal start and end attribute field names", () => {
+      const result = compileCartoucheLayerStyleSync(simpleStyle, {
+        temporal: temporalConfig,
+      });
+
+      assert.ok(
+        result.requiredFields.has("start_date"),
+        "Must require start_date field"
+      );
+      assert.ok(
+        result.requiredFields.has("end_date"),
+        "Must require end_date field"
+      );
+    });
+
+    it("style function suppresses rendering by returning null when feature fails temporal predicate", () => {
+      // Configure global temporal state
+      setTimeFilterActive(true);
+      setTimeFilterFrame(1500, 1500);
+
+      const result = compileCartoucheLayerStyleSync(simpleStyle, {
+        temporal: temporalConfig,
+      });
+
+      const styleFunction = result.compiledStyle;
+      assert.equal(typeof styleFunction, "function");
+
+      // Feature inside window [1000, 2000]
+      const matchingFeature = new Feature({
+        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        start_date: 1000,
+        end_date: 2000,
+      });
+      const matchingStyles = styleFunction(matchingFeature, 1);
+      assert.ok(
+        matchingStyles !== null && Array.isArray(matchingStyles) && matchingStyles.length > 0,
+        "Feature inside window must return visible styles"
+      );
+
+      // Feature outside window [2001, 3000]
+      const nonMatchingFeature = new Feature({
+        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        start_date: 2001,
+        end_date: 3000,
+      });
+      const nonMatchingStyles = styleFunction(nonMatchingFeature, 1);
+      assert.equal(
+        nonMatchingStyles,
+        null,
+        "Feature outside window must return null to suppress rendering"
+      );
+
+      // Feature with missing temporal fields
+      const missingFeature = new Feature({
+        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+      });
+      assert.equal(
+        styleFunction(missingFeature, 1),
+        null,
+        "Feature with missing temporal fields must return null"
+      );
+
+      // Clean up global state
+      resetTimeFilterState();
+    });
+
+    it("renders unconditionally when global time filter is inactive", () => {
+      resetTimeFilterState(); // isTimeFilterActive = false
+
+      const result = compileCartoucheLayerStyleSync(simpleStyle, {
+        temporal: temporalConfig,
+      });
+
+      const styleFunction = result.compiledStyle;
+      const nonMatchingFeature = new Feature({
+        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        start_date: 99999999,
+        end_date: 99999999,
+      });
+
+      const styles = styleFunction(nonMatchingFeature, 1);
+      assert.ok(
+        styles !== null && Array.isArray(styles) && styles.length > 0,
+        "When global time filter is inactive, feature must render unconditionally"
+      );
+    });
+
+    it("renders unconditionally when layer temporal configuration is disabled", () => {
+      setTimeFilterActive(true);
+      setTimeFilterFrame(1500, 1500);
+
+      const result = compileCartoucheLayerStyleSync(simpleStyle, {
+        temporal: { ...temporalConfig, enabled: false },
+      });
+
+      const styleFunction = result.compiledStyle;
+      const nonMatchingFeature = new Feature({
+        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        start_date: 99999999,
+        end_date: 99999999,
+      });
+
+      const styles = styleFunction(nonMatchingFeature, 1);
+      assert.ok(
+        styles !== null && Array.isArray(styles) && styles.length > 0,
+        "When layer temporal control is disabled, feature must render unconditionally"
+      );
+
+      resetTimeFilterState();
     });
   });
 });

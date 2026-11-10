@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-09
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -41,6 +41,10 @@ import {
   projectTreeSignal,
   projectVisibleSignal,
 } from "../state/projectSignals";
+import {
+  isTimeFilterActiveSignal,
+  timeFilterFrameStartSignal,
+} from "../state/timeFilterSignals";
 import { preferencesMapSignal } from "../state/preferencesSignals";
 import {
   compileFlatLayerStyleSync,
@@ -255,7 +259,7 @@ export class MapController {
    * @description Initializes the isolated OpenLayers map instance, view, and reactive signal subscriptions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-26
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {HTMLElement} container - Target unmanaged DOM container element.
    * @param {Object} [options] - Optional map initialization options.
@@ -433,6 +437,34 @@ export class MapController {
       }
     });
     this.disposeSignals.push(disposeActions);
+
+    // Trigger visual refresh of temporal layers when time filter is toggled or frame advances
+    const disposeTimeFilter = effect(() => {
+      // Read reactive signals to establish dependency tracking
+      void isTimeFilterActiveSignal.value;
+      void timeFilterFrameStartSignal.value;
+      this.refreshTemporalLayers();
+    });
+    this.disposeSignals.push(disposeTimeFilter);
+  }
+
+  /**
+   * @description Triggers visual redraw across all registered layers with dynamic temporal control enabled.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-10
+   * @updated 2026-11-10
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public refreshTemporalLayers(): void {
+    for (const entry of this.vectorLayers.values()) {
+      if (
+        entry.descriptor.temporal?.enabled
+        || entry.descriptor.temporalEnabled
+      ) {
+        entry.layer.changed();
+      }
+    }
   }
 
   /**
@@ -621,7 +653,7 @@ export class MapController {
    * @description Compiles and applies a style to a single vector layer entry, executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-11-09
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {unknown} rawStyle - Raw style descriptor or wrapper.
@@ -640,11 +672,18 @@ export class MapController {
 
     const sharedStyles = currentProjectSignal.value?.styles;
     const isCartouche = isCartoucheStyleDescriptor(rawStyle, sharedStyles);
+    const temporalConfig =
+      entry.descriptor.temporal ??
+      (entry.descriptor.temporalEnabled ?
+        { enabled: true, mode: "start_end" as const }
+      : undefined);
+
     if (isCartouche) {
       const cartoucheResult = compileCartoucheLayerStyleSync(rawStyle, {
         sharedStyles,
         layerId: entry.descriptor.id,
         map: this.map,
+        temporal: temporalConfig,
       });
       entry.hasGradientFill = Boolean(cartoucheResult.hasGradientFill);
       entry.layer.setStyle(cartoucheResult.compiledStyle as any);
@@ -658,6 +697,7 @@ export class MapController {
         sharedStyles,
         layerId: entry.descriptor.id,
         map: this.map,
+        temporal: temporalConfig,
       });
       entry.hasGradientFill = Boolean(flatResult.hasGradientFill);
 
@@ -694,6 +734,7 @@ export class MapController {
         sharedStyles,
         layerId: entry.descriptor.id,
         map: this.map,
+        temporal: temporalConfig,
       });
       if (entry.styleRevision !== nextRevision) {
         return;
