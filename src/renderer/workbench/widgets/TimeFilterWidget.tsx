@@ -10,6 +10,7 @@
  * @see {@link TimestampSpinner}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
+ * @see {@link autoDetectTemporalRange}
  * @see {@link Icon}
  */
 
@@ -43,6 +44,7 @@ import {
 import {
   stepTemporalTimestamp,
   calculateActiveTemporalRange,
+  autoDetectTemporalRange,
   MIN_TIME_FILTER_STEP,
 } from '../../map/timeFilterMath';
 import type { TimeFilterUnit } from '../../../shared/types';
@@ -81,8 +83,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
   }, []);
 
   // Auto-Range button [B]
-  const handleAutoRange = useCallback(() => {
-    const range = calculateActiveTemporalRange();
+  const handleAutoRange = useCallback(async () => {
+    const range = await autoDetectTemporalRange();
     if (range) {
       setTimeFilterRange(range.from, range.to);
       const cur = timeFilterFrameStartSignal.value;

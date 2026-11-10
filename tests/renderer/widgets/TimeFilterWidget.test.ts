@@ -9,6 +9,8 @@
  * @see {@link TimeFilterWidget}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
+ * @see {@link autoDetectTemporalRange}
+ * @see {@link extractFirstFeatureProperties}
  * @see {@link widgetComponents}
  * @see {@link DEFAULT_WORKBENCH_WIDGET_DOCKS}
  * @see {@link Icon}
@@ -72,6 +74,8 @@ const {
   getDaysInMonthUtc,
   stepTemporalTimestamp,
   calculateActiveTemporalRange,
+  autoDetectTemporalRange,
+  extractFirstFeatureProperties,
   MIN_TIME_FILTER_STEP,
 } = jiti(
   '@renderer/map/timeFilterMath'
@@ -302,6 +306,98 @@ describe('timeFilterMath: calculateActiveTemporalRange (Ticket #235)', () => {
     const expected = Date.parse('2026-11-10T14:00:00.000Z');
     assert.strictEqual(range.from, expected);
     assert.strictEqual(range.to, expected);
+  });
+});
+
+describe('timeFilterMath: autoDetectTemporalRange & IPC Sorted Queries (Ticket #238)', () => {
+  it('extractFirstFeatureProperties extracts properties from structured features or binary packet', () => {
+    // 1. Structured features object
+    const structured = {
+      features: [{ properties: { start_date: '1900-01-01', names: 'Test' } }],
+    };
+    assert.deepEqual(extractFirstFeatureProperties(structured), {
+      start_date: '1900-01-01',
+      names: 'Test',
+    });
+
+    // 2. Binary packet buffer (12-byte header, 8-byte fid, 4-byte wkbLen=0, 4-byte propsLen, JSON text)
+    const jsonStr = JSON.stringify({ start_date: '0500-06-06' });
+    const encoder = new TextEncoder();
+    const jsonBytes = encoder.encode(jsonStr);
+    const packetBuf = new ArrayBuffer(24 + 4 + jsonBytes.byteLength);
+    const view = new DataView(packetBuf);
+    view.setUint32(0, 0x43415254, true); // magic
+    view.setUint16(4, 1, true); // version
+    view.setUint16(6, 0x02, true); // flags (HAS_PROPERTIES)
+    view.setUint32(8, 1, true); // count
+    view.setBigInt64(12, 73n, true); // fid
+    view.setUint32(20, 0, true); // wkbLen = 0
+    view.setUint32(24, jsonBytes.byteLength, true); // propsLen
+    new Uint8Array(packetBuf, 28).set(jsonBytes);
+
+    assert.deepEqual(extractFirstFeatureProperties({ buffer: packetBuf }), {
+      start_date: '0500-06-06',
+    });
+  });
+
+  it('dispatches ASC and DESC queries per time-enabled layer and updates global range signals', async () => {
+    const layers: LayerDescriptor[] = [
+      {
+        id: 'timeline-layer-1',
+        name: 'Timeline 1',
+        temporal: {
+          enabled: true,
+          mode: 'start_end',
+          startField: 'start_date',
+          endField: 'end_date',
+        },
+      } as any,
+    ];
+
+    const dispatchedQueries: Array<{ layerId: string; options: any }> = [];
+    const mockQueryExtent = async (layerId: string, options: any) => {
+      dispatchedQueries.push({ layerId, options });
+      if (options.sortDirection === 'ASC') {
+        return {
+          features: [{ properties: { start_date: '0500-06-06' } }],
+        };
+      }
+      return {
+        features: [{ properties: { end_date: '2099-12-31' } }],
+      };
+    };
+
+    const range = await autoDetectTemporalRange(layers, mockQueryExtent);
+    assert.ok(range, 'Range must be resolved');
+
+    // Verify 2 queries dispatched: ASC for start_date and DESC for end_date
+    assert.equal(dispatchedQueries.length, 2);
+    assert.deepEqual(dispatchedQueries[0], {
+      layerId: 'timeline-layer-1',
+      options: {
+        sortBy: 'start_date',
+        sortDirection: 'ASC',
+        max: 1,
+        includeGeometry: false,
+        fields: ['start_date'],
+      },
+    });
+    assert.deepEqual(dispatchedQueries[1], {
+      layerId: 'timeline-layer-1',
+      options: {
+        sortBy: 'end_date',
+        sortDirection: 'DESC',
+        max: 1,
+        includeGeometry: false,
+        fields: ['end_date'],
+      },
+    });
+
+    // Update global signals with resolved range
+    setTimeFilterRange(range.from, range.to);
+    assert.equal(timeFilterRangeStartSignal.value, range.from);
+    assert.equal(timeFilterRangeEndSignal.value, range.to);
+    assert.ok(timeFilterRangeStartSignal.value < timeFilterRangeEndSignal.value);
   });
 });
 

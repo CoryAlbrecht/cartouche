@@ -4,7 +4,7 @@
  * @description Unit tests verifying shared binary WKB packet protocol constants, query extent options, and result interfaces.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link WKB_PACKET_MAGIC}
  */
@@ -33,9 +33,13 @@ describe('Shared WKB Feature Packet Protocol Constants & Contracts', () => {
       extent: [-100, 40, -80, 50],
       targetProjection: 'EPSG:3857',
       includeGeometry: true,
-      fields: ['NAME', 'POP_EST']
+      fields: ['NAME', 'POP_EST'],
+      sortBy: 'start_date',
+      sortDirection: 'ASC'
     };
     assert.deepEqual(options.fields, ['NAME', 'POP_EST']);
+    assert.equal(options.sortBy, 'start_date');
+    assert.equal(options.sortDirection, 'ASC');
 
     const buffer = new ArrayBuffer(12);
     const result: QueryExtentBinaryResult = {
