@@ -1,12 +1,14 @@
 /**
  * @file ColourPickerWidget.test.ts
  * @module tests/renderer/widgets/ColourPickerWidget.test
- * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, and bottom channel inputs.
+ * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, bottom channel inputs, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link ColourPickerWidget}
+ * @see {@link prefsUiIconSize}
+ * @see {@link prefsUiBaseFontSize}
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
@@ -281,6 +283,9 @@ const jiti = createJiti(import.meta.url, {
 });
 const { ColourPickerWidget } = jiti(
   '../../../src/renderer/workbench/widgets/ColourPickerWidget.tsx'
+);
+const { prefsUiIconSize, prefsUiBaseFontSize } = jiti(
+  '../../../src/renderer/state/preferencesSignals.ts'
 );
 
 describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
@@ -672,5 +677,145 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
     for (const input of channelInputs) {
       assert.equal(input.disabled, true, 'Channel input must be disabled');
     }
+  });
+});
+
+describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)', () => {
+  beforeEach(() => {
+    setupDom();
+    prefsUiIconSize.value = 24;
+    prefsUiBaseFontSize.value = 12;
+  });
+
+  afterEach(() => {
+    teardownDom();
+    prefsUiIconSize.value = undefined;
+    prefsUiBaseFontSize.value = undefined;
+  });
+
+  it('sets format dropdown and HEX input font sizes to 1rem and reacts dynamically to prefsUiBaseFontSize', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: '#ff0000ff'
+        })
+      );
+    });
+
+    const formatSelect = findElementsByClass(container, 'colour-picker-format-select')[0];
+    const hexInput = findElementsByClass(container, 'colour-picker-hex-input')[0];
+
+    assert.ok(formatSelect, 'Must render format selector dropdown');
+    assert.ok(hexInput, 'Must render HEX input');
+    assert.equal(formatSelect.style.fontSize, '1rem', 'Format dropdown font size must be 1rem');
+    assert.equal(hexInput.style.fontSize, '1rem', 'HEX input font size must be 1rem');
+
+    // Dynamically update prefsUiBaseFontSize signal to 16pt
+    await act(async () => {
+      prefsUiBaseFontSize.value = 16;
+    });
+
+    assert.equal(formatSelect.style.fontSize, '1rem', 'Format dropdown retains 1rem relative font size');
+    assert.equal(hexInput.style.fontSize, '1rem', 'HEX input retains 1rem relative font size');
+  });
+
+  it('sets channel number inputs to 1rem and channel labels to 0.9rem in non-HEX formats', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: 'rgb(255, 0, 0)',
+          format: 'RGB'
+        })
+      );
+    });
+
+    const channelInputs = findElementsByClass(container, 'colour-picker-channel-input');
+    assert.equal(channelInputs.length, 4, 'Must render 4 channel inputs for RGB format (R, G, B, A)');
+    for (const input of channelInputs) {
+      assert.equal(input.style.fontSize, '1rem', 'Channel input font size must be 1rem');
+    }
+
+    // Inspect label span elements (parent container of each channel input has a span child)
+    for (const input of channelInputs) {
+      const parent = input.parentNode;
+      assert.ok(parent, 'Channel input must have a parent container');
+      const labelSpan = parent.childNodes.find((c: any) => c.tagName === 'SPAN');
+      assert.ok(labelSpan, 'Parent must contain label span');
+      assert.equal(labelSpan.style.fontSize, '0.9rem', 'Channel label font size must be 0.9rem');
+    }
+
+    // Dynamically update prefsUiBaseFontSize signal
+    await act(async () => {
+      prefsUiBaseFontSize.value = 18;
+    });
+
+    for (const input of channelInputs) {
+      assert.equal(input.style.fontSize, '1rem');
+    }
+  });
+
+  it('scales eyedropper button and icon dimensions dynamically with prefsUiIconSize', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: '#00ff00ff'
+        })
+      );
+    });
+
+    const eyedropperBtn = findElementsByClass(container, 'colour-picker-eyedropper-btn')[0];
+    assert.ok(eyedropperBtn, 'Must render eyedropper button');
+    assert.equal(eyedropperBtn.style.width, '24px', 'Initial eyedropper button width must match iconSize=24');
+    assert.equal(eyedropperBtn.style.height, '24px', 'Initial eyedropper button height must match iconSize=24');
+
+    const iconSvg = eyedropperBtn.childNodes.find((c: any) => c.tagName?.toUpperCase() === 'SVG');
+    assert.ok(iconSvg, 'Eyedropper button must contain SVG icon');
+    assert.equal(iconSvg.style.width, '24px', 'SVG icon width must match iconSize=24');
+    assert.equal(iconSvg.style.height, '24px', 'SVG icon height must match iconSize=24');
+
+    // Dynamically update prefsUiIconSize to 32px
+    await act(async () => {
+      prefsUiIconSize.value = 32;
+    });
+
+    assert.equal(eyedropperBtn.style.width, '32px', 'Eyedropper button width must scale to 32px');
+    assert.equal(eyedropperBtn.style.height, '32px', 'Eyedropper button height must scale to 32px');
+    assert.equal(iconSvg.style.width, '32px', 'SVG icon width must scale to 32px');
+    assert.equal(iconSvg.style.height, '32px', 'SVG icon height must scale to 32px');
+
+    // Dynamically update prefsUiIconSize to 18px
+    await act(async () => {
+      prefsUiIconSize.value = 18;
+    });
+
+    assert.equal(eyedropperBtn.style.width, '18px', 'Eyedropper button width must scale to 18px');
+    assert.equal(eyedropperBtn.style.height, '18px', 'Eyedropper button height must scale to 18px');
+    assert.equal(iconSvg.style.width, '18px', 'SVG icon width must scale to 18px');
+    assert.equal(iconSvg.style.height, '18px', 'SVG icon height must scale to 18px');
+  });
+
+  it('maintains proper flex layout and alignment across rows when preferences vary', async () => {
+    prefsUiIconSize.value = 30;
+    prefsUiBaseFontSize.value = 14;
+
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: '#123456ff',
+          format: 'RGB'
+        })
+      );
+    });
+
+    const formatRow = findElementsByClass(container, 'colour-picker-format-row')[0];
+    assert.ok(formatRow, 'Format row must be rendered');
+    assert.equal(formatRow.style.gap, '6px', 'Format row gap must be 6px');
+
+    const inputsRow = findElementsByClass(container, 'colour-picker-inputs-row')[0];
+    assert.ok(inputsRow, 'Inputs row must be rendered');
+    assert.equal(inputsRow.style.gap, '4px', 'Inputs row gap must be 4px');
+
+    const channelInputs = findElementsByClass(inputsRow, 'colour-picker-channel-input');
+    assert.equal(channelInputs.length, 4, 'Must render 4 channels without clipping');
   });
 });

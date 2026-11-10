@@ -4,11 +4,13 @@
  * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link parseCssColor}
  * @see {@link formatCssColor}
+ * @see {@link prefsUiIconSize}
+ * @see {@link prefsUiBaseFontSize}
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -16,6 +18,10 @@ import { useSignals } from '@preact/signals-react/runtime';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
 import Icon from '@renderer/components/common/Icon';
 import { mdiEyedropper } from '@mdi/js';
+import {
+  prefsUiIconSize,
+  prefsUiBaseFontSize
+} from '@renderer/state/preferencesSignals';
 import {
   type ColorFormat,
   type RgbColor,
@@ -72,7 +78,7 @@ export interface ColourPickerWidgetProps extends Omit<BasicWidgetProps, 'childre
  * @description Custom color picker widget subclassing BasicWidget, embeddable across Dockview panels, dialogs, and parent widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-09
  * @since 0.1.0-dev
  * @param {ColourPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ColourPickerWidget React component.
@@ -92,6 +98,10 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
   ...basicWidgetProps
 }) => {
   useSignals();
+
+  // Preferences signals for UI sizing
+  const iconSize = prefsUiIconSize.value ?? 24;
+  void prefsUiBaseFontSize.value;
 
   // Internal color representation: HSV + Alpha
   const [hsv, setHsv] = useState<HsvColor>(() => {
@@ -646,10 +656,12 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               }
               onClick={handleEyeDropper}
               style={{
+                width: `${iconSize}px`,
+                height: `${iconSize}px`,
+                padding: 0,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '4px',
                 backgroundColor: 'var(--cartouche-theme-surface-alt, #f1f5f9)',
                 color: !disabled && isEyeDropperSupported
                   ? 'var(--cartouche-theme-fg-primary, #0f172a)'
@@ -658,10 +670,11 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                 borderRadius: '3px',
                 cursor: !disabled && isEyeDropperSupported ? 'pointer' : 'not-allowed',
                 opacity: !disabled && isEyeDropperSupported ? 1 : 0.6,
-                flexShrink: 0
+                flexShrink: 0,
+                boxSizing: 'border-box'
               }}
             >
-              <Icon path={mdiEyedropper} size='1rem' />
+              <Icon path={mdiEyedropper} size={iconSize} />
             </button>
 
             <select
@@ -672,7 +685,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               style={{
                 flex: 1,
                 padding: '3px 6px',
-                fontSize: '0.8125rem',
+                fontSize: '1rem',
                 backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
                 color: 'var(--cartouche-theme-fg, #000000)',
                 border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
@@ -709,7 +722,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                 style={{
                   width: '100%',
                   padding: '3px 6px',
-                  fontSize: '0.8125rem',
+                  fontSize: '1rem',
                   fontFamily: 'var(--cartouche-theme-font-family-mono, monospace)',
                   backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
                   color: 'var(--cartouche-theme-fg, #000000)',
@@ -741,7 +754,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                     style={{
                       width: '100%',
                       padding: '2px 4px',
-                      fontSize: '0.75rem',
+                      fontSize: '1rem',
                       textAlign: 'center',
                       backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
                       color: 'var(--cartouche-theme-fg, #000000)',
@@ -751,7 +764,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                   />
                   <span
                     style={{
-                      fontSize: '0.6875rem',
+                      fontSize: '0.9rem',
                       color: 'var(--cartouche-theme-fg-muted, #64748b)',
                       marginTop: '1px'
                     }}
