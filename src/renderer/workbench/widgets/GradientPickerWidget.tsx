@@ -1,7 +1,7 @@
 /**
  * @file GradientPickerWidget.tsx
  * @module renderer/workbench/widgets/GradientPickerWidget
- * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
+ * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-09
@@ -147,7 +147,7 @@ export function serializeGradientStops(
 
 /**
  * @component GradientPickerWidget
- * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
+ * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-09
@@ -252,6 +252,9 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   const endBoundaryStop =
     stops.find((s) => s.offset >= 100) || stops[stops.length - 1];
   const intermediateStops = stops.filter((s) => s.offset > 0 && s.offset < 100);
+
+  // Sorted stops ascending by offset for the stop selector dropdown
+  const sortedStops = stops.slice().sort((a, b) => a.offset - b.offset);
 
   // Swatch size is strictly 20% of prefsUiIconSize.value
   const iconSize = prefsUiIconSize.value ?? 24;
@@ -602,37 +605,6 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         ...style,
       }}
       {...basicWidgetProps}>
-      {/* Top Stop Management Header & Track */}
-      <div
-        className='gradient-picker-stops-header'
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-        <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Stops</span>
-        <button
-          type='button'
-          className='gradient-picker-delete-btn'
-          title='Delete active stop'
-          aria-label='Delete active stop'
-          disabled={isDeleteDisabled}
-          onClick={handleDeleteActiveStop}
-          style={{
-            padding: "2px 6px",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: isDeleteDisabled ? 0.35 : 1,
-            cursor: isDeleteDisabled ? "not-allowed" : "pointer",
-            border: "1px solid #ccc",
-            borderRadius: "3px",
-            backgroundColor: "#f3f3f3",
-          }}>
-          <Icon path={mdiTrashCanOutline} size={0.7} />
-        </button>
-      </div>
-
       {/* Intermediate Stop Toggle Buttons Track */}
       <div
         ref={trackRef}
@@ -764,6 +736,68 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
 
         {/* End (100%) Boundary Stop Button */}
         {endBoundaryStop && renderBoundaryButton(endBoundaryStop)}
+      </div>
+
+      {/* Stop Selector Dropdown & Delete Controls */}
+      <div
+        className='gradient-picker-actions-row'
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          boxSizing: "border-box",
+        }}>
+        <select
+          className='gradient-picker-stop-select'
+          aria-label='Select gradient stop'
+          value={activeStop.id}
+          disabled={disabled}
+          onChange={(e) => {
+            const targetId = e.target.value;
+            setActiveStopId(targetId);
+            activeStopIdRef.current = targetId;
+          }}
+          style={{
+            flex: 1,
+            padding: "3px 6px",
+            fontSize: "0.8125rem",
+            backgroundColor: "var(--cartouche-theme-surface, #ffffff)",
+            color: "var(--cartouche-theme-fg, #000000)",
+            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
+            borderRadius: "3px",
+            cursor: disabled ? "not-allowed" : "pointer",
+          }}>
+          {sortedStops.map((stop) => (
+            <option key={stop.id} value={stop.id}>
+              {`${Math.round(stop.offset * 10) / 10}% — ${stop.color}`}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type='button'
+          className='gradient-picker-delete-btn'
+          title='Delete active stop'
+          aria-label='Delete active stop'
+          disabled={disabled || isDeleteDisabled}
+          onClick={handleDeleteActiveStop}
+          style={{
+            padding: "3px 6px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: disabled || isDeleteDisabled ? 0.35 : 1,
+            cursor: disabled || isDeleteDisabled ? "not-allowed" : "pointer",
+            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
+            borderRadius: "3px",
+            backgroundColor: "var(--cartouche-theme-surface-alt, #f1f5f9)",
+            color: !disabled && !isDeleteDisabled
+              ? "var(--cartouche-theme-fg-primary, #0f172a)"
+              : "var(--cartouche-theme-fg-muted, #94a3b8)",
+            flexShrink: 0,
+          }}>
+          <Icon path={mdiTrashCanOutline} size={0.7} />
+        </button>
       </div>
 
       {/* Embedded ColourPickerWidget for active stop */}

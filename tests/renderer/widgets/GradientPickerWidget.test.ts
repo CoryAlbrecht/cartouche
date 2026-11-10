@@ -40,11 +40,47 @@ class MockElement {
     string,
     Array<{ cb: (e: any) => void; capture: boolean }>
   > = {};
-  value = "";
+  private _value = "";
+
+  get value(): string {
+    if (this.tagName === "SELECT") {
+      const selected = this.options.find((opt) => opt.selected);
+      if (selected) {
+        return selected.value || selected.attributes?.value || "";
+      }
+    }
+    return this._value;
+  }
+
+  set value(v: string) {
+    this._value = String(v);
+    if (this.tagName === "SELECT") {
+      for (const opt of this.options) {
+        opt.selected = opt.value === v || opt.attributes?.value === v;
+      }
+    }
+  }
+
   disabled = false;
   title = "";
   multiple = false;
-  selected = false;
+  private _selected = false;
+
+  get selected(): boolean {
+    return this._selected;
+  }
+
+  set selected(val: boolean) {
+    this._selected = Boolean(val);
+    if (this._selected && this.parentNode && this.parentNode.tagName === "SELECT" && !this.parentNode.multiple) {
+      for (const opt of this.parentNode.options) {
+        if (opt !== this) {
+          opt._selected = false;
+        }
+      }
+    }
+  }
+
   selectedIndex = 0;
 
   get options(): any[] {
@@ -1305,5 +1341,246 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
       "#0000ffff",
       "Colour picker must reflect 100% stop color after selection"
     );
+  });
+});
+
+describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", () => {
+  beforeEach(() => {
+    setupDom();
+    prefsUiIconSize.value = 20;
+  });
+
+  afterEach(() => {
+    tearDownDom();
+  });
+
+  it("renders stop dropdown and delete button between preview row and colour picker, sorted ascending by offset", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%", "#ff0000ff 50%"],
+        })
+      );
+    });
+
+    // 1. Actions row exists and top header is removed
+    const actionsRow = findElementsByClass(container, "gradient-picker-actions-row");
+    assert.equal(actionsRow.length, 1, "Must render combined stop controls container");
+    const topHeader = findElementsByClass(container, "gradient-picker-stops-header");
+    assert.equal(topHeader.length, 0, "Top stops header must be removed");
+
+    // 2. Dropdown exists with aria-label
+    const stopSelects = findElementsByClass(container, "gradient-picker-stop-select");
+    assert.equal(stopSelects.length, 1, "Must render stop selector select");
+    const selectEl = stopSelects[0];
+    assert.equal(selectEl.getAttribute("aria-label"), "Select gradient stop");
+
+    // 3. Options sorted ascending by offset
+    const options = selectEl.options;
+    assert.equal(options.length, 3, "Must render 3 options");
+    assert.equal(options[0].value, "stop-0");
+    assert.equal(options[0].textContent, "0% — #000000ff");
+    assert.equal(options[1].value, "stop-50");
+    assert.equal(options[1].textContent, "50% — #ff0000ff");
+    assert.equal(options[2].value, "stop-100");
+    assert.equal(options[2].textContent, "100% — #00ff00ff");
+    assert.equal(selectEl.value, "stop-0", "0% stop must be selected initially");
+  });
+
+  it("selecting option from dropdown activates that stop and synchronizes ColourPickerWidget", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
+        })
+      );
+    });
+
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const hexInput = findElementsByClass(container, "colour-picker-hex-input")[0];
+    const stopBtns = getStopButtonsSorted(container);
+
+    // Initial state: 0% active
+    assert.equal(selectEl.value, "stop-0");
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "true");
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
+    assert.equal(hexInput.value, "#000000ff");
+
+    // Select 50% stop via dropdown
+    await act(async () => {
+      selectEl.value = "stop-50";
+      selectEl.dispatchEvent({ type: "change", bubbles: true });
+    });
+
+    assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "true", "50% stop button must be active");
+    const updatedHexInput = findElementsByClass(container, "colour-picker-hex-input")[0];
+    assert.equal(updatedHexInput.value, "#ff0000ff", "Embedded colour picker must update to 50% stop color");
+
+    // Select 100% stop via dropdown
+    await act(async () => {
+      selectEl.value = "stop-100";
+      selectEl.dispatchEvent({ type: "change", bubbles: true });
+    });
+
+    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
+    assert.equal(stopBtns[2].getAttribute("aria-pressed"), "true", "100% stop button must be active");
+    const finalHexInput = findElementsByClass(container, "colour-picker-hex-input")[0];
+    assert.equal(finalHexInput.value, "#00ff00ff", "Embedded colour picker must update to 100% stop color");
+  });
+
+  it("clicking stop buttons or preview bar synchronizes the dropdown selection", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
+        })
+      );
+    });
+
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const stopBtns = getStopButtonsSorted(container);
+    const previewBar = findElementsByClass(container, "gradient-picker-preview-bar")[0];
+
+    // Click 50% intermediate stop button
+    await act(async () => {
+      stopBtns[1].dispatchEvent({ type: "click", button: 0, bubbles: true });
+    });
+
+
+    assert.equal(selectEl.value, "stop-50", "Dropdown must synchronize to stop-50 on button click");
+
+    // Click 100% boundary stop button
+    await act(async () => {
+      stopBtns[2].dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    assert.equal(selectEl.value, "stop-100", "Dropdown must synchronize to stop-100 on button click");
+
+    // Click preview bar at 10px (near 0% stop)
+    await act(async () => {
+      previewBar.dispatchEvent({ type: "click", button: 0, clientX: 10, bubbles: true });
+    });
+
+    assert.equal(selectEl.value, "stop-0", "Dropdown must synchronize to stop-0 on preview bar click");
+  });
+
+  it("option label dynamically updates offset during pin drag", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
+        })
+      );
+    });
+
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const stopBtns = getStopButtonsSorted(container);
+
+    // Pointer down on 50% stop button
+    await act(async () => {
+      stopBtns[1].dispatchEvent({
+        type: "pointerdown",
+        button: 0,
+        clientX: 100,
+        pointerId: 1,
+        bubbles: true,
+      });
+    });
+
+    // Move pointer to 150px (75% on 200px bar)
+    await act(async () => {
+      const listeners = windowListeners["pointermove"] || [];
+      for (const { cb } of listeners) {
+        cb({ clientX: 150 });
+      }
+    });
+
+    assert.equal(
+      selectEl.options[1].textContent,
+      "75% — #ff0000ff",
+      "Dropdown option label must update dynamically during drag"
+    );
+  });
+
+  it("double-clicking preview bar adds stop and automatically selects it in dropdown", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
+        })
+      );
+    });
+
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    assert.equal(selectEl.options.length, 2);
+
+    const previewBar = findElementsByClass(container, "gradient-picker-preview-bar")[0];
+
+    // Double click at 50% (clientX = 100 on 200px bar)
+    await act(async () => {
+      previewBar.dispatchEvent({ type: "dblclick", clientX: 100, bubbles: true });
+    });
+
+    assert.equal(selectEl.options.length, 3, "Must now have 3 options in dropdown");
+    assert.equal(selectEl.value, "stop-50", "Newly created stop must be selected in dropdown");
+  });
+
+  it("relocated delete button enforces boundary stop guards and deletes intermediate stop", async () => {
+    let latestStops: string[] = [];
+
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
+          onChange: (stops: string[]) => {
+            latestStops = stops;
+          },
+        })
+      );
+    });
+
+    const actionsRow = findElementsByClass(container, "gradient-picker-actions-row")[0];
+    const deleteBtn = findElementsByClass(actionsRow, "gradient-picker-delete-btn")[0];
+    assert.ok(deleteBtn, "Delete button must be in actions row");
+
+    // Initially at stop-0: delete button is disabled
+    assert.equal(deleteBtn.disabled, true, "Delete button must be disabled for 0% boundary stop");
+
+    // Select 50% intermediate stop
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    await act(async () => {
+      selectEl.value = "stop-50";
+      selectEl.dispatchEvent({ type: "change", bubbles: true });
+    });
+
+    assert.equal(deleteBtn.disabled, false, "Delete button must be enabled for intermediate stop");
+
+    // Click delete button
+    await act(async () => {
+      deleteBtn.dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    assert.equal(latestStops.length, 2);
+    assert.equal(selectEl.options.length, 2, "Dropdown must update to 2 options after deletion");
+    assert.equal(deleteBtn.disabled, true, "Delete button must be disabled when only 2 boundary stops remain");
+    assert.ok(selectEl.value === "stop-0" || selectEl.value === "stop-100", "Selection must roll over to adjacent stop");
+  });
+
+  it("cascades disabled prop to stop select dropdown and delete button", async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#ff0000ff 50%", "#00ff00ff 100%"],
+          disabled: true,
+        })
+      );
+    });
+
+    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const deleteBtn = findElementsByClass(container, "gradient-picker-delete-btn")[0];
+
+    assert.equal(selectEl.disabled, true, "Stop select must be disabled when widget is disabled");
+    assert.equal(deleteBtn.disabled, true, "Delete button must be disabled when widget is disabled");
   });
 });
