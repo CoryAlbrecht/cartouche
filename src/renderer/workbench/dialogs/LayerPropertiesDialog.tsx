@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -26,6 +26,10 @@ import {
   mdiPaletteOutline,
   mdiCodeTags,
   mdiUndo,
+  mdiGreaterThan,
+  mdiGreaterThanOrEqual,
+  mdiLessThan,
+  mdiLessThanOrEqual,
 } from "@mdi/js";
 import { actionsMapSignal } from "@renderer/state/actionSignals";
 import {
@@ -53,6 +57,7 @@ import {
 import {
   type InferredFieldType,
   type LayerFieldInfo,
+  type LayerTemporalConfig,
   CANONICAL_INFERRED_FIELD_TYPES,
 } from "@shared/types";
 import {
@@ -592,7 +597,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -2653,137 +2658,309 @@ export const LayerPropertiesDialog: React.FC = () => {
                 <legend className='preference-group-legend'>
                   {t("layer_properties_tab_time_filter")}
                 </legend>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.75rem",
-                  }}>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      fontWeight: 500,
-                      fontSize: "0.875rem",
-                      cursor: "pointer",
-                    }}>
-                    <input
-                      id='layer-prop-time-enable'
-                      type='checkbox'
-                      checked={draft.temporalEnabled ?? false}
-                      onChange={(e) =>
-                        updateLayerPropertiesDraft({
-                          temporalEnabled: e.target.checked,
-                        })
-                      }
-                    />
-                    <span>{t("layer_properties_time_enable")}</span>
-                  </label>
+                {(() => {
+                  const isEnabled =
+                    draft.temporal ?
+                      draft.temporal.enabled
+                    : (draft.temporalEnabled ?? false);
+                  const temporalConfig: LayerTemporalConfig = {
+                    enabled: isEnabled,
+                    mode: draft.temporal?.mode || "start_end",
+                    startField: draft.temporal?.startField,
+                    startOp: draft.temporal?.startOp ?? ">=",
+                    endField: draft.temporal?.endField,
+                    endOp: draft.temporal?.endOp ?? "<=",
+                  };
+                  const isStartDisabled = temporalConfig.mode === "end";
+                  const isEndDisabled = temporalConfig.mode === "start";
+                  const temporalFields = layerFields.filter(
+                    (f) =>
+                      f.inferredType === "date"
+                      || f.inferredType === "time"
+                      || f.inferredType === "datetime"
+                  );
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-time-mode'
+                  return (
+                    <div
                       style={{
-                        fontWeight: 500,
-                        fontSize: "0.875rem",
-                        color: "#334155",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.75rem",
                       }}>
-                      {t("layer_properties_time_mode")}
-                    </label>
-                    <select
-                      id='layer-prop-time-mode'
-                      defaultValue='single'
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "4px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.875rem",
-                        backgroundColor: "#ffffff",
-                      }}>
-                      <option value='single'>
-                        {t("layer_properties_time_mode_single")}
-                      </option>
-                      <option value='separate'>
-                        {t("layer_properties_time_mode_separate")}
-                      </option>
-                      <option value='fixed'>
-                        {t("layer_properties_time_mode_fixed")}
-                      </option>
-                    </select>
-                  </div>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          fontWeight: 500,
+                          fontSize: "0.875rem",
+                          cursor: "pointer",
+                        }}>
+                        <input
+                          id='layer-prop-time-enable'
+                          type='checkbox'
+                          checked={temporalConfig.enabled}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            updateLayerPropertiesDraft({
+                              temporalEnabled: isChecked,
+                              temporal: {
+                                ...temporalConfig,
+                                enabled: isChecked,
+                              },
+                            });
+                          }}
+                        />
+                        <span>{t("layer_properties_time_enable")}</span>
+                      </label>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-time-start'
-                      style={{
-                        fontWeight: 500,
-                        fontSize: "0.875rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_time_start_field")}
-                    </label>
-                    <select
-                      id='layer-prop-time-start'
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "4px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.875rem",
-                        backgroundColor: "#ffffff",
-                      }}>
-                      <option value=''>—</option>
-                      {layerFields.map((f) => (
-                        <option key={f.name} value={f.name}>
-                          {f.name} ({f.nativeType})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.25rem",
+                        }}>
+                        <label
+                          htmlFor='layer-prop-time-mode'
+                          style={{
+                            fontWeight: 500,
+                            fontSize: "0.875rem",
+                            color: "#334155",
+                          }}>
+                          {t("layer_properties_time_mode")}
+                        </label>
+                        <select
+                          id='layer-prop-time-mode'
+                          value={temporalConfig.mode || "start_end"}
+                          onChange={(e) => {
+                            const nextMode = e.target.value as
+                              | "start"
+                              | "end"
+                              | "start_end";
+                            updateLayerPropertiesDraft({
+                              temporal: {
+                                ...temporalConfig,
+                                mode: nextMode,
+                              },
+                            });
+                          }}
+                          style={{
+                            padding: "0.375rem 0.625rem",
+                            borderRadius: "0.25rem",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "0.875rem",
+                            backgroundColor: "#ffffff",
+                          }}>
+                          <option value='start'>
+                            {t("layer_properties_time_mode_start") || "Start Field"}
+                          </option>
+                          <option value='end'>
+                            {t("layer_properties_time_mode_end") || "End Field"}
+                          </option>
+                          <option value='start_end'>
+                            {t("layer_properties_time_mode_start_end") || "Start and End Fields"}
+                          </option>
+                        </select>
+                      </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-time-end'
-                      style={{
-                        fontWeight: 500,
-                        fontSize: "0.875rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_time_end_field")}
-                    </label>
-                    <select
-                      id='layer-prop-time-end'
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "4px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.875rem",
-                        backgroundColor: "#ffffff",
-                      }}>
-                      <option value=''>—</option>
-                      {layerFields.map((f) => (
-                        <option key={f.name} value={f.name}>
-                          {f.name} ({f.nativeType})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.25rem",
+                          opacity: isStartDisabled ? 0.5 : 1,
+                        }}>
+                        <label
+                          htmlFor='layer-prop-time-start'
+                          style={{
+                            fontWeight: 500,
+                            fontSize: "0.875rem",
+                            color: "#334155",
+                          }}>
+                          {t("layer_properties_time_start_field")}
+                        </label>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}>
+                          <button
+                            id='layer-prop-time-start-op-toggle'
+                            type='button'
+                            disabled={isStartDisabled}
+                            aria-label='Toggle start comparison operator'
+                            title={
+                              (temporalConfig.startOp ?? ">=") === ">"
+                                ? ">"
+                                : ">="
+                            }
+                            onClick={() => {
+                              const nextOp =
+                                (temporalConfig.startOp ?? ">=") === ">"
+                                  ? ">="
+                                  : ">";
+                              updateLayerPropertiesDraft({
+                                temporal: {
+                                  ...temporalConfig,
+                                  startOp: nextOp,
+                                },
+                              });
+                            }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "0.3125rem 0.5rem",
+                              backgroundColor: "#ffffff",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: "0.25rem",
+                              cursor:
+                                isStartDisabled ? "not-allowed" : "pointer",
+                              color: "#334155",
+                            }}>
+                            <Icon
+                              path={
+                                (temporalConfig.startOp ?? ">=") === ">"
+                                  ? mdiGreaterThan
+                                  : mdiGreaterThanOrEqual
+                              }
+                              size='1rem'
+                            />
+                          </button>
+                          <select
+                            id='layer-prop-time-start'
+                            disabled={isStartDisabled}
+                            value={temporalConfig.startField ?? ""}
+                            onChange={(e) => {
+                              updateLayerPropertiesDraft({
+                                temporal: {
+                                  ...temporalConfig,
+                                  startField: e.target.value || undefined,
+                                },
+                              });
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: "0.375rem 0.625rem",
+                              borderRadius: "0.25rem",
+                              border: "1px solid #cbd5e1",
+                              fontSize: "0.875rem",
+                              backgroundColor:
+                                isStartDisabled ? "#f1f5f9" : "#ffffff",
+                              cursor:
+                                isStartDisabled ? "not-allowed" : "default",
+                            }}>
+                            <option value=''>—</option>
+                            {temporalFields.map((f) => (
+                              <option key={f.name} value={f.name}>
+                                {f.name} ({f.inferredType})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.25rem",
+                          opacity: isEndDisabled ? 0.5 : 1,
+                        }}>
+                        <label
+                          htmlFor='layer-prop-time-end'
+                          style={{
+                            fontWeight: 500,
+                            fontSize: "0.875rem",
+                            color: "#334155",
+                          }}>
+                          {t("layer_properties_time_end_field")}
+                        </label>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}>
+                          <button
+                            id='layer-prop-time-end-op-toggle'
+                            type='button'
+                            disabled={isEndDisabled}
+                            aria-label='Toggle end comparison operator'
+                            title={
+                              (temporalConfig.endOp ?? "<=") === "<"
+                                ? "<"
+                                : "<="
+                            }
+                            onClick={() => {
+                              const nextOp =
+                                (temporalConfig.endOp ?? "<=") === "<"
+                                  ? "<="
+                                  : "<";
+                              updateLayerPropertiesDraft({
+                                temporal: {
+                                  ...temporalConfig,
+                                  endOp: nextOp,
+                                },
+                              });
+                            }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "0.3125rem 0.5rem",
+                              backgroundColor: "#ffffff",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: "0.25rem",
+                              cursor:
+                                isEndDisabled ? "not-allowed" : "pointer",
+                              color: "#334155",
+                            }}>
+                            <Icon
+                              path={
+                                (temporalConfig.endOp ?? "<=") === "<"
+                                  ? mdiLessThan
+                                  : mdiLessThanOrEqual
+                              }
+                              size='1rem'
+                            />
+                          </button>
+                          <select
+                            id='layer-prop-time-end'
+                            disabled={isEndDisabled}
+                            value={temporalConfig.endField ?? ""}
+                            onChange={(e) => {
+                              updateLayerPropertiesDraft({
+                                temporal: {
+                                  ...temporalConfig,
+                                  endField: e.target.value || undefined,
+                                },
+                              });
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: "0.375rem 0.625rem",
+                              borderRadius: "0.25rem",
+                              border: "1px solid #cbd5e1",
+                              fontSize: "0.875rem",
+                              backgroundColor:
+                                isEndDisabled ? "#f1f5f9" : "#ffffff",
+                              cursor:
+                                isEndDisabled ? "not-allowed" : "default",
+                            }}>
+                            <option value=''>—</option>
+                            {temporalFields.map((f) => (
+                              <option key={f.name} value={f.name}>
+                                {f.name} ({f.inferredType})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </fieldset>
             </div>
           )}

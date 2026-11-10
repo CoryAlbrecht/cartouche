@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
@@ -185,10 +185,13 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {BoundingBox} [extent] - Geographic or projected spatial bounding box.
  * @property {number} [featureCount] - Total number of features in the dataset.
  * @property {boolean} [temporalEnabled] - Whether dynamic temporal control is enabled on the layer.
+ * @property {LayerTemporalConfig} [temporal] - Structured dynamic temporal configuration options.
  * @property {Record<string, unknown>} [customProperties] - Extensible layer-level attributes.
+ * @property {string} [fidColumn] - Feature ID attribute column name.
+ * @property {import('./layers').LayerCapabilities} [capabilities] - Layer editing and mutation capabilities.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
@@ -212,8 +215,62 @@ export interface ProjectLayerItem {
   extent?: BoundingBox;
   featureCount?: number;
   temporalEnabled?: boolean;
+  temporal?: LayerTemporalConfig;
   fidColumn?: string;
   capabilities?: import('./layers').LayerCapabilities;
+}
+
+/**
+ * Supported temporal filter modes for layer temporal predicate evaluation.
+ * @typedef {'start' | 'end' | 'start_end'} LayerTemporalMode
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ */
+export type LayerTemporalMode = 'start' | 'end' | 'start_end';
+
+/**
+ * Supported start boundary comparison operators for layer temporal filtering.
+ * @typedef {'>' | '>='} LayerTemporalStartOp
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ */
+export type LayerTemporalStartOp = '>' | '>=';
+
+/**
+ * Supported end boundary comparison operators for layer temporal filtering.
+ * @typedef {'<' | '<='} LayerTemporalEndOp
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ */
+export type LayerTemporalEndOp = '<' | '<=';
+
+/**
+ * Structured temporal configuration options for layer-level temporal viewport filtering.
+ * @typedef {Object} LayerTemporalConfig
+ * @property {boolean} enabled - Whether dynamic temporal control is enabled on the layer.
+ * @property {LayerTemporalMode} mode - Temporal evaluation mode ('start' | 'end' | 'start_end').
+ * @property {string} [startField] - Attribute field name representing start date/time.
+ * @property {LayerTemporalStartOp} [startOp] - Comparison operator for start field boundary test ('>' | '>=').
+ * @property {string} [endField] - Attribute field name representing end date/time.
+ * @property {LayerTemporalEndOp} [endOp] - Comparison operator for end field boundary test ('<' | '<=').
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ */
+export interface LayerTemporalConfig {
+  enabled: boolean;
+  mode: LayerTemporalMode;
+  startField?: string;
+  startOp?: LayerTemporalStartOp;
+  endField?: string;
+  endOp?: LayerTemporalEndOp;
 }
 
 /**

@@ -188,11 +188,14 @@
     <string name="tree_node_layer_in_edit_mode">Layer is in edit mode</string>
     <string name="tree_node_layer_temporal_enabled">Dynamic temporal control enabled</string>
     <string name="layer_properties_time_enable">Enable dynamic temporal control</string>
-    <string name="layer_properties_time_mode">Configuration Mode</string>
+    <string name="layer_properties_time_mode">Mode</string>
+    <string name="layer_properties_time_mode_start">Start Field</string>
+    <string name="layer_properties_time_mode_end">End Field</string>
+    <string name="layer_properties_time_mode_start_end">Start and End Fields</string>
     <string name="layer_properties_time_mode_single">Single Field with Date/Time</string>
     <string name="layer_properties_time_mode_separate">Separate Start and End Fields</string>
     <string name="layer_properties_time_mode_fixed">Fixed Time Range</string>
-    <string name="layer_properties_time_start_field">Start Field / Timestamp Field</string>
+    <string name="layer_properties_time_start_field">Start Field</string>
     <string name="layer_properties_time_end_field">End Field</string>
     <string name="layer_properties_btn_ok">OK</string>
     <string name="layer_properties_btn_apply">Apply</string>

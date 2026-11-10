@@ -152,6 +152,7 @@
       <xs:element name="crs" type="CrsType" minOccurs="0" />
       <xs:element name="fields" type="FieldsType" minOccurs="0" />
       <xs:element name="customProperties" type="CustomPropertiesType" minOccurs="0" />
+      <xs:element name="temporal" type="LayerTemporalType" minOccurs="0" />
     </xs:all>
     <xs:attribute name="id" type="xs:string" use="required" />
     <xs:attribute name="visible" type="xs:boolean" default="true" />
@@ -163,6 +164,16 @@
     <xs:attribute name="minScale" type="xs:double" />
     <xs:attribute name="maxScale" type="xs:double" />
     <xs:attribute name="temporalEnabled" type="xs:boolean" default="false" />
+  </xs:complexType>
+
+  <!-- Layer Temporal Configuration Type -->
+  <xs:complexType name="LayerTemporalType">
+    <xs:attribute name="enabled" type="xs:boolean" default="true" />
+    <xs:attribute name="mode" type="xs:string" default="start_end" />
+    <xs:attribute name="startField" type="xs:string" />
+    <xs:attribute name="startOp" type="xs:string" />
+    <xs:attribute name="endField" type="xs:string" />
+    <xs:attribute name="endOp" type="xs:string" />
   </xs:complexType>
 
   <!-- Layer Attribute Fields Collection Type -->

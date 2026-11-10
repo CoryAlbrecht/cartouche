@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-09
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -229,11 +229,14 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       layer_properties_fields_discard_warning:
         'You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?',
       layer_properties_time_enable: 'Enable dynamic temporal control',
-      layer_properties_time_mode: 'Configuration Mode',
+      layer_properties_time_mode: 'Mode',
+      layer_properties_time_mode_start: 'Start Field',
+      layer_properties_time_mode_end: 'End Field',
+      layer_properties_time_mode_start_end: 'Start and End Fields',
       layer_properties_time_mode_single: 'Single Field with Date/Time',
       layer_properties_time_mode_separate: 'Separate Start and End Fields',
       layer_properties_time_mode_fixed: 'Fixed Time Range',
-      layer_properties_time_start_field: 'Start Field / Timestamp Field',
+      layer_properties_time_start_field: 'Start Field',
       layer_properties_time_end_field: 'End Field',
     };
 
@@ -506,19 +509,135 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert(html.includes('colSpan="7"') || html.includes('colspan="7"'), 'Empty state should span 7 columns when Native Type is shown');
   });
 
-  it('renders dynamic temporal control master checkbox and mode selectors on Time Filter tab', async () => {
+  it('renders dynamic temporal control master checkbox and redesigned mode selectors on Time Filter tab (Ticket #231)', async () => {
     await openLayerPropertiesDialog('layer-lakes-1');
     activeLayerPropertiesTabSignal.value = 'time_filter';
 
     const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
 
     assert(html.includes('Enable dynamic temporal control'), 'Should render temporal master checkbox');
-    assert(html.includes('Configuration Mode'), 'Should render mode selector label');
-    assert(html.includes('Single Field with Date/Time'), 'Should render single field mode option');
-    assert(html.includes('Separate Start and End Fields'), 'Should render separate fields mode option');
-    assert(html.includes('Fixed Time Range'), 'Should render fixed time range option');
-    assert(html.includes('Start Field / Timestamp Field'), 'Should render start field picker label');
-    assert(html.includes('End Field'), 'Should render end field picker label');
+    assert(html.includes('>Mode<'), 'Should render Mode selector label');
+    assert(html.includes('>Start Field<'), 'Should render Start Field option or label');
+    assert(html.includes('>End Field<'), 'Should render End Field option or label');
+    assert(html.includes('>Start and End Fields<'), 'Should render Start and End Fields mode option');
+    assert(html.includes('id="layer-prop-time-start-op-toggle"'), 'Should render Start Field operator toggle button');
+    assert(html.includes('id="layer-prop-time-end-op-toggle"'), 'Should render End Field operator toggle button');
+  });
+
+  it('disables non-applicable field row based on selected mode configuration (Ticket #231)', async () => {
+    await openLayerPropertiesDialog('layer-lakes-1');
+    activeLayerPropertiesTabSignal.value = 'time_filter';
+
+    // 1. Mode 'start': Start Field enabled, End Field disabled
+    updateLayerPropertiesDraft({
+      temporal: {
+        enabled: true,
+        mode: 'start',
+        startOp: '>=',
+        endOp: '<=',
+      },
+    });
+    let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert.doesNotMatch(html, /id="layer-prop-time-start"[^>]*disabled/);
+    assert.doesNotMatch(html, /id="layer-prop-time-start-op-toggle"[^>]*disabled/);
+    assert.match(html, /id="layer-prop-time-end"[^>]*disabled/);
+    assert.match(html, /id="layer-prop-time-end-op-toggle"[^>]*disabled/);
+
+    // 2. Mode 'end': Start Field disabled, End Field enabled
+    updateLayerPropertiesDraft({
+      temporal: {
+        enabled: true,
+        mode: 'end',
+        startOp: '>=',
+        endOp: '<=',
+      },
+    });
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert.match(html, /id="layer-prop-time-start"[^>]*disabled/);
+    assert.match(html, /id="layer-prop-time-start-op-toggle"[^>]*disabled/);
+    assert.doesNotMatch(html, /id="layer-prop-time-end"[^>]*disabled/);
+    assert.doesNotMatch(html, /id="layer-prop-time-end-op-toggle"[^>]*disabled/);
+
+    // 3. Mode 'start_end': Both enabled
+    updateLayerPropertiesDraft({
+      temporal: {
+        enabled: true,
+        mode: 'start_end',
+        startOp: '>=',
+        endOp: '<=',
+      },
+    });
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert.doesNotMatch(html, /id="layer-prop-time-start"[^>]*disabled/);
+    assert.doesNotMatch(html, /id="layer-prop-time-start-op-toggle"[^>]*disabled/);
+    assert.doesNotMatch(html, /id="layer-prop-time-end"[^>]*disabled/);
+    assert.doesNotMatch(html, /id="layer-prop-time-end-op-toggle"[^>]*disabled/);
+  });
+
+  it('restricts Start Field and End Field dropdown choices strictly to date- or time-related inferred types (Ticket #231)', async () => {
+    const mockLayerWithDiverseFields: ProjectLayerItem = {
+      id: 'layer-temporal-fields',
+      name: 'Temporal Fields Test Layer',
+      type: 'vector',
+      source: 'test.shp',
+      visible: true,
+      fields: [
+        { name: 'name', nativeType: 'String', inferredType: 'string' },
+        { name: 'pop', nativeType: 'Integer', inferredType: 'integer' },
+        { name: 'survey_date', nativeType: 'Date', inferredType: 'date' },
+        { name: 'flight_time', nativeType: 'Time', inferredType: 'time' },
+        { name: 'recorded_at', nativeType: 'DateTime', inferredType: 'datetime' },
+        { name: 'flag', nativeType: 'Boolean', inferredType: 'boolean' },
+      ],
+    };
+    projectLayersSignal.value = [mockLayerWithDiverseFields];
+    projectTreeSignal.value = [mockLayerWithDiverseFields];
+
+    await openLayerPropertiesDialog('layer-temporal-fields');
+    activeLayerPropertiesTabSignal.value = 'time_filter';
+
+    const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+
+    // Date/time fields must be present in the dropdown options
+    assert(html.includes('survey_date (date)'), 'Should include date field in options');
+    assert(html.includes('flight_time (time)'), 'Should include time field in options');
+    assert(html.includes('recorded_at (datetime)'), 'Should include datetime field in options');
+
+    // Non-temporal fields must NOT be present in options
+    assert(!html.includes('name (string)'), 'Should not include string field in temporal options');
+    assert(!html.includes('pop (integer)'), 'Should not include integer field in temporal options');
+    assert(!html.includes('flag (boolean)'), 'Should not include boolean field in temporal options');
+  });
+
+  it('supports interactive comparator toggle buttons switching comparison operators (Ticket #231)', async () => {
+    await openLayerPropertiesDialog('layer-lakes-1');
+    activeLayerPropertiesTabSignal.value = 'time_filter';
+
+    // 1. Initial operators: startOp >= and endOp <=
+    updateLayerPropertiesDraft({
+      temporal: {
+        enabled: true,
+        mode: 'start_end',
+        startOp: '>=',
+        endOp: '<=',
+      },
+    });
+    let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes('title="&gt;="'), 'Start button title should show >=');
+    assert(html.includes('title="&lt;="'), 'End button title should show <=');
+
+    // 2. Toggle to > and <
+    updateLayerPropertiesDraft({
+      temporal: {
+        enabled: true,
+        mode: 'start_end',
+        startOp: '>',
+        endOp: '<',
+      },
+    });
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes('title="&gt;"'), 'Start button title should show >');
+    assert(html.includes('title="&lt;"'), 'End button title should show <');
   });
 
   it('binds dynamic temporal control checkbox to draft and commits temporalEnabled to projectTreeSignal and projectLayersSignal (Ticket #162)', async () => {
@@ -558,12 +677,16 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     );
     assert.ok(updatedTreeLayer);
     assert.equal(updatedTreeLayer.temporalEnabled, true);
+    assert.ok(updatedTreeLayer.temporal);
+    assert.equal(updatedTreeLayer.temporal.enabled, true);
 
     const updatedDesc = projectLayersSignal.value.find(
       (l: ProjectLayerItem) => l.id === 'layer-temporal-layer'
     );
     assert.ok(updatedDesc);
     assert.equal(updatedDesc.temporalEnabled, true);
+    assert.ok(updatedDesc.temporal);
+    assert.equal(updatedDesc.temporal.enabled, true);
   });
 
   it('commits draft edits and updates isProjectDirtySignal via applyLayerPropertiesEdits', async () => {

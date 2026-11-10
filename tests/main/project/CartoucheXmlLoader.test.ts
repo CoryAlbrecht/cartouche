@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-04
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
@@ -1006,6 +1006,127 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const l3 = loaded.layers[2] as import('../../../src/shared/types').ProjectLayerItem;
     assert.equal(l3.id, 'layer-temporal-omitted');
     assert.equal(l3.temporalEnabled, false); // Defaults to false
+  });
+
+  it('serializes, deserializes, and validates structured <temporal> configuration with mode, field, and operator attributes against project.xsd (Ticket #231)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'temporal-config-test.cproj');
+
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: {
+        title: 'Temporal Configuration Test Project',
+        creator: 'Cory Albrecht',
+        description: 'Verifies structured <temporal> tag persistence and backward compatibility.',
+        date: '2026-11-10',
+        createdAt: '2026-11-10T12:00:00.000Z',
+        updatedAt: '2026-11-10T12:00:00.000Z',
+        appVersion: '0.1.0-dev'
+      },
+      crs: {
+        authId: 'EPSG:4326',
+        srid: 4326,
+        description: 'WGS 84'
+      },
+      layers: [
+        {
+          id: 'layer-temporal-start-end',
+          name: 'Start and End Layer',
+          type: 'geojson',
+          source: '/data/events.geojson',
+          visible: true,
+          temporal: {
+            enabled: true,
+            mode: 'start_end',
+            startField: 'event_start',
+            startOp: '>=',
+            endField: 'event_end',
+            endOp: '<='
+          }
+        },
+        {
+          id: 'layer-temporal-start-only',
+          name: 'Start Only Layer',
+          type: 'geojson',
+          source: '/data/sightings.geojson',
+          visible: true,
+          temporal: {
+            enabled: true,
+            mode: 'start',
+            startField: 'sighted_at',
+            startOp: '>'
+          }
+        },
+        {
+          id: 'layer-temporal-disabled',
+          name: 'Disabled Temporal Layer',
+          type: 'geojson',
+          source: '/data/boundary.geojson',
+          visible: true,
+          temporal: {
+            enabled: false,
+            mode: 'end',
+            endField: 'valid_until',
+            endOp: '<'
+          }
+        }
+      ]
+    };
+
+    await loader.save(model, testFile);
+    const xmlContent = fs.readFileSync(testFile, 'utf-8');
+
+    // 1. Verify schema validity against project.xsd
+    const validation = validateXmlAgainstSchema(xmlContent);
+    assert.equal(validation.valid, true, `Schema validation failed: ${validation.error}`);
+
+    // 2. Verify serialized XML tags
+    assert.match(
+      xmlContent,
+      /<temporal enabled="true" mode="start_end" startField="event_start" startOp="&gt;=" endField="event_end" endOp="&lt;=" \/>/
+    );
+    assert.match(
+      xmlContent,
+      /<temporal enabled="true" mode="start" startField="sighted_at" startOp="&gt;" \/>/
+    );
+    assert.match(
+      xmlContent,
+      /<temporal enabled="false" mode="end" endField="valid_until" endOp="&lt;" \/>/
+    );
+
+    // 3. Verify deserialization fidelity
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.layers.length, 3);
+
+    const l1 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.equal(l1.id, 'layer-temporal-start-end');
+    assert.equal(l1.temporalEnabled, true);
+    assert.ok(l1.temporal);
+    assert.equal(l1.temporal.enabled, true);
+    assert.equal(l1.temporal.mode, 'start_end');
+    assert.equal(l1.temporal.startField, 'event_start');
+    assert.equal(l1.temporal.startOp, '>=');
+    assert.equal(l1.temporal.endField, 'event_end');
+    assert.equal(l1.temporal.endOp, '<=');
+
+    const l2 = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.equal(l2.id, 'layer-temporal-start-only');
+    assert.equal(l2.temporalEnabled, true);
+    assert.ok(l2.temporal);
+    assert.equal(l2.temporal.enabled, true);
+    assert.equal(l2.temporal.mode, 'start');
+    assert.equal(l2.temporal.startField, 'sighted_at');
+    assert.equal(l2.temporal.startOp, '>');
+    assert.equal(l2.temporal.endField, undefined);
+
+    const l3 = loaded.layers[2] as import('../../../src/shared/types').ProjectLayerItem;
+    assert.equal(l3.id, 'layer-temporal-disabled');
+    assert.equal(l3.temporalEnabled, false);
+    assert.ok(l3.temporal);
+    assert.equal(l3.temporal.enabled, false);
+    assert.equal(l3.temporal.mode, 'end');
+    assert.equal(l3.temporal.endField, 'valid_until');
+    assert.equal(l3.temporal.endOp, '<');
   });
 });
 
