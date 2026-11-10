@@ -604,3 +604,44 @@ describe('TimeFilterWidget: Step Unit Dropdown Reactivity (Ticket #239)', () => 
     assert.strictEqual(targetHours, 1_000_000 + 7_200_000);
   });
 });
+
+describe('TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)', () => {
+  it('applies box-sizing border-box and vertical clearance padding on container and controls', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    // 1. Container padding and box-sizing
+    assert.ok(
+      markup.includes('padding:6px 10px 8px 10px') || markup.includes('padding: 6px 10px 8px 10px'),
+      'Container must define 8px bottom padding clearance'
+    );
+    assert.ok(
+      markup.includes('box-sizing:border-box') || markup.includes('box-sizing: border-box'),
+      'Container must define box-sizing: border-box'
+    );
+
+    // 2. Bottom bar clearance
+    assert.ok(
+      markup.includes('padding-bottom:2px') || markup.includes('padding-bottom: 2px'),
+      'Bottom control bar must define 2px padding-bottom clearance'
+    );
+
+    // 3. Step unit select border and box-sizing
+    assert.ok(
+      markup.includes('time-filter-unit-select'),
+      'Unit select dropdown must exist'
+    );
+    assert.ok(
+      markup.includes('border:1px solid var(--cartouche-theme-border, #cbd5e1)')
+      || markup.includes('border: 1px solid var(--cartouche-theme-border, #cbd5e1)'),
+      'Unit select must render theme border variable'
+    );
+
+    // 4. Step input border and box-sizing
+    assert.ok(
+      markup.includes('time-filter-step-input'),
+      'Step input must exist'
+    );
+  });
+});

@@ -194,7 +194,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',
-          padding: '6px 10px',
+          padding: '6px 10px 8px 10px',
+          boxSizing: 'border-box',
           background: '#f8fafc',
           color: '#000000',
           fontSize: '0.8333rem',
@@ -394,6 +395,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '12px',
+            paddingBottom: '2px',
+            boxSizing: 'border-box',
           }}>
           {/* Range: From */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -415,7 +418,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             />
           </div>
 
-          <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 2px' }} />
+          <div style={{ width: '1px', height: '18px', background: 'var(--cartouche-theme-border, #cbd5e1)', margin: '0 2px' }} />
 
           {/* Step Input with discrete 1.00 arrow buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -430,10 +433,11 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                 value={step}
                 onChange={handleStepChange}
                 style={{
+                  boxSizing: 'border-box',
                   width: '90px',
                   height: '24px',
                   padding: '2px 18px 2px 6px',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
                   borderRadius: '3px',
                   background: '#ffffff',
                   fontSize: '0.8333rem',
@@ -449,7 +453,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                   width: '16px',
                   display: 'flex',
                   flexDirection: 'column',
-                  borderLeft: '1px solid #cbd5e1',
+                  borderLeft: '1px solid var(--cartouche-theme-border, #cbd5e1)',
+                  boxSizing: 'border-box',
                 }}>
                 <button
                   type="button"
@@ -481,7 +486,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                     justifyContent: 'center',
                     background: '#ffffff',
                     border: 'none',
-                    borderTop: '1px solid #cbd5e1',
+                    borderTop: '1px solid var(--cartouche-theme-border, #cbd5e1)',
                     padding: 0,
                     cursor: 'pointer',
                     lineHeight: 0,
@@ -498,9 +503,10 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               value={unit}
               onChange={handleUnitChange}
               style={{
+                boxSizing: 'border-box',
                 height: '24px',
                 padding: '2px 6px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
                 borderRadius: '3px',
                 background: '#ffffff',
                 fontSize: '0.8333rem',
