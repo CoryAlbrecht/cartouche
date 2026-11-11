@@ -7,6 +7,7 @@
  * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
+ * @see {@link isProjectDirtySignal}
  * @see {@link computeTimeFilterWidgetMinHeight}
  * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link stepTemporalTimestamp}
@@ -21,7 +22,7 @@
  * @see {@link Icon}
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -48,7 +49,14 @@ const jiti = createJiti(import.meta.url, {
 });
 
 const React = jiti('react') as typeof import('react');
+const { act } = React;
+const { createRoot } = jiti('react-dom/client') as typeof import('react-dom/client');
+import type { Root } from 'react-dom/client';
 const { renderToStaticMarkup } = jiti('react-dom/server') as typeof import('react-dom/server');
+
+const { isProjectDirtySignal } = jiti(
+  '@renderer/state/projectSignals'
+) as typeof import('@renderer/state/projectSignals');
 
 const { widgetComponents } = jiti(
   '@renderer/workbench/widgetRegistry'
@@ -1850,6 +1858,468 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
       assert.ok(
         !sliderMatch[0].includes('accent-color') && !sliderMatch[0].includes('accentColor'),
         'Slider input element must not include conflicting inline accentColor'
+      );
+    });
+  });
+
+  describe('TimeFilterWidget: Project Dirty State on Range, Slider, and Transport Changes (Ticket #257)', () => {
+    /**
+     * @class MockElement
+     * @description Headless MockElement implementation for React 19 testing in Node.js.
+     */
+    class MockElement {
+      nodeType = 1;
+      tagName: string;
+      nodeName: string;
+      ownerDocument: any = null;
+      parentNode: any = null;
+      childNodes: any[] = [];
+      style: Record<string, string> & {
+        setProperty: (name: string, val: string) => void;
+        removeProperty: (name: string) => void;
+        getPropertyValue: (name: string) => string;
+        cssText: string;
+      };
+      className = '';
+      attributes: Record<string, string> = {};
+      eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+      disabled = false;
+      value = '';
+      multiple = false;
+      get options(): any[] {
+        return this.childNodes.filter((c) => c && c.tagName === 'OPTION');
+      }
+      get selectedOptions(): any[] {
+        return this.options.filter((o) => o.selected);
+      }
+      attachEvent(evt: string, handler: (e: any) => void) {
+        this.addEventListener(evt, handler);
+      }
+      detachEvent(evt: string, handler: (e: any) => void) {
+        this.removeEventListener(evt, handler);
+      }
+
+      constructor(tag = 'div') {
+        this.tagName = tag.toUpperCase();
+        this.nodeName = tag.toUpperCase();
+        const styleObj: Record<string, string> = { cssText: '' };
+        this.style = Object.assign(styleObj, {
+          cssText: '',
+          setProperty: (name: string, val: string) => {
+            styleObj[name] = val;
+          },
+          removeProperty: (name: string) => {
+            delete styleObj[name];
+          },
+          getPropertyValue: (name: string) => styleObj[name] || '',
+        });
+      }
+
+      setAttribute(key: string, val: string): void {
+        this.attributes[key] = String(val);
+        if (key === 'class') {
+          this.className = String(val);
+        }
+        if (key === 'disabled') {
+          this.disabled = true;
+        }
+        if (key === 'value') {
+          this.value = String(val);
+        }
+      }
+
+      getAttribute(key: string): string | null {
+        if (key === 'disabled' && this.disabled) return '';
+        if (key === 'value') return this.value;
+        return this.attributes[key] ?? null;
+      }
+
+      hasAttribute(key: string): boolean {
+        if (key === 'disabled') return this.disabled;
+        return key in this.attributes;
+      }
+
+      removeAttribute(key: string): void {
+        delete this.attributes[key];
+        if (key === 'disabled') {
+          this.disabled = false;
+        }
+      }
+
+      appendChild(child: any): any {
+        this.childNodes.push(child);
+        child.parentNode = this;
+        return child;
+      }
+
+      removeChild(child: any): any {
+        this.childNodes = this.childNodes.filter((c) => c !== child);
+        child.parentNode = null;
+        return child;
+      }
+
+      insertBefore(newChild: any, refChild: any): any {
+        const idx = this.childNodes.indexOf(refChild);
+        if (idx !== -1) {
+          this.childNodes.splice(idx, 0, newChild);
+        } else {
+          this.childNodes.push(newChild);
+        }
+        newChild.parentNode = this;
+        return newChild;
+      }
+
+      addEventListener(type: string, cb: (e: any) => void, opts?: any): void {
+        const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+        if (!this.eventListeners[type]) this.eventListeners[type] = [];
+        this.eventListeners[type].push({ cb, capture });
+      }
+
+      removeEventListener(type: string, cb: (e: any) => void): void {
+        if (!this.eventListeners[type]) return;
+        this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+      }
+
+      dispatchEvent(event: any): boolean {
+        event.target = event.target || this;
+        event.currentTarget = this;
+        const origStop = event.stopPropagation;
+        event.stopPropagation = () => {
+          event.cancelBubble = true;
+          if (origStop) origStop.call(event);
+        };
+        const listeners = (this.eventListeners[event.type] || []).slice();
+        for (const { cb } of listeners) {
+          cb(event);
+        }
+        if (event.bubbles !== false && this.parentNode && !event.cancelBubble) {
+          this.parentNode.dispatchEvent(event);
+        }
+        return !event.defaultPrevented;
+      }
+
+      focus(): void {
+        if (this.ownerDocument) this.ownerDocument.activeElement = this;
+        const focusEv = { type: 'focus', target: this, currentTarget: this, bubbles: false, cancelable: false };
+        this.dispatchEvent(focusEv);
+        const focusInEv = { type: 'focusin', target: this, currentTarget: this, bubbles: true, cancelable: false };
+        this.dispatchEvent(focusInEv);
+      }
+
+      blur(): void {
+        const blurEv = { type: 'blur', target: this, currentTarget: this, bubbles: false, cancelable: false };
+        this.dispatchEvent(blurEv);
+      }
+
+      select(): void {}
+
+      getBoundingClientRect() {
+        return { left: 0, top: 0, right: 100, bottom: 20, width: 100, height: 20, x: 0, y: 0 };
+      }
+    }
+
+    let mockDoc: any;
+    let mockContainer: MockElement;
+    let mockRoot: Root | null = null;
+
+    function setupMockDom(): void {
+      const documentElement = new MockElement('html');
+      const body = new MockElement('body');
+      documentElement.appendChild(body);
+
+      mockDoc = {
+        nodeType: 9,
+        documentElement,
+        body,
+        createElement: (tag: string) => {
+          const el = new MockElement(tag);
+          el.ownerDocument = mockDoc;
+          return el;
+        },
+        createElementNS: (_ns: string, tag: string) => {
+          const el = new MockElement(tag);
+          el.ownerDocument = mockDoc;
+          return el;
+        },
+        createTextNode: (text: string) => ({
+          nodeType: 3,
+          nodeValue: text,
+          textContent: text,
+          ownerDocument: mockDoc,
+          parentNode: null,
+        }),
+        createComment: (data: string) => ({
+          nodeType: 8,
+          data,
+          ownerDocument: mockDoc,
+          parentNode: null,
+        }),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        defaultView: null as any,
+      };
+      documentElement.ownerDocument = mockDoc;
+      body.ownerDocument = mockDoc;
+
+      const win = {
+        innerWidth: 1024,
+        innerHeight: 768,
+        document: mockDoc,
+        HTMLIFrameElement: class {},
+        HTMLElement: MockElement,
+        Element: MockElement,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        getSelection: () => ({
+          removeAllRanges: () => {},
+          addRange: () => {},
+        }),
+      };
+      mockDoc.defaultView = win;
+
+      (globalThis as any).ResizeObserver = class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      };
+      (globalThis as any).document = mockDoc;
+      (globalThis as any).window = win;
+      (globalThis as any).HTMLIFrameElement = class {};
+      (globalThis as any).HTMLElement = MockElement;
+      (globalThis as any).Element = MockElement;
+      (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+      (globalThis as any).getSelection = win.getSelection;
+
+      mockContainer = mockDoc.createElement('div');
+      body.appendChild(mockContainer);
+      mockRoot = createRoot(mockContainer as any);
+    }
+
+    function tearDownMockDom(): void {
+      if (mockRoot) {
+        act(() => {
+          mockRoot?.unmount();
+        });
+        mockRoot = null;
+      }
+      delete (globalThis as any).document;
+      delete (globalThis as any).window;
+      delete (globalThis as any).ResizeObserver;
+    }
+
+    function findNodeByPredicate(rootNode: MockElement, pred: (el: MockElement) => boolean): MockElement | null {
+      if (pred(rootNode)) return rootNode;
+      for (const child of rootNode.childNodes) {
+        if (child && child.nodeType === 1) {
+          const found = findNodeByPredicate(child, pred);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function findAllNodesByPredicate(rootNode: MockElement, pred: (el: MockElement) => boolean): MockElement[] {
+      const result: MockElement[] = [];
+      if (pred(rootNode)) result.push(rootNode);
+      for (const child of rootNode.childNodes) {
+        if (child && child.nodeType === 1) {
+          result.push(...findAllNodesByPredicate(child, pred));
+        }
+      }
+      return result;
+    }
+
+    beforeEach(() => {
+      resetTimeFilterState();
+      isProjectDirtySignal.value = false;
+      setupMockDom();
+    });
+
+    afterEach(() => {
+      tearDownMockDom();
+    });
+
+    it('sets isProjectDirtySignal.value = true when From: timestamp spinner changes', () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(2000, 3000);
+      isProjectDirtySignal.value = false;
+
+      act(() => {
+        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+      });
+
+      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
+
+      // Find all TimestampSpinner up buttons (first is From:, second is To:)
+      const upButtons = findAllNodesByPredicate(mockContainer, (n) =>
+        Boolean(n.className?.includes('timestamp-spinner-btn-up'))
+      );
+      assert.ok(upButtons.length >= 2, 'Must locate at least 2 TimestampSpinner up buttons (From and To)');
+      const fromUpBtn = upButtons[0];
+
+      act(() => {
+        fromUpBtn.dispatchEvent({ type: 'click', bubbles: true });
+      });
+
+      assert.strictEqual(
+        isProjectDirtySignal.value,
+        true,
+        'Changing the From: timestamp spinner must set isProjectDirtySignal.value = true'
+      );
+    });
+
+    it('sets isProjectDirtySignal.value = true when To: timestamp spinner changes', () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(2000, 3000);
+      isProjectDirtySignal.value = false;
+
+      act(() => {
+        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+      });
+
+      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
+
+      const upButtons = findAllNodesByPredicate(mockContainer, (n) =>
+        Boolean(n.className?.includes('timestamp-spinner-btn-up'))
+      );
+      assert.ok(upButtons.length >= 2, 'Must locate at least 2 TimestampSpinner up buttons (From and To)');
+      const toUpBtn = upButtons[1];
+
+      act(() => {
+        toUpBtn.dispatchEvent({ type: 'click', bubbles: true });
+      });
+
+      assert.strictEqual(
+        isProjectDirtySignal.value,
+        true,
+        'Changing the To: timestamp spinner must set isProjectDirtySignal.value = true'
+      );
+    });
+
+    it('sets isProjectDirtySignal.value = true when clicking the Auto-Range button', async () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(2000, 3000);
+      isProjectDirtySignal.value = false;
+
+      act(() => {
+        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+      });
+
+      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
+
+      const autoRangeBtn = findNodeByPredicate(mockContainer, (n) =>
+        n.getAttribute('aria-label') === 'Auto-calculate Range from Active Temporal Layers'
+      );
+      assert.ok(autoRangeBtn, 'Auto-Range button must be found');
+
+      (globalThis as any).window.electronAPI = {
+        queryExtent: async () => null,
+      };
+
+      await act(async () => {
+        autoRangeBtn.dispatchEvent({ type: 'click', bubbles: true });
+        // Flush microtasks and scheduler turns
+        for (let i = 0; i < 5; i++) {
+          await Promise.resolve();
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      assert.strictEqual(
+        isProjectDirtySignal.value,
+        true,
+        'Clicking the Auto-Range button must set isProjectDirtySignal.value = true'
+      );
+    });
+
+    it('sets isProjectDirtySignal.value = true when scrubbing or changing the timeline slider', () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(2000, 3000);
+      isProjectDirtySignal.value = false;
+
+      act(() => {
+        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+      });
+
+      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
+
+      const slider = findNodeByPredicate(mockContainer, (n) =>
+        n.getAttribute('aria-label') === 'Time Filter Scrubber'
+      );
+      assert.ok(slider, 'Timeline slider must be found');
+
+      act(() => {
+        slider.focus();
+      });
+      slider.value = '3500';
+      act(() => {
+        slider.dispatchEvent({ type: 'keydown', key: 'ArrowRight', bubbles: true });
+        if (!isProjectDirtySignal.value) {
+          const propsKey = Object.keys(slider).find((k) => k.startsWith('__reactProps'));
+          if (propsKey && (slider as any)[propsKey]?.onChange) {
+            (slider as any)[propsKey].onChange({ target: { value: '3500' } });
+          }
+        }
+      });
+
+      assert.strictEqual(
+        isProjectDirtySignal.value,
+        true,
+        'Scrubbing or changing the timeline slider must set isProjectDirtySignal.value = true'
+      );
+    });
+
+    it('sets isProjectDirtySignal.value = true when clicking each of the 4 VCR transport buttons', () => {
+      const transportButtons = [
+        'Jump to Start',
+        'Step Backward',
+        'Step Forward',
+        'Jump to End',
+      ];
+
+      for (const btnLabel of transportButtons) {
+        // Reset range and set frame comfortably in the middle so all transport buttons are enabled
+        setTimeFilterRange(1000, 5000);
+        setTimeFilterFrame(2500, 3000);
+        isProjectDirtySignal.value = false;
+
+        act(() => {
+          mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+        });
+
+        assert.strictEqual(isProjectDirtySignal.value, false, `Project must be clean before clicking ${btnLabel}`);
+
+        const btn = findNodeByPredicate(mockContainer, (n) =>
+          n.getAttribute('aria-label') === btnLabel
+        );
+        assert.ok(btn, `VCR button "${btnLabel}" must be found`);
+        assert.strictEqual(btn.hasAttribute('disabled'), false, `VCR button "${btnLabel}" must be enabled`);
+
+        act(() => {
+          btn.dispatchEvent({ type: 'click', bubbles: true });
+        });
+
+        assert.strictEqual(
+          isProjectDirtySignal.value,
+          true,
+          `Clicking "${btnLabel}" must set isProjectDirtySignal.value = true`
+        );
+      }
+    });
+
+    it('does not set isProjectDirtySignal on programmatic signal updates or project deserialization', () => {
+      isProjectDirtySignal.value = false;
+
+      // Programmatic signal modifications
+      setTimeFilterRange(500, 1500);
+      setTimeFilterFrame(600, 700);
+      setTimeFilterStep(2, 'Hours');
+      resetTimeFilterState();
+
+      assert.strictEqual(
+        isProjectDirtySignal.value,
+        false,
+        'Direct programmatic signal updates must not transition Project Dirty State'
       );
     });
   });

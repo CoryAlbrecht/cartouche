@@ -17,6 +17,7 @@
  * @see {@link computeTimeFilterWidgetMinHeight}
  * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link Icon}
+ * @see {@link isProjectDirtySignal}
  */
 
 import React, {
@@ -57,6 +58,7 @@ import {
   setTimeFilterRange,
   setTimeFilterStep,
 } from "../../state/timeFilterSignals";
+import { isProjectDirtySignal } from "../../state/projectSignals";
 import {
   stepTemporalTimestamp,
   computeFrameEnd,
@@ -163,6 +165,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
   // Auto-Range button [B]
   const handleAutoRange = useCallback(async () => {
+    isProjectDirtySignal.value = true;
     const range = await autoDetectTemporalRange();
     if (range) {
       setTimeFilterRange(range.from, range.to);
@@ -181,6 +184,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const maxRange = timeFilterRangeEndSignal.value;
     const end = computeFrameEnd(start, s, u, maxRange);
     setTimeFilterFrame(start, end);
+    isProjectDirtySignal.value = true;
   }, []);
 
   // Step Backward button [D]
@@ -194,6 +198,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const clampedStart = Math.max(minRange, target);
     const clampedEnd = computeFrameEnd(clampedStart, s, u, maxRange);
     setTimeFilterFrame(clampedStart, clampedEnd);
+    isProjectDirtySignal.value = true;
   }, []);
 
   // Step Forward button [E]
@@ -207,6 +212,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const clampedStart = Math.max(minRange, Math.min(maxRange, target));
     const clampedEnd = computeFrameEnd(clampedStart, s, u, maxRange);
     setTimeFilterFrame(clampedStart, clampedEnd);
+    isProjectDirtySignal.value = true;
   }, []);
 
   // Jump to End button [F]
@@ -218,6 +224,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const start = Math.max(minRange, stepTemporalTimestamp(maxRange, -s, u));
     const end = computeFrameEnd(start, s, u, maxRange);
     setTimeFilterFrame(start, end);
+    isProjectDirtySignal.value = true;
   }, []);
 
   // Slider continuous scrubbing with 300ms debounce and calendar-aware step snapping
@@ -230,6 +237,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
       const maxRange = timeFilterRangeEndSignal.value;
       const val = snapToTemporalStep(rawVal, minRange, maxRange, s, u);
       setScrubbingValue(val);
+      isProjectDirtySignal.value = true;
       if (debounceTimerRef.current !== null) {
         clearTimeout(debounceTimerRef.current);
       }
@@ -245,11 +253,13 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
   // From range spinner change
   const handleFromChange = useCallback((newFrom: number) => {
     setTimeFilterRange(newFrom, timeFilterRangeEndSignal.value);
+    isProjectDirtySignal.value = true;
   }, []);
 
   // To range spinner change
   const handleToChange = useCallback((newTo: number) => {
     setTimeFilterRange(timeFilterRangeStartSignal.value, newTo);
+    isProjectDirtySignal.value = true;
   }, []);
 
   // Step number input change
