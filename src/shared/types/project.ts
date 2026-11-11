@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
 
@@ -191,7 +191,7 @@ export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLaye
  * @property {import('./layers').LayerCapabilities} [capabilities] - Layer editing and mutation capabilities.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
 
@@ -275,13 +275,21 @@ export interface LayerTemporalConfig {
 
 /**
  * Supported time filter unit denominations for temporal stepping and range intervals.
- * @typedef {'Years' | 'Months' | 'Days' | 'Hours' | 'Minutes' | 'Seconds'} TimeFilterUnit
+ * @typedef {'Years' | 'Months' | 'Weeks' | 'Days' | 'Hours' | 'Minutes' | 'Seconds' | 'Milliseconds'} TimeFilterUnit
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
-export type TimeFilterUnit = 'Years' | 'Months' | 'Days' | 'Hours' | 'Minutes' | 'Seconds';
+export type TimeFilterUnit =
+  | 'Years'
+  | 'Months'
+  | 'Weeks'
+  | 'Days'
+  | 'Hours'
+  | 'Minutes'
+  | 'Seconds'
+  | 'Milliseconds';
 
 /**
  * Structured project-level time filter configuration options for workbench transport control and viewport filtering.
@@ -359,7 +367,7 @@ export interface ProjectStyleItem {
  * @property {Record<string, unknown>} [customProperties] - Extensible project properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
 export interface ProjectModel {

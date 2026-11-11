@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -71,6 +71,10 @@ import {
   setTimeFilterStep,
   resetTimeFilterState,
 } from './timeFilterSignals';
+import {
+  autoDetectTemporalRange,
+  computeFrameEnd,
+} from '../map/timeFilterMath';
 import type { ProjectTimeFilterConfig } from '../../shared/types';
 import {
   getLayerToolbarPreference,
@@ -306,7 +310,7 @@ export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> 
  * @description Map of toolbar IDs to visibility boolean flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, boolean>>}
  */
@@ -323,7 +327,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
  * @description Map of toolbar IDs to assigned outer panel dock zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarId, ToolbarZone>>}
  */
@@ -374,7 +378,7 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
  * @description Map of outer panel dock zones to ordered lists of docked toolbar IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
@@ -674,7 +678,7 @@ export const isWindowMaximizedSignal = signal<boolean>(false);
  * @description Dockview panel open/closed visibility state signal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {Signal<{ attributes: boolean; layers: boolean; timeFilter?: boolean }>}
  */
@@ -861,7 +865,7 @@ export const layersSignal = signal<GisLayer[]>(initialLayers);
  * @description Set signal of selected spatial feature record IDs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {Signal<Set<string | number>>}
  */
@@ -944,7 +948,7 @@ export function getLayerDisplayName(layer: GisLayer): string {
  * Checks layersSignal first, then falls back to projectLayersSignal or projectTreeSignal item.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
@@ -1187,7 +1191,7 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
  * appending to end of row (max + 1) when unhidden, and persisting layout coordinates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @returns {void}
@@ -1270,7 +1274,7 @@ export function toggleToolbar(id: ToolbarId): void {
  * inserts newly created rows, auto-compacts vacated rows, and persists coordinate updates via IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {ToolbarId} id - Target toolbar ID.
  * @param {ToolbarZone} targetZone - Destination outer panel zone ('top' | 'bottom' | 'left' | 'right').
@@ -1818,7 +1822,7 @@ export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayer
  * @description Recursively extracts flat LayerDescriptor array and resolved style map from project hierarchy items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-25
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Project tree items.
  * @param {ProjectStyleItem[]} [sharedStyles] - Optional project shared style definitions.
@@ -1855,6 +1859,8 @@ function extractDescriptorsAndStyles(
           style: item.style,
           crs: item.crs,
           ...(item.fields ? { fields: item.fields } : {}),
+          ...(item.temporal ? { temporal: item.temporal } : {}),
+          ...((item as any).temporalEnabled !== undefined ? { temporalEnabled: (item as any).temporalEnabled } : {}),
           customProperties: item.customProperties,
           extent: (item as any).extent || [0, 0, 0, 0],
           featureCount: (item as any).featureCount || 0
@@ -1875,7 +1881,7 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
@@ -1925,20 +1931,51 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
       };
     }
 
+    const hasTemporalLayer = descriptors.some(
+      (l) => (l.temporal ? l.temporal.enabled : l.temporalEnabled) === true
+    );
+
     if (project.timeFilter) {
       const tf = project.timeFilter;
       setTimeFilterActive(tf.enabled === true);
-      if (tf.from !== undefined && tf.to !== undefined) {
-        setTimeFilterRange(tf.from, tf.to);
-      }
-      if (tf.current !== undefined) {
-        setTimeFilterFrame(tf.current, tf.current);
-      } else if (tf.from !== undefined) {
-        setTimeFilterFrame(tf.from, tf.from);
+      const isRangeUninitialized =
+        tf.from === undefined || tf.to === undefined || (tf.from === 0 && tf.to === 0);
+
+      if (!isRangeUninitialized) {
+        setTimeFilterRange(tf.from!, tf.to!);
+        const stepVal = tf.step !== undefined ? tf.step : 1.0;
+        const unitVal = tf.unit || 'Days';
+        const curStart = tf.current !== undefined ? tf.current : tf.from!;
+        const curEnd = computeFrameEnd(curStart, stepVal, unitVal, tf.to!);
+        setTimeFilterFrame(curStart, curEnd);
+      } else if (hasTemporalLayer) {
+        void autoDetectTemporalRange(descriptors).then((range) => {
+          if (range) {
+            setTimeFilterRange(range.from, range.to);
+            const stepVal = tf.step !== undefined ? tf.step : 1.0;
+            const unitVal = tf.unit || 'Days';
+            const curStart = range.from;
+            const curEnd = computeFrameEnd(curStart, stepVal, unitVal, range.to);
+            setTimeFilterFrame(curStart, curEnd);
+          }
+        }).catch((err) => {
+          logging.warn("Failed to auto-detect temporal range on project load", err, { scope: "gisSignals" });
+        });
       }
       if (tf.step !== undefined) {
         setTimeFilterStep(tf.step, tf.unit || 'Days');
       }
+    } else if (hasTemporalLayer) {
+      void autoDetectTemporalRange(descriptors).then((range) => {
+        if (range) {
+          setTimeFilterRange(range.from, range.to);
+          const curStart = range.from;
+          const curEnd = computeFrameEnd(curStart, 1.0, 'Days', range.to);
+          setTimeFilterFrame(curStart, curEnd);
+        }
+      }).catch((err) => {
+        logging.warn("Failed to auto-detect temporal range on project load", err, { scope: "gisSignals" });
+      });
     } else {
       resetTimeFilterState();
     }
@@ -2020,7 +2057,7 @@ export async function openProjectAction(): Promise<void> {
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2098,7 +2135,7 @@ export async function saveProjectAction(): Promise<boolean> {
  * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */

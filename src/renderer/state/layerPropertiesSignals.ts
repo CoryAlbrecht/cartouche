@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -45,6 +45,18 @@ import {
   applyStyleToLayers,
   updateLayerFields,
 } from "./projectSignals";
+import {
+  setTimeFilterRange,
+  setTimeFilterFrame,
+  timeFilterFrameStartSignal,
+  timeFilterFrameEndSignal,
+  timeFilterStepSignal,
+  timeFilterUnitSignal,
+} from "./timeFilterSignals";
+import {
+  autoDetectTemporalRange,
+  computeFrameEnd,
+} from "../map/timeFilterMath";
 import { logging } from "../../shared/logging";
 
 /**
@@ -191,7 +203,7 @@ export const isLayerPropertiesLoadingSignal: Signal<boolean> =
  * @description Holds uncommitted draft modifications for the active layer properties session across tab transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @type {Signal<LayerPropertiesDraft>}
  */
@@ -285,7 +297,7 @@ export function collectAllLayerIds(
  * @description Opens or refocuses the modeless LayerPropertiesDialog for the specified layer, querying live metadata and synchronizing activeLayerIdSignal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {string} layerId - Unique layer identifier to inspect.
  * @returns {Promise<void>}
@@ -481,7 +493,7 @@ export async function openLayerPropertiesDialog(
  * @description Closes the LayerPropertiesDialog and resets session state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -617,7 +629,7 @@ export function cancelLayerPropertiesEdits(): void {
  * @description Updates a draft property in the active layer properties session.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {Partial<LayerPropertiesDraft>} updates - Changed draft properties.
  * @returns {void}
@@ -821,7 +833,7 @@ export function updateLayerPropertiesInTree(
  * @description Commits active draft modifications (name, ID, CRS, filter, temporalEnabled, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -948,6 +960,27 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
       temporalConfig,
       temporalEnabled
     );
+  }
+
+  // 7. If dynamic temporal control is enabled on the layer, re-evaluate or expand global temporal range
+  const isTemporalActive = draft.temporal ? draft.temporal.enabled : draft.temporalEnabled;
+  if (isTemporalActive) {
+    try {
+      const range = await autoDetectTemporalRange();
+      if (range) {
+        setTimeFilterRange(range.from, range.to);
+        const curStart = timeFilterFrameStartSignal.value;
+        const curEnd = timeFilterFrameEndSignal.value;
+        if (curStart < range.from || curStart > range.to || curEnd < range.from || curEnd > range.to) {
+          const s = timeFilterStepSignal.value;
+          const u = timeFilterUnitSignal.value;
+          const nextEnd = computeFrameEnd(range.from, s, u, range.to);
+          setTimeFilterFrame(range.from, nextEnd);
+        }
+      }
+    } catch (err) {
+      logging.warn("Failed to auto-detect temporal range after layer properties edit", err, { scope: "layerProperties" });
+    }
   }
 
   // Refresh detailed info if available

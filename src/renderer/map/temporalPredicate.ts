@@ -4,7 +4,7 @@
  * @description Pure temporal predicate evaluation engine testing vector feature attributes against the active temporal frame window.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link evaluateTemporalPredicate}
  * @see {@link parseTemporalValue}
@@ -15,20 +15,23 @@ import type { LayerTemporalConfig, LayerTemporalMode } from '../../shared/types/
 import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
+  timeFilterFrameEndSignal,
 } from '../state/timeFilterSignals';
 
 /**
  * @typedef {Object} TemporalPredicateContext
  * @description Execution context overrides for temporal predicate evaluation, enabling deterministic unit testing and custom viewport frames.
  * @property {number} [frameStartUtc] - Explicit frame start timestamp in UTC epoch milliseconds (overrides timeFilterFrameStartSignal if provided).
+ * @property {number} [frameEndUtc] - Explicit frame end timestamp in UTC epoch milliseconds (overrides timeFilterFrameEndSignal if provided).
  * @property {boolean} [globalEnabled] - Explicit global time filter active toggle (overrides isTimeFilterActiveSignal if provided).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
 export interface TemporalPredicateContext {
   frameStartUtc?: number;
+  frameEndUtc?: number;
   globalEnabled?: boolean;
 }
 
@@ -37,7 +40,7 @@ export interface TemporalPredicateContext {
  * @description Normalizes diverse feature attribute temporal representations (epoch numbers, ISO strings, Date objects) into UTC epoch milliseconds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {unknown} value - Raw feature attribute value.
  * @returns {number | null} Normalized UTC epoch milliseconds, or null if unparseable, null, undefined, or empty.
@@ -85,7 +88,7 @@ export function parseTemporalValue(value: unknown): number | null {
  * @description Extracts a normalized property dictionary from an OpenLayers Feature or plain property bag.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {unknown} featureOrProps - OpenLayers Feature instance or raw key-value dictionary.
  * @returns {Record<string, unknown> | null} Attribute dictionary, or null if invalid.
@@ -111,7 +114,7 @@ export function extractFeatureTemporalProperties(
  * Features failing the condition, or containing missing/unparseable values, evaluate to false (hidden).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {unknown} featureOrProps - OpenLayers Feature or attribute key-value map.
  * @param {LayerTemporalConfig | undefined | null} config - Layer temporal configuration.
@@ -138,7 +141,7 @@ export function evaluateTemporalPredicate(
     return true;
   }
 
-  // Resolve current active frame start (T_frame_start)
+  // Resolve current active frame window [T_frame_start, T_frame_end]
   const frameStart =
     context?.frameStartUtc !== undefined
       ? context.frameStartUtc
@@ -147,6 +150,18 @@ export function evaluateTemporalPredicate(
   if (frameStart === undefined || frameStart === null || !Number.isFinite(frameStart)) {
     return false;
   }
+
+  const frameEnd =
+    context?.frameEndUtc !== undefined
+      ? context.frameEndUtc
+      : (context?.frameStartUtc !== undefined
+        ? context.frameStartUtc
+        : timeFilterFrameEndSignal.value);
+
+  const effectiveEnd =
+    frameEnd !== undefined && frameEnd !== null && Number.isFinite(frameEnd)
+      ? Math.max(frameStart, frameEnd)
+      : frameStart;
 
   const props = extractFeatureTemporalProperties(featureOrProps);
   if (!props) {
@@ -162,7 +177,7 @@ export function evaluateTemporalPredicate(
     const rawVal = props[config.startField];
     const fStart = parseTemporalValue(rawVal);
     if (fStart === null) return false;
-    return startOp === '>=' ? frameStart >= fStart : frameStart > fStart;
+    return startOp === '>=' ? effectiveEnd >= fStart : effectiveEnd > fStart;
   };
 
   const evalEnd = (): boolean => {
