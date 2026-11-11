@@ -8,6 +8,7 @@
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link computeTimeFilterWidgetMinHeight}
+ * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
@@ -86,7 +87,11 @@ const { formatUtcTimestamp } = jiti(
   '@renderer/components/common/TimestampSpinner'
 ) as typeof import('@renderer/components/common/TimestampSpinner');
 
-const { TimeFilterWidget, computeTimeFilterWidgetMinHeight } = jiti(
+const {
+  TimeFilterWidget,
+  computeTimeFilterWidgetMinHeight,
+  TIME_FILTER_SCRUB_DEBOUNCE_MS,
+} = jiti(
   '@renderer/workbench/widgets/TimeFilterWidget'
 ) as typeof import('@renderer/workbench/widgets/TimeFilterWidget');
 
@@ -1063,5 +1068,110 @@ describe('TimeFilterWidget: Dynamic minHeight Calculation (Ticket #245)', () => 
     );
 
     assert.ok(markup.length > 0, 'TimeFilterWidget must accept custom minHeight override');
+  });
+});
+
+describe('TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)', () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it('exports TIME_FILTER_SCRUB_DEBOUNCE_MS as 300ms', () => {
+    assert.strictEqual(
+      TIME_FILTER_SCRUB_DEBOUNCE_MS,
+      300,
+      'Debounce duration must be exactly 300ms'
+    );
+  });
+
+  it('disables timeline slider when range is uninitialized or invalid, and enables when rangeStart < rangeEnd', () => {
+    // 1. Uninitialized range [0, 0] -> slider is disabled
+    setTimeFilterRange(0, 0);
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes('time-filter-slider') && markup.includes('disabled=""'),
+      'Slider must be disabled when rangeStart >= rangeEnd'
+    );
+    assert.ok(
+      markup.includes('cursor:not-allowed') || markup.includes('cursor: not-allowed'),
+      'Disabled slider must style cursor: not-allowed'
+    );
+
+    // 2. Valid range [1000, 5000] -> slider is enabled
+    setTimeFilterRange(1000, 5000);
+    markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    const sliderTag = (markup.match(/<input[^>]*time-filter-slider[^>]*>/) || [''])[0];
+    assert.ok(
+      !sliderTag.includes('disabled'),
+      'Slider must be enabled when rangeStart < rangeEnd'
+    );
+    assert.ok(
+      markup.includes('cursor:pointer') || markup.includes('cursor: pointer'),
+      'Enabled slider must style cursor: pointer'
+    );
+  });
+
+  it('renders slider with real-time value and min/max boundaries matching active range', () => {
+    setTimeFilterRange(100_000, 500_000);
+    setTimeFilterFrame(250_000, 250_000);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('min="100000"'),
+      'Slider min must equal rangeStart'
+    );
+    assert.ok(
+      markup.includes('max="500000"'),
+      'Slider max must equal rangeEnd'
+    );
+    assert.ok(
+      markup.includes('value="250000"'),
+      'Slider value must equal current frame position'
+    );
+  });
+
+  it('debounces frame signal updates by 300ms to prevent spamming map viewport redraws', async () => {
+    setTimeFilterRange(0, 10_000);
+    setTimeFilterFrame(1000, 1000);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1000);
+
+    // Simulate slider scrub scheduling
+    let timer: any = null;
+    const targetScrubVal = 5000;
+
+    // Simulate fast sequential scrub events
+    const simulateScrub = (val: number) => {
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setTimeFilterFrame(val, val);
+      }, TIME_FILTER_SCRUB_DEBOUNCE_MS);
+    };
+
+    simulateScrub(2000);
+    simulateScrub(3000);
+    simulateScrub(targetScrubVal);
+
+    // At 100ms, frame signal must not have updated yet (debouncing)
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.strictEqual(
+      timeFilterFrameStartSignal.value,
+      1000,
+      'Frame signal must NOT update prematurely before 300ms debounce expires'
+    );
+
+    // After 350ms total, the debounced update must have executed
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    assert.strictEqual(
+      timeFilterFrameStartSignal.value,
+      targetScrubVal,
+      'Frame signal must update to final scrub position once 300ms debounce completes'
+    );
   });
 });

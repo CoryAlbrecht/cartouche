@@ -12,12 +12,14 @@
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
  * @see {@link computeTimeFilterWidgetMinHeight}
+ * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link Icon}
  */
 
 import React, {
   useState,
   useEffect,
+  useRef,
   useCallback,
   type ChangeEvent,
   type KeyboardEvent,
@@ -56,6 +58,17 @@ import {
   MIN_TIME_FILTER_STEP,
 } from '../../map/timeFilterMath';
 import type { TimeFilterUnit } from '../../../shared/types';
+
+/**
+ * @constant {number} TIME_FILTER_SCRUB_DEBOUNCE_MS
+ * @description Debounce duration in milliseconds for timeline slider scrubbing to prevent flooding map redraw passes.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @default 300
+ */
+export const TIME_FILTER_SCRUB_DEBOUNCE_MS = 300;
 
 /**
  * @function computeTimeFilterWidgetMinHeight
@@ -109,6 +122,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
   const unit = timeFilterUnitSignal.value;
 
   const [stepText, setStepText] = useState<string>(() => String(timeFilterStepSignal.value));
+  const [scrubbingValue, setScrubbingValue] = useState<number | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Synchronize local input text state with external signal changes
   useEffect(() => {
@@ -117,6 +132,15 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
       setStepText(String(step));
     }
   }, [step]);
+
+  // Clean up any pending slider debounce timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current !== null) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Toggle button [A]
   const handleToggleActive = useCallback(() => {
@@ -169,11 +193,23 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     setTimeFilterFrame(end, end);
   }, []);
 
-  // Slider continuous scrubbing
+  // Slider continuous scrubbing with 300ms debounce
   const handleSliderChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
     if (Number.isFinite(val)) {
-      setTimeFilterFrame(val, val);
+      setScrubbingValue(val);
+      if (debounceTimerRef.current !== null) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        const curStart = timeFilterFrameStartSignal.value;
+        const curEnd = timeFilterFrameEndSignal.value;
+        const duration = Math.max(0, curEnd - curStart);
+        const nextEnd = duration > 0 ? Math.min(timeFilterRangeEndSignal.value, val + duration) : val;
+        setTimeFilterFrame(val, nextEnd);
+        setScrubbingValue(null);
+        debounceTimerRef.current = null;
+      }, TIME_FILTER_SCRUB_DEBOUNCE_MS);
     }
   }, []);
 
@@ -238,7 +274,13 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     setTimeFilterStep(timeFilterStepSignal.value, e.target.value as TimeFilterUnit);
   }, []);
 
-  const currentFrameLabel = `${formatUtcTimestamp(frameStart)} | ${formatUtcTimestamp(frameEnd)}`;
+  const displayedFrameStart = scrubbingValue !== null ? scrubbingValue : frameStart;
+  const frameDuration = Math.max(0, frameEnd - frameStart);
+  const displayedFrameEnd = scrubbingValue !== null
+    ? (frameDuration > 0 ? Math.min(rangeEnd, scrubbingValue + frameDuration) : scrubbingValue)
+    : frameEnd;
+
+  const currentFrameLabel = `${formatUtcTimestamp(displayedFrameStart)} | ${formatUtcTimestamp(displayedFrameEnd)}`;
 
   const sliderMin = rangeStart;
   const sliderMax = Math.max(rangeStart, rangeEnd);
@@ -452,7 +494,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             aria-label="Time Filter Scrubber"
             min={sliderMin}
             max={sliderMax}
-            value={frameStart}
+            value={displayedFrameStart}
             disabled={sliderDisabled}
             onChange={handleSliderChange}
             style={{
