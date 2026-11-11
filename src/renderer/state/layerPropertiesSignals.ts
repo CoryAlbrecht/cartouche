@@ -938,6 +938,18 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
     }
   }
 
+  // 6. Update layer dynamic temporal configuration across IPC
+  if (window.electronAPI?.updateLayerTemporalConfig) {
+    const temporalConfig = draft.temporal ? { ...draft.temporal } : undefined;
+    const temporalEnabled =
+      draft.temporal ? draft.temporal.enabled : draft.temporalEnabled;
+    await window.electronAPI.updateLayerTemporalConfig(
+      trimmedId,
+      temporalConfig,
+      temporalEnabled
+    );
+  }
+
   // Refresh detailed info if available
   if (layerDetailedInfoSignal.value) {
     layerDetailedInfoSignal.value = {

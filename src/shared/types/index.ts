@@ -443,6 +443,12 @@ export interface ElectronAPI {
   getLayerInfo?: (layerId: string) => Promise<import('./layers').LayerDetailedInfo>;
   /** @ipc layers:updateLayerFields */
   updateLayerFields?: (layerId: string, fields: import('./layers').LayerFieldInfo[]) => Promise<boolean>;
+  /** @ipc layers:updateLayerTemporalConfig */
+  updateLayerTemporalConfig?: (
+    layerId: string,
+    temporal?: import('./project').LayerTemporalConfig,
+    temporalEnabled?: boolean
+  ) => Promise<boolean>;
   /** @ipc layers:rekeyLayer */
   rekeyLayer?: (oldLayerId: string, newLayerId: string) => Promise<{ success: boolean; layerId: string }>;
   /** @ipc layers:setLayerStyle */

@@ -17,7 +17,7 @@ import { handleIpc, onIpc } from './ipc/registerIpcHandler';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { DropPosition, FileCategory, ProjectLayerStyleItem } from '@shared/types';
+import type { DropPosition, FileCategory, LayerTemporalConfig, ProjectLayerStyleItem } from '@shared/types';
 import { DIALOG_WINDOW_SPECS, type DialogWindowName } from '@shared/dialogs';
 import { PreferencesStore } from './api/ui/preferences/PreferencesStore';
 import { geospatialService } from './worker/GeospatialService';
@@ -36,7 +36,8 @@ import {
   setLayerStyle,
   stageFeatureEdit,
   updateDialogLocation,
-  updateLayerFields
+  updateLayerFields,
+  updateLayerTemporalConfig
 } from "./api/ApiFunctions";
 import { addLayers } from "./api/layers/addLayer";
 import {
@@ -708,6 +709,10 @@ function startApp(): void {
 
   handleIpc('layers:updateLayerFields', async (_event, layerId: string, fields: any[]) => {
     return await updateLayerFields(layerId, fields);
+  });
+
+  handleIpc('layers:updateLayerTemporalConfig', async (_event, layerId: string, temporal?: LayerTemporalConfig, temporalEnabled?: boolean) => {
+    return await updateLayerTemporalConfig(layerId, temporal, temporalEnabled);
   });
 
   handleIpc('gis:update-layer-fields', async (_event, layerId: string, fields: any[]) => {

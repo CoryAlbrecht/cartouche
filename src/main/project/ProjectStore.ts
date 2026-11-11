@@ -4,7 +4,7 @@
  * @description Central in-memory store maintaining authoritative active Cartouche project state in the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  */
@@ -21,7 +21,7 @@ import { logging } from '../../shared/logging';
  * @description In-memory store managing active Cartouche project state, active file path, and dirty modification flags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export class ProjectStore {
@@ -67,7 +67,7 @@ export class ProjectStore {
    * @description Recursively deserializes an IPC-safe project layer or group item into a runtime LayerTreeNode.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-29
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {ProjectLayerItem | ProjectGroupItem} item - Serialized layer or group DTO.
    * @returns {LayerTreeNode} Deserialized runtime layer or group node.
@@ -99,6 +99,8 @@ export class ProjectStore {
     layer.crs = layerItem.crs;
     layer.fields = layerItem.fields;
     layer.customProperties = layerItem.customProperties;
+    layer.temporalEnabled = layerItem.temporalEnabled;
+    layer.temporal = layerItem.temporal;
 
     // Resolve file format descriptor if registered
     const descriptor = (layerItem.type ? fileTypeRegistry.getDescriptorById(layerItem.type) : undefined)

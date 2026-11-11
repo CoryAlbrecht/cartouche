@@ -4,12 +4,12 @@
  * @description Runtime representation of a physical spatial dataset loaded in memory.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
 import { LayerTreeNode } from './LayerTreeNode';
-import type { GeometryKind, FileTypeDescriptor, ProjectLayerStyleItem, OlLayerStyle, BoundingBox, LayerFieldInfo } from '@shared/types';
+import type { GeometryKind, FileTypeDescriptor, ProjectLayerStyleItem, OlLayerStyle, BoundingBox, LayerFieldInfo, LayerTemporalConfig } from '@shared/types';
 import { layerSessionRegistry } from '../LayerSessionRegistry';
 import { geospatialService } from '../../worker/GeospatialService';
 
@@ -18,7 +18,7 @@ import { geospatialService } from '../../worker/GeospatialService';
  * @description Manages state and native lifecycle of a single spatial layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-07
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @extends LayerTreeNode
  * @implements Disposable
@@ -40,6 +40,8 @@ export class Layer extends LayerTreeNode implements Disposable {
   public featureCount?: number;
   public fidColumn?: string;
   public capabilities?: import('@shared/types/layers').LayerCapabilities;
+  public temporalEnabled?: boolean;
+  public temporal?: LayerTemporalConfig;
 
   private nativeObject: unknown = null;
 

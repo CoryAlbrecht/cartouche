@@ -10,7 +10,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DropPosition, ElectronAPI, ProjectLayerStyleItem, StagedFeatureEdit } from '@shared/types';
+import type { DropPosition, ElectronAPI, LayerTemporalConfig, ProjectLayerStyleItem, StagedFeatureEdit } from '@shared/types';
 
 /**
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
@@ -83,6 +83,9 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:updateLayerFields */
   updateLayerFields: (layerId: string, fields: any[]) =>
     ipcRenderer.invoke('layers:updateLayerFields', layerId, fields),
+  /** @ipc layers:updateLayerTemporalConfig */
+  updateLayerTemporalConfig: (layerId: string, temporal?: LayerTemporalConfig, temporalEnabled?: boolean) =>
+    ipcRenderer.invoke('layers:updateLayerTemporalConfig', layerId, temporal, temporalEnabled),
   /** @ipc layers:rekeyLayer */
   rekeyLayer: (oldLayerId: string, newLayerId: string) =>
     ipcRenderer.invoke('layers:rekeyLayer', oldLayerId, newLayerId),

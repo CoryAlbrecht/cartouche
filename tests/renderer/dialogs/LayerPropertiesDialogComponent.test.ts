@@ -689,6 +689,59 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert.equal(updatedDesc.temporal.enabled, true);
   });
 
+  it('commits dynamic temporal configuration across IPC via updateLayerTemporalConfig upon applyLayerPropertiesEdits (Ticket #254)', async () => {
+    let ipcCalled = false;
+    let ipcLayerId = '';
+    let ipcTemporal: any = null;
+    let ipcTemporalEnabled: boolean | undefined = undefined;
+
+    (globalThis as any).window.electronAPI.updateLayerTemporalConfig = async (
+      layerId: string,
+      temporal: any,
+      temporalEnabled?: boolean
+    ) => {
+      ipcCalled = true;
+      ipcLayerId = layerId;
+      ipcTemporal = temporal;
+      ipcTemporalEnabled = temporalEnabled;
+      return true;
+    };
+
+    const mockLayer: ProjectLayerItem = {
+      id: 'layer-temporal-ipc',
+      name: 'Temporal IPC Layer',
+      type: 'vector',
+      source: 'test-ipc.geojson',
+      visible: true,
+      temporalEnabled: false,
+    };
+    projectLayersSignal.value = [mockLayer];
+    projectTreeSignal.value = [mockLayer];
+
+    await openLayerPropertiesDialog('layer-temporal-ipc');
+
+    const updatedTemporal = {
+      enabled: true,
+      mode: 'start_end' as const,
+      startField: 'start_datetime',
+      startOp: '>=' as const,
+      endField: 'end_datetime',
+      endOp: '<=' as const,
+    };
+    updateLayerPropertiesDraft({
+      temporalEnabled: true,
+      temporal: updatedTemporal,
+    });
+
+    const success = await applyLayerPropertiesEdits();
+    assert.equal(success, true);
+
+    assert.equal(ipcCalled, true, 'window.electronAPI.updateLayerTemporalConfig must be invoked');
+    assert.equal(ipcLayerId, 'layer-temporal-ipc');
+    assert.deepEqual(ipcTemporal, updatedTemporal);
+    assert.equal(ipcTemporalEnabled, true);
+  });
+
   it('commits draft edits and updates isProjectDirtySignal via applyLayerPropertiesEdits', async () => {
     let rekeyedArgs: { oldId: string; newId: string } | null = null;
     (globalThis as any).window.electronAPI.rekeyLayer = async (oldId: string, newId: string) => {
