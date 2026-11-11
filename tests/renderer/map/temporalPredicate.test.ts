@@ -4,7 +4,7 @@
  * @description Unit tests for temporal predicate engine verifying Start Field, End Field, and Start and End Fields modes, comparison operators, boundary clamping, and null handling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link evaluateTemporalPredicate}
  * @see {@link parseTemporalValue}
@@ -288,6 +288,85 @@ describe('temporalPredicate: evaluateTemporalPredicate Modes & Operators (Ticket
       evaluateTemporalPredicate(olFeature, config, { frameStartUtc: in2027, globalEnabled: true }),
       false,
       'OpenLayers Feature outside interval must evaluate to false'
+    );
+  });
+
+  it('evaluates features correctly against an active frame duration window [T_start, T_end]', () => {
+    const config: LayerTemporalConfig = {
+      enabled: true,
+      mode: 'start_end',
+      startField: 'began',
+      endField: 'ended',
+      startOp: '>=',
+      endOp: '<=',
+    };
+
+    const feature = { began: 1000, ended: 2000 };
+
+    // 1. Frame window [500, 999]: feature hasn't started yet -> hidden
+    assert.strictEqual(
+      evaluateTemporalPredicate(feature, config, {
+        frameStartUtc: 500,
+        frameEndUtc: 999,
+        globalEnabled: true,
+      }),
+      false,
+      'Feature starting after frame window must be hidden'
+    );
+
+    // 2. Frame window [2001, 2500]: feature already ended -> hidden
+    assert.strictEqual(
+      evaluateTemporalPredicate(feature, config, {
+        frameStartUtc: 2001,
+        frameEndUtc: 2500,
+        globalEnabled: true,
+      }),
+      false,
+      'Feature ending before frame window must be hidden'
+    );
+
+    // 3. Frame window [900, 1100]: overlaps feature start -> visible
+    assert.strictEqual(
+      evaluateTemporalPredicate(feature, config, {
+        frameStartUtc: 900,
+        frameEndUtc: 1100,
+        globalEnabled: true,
+      }),
+      true,
+      'Feature overlapping start of frame window must be visible'
+    );
+
+    // 4. Frame window [1900, 2100]: overlaps feature end -> visible
+    assert.strictEqual(
+      evaluateTemporalPredicate(feature, config, {
+        frameStartUtc: 1900,
+        frameEndUtc: 2100,
+        globalEnabled: true,
+      }),
+      true,
+      'Feature overlapping end of frame window must be visible'
+    );
+
+    // 5. Frame window [500, 2500]: encloses entire feature -> visible
+    assert.strictEqual(
+      evaluateTemporalPredicate(feature, config, {
+        frameStartUtc: 500,
+        frameEndUtc: 2500,
+        globalEnabled: true,
+      }),
+      true,
+      'Feature entirely enclosed within frame window must be visible'
+    );
+
+    // 6. Frame window [1200, 1800]: inside feature duration -> visible
+    assert.strictEqual(
+      evaluateTemporalPredicate(feature, config, {
+        frameStartUtc: 1200,
+        frameEndUtc: 1800,
+        globalEnabled: true,
+      }),
+      true,
+      'Frame window entirely enclosed within feature duration must be visible'
     );
   });
 });

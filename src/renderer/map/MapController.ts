@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -44,6 +44,7 @@ import {
 import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
+  timeFilterFrameEndSignal,
 } from "../state/timeFilterSignals";
 import { preferencesMapSignal } from "../state/preferencesSignals";
 import {
@@ -58,6 +59,7 @@ import {
   WKB_PACKET_MAGIC,
   type InferredFieldType,
   type LayerDescriptor,
+  type LayerTemporalConfig,
   type BoundingBox,
   type ProjectLayerItem,
   type ProjectGroupItem,
@@ -132,10 +134,11 @@ export function flattenTreeLayers(
  * @property {unknown} [activeRawStyle] - Most recently applied raw style descriptor or wrapper.
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
  * @property {Record<string, InferredFieldType>} [fieldSchema] - Dictionary of attribute names to canonical inferred field types for lazy deserialization.
+ * @property {LayerTemporalConfig} [activeTemporalConfig] - Most recently compiled dynamic temporal configuration.
  * @property {boolean} [hasGradientFill] - True if the layer currently utilizes an active screen-anchored gradient fill style.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-09
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
@@ -145,6 +148,7 @@ export interface VectorLayerEntry {
   loadedFields: Set<string>;
   allFieldsLoaded?: boolean;
   activeRawStyle?: unknown;
+  activeTemporalConfig?: LayerTemporalConfig;
   styleRevision?: number;
   fieldSchema?: Record<string, InferredFieldType>;
   hasGradientFill?: boolean;
@@ -443,6 +447,7 @@ export class MapController {
       // Read reactive signals to establish dependency tracking
       void isTimeFilterActiveSignal.value;
       void timeFilterFrameStartSignal.value;
+      void timeFilterFrameEndSignal.value;
       this.refreshTemporalLayers();
     });
     this.disposeSignals.push(disposeTimeFilter);
@@ -472,7 +477,7 @@ export class MapController {
    * Instantiates new vector layers, removes deleted layers, and auto-fits viewport on initial layer import.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-02
+   * @updated 2026-11-11
    * @since 0.1.0-dev
    * @param {LayerDescriptor[]} descriptors - Flat collection of active layer descriptors.
    * @returns {void}
@@ -560,15 +565,28 @@ export class MapController {
    * @description Applies dynamic OpenLayers Flat Style rules or SLD XML styles to registered vector layers, reloading missing attribute fields on demand before passing the compiled style to OpenLayers.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-11
    * @since 0.1.0-dev
    * @param {Record<string, any>} styles - Style descriptors or rules map keyed by layer UUID.
    * @returns {void}
    */
   public applyLayerStyles(styles: Record<string, any>): void {
     for (const [id, entry] of this.vectorLayers.entries()) {
-      if (styles[id] !== undefined && styles[id] !== entry.activeRawStyle) {
-        this.applySingleLayerStyle(entry, styles[id], false);
+      const rawStyle =
+        styles[id] !== undefined ? styles[id] : entry.activeRawStyle;
+      const temporalConfig =
+        entry.descriptor.temporal ??
+        (entry.descriptor.temporalEnabled ?
+          { enabled: true, mode: "start_end" as const }
+        : undefined);
+      const prevTemporalJson = JSON.stringify(entry.activeTemporalConfig ?? null);
+      const curTemporalJson = JSON.stringify(temporalConfig ?? null);
+      const temporalChanged = prevTemporalJson !== curTemporalJson;
+      const styleChanged =
+        styles[id] !== undefined && styles[id] !== entry.activeRawStyle;
+
+      if (styleChanged || temporalChanged) {
+        this.applySingleLayerStyle(entry, rawStyle, false);
       }
     }
   }
@@ -653,7 +671,7 @@ export class MapController {
    * @description Compiles and applies a style to a single vector layer entry, executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-11-10
+   * @updated 2026-11-11
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {unknown} rawStyle - Raw style descriptor or wrapper.
@@ -677,6 +695,13 @@ export class MapController {
       (entry.descriptor.temporalEnabled ?
         { enabled: true, mode: "start_end" as const }
       : undefined);
+    entry.activeTemporalConfig = temporalConfig ? { ...temporalConfig } : undefined;
+
+    const temporalFields: string[] = [];
+    if (temporalConfig?.enabled) {
+      if (temporalConfig.startField) temporalFields.push(temporalConfig.startField);
+      if (temporalConfig.endField) temporalFields.push(temporalConfig.endField);
+    }
 
     if (isCartouche) {
       const cartoucheResult = compileCartoucheLayerStyleSync(rawStyle, {
@@ -686,7 +711,31 @@ export class MapController {
         temporal: temporalConfig,
       });
       entry.hasGradientFill = Boolean(cartoucheResult.hasGradientFill);
-      entry.layer.setStyle(cartoucheResult.compiledStyle as any);
+
+      const requiredFields = new Set<string>([
+        ...cartoucheResult.requiredFields,
+        ...temporalFields,
+      ]);
+
+      if (!this.requiresFieldReload(entry, requiredFields, isInitialCreate)) {
+        entry.layer.setStyle(cartoucheResult.compiledStyle as any);
+        return;
+      }
+
+      const mergedFields = Array.from(
+        new Set([...entry.loadedFields, ...requiredFields])
+      );
+      const reloadTask = (async () => {
+        await this.reloadLayerWithFields(entry, mergedFields);
+        if (entry.styleRevision === nextRevision) {
+          entry.layer.setStyle(cartoucheResult.compiledStyle as any);
+        }
+      })();
+
+      this.pendingStyleUpdates.add(reloadTask);
+      void reloadTask.finally(() => {
+        this.pendingStyleUpdates.delete(reloadTask);
+      });
       return;
     }
 
@@ -701,10 +750,15 @@ export class MapController {
       });
       entry.hasGradientFill = Boolean(flatResult.hasGradientFill);
 
+      const requiredFields = new Set<string>([
+        ...flatResult.requiredFields,
+        ...temporalFields,
+      ]);
+
       if (
         !this.requiresFieldReload(
           entry,
-          flatResult.requiredFields,
+          requiredFields,
           isInitialCreate
         )
       ) {
@@ -713,7 +767,7 @@ export class MapController {
       }
 
       const mergedFields = Array.from(
-        new Set([...entry.loadedFields, ...flatResult.requiredFields])
+        new Set([...entry.loadedFields, ...requiredFields])
       );
       const reloadTask = (async () => {
         await this.reloadLayerWithFields(entry, mergedFields);
@@ -740,15 +794,19 @@ export class MapController {
         return;
       }
       entry.hasGradientFill = Boolean(compiledResult.hasGradientFill);
+      const requiredFields = new Set<string>([
+        ...compiledResult.requiredFields,
+        ...temporalFields,
+      ]);
       if (
         this.requiresFieldReload(
           entry,
-          compiledResult.requiredFields,
+          requiredFields,
           isInitialCreate
         )
       ) {
         const mergedFields = Array.from(
-          new Set([...entry.loadedFields, ...compiledResult.requiredFields])
+          new Set([...entry.loadedFields, ...requiredFields])
         );
         await this.reloadLayerWithFields(entry, mergedFields);
         if (entry.styleRevision !== nextRevision) {
@@ -880,7 +938,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-02
+   * @updated 2026-11-11
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -965,6 +1023,19 @@ export class MapController {
           fields = Array.from(extracted);
         } else {
           fields = [];
+        }
+
+        const isTemporalLayer =
+          descriptor.temporal?.enabled || descriptor.temporalEnabled;
+        if (isTemporalLayer && Array.isArray(fields)) {
+          const fieldSet = new Set(fields);
+          if (descriptor.temporal?.startField) {
+            fieldSet.add(descriptor.temporal.startField);
+          }
+          if (descriptor.temporal?.endField) {
+            fieldSet.add(descriptor.temporal.endField);
+          }
+          fields = Array.from(fieldSet);
         }
 
         const options: QueryExtentOptions = {

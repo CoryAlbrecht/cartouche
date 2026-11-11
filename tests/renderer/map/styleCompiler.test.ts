@@ -4,7 +4,7 @@
  * @description Unit tests for renderer styleCompiler verifying Cartouche Symbology compilation, OpenLayers StyleFunction closure caching, painter execution order, disabled component filtering, GradientFillComponent Canvas 2D linear gradients, and format routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link compileStyleFunction}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -935,6 +935,111 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
         styles !== null && Array.isArray(styles) && styles.length > 0,
         "When layer temporal control is disabled, feature must render unconditionally"
       );
+
+      resetTimeFilterState();
+    });
+  });
+
+  describe("Temporal Style Recompilation & Field Loading Invariants (Ticket #253)", () => {
+    const layerStyle: CartoucheLayerStyle = {
+      format: "simple",
+      version: 1,
+      components: [
+        { id: "fill-1", type: "simple-fill", enabled: true, color: "#3b82f6" },
+      ],
+    };
+
+    const temporalConfig: LayerTemporalConfig = {
+      enabled: true,
+      mode: "start_end",
+      startField: "valid_start",
+      endField: "valid_end",
+      startOp: ">=",
+      endOp: "<=",
+    };
+
+    it("verifies compileCartoucheLayerStyleSync includes temporal fields in requiredFields", () => {
+      const result = compileCartoucheLayerStyleSync(layerStyle, {
+        temporal: temporalConfig,
+      });
+
+      assert.ok(result.requiredFields.has("valid_start"), "Must include valid_start");
+      assert.ok(result.requiredFields.has("valid_end"), "Must include valid_end");
+    });
+
+    it("wraps style with wrapStyleWithTemporalFilter and filters features based on active frame bounds", () => {
+      setTimeFilterActive(true);
+      // Frame window: 1000 to 2000
+      setTimeFilterFrame(1000, 2000);
+
+      const result = compileCartoucheLayerStyleSync(layerStyle, {
+        temporal: temporalConfig,
+      });
+
+      const styleFn = result.compiledStyle;
+      assert.equal(typeof styleFn, "function");
+
+      // 1. Feature [1200, 1500] inside frame window [1000, 2000] -> visible
+      const featureIn = new Feature({
+        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        valid_start: 1200,
+        valid_end: 1500,
+      });
+      const stylesIn = styleFn(featureIn, 1);
+      assert.ok(stylesIn !== null && Array.isArray(stylesIn) && stylesIn.length > 0);
+
+      // 2. Feature [500, 900] ending before frame window [1000, 2000] -> hidden
+      const featureBefore = new Feature({
+        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        valid_start: 500,
+        valid_end: 900,
+      });
+      const stylesBefore = styleFn(featureBefore, 1);
+      assert.equal(stylesBefore, null);
+
+      // 3. Feature [2100, 3000] starting after frame window [1000, 2000] -> hidden
+      const featureAfter = new Feature({
+        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        valid_start: 2100,
+        valid_end: 3000,
+      });
+      const stylesAfter = styleFn(featureAfter, 1);
+      assert.equal(stylesAfter, null);
+
+      // 4. Feature [500, 2500] spanning across the frame window -> visible
+      const featureSpanning = new Feature({
+        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        valid_start: 500,
+        valid_end: 2500,
+      });
+      const stylesSpanning = styleFn(featureSpanning, 1);
+      assert.ok(stylesSpanning !== null && Array.isArray(stylesSpanning) && stylesSpanning.length > 0);
+
+      // Clean up global state
+      resetTimeFilterState();
+    });
+
+    it("verifies dynamic re-wrapping when layer temporal settings are toggled or modified", () => {
+      setTimeFilterActive(true);
+      setTimeFilterFrame(1000, 2000);
+
+      // 1. Initially enabled: feature outside window evaluates to null
+      const resultEnabled = compileCartoucheLayerStyleSync(layerStyle, {
+        temporal: temporalConfig,
+      });
+      const featureOutside = new Feature({
+        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        valid_start: 5000,
+        valid_end: 6000,
+      });
+      assert.equal(resultEnabled.compiledStyle(featureOutside, 1), null);
+
+      // 2. Toggled to disabled: same feature renders unconditionally
+      const resultDisabled = compileCartoucheLayerStyleSync(layerStyle, {
+        temporal: { ...temporalConfig, enabled: false },
+      });
+      const stylesDisabled = resultDisabled.compiledStyle(featureOutside, 1);
+      assert.ok(stylesDisabled !== null && Array.isArray(stylesDisabled) && stylesDisabled.length > 0);
 
       resetTimeFilterState();
     });

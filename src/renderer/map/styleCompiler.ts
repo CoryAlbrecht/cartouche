@@ -4,7 +4,7 @@
  * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, Canvas 2D linear gradient fills, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link compileLayerStyle}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -101,7 +101,7 @@ export interface CompiledLayerStyleResult {
  * @property {LayerTemporalConfig} [temporal] - Optional layer dynamic temporal configuration for viewport filtering.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  */
 export interface CompileLayerStyleOptions {
@@ -1045,7 +1045,7 @@ function isValidFlatStyleObject(candidate: unknown): boolean {
  * Returns a fallback 3-rule random-color style if the input is unstyled or invalid JSON.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {unknown} style - Raw OpenLayers Flat Style descriptor or wrapper.
  * @param {CompileLayerStyleOptions} [options] - Optional shared styles and layer ID context.
@@ -1204,7 +1204,7 @@ export function compileFlatLayerStyleSync(
  * Fast-paths `'openlayers'` styles and compiles `'sld'` styles via cached `SldStyleParser` and `OlStyleParser` singletons.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {unknown} style - Raw style descriptor, ProjectLayerStyleItem wrapper, or OpenLayers Flat Style rules.
  * @param {CompileLayerStyleOptions} [options] - Optional shared styles and layer ID context.

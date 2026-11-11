@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link computeTimeFilterWidgetMinHeight}
@@ -76,6 +76,7 @@ const {
   isLeapYearUtc,
   getDaysInMonthUtc,
   stepTemporalTimestamp,
+  computeFrameEnd,
   calculateActiveTemporalRange,
   autoDetectTemporalRange,
   extractFirstFeatureProperties,
@@ -1428,5 +1429,249 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
       markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
       toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
       assert.ok(toggleMatch && !toggleMatch[0].includes('active'), 'Must reactively become inactive again');
+    });
+  });
+
+  describe('TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket #250)', () => {
+    beforeEach(() => {
+      resetTimeFilterState();
+    });
+
+    it('verifies discrete frame duration stepping across all step units (Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years)', () => {
+      const baseMs = Date.UTC(2026, 5, 1, 12, 0, 0, 0);
+
+      // 1. Milliseconds
+      const msStep = stepTemporalTimestamp(baseMs, 50, 'Milliseconds');
+      assert.strictEqual(msStep, baseMs + 50);
+
+      // 2. Seconds
+      const secStep = stepTemporalTimestamp(baseMs, 10, 'Seconds');
+      assert.strictEqual(secStep, baseMs + 10_000);
+
+      // 3. Minutes
+      const minStep = stepTemporalTimestamp(baseMs, 5, 'Minutes');
+      assert.strictEqual(minStep, baseMs + 5 * 60_000);
+
+      // 4. Hours
+      const hrStep = stepTemporalTimestamp(baseMs, 2, 'Hours');
+      assert.strictEqual(hrStep, baseMs + 2 * 3_600_000);
+
+      // 5. Days
+      const dayStep = stepTemporalTimestamp(baseMs, 3, 'Days');
+      assert.strictEqual(dayStep, baseMs + 3 * 86_400_000);
+
+      // 6. Weeks
+      const weekStep = stepTemporalTimestamp(baseMs, 2, 'Weeks');
+      assert.strictEqual(weekStep, baseMs + 14 * 86_400_000);
+
+      // 7. Months
+      const monthStep = stepTemporalTimestamp(baseMs, 1, 'Months');
+      assert.strictEqual(monthStep, Date.UTC(2026, 6, 1, 12, 0, 0, 0));
+
+      // 8. Years
+      const yearStep = stepTemporalTimestamp(baseMs, 1, 'Years');
+      assert.strictEqual(yearStep, Date.UTC(2027, 5, 1, 12, 0, 0, 0));
+    });
+
+    it('computeFrameEnd clamps frame end to rangeEnd boundary', () => {
+      const start = 1_000_000;
+      const rangeEnd = 1_050_000;
+
+      // Unclamped (1_000_000 + 10_000 = 1_010_000 <= 1_050_000)
+      const end1 = computeFrameEnd(start, 10, 'Seconds', rangeEnd);
+      assert.strictEqual(end1, 1_010_000);
+
+      // Clamped to rangeEnd (1_000_000 + 100_000 = 1_100_000 > 1_050_000)
+      const end2 = computeFrameEnd(start, 100, 'Seconds', rangeEnd);
+      assert.strictEqual(end2, rangeEnd);
+    });
+
+    it('renders Current Frame label with distinct start and end timestamps formatted in UTC', () => {
+      const startMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+      const endMs = Date.UTC(2026, 0, 2, 0, 0, 0);
+      setTimeFilterRange(startMs, Date.UTC(2026, 11, 31, 23, 59, 59));
+      setTimeFilterFrame(startMs, endMs);
+
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const expectedLabel = `${formatUtcTimestamp(startMs)} | ${formatUtcTimestamp(endMs)}`;
+      assert.ok(
+        markup.includes(expectedLabel),
+        `Rendered markup must contain discrete frame interval "${expectedLabel}"`
+      );
+      assert.notStrictEqual(
+        formatUtcTimestamp(startMs),
+        formatUtcTimestamp(endMs),
+        'Frame start and end labels must be distinct'
+      );
+    });
+
+    it('advances frame window and updates signals when stepping through transport controls', () => {
+      const rangeStart = 1_000_000;
+      const rangeEnd = 2_000_000;
+      setTimeFilterRange(rangeStart, rangeEnd);
+      setTimeFilterStep(5, 'Seconds'); // 5,000 ms per step
+
+      // Jump to Start: sets [rangeStart, computeFrameEnd(rangeStart, 5, 'Seconds', rangeEnd)]
+      const expectedEnd = rangeStart + 5_000;
+      setTimeFilterFrame(rangeStart, expectedEnd);
+      assert.strictEqual(timeFilterFrameStartSignal.value, rangeStart);
+      assert.strictEqual(timeFilterFrameEndSignal.value, expectedEnd);
+
+      // Step Forward: advances start to 1_005_000, end to 1_010_000
+      const nextStart = stepTemporalTimestamp(rangeStart, 5, 'Seconds');
+      const nextEnd = computeFrameEnd(nextStart, 5, 'Seconds', rangeEnd);
+      setTimeFilterFrame(nextStart, nextEnd);
+      assert.strictEqual(timeFilterFrameStartSignal.value, 1_005_000);
+      assert.strictEqual(timeFilterFrameEndSignal.value, 1_010_000);
+
+      // Step Backward: returns to 1_000_000, 1_005_000
+      const prevStart = stepTemporalTimestamp(nextStart, -5, 'Seconds');
+      const prevEnd = computeFrameEnd(prevStart, 5, 'Seconds', rangeEnd);
+      setTimeFilterFrame(prevStart, prevEnd);
+      assert.strictEqual(timeFilterFrameStartSignal.value, 1_000_000);
+      assert.strictEqual(timeFilterFrameEndSignal.value, 1_005_000);
+
+      // Jump to End: sets [rangeEnd - 5s, rangeEnd]
+      const endStart = Math.max(rangeStart, stepTemporalTimestamp(rangeEnd, -5, 'Seconds'));
+      const endEnd = computeFrameEnd(endStart, 5, 'Seconds', rangeEnd);
+      setTimeFilterFrame(endStart, endEnd);
+      assert.strictEqual(timeFilterFrameStartSignal.value, 1_995_000);
+      assert.strictEqual(timeFilterFrameEndSignal.value, rangeEnd);
+    });
+  });
+
+  describe('TimeFilterWidget: Scrubber Clearance & MinHeight Synchronization (Ticket #251)', () => {
+    it('renders middle bar slider container with vertical padding clearance and box-sizing', () => {
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      assert.ok(
+        markup.includes('time-filter-slider-container'),
+        'Markup must include time-filter-slider-container class'
+      );
+      assert.ok(
+        markup.includes('padding:4px 0') || markup.includes('padding: 4px 0'),
+        'Slider container must have 4px vertical padding clearance'
+      );
+      assert.ok(
+        markup.includes('box-sizing:border-box') || markup.includes('box-sizing: border-box'),
+        'Slider container must have box-sizing border-box'
+      );
+    });
+
+    it('computeTimeFilterWidgetMinHeight dynamic calc expression accounts for slider vertical clearance (24px)', () => {
+      const minHeight = computeTimeFilterWidgetMinHeight();
+      assert.ok(
+        minHeight.includes('24px'),
+        'Dynamic minHeight calc expression must incorporate 24px vertical clearance for the slider row'
+      );
+    });
+  });
+
+  describe('TimeFilterWidget: Temporal Envelope Auto-Detection & Signal Synchronization (Ticket #252)', () => {
+    beforeEach(() => {
+      resetTimeFilterState();
+    });
+
+    it('autoDetectTemporalRange correctly discovers global minimum start and maximum end with pre-1970 and future dates', async () => {
+      const layers: LayerDescriptor[] = [
+        {
+          id: 'layer-historical',
+          name: 'Historical Layer',
+          temporal: {
+            enabled: true,
+            mode: 'start_end',
+            startField: 'began',
+            endField: 'ended',
+          },
+        } as any,
+        {
+          id: 'layer-future',
+          name: 'Future Layer',
+          temporal: {
+            enabled: true,
+            mode: 'start_end',
+            startField: 'commenced',
+            endField: 'concluded',
+          },
+        } as any,
+      ];
+
+      const mockQueryExtent = async (layerId: string, options: any) => {
+        if (layerId === 'layer-historical') {
+          if (options.sortDirection === 'ASC') {
+            return { features: [{ properties: { began: '0500-06-06' } }] };
+          }
+          return { features: [{ properties: { ended: '0600-01-01' } }] };
+        }
+        if (layerId === 'layer-future') {
+          if (options.sortDirection === 'ASC') {
+            return { features: [{ properties: { commenced: '2020-01-01' } }] };
+          }
+          return { features: [{ properties: { concluded: '2099-12-31' } }] };
+        }
+        return null;
+      };
+
+      const range = await autoDetectTemporalRange(layers, mockQueryExtent);
+      assert.ok(range, 'Range must be resolved');
+
+      const expectedEarliest = Date.parse('0500-06-06');
+      const expectedLatest = Date.parse('2099-12-31');
+      assert.strictEqual(range.from, expectedEarliest, 'Earliest bound must resolve to 0500-06-06');
+      assert.strictEqual(range.to, expectedLatest, 'Latest bound must resolve to 2099-12-31');
+    });
+
+    it('loadProjectIntoSignals auto-detects temporal range when project contains temporal layers with uninitialized bounds', async () => {
+      const { loadProjectIntoSignals } = jiti(
+        '@renderer/state/gisSignals'
+      ) as typeof import('@renderer/state/gisSignals');
+
+      const project: any = {
+        name: 'Temporal Test Project',
+        layers: [
+          {
+            id: 'archaeological-sites',
+            name: 'Archaeological Sites',
+            geometryKind: 'Point',
+            temporal: {
+              enabled: true,
+              mode: 'start_end',
+              startField: 'founded',
+              endField: 'abandoned',
+            },
+          },
+        ],
+        timeFilter: {
+          enabled: true,
+          from: 0,
+          to: 0, // uninitialized bounds
+          step: 1,
+          unit: 'Days',
+        },
+      };
+
+      // Mock electronAPI.queryExtent
+      (globalThis as any).window = (globalThis as any).window || {};
+      (globalThis as any).window.electronAPI = (globalThis as any).window.electronAPI || {};
+      (globalThis as any).window.electronAPI.queryExtent = async (_id: string, opts: any) => {
+        if (opts.sortDirection === 'ASC') {
+          return { features: [{ properties: { founded: '1000-01-01' } }] };
+        }
+        return { features: [{ properties: { abandoned: '1500-12-31' } }] };
+      };
+
+      loadProjectIntoSignals(project);
+
+      // Wait for autoDetectTemporalRange promise resolution
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      assert.strictEqual(timeFilterRangeStartSignal.value, Date.parse('1000-01-01'));
+      assert.strictEqual(timeFilterRangeEndSignal.value, Date.parse('1500-12-31'));
+      assert.strictEqual(timeFilterFrameStartSignal.value, Date.parse('1000-01-01'));
     });
   });

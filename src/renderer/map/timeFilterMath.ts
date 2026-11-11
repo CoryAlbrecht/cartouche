@@ -4,18 +4,19 @@
  * @description Calendar-aware UTC temporal mathematics, discrete and micro-decimal stepping with leap-year and month clamping, and auto-range feature aggregation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
  * @see {@link stepTemporalTimestamp}
+ * @see {@link computeFrameEnd}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link extractFirstFeatureProperties}
  * @see {@link autoDetectTemporalRange}
  * @see {@link MIN_TIME_FILTER_STEP}
  */
 
-import type { TimeFilterUnit, LayerDescriptor, GisFeature, QueryExtentOptions } from '../../shared/types';
+import type { TimeFilterUnit, LayerDescriptor, GisFeature, QueryExtentOptions, LayerTemporalMode } from '../../shared/types';
 import { projectLayersSignal } from '../state/projectSignals';
 import { featuresSignal } from '../state/gisSignals';
 import { parseTemporalValue } from './temporalPredicate';
@@ -75,11 +76,11 @@ export function getDaysInMonthUtc(year: number, month: number): number {
  * @description Advances or steps backward a UTC epoch millisecond timestamp using calendar-aware arithmetic.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {number} timestampUtc - Starting timestamp in UTC epoch milliseconds.
  * @param {number} stepDelta - Step delta (positive for forward, negative for backward).
- * @param {TimeFilterUnit} unit - Time unit ('Years' | 'Months' | 'Days' | 'Hours' | 'Minutes' | 'Seconds').
+ * @param {TimeFilterUnit} unit - Time unit ('Years' | 'Months' | 'Weeks' | 'Days' | 'Hours' | 'Minutes' | 'Seconds' | 'Milliseconds').
  * @returns {number} Resulting timestamp in UTC epoch milliseconds.
  */
 export function stepTemporalTimestamp(
@@ -96,6 +97,9 @@ export function stepTemporalTimestamp(
   const MILLIS_PER_HOUR = 60 * MILLIS_PER_MINUTE;
   const MILLIS_PER_DAY = 24 * MILLIS_PER_HOUR;
 
+  if (unit === 'Milliseconds') {
+    return Math.round(timestampUtc + stepDelta);
+  }
   if (unit === 'Seconds') {
     return Math.round(timestampUtc + stepDelta * MILLIS_PER_SECOND);
   }
@@ -107,6 +111,9 @@ export function stepTemporalTimestamp(
   }
   if (unit === 'Days') {
     return Math.round(timestampUtc + stepDelta * MILLIS_PER_DAY);
+  }
+  if (unit === 'Weeks') {
+    return Math.round(timestampUtc + stepDelta * 7 * MILLIS_PER_DAY);
   }
 
   const d = new Date(timestampUtc);
@@ -178,6 +185,31 @@ export function stepTemporalTimestamp(
   }
 
   return timestampUtc;
+}
+
+/**
+ * Computes the discrete frame end timestamp clamped to the maximum range boundary:
+ * T_end = min(rangeEndUtc, stepTemporalTimestamp(startUtc, step, unit)).
+ * @function computeFrameEnd
+ * @description Computes discrete frame window end timestamp adhering to the active step and unit interval.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-11
+ * @updated 2026-11-11
+ * @since 0.1.0-dev
+ * @param {number} startUtc - Active frame start in UTC epoch milliseconds.
+ * @param {number} step - Step magnitude.
+ * @param {TimeFilterUnit} unit - Step unit denomination.
+ * @param {number} rangeEndUtc - Upper boundary of temporal range in UTC epoch milliseconds.
+ * @returns {number} Clamped frame end timestamp in UTC epoch milliseconds.
+ */
+export function computeFrameEnd(
+  startUtc: number,
+  step: number,
+  unit: TimeFilterUnit,
+  rangeEndUtc: number
+): number {
+  const targetEnd = stepTemporalTimestamp(startUtc, step, unit);
+  return Math.min(rangeEndUtc, targetEnd);
 }
 
 /**
@@ -308,7 +340,7 @@ export function extractFirstFeatureProperties(result: any): Record<string, unkno
  * @description Queries global temporal bounds across active time-enabled layers via IPC or in-memory fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {LayerDescriptor[]} [layers] - Optional layer descriptors array (defaults to projectLayersSignal.value).
  * @param {(layerId: string, options: QueryExtentOptions) => Promise<any>} [queryExtentFn] - Optional queryExtent function for IPC dispatch or mocking.
@@ -319,7 +351,7 @@ export async function autoDetectTemporalRange(
   queryExtentFn?: (layerId: string, options: QueryExtentOptions) => Promise<any>
 ): Promise<{ from: number; to: number } | null> {
   const activeTemporalLayers = layers.filter(
-    (l) => l.temporal?.enabled || l.temporalEnabled
+    (l) => (l.temporal ? l.temporal.enabled : l.temporalEnabled) === true
   );
   if (activeTemporalLayers.length === 0) {
     return null;
@@ -334,11 +366,13 @@ export async function autoDetectTemporalRange(
 
     for (const layer of activeTemporalLayers) {
       const config = layer.temporal || { enabled: true, mode: 'start_end' };
-      const mode = config.mode || 'start_end';
+      const mode = (config.mode || 'start_end') as LayerTemporalMode | string;
+      const isEndOnly = mode === 'end' || mode === 'End Field';
+      const isStartOnly = mode === 'start' || mode === 'Start Field';
       const startField = config.startField;
       const endField = config.endField;
 
-      const minSortField = mode === 'end' ? endField : (startField ?? endField);
+      const minSortField = isEndOnly ? endField : (startField ?? endField);
       if (minSortField) {
         try {
           const res = await queryFn(layer.id, {
@@ -361,7 +395,7 @@ export async function autoDetectTemporalRange(
         }
       }
 
-      const maxSortField = mode === 'start' ? startField : (endField ?? startField);
+      const maxSortField = isStartOnly ? startField : (endField ?? startField);
       if (maxSortField) {
         try {
           const res = await queryFn(layer.id, {

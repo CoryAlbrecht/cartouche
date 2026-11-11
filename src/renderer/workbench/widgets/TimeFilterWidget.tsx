@@ -4,11 +4,12 @@
  * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TimestampSpinner}
  * @see {@link stepTemporalTimestamp}
+ * @see {@link computeFrameEnd}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
  * @see {@link computeTimeFilterWidgetMinHeight}
@@ -56,6 +57,7 @@ import {
 } from "../../state/timeFilterSignals";
 import {
   stepTemporalTimestamp,
+  computeFrameEnd,
   calculateActiveTemporalRange,
   autoDetectTemporalRange,
   MIN_TIME_FILTER_STEP,
@@ -76,10 +78,10 @@ export const TIME_FILTER_SCRUB_DEBOUNCE_MS = 300;
 /**
  * @function computeTimeFilterWidgetMinHeight
  * @description Computes dynamic minimum height CSS expression for TimeFilterWidget derived from UI icon and font size preferences.
- * Ensures vertical clearance for widget header, 3 rows of controls (top transport bar, slider scrubber, bottom range/step controls), gaps, and padding.
+ * Ensures vertical clearance for widget header, 3 rows of controls (top transport bar, slider scrubber with padding clearance, bottom range/step controls), gaps, and padding.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @returns {string} CSS calc expression for minimum widget height.
  */
@@ -88,7 +90,7 @@ export function computeTimeFilterWidgetMinHeight(): string {
     "calc("
     + "var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px + "
     + "var(--cartouche-ui-icon-size, 24px) + 4px + "
-    + "16px + "
+    + "24px + "
     + "var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 6px + "
     + "26px"
     + ")"
@@ -112,7 +114,7 @@ export interface TimeFilterWidgetProps extends Omit<
  * @description Dockable panel providing global temporal filtering controls, continuous scrubbing, and range settings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {TimeFilterWidgetProps} props - Widget props.
  * @returns {React.ReactElement} Time filter widget element.
@@ -160,17 +162,21 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const range = await autoDetectTemporalRange();
     if (range) {
       setTimeFilterRange(range.from, range.to);
-      const cur = timeFilterFrameStartSignal.value;
-      if (cur < range.from || cur > range.to) {
-        setTimeFilterFrame(range.from, range.from);
-      }
+      const s = timeFilterStepSignal.value;
+      const u = timeFilterUnitSignal.value;
+      const end = computeFrameEnd(range.from, s, u, range.to);
+      setTimeFilterFrame(range.from, end);
     }
   }, []);
 
   // Jump to Start button [C]
   const handleJumpToStart = useCallback(() => {
     const start = timeFilterRangeStartSignal.value;
-    setTimeFilterFrame(start, start);
+    const s = timeFilterStepSignal.value;
+    const u = timeFilterUnitSignal.value;
+    const maxRange = timeFilterRangeEndSignal.value;
+    const end = computeFrameEnd(start, s, u, maxRange);
+    setTimeFilterFrame(start, end);
   }, []);
 
   // Step Backward button [D]
@@ -180,8 +186,10 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const u = timeFilterUnitSignal.value;
     const target = stepTemporalTimestamp(cur, -s, u);
     const minRange = timeFilterRangeStartSignal.value;
-    const clamped = Math.max(minRange, target);
-    setTimeFilterFrame(clamped, clamped);
+    const maxRange = timeFilterRangeEndSignal.value;
+    const clampedStart = Math.max(minRange, target);
+    const clampedEnd = computeFrameEnd(clampedStart, s, u, maxRange);
+    setTimeFilterFrame(clampedStart, clampedEnd);
   }, []);
 
   // Step Forward button [E]
@@ -190,15 +198,22 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const s = timeFilterStepSignal.value;
     const u = timeFilterUnitSignal.value;
     const target = stepTemporalTimestamp(cur, s, u);
+    const minRange = timeFilterRangeStartSignal.value;
     const maxRange = timeFilterRangeEndSignal.value;
-    const clamped = Math.min(maxRange, target);
-    setTimeFilterFrame(clamped, clamped);
+    const clampedStart = Math.max(minRange, Math.min(maxRange, target));
+    const clampedEnd = computeFrameEnd(clampedStart, s, u, maxRange);
+    setTimeFilterFrame(clampedStart, clampedEnd);
   }, []);
 
   // Jump to End button [F]
   const handleJumpToEnd = useCallback(() => {
-    const end = timeFilterRangeEndSignal.value;
-    setTimeFilterFrame(end, end);
+    const minRange = timeFilterRangeStartSignal.value;
+    const maxRange = timeFilterRangeEndSignal.value;
+    const s = timeFilterStepSignal.value;
+    const u = timeFilterUnitSignal.value;
+    const start = Math.max(minRange, stepTemporalTimestamp(maxRange, -s, u));
+    const end = computeFrameEnd(start, s, u, maxRange);
+    setTimeFilterFrame(start, end);
   }, []);
 
   // Slider continuous scrubbing with 300ms debounce
@@ -210,13 +225,10 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
         clearTimeout(debounceTimerRef.current);
       }
       debounceTimerRef.current = setTimeout(() => {
-        const curStart = timeFilterFrameStartSignal.value;
-        const curEnd = timeFilterFrameEndSignal.value;
-        const duration = Math.max(0, curEnd - curStart);
-        const nextEnd =
-          duration > 0 ?
-            Math.min(timeFilterRangeEndSignal.value, val + duration)
-          : val;
+        const s = timeFilterStepSignal.value;
+        const u = timeFilterUnitSignal.value;
+        const maxRange = timeFilterRangeEndSignal.value;
+        const nextEnd = computeFrameEnd(val, s, u, maxRange);
         setTimeFilterFrame(val, nextEnd);
         setScrubbingValue(null);
         debounceTimerRef.current = null;
@@ -299,12 +311,9 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
   const displayedFrameStart =
     scrubbingValue !== null ? scrubbingValue : frameStart;
-  const frameDuration = Math.max(0, frameEnd - frameStart);
   const displayedFrameEnd =
     scrubbingValue !== null ?
-      frameDuration > 0 ?
-        Math.min(rangeEnd, scrubbingValue + frameDuration)
-      : scrubbingValue
+      computeFrameEnd(scrubbingValue, step, unit, rangeEnd)
     : frameEnd;
 
   const currentFrameLabel = `${formatUtcTimestamp(displayedFrameStart)} | ${formatUtcTimestamp(displayedFrameEnd)}`;
@@ -484,11 +493,14 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
         {/* Middle Bar: Scrubbing Slider */}
         <div
+          className='time-filter-slider-container'
           style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
             width: "100%",
+            padding: "4px 0",
+            boxSizing: "border-box",
           }}>
           <input
             type='range'
@@ -695,10 +707,12 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               }}>
               <option value='Years'>Years</option>
               <option value='Months'>Months</option>
+              <option value='Weeks'>Weeks</option>
               <option value='Days'>Days</option>
               <option value='Hours'>Hours</option>
               <option value='Minutes'>Minutes</option>
               <option value='Seconds'>Seconds</option>
+              <option value='Milliseconds'>Milliseconds</option>
             </select>
           </div>
         </div>
