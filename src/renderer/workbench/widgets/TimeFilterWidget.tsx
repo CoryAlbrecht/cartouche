@@ -14,7 +14,13 @@
  * @see {@link Icon}
  */
 
-import React, { useCallback, type ChangeEvent } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import Icon from '@renderer/components/common/Icon';
 import {
@@ -78,6 +84,16 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
   const rangeEnd = timeFilterRangeEndSignal.value;
   const step = timeFilterStepSignal.value;
   const unit = timeFilterUnitSignal.value;
+
+  const [stepText, setStepText] = useState<string>(() => String(timeFilterStepSignal.value));
+
+  // Synchronize local input text state with external signal changes
+  useEffect(() => {
+    const parsed = parseFloat(stepText);
+    if (Number.isNaN(parsed) || parsed !== step) {
+      setStepText(String(step));
+    }
+  }, [step]);
 
   // Toggle button [A]
   const handleToggleActive = useCallback(() => {
@@ -150,23 +166,48 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
   // Step number input change
   const handleStepChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const raw = parseFloat(e.target.value);
-    if (!Number.isNaN(raw)) {
-      const clamped = Math.max(MIN_TIME_FILTER_STEP, raw);
-      setTimeFilterStep(clamped, timeFilterUnitSignal.value);
+    const str = e.target.value;
+    setStepText(str);
+    const raw = parseFloat(str);
+    if (!Number.isNaN(raw) && raw >= MIN_TIME_FILTER_STEP) {
+      setTimeFilterStep(raw, timeFilterUnitSignal.value);
+    }
+  }, []);
+
+  // Step input blur normalization
+  const handleStepBlur = useCallback(() => {
+    const raw = parseFloat(stepText);
+    if (Number.isNaN(raw) || raw < MIN_TIME_FILTER_STEP) {
+      const fallback = Number.isNaN(raw) ? 1.0 : MIN_TIME_FILTER_STEP;
+      setTimeFilterStep(fallback, timeFilterUnitSignal.value);
+      setStepText(String(fallback));
+    } else {
+      setTimeFilterStep(raw, timeFilterUnitSignal.value);
+      setStepText(String(raw));
+    }
+  }, [stepText]);
+
+  // Step input keydown (Enter to commit and blur)
+  const handleStepKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.currentTarget as HTMLInputElement).blur();
     }
   }, []);
 
   // Step Up arrow (+1.00)
   const handleStepUp = useCallback(() => {
-    const next = Math.max(MIN_TIME_FILTER_STEP, timeFilterStepSignal.value + 1.0);
+    const current = timeFilterStepSignal.value;
+    const next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
+    setStepText(String(next));
   }, []);
 
   // Step Down arrow (-1.00)
   const handleStepDown = useCallback(() => {
-    const next = Math.max(MIN_TIME_FILTER_STEP, timeFilterStepSignal.value - 1.0);
+    const current = timeFilterStepSignal.value;
+    const next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
+    setStepText(String(next));
   }, []);
 
   // Unit dropdown change
@@ -430,8 +471,10 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                 aria-label="Temporal Step Value"
                 min={MIN_TIME_FILTER_STEP}
                 step="any"
-                value={step}
+                value={stepText}
                 onChange={handleStepChange}
+                onBlur={handleStepBlur}
+                onKeyDown={handleStepKeyDown}
                 style={{
                   boxSizing: 'border-box',
                   width: '90px',

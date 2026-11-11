@@ -673,3 +673,177 @@ describe('TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)', () => 
     );
   });
 });
+
+describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #242)', () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it('reflects updated numeric step values and preserves step across render cycles without reverting', () => {
+    // 1. Initial default step is 1.0
+    assert.strictEqual(timeFilterStepSignal.value, 1.0);
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes('value="1"'),
+      'Default step input must render value="1"'
+    );
+
+    // 2. Direct numeric update to integer (e.g. 5)
+    setTimeFilterStep(5, 'Seconds');
+    assert.strictEqual(timeFilterStepSignal.value, 5);
+    markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes('value="5"'),
+      'Step input must render value="5" without reverting'
+    );
+
+    // 3. Direct numeric update to fractional decimal (e.g. 2.75)
+    setTimeFilterStep(2.75, 'Minutes');
+    assert.strictEqual(timeFilterStepSignal.value, 2.75);
+    markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes('value="2.75"'),
+      'Step input must render value="2.75" without reverting'
+    );
+
+    // 4. Direct numeric update to micro-decimal down to MIN_TIME_FILTER_STEP
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Years');
+    assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
+    markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes(`value="${MIN_TIME_FILTER_STEP}"`) || markup.includes('value="3.1623e-8"'),
+      'Step input must reflect micro-decimal value without reverting'
+    );
+  });
+
+  it('increments step value by 1.00 on Step Up button click', () => {
+    // Starting at 1.0 -> 2.0
+    setTimeFilterStep(1.0, 'Seconds');
+    let current = timeFilterStepSignal.value;
+    let next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, 2.0);
+
+    // Starting at 2.5 -> 3.5
+    setTimeFilterStep(2.5, 'Hours');
+    current = timeFilterStepSignal.value;
+    next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, 3.5);
+
+    // Starting at MIN_TIME_FILTER_STEP -> 1.000000031623
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Years');
+    current = timeFilterStepSignal.value;
+    next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, 1.000000031623);
+  });
+
+  it('decrements step value by 1.00 and enforces MIN_TIME_FILTER_STEP floor on Step Down button click', () => {
+    // Starting at 4.0 -> 3.0
+    setTimeFilterStep(4.0, 'Days');
+    let current = timeFilterStepSignal.value;
+    let next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, 3.0);
+
+    // Starting at 1.5 -> 0.5
+    setTimeFilterStep(1.5, 'Days');
+    current = timeFilterStepSignal.value;
+    next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, 0.5);
+
+    // Starting at 1.0 -> decrements to 0.0, which clamps to MIN_TIME_FILTER_STEP
+    setTimeFilterStep(1.0, 'Days');
+    current = timeFilterStepSignal.value;
+    next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
+
+    // Starting at MIN_TIME_FILTER_STEP -> stays at MIN_TIME_FILTER_STEP
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Days');
+    current = timeFilterStepSignal.value;
+    next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
+    setTimeFilterStep(next, timeFilterUnitSignal.value);
+    assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
+  });
+
+  it('utilizes the updated numeric step value for subsequent VCR transport stepping', () => {
+    const base = 1_000_000;
+    setTimeFilterActive(true);
+    setTimeFilterRange(0, 10_000_000);
+    setTimeFilterFrame(base, base);
+    setTimeFilterStep(1.0, 'Seconds');
+
+    // 1. Initial 1.0 second forward step (1,000 ms)
+    let s = timeFilterStepSignal.value;
+    let u = timeFilterUnitSignal.value;
+    let target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    setTimeFilterFrame(target, target);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1_001_000);
+
+    // 2. Update step to 10.0 seconds -> subsequent step moves 10,000 ms
+    setTimeFilterStep(10.0, 'Seconds');
+    s = timeFilterStepSignal.value;
+    u = timeFilterUnitSignal.value;
+    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    setTimeFilterFrame(target, target);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1_011_000);
+
+    // 3. Update step to 2.5 seconds -> subsequent backward step moves -2,500 ms
+    setTimeFilterStep(2.5, 'Seconds');
+    s = timeFilterStepSignal.value;
+    u = timeFilterUnitSignal.value;
+    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, -s, u);
+    setTimeFilterFrame(target, target);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1_008_500);
+
+    // 4. Update unit to 'Hours' and step to 0.5 -> subsequent forward step moves 1,800,000 ms
+    setTimeFilterStep(0.5, 'Hours');
+    s = timeFilterStepSignal.value;
+    u = timeFilterUnitSignal.value;
+    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    setTimeFilterFrame(target, target);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 2_808_500);
+
+    // 5. Update unit to 'Years' and step to micro-decimal MIN_TIME_FILTER_STEP -> moves ~998 ms (~1 second)
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Years');
+    s = timeFilterStepSignal.value;
+    u = timeFilterUnitSignal.value;
+    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    setTimeFilterFrame(target, target);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 2_809_497);
+  });
+
+  it('renders step input with step="any", min boundary, and discrete stepper button titles', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('step="any"'),
+      'Step input must allow any micro-decimal increment via step="any"'
+    );
+    assert.ok(
+      markup.includes(`min="${MIN_TIME_FILTER_STEP}"`) || markup.includes('min="3.1623e-8"'),
+      'Step input must enforce min floor via min attribute'
+    );
+    assert.ok(
+      markup.includes('title="Step Up by 1.00"'),
+      'Step Up button must display title="Step Up by 1.00"'
+    );
+    assert.ok(
+      markup.includes('title="Step Down by 1.00"'),
+      'Step Down button must display title="Step Down by 1.00"'
+    );
+  });
+});
