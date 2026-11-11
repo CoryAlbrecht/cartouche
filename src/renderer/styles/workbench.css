@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
@@ -2226,4 +2226,58 @@
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
   background-color: var(--cartouche-menubar-item-hover-bg);
+}
+
+/* =============================================================================
+   Time Filter Widget Controls
+   ============================================================================= */
+
+.time-filter-unit-select,
+.time-filter-step-input {
+  outline: none;
+}
+
+.time-filter-unit-select:focus,
+.time-filter-step-input:focus {
+  outline: none;
+  border-color: var(--cartouche-theme-primary);
+  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
+}
+
+.time-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--cartouche-theme-border-strong);
+  border-radius: 3px;
+  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-theme-fg-primary);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.12s ease;
+}
+
+.time-filter-btn:hover:not(:disabled) {
+  background-color: var(--cartouche-theme-surface-alt);
+}
+
+.time-filter-btn:active:not(:disabled) {
+  background-color: var(--cartouche-theme-surface-active);
+  transform: translateY(1px);
+}
+
+.time-filter-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.time-filter-btn:focus-visible {
+  outline: none;
+  border-color: var(--cartouche-theme-primary);
+  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
+}
+
+.timestamp-spinner input {
+  user-select: text;
 }

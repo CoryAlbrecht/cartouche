@@ -10,13 +10,16 @@
  * @see {@link getDaysInMonthUtc}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
+ * @see {@link extractFirstFeatureProperties}
+ * @see {@link autoDetectTemporalRange}
  * @see {@link MIN_TIME_FILTER_STEP}
  */
 
-import type { TimeFilterUnit, LayerDescriptor, GisFeature } from '../../shared/types';
+import type { TimeFilterUnit, LayerDescriptor, GisFeature, QueryExtentOptions } from '../../shared/types';
 import { projectLayersSignal } from '../state/projectSignals';
 import { featuresSignal } from '../state/gisSignals';
 import { parseTemporalValue } from './temporalPredicate';
+import { logging } from '../../shared/logging';
 
 /**
  * Minimum allowable positive decimal stepping value, ensuring a 1-second increment under 'Years' unit.
@@ -237,4 +240,156 @@ export function calculateActiveTemporalRange(
   }
 
   return { from: minTime, to: maxTime };
+}
+
+/**
+ * Extracts raw attribute properties from the first feature record in a queryExtent response
+ * (supporting structured `features` array and contiguous binary WKB packet buffer).
+ * @function extractFirstFeatureProperties
+ * @description Decodes properties from the first feature in queryExtent result.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @param {any} result - Response returned from queryExtent.
+ * @returns {Record<string, unknown> | null} Properties dictionary of first feature, or null if empty.
+ */
+export function extractFirstFeatureProperties(result: any): Record<string, unknown> | null {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+
+  if (Array.isArray(result.features) && result.features.length > 0) {
+    return result.features[0].properties ?? null;
+  }
+
+  let buffer: ArrayBuffer | null = null;
+  if (result.buffer instanceof ArrayBuffer) {
+    buffer = result.buffer;
+  } else if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(result.buffer)) {
+    const view = result.buffer as ArrayBufferView;
+    const copy = new Uint8Array(view.byteLength);
+    copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+    buffer = copy.buffer;
+  }
+
+  if (buffer && buffer.byteLength >= 12) {
+    const view = new DataView(buffer);
+    const magic = view.getUint32(0, true);
+    if (magic === 0x43415254) {
+      const featureCount = view.getUint32(8, true);
+      if (featureCount > 0 && buffer.byteLength >= 24) {
+        const wkbLen = view.getUint32(20, true);
+        const propsOffset = 24 + wkbLen;
+        if (propsOffset + 4 <= buffer.byteLength) {
+          const propsLen = view.getUint32(propsOffset, true);
+          if (propsLen > 0 && propsOffset + 4 + propsLen <= buffer.byteLength) {
+            try {
+              const decoder = new TextDecoder();
+              const jsonStr = decoder.decode(new Uint8Array(buffer, propsOffset + 4, propsLen));
+              return JSON.parse(jsonStr);
+            } catch {
+              return null;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Automatically detects the global temporal bounding envelope across active temporal layers.
+ * Dispatches sorted queries (ASC for earliest, DESC for latest) over IPC via GeospatialEngine,
+ * falling back to in-memory feature attributes if IPC is unavailable.
+ * @function autoDetectTemporalRange
+ * @description Queries global temporal bounds across active time-enabled layers via IPC or in-memory fallback.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @param {LayerDescriptor[]} [layers] - Optional layer descriptors array (defaults to projectLayersSignal.value).
+ * @param {(layerId: string, options: QueryExtentOptions) => Promise<any>} [queryExtentFn] - Optional queryExtent function for IPC dispatch or mocking.
+ * @returns {Promise<{ from: number; to: number } | null>} Earliest from and latest to timestamps in UTC epoch ms, or null if no valid range.
+ */
+export async function autoDetectTemporalRange(
+  layers: LayerDescriptor[] = projectLayersSignal.value,
+  queryExtentFn?: (layerId: string, options: QueryExtentOptions) => Promise<any>
+): Promise<{ from: number; to: number } | null> {
+  const activeTemporalLayers = layers.filter(
+    (l) => l.temporal?.enabled || l.temporalEnabled
+  );
+  if (activeTemporalLayers.length === 0) {
+    return null;
+  }
+
+  const queryFn =
+    queryExtentFn ?? (globalThis as any).window?.electronAPI?.queryExtent;
+
+  if (typeof queryFn === 'function') {
+    let minTime = Infinity;
+    let maxTime = -Infinity;
+
+    for (const layer of activeTemporalLayers) {
+      const config = layer.temporal || { enabled: true, mode: 'start_end' };
+      const mode = config.mode || 'start_end';
+      const startField = config.startField;
+      const endField = config.endField;
+
+      const minSortField = mode === 'end' ? endField : (startField ?? endField);
+      if (minSortField) {
+        try {
+          const res = await queryFn(layer.id, {
+            sortBy: minSortField,
+            sortDirection: 'ASC',
+            max: 1,
+            includeGeometry: false,
+            fields: [minSortField]
+          });
+          const props = extractFirstFeatureProperties(res);
+          if (props && props[minSortField] !== undefined && props[minSortField] !== null) {
+            const t = parseTemporalValue(props[minSortField]);
+            if (t !== null && Number.isFinite(t)) {
+              if (t < minTime) minTime = t;
+              if (t > maxTime) maxTime = t;
+            }
+          }
+        } catch (err) {
+          logging.warn(`Failed to query earliest temporal bound for layer "${layer.id}"`, err);
+        }
+      }
+
+      const maxSortField = mode === 'start' ? startField : (endField ?? startField);
+      if (maxSortField) {
+        try {
+          const res = await queryFn(layer.id, {
+            sortBy: maxSortField,
+            sortDirection: 'DESC',
+            max: 1,
+            includeGeometry: false,
+            fields: [maxSortField]
+          });
+          const props = extractFirstFeatureProperties(res);
+          if (props && props[maxSortField] !== undefined && props[maxSortField] !== null) {
+            const t = parseTemporalValue(props[maxSortField]);
+            if (t !== null && Number.isFinite(t)) {
+              if (t < minTime) minTime = t;
+              if (t > maxTime) maxTime = t;
+            }
+          }
+        } catch (err) {
+          logging.warn(`Failed to query latest temporal bound for layer "${layer.id}"`, err);
+        }
+      }
+    }
+
+    if (Number.isFinite(minTime) && Number.isFinite(maxTime)) {
+      return { from: minTime, to: maxTime };
+    }
+  }
+
+  // Fallback to in-memory feature attributes
+  return calculateActiveTemporalRange(layers);
 }

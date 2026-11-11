@@ -10,11 +10,22 @@
  * @see {@link TimestampSpinner}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
+ * @see {@link autoDetectTemporalRange}
+ * @see {@link computeTimeFilterWidgetMinHeight}
+ * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link Icon}
  */
 
-import React, { useCallback, type ChangeEvent } from 'react';
-import Icon from '@renderer/components/common/Icon';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import { useSignals } from "@preact/signals-react/runtime";
+import Icon from "@renderer/components/common/Icon";
 import {
   mdiClockTimeFourOutline,
   mdiMapClockOutline,
@@ -24,9 +35,12 @@ import {
   mdiSkipForwardOutline,
   mdiChevronUp,
   mdiChevronDown,
-} from '@mdi/js';
-import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
-import { TimestampSpinner, formatUtcTimestamp } from '../../components/common/TimestampSpinner';
+} from "@mdi/js";
+import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
+import {
+  TimestampSpinner,
+  formatUtcTimestamp,
+} from "../../components/common/TimestampSpinner";
 import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
@@ -39,13 +53,47 @@ import {
   setTimeFilterFrame,
   setTimeFilterRange,
   setTimeFilterStep,
-} from '../../state/timeFilterSignals';
+} from "../../state/timeFilterSignals";
 import {
   stepTemporalTimestamp,
   calculateActiveTemporalRange,
+  autoDetectTemporalRange,
   MIN_TIME_FILTER_STEP,
-} from '../../map/timeFilterMath';
-import type { TimeFilterUnit } from '../../../shared/types';
+} from "../../map/timeFilterMath";
+import type { TimeFilterUnit } from "../../../shared/types";
+
+/**
+ * @constant {number} TIME_FILTER_SCRUB_DEBOUNCE_MS
+ * @description Debounce duration in milliseconds for timeline slider scrubbing to prevent flooding map redraw passes.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @default 300
+ */
+export const TIME_FILTER_SCRUB_DEBOUNCE_MS = 300;
+
+/**
+ * @function computeTimeFilterWidgetMinHeight
+ * @description Computes dynamic minimum height CSS expression for TimeFilterWidget derived from UI icon and font size preferences.
+ * Ensures vertical clearance for widget header, 3 rows of controls (top transport bar, slider scrubber, bottom range/step controls), gaps, and padding.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @returns {string} CSS calc expression for minimum widget height.
+ */
+export function computeTimeFilterWidgetMinHeight(): string {
+  return (
+    "calc("
+    + "var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px + "
+    + "var(--cartouche-ui-icon-size, 24px) + 4px + "
+    + "16px + "
+    + "var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 6px + "
+    + "26px"
+    + ")"
+  );
+}
 
 /**
  * @typedef {Object} TimeFilterWidgetProps
@@ -54,7 +102,10 @@ import type { TimeFilterUnit } from '../../../shared/types';
  * @property {string} [displayName='Time Filter'] - Title text rendered in header.
  * @property {boolean} [overlappable=false] - Whether widget can participate in tab overlap containers.
  */
-export interface TimeFilterWidgetProps extends Omit<BasicWidgetProps, 'children'> {}
+export interface TimeFilterWidgetProps extends Omit<
+  BasicWidgetProps,
+  "children"
+> {}
 
 /**
  * @component TimeFilterWidget
@@ -67,6 +118,7 @@ export interface TimeFilterWidgetProps extends Omit<BasicWidgetProps, 'children'
  * @returns {React.ReactElement} Time filter widget element.
  */
 export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
+  useSignals();
   const isActive = isTimeFilterActiveSignal.value;
   const frameStart = timeFilterFrameStartSignal.value;
   const frameEnd = timeFilterFrameEndSignal.value;
@@ -75,14 +127,37 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
   const step = timeFilterStepSignal.value;
   const unit = timeFilterUnitSignal.value;
 
+  const [stepText, setStepText] = useState<string>(() =>
+    String(timeFilterStepSignal.value)
+  );
+  const [scrubbingValue, setScrubbingValue] = useState<number | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Synchronize local input text state with external signal changes
+  useEffect(() => {
+    const parsed = parseFloat(stepText);
+    if (Number.isNaN(parsed) || parsed !== step) {
+      setStepText(String(step));
+    }
+  }, [step]);
+
+  // Clean up any pending slider debounce timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current !== null) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   // Toggle button [A]
   const handleToggleActive = useCallback(() => {
     setTimeFilterActive(!isTimeFilterActiveSignal.value);
   }, []);
 
   // Auto-Range button [B]
-  const handleAutoRange = useCallback(() => {
-    const range = calculateActiveTemporalRange();
+  const handleAutoRange = useCallback(async () => {
+    const range = await autoDetectTemporalRange();
     if (range) {
       setTimeFilterRange(range.from, range.to);
       const cur = timeFilterFrameStartSignal.value;
@@ -126,11 +201,26 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     setTimeFilterFrame(end, end);
   }, []);
 
-  // Slider continuous scrubbing
+  // Slider continuous scrubbing with 300ms debounce
   const handleSliderChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
     if (Number.isFinite(val)) {
-      setTimeFilterFrame(val, val);
+      setScrubbingValue(val);
+      if (debounceTimerRef.current !== null) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        const curStart = timeFilterFrameStartSignal.value;
+        const curEnd = timeFilterFrameEndSignal.value;
+        const duration = Math.max(0, curEnd - curStart);
+        const nextEnd =
+          duration > 0 ?
+            Math.min(timeFilterRangeEndSignal.value, val + duration)
+          : val;
+        setTimeFilterFrame(val, nextEnd);
+        setScrubbingValue(null);
+        debounceTimerRef.current = null;
+      }, TIME_FILTER_SCRUB_DEBOUNCE_MS);
     }
   }, []);
 
@@ -146,369 +236,469 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
   // Step number input change
   const handleStepChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const raw = parseFloat(e.target.value);
-    if (!Number.isNaN(raw)) {
-      const clamped = Math.max(MIN_TIME_FILTER_STEP, raw);
-      setTimeFilterStep(clamped, timeFilterUnitSignal.value);
+    const str = e.target.value;
+    setStepText(str);
+    const raw = parseFloat(str);
+    if (!Number.isNaN(raw) && raw >= MIN_TIME_FILTER_STEP) {
+      setTimeFilterStep(raw, timeFilterUnitSignal.value);
     }
   }, []);
 
+  // Step input blur normalization
+  const handleStepBlur = useCallback(() => {
+    const raw = parseFloat(stepText);
+    if (Number.isNaN(raw) || raw < MIN_TIME_FILTER_STEP) {
+      const fallback = Number.isNaN(raw) ? 1.0 : MIN_TIME_FILTER_STEP;
+      setTimeFilterStep(fallback, timeFilterUnitSignal.value);
+      setStepText(String(fallback));
+    } else {
+      setTimeFilterStep(raw, timeFilterUnitSignal.value);
+      setStepText(String(raw));
+    }
+  }, [stepText]);
+
+  // Step input keydown (Enter to commit and blur)
+  const handleStepKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        (e.currentTarget as HTMLInputElement).blur();
+      }
+    },
+    []
+  );
+
   // Step Up arrow (+1.00)
   const handleStepUp = useCallback(() => {
-    const next = Math.max(MIN_TIME_FILTER_STEP, timeFilterStepSignal.value + 1.0);
+    const current = timeFilterStepSignal.value;
+    const next = Math.max(
+      MIN_TIME_FILTER_STEP,
+      Number((current + 1.0).toFixed(12))
+    );
     setTimeFilterStep(next, timeFilterUnitSignal.value);
+    setStepText(String(next));
   }, []);
 
   // Step Down arrow (-1.00)
   const handleStepDown = useCallback(() => {
-    const next = Math.max(MIN_TIME_FILTER_STEP, timeFilterStepSignal.value - 1.0);
+    const current = timeFilterStepSignal.value;
+    const next = Math.max(
+      MIN_TIME_FILTER_STEP,
+      Number((current - 1.0).toFixed(12))
+    );
     setTimeFilterStep(next, timeFilterUnitSignal.value);
+    setStepText(String(next));
   }, []);
 
   // Unit dropdown change
   const handleUnitChange = useCallback((e: ChangeEvent<HTMLSelectElement>) => {
-    setTimeFilterStep(timeFilterStepSignal.value, e.target.value as TimeFilterUnit);
+    setTimeFilterStep(
+      timeFilterStepSignal.value,
+      e.target.value as TimeFilterUnit
+    );
   }, []);
 
-  const currentFrameLabel = `${formatUtcTimestamp(frameStart)} | ${formatUtcTimestamp(frameEnd)}`;
+  const displayedFrameStart =
+    scrubbingValue !== null ? scrubbingValue : frameStart;
+  const frameDuration = Math.max(0, frameEnd - frameStart);
+  const displayedFrameEnd =
+    scrubbingValue !== null ?
+      frameDuration > 0 ?
+        Math.min(rangeEnd, scrubbingValue + frameDuration)
+      : scrubbingValue
+    : frameEnd;
+
+  const currentFrameLabel = `${formatUtcTimestamp(displayedFrameStart)} | ${formatUtcTimestamp(displayedFrameEnd)}`;
 
   const sliderMin = rangeStart;
   const sliderMax = Math.max(rangeStart, rangeEnd);
   const sliderDisabled = rangeStart >= rangeEnd;
+  const isAtStart = rangeStart >= rangeEnd || displayedFrameStart <= rangeStart;
+  const isAtEnd = rangeStart >= rangeEnd || displayedFrameEnd >= rangeEnd;
 
   return (
     <BasicWidget
-      name="time-filter-widget"
-      displayName="Time Filter"
+      name='time-filter-widget'
+      displayName='Time Filter'
       icon={mdiClockTimeFourOutline}
-      minHeight={68}
       overlappable={props.overlappable ?? false}
-      {...props}>
+      {...props}
+      minHeight={props.minHeight ?? computeTimeFilterWidgetMinHeight()}>
       <div
-        className="time-filter-widget-container"
+        className='time-filter-widget-container'
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-          padding: '6px 10px',
-          background: '#f8fafc',
-          color: '#000000',
-          fontSize: '0.8333rem',
-          userSelect: 'none',
+          display: "flex",
+          flexDirection: "column",
+          gap: "6px",
+          padding: "6px 10px 8px 10px",
+          boxSizing: "border-box",
+          background: "#f8fafc",
+          color: "#000000",
+          fontSize: "0.8333rem",
+          userSelect: "none",
         }}>
         {/* Top Control Bar: Activation, Auto-Range, VCR Transport, Current Frame */}
         <div
-          className="time-filter-top-bar"
+          className='time-filter-top-bar'
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '8px',
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "8px",
           }}>
           {/* Activation & Auto-Range */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <button
-              type="button"
-              className={`time-filter-btn ${isActive ? 'active' : ''}`}
-              title="Toggle Dynamic Temporal Control"
-              aria-label="Toggle Dynamic Temporal Control"
+              type='button'
+              className={`toolbar-btn ${isActive ? "active" : ""}`}
+              title='Toggle Dynamic Temporal Control'
+              aria-label='Toggle Dynamic Temporal Control'
               onClick={handleToggleActive}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '28px',
-                height: '24px',
-                padding: 0,
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: isActive ? '#1b446c' : '#ffffff',
-                color: isActive ? '#ffffff' : '#000000',
-                cursor: 'pointer',
+                width: "26px",
+                height: "24px",
+                minWidth: "26px",
+                minHeight: "24px",
               }}>
-              <Icon path={mdiClockTimeFourOutline} size="16px" />
+              <Icon path={mdiClockTimeFourOutline} size='16px' />
             </button>
             <button
-              type="button"
-              className="time-filter-btn"
-              title="Auto-calculate Range from Active Temporal Layers"
-              aria-label="Auto-calculate Range from Active Temporal Layers"
+              type='button'
+              className='time-filter-btn'
+              title='Auto-calculate Range from Active Temporal Layers'
+              aria-label='Auto-calculate Range from Active Temporal Layers'
               onClick={handleAutoRange}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 width: '28px',
                 height: '24px',
-                padding: 0,
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: '#ffffff',
-                color: '#000000',
-                cursor: 'pointer',
               }}>
-              <Icon path={mdiMapClockOutline} size="16px" />
+              <Icon path={mdiMapClockOutline} size='16px' />
             </button>
           </div>
 
-          <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 2px' }} />
+          <div
+            style={{
+              width: '1px',
+              height: '18px',
+              background: '#cbd5e1',
+              margin: '0 2px',
+            }}
+          />
 
           {/* VCR Transport Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
             <button
-              type="button"
-              className="time-filter-btn"
-              title="Jump to Start"
-              aria-label="Jump to Start"
+              type='button'
+              className='time-filter-btn'
+              title='Jump to Start'
+              aria-label='Jump to Start'
+              disabled={isAtStart}
               onClick={handleJumpToStart}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 width: '26px',
                 height: '24px',
-                padding: 0,
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: '#ffffff',
-                color: '#000000',
-                cursor: 'pointer',
               }}>
-              <Icon path={mdiSkipBackwardOutline} size="16px" />
+              <Icon path={mdiSkipBackwardOutline} size='16px' />
             </button>
             <button
-              type="button"
-              className="time-filter-btn"
-              title="Step Backward"
-              aria-label="Step Backward"
+              type='button'
+              className='time-filter-btn'
+              title='Step Backward'
+              aria-label='Step Backward'
+              disabled={isAtStart}
               onClick={handleStepBackward}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 width: '26px',
                 height: '24px',
-                padding: 0,
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: '#ffffff',
-                color: '#000000',
-                cursor: 'pointer',
               }}>
-              <Icon path={mdiSkipPreviousOutline} size="16px" />
+              <Icon path={mdiSkipPreviousOutline} size='16px' />
             </button>
             <button
-              type="button"
-              className="time-filter-btn"
-              title="Step Forward"
-              aria-label="Step Forward"
+              type='button'
+              className='time-filter-btn'
+              title='Step Forward'
+              aria-label='Step Forward'
+              disabled={isAtEnd}
               onClick={handleStepForward}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 width: '26px',
                 height: '24px',
-                padding: 0,
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: '#ffffff',
-                color: '#000000',
-                cursor: 'pointer',
               }}>
-              <Icon path={mdiSkipNextOutline} size="16px" />
+              <Icon path={mdiSkipNextOutline} size='16px' />
             </button>
             <button
-              type="button"
-              className="time-filter-btn"
-              title="Jump to End"
-              aria-label="Jump to End"
+              type='button'
+              className='time-filter-btn'
+              title='Jump to End'
+              aria-label='Jump to End'
+              disabled={isAtEnd}
               onClick={handleJumpToEnd}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 width: '26px',
                 height: '24px',
-                padding: 0,
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: '#ffffff',
-                color: '#000000',
-                cursor: 'pointer',
               }}>
-              <Icon path={mdiSkipForwardOutline} size="16px" />
+              <Icon path={mdiSkipForwardOutline} size='16px' />
             </button>
           </div>
 
-          <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 2px' }} />
+          <div
+            style={{
+              width: "1px",
+              height: "18px",
+              background: "#cbd5e1",
+              margin: "0 2px",
+            }}
+          />
 
           {/* Current Frame Display */}
           <div
+            className='time-filter-current-frame-container'
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontFamily: 'monospace',
-              fontSize: '0.8333rem',
-              color: '#0f172a',
-              background: '#ffffff',
-              padding: '2px 8px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '3px',
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "transparent",
+              padding: "2px 4px",
+              border: "none",
             }}>
-            <span style={{ color: '#64748b', fontSize: '0.75rem', fontFamily: 'sans-serif' }}>Frame:</span>
-            <span className="time-filter-current-frame-label">{currentFrameLabel}</span>
+            <span
+              style={{
+                color: "var(--cartouche-theme-fg-muted, #64748b)",
+                fontSize: "0.75rem",
+                fontFamily: "sans-serif",
+                fontWeight: 500,
+              }}>
+              Frame:
+            </span>
+            <span
+              className='time-filter-current-frame-label'
+              style={{
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                fontSize: "0.8333rem",
+                color: "var(--cartouche-theme-fg-primary, #0f172a)",
+              }}>
+              {currentFrameLabel}
+            </span>
           </div>
         </div>
 
         {/* Middle Bar: Scrubbing Slider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            width: "100%",
+          }}>
           <input
-            type="range"
-            className="time-filter-slider"
-            aria-label="Time Filter Scrubber"
+            type='range'
+            className='time-filter-slider'
+            aria-label='Time Filter Scrubber'
             min={sliderMin}
             max={sliderMax}
-            value={frameStart}
+            value={displayedFrameStart}
             disabled={sliderDisabled}
             onChange={handleSliderChange}
             style={{
               flex: 1,
-              height: '6px',
-              cursor: sliderDisabled ? 'not-allowed' : 'pointer',
-              accentColor: '#1b446c',
+              height: "6px",
+              cursor: sliderDisabled ? "not-allowed" : "pointer",
+              accentColor: "#1b446c",
             }}
           />
         </div>
 
         {/* Bottom Bar: Range Spinners (From / To) and Step Controls */}
         <div
-          className="time-filter-bottom-bar"
+          className='time-filter-bottom-bar'
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
+            paddingBottom: "2px",
+            boxSizing: "border-box",
           }}>
           {/* Range: From */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569' }}>From:</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              userSelect: "text",
+            }}>
+            <span
+              style={{
+                fontWeight: 500,
+                fontSize: "0.75rem",
+                color: "#475569",
+                userSelect: "none",
+              }}>
+              From:
+            </span>
             <TimestampSpinner
               value={rangeStart}
               onChange={handleFromChange}
               disabled={false}
+              style={{ userSelect: "text" }}
             />
           </div>
 
           {/* Range: To */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569' }}>To:</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              userSelect: "text",
+            }}>
+            <span
+              style={{
+                fontWeight: 500,
+                fontSize: "0.75rem",
+                color: "#475569",
+                userSelect: "none",
+              }}>
+              To:
+            </span>
             <TimestampSpinner
               value={rangeEnd}
               onChange={handleToChange}
               disabled={false}
+              style={{ userSelect: "text" }}
             />
           </div>
 
-          <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 2px' }} />
+          <div
+            style={{
+              width: "1px",
+              height: "18px",
+              background: "var(--cartouche-theme-border, #cbd5e1)",
+              margin: "0 2px",
+            }}
+          />
 
           {/* Step Input with discrete 1.00 arrow buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569' }}>Step:</span>
-            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <span
+              style={{
+                fontWeight: 500,
+                fontSize: "0.75rem",
+                color: "#475569",
+              }}>
+              Step:
+            </span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                position: "relative",
+              }}>
               <input
-                type="number"
-                className="time-filter-step-input"
-                aria-label="Temporal Step Value"
+                type='number'
+                className='time-filter-step-input'
+                aria-label='Temporal Step Value'
                 min={MIN_TIME_FILTER_STEP}
-                step="any"
-                value={step}
+                step='any'
+                value={stepText}
                 onChange={handleStepChange}
+                onBlur={handleStepBlur}
+                onKeyDown={handleStepKeyDown}
                 style={{
-                  width: '90px',
-                  height: '24px',
-                  padding: '2px 18px 2px 6px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '3px',
-                  background: '#ffffff',
-                  fontSize: '0.8333rem',
-                  color: '#000000',
+                  boxSizing: "border-box",
+                  width: "90px",
+                  height: "24px",
+                  padding: "2px 18px 2px 6px",
+                  border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
+                  borderRadius: "3px",
+                  background: "#ffffff",
+                  fontSize: "0.8333rem",
+                  color: "#000000",
+                  outline: "none",
                 }}
               />
               <div
                 style={{
-                  position: 'absolute',
+                  position: "absolute",
                   right: 0,
                   top: 0,
                   bottom: 0,
-                  width: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderLeft: '1px solid #cbd5e1',
+                  width: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  borderLeft:
+                    "1px solid var(--cartouche-theme-border, #cbd5e1)",
+                  boxSizing: "border-box",
                 }}>
                 <button
-                  type="button"
-                  title="Step Up by 1.00"
-                  aria-label="Step Up by 1.00"
+                  type='button'
+                  tabIndex={-1}
+                  title='Step Up by 1.00'
+                  aria-label='Step Up by 1.00'
                   onClick={handleStepUp}
                   style={{
                     flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#ffffff',
-                    border: 'none',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#ffffff",
+                    border: "none",
                     padding: 0,
-                    cursor: 'pointer',
+                    cursor: "pointer",
                     lineHeight: 0,
+                    outline: "none",
                   }}>
-                  <Icon path={mdiChevronUp} size="12px" />
+                  <Icon path={mdiChevronUp} size='12px' />
                 </button>
                 <button
-                  type="button"
-                  title="Step Down by 1.00"
-                  aria-label="Step Down by 1.00"
+                  type='button'
+                  tabIndex={-1}
+                  title='Step Down by 1.00'
+                  aria-label='Step Down by 1.00'
                   onClick={handleStepDown}
                   style={{
                     flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#ffffff',
-                    border: 'none',
-                    borderTop: '1px solid #cbd5e1',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#ffffff",
+                    border: "none",
+                    borderTop:
+                      "1px solid var(--cartouche-theme-border, #cbd5e1)",
                     padding: 0,
-                    cursor: 'pointer',
+                    cursor: "pointer",
                     lineHeight: 0,
+                    outline: "none",
                   }}>
-                  <Icon path={mdiChevronDown} size="12px" />
+                  <Icon path={mdiChevronDown} size='12px' />
                 </button>
               </div>
             </div>
 
             {/* Unit Dropdown */}
             <select
-              className="time-filter-unit-select"
-              aria-label="Temporal Step Unit"
+              className='time-filter-unit-select'
+              aria-label='Temporal Step Unit'
               value={unit}
               onChange={handleUnitChange}
               style={{
-                height: '24px',
-                padding: '2px 6px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '3px',
-                background: '#ffffff',
-                fontSize: '0.8333rem',
-                color: '#000000',
-                cursor: 'pointer',
+                boxSizing: "border-box",
+                height: "24px",
+                padding: "2px 6px",
+                border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
+                borderRadius: "3px",
+                background: "#ffffff",
+                fontSize: "0.8333rem",
+                color: "#000000",
+                cursor: "pointer",
+                outline: "none",
               }}>
-              <option value="Years">Years</option>
-              <option value="Months">Months</option>
-              <option value="Days">Days</option>
-              <option value="Hours">Hours</option>
-              <option value="Minutes">Minutes</option>
-              <option value="Seconds">Seconds</option>
+              <option value='Years'>Years</option>
+              <option value='Months'>Months</option>
+              <option value='Days'>Days</option>
+              <option value='Hours'>Hours</option>
+              <option value='Minutes'>Minutes</option>
+              <option value='Seconds'>Seconds</option>
             </select>
           </div>
         </div>

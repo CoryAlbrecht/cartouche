@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -1340,6 +1340,50 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       });
       assert.equal(page1Cleared.totalMatched, 1353);
       assert.equal(page1Cleared.features[2].properties?.name, originalName);
+    });
+  });
+
+  describe('Sorted Feature Queries via GDAL SQL (Ticket #238)', () => {
+    const timelineGpkgPath = path.resolve(__dirname, '../../../../test/files/timeline_level_0.gpkg');
+
+    beforeEach(async () => {
+      await engine.openDataset('timeline-test', timelineGpkgPath);
+    });
+
+    afterEach(() => {
+      engine.closeAll();
+    });
+
+    it('queries earliest and latest feature bounds using sortBy and sortDirection options', async () => {
+      // Query earliest bound: ASC limit 1
+      const ascResult = await engine.queryExtent('timeline-test', {
+        sortBy: 'start_date',
+        sortDirection: 'ASC',
+        max: 1,
+        includeGeometry: false,
+        fields: ['start_date', 'names']
+      });
+
+      assert.equal(ascResult.features.length, 1);
+      assert.equal(ascResult.totalMatched, 252);
+      assert.equal(ascResult.features[0].id, 73);
+      assert.ok(ascResult.features[0].properties);
+      assert.ok(ascResult.features[0].properties.start_date !== undefined);
+
+      // Query latest bound: DESC limit 1
+      const descResult = await engine.queryExtent('timeline-test', {
+        sortBy: 'end_date',
+        sortDirection: 'DESC',
+        max: 1,
+        includeGeometry: false,
+        fields: ['end_date', 'names']
+      });
+
+      assert.equal(descResult.features.length, 1);
+      assert.equal(descResult.totalMatched, 252);
+      assert.equal(descResult.features[0].id, 1);
+      assert.ok(descResult.features[0].properties);
+      assert.ok(descResult.features[0].properties.end_date !== undefined);
     });
   });
 });

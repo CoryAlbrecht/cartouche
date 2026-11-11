@@ -520,9 +520,11 @@ export const WKB_FLAG_HAS_PROPERTIES = 0x02;
  * @property {number} [start] - Zero-based feature offset for stateless chunk pagination.
  * @property {number} [max] - Maximum number of matching features to return in a single chunk.
  * @property {Array<string | number>} [featureIds] - Optional whitelist of feature identifiers to filter by.
+ * @property {string} [sortBy] - Attribute column name by which to order query results using GDAL SQL.
+ * @property {'ASC' | 'DESC'} [sortDirection] - Sort direction for ORDER BY clause ('ASC' | 'DESC').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-11-06
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 export interface QueryExtentOptions {
@@ -533,6 +535,8 @@ export interface QueryExtentOptions {
   start?: number;
   max?: number;
   featureIds?: Array<string | number>;
+  sortBy?: string;
+  sortDirection?: 'ASC' | 'DESC';
 }
 
 /**

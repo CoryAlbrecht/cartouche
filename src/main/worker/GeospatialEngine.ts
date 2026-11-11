@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-07
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -1363,10 +1363,10 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters and optional start/max pagination, and serializing features as a contiguous binary WKB packet buffer.
+   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters, optional sortBy ordering via GDAL SQL, and start/max pagination, serializing features as a contiguous binary WKB packet buffer.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-06
+   * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy extent [minX, minY, maxX, maxY].
@@ -1413,6 +1413,7 @@ export class GeospatialEngine {
       }
 
       const { layer } = activeSession;
+      let isSqlLayer = false;
       try {
         let extentBox: BoundingBox | undefined;
         let proj: string | undefined = targetProjection;
@@ -1421,6 +1422,8 @@ export class GeospatialEngine {
         let startOpt: number | undefined = undefined;
         let maxOpt: number | undefined = undefined;
         let featureIdsOpt: Array<string | number> | undefined = undefined;
+        let sortByOpt: string | undefined = undefined;
+        let sortDirectionOpt: 'ASC' | 'DESC' | undefined = undefined;
 
         if (Array.isArray(options)) {
           extentBox = options;
@@ -1434,6 +1437,18 @@ export class GeospatialEngine {
           startOpt = options.start;
           maxOpt = options.max;
           featureIdsOpt = options.featureIds;
+          sortByOpt = options.sortBy;
+          sortDirectionOpt = options.sortDirection;
+        }
+
+        let queryLayer = layer;
+        if (sortByOpt && typeof activeSession.dataset.executeSQL === "function") {
+          const direction = sortDirectionOpt === "DESC" ? "DESC" : "ASC";
+          const cleanLayerName = layer.name.replace(/"/g, '""');
+          const cleanSortBy = sortByOpt.replace(/"/g, '""');
+          const sql = `SELECT * FROM "${cleanLayerName}" ORDER BY "${cleanSortBy}" ${direction}`;
+          queryLayer = activeSession.dataset.executeSQL(sql);
+          isSqlLayer = true;
         }
 
         const sliceStart =
@@ -1465,13 +1480,14 @@ export class GeospatialEngine {
             shouldFilter = true;
             filterExtent = [minX, minY, maxX, maxY];
 
-            if (proj && layer.srs) {
-              const layerAuth = getSrsAuthority(layer.srs);
+            const refSrs = queryLayer.srs ?? layer.srs;
+            if (proj && refSrs) {
+              const layerAuth = getSrsAuthority(refSrs);
               if (!layerAuth || proj.toUpperCase() !== layerAuth) {
                 filterExtent = reprojectBoundingBox(
                   filterExtent,
                   proj,
-                  layer.srs
+                  refSrs
                 );
               }
             }
@@ -1479,14 +1495,14 @@ export class GeospatialEngine {
         }
 
         if (shouldFilter) {
-          layer.setSpatialFilter(
+          queryLayer.setSpatialFilter(
             filterExtent[0],
             filterExtent[1],
             filterExtent[2],
             filterExtent[3]
           );
         } else {
-          layer.setSpatialFilter(null);
+          queryLayer.setSpatialFilter(null);
         }
 
         interface ExtractedRecord {
@@ -1501,7 +1517,7 @@ export class GeospatialEngine {
         const features: QueryExtentFeature[] = [];
         let totalMatched = 0;
 
-        layer.features.forEach((feature) => {
+        queryLayer.features.forEach((feature) => {
           try {
             const rawFid = feature.fid;
             const fidKey = String(rawFid);
@@ -1750,7 +1766,9 @@ export class GeospatialEngine {
         };
       } finally {
         try {
-          layer.setSpatialFilter(null);
+          if (!isSqlLayer) {
+            layer.setSpatialFilter(null);
+          }
         } catch {
           // Suppress filter cleanup error
         }
