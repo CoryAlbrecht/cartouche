@@ -1343,3 +1343,90 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
       }
     });
   });
+
+  describe('TimeFilterWidget: Activation Toggle Button Alignment (Ticket #248)', () => {
+    it('verifies that .toolbar-btn and .toolbar-btn.active CSS rules match standard toolbar toggle conventions', () => {
+      const cssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
+      const css = fs.readFileSync(cssPath, 'utf8');
+
+      // Inactive / base styling
+      assert.ok(
+        css.includes('.toolbar-btn {') &&
+          css.includes('background: transparent;') &&
+          css.includes('var(--cartouche-theme-fg-primary)'),
+        '.toolbar-btn must have transparent background and primary fg color'
+      );
+
+      // Hover styling
+      assert.ok(
+        css.includes('.toolbar-btn:hover:not(:disabled)') &&
+          css.includes('var(--cartouche-theme-surface-alt)'),
+        '.toolbar-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)'
+      );
+
+      // Active styling
+      assert.ok(
+        css.includes('.toolbar-btn.active') &&
+          css.includes('var(--cartouche-theme-info-subtle)') &&
+          css.includes('var(--cartouche-theme-info)'),
+        '.toolbar-btn.active must apply info-subtle background and info border/color'
+      );
+    });
+
+    it('renders activation toggle button with .toolbar-btn class', () => {
+      setTimeFilterActive(false);
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
+      assert.ok(toggleMatch, 'Activation toggle button must be rendered');
+      assert.ok(
+        toggleMatch[0].includes('toolbar-btn'),
+        'Activation toggle button must adopt toolbar-btn class'
+      );
+      assert.ok(
+        !toggleMatch[0].includes('toolbar-btn active') && !toggleMatch[0].includes('active'),
+        'Inactive toggle button must not carry active class'
+      );
+    });
+
+    it('reactively applies active class when isTimeFilterActiveSignal is true', () => {
+      setTimeFilterActive(true);
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
+      assert.ok(toggleMatch, 'Activation toggle button must be rendered');
+      assert.ok(
+        toggleMatch[0].includes('toolbar-btn active') || (toggleMatch[0].includes('toolbar-btn') && toggleMatch[0].includes('active')),
+        'Active toggle button must adopt .toolbar-btn.active class'
+      );
+      // Ensure hardcoded navy background (#1b446c) has been completely removed
+      assert.ok(
+        !toggleMatch[0].includes('#1b446c'),
+        'Hardcoded navy background must not be present'
+      );
+    });
+
+    it('toggles active class immediately when signal toggles between true and false', () => {
+      // Inactive
+      setTimeFilterActive(false);
+      let markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+      let toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
+      assert.ok(toggleMatch && !toggleMatch[0].includes('active'), 'Must be inactive initially');
+
+      // Toggle to active
+      setTimeFilterActive(true);
+      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+      toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
+      assert.ok(toggleMatch && toggleMatch[0].includes('active'), 'Must reactively become active');
+
+      // Toggle back to inactive
+      setTimeFilterActive(false);
+      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+      toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
+      assert.ok(toggleMatch && !toggleMatch[0].includes('active'), 'Must reactively become inactive again');
+    });
+  });

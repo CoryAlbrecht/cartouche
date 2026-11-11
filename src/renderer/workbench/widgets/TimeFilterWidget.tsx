@@ -349,22 +349,15 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <button
               type='button'
-              className={`time-filter-btn ${isActive ? "active" : ""}`}
+              className={`toolbar-btn ${isActive ? "active" : ""}`}
               title='Toggle Dynamic Temporal Control'
               aria-label='Toggle Dynamic Temporal Control'
               onClick={handleToggleActive}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "28px",
+                width: "26px",
                 height: "24px",
-                padding: 0,
-                border: "1px solid #cbd5e1",
-                borderRadius: "3px",
-                background: isActive ? "#1b446c" : "#ffffff",
-                color: isActive ? "#ffffff" : "#000000",
-                cursor: "pointer",
+                minWidth: "26px",
+                minHeight: "24px",
               }}>
               <Icon path={mdiClockTimeFourOutline} size='16px' />
             </button>
