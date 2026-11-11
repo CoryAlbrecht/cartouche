@@ -391,20 +391,33 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
           {/* Current Frame Display */}
           <div
+            className="time-filter-current-frame-container"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              fontFamily: 'monospace',
-              fontSize: '0.8333rem',
-              color: '#0f172a',
-              background: '#ffffff',
-              padding: '2px 8px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '3px',
+              gap: '6px',
+              background: 'transparent',
+              padding: '2px 4px',
+              border: 'none',
             }}>
-            <span style={{ color: '#64748b', fontSize: '0.75rem', fontFamily: 'sans-serif' }}>Frame:</span>
-            <span className="time-filter-current-frame-label">{currentFrameLabel}</span>
+            <span
+              style={{
+                color: 'var(--cartouche-theme-fg-muted, #64748b)',
+                fontSize: '0.75rem',
+                fontFamily: 'sans-serif',
+                fontWeight: 500,
+              }}>
+              Frame:
+            </span>
+            <span
+              className="time-filter-current-frame-label"
+              style={{
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                fontSize: '0.8333rem',
+                color: 'var(--cartouche-theme-fg-primary, #0f172a)',
+              }}>
+              {currentFrameLabel}
+            </span>
           </div>
         </div>
 

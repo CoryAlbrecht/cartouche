@@ -960,3 +960,67 @@ describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', 
     );
   });
 });
+
+describe('TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket #244)', () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it('renders current frame container with transparent background and no box border', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('time-filter-current-frame-container'),
+      'Frame display container must exist with class time-filter-current-frame-container'
+    );
+    assert.ok(
+      markup.includes('background:transparent') || markup.includes('background: transparent'),
+      'Frame container must define background: transparent'
+    );
+    assert.ok(
+      markup.includes('border:none') || markup.includes('border: none'),
+      'Frame container must define border: none'
+    );
+  });
+
+  it('renders Frame: descriptor text using muted theme typography', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('var(--cartouche-theme-fg-muted'),
+      'Frame descriptor must render using var(--cartouche-theme-fg-muted)'
+    );
+    assert.ok(
+      markup.includes('Frame:'),
+      'Descriptor must display Frame: label'
+    );
+  });
+
+  it('renders formatted timestamp range in clean monospace font matching workbench metadata', () => {
+    setTimeFilterFrame(
+      Date.UTC(2026, 0, 1, 0, 0, 0),
+      Date.UTC(2026, 0, 1, 12, 0, 0)
+    );
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('time-filter-current-frame-label'),
+      'Formatted timestamp must have class time-filter-current-frame-label'
+    );
+    assert.ok(
+      markup.includes('2026-01-01 00:00:00 | 2026-01-01 12:00:00'),
+      'Must render formatted start and end timestamps'
+    );
+    assert.ok(
+      markup.includes('ui-monospace'),
+      'Must use monospace font stack'
+    );
+  });
+});
