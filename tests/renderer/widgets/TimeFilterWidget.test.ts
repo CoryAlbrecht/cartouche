@@ -1778,3 +1778,78 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
       assert.strictEqual(secStepped, rStart + 15000);
     });
   });
+
+  describe('TimeFilterWidget: Custom Range Slider Track and Thumb Styling (Ticket #256)', () => {
+    it('defines cross-browser pseudo-element styling for .time-filter-slider in workbench.css', () => {
+      const cssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
+      const css = fs.readFileSync(cssPath, 'utf8');
+
+      // 1. Base .time-filter-slider appearance and outline reset
+      assert.ok(
+        css.includes('.time-filter-slider {') &&
+          css.includes('-webkit-appearance: none;') &&
+          css.includes('appearance: none;') &&
+          css.includes('background: transparent;'),
+        '.time-filter-slider must reset appearance and use transparent background'
+      );
+
+      // 2. WebKit track: narrow 2px dark line using theme border strong
+      assert.ok(
+        css.includes('.time-filter-slider::-webkit-slider-runnable-track {') &&
+          css.includes('height: 2px;') &&
+          css.includes('var(--cartouche-theme-border-strong)'),
+        '.time-filter-slider::-webkit-slider-runnable-track must define 2px height track with theme border strong'
+      );
+
+      // 3. WebKit thumb: sized to 80% of ui.icon.size and vertically centered with negative margin
+      assert.ok(
+        css.includes('.time-filter-slider::-webkit-slider-thumb {') &&
+          css.includes('width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
+          css.includes('height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
+          css.includes('border-radius: 50%;') &&
+          css.includes('var(--cartouche-theme-primary);') &&
+          css.includes('margin-top: calc((2px - (var(--cartouche-ui-icon-size, 24px) * 0.8)) / 2);'),
+        '.time-filter-slider::-webkit-slider-thumb must be sized to 80% of ui.icon.size and vertically centered'
+      );
+
+      // 4. Gecko track: narrow 2px dark line using theme border strong
+      assert.ok(
+        css.includes('.time-filter-slider::-moz-range-track {') &&
+          css.includes('height: 2px;') &&
+          css.includes('var(--cartouche-theme-border-strong)'),
+        '.time-filter-slider::-moz-range-track must define 2px height track with theme border strong'
+      );
+
+      // 5. Gecko thumb: sized to 80% of ui.icon.size
+      assert.ok(
+        css.includes('.time-filter-slider::-moz-range-thumb {') &&
+          css.includes('width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
+          css.includes('height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
+          css.includes('border-radius: 50%;') &&
+          css.includes('var(--cartouche-theme-primary);'),
+        '.time-filter-slider::-moz-range-thumb must be sized to 80% of ui.icon.size'
+      );
+
+      // 6. Gecko progress: transparent to prevent left-side track fill / highlight
+      assert.ok(
+        css.includes('.time-filter-slider::-moz-range-progress {') &&
+          css.includes('background-color: transparent;'),
+        '.time-filter-slider::-moz-range-progress must have transparent background to prevent left-side fill'
+      );
+    });
+
+    it('renders slider input element without conflicting inline accentColor style', () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(2000, 3000);
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const sliderMatch = markup.match(/<input[^>]*time-filter-slider[^>]*>/);
+      assert.ok(sliderMatch, 'Slider element with time-filter-slider class must be present');
+      assert.ok(
+        !sliderMatch[0].includes('accent-color') && !sliderMatch[0].includes('accentColor'),
+        'Slider input element must not include conflicting inline accentColor'
+      );
+    });
+  });

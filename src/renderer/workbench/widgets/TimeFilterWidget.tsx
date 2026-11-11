@@ -521,9 +521,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             onChange={handleSliderChange}
             style={{
               flex: 1,
-              height: "6px",
               cursor: sliderDisabled ? "not-allowed" : "pointer",
-              accentColor: "#1b446c",
             }}
           />
         </div>
