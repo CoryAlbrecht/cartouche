@@ -10,6 +10,9 @@
  * @see {@link computeTimeFilterWidgetMinHeight}
  * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link stepTemporalTimestamp}
+ * @see {@link computeFrameEnd}
+ * @see {@link snapToTemporalStep}
+ * @see {@link computeTemporalStepAttribute}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
  * @see {@link extractFirstFeatureProperties}
@@ -77,6 +80,8 @@ const {
   getDaysInMonthUtc,
   stepTemporalTimestamp,
   computeFrameEnd,
+  snapToTemporalStep,
+  computeTemporalStepAttribute,
   calculateActiveTemporalRange,
   autoDetectTemporalRange,
   extractFirstFeatureProperties,
@@ -518,6 +523,10 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
     assert.ok(
       markup.includes('type="range"'),
       'Markup must contain range input'
+    );
+    assert.ok(
+      markup.includes('step="86400000"'),
+      'Markup must contain step="86400000" for 1 Day'
     );
 
     // Verify Range labels and Unit select
@@ -1673,5 +1682,99 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
       assert.strictEqual(timeFilterRangeStartSignal.value, Date.parse('1000-01-01'));
       assert.strictEqual(timeFilterRangeEndSignal.value, Date.parse('1500-12-31'));
       assert.strictEqual(timeFilterFrameStartSignal.value, Date.parse('1000-01-01'));
+    });
+  });
+
+  describe('TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantics (Ticket #255)', () => {
+    beforeEach(() => {
+      resetTimeFilterState();
+    });
+
+    it('computeTemporalStepAttribute computes exact millisecond step for fixed units and 1 for calendar-variable units', () => {
+      assert.strictEqual(computeTemporalStepAttribute(50, 'Milliseconds'), 50);
+      assert.strictEqual(computeTemporalStepAttribute(5, 'Seconds'), 5000);
+      assert.strictEqual(computeTemporalStepAttribute(2.5, 'Minutes'), 150000);
+      assert.strictEqual(computeTemporalStepAttribute(3, 'Hours'), 10800000);
+      assert.strictEqual(computeTemporalStepAttribute(1, 'Days'), 86400000);
+      assert.strictEqual(computeTemporalStepAttribute(2, 'Weeks'), 1209600000);
+      assert.strictEqual(computeTemporalStepAttribute(1, 'Months'), 1);
+      assert.strictEqual(computeTemporalStepAttribute(1, 'Years'), 1);
+    });
+
+    it('renders slider with step matching step control multiplied by unit', () => {
+      setTimeFilterRange(Date.UTC(2026, 0, 1), Date.UTC(2026, 11, 31));
+      setTimeFilterStep(5, 'Seconds');
+      let markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+      assert.ok(markup.includes('step="5000"'), 'Slider step must be 5000 for 5 Seconds');
+
+      setTimeFilterStep(2, 'Hours');
+      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+      assert.ok(markup.includes('step="7200000"'), 'Slider step must be 7200000 for 2 Hours');
+
+      setTimeFilterStep(1, 'Months');
+      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+      assert.ok(markup.includes('step="1"'), 'Slider step must be 1 for Months');
+    });
+
+    it('preserves exact calendar date when stepping months (2026-10-20 -> 2026-11-20)', () => {
+      const start = Date.UTC(2026, 9, 20, 14, 0, 0); // 2026-10-20 14:00:00 UTC
+      const end = Date.UTC(2027, 9, 20, 14, 0, 0);
+
+      const plusOneMonth = stepTemporalTimestamp(start, 1, 'Months');
+      assert.strictEqual(
+        plusOneMonth,
+        Date.UTC(2026, 10, 20, 14, 0, 0),
+        'Adding 1 month to 2026-10-20 must produce 2026-11-20'
+      );
+
+      const minusTwoDays = stepTemporalTimestamp(start, -2, 'Days');
+      assert.strictEqual(
+        minusTwoDays,
+        Date.UTC(2026, 9, 18, 14, 0, 0),
+        'Subtracting 2 days from 2026-10-20 must produce 2026-10-18'
+      );
+
+      // Verify snapToTemporalStep snaps a position closer to 2026-11-20
+      const midway = start + 25 * 86400000;
+      const snapped = snapToTemporalStep(midway, start, end, 1, 'Months');
+      assert.strictEqual(
+        snapped,
+        Date.UTC(2026, 10, 20, 14, 0, 0),
+        'Snapping halfway through the month must land on exact calendar month date'
+      );
+    });
+
+    it('clamps slider position strictly between rangeStart and rangeEnd', () => {
+      const rStart = Date.UTC(2026, 0, 1, 0, 0, 0);
+      const rEnd = Date.UTC(2026, 11, 31, 23, 59, 59);
+
+      // Underflow
+      const underflow = snapToTemporalStep(rStart - 100000, rStart, rEnd, 1, 'Days');
+      assert.strictEqual(underflow, rStart, 'Underflow must clamp to rangeStart');
+
+      // Overflow
+      const overflow = snapToTemporalStep(rEnd + 100000, rStart, rEnd, 1, 'Days');
+      assert.strictEqual(overflow, rEnd, 'Overflow must clamp to rangeEnd');
+    });
+
+    it('supports sub-day stepping and micro-decimal steps down to MIN_TIME_FILTER_STEP', () => {
+      const rStart = Date.UTC(2026, 0, 1, 0, 0, 0);
+
+      // Micro-decimal step in Years
+      const stepped = stepTemporalTimestamp(rStart, MIN_TIME_FILTER_STEP, 'Years');
+      assert.ok(stepped > rStart, 'Micro-decimal step must advance timestamp');
+      const deltaMs = stepped - rStart;
+      assert.ok(
+        Math.abs(deltaMs - 1000) <= 5,
+        `MIN_TIME_FILTER_STEP in Years must advance timestamp by ~1 second (1000ms), got ${deltaMs}`
+      );
+
+      // Sub-day Milliseconds stepping
+      const msStepped = stepTemporalTimestamp(rStart, 50, 'Milliseconds');
+      assert.strictEqual(msStepped, rStart + 50);
+
+      // Sub-day Seconds stepping
+      const secStepped = stepTemporalTimestamp(rStart, 15, 'Seconds');
+      assert.strictEqual(secStepped, rStart + 15000);
     });
   });

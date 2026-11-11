@@ -10,6 +10,8 @@
  * @see {@link TimestampSpinner}
  * @see {@link stepTemporalTimestamp}
  * @see {@link computeFrameEnd}
+ * @see {@link snapToTemporalStep}
+ * @see {@link computeTemporalStepAttribute}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
  * @see {@link computeTimeFilterWidgetMinHeight}
@@ -58,6 +60,8 @@ import {
 import {
   stepTemporalTimestamp,
   computeFrameEnd,
+  snapToTemporalStep,
+  computeTemporalStepAttribute,
   calculateActiveTemporalRange,
   autoDetectTemporalRange,
   MIN_TIME_FILTER_STEP,
@@ -216,18 +220,20 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     setTimeFilterFrame(start, end);
   }, []);
 
-  // Slider continuous scrubbing with 300ms debounce
+  // Slider continuous scrubbing with 300ms debounce and calendar-aware step snapping
   const handleSliderChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    if (Number.isFinite(val)) {
+    const rawVal = Number(e.target.value);
+    if (Number.isFinite(rawVal)) {
+      const s = timeFilterStepSignal.value;
+      const u = timeFilterUnitSignal.value;
+      const minRange = timeFilterRangeStartSignal.value;
+      const maxRange = timeFilterRangeEndSignal.value;
+      const val = snapToTemporalStep(rawVal, minRange, maxRange, s, u);
       setScrubbingValue(val);
       if (debounceTimerRef.current !== null) {
         clearTimeout(debounceTimerRef.current);
       }
       debounceTimerRef.current = setTimeout(() => {
-        const s = timeFilterStepSignal.value;
-        const u = timeFilterUnitSignal.value;
-        const maxRange = timeFilterRangeEndSignal.value;
         const nextEnd = computeFrameEnd(val, s, u, maxRange);
         setTimeFilterFrame(val, nextEnd);
         setScrubbingValue(null);
@@ -320,6 +326,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
 
   const sliderMin = rangeStart;
   const sliderMax = Math.max(rangeStart, rangeEnd);
+  const sliderStep = computeTemporalStepAttribute(step, unit);
   const sliderDisabled = rangeStart >= rangeEnd;
   const isAtStart = rangeStart >= rangeEnd || displayedFrameStart <= rangeStart;
   const isAtEnd = rangeStart >= rangeEnd || displayedFrameEnd >= rangeEnd;
@@ -508,6 +515,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             aria-label='Time Filter Scrubber'
             min={sliderMin}
             max={sliderMax}
+            step={sliderStep}
             value={displayedFrameStart}
             disabled={sliderDisabled}
             onChange={handleSliderChange}

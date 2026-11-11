@@ -10,6 +10,8 @@
  * @see {@link getDaysInMonthUtc}
  * @see {@link stepTemporalTimestamp}
  * @see {@link computeFrameEnd}
+ * @see {@link snapToTemporalStep}
+ * @see {@link computeTemporalStepAttribute}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link extractFirstFeatureProperties}
  * @see {@link autoDetectTemporalRange}
@@ -210,6 +212,145 @@ export function computeFrameEnd(
 ): number {
   const targetEnd = stepTemporalTimestamp(startUtc, step, unit);
   return Math.min(rangeEndUtc, targetEnd);
+}
+
+/**
+ * Computes the HTML `<input type="range" step="..." />` attribute value in milliseconds
+ * for continuous time ranges based on the step magnitude and unit denomination.
+ * For fixed time intervals (Milliseconds through Weeks), returns the exact millisecond interval.
+ * For calendar-variable intervals (Months and Years), returns 1 to provide fine-grained native
+ * resolution, allowing the slider handler to snap dynamically using calendar-aware Temporal arithmetic.
+ * @function computeTemporalStepAttribute
+ * @description Returns numeric slider step attribute in milliseconds or 1 for calendar-variable units.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-11
+ * @updated 2026-11-11
+ * @since 0.1.0-dev
+ * @param {number} step - Step magnitude multiplier.
+ * @param {TimeFilterUnit} unit - Step unit denomination.
+ * @returns {number} Slider step attribute value in milliseconds.
+ */
+export function computeTemporalStepAttribute(
+  step: number,
+  unit: TimeFilterUnit
+): number {
+  if (!Number.isFinite(step) || step <= 0) {
+    return 1;
+  }
+  if (unit === 'Milliseconds') {
+    return Math.max(1, Math.round(step));
+  }
+  if (unit === 'Seconds') {
+    return Math.max(1, Math.round(step * 1000));
+  }
+  if (unit === 'Minutes') {
+    return Math.max(1, Math.round(step * 60000));
+  }
+  if (unit === 'Hours') {
+    return Math.max(1, Math.round(step * 3600000));
+  }
+  if (unit === 'Days') {
+    return Math.max(1, Math.round(step * 86400000));
+  }
+  if (unit === 'Weeks') {
+    return Math.max(1, Math.round(step * 604800000));
+  }
+  // For Months and Years, variable month lengths (28-31 days) and leap years require
+  // fine-grained 1ms slider resolution with dynamic calendar snapping in snapToTemporalStep.
+  return 1;
+}
+
+/**
+ * Snaps an arbitrary UTC epoch timestamp to the nearest discrete calendar-stepped interval
+ * originating from rangeStart, adhering strictly to Temporal calendar date math and boundary clamping.
+ * @function snapToTemporalStep
+ * @description Snaps a timestamp to discrete calendar step increments between rangeStart and rangeEnd.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-11
+ * @updated 2026-11-11
+ * @since 0.1.0-dev
+ * @param {number} timestampUtc - Raw timestamp in UTC epoch milliseconds to be snapped.
+ * @param {number} rangeStartUtc - Lower boundary and step origin in UTC epoch milliseconds.
+ * @param {number} rangeEndUtc - Upper boundary in UTC epoch milliseconds.
+ * @param {number} step - Step magnitude multiplier.
+ * @param {TimeFilterUnit} unit - Step unit denomination.
+ * @returns {number} Snapped and clamped timestamp in UTC epoch milliseconds.
+ */
+export function snapToTemporalStep(
+  timestampUtc: number,
+  rangeStartUtc: number,
+  rangeEndUtc: number,
+  step: number,
+  unit: TimeFilterUnit
+): number {
+  if (!Number.isFinite(timestampUtc)) {
+    return rangeStartUtc;
+  }
+  if (timestampUtc <= rangeStartUtc) {
+    return rangeStartUtc;
+  }
+  if (timestampUtc >= rangeEndUtc) {
+    return rangeEndUtc;
+  }
+  if (!Number.isFinite(step) || step <= 0) {
+    return rangeStartUtc;
+  }
+
+  // Fixed duration units: exact arithmetic
+  if (
+    unit === 'Milliseconds'
+    || unit === 'Seconds'
+    || unit === 'Minutes'
+    || unit === 'Hours'
+    || unit === 'Days'
+    || unit === 'Weeks'
+  ) {
+    const msPerUnit: Record<string, number> = {
+      Milliseconds: 1,
+      Seconds: 1000,
+      Minutes: 60000,
+      Hours: 3600000,
+      Days: 86400000,
+      Weeks: 604800000,
+    };
+    const stepMs = step * (msPerUnit[unit] || 1);
+    const delta = timestampUtc - rangeStartUtc;
+    const n = Math.round(delta / stepMs);
+    const candidate = rangeStartUtc + n * stepMs;
+    return Math.max(rangeStartUtc, Math.min(rangeEndUtc, candidate));
+  }
+
+  // Calendar-aware units (Months, Years): binary search for the nearest discrete calendar step
+  const avgDays = unit === 'Months' ? 30.4375 : 365.2425;
+  const estimatedK = Math.max(
+    0,
+    Math.round((timestampUtc - rangeStartUtc) / (step * avgDays * 86400000))
+  );
+
+  let low = 0;
+  let high = Math.max(2, estimatedK * 2);
+  while (stepTemporalTimestamp(rangeStartUtc, high * step, unit) < timestampUtc) {
+    low = high;
+    high *= 2;
+  }
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const tMid = stepTemporalTimestamp(rangeStartUtc, mid * step, unit);
+    if (tMid <= timestampUtc) {
+      const tNext = stepTemporalTimestamp(rangeStartUtc, (mid + 1) * step, unit);
+      if (tNext > timestampUtc) {
+        const candidate =
+          timestampUtc - tMid <= tNext - timestampUtc ? tMid : tNext;
+        return Math.max(rangeStartUtc, Math.min(rangeEndUtc, candidate));
+      }
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return Math.max(rangeStartUtc, Math.min(rangeEndUtc, timestampUtc));
 }
 
 /**
