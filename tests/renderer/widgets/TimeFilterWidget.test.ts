@@ -20,6 +20,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import createJiti from 'jiti';
@@ -1175,3 +1176,170 @@ describe('TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)', 
     );
   });
 });
+
+describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States (Ticket #247)', () => {
+    it('defines theme hover, tactile active click offset, and disabled rules in workbench.css', () => {
+      const cssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
+      const css = fs.readFileSync(cssPath, 'utf8');
+
+      // 1. Hover styling with surface-alt
+      assert.ok(
+        css.includes('.time-filter-btn:hover:not(:disabled)') &&
+          css.includes('var(--cartouche-theme-surface-alt)'),
+        '.time-filter-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)'
+      );
+
+      // 2. Active tactile feedback with subtle active background and 1px click offset
+      assert.ok(
+        css.includes('.time-filter-btn:active:not(:disabled)') &&
+          css.includes('var(--cartouche-theme-surface-active)') &&
+          css.includes('translateY(1px)'),
+        '.time-filter-btn:active:not(:disabled) must apply active background and 1px translateY offset'
+      );
+
+      // 3. Disabled opacity and default cursor
+      assert.ok(
+        css.includes('.time-filter-btn:disabled') &&
+          css.includes('cursor: default'),
+        '.time-filter-btn:disabled must set cursor to default'
+      );
+    });
+
+    it('renders all VCR transport buttons with time-filter-btn styling class', () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(3000, 3000);
+
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const buttons = [
+        'Jump to Start',
+        'Step Backward',
+        'Step Forward',
+        'Jump to End',
+      ];
+
+      for (const btnLabel of buttons) {
+        const regex = new RegExp(`<button[^>]*aria-label="${btnLabel}"[^>]*>`, 'i');
+        const match = markup.match(regex);
+        assert.ok(match, `Button "${btnLabel}" must be rendered`);
+        assert.ok(
+          match[0].includes('class="time-filter-btn"') || match[0].includes('time-filter-btn'),
+          `Button "${btnLabel}" must carry class "time-filter-btn"`
+        );
+      }
+    });
+
+    it('disables all VCR transport buttons when temporal range is uninitialized or invalid', () => {
+      setTimeFilterRange(0, 0);
+      setTimeFilterFrame(0, 0);
+
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const buttons = [
+        'Jump to Start',
+        'Step Backward',
+        'Step Forward',
+        'Jump to End',
+      ];
+
+      for (const btnLabel of buttons) {
+        const regex = new RegExp(`<button[^>]*aria-label="${btnLabel}"[^>]*>`, 'i');
+        const match = markup.match(regex);
+        assert.ok(match, `Button "${btnLabel}" must be rendered`);
+        assert.ok(
+          match[0].includes('disabled=""') || match[0].includes('disabled'),
+          `Button "${btnLabel}" must be disabled when rangeStart >= rangeEnd`
+        );
+      }
+    });
+
+    it('disables Jump to Start and Step Backward when active frame is at or before rangeStart', () => {
+      setTimeFilterRange(1000, 5000);
+
+      // Instant frame at rangeStart
+      setTimeFilterFrame(1000, 1000);
+      let markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const jumpStartTag = (markup.match(/<button[^>]*aria-label="Jump to Start"[^>]*>/) || [''])[0];
+      const stepBackTag = (markup.match(/<button[^>]*aria-label="Step Backward"[^>]*>/) || [''])[0];
+      const stepForwardTag = (markup.match(/<button[^>]*aria-label="Step Forward"[^>]*>/) || [''])[0];
+      const jumpEndTag = (markup.match(/<button[^>]*aria-label="Jump to End"[^>]*>/) || [''])[0];
+
+      assert.ok(jumpStartTag.includes('disabled'), 'Jump to Start must be disabled at rangeStart');
+      assert.ok(stepBackTag.includes('disabled'), 'Step Backward must be disabled at rangeStart');
+      assert.ok(!stepForwardTag.includes('disabled'), 'Step Forward must be enabled when before rangeEnd');
+      assert.ok(!jumpEndTag.includes('disabled'), 'Jump to End must be enabled when before rangeEnd');
+
+      // Window frame starting at rangeStart
+      setTimeFilterFrame(1000, 2000);
+      markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+      const jumpStartWindow = (markup.match(/<button[^>]*aria-label="Jump to Start"[^>]*>/) || [''])[0];
+      const stepBackWindow = (markup.match(/<button[^>]*aria-label="Step Backward"[^>]*>/) || [''])[0];
+      assert.ok(jumpStartWindow.includes('disabled'), 'Jump to Start must be disabled for window at rangeStart');
+      assert.ok(stepBackWindow.includes('disabled'), 'Step Backward must be disabled for window at rangeStart');
+    });
+
+    it('disables Jump to End and Step Forward when active frame is at or after rangeEnd', () => {
+      setTimeFilterRange(1000, 5000);
+
+      // Instant frame at rangeEnd
+      setTimeFilterFrame(5000, 5000);
+      let markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const jumpStartTag = (markup.match(/<button[^>]*aria-label="Jump to Start"[^>]*>/) || [''])[0];
+      const stepBackTag = (markup.match(/<button[^>]*aria-label="Step Backward"[^>]*>/) || [''])[0];
+      const stepForwardTag = (markup.match(/<button[^>]*aria-label="Step Forward"[^>]*>/) || [''])[0];
+      const jumpEndTag = (markup.match(/<button[^>]*aria-label="Jump to End"[^>]*>/) || [''])[0];
+
+      assert.ok(!jumpStartTag.includes('disabled'), 'Jump to Start must be enabled when after rangeStart');
+      assert.ok(!stepBackTag.includes('disabled'), 'Step Backward must be enabled when after rangeStart');
+      assert.ok(stepForwardTag.includes('disabled'), 'Step Forward must be disabled at rangeEnd');
+      assert.ok(jumpEndTag.includes('disabled'), 'Jump to End must be disabled at rangeEnd');
+
+      // Window frame ending at rangeEnd
+      setTimeFilterFrame(4000, 5000);
+      markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+      const stepForwardWindow = (markup.match(/<button[^>]*aria-label="Step Forward"[^>]*>/) || [''])[0];
+      const jumpEndWindow = (markup.match(/<button[^>]*aria-label="Jump to End"[^>]*>/) || [''])[0];
+      assert.ok(stepForwardWindow.includes('disabled'), 'Step Forward must be disabled for window at rangeEnd');
+      assert.ok(jumpEndWindow.includes('disabled'), 'Jump to End must be disabled for window at rangeEnd');
+    });
+
+    it('enables all VCR transport buttons when frame is strictly within range bounds', () => {
+      setTimeFilterRange(1000, 5000);
+      setTimeFilterFrame(2500, 3500);
+
+      const markup = renderToStaticMarkup(
+        React.createElement(TimeFilterWidget, {})
+      );
+
+      const buttons = [
+        'Jump to Start',
+        'Step Backward',
+        'Step Forward',
+        'Jump to End',
+      ];
+
+      for (const btnLabel of buttons) {
+        const regex = new RegExp(`<button[^>]*aria-label="${btnLabel}"[^>]*>`, 'i');
+        const match = markup.match(regex);
+        assert.ok(match, `Button "${btnLabel}" must be rendered`);
+        assert.ok(
+          !match[0].includes('disabled'),
+          `Button "${btnLabel}" must be enabled inside range bounds`
+        );
+      }
+    });
+  });
