@@ -511,6 +511,7 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
           width: len === 4 ? '2.85rem' : '1.65rem',
           borderRadius: '0.15rem',
           cursor: disabled ? 'not-allowed' : 'text',
+          userSelect: 'text',
           ...inputStyle,
         }}
       />

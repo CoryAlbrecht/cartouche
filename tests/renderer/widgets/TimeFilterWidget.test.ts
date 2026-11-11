@@ -847,3 +847,116 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     );
   });
 });
+
+describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it('updates timeFilterRangeStartSignal and reflects across render cycles when From spinner changes', () => {
+    const fromUtc = Date.UTC(2024, 5, 15, 12, 0, 0);
+    const toUtc = Date.UTC(2030, 0, 1, 0, 0, 0);
+    setTimeFilterRange(fromUtc, toUtc);
+
+    assert.strictEqual(timeFilterRangeStartSignal.value, fromUtc);
+    assert.strictEqual(timeFilterRangeEndSignal.value, toUtc);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    // Verify From: spinner reflects 2024
+    assert.ok(
+      markup.includes('value="2024"'),
+      'From: TimestampSpinner must reflect updated year value 2024'
+    );
+  });
+
+  it('updates timeFilterRangeEndSignal and reflects across render cycles when To spinner changes', () => {
+    const fromUtc = Date.UTC(2024, 0, 1, 0, 0, 0);
+    const toUtc = Date.UTC(2028, 10, 20, 18, 30, 0);
+    setTimeFilterRange(fromUtc, toUtc);
+
+    assert.strictEqual(timeFilterRangeStartSignal.value, fromUtc);
+    assert.strictEqual(timeFilterRangeEndSignal.value, toUtc);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    // Verify To: spinner reflects 2028
+    assert.ok(
+      markup.includes('value="2028"'),
+      'To: TimestampSpinner must reflect updated year value 2028'
+    );
+  });
+
+  it('scrubber slider min and max boundaries update reactively when range boundaries change', () => {
+    const fromUtc = 100_000;
+    const toUtc = 500_000;
+    setTimeFilterRange(fromUtc, toUtc);
+
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('min="100000"'),
+      'Scrubber slider min attribute must reflect updated fromUtc boundary'
+    );
+    assert.ok(
+      markup.includes('max="500000"'),
+      'Scrubber slider max attribute must reflect updated toUtc boundary'
+    );
+
+    // Update boundaries to new values
+    setTimeFilterRange(200_000, 800_000);
+    markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('min="200000"'),
+      'Scrubber slider min attribute must reactively update to 200000'
+    );
+    assert.ok(
+      markup.includes('max="800000"'),
+      'Scrubber slider max attribute must reactively update to 800000'
+    );
+  });
+
+  it('clamps active frame reactively when range boundaries change outside the active frame', () => {
+    // Initial range [100, 500], frame at 300
+    setTimeFilterRange(100, 500);
+    setTimeFilterFrame(300, 300);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 300);
+
+    // Narrow range boundary From to 350 (frame 300 is now below new From)
+    setTimeFilterRange(350, 500);
+    assert.strictEqual(
+      timeFilterFrameStartSignal.value,
+      350,
+      'Active frame must clamp up to new lower range boundary'
+    );
+
+    // Narrow range boundary To to 400 with frame at 450
+    setTimeFilterFrame(450, 450);
+    setTimeFilterRange(350, 400);
+    assert.strictEqual(
+      timeFilterFrameStartSignal.value,
+      400,
+      'Active frame must clamp down to new upper range boundary'
+    );
+  });
+
+  it('retains userSelect: text on TimestampSpinner segment inputs and wrapper containers', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes('user-select:text') || markup.includes('user-select: text'),
+      'TimestampSpinner segment inputs must retain userSelect: text within TimeFilterWidget container'
+    );
+  });
+});

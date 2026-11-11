@@ -440,22 +440,24 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             boxSizing: 'border-box',
           }}>
           {/* Range: From */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569' }}>From:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', userSelect: 'text' }}>
+            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569', userSelect: 'none' }}>From:</span>
             <TimestampSpinner
               value={rangeStart}
               onChange={handleFromChange}
               disabled={false}
+              style={{ userSelect: 'text' }}
             />
           </div>
 
           {/* Range: To */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569' }}>To:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', userSelect: 'text' }}>
+            <span style={{ fontWeight: 500, fontSize: '0.75rem', color: '#475569', userSelect: 'none' }}>To:</span>
             <TimestampSpinner
               value={rangeEnd}
               onChange={handleToChange}
               disabled={false}
+              style={{ userSelect: 'text' }}
             />
           </div>
 

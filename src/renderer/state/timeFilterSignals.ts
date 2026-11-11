@@ -134,7 +134,7 @@ export function setTimeFilterFrame(startUtcMs: number, endUtcMs?: number): void 
 
 /**
  * @function setTimeFilterRange
- * @description Updates the global range boundaries (From: and To:) in UTC epoch milliseconds.
+ * @description Updates the global range boundaries (From: and To:) in UTC epoch milliseconds. Clamps active frame within boundaries.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
  * @updated 2026-11-10
@@ -147,6 +147,18 @@ export function setTimeFilterRange(fromUtcMs: number, toUtcMs: number): void {
   batch(() => {
     timeFilterRangeStartSignal.value = fromUtcMs;
     timeFilterRangeEndSignal.value = toUtcMs;
+
+    const minBound = Math.min(fromUtcMs, toUtcMs);
+    const maxBound = Math.max(fromUtcMs, toUtcMs);
+    const curStart = timeFilterFrameStartSignal.value;
+    const curEnd = timeFilterFrameEndSignal.value;
+
+    if (curStart < minBound || curStart > maxBound || curEnd < minBound || curEnd > maxBound) {
+      const clampedStart = Math.min(Math.max(curStart, minBound), maxBound);
+      const clampedEnd = Math.min(Math.max(curEnd, minBound), maxBound);
+      timeFilterFrameStartSignal.value = clampedStart;
+      timeFilterFrameEndSignal.value = Math.max(clampedStart, clampedEnd);
+    }
   });
 }
 

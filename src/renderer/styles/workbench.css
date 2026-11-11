@@ -2253,3 +2253,7 @@
   border-color: var(--cartouche-theme-primary);
   box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
 }
+
+.timestamp-spinner input {
+  user-select: text;
+}
