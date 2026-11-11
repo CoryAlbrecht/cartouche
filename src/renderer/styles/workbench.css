@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-10
  * @since 0.1.0-dev
  */
 
@@ -2226,4 +2226,30 @@
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
   background-color: var(--cartouche-menubar-item-hover-bg);
+}
+
+/* =============================================================================
+   Time Filter Widget Controls
+   ============================================================================= */
+
+.time-filter-unit-select,
+.time-filter-step-input {
+  outline: none;
+}
+
+.time-filter-unit-select:focus,
+.time-filter-step-input:focus {
+  outline: none;
+  border-color: var(--cartouche-theme-primary);
+  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
+}
+
+.time-filter-btn {
+  outline: none;
+}
+
+.time-filter-btn:focus-visible {
+  outline: none;
+  border-color: var(--cartouche-theme-primary);
+  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
 }

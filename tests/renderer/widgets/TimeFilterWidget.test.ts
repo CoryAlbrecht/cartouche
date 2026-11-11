@@ -645,3 +645,31 @@ describe('TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)',
     );
   });
 });
+
+describe('TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)', () => {
+  it('assigns time-filter-unit-select, time-filter-step-input, and time-filter-btn classes with outline none', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    // 1. Verify class assignment
+    assert.ok(
+      markup.includes('class="time-filter-unit-select"'),
+      'Unit select element must have time-filter-unit-select class'
+    );
+    assert.ok(
+      markup.includes('class="time-filter-step-input"'),
+      'Step input element must have time-filter-step-input class'
+    );
+    assert.ok(
+      markup.includes('time-filter-btn'),
+      'VCR transport buttons must have time-filter-btn class'
+    );
+
+    // 2. Verify outline: none inline suppression
+    assert.ok(
+      markup.includes('outline:none') || markup.includes('outline: none'),
+      'Markup must suppress default browser outline'
+    );
+  });
+});

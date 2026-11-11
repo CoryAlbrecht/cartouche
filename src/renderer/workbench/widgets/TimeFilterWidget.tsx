@@ -442,6 +442,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                   background: '#ffffff',
                   fontSize: '0.8333rem',
                   color: '#000000',
+                  outline: 'none',
                 }}
               />
               <div
@@ -458,6 +459,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                 }}>
                 <button
                   type="button"
+                  tabIndex={-1}
                   title="Step Up by 1.00"
                   aria-label="Step Up by 1.00"
                   onClick={handleStepUp}
@@ -471,11 +473,13 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                     padding: 0,
                     cursor: 'pointer',
                     lineHeight: 0,
+                    outline: 'none',
                   }}>
                   <Icon path={mdiChevronUp} size="12px" />
                 </button>
                 <button
                   type="button"
+                  tabIndex={-1}
                   title="Step Down by 1.00"
                   aria-label="Step Down by 1.00"
                   onClick={handleStepDown}
@@ -490,6 +494,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                     padding: 0,
                     cursor: 'pointer',
                     lineHeight: 0,
+                    outline: 'none',
                   }}>
                   <Icon path={mdiChevronDown} size="12px" />
                 </button>
@@ -512,6 +517,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                 fontSize: '0.8333rem',
                 color: '#000000',
                 cursor: 'pointer',
+                outline: 'none',
               }}>
               <option value="Years">Years</option>
               <option value="Months">Months</option>
