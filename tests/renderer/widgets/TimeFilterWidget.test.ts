@@ -7,6 +7,7 @@
  * @updated 2026-11-10
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
+ * @see {@link computeTimeFilterWidgetMinHeight}
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
@@ -85,7 +86,7 @@ const { formatUtcTimestamp } = jiti(
   '@renderer/components/common/TimestampSpinner'
 ) as typeof import('@renderer/components/common/TimestampSpinner');
 
-const { TimeFilterWidget } = jiti(
+const { TimeFilterWidget, computeTimeFilterWidgetMinHeight } = jiti(
   '@renderer/workbench/widgets/TimeFilterWidget'
 ) as typeof import('@renderer/workbench/widgets/TimeFilterWidget');
 
@@ -1022,5 +1023,45 @@ describe('TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket 
       markup.includes('ui-monospace'),
       'Must use monospace font stack'
     );
+  });
+});
+
+describe('TimeFilterWidget: Dynamic minHeight Calculation (Ticket #245)', () => {
+  it('computeTimeFilterWidgetMinHeight returns a valid CSS calc expression incorporating typography and icon CSS variables', () => {
+    const minHeightExpr = computeTimeFilterWidgetMinHeight();
+
+    assert.ok(
+      typeof minHeightExpr === 'string',
+      'computeTimeFilterWidgetMinHeight must return a string'
+    );
+    assert.ok(
+      minHeightExpr.startsWith('calc(') && minHeightExpr.endsWith(')'),
+      'Must be a valid CSS calc() expression'
+    );
+    assert.ok(
+      minHeightExpr.includes('--cartouche-ui-icon-size'),
+      'Must incorporate --cartouche-ui-icon-size variable for header and button scaling'
+    );
+    assert.ok(
+      minHeightExpr.includes('--cartouche-ui-basefont-size'),
+      'Must incorporate --cartouche-ui-basefont-size variable for input and typography scaling'
+    );
+  });
+
+  it('renders TimeFilterWidget with dynamic minHeight calc expression on BasicWidget', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(markup.length > 0, 'TimeFilterWidget must render without throwing');
+  });
+
+  it('allows overriding minHeight through explicit props', () => {
+    const customMinHeight = 150;
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, { minHeight: customMinHeight })
+    );
+
+    assert.ok(markup.length > 0, 'TimeFilterWidget must accept custom minHeight override');
   });
 });

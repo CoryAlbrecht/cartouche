@@ -11,6 +11,7 @@
  * @see {@link stepTemporalTimestamp}
  * @see {@link calculateActiveTemporalRange}
  * @see {@link autoDetectTemporalRange}
+ * @see {@link computeTimeFilterWidgetMinHeight}
  * @see {@link Icon}
  */
 
@@ -55,6 +56,28 @@ import {
   MIN_TIME_FILTER_STEP,
 } from '../../map/timeFilterMath';
 import type { TimeFilterUnit } from '../../../shared/types';
+
+/**
+ * @function computeTimeFilterWidgetMinHeight
+ * @description Computes dynamic minimum height CSS expression for TimeFilterWidget derived from UI icon and font size preferences.
+ * Ensures vertical clearance for widget header, 3 rows of controls (top transport bar, slider scrubber, bottom range/step controls), gaps, and padding.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-10
+ * @updated 2026-11-10
+ * @since 0.1.0-dev
+ * @returns {string} CSS calc expression for minimum widget height.
+ */
+export function computeTimeFilterWidgetMinHeight(): string {
+  return (
+    'calc(' +
+    'var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px + ' +
+    'var(--cartouche-ui-icon-size, 24px) + 4px + ' +
+    '16px + ' +
+    'var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 6px + ' +
+    '26px' +
+    ')'
+  );
+}
 
 /**
  * @typedef {Object} TimeFilterWidgetProps
@@ -226,9 +249,9 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
       name="time-filter-widget"
       displayName="Time Filter"
       icon={mdiClockTimeFourOutline}
-      minHeight={68}
       overlappable={props.overlappable ?? false}
-      {...props}>
+      {...props}
+      minHeight={props.minHeight ?? computeTimeFilterWidgetMinHeight()}>
       <div
         className="time-filter-widget-container"
         style={{
