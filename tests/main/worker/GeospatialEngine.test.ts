@@ -41,6 +41,22 @@ const lakesShpPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lake
 const centrelinesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson');
 const timelineGpkgPath = path.resolve(__dirname, '../../../../test/files/timeline_level_0.gpkg');
 
+/**
+ * @function assertExtentClose
+ * @description Asserts two extents match to within a tolerance.
+ * @param {BoundingBox} actual - Computed extent.
+ * @param {BoundingBox} expected - Expected extent.
+ * @param {number} tolerance - Maximum absolute difference per coordinate.
+ */
+const assertExtentClose = (actual: BoundingBox, expected: BoundingBox, tolerance: number): void => {
+  for (let i = 0; i < 4; i++) {
+    assert.ok(
+      Math.abs(actual[i] - expected[i]) <= tolerance,
+      `extent[${i}] expected ≈ ${expected[i]}, got ${actual[i]} (full result ${JSON.stringify(actual)})`
+    );
+  }
+};
+
 describe('GeospatialEngine Helper Functions', () => {
   it('mapGdalGeometryKind correctly maps GDAL geometry types', () => {
     assert.equal(mapGdalGeometryKind(undefined), 'Unknown');
@@ -138,48 +154,32 @@ describe('GeospatialEngine Helper Functions', () => {
       return detached;
     };
 
-    /**
-     * @function assertBboxClose
-     * @description Asserts two extents match to within a tolerance.
-     * @param {BoundingBox} actual - Computed extent.
-     * @param {BoundingBox} expected - Expected extent.
-     * @param {number} tolerance - Maximum absolute difference per coordinate.
-     */
-    const assertBboxClose = (actual: BoundingBox, expected: BoundingBox, tolerance: number): void => {
-      for (let i = 0; i < 4; i++) {
-        assert.ok(
-          Math.abs(actual[i] - expected[i]) <= tolerance,
-          `bbox[${i}] expected ≈ ${expected[i]}, got ${actual[i]} (full result ${JSON.stringify(actual)})`
-        );
-      }
-    };
-
     it('clamps an EPSG:3857 viewport whose west edge lies past -180° instead of wrapping it to the opposite hemisphere', () => {
       // project-4 viewport: west edge at -185.02° lon. Expected values derived by hand from the
       // spherical Mercator inverse: lon = x / R · 180/π, lat = (2·atan(e^(y/R)) − π/2) · 180/π.
       const viewport: BoundingBox = [-20595856.85, 509898.6, -1598679.24, 11069455.54];
       const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertBboxClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
+      assertExtentClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
     });
 
     it('clamps an EPSG:3857 viewport whose east edge lies past +180°', () => {
       const viewport: BoundingBox = [1598679.24, 509898.6, 20595856.85, 11069455.54];
       const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertBboxClose(result, [14.3612, 4.5756, 180, 70.0023], 0.001);
+      assertExtentClose(result, [14.3612, 4.5756, 180, 70.0023], 0.001);
     });
 
     it('collapses an EPSG:3857 viewport lying entirely past -180° onto the antimeridian instead of inverting it', () => {
       // x -22,000,000 .. -21,500,000 m ≈ -197.6° .. -193.1° lon: wholly outside the world.
       const viewport: BoundingBox = [-22000000, 509898.6, -21500000, 11069455.54];
       const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertBboxClose(result, [-180, 4.5756, -180, 70.0023], 0.001);
+      assertExtentClose(result, [-180, 4.5756, -180, 70.0023], 0.001);
     });
 
     it('clamps when the CRS is given in lower case or URN form', () => {
       const viewport: BoundingBox = [-20595856.85, 509898.6, -1598679.24, 11069455.54];
       for (const crs of ['epsg:3857', 'urn:ogc:def:crs:EPSG::3857']) {
         const result = reprojectBoundingBox(viewport, crs, layerWgs84Srs());
-        assertBboxClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
+        assertExtentClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
       }
     });
 
@@ -187,7 +187,41 @@ describe('GeospatialEngine Helper Functions', () => {
       // -100°..-80° lon, 40°..50° lat expressed in spherical Mercator metres.
       const viewport: BoundingBox = [-11131949.08, 4865942.28, -8905559.26, 6446275.84];
       const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertBboxClose(result, [-100, 40, -80, 50], 0.001);
+      assertExtentClose(result, [-100, 40, -80, 50], 0.001);
+    });
+  });
+
+  describe('geographic source CRS axis order (Ticket #264)', () => {
+    it('reprojects a lon/lat EPSG:4326 extent to EPSG:3857 despite authority lat/lon axis order', () => {
+      // Expected values from the spherical Mercator forward formula:
+      // x = R · lon · π/180, y = R · ln(tan(π/4 + lat · π/360)), R = 6378137.
+      const result = reprojectBoundingBox(
+        [-100, 40, -80, 50],
+        'EPSG:4326',
+        gdal.SpatialReference.fromUserInput('EPSG:3857')
+      );
+      assertExtentClose(result, [-11131949.08, 4865942.28, -8905559.26, 6446275.84], 1);
+    });
+
+    it('reprojects a lon/lat EPSG:4326 extent to a UTM zone despite authority lat/lon axis order', () => {
+      // UTM 14N central meridian is -99°: easting 500,000 m on it; northing 0 at the equator and
+      // 0.9996 × the WGS 84 meridian arc (≈ 1,105,854.8 m) at 10°N.
+      const result = reprojectBoundingBox(
+        [-99, 0, -99, 10],
+        'EPSG:4326',
+        gdal.SpatialReference.fromUserInput('EPSG:32614')
+      );
+      assertExtentClose(result, [500000, 0, 500000, 1105412.5], 20);
+    });
+
+    it('still clamps the longitude of an EPSG:4326 extent crossing -180° before swapping axes', () => {
+      // West edge -185° clamps to -180° → x = -20,037,508.34 m (half the Mercator world width).
+      const result = reprojectBoundingBox(
+        [-185, 40, -80, 50],
+        'EPSG:4326',
+        gdal.SpatialReference.fromUserInput('EPSG:3857')
+      );
+      assertExtentClose(result, [-20037508.34, 4865942.28, -8905559.26, 6446275.84], 1);
     });
   });
 });

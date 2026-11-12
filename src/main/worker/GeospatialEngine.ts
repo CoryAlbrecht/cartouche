@@ -270,6 +270,7 @@ const ANTIMERIDIAN_HALF_WIDTH: Readonly<Record<string, number>> = {
 /**
  * @description Reprojects a 2D bounding box extent from an input CRS string to a target GDAL SpatialReference.
  * For viewport CRSs listed in {@link ANTIMERIDIAN_HALF_WIDTH}, both X edges are first clamped into the world's east–west extent so a viewport extending past ±180° does not wrap to the opposite hemisphere when its corners are transformed; a viewport lying wholly past ±180° collapses onto the antimeridian.
+ * The extent is always read in (x, y) = (easting/longitude, northing/latitude) order; when the source CRS uses an authority lat/lon or northing/easting axis order (e.g. EPSG:4326), each corner's coordinates are swapped before transformation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
  * @updated 2026-11-11
@@ -302,13 +303,20 @@ export function reprojectBoundingBox(
   const minX = clampX(rawMinX);
   const maxX = clampX(rawMaxX);
 
+  // gdal-async exposes no axis-mapping-strategy setter, so authority axis order is honoured by swapping.
+  const swapAxes =
+    sourceSrs.EPSGTreatsAsLatLong() || sourceSrs.EPSGTreatsAsNorthingEasting();
+
   try {
     const transform = new gdal.CoordinateTransformation(sourceSrs, targetSrs);
+    /** Transforms one (x, y) corner, swapping to the source CRS's authority axis order when required. */
+    const transformCorner = (x: number, y: number): gdal.xyz =>
+      swapAxes ? transform.transformPoint(y, x) : transform.transformPoint(x, y);
     const corners = [
-      transform.transformPoint(minX, minY),
-      transform.transformPoint(maxX, minY),
-      transform.transformPoint(maxX, maxY),
-      transform.transformPoint(minX, maxY),
+      transformCorner(minX, minY),
+      transformCorner(maxX, minY),
+      transformCorner(maxX, maxY),
+      transformCorner(minX, maxY),
     ];
 
     const xs = corners.map((p) => p.x).filter((x) => !isNaN(x) && isFinite(x));
