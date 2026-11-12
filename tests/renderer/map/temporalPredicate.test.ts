@@ -233,36 +233,6 @@ describe('temporalPredicate: evaluateTemporalPredicate Modes & Operators (Ticket
     );
   });
 
-  it('hides features with missing, null, undefined, or unparseable attribute values', () => {
-    const config: LayerTemporalConfig = {
-      enabled: true,
-      mode: 'start_end',
-      startField: 'begin',
-      endField: 'finish',
-    };
-
-    assert.strictEqual(
-      evaluateTemporalPredicate({}, config, { frameStartUtc: 1500, globalEnabled: true }),
-      false,
-      'Missing fields must evaluate to false'
-    );
-    assert.strictEqual(
-      evaluateTemporalPredicate({ begin: null, finish: 2000 }, config, { frameStartUtc: 1500, globalEnabled: true }),
-      false,
-      'Null start field must evaluate to false'
-    );
-    assert.strictEqual(
-      evaluateTemporalPredicate({ begin: 1000, finish: undefined }, config, { frameStartUtc: 1500, globalEnabled: true }),
-      false,
-      'Undefined end field must evaluate to false'
-    );
-    assert.strictEqual(
-      evaluateTemporalPredicate({ begin: 'invalid-date', finish: 2000 }, config, { frameStartUtc: 1500, globalEnabled: true }),
-      false,
-      'Unparseable date string must evaluate to false'
-    );
-  });
-
   it('evaluates OpenLayers Feature instances identically to plain property bags', () => {
     const config: LayerTemporalConfig = {
       enabled: true,
@@ -368,5 +338,98 @@ describe('temporalPredicate: evaluateTemporalPredicate Modes & Operators (Ticket
       true,
       'Frame window entirely enclosed within feature duration must be visible'
     );
+  });
+});
+
+describe('temporalPredicate: Undated Features and partial-date fallback (Ticket #263)', () => {
+  const startEnd: LayerTemporalConfig = {
+    enabled: true,
+    mode: 'start_end',
+    startField: 'begin',
+    startOp: '>=',
+    endField: 'finish',
+    endOp: '<=',
+  };
+  const startOnly: LayerTemporalConfig = { ...startEnd, mode: 'start' };
+  const endOnly: LayerTemporalConfig = { ...startEnd, mode: 'end' };
+  const filteringAt = (frameStartUtc: number) => ({ frameStartUtc, globalEnabled: true });
+
+  it('shows an Undated Feature in Start and End Fields mode when neither date is readable', () => {
+    for (const props of [
+      {},
+      { begin: null, finish: undefined },
+      { begin: '', finish: '   ' },
+      { begin: 'not-a-date', finish: 'also-not-a-date' },
+    ]) {
+      assert.strictEqual(
+        evaluateTemporalPredicate(props, startEnd, filteringAt(1500)),
+        true,
+        `Undated Feature ${JSON.stringify(props)} must be visible while filtering`
+      );
+    }
+  });
+
+  it('filters a Start and End Fields feature with no readable end date exactly as Start Field mode', () => {
+    for (const finish of [undefined, null, '', '   ', 'not-a-date']) {
+      const props = { begin: 1000, finish };
+      // Frame after the start date: started and never ended, so visible.
+      assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(1500)), true, `finish=${String(finish)} at 1500`);
+      // Frame before the start date: not yet started, so hidden.
+      assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(900)), false, `finish=${String(finish)} at 900`);
+      for (const frame of [900, 1000, 1500]) {
+        assert.strictEqual(
+          evaluateTemporalPredicate(props, startEnd, filteringAt(frame)),
+          evaluateTemporalPredicate(props, startOnly, filteringAt(frame)),
+          `finish=${String(finish)} must match Start Field mode at ${frame}`
+        );
+      }
+    }
+  });
+
+  it('filters a Start and End Fields feature with no readable start date exactly as End Field mode', () => {
+    for (const begin of [undefined, null, '', '   ', 'not-a-date']) {
+      const props = { begin, finish: 2000 };
+      // Frame before the end date: existed since the beginning of time, so visible.
+      assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(1500)), true, `begin=${String(begin)} at 1500`);
+      // Frame after the end date: already ended, so hidden.
+      assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(2100)), false, `begin=${String(begin)} at 2100`);
+      for (const frame of [1500, 2000, 2100]) {
+        assert.strictEqual(
+          evaluateTemporalPredicate(props, startEnd, filteringAt(frame)),
+          evaluateTemporalPredicate(props, endOnly, filteringAt(frame)),
+          `begin=${String(begin)} must match End Field mode at ${frame}`
+        );
+      }
+    }
+  });
+
+  it('shows an Undated Feature in Start Field and End Field modes when the configured date is unreadable', () => {
+    for (const missing of [undefined, null, '', '   ', 'not-a-date']) {
+      assert.strictEqual(
+        evaluateTemporalPredicate({ begin: missing, finish: 2000 }, startOnly, filteringAt(1500)),
+        true,
+        `Start Field mode with begin=${String(missing)} must be visible`
+      );
+      assert.strictEqual(
+        evaluateTemporalPredicate({ begin: 1000, finish: missing }, endOnly, filteringAt(1500)),
+        true,
+        `End Field mode with finish=${String(missing)} must be visible`
+      );
+    }
+  });
+
+  it('treats a sentinel end date such as 2099-12-31 as an ordinary readable date', () => {
+    const props = { begin: '1900-01-01', finish: '2099-12-31' };
+    assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(Date.UTC(1950, 0, 1))), true, 'Inside the interval');
+    assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(Date.UTC(2100, 0, 1))), false, 'After the sentinel end date');
+    assert.strictEqual(evaluateTemporalPredicate(props, startEnd, filteringAt(Date.UTC(1800, 0, 1))), false, 'Before the start date');
+  });
+
+  it('shows every feature when the layer configures no time attribute for its mode', () => {
+    const props = { begin: 1000, finish: 2000 };
+    const noFields: LayerTemporalConfig = { enabled: true, mode: 'start_end' };
+    assert.strictEqual(evaluateTemporalPredicate(props, noFields, filteringAt(5000)), true, 'Start and End Fields mode with no fields');
+    assert.strictEqual(evaluateTemporalPredicate(props, { enabled: true, mode: 'start' }, filteringAt(500)), true, 'Start Field mode with no start field');
+    assert.strictEqual(evaluateTemporalPredicate(props, { enabled: true, mode: 'end' }, filteringAt(5000)), true, 'End Field mode with no end field');
   });
 });

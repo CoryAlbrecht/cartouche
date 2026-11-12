@@ -111,7 +111,10 @@ export function extractFeatureTemporalProperties(
 /**
  * @function evaluateTemporalPredicate
  * @description Evaluates whether a feature's temporal attributes satisfy the active frame window condition [T_frame_start [startOp] F_start] and [T_frame_start [endOp] F_end].
- * Features failing the condition, or containing missing/unparseable values, evaluate to false (hidden).
+ * A missing or unparseable date imposes no constraint:
+ * - Start and End Fields mode with no readable end date filters exactly as Start Field mode; with no readable start date, exactly as End Field mode.
+ * - An Undated Feature (no readable date in any configured time attribute, in any mode) is always shown.
+ * Features with readable dates that fail the condition evaluate to false (hidden).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
  * @updated 2026-11-11
@@ -172,19 +175,18 @@ export function evaluateTemporalPredicate(
   const startOp = config.startOp ?? '>=';
   const endOp = config.endOp ?? '<=';
 
+  const fStart = config.startField ? parseTemporalValue(props[config.startField]) : null;
+  const fEnd = config.endField ? parseTemporalValue(props[config.endField]) : null;
+
+  // An unreadable date imposes no constraint: a feature lacking only one date is filtered by the other
+  // alone, and a feature lacking every configured date is an Undated Feature, always shown.
   const evalStart = (): boolean => {
-    if (!config.startField) return false;
-    const rawVal = props[config.startField];
-    const fStart = parseTemporalValue(rawVal);
-    if (fStart === null) return false;
+    if (fStart === null) return true;
     return startOp === '>=' ? effectiveEnd >= fStart : effectiveEnd > fStart;
   };
 
   const evalEnd = (): boolean => {
-    if (!config.endField) return false;
-    const rawVal = props[config.endField];
-    const fEnd = parseTemporalValue(rawVal);
-    if (fEnd === null) return false;
+    if (fEnd === null) return true;
     return endOp === '<=' ? frameStart <= fEnd : frameStart < fEnd;
   };
 

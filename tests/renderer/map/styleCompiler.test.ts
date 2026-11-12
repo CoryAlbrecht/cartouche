@@ -880,14 +880,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
         "Feature outside window must return null to suppress rendering"
       );
 
-      // Feature with missing temporal fields
-      const missingFeature = new Feature({
+      // Undated Feature (no temporal fields) stays visible while filtering (Ticket #263)
+      const undatedFeature = new Feature({
         geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
       });
-      assert.equal(
-        styleFunction(missingFeature, 1),
-        null,
-        "Feature with missing temporal fields must return null"
+      const undatedStyles = styleFunction(undatedFeature, 1);
+      assert.ok(
+        undatedStyles !== null && Array.isArray(undatedStyles) && undatedStyles.length > 0,
+        "Undated Feature must return visible styles"
       );
 
       // Clean up global state
