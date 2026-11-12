@@ -497,7 +497,16 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     handleRowClick(e, nodeId, isLayer);
   };
 
-  // Secondary click (right-click) context menu handler
+  /**
+   * @description Opens the PopupMenu for a layer or group Tree Node Row on secondary click, targeting either the current multi-selection set (if the clicked node is selected) or the solitary clicked node.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-09
+   * @updated 2026-11-11
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent} e - Secondary mouse click event.
+   * @param {ProjectLayerItem | ProjectGroupItem} node - Target layer or group item.
+   * @returns {void}
+   */
   const handleContextMenu = (
     e: React.MouseEvent,
     node: ProjectLayerItem | ProjectGroupItem
@@ -525,7 +534,15 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     });
   };
 
-  // Secondary click (right-click) context menu handler on project root
+  /**
+   * @description Opens the PopupMenu for the top-level project root Tree Node Row on secondary click.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-16
+   * @updated 2026-11-11
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent} e - Secondary mouse click event.
+   * @returns {void}
+   */
   const handleProjectContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -545,7 +562,14 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     });
   };
 
-  // Build context menu items
+  /**
+   * @description Constructs the PopupMenu item list for the active secondary-click Actionable Node(s), resolving Action accelerator keys dynamically from the Action Registry.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-09
+   * @updated 2026-11-11
+   * @since 0.1.0-dev
+   * @returns {PopupMenuItem[]} Array of PopupMenu items and separators.
+   */
   const buildContextMenuItems = (): PopupMenuItem[] => {
     const { actionableNodes, targetNode } = contextMenuState;
     if (actionableNodes.length === 0 || !targetNode) return [];
@@ -556,6 +580,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           id: "rename_layer_tree_node",
           label: t("rename_layer_tree_node") || "Rename",
           icon: mdiPencilOutline,
+          formattedKey: getActionFormattedKey("rename_layer_tree_node", "F2"),
           onClick: () => {
             setEditingNodeId("project");
           },
@@ -593,6 +618,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         id: "rename_layer_tree_node",
         label: t("rename_layer_tree_node") || "Rename",
         icon: mdiPencilOutline,
+        formattedKey: getActionFormattedKey("rename_layer_tree_node", "F2"),
         onClick: () => {
           setEditingNodeId(targetId);
         },
@@ -605,6 +631,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         id: "layer_properties",
         label: t("layer_properties_menu_item") || "Layer Properties...",
         icon: mdiLayersOutline,
+        formattedKey: getActionFormattedKey("layer_properties", "Ctrl+Shift+,"),
         onClick: () => {
           openLayerPropertiesDialog(layerId);
         },

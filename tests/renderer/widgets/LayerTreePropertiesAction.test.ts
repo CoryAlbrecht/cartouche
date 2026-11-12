@@ -1,13 +1,14 @@
 /**
  * @file LayerTreePropertiesAction.test.ts
  * @module tests/renderer/widgets/LayerTreePropertiesAction.test
- * @description Unit and component tests verifying LayerTreeWidget PopupMenu Layer Properties action, multi-selection suppression, group suppression, row double-click dispatch, and active target synchronization.
+ * @description Unit and component tests verifying LayerTreeWidget PopupMenu Layer Properties and Rename Actions, Action key slot display, dynamic Action Registry resolution, multi-selection suppression, group suppression, row double-click dispatch, and active target synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-10-24
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link LayerPropertiesDialog}
+ * @see {@link getActionFormattedKey}
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
@@ -310,14 +311,17 @@ const {
 
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
 
+const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
+
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
 
-describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Ticket #73)', () => {
+describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Tickets #73, #259)', () => {
   beforeEach(() => {
     setupDom();
     hasProjectSignal.value = true;
     projectNameSignal.value = 'Test GIS Project';
     editingNodeIdSignal.value = null;
+    registeredActionsSignal.value = [];
     clearNodeSelection();
     activeLayerIdSignal.value = null;
     closeLayerPropertiesDialog();
@@ -359,6 +363,7 @@ describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Ticket #7
 
   afterEach(() => {
     tearDownDom();
+    registeredActionsSignal.value = [];
     closeLayerPropertiesDialog();
   });
 
@@ -396,6 +401,85 @@ describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Ticket #7
     const propertiesItem = menuItems.find((el) => (el as any).textContent?.includes('Layer Properties'));
 
     assert(propertiesItem, 'PopupMenu must include "Layer Properties..." item for solitary layer');
+
+    const propertiesRow = propertiesItem.parentNode;
+    assert(propertiesRow, 'Layer Properties item must have a parent menu row');
+    const propKeySlots = findAllNodes(
+      propertiesRow,
+      (el) => el.className.includes('menu-key-slot')
+    );
+    assert.equal(propKeySlots.length, 1, 'Layer Properties item must display an Action key slot');
+    assert.equal(propKeySlots[0].textContent, 'Ctrl+Shift+,', 'Layer Properties item must display "Ctrl+Shift+," formatted key');
+
+    const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
+    assert(renameItem, 'PopupMenu must include "Rename" item for solitary layer');
+    const renameRow = renameItem.parentNode;
+    assert(renameRow, 'Rename item must have a parent menu row');
+    const renameKeySlots = findAllNodes(
+      renameRow,
+      (el) => el.className.includes('menu-key-slot')
+    );
+    assert.equal(renameKeySlots.length, 1, 'Rename item on Tree Node Row must display an Action key slot');
+    assert.equal(renameKeySlots[0].textContent, 'F2', 'Rename item on Tree Node Row must display "F2" formatted key');
+  });
+
+  it('dynamically resolves Layer Properties... and Rename Action keys via getActionFormattedKey() from Action Registry', () => {
+    registeredActionsSignal.value = [
+      {
+        name: 'layer_properties',
+        description: 'Opens layer properties dialog',
+        formattedKey: 'Ctrl+Shift+P'
+      },
+      {
+        name: 'rename_layer_tree_node',
+        description: 'Renames node',
+        formattedKey: 'Alt+F2'
+      }
+    ];
+
+    act(() => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const layerRows = findAllNodes(
+      container,
+      (el) => el.className.includes('tree-node-row') && el.className.includes('tree-node-layer')
+    );
+    assert(layerRows.length > 0, 'Should find layer rows in tree');
+
+    act(() => {
+      layerRows[0].dispatchEvent({
+        type: 'contextmenu',
+        clientX: 120,
+        clientY: 240,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+        _bubblesStopped: false
+      });
+    });
+
+    const menuItems = findAllNodes(
+      doc.body,
+      (el) => el.className.includes('menu-item-label')
+    );
+
+    const propertiesItem = menuItems.find((el) => (el as any).textContent?.includes('Layer Properties'));
+    assert(propertiesItem?.parentNode, 'Should find Layer Properties row');
+    const propKeySlot = findAllNodes(
+      propertiesItem.parentNode,
+      (el) => el.className.includes('menu-key-slot')
+    )[0];
+    assert(propKeySlot, 'Layer Properties must render menu-key-slot');
+    assert.equal(propKeySlot.textContent, 'Ctrl+Shift+P', 'Layer Properties key slot must reflect registered action formattedKey');
+
+    const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
+    assert(renameItem?.parentNode, 'Should find Rename row');
+    const renameKeySlot = findAllNodes(
+      renameItem.parentNode,
+      (el) => el.className.includes('menu-key-slot')
+    )[0];
+    assert(renameKeySlot, 'Rename must render menu-key-slot');
+    assert.equal(renameKeySlot.textContent, 'Alt+F2', 'Rename key slot must reflect registered action formattedKey');
   });
 
   it('hides Layer Properties... from PopupMenu when a group is secondary-clicked', () => {
@@ -430,6 +514,15 @@ describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Ticket #7
     const propertiesItem = menuItems.find((el) => (el as any).textContent?.includes('Layer Properties'));
 
     assert(!propertiesItem, 'PopupMenu must NOT include "Layer Properties..." for group nodes');
+
+    const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
+    assert(renameItem?.parentNode, 'PopupMenu must include "Rename" item for group node');
+    const renameKeySlots = findAllNodes(
+      renameItem.parentNode,
+      (el) => el.className.includes('menu-key-slot')
+    );
+    assert.equal(renameKeySlots.length, 1, 'Rename item on group node must display an Action key slot');
+    assert.equal(renameKeySlots[0].textContent, 'F2', 'Rename item on group node must display "F2" formatted key');
   });
 
   it('hides Layer Properties... from PopupMenu when multiple nodes are selected', () => {

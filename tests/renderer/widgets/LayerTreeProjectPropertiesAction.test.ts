@@ -1,13 +1,14 @@
 /**
  * @file LayerTreeProjectPropertiesAction.test.ts
  * @module tests/renderer/widgets/LayerTreeProjectPropertiesAction.test
- * @description Unit and component tests verifying LayerTreeWidget PopupMenu Project Properties action, icon display, and dialog dispatch when secondary-clicking the project root node.
+ * @description Unit and component tests verifying LayerTreeWidget PopupMenu Project Properties Action, Rename key slot display, dynamic Action Registry resolution, icon display, and dialog dispatch when secondary-clicking the project root node.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
  * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link openProjectPropertiesDialog}
+ * @see {@link getActionFormattedKey}
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
@@ -308,14 +309,17 @@ const {
 
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
 
+const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
+
 const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
 
-describe('LayerTreeWidget Project Properties PopupMenu (Ticket #258)', () => {
+describe('LayerTreeWidget Project Properties PopupMenu (Tickets #258, #259)', () => {
   beforeEach(() => {
     setupDom();
     hasProjectSignal.value = true;
     projectNameSignal.value = 'Test Cartouche Project';
     editingNodeIdSignal.value = null;
+    registeredActionsSignal.value = [];
     clearNodeSelection();
     closeProjectPropertiesDialog();
 
@@ -329,6 +333,7 @@ describe('LayerTreeWidget Project Properties PopupMenu (Ticket #258)', () => {
 
   afterEach(() => {
     tearDownDom();
+    registeredActionsSignal.value = [];
     closeProjectPropertiesDialog();
   });
 
@@ -383,6 +388,74 @@ describe('LayerTreeWidget Project Properties PopupMenu (Ticket #258)', () => {
 
     const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
     assert(renameItem, 'PopupMenu must also include "Rename" item for project root node');
+
+    const renameRow = renameItem.parentNode;
+    assert(renameRow, 'Rename item must have a parent menu row');
+    const renameKeySlots = findAllNodes(
+      renameRow,
+      (el) => el.className.includes('menu-key-slot')
+    );
+    assert.equal(renameKeySlots.length, 1, 'Rename item on project root must display an Action key slot');
+    assert.equal(renameKeySlots[0].textContent, 'F2', 'Rename item on project root must display "F2" formatted key');
+  });
+
+  it('dynamically resolves Project Properties... and Rename Action keys via getActionFormattedKey() from Action Registry', () => {
+    registeredActionsSignal.value = [
+      {
+        name: 'project_properties',
+        description: 'Opens project properties dialog',
+        formattedKey: 'Ctrl+Alt+P'
+      },
+      {
+        name: 'rename_layer_tree_node',
+        description: 'Renames node',
+        formattedKey: 'Shift+F2'
+      }
+    ];
+
+    act(() => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const projectRow = findAllNodes(
+      container,
+      (el) => el.className.includes('tree-node-row') && el.className.includes('tree-node-project')
+    )[0];
+    assert(projectRow, 'Should find project root row in tree');
+
+    act(() => {
+      projectRow.dispatchEvent({
+        type: 'contextmenu',
+        clientX: 50,
+        clientY: 100,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+        _bubblesStopped: false
+      });
+    });
+
+    const menuItems = findAllNodes(
+      doc.body,
+      (el) => el.className.includes('menu-item-label')
+    );
+
+    const propertiesItem = menuItems.find((el) => (el as any).textContent?.includes('Project Properties'));
+    assert(propertiesItem?.parentNode, 'Should find Project Properties row');
+    const propKeySlot = findAllNodes(
+      propertiesItem.parentNode,
+      (el) => el.className.includes('menu-key-slot')
+    )[0];
+    assert(propKeySlot, 'Project Properties must render menu-key-slot');
+    assert.equal(propKeySlot.textContent, 'Ctrl+Alt+P', 'Project Properties key slot must reflect registered action formattedKey');
+
+    const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
+    assert(renameItem?.parentNode, 'Should find Rename row');
+    const renameKeySlot = findAllNodes(
+      renameItem.parentNode,
+      (el) => el.className.includes('menu-key-slot')
+    )[0];
+    assert(renameKeySlot, 'Rename must render menu-key-slot');
+    assert.equal(renameKeySlot.textContent, 'Shift+F2', 'Rename key slot must reflect registered action formattedKey');
   });
 
   it('invokes openProjectPropertiesDialog when Project Properties... is clicked', () => {
