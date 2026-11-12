@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -33,6 +33,7 @@ import {
   mdiChevronRight,
   mdiTrashCanOutline,
   mdiFolderPlusOutline,
+  mdiFolderCogOutline,
   mdiPencilOutline,
   mdiClockTimeFourOutline,
   mdiLayersOutline,
@@ -42,9 +43,11 @@ import {
   mdiLayersTripleOutline,
 } from "@mdi/js";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
+import { getActionFormattedKey } from "@renderer/state/actionSignals";
 import {
   editableLayerIdsSignal,
   isLayerInEditMode,
+  openProjectPropertiesDialog,
 } from "@renderer/state/gisSignals";
 import {
   projectTreeSignal,
@@ -192,7 +195,7 @@ const TREE_NODE_ICON_STYLE: React.CSSProperties = {
  * @description Subclasses BasicWidget to render the hierarchical GIS layer tree view, multi-selection, context menus, drag-and-drop reordering, and modal removal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {LayerTreeWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Layer tree widget panel instance.
@@ -555,6 +558,15 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           icon: mdiPencilOutline,
           onClick: () => {
             setEditingNodeId("project");
+          },
+        },
+        {
+          id: "project_properties",
+          label: t("project_properties") || "Project Properties...",
+          icon: mdiFolderCogOutline,
+          formattedKey: getActionFormattedKey("project_properties", "Ctrl+Alt+,"),
+          onClick: () => {
+            openProjectPropertiesDialog();
           },
         },
       ];
