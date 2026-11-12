@@ -16,6 +16,7 @@
  */
 
 import Style, { type StyleFunction, type RenderFunction } from "ol/style/Style";
+import { flatStyleLikeToStyleFunction } from "ol/render/canvas/style";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import CircleStyle from "ol/style/Circle";
@@ -820,11 +821,12 @@ export function compileStyleFunction(
 /**
  * @function wrapStyleWithTemporalFilter
  * @description Wraps an OpenLayers style or StyleFunction with temporal predicate filtering, returning null when the feature fails the active temporal condition.
+ * OpenLayers Flat Style JSON (a flat style dictionary, an array of them, or an array of rules) is first compiled into a StyleFunction via `flatStyleLikeToStyleFunction`, because a StyleFunction must return `Style` instances rather than Flat Style JSON.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
- * @param {any} baseStyle - Compiled OpenLayers style, Style array, or StyleFunction.
+ * @param {any} baseStyle - Compiled OpenLayers Style, Style array, StyleFunction, or OpenLayers Flat Style JSON.
  * @param {LayerTemporalConfig | undefined} temporal - Layer dynamic temporal configuration.
  * @returns {any} Wrapped StyleFunction closure, or unmodified baseStyle if temporal control is not enabled.
  */
@@ -845,12 +847,17 @@ export function wrapStyleWithTemporalFilter(
     };
   }
 
-  return (feature: any, _resolution: number): any => {
-    if (!evaluateTemporalPredicate(feature, temporal)) {
-      return null;
-    }
-    return baseStyle;
-  };
+  const isOlStyle =
+    baseStyle instanceof Style
+    || (Array.isArray(baseStyle)
+      && baseStyle.every((style) => style instanceof Style));
+
+  // Not @api in OpenLayers, but it is the converter OpenLayers' own
+  // BaseVectorLayer.setStyle uses for Flat Styles, so it tracks layer semantics exactly.
+  const styleFunction = isOlStyle ?
+      () => baseStyle
+    : flatStyleLikeToStyleFunction(baseStyle);
+  return wrapStyleWithTemporalFilter(styleFunction, temporal);
 }
 
 /**

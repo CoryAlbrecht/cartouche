@@ -11,6 +11,7 @@
  * @see {@link compileLayerStyle}
  * @see {@link isCartoucheStyleDescriptor}
  * @see {@link wrapStyleWithTemporalFilter}
+ * @see {@link compileFlatLayerStyleSync}
  */
 
 import { describe, it } from "node:test";
@@ -19,9 +20,11 @@ import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import Polygon from "ol/geom/Polygon";
 import CircleStyle from "ol/style/Circle";
+import Style from "ol/style/Style";
 import {
   compileStyleFunction,
   compileCartoucheLayerStyleSync,
+  compileFlatLayerStyleSync,
   compileLayerStyle,
   isCartoucheStyleDescriptor,
   wrapStyleWithTemporalFilter,
@@ -1044,4 +1047,90 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
       resetTimeFilterState();
     });
   });
+
+  describe("Flat Style temporal layers render real OpenLayers styles (Ticket #260)", () => {
+    const temporalConfig: LayerTemporalConfig = {
+      enabled: true,
+      mode: "start_end",
+      startField: "start_date",
+      startOp: ">=",
+      endField: "end_date",
+      endOp: "<=",
+    };
+    const ruleArrayStyle = [
+      { filter: true, style: { "fill-color": "#ff0000", "stroke-color": "#000000", "stroke-width": 1 } },
+    ];
+
+    /**
+     * @function polygonFeature
+     * @description Builds a polygon feature with the given start/end epoch-ms attributes.
+     * @param {number} start - Start date (epoch ms).
+     * @param {number} end - End date (epoch ms).
+     * @returns {Feature} Feature instance.
+     */
+    const polygonFeature = (start: number, end: number): Feature =>
+      new Feature({
+        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        start_date: start,
+        end_date: end,
+      });
+
+    /**
+     * @function assertRendersStyles
+     * @description Asserts a StyleFunction result is a non-empty array of ol/style/Style instances.
+     * @param {unknown} result - StyleFunction return value.
+     * @param {string} message - Assertion context.
+     */
+    function assertRendersStyles(result: unknown, message: string): asserts result is Style[] {
+      assert.ok(Array.isArray(result) && result.length > 0, `${message}: expected a non-empty Style array, got ${JSON.stringify(result)}`);
+      for (const style of result) {
+        assert.ok(style instanceof Style, `${message}: every entry must be an ol/style/Style instance`);
+      }
+    }
+
+    it("returns Style instances for a Flat Style rule array while the time filter is inactive", () => {
+      resetTimeFilterState();
+      const result = compileFlatLayerStyleSync(ruleArrayStyle, { temporal: temporalConfig });
+      assert.equal(typeof result.compiledStyle, "function");
+      assertRendersStyles(result.compiledStyle(polygonFeature(1000, 2000), 1), "rule array, filter inactive");
+    });
+
+    it("returns Style instances for a flat style dictionary while the time filter is inactive", () => {
+      resetTimeFilterState();
+      const result = compileFlatLayerStyleSync(
+        { "fill-color": "#00ff00", "stroke-color": "#000000", "stroke-width": 2 },
+        { temporal: temporalConfig }
+      );
+      assertRendersStyles(result.compiledStyle(polygonFeature(1000, 2000), 1), "flat dictionary, filter inactive");
+    });
+
+    it("styles features with the layer's own Flat Style colours while the time filter is inactive", () => {
+      resetTimeFilterState();
+      const result = compileFlatLayerStyleSync(ruleArrayStyle, { temporal: temporalConfig });
+      const styles: unknown = result.compiledStyle(polygonFeature(1000, 2000), 1);
+      assertRendersStyles(styles, "rule array, filter inactive");
+      assert.deepEqual(styles[0].getFill()?.getColor(), [255, 0, 0, 1], "fill-color #ff0000");
+      assert.deepEqual(styles[0].getStroke()?.getColor(), [0, 0, 0, 1], "stroke-color #000000");
+      assert.equal(styles[0].getStroke()?.getWidth(), 1);
+    });
+
+    it("hides features outside the active frame and styles features inside it", () => {
+      setTimeFilterActive(true);
+      setTimeFilterFrame(1000, 2000);
+      try {
+        for (const [label, flatStyle] of [
+          ["rule array", ruleArrayStyle],
+          ["flat dictionary", { "fill-color": "#00ff00" }],
+        ] as const) {
+          const result = compileFlatLayerStyleSync(flatStyle, { temporal: temporalConfig });
+          assertRendersStyles(result.compiledStyle(polygonFeature(1200, 1500), 1), `${label}, inside frame`);
+          assert.equal(result.compiledStyle(polygonFeature(500, 900), 1), null, `${label}: ended before frame must be hidden`);
+          assert.equal(result.compiledStyle(polygonFeature(2100, 3000), 1), null, `${label}: starts after frame must be hidden`);
+        }
+      } finally {
+        resetTimeFilterState();
+      }
+    });
+  });
 });
+
