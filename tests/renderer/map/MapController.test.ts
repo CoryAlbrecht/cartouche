@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-09
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -1557,6 +1557,96 @@ describe('MapController SLD Compilation & Delayed Field-Subset Reload', () => {
     assert.deepEqual(entry.layer.getStyle(), newAttrStyle);
     assert.equal(entry.loadedFields.has('population'), true);
     assert.equal(entry.source.getFeatureById(10)?.get('population'), 500000);
+  });
+
+  it('reloads missing fields over the full extent for allStrategy layers so features outside the view are not dropped (Ticket #261)', async () => {
+    const requestedExtents: number[][] = [];
+    const pointWkb = (x: number, y: number): Uint8Array => {
+      const bytes = new Uint8Array(21);
+      const view = new DataView(bytes.buffer);
+      view.setUint8(0, 1);
+      view.setUint32(1, 1, true);
+      view.setFloat64(5, x, true);
+      view.setFloat64(13, y, true);
+      return bytes;
+    };
+    // Feature 2 lies far outside the layer's own extent; the mock honours the requested
+    // spatial filter, so it is only returned when the reload queries the full extent.
+    const farX = 170;
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, options: any) => {
+        const extent: number[] = options?.extent;
+        requestedExtents.push(extent);
+        const features = [{ fid: 1, wkb: pointWkb(-85, 45), properties: { start_date: 0 } }];
+        if (extent[0] <= farX && extent[2] >= farX) {
+          features.push({ fid: 2, wkb: pointWkb(farX, 80), properties: { start_date: 0 } });
+        }
+        return { layerId: 'layer-all', buffer: createMockBinaryPacket(features) };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-all',
+      name: 'Small Temporal Layer',
+      type: 'shp',
+      source: '/path/to/small.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 2,
+    };
+    layerStylesSignal.value = { 'layer-all': { 'circle-radius': 6 } };
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-all')!;
+
+    layerStylesSignal.value = { 'layer-all': { 'circle-radius': ['get', 'start_date'] } };
+    await controller.waitForPendingStyleUpdates();
+
+    assert.equal(requestedExtents.length, 1, 'Field reload must issue exactly one queryExtent call');
+    assert.ok(
+      requestedExtents[0].every((v) => !Number.isFinite(v)),
+      `Field reload of an allStrategy layer must query the full (infinite) extent, got ${JSON.stringify(requestedExtents[0])}`
+    );
+    assert.equal(entry.loadedFields.has('start_date'), true);
+    assert.equal(
+      entry.source.getFeatures().length,
+      2,
+      'Every feature, including those outside the viewport, must remain loaded after the field reload'
+    );
+  });
+
+  it('reloads missing fields over a finite viewport extent for bboxStrategy layers (Ticket #261)', async () => {
+    const requestedExtents: number[][] = [];
+
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (_layerId: string, options: any) => {
+        requestedExtents.push(options?.extent);
+        return { layerId: 'layer-bbox', buffer: createMockBinaryPacket([]) };
+      },
+    };
+
+    const descriptor: LayerDescriptor = {
+      id: 'layer-bbox',
+      name: 'Large Temporal Layer',
+      type: 'gpkg',
+      source: '/path/to/large.gpkg',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 60000,
+    };
+    layerStylesSignal.value = { 'layer-bbox': { 'circle-radius': 6 } };
+    projectLayersSignal.value = [descriptor];
+
+    layerStylesSignal.value = { 'layer-bbox': { 'circle-radius': ['get', 'start_date'] } };
+    await controller.waitForPendingStyleUpdates();
+
+    assert.equal(requestedExtents.length, 1, 'Field reload must issue exactly one queryExtent call');
+    assert.ok(
+      requestedExtents[0].every((v) => Number.isFinite(v)),
+      `Field reload of a bboxStrategy layer must query a finite viewport extent, got ${JSON.stringify(requestedExtents[0])}`
+    );
   });
 
   it('falls back to the 3-rule default random-color style when unstyled or when style compilation fails', async () => {

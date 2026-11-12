@@ -87,6 +87,35 @@ export interface FlattenedTreeLayer {
 }
 
 /**
+ * @description Feature count below which a local vector layer loads its entire dataset in a single query (`allStrategy`) instead of per viewport extent (`bboxStrategy`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-11
+ * @updated 2026-11-11
+ * @since 0.1.0-dev
+ * @type {number}
+ */
+const FULL_EXTENT_LOADING_MAX_FEATURES = 50000;
+
+/**
+ * @description Determines whether a layer's VectorSource loads its entire dataset once (`allStrategy`) rather than per viewport extent (`bboxStrategy`). Local vector layers below {@link FULL_EXTENT_LOADING_MAX_FEATURES} features (or with an unknown count) load in full.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-11
+ * @updated 2026-11-11
+ * @since 0.1.0-dev
+ * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
+ * @returns {boolean} True if the layer loads its full extent in a single query.
+ */
+function usesFullExtentLoading(descriptor: LayerDescriptor): boolean {
+  const isLocalVector =
+    descriptor.layerKind === "vector" || !descriptor.layerKind;
+  return (
+    isLocalVector
+    && (descriptor.featureCount === undefined
+      || descriptor.featureCount < FULL_EXTENT_LOADING_MAX_FEATURES)
+  );
+}
+
+/**
  * @description Recursively flattens the project layer tree into a sequential list of layers with effective visibility and visual stacking order.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
@@ -130,6 +159,7 @@ export function flattenTreeLayers(
  * @property {VectorSource} source - Native OpenLayers vector source backed by allStrategy/bboxStrategy.
  * @property {LayerDescriptor} descriptor - Serializable layer metadata descriptor.
  * @property {Set<string>} loadedFields - Set of feature attribute column names currently projected in the VectorSource.
+ * @property {boolean} loadsFullExtent - True if the VectorSource was created with `allStrategy` (whole dataset loaded once); fixed at layer creation so reloads always match the source's loading strategy.
  * @property {boolean} [allFieldsLoaded] - True if all feature attributes were projected without restriction.
  * @property {unknown} [activeRawStyle] - Most recently applied raw style descriptor or wrapper.
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
@@ -146,6 +176,7 @@ export interface VectorLayerEntry {
   source: VectorSource;
   descriptor: LayerDescriptor;
   loadedFields: Set<string>;
+  loadsFullExtent: boolean;
   allFieldsLoaded?: boolean;
   activeRawStyle?: unknown;
   activeTemporalConfig?: LayerTemporalConfig;
@@ -638,9 +669,10 @@ export class MapController {
 
   /**
    * @description Reloads features for a vector layer from Main with the specified union of attribute fields.
+   * The reload queries the same extent as the layer's VectorSource loading strategy: the full (infinite) extent for `allStrategy` layers, which OpenLayers never re-fetches on pan, and the current viewport extent for `bboxStrategy` layers.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-11-01
+   * @updated 2026-11-11
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {string[]} fieldsToLoad - Attribute field names to project in queryExtent.
@@ -654,7 +686,9 @@ export class MapController {
     const viewCrs = this.view.getProjection() || "EPSG:3857";
     const size = this.map.getSize();
     const extent =
-      size && size[0] > 0 && size[1] > 0 ?
+      entry.loadsFullExtent ?
+        [-Infinity, -Infinity, Infinity, Infinity]
+      : size && size[0] > 0 && size[1] > 0 ?
         this.view.calculateExtent(size)
       : entry.descriptor.extent || [-180, -90, 180, 90];
 
@@ -826,22 +860,14 @@ export class MapController {
    * @description Creates and registers an OpenLayers VectorImageLayer and VectorSource backed by allStrategy/bboxStrategy, wrapX: false, and WKB/GeoJSON loader.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-09
+   * @updated 2026-11-11
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @returns {VectorLayerEntry} Created layer and source tuple.
    */
   public createVectorLayer(descriptor: LayerDescriptor): VectorLayerEntry {
-    const isLocalVector =
-      descriptor.layerKind === "vector" || !descriptor.layerKind;
-    const strategy =
-      (
-        isLocalVector
-        && (descriptor.featureCount === undefined
-          || descriptor.featureCount < 50000)
-      ) ?
-        allStrategy
-      : bboxStrategy;
+    const loadsFullExtent = usesFullExtentLoading(descriptor);
+    const strategy = loadsFullExtent ? allStrategy : bboxStrategy;
 
     const source = new VectorSource({
       strategy,
@@ -920,6 +946,7 @@ export class MapController {
       source,
       descriptor,
       loadedFields: new Set<string>(),
+      loadsFullExtent,
       activeRawStyle: initialRawStyle,
       styleRevision: 0,
       fieldSchema,
