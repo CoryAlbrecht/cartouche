@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -121,6 +121,74 @@ describe('GeospatialEngine Helper Functions', () => {
     const dummySrs: any = {};
     const result = reprojectBoundingBox(inputBbox, 'INVALID:NOT_A_CRS', dummySrs);
     assert.deepEqual(result, inputBbox);
+  });
+
+  describe('antimeridian clamping (Ticket #262)', () => {
+    /**
+     * @function layerWgs84Srs
+     * @description Returns the SpatialReference of an in-memory WGS 84 GeoJSON layer, matching the lon/lat axis order of real vector layer sessions.
+     * @returns {gdal.SpatialReference} Layer SRS.
+     */
+    const layerWgs84Srs = (): gdal.SpatialReference => {
+      const ds = gdal.open(JSON.stringify({ type: 'FeatureCollection', features: [] }));
+      const srs = ds.layers.get(0).srs;
+      assert.ok(srs, 'In-memory GeoJSON layer must expose a SpatialReference');
+      const detached = srs.clone();
+      ds.close();
+      return detached;
+    };
+
+    /**
+     * @function assertBboxClose
+     * @description Asserts two extents match to within a tolerance.
+     * @param {BoundingBox} actual - Computed extent.
+     * @param {BoundingBox} expected - Expected extent.
+     * @param {number} tolerance - Maximum absolute difference per coordinate.
+     */
+    const assertBboxClose = (actual: BoundingBox, expected: BoundingBox, tolerance: number): void => {
+      for (let i = 0; i < 4; i++) {
+        assert.ok(
+          Math.abs(actual[i] - expected[i]) <= tolerance,
+          `bbox[${i}] expected ≈ ${expected[i]}, got ${actual[i]} (full result ${JSON.stringify(actual)})`
+        );
+      }
+    };
+
+    it('clamps an EPSG:3857 viewport whose west edge lies past -180° instead of wrapping it to the opposite hemisphere', () => {
+      // project-4 viewport: west edge at -185.02° lon. Expected values derived by hand from the
+      // spherical Mercator inverse: lon = x / R · 180/π, lat = (2·atan(e^(y/R)) − π/2) · 180/π.
+      const viewport: BoundingBox = [-20595856.85, 509898.6, -1598679.24, 11069455.54];
+      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
+      assertBboxClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
+    });
+
+    it('clamps an EPSG:3857 viewport whose east edge lies past +180°', () => {
+      const viewport: BoundingBox = [1598679.24, 509898.6, 20595856.85, 11069455.54];
+      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
+      assertBboxClose(result, [14.3612, 4.5756, 180, 70.0023], 0.001);
+    });
+
+    it('collapses an EPSG:3857 viewport lying entirely past -180° onto the antimeridian instead of inverting it', () => {
+      // x -22,000,000 .. -21,500,000 m ≈ -197.6° .. -193.1° lon: wholly outside the world.
+      const viewport: BoundingBox = [-22000000, 509898.6, -21500000, 11069455.54];
+      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
+      assertBboxClose(result, [-180, 4.5756, -180, 70.0023], 0.001);
+    });
+
+    it('clamps when the CRS is given in lower case or URN form', () => {
+      const viewport: BoundingBox = [-20595856.85, 509898.6, -1598679.24, 11069455.54];
+      for (const crs of ['epsg:3857', 'urn:ogc:def:crs:EPSG::3857']) {
+        const result = reprojectBoundingBox(viewport, crs, layerWgs84Srs());
+        assertBboxClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
+      }
+    });
+
+    it('reprojects an EPSG:3857 viewport within world bounds unchanged by clamping', () => {
+      // -100°..-80° lon, 40°..50° lat expressed in spherical Mercator metres.
+      const viewport: BoundingBox = [-11131949.08, 4865942.28, -8905559.26, 6446275.84];
+      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
+      assertBboxClose(result, [-100, 40, -80, 50], 0.001);
+    });
   });
 });
 

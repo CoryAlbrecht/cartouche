@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-10
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -255,10 +255,24 @@ export function getSrsAuthority(srs?: gdal.SpatialReference): string | null {
 }
 
 /**
+ * @description Half-width of the world's east–west extent, in source CRS units, for the map viewport CRSs whose X axis wraps at the antimeridian. Keyed by the normalized authority code returned by {@link getSrsAuthority}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-11
+ * @updated 2026-11-11
+ * @since 0.1.0-dev
+ * @type {Readonly<Record<string, number>>}
+ */
+const ANTIMERIDIAN_HALF_WIDTH: Readonly<Record<string, number>> = {
+  "EPSG:3857": 20037508.342789244,
+  "EPSG:4326": 180,
+};
+
+/**
  * @description Reprojects a 2D bounding box extent from an input CRS string to a target GDAL SpatialReference.
+ * For viewport CRSs listed in {@link ANTIMERIDIAN_HALF_WIDTH}, both X edges are first clamped into the world's east–west extent so a viewport extending past ±180° does not wrap to the opposite hemisphere when its corners are transformed; a viewport lying wholly past ±180° collapses onto the antimeridian.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-10-15
+ * @updated 2026-11-11
  * @since 0.1.0-dev
  * @param {BoundingBox} extent - Geographic or projected bounding box [minX, minY, maxX, maxY].
  * @param {string} sourceProjection - Source projection authority or definition (e.g. "EPSG:3857").
@@ -270,7 +284,6 @@ export function reprojectBoundingBox(
   sourceProjection: string,
   targetSrs: gdal.SpatialReference
 ): BoundingBox {
-  const [minX, minY, maxX, maxY] = extent;
   let sourceSrs: gdal.SpatialReference;
   try {
     sourceSrs = gdal.SpatialReference.fromUserInput(sourceProjection);
@@ -281,6 +294,13 @@ export function reprojectBoundingBox(
     });
     return extent;
   }
+
+  const [rawMinX, minY, rawMaxX, maxY] = extent;
+  const halfWidth = ANTIMERIDIAN_HALF_WIDTH[getSrsAuthority(sourceSrs) ?? ""];
+  const clampX = (x: number): number =>
+    halfWidth === undefined ? x : Math.min(Math.max(x, -halfWidth), halfWidth);
+  const minX = clampX(rawMinX);
+  const maxX = clampX(rawMaxX);
 
   try {
     const transform = new gdal.CoordinateTransformation(sourceSrs, targetSrs);
