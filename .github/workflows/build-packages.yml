@@ -1,0 +1,217 @@
+# Packages Cartouche desktop installers (Linux .deb/.rpm, Windows .msi/.exe)
+# and uploads them as workflow artifacts. It never publishes.
+#
+#   Release Build: invoked by release.yml (workflow_call) on a version tag;
+#                  stamps the tag's version, builds every platform, and keeps
+#                  artifacts for 1 day (release.yml publishes the lasting copy).
+#   Test Build:    dispatched on demand against any branch, e.g.
+#                    gh workflow run build-packages.yml --ref <branch> -f platforms=windows
+#                  keeps the branch's package.json version and keeps artifacts
+#                  for 7 days. A newer Test Build on the same ref cancels the older one.
+#
+# Native Electron bindings are cached per OS, keyed on the installed Electron
+# version plus package-lock.json and this file (package.json is excluded because
+# Release Builds stamp the tag version into it).
+#
+# See GLOSSARY `Test Build` vs. `Release Build`, ADR 0018, and PROCESSES.md.
+name: Build Desktop Packages
+
+on:
+  workflow_call:
+    inputs:
+      platforms:
+        description: "Platforms to build: all, linux, or windows"
+        type: string
+        default: all
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to build"
+        type: choice
+        options:
+          - all
+          - windows
+          - linux
+        default: all
+
+permissions:
+  contents: read
+
+# Release Builds get a unique group (never cancelled); Test Builds share one
+# group per ref so a newer dispatch supersedes an in-flight one.
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && format('test-build-{0}', github.ref) || format('release-build-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
+
+env:
+  IS_RELEASE_BUILD: ${{ github.event_name != 'workflow_dispatch' }}
+  ARTIFACT_RETENTION_DAYS: ${{ github.event_name == 'workflow_dispatch' && 7 || 1 }}
+
+jobs:
+  build-linux:
+    name: Build (Linux)
+    if: inputs.platforms == 'all' || inputs.platforms == 'linux'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Cache Electron Binaries
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('package.json') }}
+
+      - name: Stamp Release Version from Tag
+        if: env.IS_RELEASE_BUILD == 'true'
+        shell: bash
+        run: npm pkg set version="${GITHUB_REF_NAME#v}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pre-flight Verification Gates
+        run: |
+          npm run typecheck
+          npm test
+
+      # Restored only after the test gates: tests load the Node-ABI binaries
+      # from npm ci, while this cache holds the Electron-ABI rebuilds.
+      - name: Resolve Electron Version
+        id: electron
+        shell: bash
+        run: echo "version=$(node -p "require('./node_modules/electron/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Restore Native Electron Bindings
+        id: native-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            node_modules/gdal-async/lib/binding
+            node_modules/better-sqlite3/build
+          key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json', '.github/workflows/build-packages.yml') }}
+
+      - name: Rebuild native Electron dependencies
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: npm run rebuild
+
+      - name: Build & Package App
+        run: |
+          npm run build
+          npm run package:linux
+
+      - name: Upload Linux Installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-linux
+          path: |
+            release/*.deb
+            release/*.rpm
+          if-no-files-found: error
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
+  build-windows:
+    name: Build (Windows)
+    if: inputs.platforms == 'all' || inputs.platforms == 'windows'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Cache Electron Binaries
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
+          key: ${{ runner.os }}-electron-${{ hashFiles('package.json') }}
+
+      - name: Stamp Release Version from Tag
+        if: env.IS_RELEASE_BUILD == 'true'
+        shell: bash
+        run: npm pkg set version="${GITHUB_REF_NAME#v}"
+
+      - name: Install dependencies (bypassing postinstall)
+        run: npm ci --ignore-scripts
+
+      - name: Download gdal-async prebuilt binary
+        run:
+          node
+          node_modules/gdal-async/node_modules/@mapbox/node-pre-gyp/bin/node-pre-gyp
+          install --directory=node_modules/gdal-async
+
+      - name: Generate gdal-async TypeScript definitions
+        run: npm --prefix node_modules/gdal-async run yatag
+
+      # Step order matches the pre-#288 release.yml: the Electron rebuilds run
+      # before the test gates on Windows.
+      - name: Resolve Electron Version
+        id: electron
+        shell: bash
+        run: echo "version=$(node -p "require('./node_modules/electron/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Restore Native Electron Bindings
+        id: native-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            node_modules/gdal-async/lib/binding
+            node_modules/better-sqlite3/build
+          key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json', '.github/workflows/build-packages.yml') }}
+
+      - name: Rebuild better-sqlite3 for Electron
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run:
+          npx node-gyp rebuild --directory=node_modules/better-sqlite3
+          --target=45.0.0 --arch=x64 --dist-url=https://electronjs.org/headers
+
+      - name: Ensure gdal-async binding for Electron 45
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          GDAL_DIR="node_modules/gdal-async/lib/binding"
+          if [ -d "$GDAL_DIR/node-v137-win32-x64" ] && [ ! -d "$GDAL_DIR/electron-v45.0-win32-x64" ]; then
+            cp -r "$GDAL_DIR/node-v137-win32-x64" "$GDAL_DIR/electron-v45.0-win32-x64"
+          fi
+
+      - name: Pre-flight Verification Gates
+        run: |
+          npm run typecheck
+          npm test
+
+      # --publish never: electron-builder would otherwise try to publish on a
+      # tag build; publishing is release.yml's job alone.
+      - name: Build & Package App
+        run: |
+          npm run build
+          npm run package:win -- --publish never
+
+      - name: Upload Windows Installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-windows
+          path: |
+            release/*.msi
+            release/*.exe
+          if-no-files-found: error
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
