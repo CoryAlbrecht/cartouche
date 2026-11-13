@@ -4,10 +4,11 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
+ * @see {@link TabbedDialogShell}
  * @see {@link activeLayerPropertiesIdSignal}
  */
 
@@ -79,6 +80,7 @@ import {
   isLayerInEditMode,
 } from "@renderer/state/gisSignals";
 import { Dialog } from "./Dialog";
+import { TabbedDialogShell, type TabbedDialogTabDef } from "./TabbedDialogShell";
 import { ModalDialog } from "./ModalDialog";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
 import { SimpleModeEditor } from "./SimpleModeEditor";
@@ -418,6 +420,11 @@ export function useRawStyleTextEditorHistory({
 
 /**
  * @typedef {Object} SidebarTabDef
+ * @description Static sidebar tab definition; resolved into a {@link TabbedDialogTabDef} (label translated) on every render.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-23
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
  * @property {LayerPropertiesTabId} id - Tab identifier.
  * @property {string} labelKey - i18n translation key.
  * @property {string} icon - MDI SVG icon path.
@@ -1166,73 +1173,17 @@ export const LayerPropertiesDialog: React.FC = () => {
           </button>
         </div>
       }>
-      <div
-        className='layer-properties-container'
-        style={{
-          display: "flex",
-          flex: 1,
-          height: "100%",
-          overflow: "hidden",
-          backgroundColor: "#ffffff",
-          color: "#000000",
+      <TabbedDialogShell
+        classPrefix='layer-properties'
+        tabs={SIDEBAR_TABS.map((tab) => ({
+          id: tab.id,
+          label: t(tab.labelKey),
+          icon: tab.icon,
+        }))}
+        activeTabId={activeTab}
+        onTabChange={(id) => {
+          activeLayerPropertiesTabSignal.value = id;
         }}>
-        {/* Left Sidebar Tabs */}
-        <div
-          className='layer-properties-sidebar'
-          style={{
-            width: "13rem",
-            borderRight: "1px solid #cbd5e1",
-            backgroundColor: "#f8fafc",
-            display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-            padding: "8px",
-            flexShrink: 0,
-          }}>
-          {SIDEBAR_TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type='button'
-                className={`layer-properties-tab-btn ${isActive ? "active" : ""}`}
-                onClick={() => {
-                  activeLayerPropertiesTabSignal.value = tab.id;
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.625rem",
-                  padding: "0.5rem 0.75rem",
-                  border: "none",
-                  borderRadius: "4px",
-                  backgroundColor: isActive ? "#e2e8f0" : "transparent",
-                  color: isActive ? "#0f172a" : "#475569",
-                  fontWeight: isActive ? 600 : 400,
-                  fontSize: "0.875rem",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  width: "100%",
-                }}>
-                <Icon path={tab.icon} />
-                <span>{t(tab.labelKey)}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right Tab Content */}
-        <div
-          className='layer-properties-content'
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            overflowY: "auto",
-            padding: "1rem 1.25rem",
-            gap: "1rem",
-            minHeight: 0,
-          }}>
           {isLoading && (
             <div
               className='layer-properties-loading'
@@ -2964,8 +2915,7 @@ export const LayerPropertiesDialog: React.FC = () => {
               </fieldset>
             </div>
           )}
-        </div>
-      </div>
+      </TabbedDialogShell>
     </Dialog>
     <Dialog
       name='newFieldWindow'
