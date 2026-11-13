@@ -106,6 +106,9 @@ jobs:
         if: steps.native-cache.outputs.cache-hit != 'true'
         run: npm run rebuild
 
+      - name: Smoke-test native addons inside Electron
+        run: npm run smoke:native
+
       - name: Build & Package App
         run: |
           npm run build
@@ -154,7 +157,15 @@ jobs:
       - name: Install dependencies (bypassing postinstall)
         run: npm ci --ignore-scripts
 
-      - name: Download gdal-async prebuilt binary
+      # --ignore-scripts skips electron's own postinstall, so fetch its binary
+      # explicitly for the smoke test (served from the Electron cache above).
+      - name: Download Electron binary
+        run: node node_modules/electron/install.js
+
+      # Node-ABI binding used only by the test gates (plain Node), mirroring
+      # what `npm ci` installs on Linux. The packaged Electron binding is
+      # compiled from the forked source below and never comes from this download.
+      - name: Download gdal-async Node binding for test gates
         run:
           node
           node_modules/gdal-async/node_modules/@mapbox/node-pre-gyp/bin/node-pre-gyp
@@ -185,14 +196,14 @@ jobs:
           npx node-gyp rebuild --directory=node_modules/better-sqlite3
           --target=45.0.0 --arch=x64 --dist-url=https://electronjs.org/headers
 
-      - name: Ensure gdal-async binding for Electron 45
+      # Compiles the forked gdal-async (V8-sandbox fix, ADR 0006) and its bundled
+      # GDAL/PROJ/GEOS with MSVC against Electron headers. Slow on a cold cache.
+      - name: Build gdal-async from source for Electron
         if: steps.native-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          GDAL_DIR="node_modules/gdal-async/lib/binding"
-          if [ -d "$GDAL_DIR/node-v137-win32-x64" ] && [ ! -d "$GDAL_DIR/electron-v45.0-win32-x64" ]; then
-            cp -r "$GDAL_DIR/node-v137-win32-x64" "$GDAL_DIR/electron-v45.0-win32-x64"
-          fi
+        run: npm run rebuild:gdal
+
+      - name: Smoke-test native addons inside Electron
+        run: npm run smoke:native
 
       - name: Pre-flight Verification Gates
         run: |
