@@ -45,6 +45,8 @@ const {
   currentProjectSignal,
   workbenchWindowTitleSignal,
   setProjectTitle,
+  mapBackgroundColourSignal,
+  setMapBackgroundColour,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const gis = jiti('../../../src/renderer/state/gisSignals.ts');
 const { resolveProjectDisplayName, isDefaultProjectTitle } = jiti('../../../src/shared/project/projectTitle.ts');
@@ -95,11 +97,12 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     updateProjectPropertiesDraft({ title: '  Edited Title ' });
     assert.equal(projectTitleSignal.value, 'Committed Title', 'draft edit must not touch committed state');
     assert.equal(isProjectDirtySignal.value, false);
-    assert.deepEqual(patches, []);
+    assert.equal(patches.length, 0);
 
     const ok = await applyProjectPropertiesEdits();
     assert.equal(ok, true);
-    assert.deepEqual(patches, [{ title: 'Edited Title' }], 'exactly one round trip with the trimmed title');
+    assert.equal(patches.length, 1, 'exactly one round trip');
+    assert.equal(patches[0].title, 'Edited Title', 'trimmed title in the patch');
     assert.equal(projectTitleSignal.value, 'Edited Title');
     assert.equal(projectNameSignal.value, 'Edited Title');
     assert.equal(currentProjectSignal.value.metadata.title, 'Edited Title');
@@ -132,7 +135,7 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     assert.equal(isProjectPropertiesOpenSignal.value, false);
     assert.equal(projectTitleSignal.value, 'Committed Title');
     assert.equal(isProjectDirtySignal.value, false);
-    assert.deepEqual(patches, []);
+    assert.equal(patches.length, 0);
 
     openProjectPropertiesDialog();
     assert.equal(projectPropertiesDraftSignal.value.title, 'Committed Title', 'reopening starts from committed state again');
@@ -149,9 +152,33 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     assert.equal(projectPropertiesDraftSignal.value.title, 'Kept Across Tabs');
   });
 
-  it('buildProjectPropertiesPatch trims the title and allows clearing it', () => {
-    assert.deepEqual(buildProjectPropertiesPatch({ title: '  Atlas  ' }), { title: 'Atlas' });
-    assert.deepEqual(buildProjectPropertiesPatch({ title: '   ' }), { title: '' });
+  it('buildProjectPropertiesPatch trims the title, allows clearing it, and defaults an empty background to white', () => {
+    assert.deepEqual(buildProjectPropertiesPatch({ title: '  Atlas  ', backgroundColour: '#abcdef' }), { title: 'Atlas', backgroundColour: '#abcdef' });
+    assert.deepEqual(buildProjectPropertiesPatch({ title: '   ', backgroundColour: '' }), { title: '', backgroundColour: '#ffffff' });
+  });
+
+  it('seeds the Map Background Colour draft from the committed value and applies it on Apply (Ticket #272)', async () => {
+    setMapBackgroundColour('#223344');
+    openProjectPropertiesDialog();
+    assert.equal(projectPropertiesDraftSignal.value.backgroundColour, '#223344');
+
+    updateProjectPropertiesDraft({ backgroundColour: '#aabbcc' });
+    assert.equal(mapBackgroundColourSignal.value, '#223344', 'draft edit does not touch the committed colour');
+
+    const ok = await applyProjectPropertiesEdits();
+    assert.equal(ok, true);
+    assert.equal(patches[0].backgroundColour, '#aabbcc');
+    assert.equal(mapBackgroundColourSignal.value, '#aabbcc');
+    assert.equal(currentProjectSignal.value.display.backgroundColour, '#aabbcc');
+    setMapBackgroundColour('#ffffff');
+  });
+
+  it('Cancel discards a draft background colour (Ticket #272)', () => {
+    setMapBackgroundColour('#ffffff');
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ backgroundColour: '#000000' });
+    cancelProjectPropertiesEdits();
+    assert.equal(mapBackgroundColourSignal.value, '#ffffff');
   });
 
   it('gisSignals re-exports the open/close API for existing importers', () => {

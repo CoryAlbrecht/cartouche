@@ -30,6 +30,9 @@
       <!-- Coordinate Reference System (CRS) - Optional -->
       <xs:element name="crs" type="CrsType" minOccurs="0" />
 
+      <!-- Project-wide Map Display Settings (background colour) - Optional -->
+      <xs:element name="display" type="DisplayType" minOccurs="0" />
+
       <!-- Map Viewport Extent and Camera State - Optional -->
       <xs:element name="viewport" type="ViewportType" minOccurs="0" />
 
@@ -90,6 +93,15 @@
       <xs:element name="proj4" type="xs:string" minOccurs="0" />
       <xs:element name="wkt" type="xs:string" minOccurs="0" />
     </xs:sequence>
+  </xs:complexType>
+
+  <!-- Display Type: project-wide map display settings -->
+  <xs:complexType name="DisplayType">
+    <xs:attribute name="backgroundColour" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Opaque CSS colour painted behind all layers in the map viewport. Missing means #ffffff.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
   </xs:complexType>
 
   <!-- Viewport Type -->

@@ -315,9 +315,33 @@ export interface ProjectTimeFilterConfig {
 }
 
 /**
+ * @constant {string} DEFAULT_MAP_BACKGROUND_COLOUR
+ * @description Map Background Colour used when a project declares none: pure white.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_MAP_BACKGROUND_COLOUR = '#ffffff';
+
+/**
+ * @typedef {Object} ProjectDisplaySettings
+ * @description Project-wide map display settings persisted in the optional `<display>` element.
+ * @property {string} [backgroundColour] - Opaque CSS colour painted behind all layers in the map viewport; missing means {@link DEFAULT_MAP_BACKGROUND_COLOUR}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ */
+export interface ProjectDisplaySettings {
+  backgroundColour?: string;
+}
+
+/**
  * @typedef {Object} ProjectPropertiesPatch
  * @description Partial set of project-wide properties committed from the Project Properties dialog draft in one IPC round trip. Every member is optional; absent members are left unchanged.
  * @property {string} [title] - Project Title (`dc:title`), independent of the file name. An empty string clears the title.
+ * @property {string} [backgroundColour] - Opaque Map Background Colour.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -325,6 +349,7 @@ export interface ProjectTimeFilterConfig {
  */
 export interface ProjectPropertiesPatch {
   title?: string;
+  backgroundColour?: string;
 }
 
 /**
@@ -373,6 +398,7 @@ export interface ProjectStyleItem {
  * @property {string} [filePath] - Absolute path to underlying project document on disk.
  * @property {ProjectMetadata} metadata - Project Dublin Core and application metadata.
  * @property {ProjectCrs} [crs] - Project-wide default coordinate reference system.
+ * @property {ProjectDisplaySettings} [display] - Project-wide map display settings (Map Background Colour).
  * @property {ProjectViewport} [viewport] - Initial map camera and extent parameters.
  * @property {Array<ProjectLayerItem | ProjectGroupItem>} layers - Hierarchical layer and group tree.
  * @property {ProjectStyleItem[]} [styles] - Project shared style collection.
@@ -388,6 +414,7 @@ export interface ProjectModel {
   filePath?: string;
   metadata: ProjectMetadata;
   crs?: ProjectCrs;
+  display?: ProjectDisplaySettings;
   viewport?: ProjectViewport;
   layers: Array<ProjectLayerItem | ProjectGroupItem>;
   styles?: ProjectStyleItem[];

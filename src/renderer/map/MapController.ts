@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-11
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -40,6 +40,7 @@ import {
   currentProjectSignal,
   projectTreeSignal,
   projectVisibleSignal,
+  mapBackgroundColourSignal,
 } from "../state/projectSignals";
 import {
   isTimeFilterActiveSignal,
@@ -473,6 +474,12 @@ export class MapController {
     });
     this.disposeSignals.push(disposeActions);
 
+    // Paint the project's Map Background Colour on the viewport container behind all layers
+    const disposeBackground = effect(() => {
+      this.applyBackgroundColour(mapBackgroundColourSignal.value);
+    });
+    this.disposeSignals.push(disposeBackground);
+
     // Trigger visual refresh of temporal layers when time filter is toggled or frame advances
     const disposeTimeFilter = effect(() => {
       // Read reactive signals to establish dependency tracking
@@ -482,6 +489,21 @@ export class MapController {
       this.refreshTemporalLayers();
     });
     this.disposeSignals.push(disposeTimeFilter);
+  }
+
+  /**
+   * @description Paints the Map Background Colour on the unmanaged viewport container so it shows behind every layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-12
+   * @updated 2026-11-12
+   * @since 0.1.0-dev
+   * @param {string} colour - Opaque CSS colour.
+   * @returns {void}
+   */
+  public applyBackgroundColour(colour: string): void {
+    if (this.container && this.container.style) {
+      this.container.style.backgroundColor = colour;
+    }
   }
 
   /**

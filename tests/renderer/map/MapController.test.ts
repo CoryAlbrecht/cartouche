@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-11
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -15,6 +15,7 @@ import {
   projectLayersSignal,
   layerStylesSignal,
   currentProjectSignal,
+  mapBackgroundColourSignal,
 } from '../../../src/renderer/state/projectSignals';
 import { cursorCoordsSignal } from '../../../src/renderer/state/gisSignals';
 import { preferencesMapSignal } from '../../../src/renderer/state/preferencesSignals';
@@ -203,6 +204,15 @@ describe('MapController Isolated Canvas Engine', () => {
     layerStylesSignal.value = {};
     currentProjectSignal.value = null;
     (globalThis as any).window.electronAPI = undefined;
+  });
+
+  it('paints the Map Background Colour on the viewport container and follows signal changes (Ticket #272)', () => {
+    assert.equal(container.style.backgroundColor, '#ffffff', 'default background is white');
+    mapBackgroundColourSignal.value = '#123456';
+    assert.equal(container.style.backgroundColor, '#123456', 'background follows the signal');
+    mapBackgroundColourSignal.value = 'rgb(10, 20, 30)';
+    assert.equal(container.style.backgroundColor, 'rgb(10, 20, 30)');
+    mapBackgroundColourSignal.value = '#ffffff';
   });
 
   it('mounts OpenLayers map in unmanaged container with default EPSG:3857 view and empty layers', () => {

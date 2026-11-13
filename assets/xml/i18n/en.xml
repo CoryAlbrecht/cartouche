@@ -209,6 +209,7 @@
     <string name="project_properties_file_unsaved">(unsaved)</string>
     <string name="project_properties_btn_save_as">Save As...</string>
     <string name="project_properties_label_title">Project Title</string>
+    <string name="project_properties_label_background_colour">Map Background Colour</string>
     <string name="project_properties_btn_ok">OK</string>
     <string name="project_properties_btn_apply">Apply</string>
     <string name="project_properties_btn_cancel">Cancel</string>

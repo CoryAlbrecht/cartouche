@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, bottom channel inputs, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-09
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link ColourPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -499,6 +499,29 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
     const reticle = findElementsByClass(container, 'colour-picker-reticle')[0];
     assert.equal(reticle.style.left, '50%');
     assert.equal(reticle.style.top, '50%');
+  });
+
+  it('hides the transparency strip and forces opaque output when allowAlpha is false (Ticket #272)', async () => {
+    const seen: string[] = [];
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: 'rgba(255, 0, 0, 0.5)',
+          allowAlpha: false,
+          format: 'HEX',
+          onChange: (c: string) => seen.push(c),
+        })
+      );
+    });
+    const strips = findElementsByClass(container, 'colour-picker-alpha-strip');
+    assert.equal(strips.length, 0, 'alpha strip must not render');
+    const hueStrip = findElementsByClass(container, 'colour-picker-hue-strip')[0];
+    assert.ok(hueStrip, 'hue strip still renders');
+    await act(async () => {
+      hueStrip.dispatchEvent({ type: 'pointerdown', button: 0, clientX: 100, pointerId: 1, currentTarget: hueStrip });
+    });
+    assert.ok(seen.length > 0, 'onChange fired');
+    assert.ok(seen.every((c) => /^#[0-9a-f]{6}(ff)?$/i.test(c)), `every colour must be opaque hex, got ${seen.join(',')}`);
   });
 
   it('respects showHeader={false} when embedded inside dialogs or other widgets', async () => {

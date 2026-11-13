@@ -97,6 +97,7 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
       project_properties_file_unsaved: '(unsaved)',
       project_properties_btn_save_as: 'Save As...',
       project_properties_label_title: 'Project Title',
+      project_properties_label_background_colour: 'Map Background Colour',
       project_properties_btn_ok: 'OK',
       project_properties_btn_apply: 'Apply',
       project_properties_btn_cancel: 'Cancel',
@@ -173,11 +174,23 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     assert.equal(isProjectDirtySignal.value, false);
   });
 
+  it('renders an embedded opaque Map Background Colour picker bound to the draft (Ticket #272)', () => {
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ backgroundColour: '#336699' });
+    const html = render();
+    assert.ok(html.includes('Map Background Colour'));
+    assert.ok(html.includes('id="project-prop-background-colour-picker"'));
+    assert.ok(html.includes('colour-picker-widget'), 'embeds ColourPickerWidget');
+    assert.ok(!html.includes('colour-picker-alpha-strip'), 'opaque-only picker hides the transparency strip');
+    assert.ok(html.includes('#336699') || html.includes('336699'), 'picker seeded from the draft colour');
+  });
+
   it('Apply commits the draft through the Project Store and sets the Project Dirty State', async () => {
     openProjectPropertiesDialog();
     updateProjectPropertiesDraft({ title: 'Applied Atlas' });
     assert.equal(await applyProjectPropertiesEdits(), true);
-    assert.deepEqual(patches, [{ title: 'Applied Atlas' }]);
+    assert.equal(patches.length, 1);
+    assert.equal(patches[0].title, 'Applied Atlas');
     assert.equal(projectTitleSignal.value, 'Applied Atlas');
     assert.equal(projectNameSignal.value, 'Applied Atlas');
     assert.equal(isProjectDirtySignal.value, true);
@@ -190,7 +203,8 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
 
     const ok = await saveAsProjectFromPropertiesDialogAction();
     assert.equal(ok, true);
-    assert.deepEqual(patches, [{ title: 'Saved Atlas' }], 'draft applied before saving');
+    assert.equal(patches.length, 1, 'draft applied before saving');
+    assert.equal(patches[0].title, 'Saved Atlas');
     assert.deepEqual(savedPaths, ['/projects/renamed/atlas-v2.cproj']);
     assert.equal(projectFilePathSignal.value, '/projects/renamed/atlas-v2.cproj');
     assert.equal(projectTitleSignal.value, 'Saved Atlas', 'explicit title survives Save As');

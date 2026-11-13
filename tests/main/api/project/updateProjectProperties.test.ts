@@ -55,4 +55,10 @@ describe('updateProjectProperties (Ticket #271)', () => {
     assert.equal(updateProjectProperties({}), true);
     assert.equal(projectStore.isProjectDirty(), false);
   });
+  it('stores the Map Background Colour in the project display settings (Ticket #272)', () => {
+    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Bg' }, layers: [] });
+    assert.equal(updateProjectProperties({ backgroundColour: ' #1b446c ' }), true);
+    assert.equal(projectStore.getProject()?.display?.backgroundColour, '#1b446c');
+    assert.equal(projectStore.isProjectDirty(), true);
+  });
 });

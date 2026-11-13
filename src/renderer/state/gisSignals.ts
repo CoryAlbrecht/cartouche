@@ -44,6 +44,7 @@ import {
   projectFilePathSignal,
   projectTitleSignal,
   setProjectTitle,
+  mapBackgroundColourSignal,
   projectVisibleSignal,
   isProjectDirtySignal,
   isDirtySignal,
@@ -93,6 +94,7 @@ import {
   beginProjectPropertiesDraft,
 } from './projectPropertiesSignals';
 import { resolveProjectDisplayName, isDefaultProjectTitle } from '../../shared/project/projectTitle';
+import { DEFAULT_MAP_BACKGROUND_COLOUR } from '../../shared/types/project';
 
 export {
   getLayerToolbarPreference,
@@ -1652,6 +1654,7 @@ export function createNewProject(name: string = 'New Project') {
   projectTitleSignal.value = name;
   projectNameSignal.value = name;
   projectFilePathSignal.value = null;
+  mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
   projectVisibleSignal.value = true;
   isProjectDirtySignal.value = false;
   layerGroupsSignal.value = [];
@@ -1902,6 +1905,7 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     hasProjectSignal.value = true;
     projectFilePathSignal.value = project.filePath || null;
     projectTitleSignal.value = project.metadata?.title || '';
+    mapBackgroundColourSignal.value = project.display?.backgroundColour || DEFAULT_MAP_BACKGROUND_COLOUR;
     projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
@@ -2471,6 +2475,7 @@ export async function closeProjectAction(): Promise<boolean> {
   hasProjectSignal.value = false;
   projectNameSignal.value = null;
   projectTitleSignal.value = '';
+  mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;

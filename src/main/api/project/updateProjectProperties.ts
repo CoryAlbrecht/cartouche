@@ -18,7 +18,7 @@ import { logging } from '../../../shared/logging';
 
 /**
  * @ipc project:update-properties
- * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. Returns false when no project is open.
+ * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. A background colour is stored in the project's display settings. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -39,6 +39,15 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     const nextTitle = patch.title.trim();
     if (project.metadata.title !== nextTitle) {
       project.metadata.title = nextTitle;
+      changed = true;
+    }
+  }
+
+  if (patch && typeof patch.backgroundColour === 'string') {
+    const next = patch.backgroundColour.trim();
+    const current = project.display?.backgroundColour;
+    if (next && next !== current) {
+      project.display = { ...(project.display || {}), backgroundColour: next };
       changed = true;
     }
   }

@@ -12,6 +12,7 @@
  * @see {@link updateLayerFields}
  * @see {@link projectTitleSignal}
  * @see {@link workbenchWindowTitleSignal}
+ * @see {@link mapBackgroundColourSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -25,6 +26,7 @@ import type {
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 import { resolveProjectDisplayName } from '../../shared/project/projectTitle';
+import { DEFAULT_MAP_BACKGROUND_COLOUR } from '../../shared/types/project';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -161,6 +163,38 @@ export const projectFilePathSignal = signal<string | null>(null);
  * @type {Signal<string>}
  */
 export const projectTitleSignal = signal<string>('');
+
+/**
+ * @signal mapBackgroundColourSignal
+ * @description Reactive signal holding the project's Map Background Colour (opaque CSS colour painted behind all layers). Defaults to {@link DEFAULT_MAP_BACKGROUND_COLOUR} when the project declares none.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const mapBackgroundColourSignal = signal<string>(DEFAULT_MAP_BACKGROUND_COLOUR);
+
+/**
+ * @function setMapBackgroundColour
+ * @description Sets the Map Background Colour signal (falling back to the default for an empty value) and mirrors it into the current project model's display settings.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} colour - Opaque CSS colour, or empty for the default.
+ * @returns {void}
+ */
+export function setMapBackgroundColour(colour: string | null | undefined): void {
+  const next = (colour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR;
+  batch(() => {
+    mapBackgroundColourSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.display = { ...(project.display || {}), backgroundColour: next };
+    }
+  });
+}
 
 /**
  * @signal workbenchWindowTitleSignal

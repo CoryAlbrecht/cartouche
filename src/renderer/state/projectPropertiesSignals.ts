@@ -1,7 +1,7 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits. Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -20,7 +20,10 @@ import {
   isProjectDirtySignal,
   projectTitleSignal,
   setProjectTitle,
+  mapBackgroundColourSignal,
+  setMapBackgroundColour,
 } from './projectSignals';
+import { DEFAULT_MAP_BACKGROUND_COLOUR } from '../../shared/types/project';
 
 /**
  * @typedef {'general'} ProjectPropertiesTabId
@@ -40,9 +43,11 @@ export type ProjectPropertiesTabId = 'general';
  * @updated 2026-11-12
  * @since 0.1.0-dev
  * @property {string} title - Draft Project Title (`dc:title`).
+ * @property {string} backgroundColour - Draft Map Background Colour (opaque CSS colour).
  */
 export interface ProjectPropertiesDraft {
   title: string;
+  backgroundColour: string;
 }
 
 /**
@@ -55,7 +60,7 @@ export interface ProjectPropertiesDraft {
  * @returns {ProjectPropertiesDraft} Blank draft.
  */
 function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
-  return { title: '' };
+  return { title: '', backgroundColour: DEFAULT_MAP_BACKGROUND_COLOUR };
 }
 
 /**
@@ -94,6 +99,17 @@ export const projectPropertiesDraftSignal: Signal<ProjectPropertiesDraft> =
   signal<ProjectPropertiesDraft>(createEmptyProjectPropertiesDraft());
 
 /**
+ * @signal projectPropertiesBaselineKeySignal
+ * @description Counter bumped every time the draft is (re)seeded from committed state. Embedded controls that hold their own internal state (such as colour pickers) key on it so they re-initialise from the new baseline.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {Signal<number>}
+ */
+export const projectPropertiesBaselineKeySignal: Signal<number> = signal<number>(0);
+
+/**
  * @function beginProjectPropertiesDraft
  * @description Seeds (or re-seeds) the draft from the committed project state. Called when the dialog opens and after a successful Save As so the baseline matches what is on disk.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -103,9 +119,13 @@ export const projectPropertiesDraftSignal: Signal<ProjectPropertiesDraft> =
  * @returns {void}
  */
 export function beginProjectPropertiesDraft(): void {
-  projectPropertiesDraftSignal.value = {
-    title: projectTitleSignal.value ?? '',
-  };
+  batch(() => {
+    projectPropertiesDraftSignal.value = {
+      title: projectTitleSignal.value ?? '',
+      backgroundColour: mapBackgroundColourSignal.value || DEFAULT_MAP_BACKGROUND_COLOUR,
+    };
+    projectPropertiesBaselineKeySignal.value += 1;
+  });
 }
 
 /**
@@ -186,6 +206,7 @@ export function cancelProjectPropertiesEdits(): void {
 export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): ProjectPropertiesPatch {
   return {
     title: (draft.title ?? '').trim(),
+    backgroundColour: (draft.backgroundColour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR,
   };
 }
 
@@ -218,6 +239,9 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
   batch(() => {
     if (patch.title !== undefined) {
       setProjectTitle(patch.title);
+    }
+    if (patch.backgroundColour !== undefined) {
+      setMapBackgroundColour(patch.backgroundColour);
     }
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();

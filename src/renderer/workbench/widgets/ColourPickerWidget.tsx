@@ -4,7 +4,7 @@
  * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-09
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link parseCssColor}
@@ -65,12 +65,14 @@ export const COLOR_FORMATS: ColorFormat[] = [
  * @property {ColorFormat} [format='HEX'] - Preferred initial color format.
  * @property {(color: string) => void} [onChange] - Callback fired whenever color changes with CSS string.
  * @property {boolean} [disabled=false] - Whether color picking and interactive controls are disabled.
+ * @property {boolean} [allowAlpha=true] - Whether the transparency strip is shown and alpha may differ from 1. When false the picker only produces opaque colours.
  */
 export interface ColourPickerWidgetProps extends Omit<BasicWidgetProps, 'children'> {
   initialColor?: string;
   format?: ColorFormat;
   onChange?: (color: string) => void;
   disabled?: boolean;
+  allowAlpha?: boolean;
 }
 
 /**
@@ -78,7 +80,7 @@ export interface ColourPickerWidgetProps extends Omit<BasicWidgetProps, 'childre
  * @description Custom color picker widget subclassing BasicWidget, embeddable across Dockview panels, dialogs, and parent widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-09
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @param {ColourPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ColourPickerWidget React component.
@@ -88,6 +90,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
   format: propFormat,
   onChange,
   disabled = false,
+  allowAlpha = true,
   name = 'colour-picker-widget',
   displayName = 'Colour Picker',
   showHeader = true,
@@ -159,7 +162,8 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
    * Dispatches color updates to internal state and notifies onChange callback.
    */
   const notifyColorChange = useCallback(
-    (newHsv: HsvColor, newFormat: ColorFormat = activeFormat) => {
+    (incomingHsv: HsvColor, newFormat: ColorFormat = activeFormat) => {
+      const newHsv: HsvColor = allowAlpha ? incomingHsv : { ...incomingHsv, alpha: 1 };
       setHsv(newHsv);
       if (onChange) {
         const srgb: RgbColor = {
@@ -170,7 +174,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
         onChange(formatted);
       }
     },
-    [activeFormat, onChange]
+    [activeFormat, onChange, allowAlpha]
   );
 
   // Eyedropper detection
@@ -584,7 +588,8 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             />
           </div>
 
-          {/* Inkscape-Style Transparency Strip (1 lh tall) */}
+          {/* Inkscape-Style Transparency Strip (1 lh tall); hidden for opaque-only pickers */}
+          {allowAlpha && (
           <div
             ref={alphaStripRef}
             className='colour-picker-alpha-strip'
@@ -620,6 +625,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               }}
             />
           </div>
+          )}
         </div>
 
         {/* =========================================================================

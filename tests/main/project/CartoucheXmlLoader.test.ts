@@ -1218,4 +1218,45 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const loaded = await loader.load(testFile);
     assert.equal(loaded.metadata.title, '', 'missing <dc:title> loads as an empty title so the display name falls back to the file base name');
   });
+  it('round-trips the <display backgroundColour> element after <crs> and before <viewport>, validated against project.xsd (Ticket #272)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'display-background.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Display Test', appVersion: '0.1.0-dev' },
+      crs: { authId: 'EPSG:4326' },
+      display: { backgroundColour: '#1b446c' },
+      viewport: { center: { x: 0, y: 0 }, scale: 1000 },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('<display backgroundColour="#1b446c" />'));
+    assert.ok(xml.indexOf('</crs>') < xml.indexOf('<display'), '<display> follows <crs>');
+    assert.ok(xml.indexOf('<display') < xml.indexOf('<viewport>'), '<display> precedes <viewport>');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.display?.backgroundColour, '#1b446c');
+  });
+
+  it('omits <display> when no display setting is set and loads a missing <display> as undefined so #ffffff applies (Ticket #272)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'display-missing.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'No Display', appVersion: '0.1.0-dev' },
+      display: {},
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(!xml.includes('<display'), 'empty display settings must not be written');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.display, undefined);
+  });
 });

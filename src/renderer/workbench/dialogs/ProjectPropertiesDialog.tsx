@@ -1,7 +1,7 @@
 /**
  * @file ProjectPropertiesDialog.tsx
  * @module renderer/workbench/dialogs/ProjectPropertiesDialog
- * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first) and edits the Project Title.
+ * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Title, and picks the opaque Map Background Colour with an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-12
@@ -10,6 +10,7 @@
  * @see {@link TabbedDialogShell}
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
+ * @see {@link ColourPickerWidget}
  */
 
 import React, { useCallback } from "react";
@@ -24,11 +25,14 @@ import {
   updateProjectPropertiesDraft,
   applyProjectPropertiesEdits,
   commitAndCloseProjectPropertiesDialog,
+  projectPropertiesBaselineKeySignal,
   type ProjectPropertiesTabId,
 } from "@renderer/state/projectPropertiesSignals";
 import { projectFilePathSignal } from "@renderer/state/projectSignals";
 import { saveAsProjectFromPropertiesDialogAction } from "@renderer/state/gisSignals";
 import { t } from "@renderer/state/i18nSignals";
+import { ColourPickerWidget } from "@renderer/workbench/widgets/ColourPickerWidget";
+import { parseCssColor, resolveColorToHex } from "@shared/colors";
 import { Dialog } from "./Dialog";
 import { TabbedDialogShell } from "./TabbedDialogShell";
 
@@ -107,6 +111,7 @@ export const ProjectPropertiesDialog: React.FC = () => {
   const activeTab = activeProjectPropertiesTabSignal.value;
   const draft = projectPropertiesDraftSignal.value;
   const filePath = projectFilePathSignal.value;
+  const draftBaselineKey = projectPropertiesBaselineKeySignal.value;
 
   const handleClose = useCallback(() => {
     closeProjectPropertiesDialog();
@@ -285,6 +290,34 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     }
                     style={INPUT_STYLE}
                   />
+                </div>
+
+                {/* Map Background Colour (opaque) */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                  <span style={LABEL_STYLE}>
+                    {t("project_properties_label_background_colour")}:
+                  </span>
+                  <div
+                    id='project-prop-background-colour-picker'
+                    className='project-prop-background-colour-picker'
+                    style={{ width: "280px", flexShrink: 0 }}>
+                    <ColourPickerWidget
+                      key={`background-${draftBaselineKey}`}
+                      showHeader={false}
+                      initialColor={draft.backgroundColour}
+                      format={parseCssColor(draft.backgroundColour)?.format ?? "HEX"}
+                      allowAlpha={false}
+                      minWidth={280}
+                      style={{ border: "none", background: "transparent", padding: 0 }}
+                      onChange={(colour) =>
+                        updateProjectPropertiesDraft({
+                          backgroundColour: resolveColorToHex(colour) ?? colour,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
               </div>
             </fieldset>

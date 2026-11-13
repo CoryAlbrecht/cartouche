@@ -20,6 +20,7 @@ import {
   type ProjectMetadata,
   type ProjectCrs,
   type ProjectViewport,
+  type ProjectDisplaySettings,
   type ProjectLayerItem,
   type ProjectGroupItem,
   type ProjectStyleItem,
@@ -168,6 +169,18 @@ export class CartoucheXmlLoader implements IProjectLoader {
         description: root.crs.description,
         proj4: root.crs.proj4,
         wkt: root.crs.wkt,
+      };
+    }
+
+    // Parse Display settings (optional)
+    let display: ProjectDisplaySettings | undefined;
+    if (root.display) {
+      const rawBackground = root.display["@_backgroundColour"];
+      display = {
+        backgroundColour:
+          rawBackground !== undefined && rawBackground !== null && String(rawBackground).trim() ?
+            String(rawBackground).trim()
+          : undefined,
       };
     }
 
@@ -616,6 +629,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       filePath,
       metadata,
       crs,
+      display,
       viewport,
       layers,
       styles,
@@ -713,6 +727,13 @@ export class CartoucheXmlLoader implements IProjectLoader {
         lines.push(`    <wkt>${escapeXml(project.crs.wkt)}</wkt>`);
       }
       lines.push("  </crs>");
+    }
+
+    // 2b. Display settings (optional; written only when something is set)
+    if (project.display && project.display.backgroundColour) {
+      lines.push(
+        `  <display backgroundColour="${escapeXml(project.display.backgroundColour)}" />`
+      );
     }
 
     // 3. Viewport (optional)
