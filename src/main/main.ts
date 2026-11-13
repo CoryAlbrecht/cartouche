@@ -624,6 +624,11 @@ function startApp(): void {
     return getCrsDefinition(authId);
   });
 
+  handleIpc('crs:get-info', async (_event, authId: string) => {
+    const { getCrsInfo } = await import('./crs/getCrsInfo');
+    return getCrsInfo(authId);
+  });
+
   handleIpc('crs:get-catalogue', async () => {
     const { getCrsCatalogueState } = await import('./crs/crsCatalogueService');
     return getCrsCatalogueState();

@@ -43,10 +43,10 @@ export interface CrsDefinition {
 export function getCrsDefinition(authId: string): CrsDefinition | null {
   if (!authId || typeof authId !== 'string') return null;
   try {
-    const srs: any = gdal.SpatialReference.fromUserInput(authId.trim());
-    const proj4: string = typeof srs.toProj4 === 'function' ? String(srs.toProj4()).trim() : '';
+    const srs = gdal.SpatialReference.fromUserInput(authId.trim());
+    const proj4 = srs.toProj4().trim();
     if (!proj4) return null;
-    const wkt: string | undefined = typeof srs.toWKT === 'function' ? srs.toWKT() : undefined;
+    const wkt = srs.toWKT();
     return { authId, proj4, ...(wkt ? { wkt } : {}) };
   } catch (err) {
     logging.warn('Failed to resolve CRS definition', err, { scope: 'crsDefinition', authId });

@@ -16,6 +16,7 @@ import {
   selectVisibleCrsEntries,
   type CrsCatalogueEntry,
   type CrsCatalogueState,
+  type CrsInfo,
 } from '../../shared/types/crs';
 import { preferencesMapSignal, updatePreference } from './preferencesSignals';
 import { logging } from '../../shared/logging';
@@ -155,4 +156,40 @@ export async function setHideDeprecatedCrs(hide: boolean): Promise<void> {
     [CRS_HIDE_DEPRECATED_PREF]: { ...current, value: hide },
   } as typeof preferencesMapSignal.value;
   await updatePreference(CRS_HIDE_DEPRECATED_PREF, hide);
+}
+
+/**
+ * @signal crsInfoCacheSignal
+ * @description CRS Info fetched from the main process, keyed by upper-cased `AUTH:code` (null when the CRS cannot be described).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<Record<string, CrsInfo | null>>}
+ */
+export const crsInfoCacheSignal: Signal<Record<string, CrsInfo | null>> = signal<Record<string, CrsInfo | null>>({});
+
+/**
+ * @function loadCrsInfo
+ * @description Fetches the CRS Info for a CRS once and caches it.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string} authId - CRS id.
+ * @returns {Promise<CrsInfo | null>} Info.
+ */
+export async function loadCrsInfo(authId: string): Promise<CrsInfo | null> {
+  const key = authId.toUpperCase();
+  if (key in crsInfoCacheSignal.value) return crsInfoCacheSignal.value[key];
+  const api = (globalThis as any).window?.electronAPI;
+  if (typeof api?.getCrsInfo !== 'function') return null;
+  let info: CrsInfo | null = null;
+  try {
+    info = (await api.getCrsInfo(authId)) ?? null;
+  } catch (err) {
+    logging.warn('Failed to fetch CRS info', err, { scope: 'crsCatalogueSignals', authId });
+  }
+  crsInfoCacheSignal.value = { ...crsInfoCacheSignal.value, [key]: info };
+  return info;
 }

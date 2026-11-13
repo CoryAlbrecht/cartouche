@@ -1,16 +1,17 @@
 /**
  * @file ProjectCrsTab.tsx
  * @module renderer/workbench/dialogs/ProjectCrsTab
- * @description CRS tab of the Project Properties dialog: a "No CRS" checkbox (disabling the lists), a filter box matching name and `AUTH:code` case-insensitively on both lists, the Recently Used list (five rows, scrolling), the Predefined list from the CRS Catalogue (ten rows, scrolling, a building placeholder while the catalogue builds), and the "Hide Deprecated CRSs" checkbox bound to the `crs.hideDeprecated` app preference. Selecting in either list selects in the other; selecting in Predefined adds the CRS to the top of the draft Recently Used list. The current Project CRS and Recently Used entries stay visible even when deprecated, marked "(deprecated)".
+ * @description CRS tab of the Project Properties dialog: a "No CRS" checkbox (disabling the lists), a filter box matching name and `AUTH:code` case-insensitively on both lists, the Recently Used list (five rows, scrolling), the Predefined list from the CRS Catalogue (ten rows, scrolling, a building placeholder while the catalogue builds), and the "Hide Deprecated CRSs" checkbox bound to the `crs.hideDeprecated` app preference. Selecting in either list selects in the other; selecting in Predefined adds the CRS to the top of the draft Recently Used list. The current Project CRS and Recently Used entries stay visible even when deprecated, marked "(deprecated)". Below the lists, the Coordinate Reference System Info panel shows the selected CRS as selectable plain text, built in the main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
  * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link selectDraftCrs}
+ * @see {@link formatCrsInfoText}
  */
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { signal, type Signal } from "@preact/signals-react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { t } from "@renderer/state/i18nSignals";
@@ -26,10 +27,13 @@ import {
   listCrsChooserEntries,
   findCrsCatalogueEntry,
   setHideDeprecatedCrs,
+  crsInfoCacheSignal,
+  loadCrsInfo,
 } from "@renderer/state/crsCatalogueSignals";
 import {
   crsEntryMatchesFilter,
   formatCrsEntryLabel,
+  formatCrsInfoText,
   type CrsCatalogueEntry,
 } from "@shared/types/crs";
 
@@ -130,6 +134,15 @@ export const ProjectCrsTab: React.FC = () => {
 
   const disabled = draft.crsNone;
   const selected = draft.crsAuthId;
+  const infoKey = !disabled && selected ? selected.toUpperCase() : "";
+  const infoCache = crsInfoCacheSignal.value;
+  const info = infoKey ? infoCache[infoKey] : undefined;
+
+  useEffect(() => {
+    if (infoKey && !(infoKey in crsInfoCacheSignal.peek())) {
+      void loadCrsInfo(selected);
+    }
+  }, [infoKey, selected]);
 
   const recentEntries = draft.recentCrs
     .map((id) => entryFor(id, committedCrs?.authId === id ? committedCrs?.description : undefined))
@@ -216,6 +229,31 @@ export const ProjectCrsTab: React.FC = () => {
             ))
           }
         </select>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+        <span style={SECTION_LABEL_STYLE}>{t("project_properties_crs_info")}</span>
+        <pre
+          id='project-prop-crs-info'
+          className='project-prop-crs-info'
+          style={{
+            ...LIST_STYLE,
+            margin: 0,
+            padding: "0.5rem",
+            minHeight: "6rem",
+            maxHeight: "16rem",
+            overflow: "auto",
+            whiteSpace: "pre-wrap",
+            userSelect: "text",
+            fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
+            fontSize: "0.75rem",
+          }}>
+          {disabled ? t("project_properties_crs_none")
+          : !selected ? ""
+          : info ? formatCrsInfoText(info)
+          : info === null ? selected
+          : t("project_properties_crs_info_loading")}
+        </pre>
       </div>
 
       <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>

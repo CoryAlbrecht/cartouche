@@ -171,3 +171,49 @@ export function addToRecentCrsIfMissing(recent: readonly string[], authId: strin
   const key = authId.toUpperCase();
   return recent.some((id) => id.toUpperCase() === key) ? [...recent] : [authId, ...recent];
 }
+
+/**
+ * @typedef {Object} CrsInfo
+ * @description Coordinate Reference System Info for the CRS tab (built in the main process).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @property {string} authId - CRS id.
+ * @property {string} name - CRS name.
+ * @property {boolean} deprecated - Deprecated flag.
+ * @property {string[]} properties - Properties bullets (only those with source data).
+ * @property {string} [wkt] - Pretty WKT1.
+ * @property {string} [proj4] - PROJ.4 string.
+ * @property {[number, number, number, number]} [extent] - Area of use [west, south, east, north].
+ */
+export interface CrsInfo {
+  authId: string;
+  name: string;
+  deprecated: boolean;
+  properties: string[];
+  wkt?: string;
+  proj4?: string;
+  extent?: [number, number, number, number];
+}
+
+/**
+ * @function formatCrsInfoText
+ * @description Lays out CRS Info as selectable plain text: title line, "Properties" with bullets, "WKT", "Proj4" and "Extent" (west, south, east, north to two decimals). Sections without data are left out.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {CrsInfo} info - CRS Info.
+ * @returns {string} Plain text.
+ */
+export function formatCrsInfoText(info: CrsInfo): string {
+  const blocks: string[] = [`${info.name}${info.deprecated ? ' (deprecated)' : ''}`];
+  if (info.properties.length > 0) {
+    blocks.push(['Properties', ...info.properties.map((p) => `• ${p}`)].join('\n'));
+  }
+  if (info.wkt) blocks.push(`WKT\n${info.wkt}`);
+  if (info.proj4) blocks.push(`Proj4\n${info.proj4}`);
+  if (info.extent) blocks.push(`Extent\n${info.extent.map((v) => v.toFixed(2)).join(', ')}`);
+  return blocks.join('\n\n');
+}

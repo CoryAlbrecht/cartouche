@@ -43,7 +43,7 @@ const {
   projectRecentCrsSignal,
   setProjectTitle,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
-const { setCrsCatalogueState, hideDeprecatedCrsSignal, setHideDeprecatedCrs } = jiti('../../../src/renderer/state/crsCatalogueSignals.ts');
+const { setCrsCatalogueState, hideDeprecatedCrsSignal, setHideDeprecatedCrs, crsInfoCacheSignal, loadCrsInfo } = jiti('../../../src/renderer/state/crsCatalogueSignals.ts');
 const { preferencesMapSignal } = jiti('../../../src/renderer/state/preferencesSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
 const { crsEntryMatchesFilter, pushRecentCrs, addToRecentCrsIfMissing } = jiti('../../../src/shared/types/crs.ts');
@@ -114,6 +114,8 @@ describe('Project Properties CRS tab (Ticket #280)', () => {
       project_properties_crs_predefined: 'Predefined Coordinate Reference Systems',
       project_properties_crs_hide_deprecated: 'Hide Deprecated CRSs',
       crs_catalogue_building: 'CATALOGUE_BUILDING_PLACEHOLDER',
+      project_properties_crs_info: 'Coordinate Reference System Info',
+      project_properties_crs_info_loading: 'Loading…',
     };
     setCrsCatalogueState({ status: 'ready', entries: ENTRIES });
     currentProjectSignal.value = { format: 'cartouche-xml', metadata: { title: 'CRS' }, layers: [] };
@@ -223,6 +225,33 @@ describe('Project Properties CRS tab (Ticket #280)', () => {
     await applyProjectPropertiesEdits();
     assert.deepEqual(patches[1].crs, { authId: '', none: true });
     assert.equal(projectCrsSignal.value.none, true);
+  });
+
+  it('shows the selected CRS Info as selectable plain text, fetched once from main (Ticket #281)', async () => {
+    const calls: string[] = [];
+    (globalThis as any).window.electronAPI.getCrsInfo = async (id: string) => {
+      calls.push(id);
+      return { authId: id, name: 'RGF93 v1 / Lambert-93', deprecated: false, properties: ['Projected', 'Method: Lambert_Conformal_Conic_2SP'], proj4: '+proj=lcc', extent: [-9.86, 41.15, 10.38, 51.56] };
+    };
+    crsInfoCacheSignal.value = {};
+    selectDraftCrs('EPSG:2154', 'predefined');
+    let html = render();
+    assert.ok(/<pre[^>]*id="project-prop-crs-info"[^>]*>Loading…<\/pre>/.test(html), 'loading state before the info arrives');
+
+    await loadCrsInfo('EPSG:2154');
+    await loadCrsInfo('EPSG:2154');
+    assert.deepEqual(calls, ['EPSG:2154'], 'fetched once, then cached');
+    html = render();
+    const pre = html.match(/<pre[^>]*id="project-prop-crs-info"[^>]*>([\s\S]*?)<\/pre>/)!;
+    assert.ok(/user-select:text/.test(pre[0]), 'selectable text');
+    assert.ok(pre[1].startsWith('RGF93 v1 / Lambert-93\n\nProperties\n• Projected\n• Method: Lambert_Conformal_Conic_2SP'));
+    assert.ok(pre[1].includes('Proj4\n+proj=lcc'));
+    assert.ok(pre[1].endsWith('Extent\n-9.86, 41.15, 10.38, 51.56'));
+    assert.ok(!pre[1].includes('WKT'), 'missing WKT section left out');
+
+    updateProjectPropertiesDraft({ crsNone: true });
+    html = render();
+    assert.ok(/<pre[^>]*id="project-prop-crs-info"[^>]*>No CRS<\/pre>/.test(html), 'No CRS shows no CRS info');
   });
 
   it('shows the building placeholder in Predefined while Recently Used still works', () => {

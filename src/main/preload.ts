@@ -111,6 +111,8 @@ const electronAPI: ElectronAPI = {
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
   /** @ipc crs:get-definition */
   getCrsDefinition: (authId: string) => ipcRenderer.invoke('crs:get-definition', authId),
+  /** @ipc crs:get-info */
+  getCrsInfo: (authId: string) => ipcRenderer.invoke('crs:get-info', authId),
   /** @ipc crs:get-catalogue */
   getCrsCatalogue: () => ipcRenderer.invoke('crs:get-catalogue'),
   /** @ipc crs:catalogue-updated */

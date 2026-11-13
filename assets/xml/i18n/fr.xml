@@ -227,6 +227,8 @@
     <string name="project_properties_crs_recent">Systèmes de coordonnées récemment utilisés</string>
     <string name="project_properties_crs_predefined">Systèmes de coordonnées prédéfinis</string>
     <string name="project_properties_crs_hide_deprecated">Masquer les SCR obsolètes</string>
+    <string name="project_properties_crs_info">Informations sur le système de coordonnées</string>
+    <string name="project_properties_crs_info_loading">Chargement…</string>
     <string name="project_properties_label_home">Dossier du projet</string>
     <string name="project_properties_btn_browse_home">Choisir le dossier du projet...</string>
     <string name="project_properties_label_path_mode">Chemins enregistrés</string>

@@ -333,6 +333,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(options?: { title?: string; defaultPath?: string }) => Promise<string | null>} [openDirectory] - Opens the native directory picker and returns the chosen directory, or null when cancelled.
  * @property {(authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>} [getCrsDefinition] - Resolves a CRS to its proj4 / WKT definitions with GDAL.
  * @property {(callback: (crs: import('./project').ProjectCrs | null) => void) => () => void} [onProjectCrsUpdated] - Subscribes to Project CRS changes made by the main process (first-layer adoption).
+ * @property {(authId: string) => Promise<import('./crs').CrsInfo | null>} [getCrsInfo] - Builds the Coordinate Reference System Info for a CRS in the main process.
  * @property {() => Promise<import('./crs').CrsCatalogueState>} [getCrsCatalogue] - Returns the CRS Catalogue state (building, ready with entries, or error).
  * @property {(callback: (state: import('./crs').CrsCatalogueState) => void) => () => void} [onCrsCatalogueUpdated] - Subscribes to CRS Catalogue state changes.
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
@@ -393,6 +394,8 @@ export interface ElectronAPI {
   openDirectory?: (options?: { title?: string; defaultPath?: string }) => Promise<string | null>;
   /** @ipc crs:get-definition */
   getCrsDefinition?: (authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>;
+  /** @ipc crs:get-info */
+  getCrsInfo?: (authId: string) => Promise<import('./crs').CrsInfo | null>;
   /** @ipc crs:get-catalogue */
   getCrsCatalogue?: () => Promise<import('./crs').CrsCatalogueState>;
   /** @ipc crs:catalogue-updated */

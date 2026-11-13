@@ -152,7 +152,15 @@ export const ALLOWED_COMPOUND_PHRASES = Object.freeze([
     avoid: 'Projection',
     allowedPhrases: Object.freeze([
       'projection:',
-      'ol/proj/Projection.js'
+      'ol/proj/Projection.js',
+      "'PROJECTION'"
+    ])
+  }),
+  Object.freeze({
+    // GDAL WKT node name passed to SpatialReference.getAttrValue.
+    avoid: 'Datum',
+    allowedPhrases: Object.freeze([
+      "'DATUM'"
     ])
   })
 ]);
