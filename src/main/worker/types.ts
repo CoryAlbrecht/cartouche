@@ -4,7 +4,7 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 
@@ -255,7 +255,25 @@ export interface ClearLayerEditsRequest {
  * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest | SetBackgroundScanEnabledRequest | StageFeatureEditRequest | ClearLayerEditsRequest} WorkerRequest
  * Discriminated union of all request messages dispatched from Main to the Geospatial Worker.
  */
+/**
+ * @typedef {Object} BuildCrsCatalogueRequest
+ * @description Asks the worker to load the cached CRS Catalogue or build it (long-running; yields between batches).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @property {string} id - Correlation id.
+ * @property {'buildCrsCatalogue'} type - Request type.
+ * @property {string} cacheDir - App preferences directory holding `crs-catalogue.json`.
+ */
+export interface BuildCrsCatalogueRequest {
+  id: string;
+  type: 'buildCrsCatalogue';
+  cacheDir: string;
+}
+
 export type WorkerRequest =
+  | BuildCrsCatalogueRequest
   | OpenDatasetRequest
   | QueryExtentRequest
   | GetLayerInfoRequest

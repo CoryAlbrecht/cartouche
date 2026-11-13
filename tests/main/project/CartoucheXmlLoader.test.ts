@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 
@@ -787,8 +787,9 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     fs.writeFileSync(projPath, xml, 'utf-8');
     const loaded = await loader.load(projPath);
     const layer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    // Since Ticket #274 paths in memory are always absolute: the href is resolved against the Project Home on load.
     assert.deepEqual(layer.style, {
-      href: 'rivers.sld',
+      href: externalSldPath,
       content: externalSldContent,
       format: 'sld',
       version: '1.0.0',
@@ -1183,5 +1184,334 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(loaded.timeFilter.step, 0.000000031623);
     assert.equal(loaded.timeFilter.unit, 'Years');
   });
-});
+  it('round-trips the Project Title through <dc:title> independently of the file name (Ticket #271)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'some-other-file-name.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'World Atlas & Friends', appVersion: '0.1.0-dev' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('<dc:title>World Atlas &amp; Friends</dc:title>'));
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
 
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.metadata.title, 'World Atlas & Friends');
+  });
+
+  it('omits <dc:title> for an empty title and loads a missing <dc:title> as an empty title, never the file name (Ticket #271)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'untitled-on-disk.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: '', appVersion: '0.1.0-dev' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(!xml.includes('<dc:title'), 'empty title must not be written');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.metadata.title, '', 'missing <dc:title> loads as an empty title so the display name falls back to the file base name');
+  });
+  it('round-trips the <display backgroundColour> element after <crs> and before <viewport>, validated against project.xsd (Ticket #272)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'display-background.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Display Test', appVersion: '0.1.0-dev' },
+      crs: { authId: 'EPSG:4326' },
+      display: { backgroundColour: '#1b446c' },
+      viewport: { center: { x: 0, y: 0 }, scale: 1000 },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('<display backgroundColour="#1b446c" />'));
+    assert.ok(xml.indexOf('</crs>') < xml.indexOf('<display'), '<display> follows <crs>');
+    assert.ok(xml.indexOf('<display') < xml.indexOf('<viewport>'), '<display> precedes <viewport>');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.display?.backgroundColour, '#1b446c');
+  });
+
+  it('omits <display> when no display setting is set and loads a missing <display> as undefined so #ffffff applies (Ticket #272)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'display-missing.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'No Display', appVersion: '0.1.0-dev' },
+      display: {},
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(!xml.includes('<display'), 'empty display settings must not be written');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.display, undefined);
+  });
+  it('round-trips <display selectionColour> alongside backgroundColour, validated against project.xsd (Ticket #273)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'display-selection.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Selection Display Test', appVersion: '0.1.0-dev' },
+      display: { backgroundColour: '#000000', selectionColour: 'rgba(0,128,255,0.4)' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('backgroundColour="#000000"'));
+    assert.ok(xml.includes('selectionColour="rgba(0,128,255,0.4)"'));
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.display?.selectionColour, 'rgba(0,128,255,0.4)');
+    assert.equal(loaded.display?.backgroundColour, '#000000');
+
+    // Selection colour alone is also written, and a missing attribute loads as undefined so the default applies.
+    const onlySelection: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Only Selection', appVersion: '0.1.0-dev' },
+      display: { selectionColour: '#ffff00' },
+      layers: []
+    };
+    const xml2 = loader.serializeToXml(onlySelection);
+    assert.ok(xml2.includes('<display selectionColour="#ffff00" />'));
+    assert.equal(validateXmlAgainstSchema(xml2).valid, true);
+    const file2 = path.join(tempDir, 'display-selection-only.cproj');
+    await loader.save(onlySelection, file2);
+    const loaded2 = await loader.load(file2);
+    assert.equal(loaded2.display?.selectionColour, '#ffff00');
+    assert.equal(loaded2.display?.backgroundColour, undefined);
+  });
+  it('writes layer sources, style hrefs and <home> relative to the Project Home in relative mode and resolves them back to absolute on load (Ticket #274)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const projectDir = path.join(tempDir, 'maps');
+    const homeDir = path.join(tempDir, 'gisdata');
+    fs.mkdirSync(projectDir, { recursive: true });
+    fs.mkdirSync(path.join(homeDir, 'styles'), { recursive: true });
+    fs.writeFileSync(path.join(homeDir, 'styles', 'lakes.json'), '[{"style":{"fill-color":"#00f"}}]');
+    const testFile = path.join(projectDir, 'atlas.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      pathMode: 'relative',
+      home: homeDir,
+      metadata: { title: 'Relative Paths', appVersion: '0.1.0-dev' },
+      layers: [
+        {
+          id: 'lakes', name: 'Lakes', type: 'esri-shapefile',
+          source: path.join(homeDir, 'vectors', 'lakes.shp'),
+          style: { href: path.join(homeDir, 'styles', 'lakes.json'), format: 'openlayers' }
+        },
+        { id: 'wfs', name: 'WFS Layer', type: 'wfs', source: 'https://example.com/wfs?service=WFS' },
+        { id: 'pg', name: 'PostGIS', type: 'postgis', source: 'PG:dbname=gis host=localhost' },
+        { id: 'shared', name: 'Shared Style Ref', type: 'esri-shapefile', source: path.join(homeDir, 'rivers.shp'), style: { href: '#river-style', format: 'openlayers' } }
+      ],
+      styles: [{ id: 'river-style', content: '{"stroke":"#000"}' }]
+    };
+
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('pathMode="relative"'), 'root carries pathMode');
+    assert.ok(xml.includes('<home>../gisdata</home>'), '<home> is relative to the project file');
+    assert.ok(xml.indexOf('</metadata>') < xml.indexOf('<home>'), '<home> follows <metadata>');
+    assert.ok(xml.includes('<source>vectors/lakes.shp</source>'), 'layer source relative to the Project Home');
+    assert.ok(xml.includes('href="styles/lakes.json"'), 'style href relative to the Project Home');
+    assert.ok(xml.includes('<source>https://example.com/wfs?service=WFS</source>'), 'URI untouched');
+    assert.ok(xml.includes('<source>PG:dbname=gis host=localhost</source>'), 'connection string untouched');
+    assert.ok(xml.includes('href="#river-style"'), 'shared style reference untouched');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.pathMode, 'relative');
+    assert.equal(loaded.home, homeDir, 'home is absolute in memory');
+    const lakes = loaded.layers[0] as any;
+    assert.equal(lakes.source, path.join(homeDir, 'vectors', 'lakes.shp'), 'source resolved against the Project Home');
+    assert.equal(lakes.style.href, path.join(homeDir, 'styles', 'lakes.json'), 'href resolved against the Project Home');
+    assert.ok(lakes.style.content?.includes('#00f'), 'external style content read through the resolved href');
+    assert.equal((loaded.layers[1] as any).source, 'https://example.com/wfs?service=WFS');
+    assert.equal((loaded.layers[2] as any).source, 'PG:dbname=gis host=localhost');
+    assert.equal((loaded.layers[3] as any).style.href, '#river-style');
+  });
+
+  it('keeps absolute paths in absolute mode, writes <home> absolute when requested, and reads a missing pathMode as absolute (Ticket #274)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'absolute.cproj');
+    const absSource = path.join(tempDir, 'data', 'roads.shp');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      pathMode: 'absolute',
+      metadata: { title: 'Absolute Paths', appVersion: '0.1.0-dev' },
+      layers: [{ id: 'roads', name: 'Roads', type: 'esri-shapefile', source: absSource }]
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('pathMode="absolute"'));
+    assert.ok(xml.includes(`<source>${absSource}</source>`), 'absolute mode writes the absolute path');
+    assert.ok(!xml.includes('<home>'), 'no <home> when unset');
+    assert.equal(validateXmlAgainstSchema(xml).valid, true);
+
+    // Legacy document: no pathMode attribute, relative source resolved against the file directory
+    const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata><dc:title>Legacy</dc:title></metadata>
+  <layers>
+    <layer id="legacy-1" visible="true">
+      <name>Legacy Layer</name>
+      <type>esri-shapefile</type>
+      <source>data/legacy.shp</source>
+    </layer>
+  </layers>
+  <styles />
+</cartouche:project>`;
+    assert.equal(validateXmlAgainstSchema(legacyXml).valid, true);
+    const legacyFile = path.join(tempDir, 'legacy.cproj');
+    fs.writeFileSync(legacyFile, legacyXml, 'utf-8');
+    const legacy = await loader.load(legacyFile);
+    assert.equal(legacy.pathMode, undefined, 'missing pathMode stays unset (treated as absolute)');
+    assert.equal(legacy.home, undefined);
+    assert.equal((legacy.layers[0] as any).source, path.join(tempDir, 'data', 'legacy.shp'));
+
+    // Re-saving a legacy project writes absolute paths (no pathMode => absolute behaviour)
+    const resaved = loader.serializeToXml(legacy, legacyFile);
+    assert.ok(!resaved.includes('pathMode='));
+    assert.ok(resaved.includes(`<source>${path.join(tempDir, 'data', 'legacy.shp')}</source>`));
+  });
+  it('round-trips <measurement> after <display> and before <viewport>, validated against project.xsd, with defaults when missing (Ticket #275)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'measurement.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Measurement Test', appVersion: '0.1.0-dev' },
+      display: { backgroundColour: '#ffffff' },
+      measurement: { distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' },
+      viewport: { center: { x: 0, y: 0 }, scale: 1000 },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('<measurement distanceUnit="kilometres" areaUnit="square-kilometres" scaleMethod="average" />'));
+    assert.ok(xml.indexOf('<display') < xml.indexOf('<measurement'), '<measurement> follows <display>');
+    assert.ok(xml.indexOf('<measurement') < xml.indexOf('<viewport>'), '<measurement> precedes <viewport>');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.deepEqual(loaded.measurement, { distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' });
+
+    // Missing element loads as undefined (defaults: degrees / square-degrees / middle apply downstream); empty settings are not written.
+    const bare: ProjectModel = { format: 'cartouche-xml', metadata: { title: 'Bare', appVersion: '0.1.0-dev' }, measurement: {}, layers: [] };
+    const bareXml = loader.serializeToXml(bare);
+    assert.ok(!bareXml.includes('<measurement'));
+    assert.equal(validateXmlAgainstSchema(bareXml).valid, true);
+    const bareFile = path.join(tempDir, 'bare-measurement.cproj');
+    await loader.save(bare, bareFile);
+    assert.equal((await loader.load(bareFile)).measurement, undefined);
+
+    // An invalid token is rejected by the schema
+    const invalid = bareXml.replace('</metadata>', '</metadata>\n  <measurement scaleMethod="sideways" />');
+    assert.equal(validateXmlAgainstSchema(invalid).valid, false, 'unknown scaleMethod must fail schema validation');
+  });
+  it('round-trips the Project CRS "No CRS" flag, keeps each Layer CRS unchanged, and stores <viewport> as given (Ticket #278)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'no-crs.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'No CRS Project', appVersion: '0.1.0-dev' },
+      crs: { authId: '', none: true },
+      viewport: { extent: { xmin: 100, ymin: 200, xmax: 300, ymax: 400 }, center: { x: 200, y: 300 } },
+      layers: [
+        { id: 'lambert', name: 'Lambert', type: 'esri-shapefile', source: '/data/l93.shp', crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93' } },
+        { id: 'plain', name: 'No Layer CRS', type: 'esri-shapefile', source: '/data/plain.shp' },
+      ]
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('<crs none="true" />'));
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.crs?.none, true);
+    assert.deepEqual(loaded.viewport?.extent, { xmin: 100, ymin: 200, xmax: 300, ymax: 400 }, 'viewport kept in Project CRS units');
+    assert.equal((loaded.layers[0] as any).crs.authId, 'EPSG:2154', 'Layer CRS saved unchanged, separate from the Project CRS');
+    assert.equal((loaded.layers[1] as any).crs, undefined, 'unknown Layer CRS is never written');
+
+    // A projected Project CRS round-trips without the none flag
+    const projected: ProjectModel = { ...model, crs: { authId: 'EPSG:2154' } };
+    const projectedXml = loader.serializeToXml(projected, testFile);
+    assert.ok(projectedXml.includes('<authId>EPSG:2154</authId>') && !projectedXml.includes('none='));
+    assert.equal(validateXmlAgainstSchema(projectedXml).valid, true);
+  });
+  it('round-trips <recentCrs> (at most 20, most recent first) after <crs> and before <display>, validated against project.xsd (Ticket #280)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'recent-crs.cproj');
+    const recent = Array.from({ length: 22 }, (_, i) => ({ authId: `EPSG:${32601 + i}`, description: `WGS 84 / UTM zone ${i + 1}N` }));
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Recent CRS', appVersion: '0.1.0-dev' },
+      crs: { authId: 'EPSG:32601' },
+      recentCrs: recent,
+      display: { backgroundColour: '#ffffff' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.indexOf('</crs>') < xml.indexOf('<recentCrs>'), '<recentCrs> follows <crs>');
+    assert.ok(xml.indexOf('</recentCrs>') < xml.indexOf('<display'), '<recentCrs> precedes <display>');
+    assert.equal((xml.match(/<recentCrs>[\s\S]*<\/recentCrs>/)![0].match(/<authId>/g) || []).length, 20, 'trimmed to 20');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.recentCrs?.length, 20);
+    assert.deepEqual(loaded.recentCrs?.[0], { authId: 'EPSG:32601', description: 'WGS 84 / UTM zone 1N' });
+    assert.equal(loaded.recentCrs?.[19].authId, 'EPSG:32620', 'most recent first, oldest dropped');
+
+    const overflow = xml.replace('</recentCrs>', '<crs><authId>EPSG:1</authId></crs></recentCrs>');
+    assert.equal(validateXmlAgainstSchema(overflow).valid, false, 'more than 20 entries fail validation');
+  });
+  it('round-trips Project Default Styles under the reserved ids with no XSD change and rejects other _ ids (Ticket #282)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'default-styles.cproj');
+    const pointStyle = '{"format":"simple","version":1,"components":[]}';
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Defaults', appVersion: '0.1.0-dev' },
+      layers: [],
+      styles: [{ id: '_project_default_point', format: 'cartouche', content: pointStyle }]
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('<style id="_project_default_point" format="cartouche">'));
+    assert.ok(!xml.includes('_project_default_line'), 'unset slots are not written');
+    assert.equal(validateXmlAgainstSchema(xml).valid, true);
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.deepEqual(loaded.styles, [{ id: '_project_default_point', format: 'cartouche', content: pointStyle }]);
+
+    const badStyle = xml.replace('_project_default_point', '_my_style');
+    const badFile = path.join(tempDir, 'bad-reserved.cproj');
+    fs.writeFileSync(badFile, badStyle, 'utf-8');
+    await assert.rejects(() => loader.load(badFile), /reserved for application use/);
+
+    const badRef = xml.replace(/<layers>\s*<\/layers>/, '<layers><layer id="l"><name>L</name><type>vector</type><source>/x.shp</source><style href="#_project_default_point" /></layer></layers>');
+    assert.ok(badRef.includes('href="#_project_default_point"'), 'fixture references a reserved style');
+    const badRefFile = path.join(tempDir, 'bad-ref.cproj');
+    fs.writeFileSync(badRefFile, badRef, 'utf-8');
+    await assert.rejects(() => loader.load(badRefFile), /reserved for application use/);
+  });
+});

@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 
@@ -15,6 +15,7 @@ import type { FileCategory, FileTypeDescriptor } from './filetypes';
 export * from './actions';
 export * from './filetypes';
 export * from './project';
+export * from './crs';
 export * from './styling';
 export * from './i18n';
 export * from './layers';
@@ -328,6 +329,13 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerId: string, options?: import('./project').QueryExtentOptions | BoundingBox, targetProjection?: string) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>} [queryExtent] - Queries intersecting features within spatial extent and target projection.
  * @property {(draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>} [reorderNodes] - Reorders layer tree nodes relative to target node.
  * @property {(layerIds: string[], style: import('./project').ProjectLayerStyleItem | undefined, opacity?: number) => Promise<void>} [setLayerStyle] - Assigns a layer style container to one or more vector layers, promoting shared styles when applied to multiple layers.
+ * @property {(patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>} [updateProjectProperties] - Commits a Project Properties draft (title, …) to the Project Store in one round trip and sets the Project Dirty State.
+ * @property {(options?: { title?: string; defaultPath?: string }) => Promise<string | null>} [openDirectory] - Opens the native directory picker and returns the chosen directory, or null when cancelled.
+ * @property {(authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>} [getCrsDefinition] - Resolves a CRS to its proj4 / WKT definitions with GDAL.
+ * @property {(callback: (crs: import('./project').ProjectCrs | null) => void) => () => void} [onProjectCrsUpdated] - Subscribes to Project CRS changes made by the main process (first-layer adoption).
+ * @property {(authId: string) => Promise<import('./crs').CrsInfo | null>} [getCrsInfo] - Builds the Coordinate Reference System Info for a CRS in the main process.
+ * @property {() => Promise<import('./crs').CrsCatalogueState>} [getCrsCatalogue] - Returns the CRS Catalogue state (building, ready with entries, or error).
+ * @property {(callback: (state: import('./crs').CrsCatalogueState) => void) => () => void} [onCrsCatalogueUpdated] - Subscribes to CRS Catalogue state changes.
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
  * @property {(style: import('./project').ProjectLayerStyleItem, defaultPath?: string) => Promise<string | null>} [saveStyleFile] - Saves a ProjectLayerStyleItem to disk via explicit path or native save dialog.
  * @property {(layerId: string, edit: import('./project').StagedFeatureEdit) => Promise<void>} [stageFeatureEdit] - Stages an uncommitted feature modification or addition into Main's crash-resilient edit cache.
@@ -382,6 +390,16 @@ export interface ElectronAPI {
     filters?: Array<{ name: string; extensions: string[] }>;
     multiSelections?: boolean;
   }) => Promise<string[]>;
+  /** @ipc dialog:open-directory */
+  openDirectory?: (options?: { title?: string; defaultPath?: string }) => Promise<string | null>;
+  /** @ipc crs:get-definition */
+  getCrsDefinition?: (authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>;
+  /** @ipc crs:get-info */
+  getCrsInfo?: (authId: string) => Promise<import('./crs').CrsInfo | null>;
+  /** @ipc crs:get-catalogue */
+  getCrsCatalogue?: () => Promise<import('./crs').CrsCatalogueState>;
+  /** @ipc crs:catalogue-updated */
+  onCrsCatalogueUpdated?: (callback: (state: import('./crs').CrsCatalogueState) => void) => () => void;
   /** @ipc dialog:save-file */
   saveFile?: (options?: {
     title?: string;
@@ -399,6 +417,8 @@ export interface ElectronAPI {
     viewport?: import('./project').ProjectViewport,
     timeFilter?: import('./project').ProjectTimeFilterConfig
   ) => Promise<boolean>;
+  /** @ipc project:update-properties */
+  updateProjectProperties?: (patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>;
   /** @ipc project:loaded */
   onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
   /** @ipc project:layers-tree-updated */
@@ -413,6 +433,8 @@ export interface ElectronAPI {
   ) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>;
   /** @ipc project:metadata-updated */
   onProjectMetadataUpdated?: (callback: (metadata: import('./project').ProjectMetadata) => void) => () => void;
+  /** @ipc project:crs-updated */
+  onProjectCrsUpdated?: (callback: (crs: import('./project').ProjectCrs | null) => void) => () => void;
   /** @ipc project:dirty-state-changed */
   onProjectDirtyStateChanged?: (callback: (isDirty: boolean) => void) => () => void;
   /** @ipc gis:get-i18n-state */

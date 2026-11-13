@@ -4,7 +4,7 @@
  * @description Main Process API function for serializing and saving the active project state to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -16,6 +16,7 @@ import { projectLoaderRegistry } from '../../project/loaders/ProjectLoaderRegist
 import { serializeProjectLayersTree, broadcastProjectMetadata } from '../../project/ProjectBroadcaster';
 import type { ProjectViewport, ProjectTimeFilterConfig } from '@shared/types';
 import { logging } from '../../../shared/logging';
+import { isDefaultProjectTitle } from '../../../shared/project/projectTitle';
 
 /**
  * @description Saves current active Cartouche project state to its destination file path.
@@ -46,6 +47,7 @@ export default async function saveProject(
     const baseName = path.basename(destination, path.extname(destination)) || 'Untitled Project';
     project = {
       format: 'cartouche-xml',
+      pathMode: 'relative',
       metadata: {
         title: baseName,
         appVersion: '0.1.0-dev',
@@ -76,9 +78,9 @@ export default async function saveProject(
     project.timeFilter = timeFilter;
   }
 
-  // If saving to new path, update title if it was default
+  // A default placeholder title adopts the file base name on save; an explicit (or deliberately empty) title is kept.
   const baseName = path.basename(destination, path.extname(destination));
-  if (!project.metadata.title || project.metadata.title === 'Untitled Project') {
+  if (isDefaultProjectTitle(project.metadata.title)) {
     project.metadata.title = baseName;
   }
 

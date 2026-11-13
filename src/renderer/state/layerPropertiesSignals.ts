@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-11
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -29,8 +29,6 @@ import type {
 import {
   parseStyleTextToGeoStyler,
   extractVisualSymbolizers,
-  convertStyleFormat,
-  validateStyleContent,
 } from "../../shared/styles/flatStyleConverter";
 import {
   createDefaultCartoucheLayerStyleJson,
@@ -58,6 +56,8 @@ import {
   computeFrameEnd,
 } from "../map/timeFilterMath";
 import { logging } from "../../shared/logging";
+import { computeStyleFormatSwitch } from "../../shared/styles/styleFormatSwitch";
+import { findCrsCatalogueEntry } from "./crsCatalogueSignals";
 
 /**
  * @typedef {'information' | 'source' | 'fields' | 'time_filter' | 'styling'} LayerPropertiesTabId
@@ -696,10 +696,10 @@ export function updateLayerPropertiesDraft(
 }
 
 /**
- * @description Switches active style format and SLD version in draft state, preserving pending edits in in-memory session cache.
+ * @description Switches active style format and SLD version in draft state, preserving pending edits in in-memory session cache. Delegates to {@link computeStyleFormatSwitch}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @param {string} targetOption - Format selection key ('cartouche' | 'openlayers' | 'sld-1.0.0' | 'sld-1.1.0').
  * @param {string} [geometryKind] - Layer geometry kind for default template generation.
@@ -709,87 +709,14 @@ export async function switchLayerPropertiesStyleFormat(
   targetOption: string,
   geometryKind?: string
 ): Promise<void> {
-  const draft = layerPropertiesDraftSignal.value;
-  const currentKey =
-    draft.styleFormat === "cartouche" ?
-      "cartouche"
-    : draft.styleFormat === "sld" ?
-      draft.sldVersion === "1.1.0" ?
-        "sld-1.1.0"
-      : "sld-1.0.0"
-    : "openlayers";
-
-  const targetKey = targetOption === "simple" ? "cartouche" : targetOption;
-  if (targetKey === currentKey) return;
-
-  const targetFormat: ProjectStyleFormat =
-    targetKey === "cartouche" ? "cartouche"
-    : targetKey.startsWith("sld") ? "sld"
-    : "openlayers";
-  const targetVersion: SldStyleVersion =
-    targetKey === "sld-1.1.0" ? "1.1.0" : "1.0.0";
-
-  const updatedCache = {
-    ...(draft.formatCache || {}),
-    [currentKey]: draft.styleContent,
-  };
-
-  let newContent = updatedCache[targetKey];
-  if (newContent === undefined) {
-    if (draft.styleContent && draft.styleContent.trim()) {
-      try {
-        newContent = await convertStyleFormat(draft.styleContent, {
-          fromFormat: draft.styleFormat,
-          fromVersion: draft.sldVersion,
-          toFormat: targetFormat,
-          toVersion: targetVersion,
-          geometryKind,
-        });
-      } catch (err) {
-        logging.warn("Style conversion failed; falling back to default style template", err, {
-          fromFormat: draft.styleFormat,
-          toFormat: targetFormat,
-          scope: "layerPropertiesSignals",
-        });
-      }
-    }
-
-    if (!newContent) {
-      if (targetFormat === "cartouche") {
-        newContent = createDefaultCartoucheLayerStyleJson(geometryKind);
-      } else if (targetFormat === "openlayers") {
-        newContent = generateDefaultVectorStyleJson();
-      } else if (targetFormat === "sld") {
-        const def = generateDefaultVectorStyleJson();
-        try {
-          newContent = await convertStyleFormat(def, {
-            fromFormat: "openlayers",
-            toFormat: "sld",
-            toVersion: targetVersion,
-            geometryKind,
-          });
-        } catch {
-          newContent = "";
-        }
-      }
-    }
-    updatedCache[targetKey] = newContent || "";
-  }
-
-  const validation = await validateStyleContent(
-    newContent || "",
-    targetFormat,
-    targetVersion
+  const patch = await computeStyleFormatSwitch(
+    layerPropertiesDraftSignal.value,
+    targetOption,
+    geometryKind
   );
-
-  updateLayerPropertiesDraft({
-    styleFormat: targetFormat,
-    sldVersion: targetVersion,
-    styleContent: newContent || "",
-    styleValidationError:
-      validation.isValid ? null : validation.error || "Validation error",
-    formatCache: updatedCache,
-  });
+  if (patch) {
+    updateLayerPropertiesDraft(patch);
+  }
 }
 
 /**
@@ -881,9 +808,9 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
   }
 
   // 3. Update CRS and custom feature filter on local layer and set isProjectDirtySignal
-  const crsMatch = POPULAR_CRS_OPTIONS.find(
-    (c) => c.authId === draft.crsAuthId
-  );
+  const crsMatch =
+    findCrsCatalogueEntry(draft.crsAuthId)
+    ?? POPULAR_CRS_OPTIONS.find((c) => c.authId === draft.crsAuthId);
   const updatedCrs = {
     authId: draft.crsAuthId,
     description: crsMatch?.name || draft.crsAuthId,

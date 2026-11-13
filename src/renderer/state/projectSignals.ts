@@ -4,17 +4,26 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-06
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
  * @see {@link ProjectGroupItem}
  * @see {@link updateLayerFields}
+ * @see {@link projectTitleSignal}
+ * @see {@link workbenchWindowTitleSignal}
+ * @see {@link mapBackgroundColourSignal}
+ * @see {@link selectionColourSignal}
+ * @see {@link projectHomeSignal}
+ * @see {@link projectPathModeSignal}
+ * @see {@link measurementSettingsSignal}
+ * @see {@link projectCrsSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
 import type {
   ProjectModel,
+  ProjectCrs,
   ProjectLayerItem,
   ProjectGroupItem,
   ProjectLayerStyleItem,
@@ -22,6 +31,15 @@ import type {
   LayerFieldInfo
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import { resolveProjectDisplayName } from '../../shared/project/projectTitle';
+import {
+  DEFAULT_MAP_BACKGROUND_COLOUR,
+  DEFAULT_SELECTION_COLOUR,
+  DEFAULT_NEW_PROJECT_PATH_MODE,
+  DEFAULT_MEASUREMENT_SETTINGS,
+  type ProjectPathMode,
+  type ProjectMeasurementSettings,
+} from '../../shared/types/project';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -147,6 +165,311 @@ export const projectNameSignal = signal<string | null>(null);
  * @type {Signal<string | null>}
  */
 export const projectFilePathSignal = signal<string | null>(null);
+
+/**
+ * @signal projectTitleSignal
+ * @description Reactive signal holding the raw Project Title (`dc:title`) of the active project, independent of the file name. Empty when the project has no title; use {@link projectNameSignal} for the resolved display name.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const projectTitleSignal = signal<string>('');
+
+/**
+ * @signal mapBackgroundColourSignal
+ * @description Reactive signal holding the project's Map Background Colour (opaque CSS colour painted behind all layers). Defaults to {@link DEFAULT_MAP_BACKGROUND_COLOUR} when the project declares none.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const mapBackgroundColourSignal = signal<string>(DEFAULT_MAP_BACKGROUND_COLOUR);
+
+/**
+ * @function setMapBackgroundColour
+ * @description Sets the Map Background Colour signal (falling back to the default for an empty value) and mirrors it into the current project model's display settings.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} colour - Opaque CSS colour, or empty for the default.
+ * @returns {void}
+ */
+export function setMapBackgroundColour(colour: string | null | undefined): void {
+  const next = (colour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR;
+  batch(() => {
+    mapBackgroundColourSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.display = { ...(project.display || {}), backgroundColour: next };
+    }
+  });
+}
+
+/**
+ * @signal selectionColourSignal
+ * @description Reactive signal holding the project's Selection Colour (CSS colour, alpha allowed) used to highlight selected features in the map viewport. Defaults to {@link DEFAULT_SELECTION_COLOUR}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const selectionColourSignal = signal<string>(DEFAULT_SELECTION_COLOUR);
+
+/**
+ * @function setSelectionColour
+ * @description Sets the Selection Colour signal (falling back to the default for an empty value) and mirrors it into the current project model's display settings.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} colour - CSS colour (alpha allowed), or empty for the default.
+ * @returns {void}
+ */
+export function setSelectionColour(colour: string | null | undefined): void {
+  const next = (colour ?? '').trim() || DEFAULT_SELECTION_COLOUR;
+  batch(() => {
+    selectionColourSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.display = { ...(project.display || {}), selectionColour: next };
+    }
+  });
+}
+
+/**
+ * @signal projectHomeSignal
+ * @description Reactive signal holding the project's explicit Project Home (absolute directory), or null when unset so the project file's directory applies.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<string | null>}
+ */
+export const projectHomeSignal = signal<string | null>(null);
+
+/**
+ * @signal projectPathModeSignal
+ * @description Reactive signal holding the project's Save Path Mode. New projects start `relative`; legacy files without a `pathMode` load as `absolute`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectPathMode>}
+ */
+export const projectPathModeSignal = signal<ProjectPathMode>(DEFAULT_NEW_PROJECT_PATH_MODE);
+
+/**
+ * @function setProjectHome
+ * @description Sets the explicit Project Home signal (empty clears it) and mirrors it into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} home - Absolute directory, or empty/null to clear.
+ * @returns {void}
+ */
+export function setProjectHome(home: string | null | undefined): void {
+  const next = (home ?? '').trim() || null;
+  batch(() => {
+    projectHomeSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      if (next) {
+        project.home = next;
+      } else {
+        delete project.home;
+      }
+    }
+  });
+}
+
+/**
+ * @function setProjectPathMode
+ * @description Sets the Save Path Mode signal and mirrors it into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectPathMode} mode - Save Path Mode.
+ * @returns {void}
+ */
+export function setProjectPathMode(mode: ProjectPathMode): void {
+  batch(() => {
+    projectPathModeSignal.value = mode;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.pathMode = mode;
+    }
+  });
+}
+
+/**
+ * @signal measurementSettingsSignal
+ * @description Reactive signal holding the project's measurement settings with defaults filled in (Units for Distance, Units for Area, Scale Calculation method). The status bar scale follows `scaleMethod`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<Required<ProjectMeasurementSettings>>}
+ */
+export const measurementSettingsSignal = signal<Required<ProjectMeasurementSettings>>({ ...DEFAULT_MEASUREMENT_SETTINGS });
+
+/**
+ * @function resolveMeasurementSettings
+ * @description Fills a (possibly partial or missing) measurement settings object with the defaults.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectMeasurementSettings | undefined} settings - Stored settings.
+ * @returns {Required<ProjectMeasurementSettings>} Complete settings.
+ */
+export function resolveMeasurementSettings(
+  settings: ProjectMeasurementSettings | undefined
+): Required<ProjectMeasurementSettings> {
+  return {
+    distanceUnit: settings?.distanceUnit ?? DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
+    areaUnit: settings?.areaUnit ?? DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
+    scaleMethod: settings?.scaleMethod ?? DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
+  };
+}
+
+/**
+ * @function setMeasurementSettings
+ * @description Merges measurement settings into the signal and mirrors them into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectMeasurementSettings} updates - Members to change.
+ * @returns {void}
+ */
+export function setMeasurementSettings(updates: ProjectMeasurementSettings): void {
+  const next = resolveMeasurementSettings({ ...measurementSettingsSignal.value, ...updates });
+  batch(() => {
+    measurementSettingsSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.measurement = { ...next };
+    }
+  });
+}
+
+/**
+ * @signal projectCrsSignal
+ * @description Reactive signal holding the Project CRS (the map's display authority, ADR 0033): null when the project has none yet (the map shows EPSG:3857), a CRS, or `{ none: true }` for "No CRS".
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectCrs | null>}
+ */
+export const projectCrsSignal = signal<ProjectCrs | null>(null);
+
+/**
+ * @signal projectRecentCrsSignal
+ * @description Reactive signal holding the project's Recently Used CRSs, most recent first (at most 20).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectCrs[]>}
+ */
+export const projectRecentCrsSignal = signal<ProjectCrs[]>([]);
+
+/**
+ * @function setProjectRecentCrs
+ * @description Sets the Recently Used CRSs (trimmed to 20) and mirrors it into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectCrs[]} list - New list, most recent first.
+ * @returns {void}
+ */
+export function setProjectRecentCrs(list: ProjectCrs[]): void {
+  const next = list.slice(0, 20).map((c) => ({ ...c }));
+  batch(() => {
+    projectRecentCrsSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      if (next.length > 0) {
+        project.recentCrs = next;
+      } else {
+        delete project.recentCrs;
+      }
+    }
+  });
+}
+
+/**
+ * @function setProjectCrs
+ * @description Sets the Project CRS signal and mirrors it into the current project model (null removes `<crs>`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectCrs | null} crs - New Project CRS.
+ * @returns {void}
+ */
+export function setProjectCrs(crs: ProjectCrs | null): void {
+  batch(() => {
+    projectCrsSignal.value = crs ? { ...crs } : null;
+    const project = currentProjectSignal.value;
+    if (project) {
+      if (crs) {
+        project.crs = { ...crs };
+      } else {
+        delete project.crs;
+      }
+    }
+  });
+}
+
+/**
+ * @signal workbenchWindowTitleSignal
+ * @description Computed Workbench window title: the project display name ({@link projectNameSignal}, which falls back to the project file's base name when the title is empty) followed by the application name, or just the application name when no project is open.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {ReadonlySignal<string>}
+ */
+export const workbenchWindowTitleSignal = computed<string>(() => {
+  if (!hasProjectSignal.value) return 'Cartouche';
+  const name = projectNameSignal.value || resolveProjectDisplayName(projectTitleSignal.value, projectFilePathSignal.value);
+  return `${name} — Cartouche`;
+});
+
+/**
+ * @function setProjectTitle
+ * @description Sets the raw Project Title and re-resolves the display name shown in the Workbench window title and layer tree root.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @param {string} title - New Project Title; an empty string clears it.
+ * @param {string | null} [filePath] - Project file path used for the fallback; defaults to {@link projectFilePathSignal}.
+ * @returns {void}
+ */
+export function setProjectTitle(title: string, filePath?: string | null): void {
+  const nextTitle = (title ?? '').trim();
+  batch(() => {
+    projectTitleSignal.value = nextTitle;
+    projectNameSignal.value = resolveProjectDisplayName(
+      nextTitle,
+      filePath === undefined ? projectFilePathSignal.value : filePath
+    );
+    if (currentProjectSignal.value?.metadata) {
+      currentProjectSignal.value.metadata.title = nextTitle;
+    }
+  });
+}
 
 /**
  * @signal projectVisibleSignal
@@ -454,7 +777,7 @@ export function renameNode(nodeId: string, newName: string): void {
 
   if (nodeId === 'project') {
     if (projectNameSignal.value !== trimmed) {
-      projectNameSignal.value = trimmed;
+      setProjectTitle(trimmed);
       isProjectDirtySignal.value = true;
     }
   } else {
@@ -773,8 +1096,15 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
 if (typeof window !== 'undefined' && window.electronAPI?.onProjectMetadataUpdated) {
   window.electronAPI.onProjectMetadataUpdated((metadata: any) => {
     if (metadata && typeof metadata.title === 'string') {
-      projectNameSignal.value = metadata.title;
+      setProjectTitle(metadata.title);
     }
+  });
+}
+
+// Follow Project CRS changes made by the main process (first layer adoption, ADR 0033)
+if (typeof window !== 'undefined' && window.electronAPI?.onProjectCrsUpdated) {
+  window.electronAPI.onProjectCrsUpdated((crs) => {
+    setProjectCrs(crs ?? null);
   });
 }
 

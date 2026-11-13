@@ -27,8 +27,20 @@
       <!-- Project Metadata (Dublin Core + application properties) -->
       <xs:element name="metadata" type="MetadataType" />
 
-      <!-- Coordinate Reference System (CRS) - Optional -->
-      <xs:element name="crs" type="CrsType" minOccurs="0" />
+      <!-- Project Home: directory relative paths are resolved from; relative to the project file where possible - Optional -->
+      <xs:element name="home" type="xs:string" minOccurs="0" />
+
+      <!-- Project CRS: the display authority of the map (ADR 0033); none="true" means No CRS - Optional -->
+      <xs:element name="crs" type="ProjectCrsType" minOccurs="0" />
+
+      <!-- Recently Used CRSs, most recent first (at most 20) - Optional -->
+      <xs:element name="recentCrs" type="RecentCrsType" minOccurs="0" />
+
+      <!-- Project-wide Map Display Settings (background colour) - Optional -->
+      <xs:element name="display" type="DisplayType" minOccurs="0" />
+
+      <!-- Measurement units and Scale Calculation method - Optional -->
+      <xs:element name="measurement" type="MeasurementType" minOccurs="0" />
 
       <!-- Map Viewport Extent and Camera State - Optional -->
       <xs:element name="viewport" type="ViewportType" minOccurs="0" />
@@ -50,7 +62,17 @@
     </xs:sequence>
     <xs:attribute name="version" type="xs:string" default="1.0" />
     <xs:attribute name="encoding" type="xs:string" default="UTF-8" />
+    <!-- Save Path Mode: how project-referenced file paths are written. Missing means absolute. -->
+    <xs:attribute name="pathMode" type="PathModeType" />
   </xs:complexType>
+
+  <!-- Save Path Mode enumeration -->
+  <xs:simpleType name="PathModeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="absolute" />
+      <xs:enumeration value="relative" />
+    </xs:restriction>
+  </xs:simpleType>
 
   <!-- Metadata Type (supports standard Dublin Core elements and Cartouche metadata) -->
   <xs:complexType name="MetadataType">
@@ -89,6 +111,88 @@
       <xs:element name="description" type="xs:string" minOccurs="0" />
       <xs:element name="proj4" type="xs:string" minOccurs="0" />
       <xs:element name="wkt" type="xs:string" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Display Type: project-wide map display settings -->
+  <xs:complexType name="DisplayType">
+    <xs:attribute name="backgroundColour" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Opaque CSS colour painted behind all layers in the map viewport. Missing means #ffffff.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="selectionColour" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>CSS colour (alpha allowed) used to highlight selected features. Missing means rgba(255,255,0,0.6).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- Measurement Type: distance / area units and the Scale Calculation method -->
+  <xs:complexType name="MeasurementType">
+    <xs:attribute name="distanceUnit" type="DistanceUnitType" />
+    <xs:attribute name="areaUnit" type="AreaUnitType" />
+    <xs:attribute name="scaleMethod" type="ScaleMethodType" />
+  </xs:complexType>
+
+  <xs:simpleType name="DistanceUnitType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="degrees" />
+      <xs:enumeration value="millimetres" />
+      <xs:enumeration value="centimetres" />
+      <xs:enumeration value="metres" />
+      <xs:enumeration value="kilometres" />
+      <xs:enumeration value="inches" />
+      <xs:enumeration value="feet" />
+      <xs:enumeration value="yards" />
+      <xs:enumeration value="miles" />
+      <xs:enumeration value="nautical-miles" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AreaUnitType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="square-degrees" />
+      <xs:enumeration value="square-millimetres" />
+      <xs:enumeration value="square-centimetres" />
+      <xs:enumeration value="square-metres" />
+      <xs:enumeration value="hectares" />
+      <xs:enumeration value="square-kilometres" />
+      <xs:enumeration value="square-inches" />
+      <xs:enumeration value="square-feet" />
+      <xs:enumeration value="square-yards" />
+      <xs:enumeration value="square-miles" />
+      <xs:enumeration value="acres" />
+      <xs:enumeration value="square-nautical-miles" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ScaleMethodType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="top" />
+      <xs:enumeration value="middle" />
+      <xs:enumeration value="bottom" />
+      <xs:enumeration value="average" />
+      <xs:enumeration value="equator" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Project CRS Type: CRS definition plus the No CRS flag. authId may be omitted only when none="true". -->
+  <xs:complexType name="ProjectCrsType">
+    <xs:sequence>
+      <xs:element name="authId" type="xs:string" minOccurs="0" />
+      <xs:element name="srid" type="xs:integer" minOccurs="0" />
+      <xs:element name="description" type="xs:string" minOccurs="0" />
+      <xs:element name="proj4" type="xs:string" minOccurs="0" />
+      <xs:element name="wkt" type="xs:string" minOccurs="0" />
+    </xs:sequence>
+    <xs:attribute name="none" type="xs:boolean" default="false" />
+  </xs:complexType>
+
+  <!-- Recently Used CRS list -->
+  <xs:complexType name="RecentCrsType">
+    <xs:sequence>
+      <xs:element name="crs" type="CrsType" minOccurs="0" maxOccurs="20" />
     </xs:sequence>
   </xs:complexType>
 

@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-08
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -14,6 +14,7 @@
  * @see {@link cancelTopDialog}
  */
 
+import { setProjectCrsFromLayerAction } from '../state/projectPropertiesSignals';
 import {
   hasProjectSignal,
   isProjectDirtySignal,
@@ -284,6 +285,9 @@ export function executeWorkbenchAction(actionName: string): void {
       if (activeLayerIdSignal.value) {
         openLayerPropertiesDialog(activeLayerIdSignal.value);
       }
+      break;
+    case 'set_project_crs_from_layer':
+      void setProjectCrsFromLayerAction(activeLayerIdSignal.value);
       break;
     case 'toggle_layers_widget':
       toggleLayersWidgetAction();

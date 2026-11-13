@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-11
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 
@@ -50,13 +50,15 @@ export interface ProjectMetadata {
  * @property {string} [description] - Human-readable projection title.
  * @property {string} [proj4] - Proj4 definition parameter string.
  * @property {string} [wkt] - Well-Known Text coordinate system definition.
+ * @property {boolean} [none] - Project CRS only: "No CRS", drawing layer coordinates as raw cartesian values with no reprojection (`authId` is then ignored).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 export interface ProjectCrs {
   authId: string;
+  none?: boolean;
   srid?: number;
   description?: string;
   proj4?: string;
@@ -315,6 +317,196 @@ export interface ProjectTimeFilterConfig {
 }
 
 /**
+ * @constant {string} DEFAULT_MAP_BACKGROUND_COLOUR
+ * @description Map Background Colour used when a project declares none: pure white.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_MAP_BACKGROUND_COLOUR = '#ffffff';
+
+/**
+ * @constant {string} DEFAULT_SELECTION_COLOUR
+ * @description Selection Colour used when a project declares none: semi-transparent yellow.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_SELECTION_COLOUR = 'rgba(255,255,0,0.6)';
+
+/**
+ * @typedef {Object} ProjectDisplaySettings
+ * @description Project-wide map display settings persisted in the optional `<display>` element.
+ * @property {string} [backgroundColour] - Opaque CSS colour painted behind all layers in the map viewport; missing means {@link DEFAULT_MAP_BACKGROUND_COLOUR}.
+ * @property {string} [selectionColour] - CSS colour (alpha allowed) used to highlight selected features; missing means {@link DEFAULT_SELECTION_COLOUR}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export interface ProjectDisplaySettings {
+  backgroundColour?: string;
+  selectionColour?: string;
+  home?: string | null;
+  pathMode?: ProjectPathMode;
+  distanceUnit?: ProjectDistanceUnit;
+  areaUnit?: ProjectAreaUnit;
+  scaleMethod?: ScaleCalculationMethod;
+}
+
+/**
+ * @typedef {'absolute' | 'relative'} ProjectPathMode
+ * @description Save Path Mode: whether project-referenced file paths are written absolute or relative to the Project Home. A missing `pathMode` attribute in a project file means `absolute`; new projects default to `relative`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ProjectPathMode = 'absolute' | 'relative';
+
+/**
+ * @constant {ProjectPathMode} DEFAULT_NEW_PROJECT_PATH_MODE
+ * @description Save Path Mode given to newly created projects.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = 'relative';
+
+/**
+ * @constant {readonly string[]} PROJECT_DISTANCE_UNITS
+ * @description Distance unit tokens (kebab-case as written in `<measurement distanceUnit>`), in dropdown order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const PROJECT_DISTANCE_UNITS = [
+  'degrees', 'millimetres', 'centimetres', 'metres', 'kilometres',
+  'inches', 'feet', 'yards', 'miles', 'nautical-miles',
+] as const;
+
+/**
+ * @typedef {typeof PROJECT_DISTANCE_UNITS[number]} ProjectDistanceUnit
+ * @description Units for Distance chosen on the Measurements tab (stored only until a measure tool exists).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ProjectDistanceUnit = typeof PROJECT_DISTANCE_UNITS[number];
+
+/**
+ * @constant {readonly string[]} PROJECT_AREA_UNITS
+ * @description Area unit tokens (kebab-case as written in `<measurement areaUnit>`), in dropdown order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const PROJECT_AREA_UNITS = [
+  'square-degrees', 'square-millimetres', 'square-centimetres', 'square-metres', 'hectares', 'square-kilometres',
+  'square-inches', 'square-feet', 'square-yards', 'square-miles', 'acres', 'square-nautical-miles',
+] as const;
+
+/**
+ * @typedef {typeof PROJECT_AREA_UNITS[number]} ProjectAreaUnit
+ * @description Units for Area chosen on the Measurements tab (stored only until a measure tool exists).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ProjectAreaUnit = typeof PROJECT_AREA_UNITS[number];
+
+/**
+ * @constant {readonly string[]} SCALE_CALCULATION_METHODS
+ * @description Scale Calculation method tokens as written in `<measurement scaleMethod>`, in dropdown order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const SCALE_CALCULATION_METHODS = ['top', 'middle', 'bottom', 'average', 'equator'] as const;
+
+/**
+ * @typedef {typeof SCALE_CALCULATION_METHODS[number]} ScaleCalculationMethod
+ * @description Where the status bar scale is measured: top, middle or bottom of the map, the average of the three, or at the equator.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ScaleCalculationMethod = typeof SCALE_CALCULATION_METHODS[number];
+
+/**
+ * @typedef {Object} ProjectMeasurementSettings
+ * @description Project-wide measurement settings persisted in the optional `<measurement>` element. Every member is optional in files; the defaults are Degrees, Square Degrees and Middle of Map.
+ * @property {ProjectDistanceUnit} [distanceUnit] - Units for Distance.
+ * @property {ProjectAreaUnit} [areaUnit] - Units for Area.
+ * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export interface ProjectMeasurementSettings {
+  distanceUnit?: ProjectDistanceUnit;
+  areaUnit?: ProjectAreaUnit;
+  scaleMethod?: ScaleCalculationMethod;
+}
+
+/**
+ * @constant {Required<ProjectMeasurementSettings>} DEFAULT_MEASUREMENT_SETTINGS
+ * @description Measurement defaults applied when a project declares none.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> = Object.freeze({
+  distanceUnit: 'degrees',
+  areaUnit: 'square-degrees',
+  scaleMethod: 'middle',
+});
+
+/**
+ * @typedef {Object} ProjectPropertiesPatch
+ * @description Partial set of project-wide properties committed from the Project Properties dialog draft in one IPC round trip. Every member is optional; absent members are left unchanged.
+ * @property {string} [title] - Project Title (`dc:title`), independent of the file name. An empty string clears the title.
+ * @property {string} [backgroundColour] - Opaque Map Background Colour.
+ * @property {string} [selectionColour] - Selection Colour (alpha allowed).
+ * @property {string | null} [home] - Explicit absolute Project Home; an empty string or null clears it so the project file's directory applies.
+ * @property {ProjectPathMode} [pathMode] - Save Path Mode.
+ * @property {ProjectDistanceUnit} [distanceUnit] - Units for Distance.
+ * @property {ProjectAreaUnit} [areaUnit] - Units for Area.
+ * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
+ * @property {ProjectCrs | null} [crs] - Explicit Project CRS (null removes it); `{ none: true }` selects No CRS.
+ * @property {ProjectCrs[]} [recentCrs] - Recently Used CRSs, most recent first (at most 20).
+ * @property {Partial<Record<'point' | 'line' | 'polygon', string | null>>} [defaultStyles] - Project Default Styles in Cartouche JSON per slot; null clears a slot, an absent slot is left unchanged.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ */
+export interface ProjectPropertiesPatch {
+  title?: string;
+  backgroundColour?: string;
+  selectionColour?: string;
+  home?: string | null;
+  pathMode?: ProjectPathMode;
+  distanceUnit?: ProjectDistanceUnit;
+  areaUnit?: ProjectAreaUnit;
+  scaleMethod?: ScaleCalculationMethod;
+  crs?: ProjectCrs | null;
+  recentCrs?: ProjectCrs[];
+  defaultStyles?: Partial<Record<'point' | 'line' | 'polygon', string | null>>;
+}
+
+/**
  * @typedef {Object} ProjectGroupItem
  * @property {string} [id] - Optional unique identifier for the layer group.
  * @property {string} name - Display name of the layer group.
@@ -359,7 +551,12 @@ export interface ProjectStyleItem {
  * @property {string} format - Format descriptor identifier (e.g. "cartouche-xml", "cartouche-bundled").
  * @property {string} [filePath] - Absolute path to underlying project document on disk.
  * @property {ProjectMetadata} metadata - Project Dublin Core and application metadata.
+ * @property {string} [home] - Explicit Project Home directory, absolute in memory; written relative to the project file where possible. Unset means the project file's directory.
+ * @property {ProjectPathMode} [pathMode] - Save Path Mode; unset means `absolute` (legacy files).
  * @property {ProjectCrs} [crs] - Project-wide default coordinate reference system.
+ * @property {ProjectCrs[]} [recentCrs] - Recently Used CRSs of the project, most recent first (at most 20).
+ * @property {ProjectDisplaySettings} [display] - Project-wide map display settings (Map Background Colour, Selection Colour).
+ * @property {ProjectMeasurementSettings} [measurement] - Distance / area units and the Scale Calculation method.
  * @property {ProjectViewport} [viewport] - Initial map camera and extent parameters.
  * @property {Array<ProjectLayerItem | ProjectGroupItem>} layers - Hierarchical layer and group tree.
  * @property {ProjectStyleItem[]} [styles] - Project shared style collection.
@@ -374,7 +571,12 @@ export interface ProjectModel {
   format: string;
   filePath?: string;
   metadata: ProjectMetadata;
+  home?: string;
+  pathMode?: ProjectPathMode;
   crs?: ProjectCrs;
+  recentCrs?: ProjectCrs[];
+  display?: ProjectDisplaySettings;
+  measurement?: ProjectMeasurementSettings;
   viewport?: ProjectViewport;
   layers: Array<ProjectLayerItem | ProjectGroupItem>;
   styles?: ProjectStyleItem[];

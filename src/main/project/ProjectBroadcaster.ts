@@ -4,7 +4,7 @@
  * @description Central IPC broadcast dispatcher for transmitting serialized Cartouche project state updates to active Renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
@@ -121,7 +121,7 @@ export function onBroadcast(listener: BroadcastListener): () => void {
  * @param {any} payload - Message payload data.
  * @returns {void}
  */
-function emitToWindows(channel: string, payload: any): void {
+export function emitToWindows(channel: string, payload: any): void {
   for (const listener of broadcastListeners) {
     try {
       listener(channel, payload);

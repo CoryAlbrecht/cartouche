@@ -4,7 +4,7 @@
  * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  */
 
@@ -146,7 +146,7 @@ describe("Project Lifecycle Signals & Actions", () => {
     assert.deepEqual(savedProjects, ["/workspace/saved-project.cproj"]);
   });
 
-  it("saveAsProjectAction prompts with existing path prefilled, saves, and updates project title", async () => {
+  it("saveAsProjectAction prompts with existing path prefilled, saves, and keeps an explicit project title (Ticket #271)", async () => {
     loadProjectIntoSignals({
       format: "cartouche-xml",
       filePath: "/old/path.cproj",
@@ -163,8 +163,38 @@ describe("Project Lifecycle Signals & Actions", () => {
       projectFilePathSignal.value,
       "/new/path/renamed-project.cproj"
     );
-    assert.equal(projectNameSignal.value, "renamed-project");
+    // The Project Title is independent of the file name.
+    assert.equal(projectNameSignal.value, "Old Project");
     assert.deepEqual(savedProjects, ["/new/path/renamed-project.cproj"]);
+  });
+
+  it("saveAsProjectAction lets a default placeholder title adopt the saved file's base name (Ticket #271)", async () => {
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      metadata: { title: "New Project" },
+      layers: [],
+    });
+
+    mockSaveFileResult = "/new/path/renamed-project.cproj";
+
+    const result = await saveAsProjectAction();
+    assert.equal(result, true);
+    assert.equal(projectNameSignal.value, "renamed-project");
+  });
+
+  it("saveAsProjectAction with an empty title shows the file base name as the display name (Ticket #271)", async () => {
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      filePath: "/old/path.cproj",
+      metadata: { title: "" },
+      layers: [],
+    });
+    assert.equal(projectNameSignal.value, "path", "empty title falls back to the file base name");
+
+    mockSaveFileResult = "/new/path/renamed-project.cproj";
+    const result = await saveAsProjectAction();
+    assert.equal(result, true);
+    assert.equal(projectNameSignal.value, "renamed-project");
   });
 
   it("closeProjectAction is a safe no-op when no project is loaded", async () => {

@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -14,12 +14,36 @@ import fs from "node:fs";
 import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import type { IProjectLoader } from "./IProjectLoader";
+import { isReservedStyleId, PROJECT_DEFAULT_STYLE_IDS } from "../../../shared/styles/projectDefaultStyles";
+
+/**
+ * @constant {ReadonlySet<string>} RESERVED_DEFAULT_STYLE_ID_SET
+ * @description Reserved shared-style ids the loader accepts (the Project Default Styles); every other `_`-prefixed id is rejected.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+const RESERVED_DEFAULT_STYLE_ID_SET: ReadonlySet<string> = new Set(Object.values(PROJECT_DEFAULT_STYLE_IDS));
+import {
+  isRewritableFilePath,
+  resolveProjectPath,
+  toProjectRelativePath,
+  resolveProjectHomeDirectory,
+  toWrittenProjectHome,
+} from "../projectPaths";
 import {
   isProjectLayerStyleWrapper,
   type ProjectModel,
   type ProjectMetadata,
   type ProjectCrs,
   type ProjectViewport,
+  type ProjectDisplaySettings,
+  type ProjectPathMode,
+  type ProjectMeasurementSettings,
+  PROJECT_DISTANCE_UNITS,
+  PROJECT_AREA_UNITS,
+  SCALE_CALCULATION_METHODS,
   type ProjectLayerItem,
   type ProjectGroupItem,
   type ProjectStyleItem,
@@ -147,11 +171,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     // Parse Metadata (Dublin Core + application tags)
     const rawMeta = root.metadata || {};
+    const rawTitle = rawMeta["dc:title"] ?? rawMeta.title;
     const metadata: ProjectMetadata = {
-      title:
-        rawMeta["dc:title"]
-        || rawMeta.title
-        || path.basename(filePath, path.extname(filePath)),
+      // The Project Title is independent of the file name: a missing <dc:title> loads as an empty title.
+      title: rawTitle === undefined || rawTitle === null ? "" : String(rawTitle),
       creator: rawMeta["dc:creator"] || rawMeta.creator,
       description: rawMeta["dc:description"] || rawMeta.description,
       date: rawMeta["dc:date"] || rawMeta.date,
@@ -160,15 +183,71 @@ export class CartoucheXmlLoader implements IProjectLoader {
       appVersion: rawMeta.appVersion,
     };
 
+    // Parse Save Path Mode and Project Home (optional). Paths in memory are always absolute.
+    const rawPathMode = root["@_pathMode"];
+    const pathMode: ProjectPathMode | undefined =
+      rawPathMode === "relative" ? "relative"
+      : rawPathMode === "absolute" ? "absolute"
+      : undefined;
+    const projectDir = path.dirname(filePath);
+    let home: string | undefined;
+    if (root.home !== undefined && root.home !== null && String(root.home).trim()) {
+      const rawHome = String(root.home).trim();
+      home = path.isAbsolute(rawHome) ? rawHome : path.resolve(projectDir, rawHome);
+    }
+    const homeDir = home ?? projectDir;
+
     // Parse CRS (optional)
     let crs: ProjectCrs | undefined;
     if (root.crs) {
+      const rawNone = root.crs["@_none"];
+      const isNone = rawNone === true || rawNone === "true" || rawNone === "1";
       crs = {
-        authId: root.crs.authId || "EPSG:4326",
+        authId: isNone ? String(root.crs.authId ?? "") : root.crs.authId || "EPSG:4326",
+        ...(isNone ? { none: true } : {}),
         srid: root.crs.srid ? parseInt(root.crs.srid, 10) : undefined,
         description: root.crs.description,
         proj4: root.crs.proj4,
         wkt: root.crs.wkt,
+      };
+    }
+
+    // Parse Recently Used CRSs (optional, most recent first, at most 20)
+    let recentCrs: ProjectCrs[] | undefined;
+    if (root.recentCrs && root.recentCrs.crs) {
+      const rawList = Array.isArray(root.recentCrs.crs) ? root.recentCrs.crs : [root.recentCrs.crs];
+      recentCrs = rawList
+        .filter((c: any) => c && c.authId)
+        .slice(0, 20)
+        .map((c: any): ProjectCrs => ({
+          authId: String(c.authId),
+          ...(c.srid ? { srid: parseInt(c.srid, 10) } : {}),
+          ...(c.description ? { description: String(c.description) } : {}),
+        }));
+    }
+
+    // Parse Display settings (optional)
+    let display: ProjectDisplaySettings | undefined;
+    if (root.display) {
+      const readColourAttr = (value: unknown): string | undefined =>
+        value !== undefined && value !== null && String(value).trim() ?
+          String(value).trim()
+        : undefined;
+      display = {
+        backgroundColour: readColourAttr(root.display["@_backgroundColour"]),
+        selectionColour: readColourAttr(root.display["@_selectionColour"]),
+      };
+    }
+
+    // Parse Measurement settings (optional); unknown tokens are dropped so defaults apply
+    let measurement: ProjectMeasurementSettings | undefined;
+    if (root.measurement) {
+      const pick = <T extends string>(value: unknown, allowed: readonly T[]): T | undefined =>
+        typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+      measurement = {
+        distanceUnit: pick(root.measurement["@_distanceUnit"], PROJECT_DISTANCE_UNITS),
+        areaUnit: pick(root.measurement["@_areaUnit"], PROJECT_AREA_UNITS),
+        scaleMethod: pick(root.measurement["@_scaleMethod"], SCALE_CALCULATION_METHODS),
       };
     }
 
@@ -257,10 +336,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
           if (!resolvedContent && !String(href).startsWith("#")) {
             try {
               const cleanHref = String(href).replace(/^file:\/\//i, "");
-              const extStylePath =
-                path.isAbsolute(cleanHref) ? cleanHref : (
-                  path.resolve(path.dirname(filePath), cleanHref)
-                );
+              const extStylePath = resolveProjectPath(cleanHref, homeDir);
               if (fs.existsSync(extStylePath)) {
                 resolvedContent = fs
                   .readFileSync(extStylePath, "utf-8")
@@ -270,8 +346,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
               // Ignore external style file read failures; fallback handled downstream
             }
           }
+          const storedHref =
+            String(href).startsWith("#") ? String(href)
+            : resolveProjectPath(String(href), homeDir);
           style = {
-            href,
+            href: storedHref,
             format,
             ...(resolvedContent ? { content: resolvedContent } : {}),
             ...(version ? { version } : {}),
@@ -300,10 +379,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
         };
       }
 
-      let resolvedSource = raw.source || "";
-      if (resolvedSource && !path.isAbsolute(resolvedSource)) {
-        resolvedSource = path.resolve(path.dirname(filePath), resolvedSource);
-      }
+      const resolvedSource = resolveProjectPath(String(raw.source || ""), homeDir);
 
       let layerFields: LayerFieldInfo[] | undefined;
       if (raw.fields && raw.fields.field) {
@@ -524,6 +600,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
             `Invalid shared style "${styleId}": shared styles in <styles> cannot reference another style via href.`
           );
         }
+        if (isReservedStyleId(styleId) && !RESERVED_DEFAULT_STYLE_ID_SET.has(styleId)) {
+          throw new Error(
+            `Invalid shared style "${styleId}": ids starting with "_" are reserved for application use.`
+          );
+        }
         const rawFormat = s["@_format"];
         const format: ProjectStyleFormat =
           rawFormat === "sld" ? "sld"
@@ -566,6 +647,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
           const l = item as ProjectLayerItem;
           if (l.style && isProjectLayerStyleWrapper(l.style) && l.style.href) {
             const rawHref = l.style.href;
+            if (rawHref.startsWith("#") && isReservedStyleId(rawHref)) {
+              throw new Error(
+                `Invalid style reference "${rawHref}": shared styles starting with "_" are reserved for application use.`
+              );
+            }
             const targetId =
               rawHref.startsWith("#") ? rawHref.slice(1) : rawHref;
             const target = catalogStyles.get(targetId);
@@ -616,7 +702,12 @@ export class CartoucheXmlLoader implements IProjectLoader {
       format: this.id,
       filePath,
       metadata,
+      ...(home ? { home } : {}),
+      ...(pathMode ? { pathMode } : {}),
       crs,
+      ...(recentCrs && recentCrs.length > 0 ? { recentCrs } : {}),
+      display,
+      measurement,
       viewport,
       layers,
       styles,
@@ -636,8 +727,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @returns {Promise<void>}
    */
   public async save(project: ProjectModel, target: string): Promise<void> {
-    const xmlContent = this.serializeToXml(project);
     const resolvedPath = path.resolve(target);
+    const xmlContent = this.serializeToXml(project, resolvedPath);
     await fs.promises.mkdir(path.dirname(resolvedPath), { recursive: true });
     await fs.promises.writeFile(resolvedPath, xmlContent, "utf-8");
     project.filePath = resolvedPath;
@@ -650,10 +741,23 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
+   * @param {string} [targetPath] - Destination project file path; with `project.filePath` as fallback it anchors the Project Home and relative paths. Without either, paths are written as held in memory.
    * @returns {string} XML project document string.
    */
-  public serializeToXml(project: ProjectModel): string {
+  public serializeToXml(project: ProjectModel, targetPath?: string): string {
     const lines: string[] = [];
+
+    const anchorPath = targetPath || project.filePath;
+    const projectDir = anchorPath ? path.dirname(path.resolve(anchorPath)) : undefined;
+    const homeDir =
+      projectDir !== undefined ? resolveProjectHomeDirectory(project, path.resolve(anchorPath as string))
+      : project.home && path.isAbsolute(project.home) ? project.home
+      : undefined;
+    const writeRelative = project.pathMode === "relative" && homeDir !== undefined;
+    const writePath = (value: string): string =>
+      writeRelative && isRewritableFilePath(value) && path.isAbsolute(value) ?
+        toProjectRelativePath(value, homeDir as string)
+      : value;
 
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push(
@@ -662,11 +766,15 @@ export class CartoucheXmlLoader implements IProjectLoader {
     lines.push(
       '  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"'
     );
-    lines.push('  xmlns:dc="http://purl.org/dc/elements/1.1/">');
+    lines.push(
+      `  xmlns:dc="http://purl.org/dc/elements/1.1/"${project.pathMode ? ` pathMode="${project.pathMode}"` : ""}>`
+    );
 
     // 1. Metadata
     lines.push("  <metadata>");
-    lines.push(`    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`);
+    if (project.metadata.title) {
+      lines.push(`    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`);
+    }
     if (project.metadata.creator) {
       lines.push(
         `    <dc:creator>${escapeXml(project.metadata.creator)}</dc:creator>`
@@ -691,8 +799,20 @@ export class CartoucheXmlLoader implements IProjectLoader {
     lines.push(`    <appVersion>${escapeXml(appVersion)}</appVersion>`);
     lines.push("  </metadata>");
 
+    // 1b. Project Home (optional; relative to the project file where possible)
+    if (project.home && project.home.trim()) {
+      const homeAbsolute = project.home.trim();
+      const written =
+        projectDir !== undefined && path.isAbsolute(homeAbsolute) ?
+          toWrittenProjectHome(homeAbsolute, projectDir)
+        : homeAbsolute;
+      lines.push(`  <home>${escapeXml(written)}</home>`);
+    }
+
     // 2. CRS (optional)
-    if (project.crs) {
+    if (project.crs && project.crs.none) {
+      lines.push('  <crs none="true" />');
+    } else if (project.crs) {
       lines.push("  <crs>");
       lines.push(
         `    <authId>${escapeXml(project.crs.authId || "EPSG:4326")}</authId>`
@@ -712,6 +832,47 @@ export class CartoucheXmlLoader implements IProjectLoader {
         lines.push(`    <wkt>${escapeXml(project.crs.wkt)}</wkt>`);
       }
       lines.push("  </crs>");
+    }
+
+    // 2a. Recently Used CRSs (optional; at most 20, most recent first)
+    if (project.recentCrs && project.recentCrs.length > 0) {
+      lines.push("  <recentCrs>");
+      for (const recent of project.recentCrs.slice(0, 20)) {
+        lines.push("    <crs>");
+        lines.push(`      <authId>${escapeXml(recent.authId)}</authId>`);
+        if (recent.srid !== undefined) {
+          lines.push(`      <srid>${recent.srid}</srid>`);
+        }
+        if (recent.description) {
+          lines.push(`      <description>${escapeXml(recent.description)}</description>`);
+        }
+        lines.push("    </crs>");
+      }
+      lines.push("  </recentCrs>");
+    }
+
+    // 2b. Display settings (optional; written only when something is set)
+    if (project.display && (project.display.backgroundColour || project.display.selectionColour)) {
+      const displayAttrs: string[] = [];
+      if (project.display.backgroundColour) {
+        displayAttrs.push(`backgroundColour="${escapeXml(project.display.backgroundColour)}"`);
+      }
+      if (project.display.selectionColour) {
+        displayAttrs.push(`selectionColour="${escapeXml(project.display.selectionColour)}"`);
+      }
+      lines.push(`  <display ${displayAttrs.join(" ")} />`);
+    }
+
+    // 2c. Measurement settings (optional; written only when something is set)
+    if (project.measurement) {
+      const m = project.measurement;
+      const attrs: string[] = [];
+      if (m.distanceUnit) attrs.push(`distanceUnit="${m.distanceUnit}"`);
+      if (m.areaUnit) attrs.push(`areaUnit="${m.areaUnit}"`);
+      if (m.scaleMethod) attrs.push(`scaleMethod="${m.scaleMethod}"`);
+      if (attrs.length > 0) {
+        lines.push(`  <measurement ${attrs.join(" ")} />`);
+      }
     }
 
     // 3. Viewport (optional)
@@ -780,7 +941,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       res.push(`${pad}<layer ${attrs.join(" ")}>`);
       res.push(`${pad}  <name>${escapeXml(layer.name)}</name>`);
       res.push(`${pad}  <type>${escapeXml(layer.type || "vector")}</type>`);
-      res.push(`${pad}  <source>${escapeXml(layer.source || "")}</source>`);
+      res.push(`${pad}  <source>${escapeXml(writePath(layer.source || ""))}</source>`);
 
       if (layer.style) {
         if (typeof layer.style === "string") {
@@ -800,7 +961,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
             const formatAttr =
               layer.style.format ? ` format="${layer.style.format}"` : "";
             res.push(
-              `${pad}  <style href="${escapeXml(layer.style.href)}"${formatAttr}${versionAttr} />`
+              `${pad}  <style href="${escapeXml(writePath(layer.style.href))}"${formatAttr}${versionAttr} />`
             );
           } else if (layer.style.content) {
             const formatAttr =

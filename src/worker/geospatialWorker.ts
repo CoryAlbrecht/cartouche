@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link logging}
@@ -238,6 +238,17 @@ export function initGeospatialWorker(
         case "rehydrate": {
           const result = await engine.rehydrate(request.layers);
           postResponse(port, { id: request.id, success: true, result });
+          break;
+        }
+
+        case "buildCrsCatalogue": {
+          const { runCrsCatalogueBuild } = await import("../main/crs/runCrsCatalogueBuild");
+          const result = await runCrsCatalogueBuild(request.cacheDir);
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: { entries: result.entries, fromCache: result.fromCache },
+          });
           break;
         }
 

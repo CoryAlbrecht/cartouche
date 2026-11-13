@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -154,6 +154,19 @@ function createWindow() {
       geospatialService.setBackgroundScanEnabled(Boolean(value));
     }
   });
+
+  // Load or build the CRS Catalogue in the geospatial worker without blocking startup
+  void (async () => {
+    const [{ startCrsCatalogueBuild }, { emitToWindows }] = await Promise.all([
+      import('./crs/crsCatalogueService'),
+      import('./project/ProjectBroadcaster'),
+    ]);
+    await startCrsCatalogueBuild(
+      app.getPath('userData'),
+      (cacheDir) => geospatialService.buildCrsCatalogue(cacheDir),
+      (crsState) => emitToWindows('crs:catalogue-updated', crsState)
+    );
+  })();
   const wbPrefs = PreferencesStore.get();
   const savedWbX = wbPrefs['ui.workbench.location.x']?.value;
   const savedWbY = wbPrefs['ui.workbench.location.y']?.value;
@@ -581,6 +594,46 @@ function startApp(): void {
     }
   });
 
+  /**
+   * @ipc dialog:open-directory
+   * @description Opens the native directory picker (used by the Project Properties Project Home field) and returns the chosen directory or null.
+   * @param {Object} [options] - Dialog options: title and defaultPath.
+   */
+  handleIpc('dialog:open-directory', async (_event, options?: { title?: string; defaultPath?: string }) => {
+    if (isFileDialogOpen) return null;
+    isFileDialogOpen = true;
+    try {
+      const defaultPath = options?.defaultPath || resolveDialogDefaultPath('open');
+      const res = await dialog.showOpenDialog({
+        title: options?.title || 'Select Project Home',
+        ...(defaultPath ? { defaultPath } : {}),
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      if (res.canceled || res.filePaths.length === 0) return null;
+      return res.filePaths[0];
+    } catch (err) {
+      logging.error('Failed to show directory dialog', err, { scope: 'Main' });
+      return null;
+    } finally {
+      isFileDialogOpen = false;
+    }
+  });
+
+  handleIpc('crs:get-definition', async (_event, authId: string) => {
+    const { getCrsDefinition } = await import('./crs/crsDefinition');
+    return getCrsDefinition(authId);
+  });
+
+  handleIpc('crs:get-info', async (_event, authId: string) => {
+    const { getCrsInfo } = await import('./crs/getCrsInfo');
+    return getCrsInfo(authId);
+  });
+
+  handleIpc('crs:get-catalogue', async () => {
+    const { getCrsCatalogueState } = await import('./crs/crsCatalogueService');
+    return getCrsCatalogueState();
+  });
+
   // Project Management IPC Handlers
   handleIpc('gis:open-project', async (_event, filePath?: string) => {
     const { default: openProject } = await import('./api/project/openProject');
@@ -602,6 +655,14 @@ function startApp(): void {
     ) => {
       const { default: saveProject } = await import('./api/project/saveProject');
       return saveProject(filePath, viewport, timeFilter);
+    }
+  );
+
+  handleIpc(
+    'project:update-properties',
+    async (_event, patch: import('../shared/types/project').ProjectPropertiesPatch) => {
+      const { default: updateProjectProperties } = await import('./api/project/updateProjectProperties');
+      return updateProjectProperties(patch);
     }
   );
 

@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -109,6 +109,22 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('layers:getDirtyLayerIds'),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  /** @ipc crs:get-definition */
+  getCrsDefinition: (authId: string) => ipcRenderer.invoke('crs:get-definition', authId),
+  /** @ipc crs:get-info */
+  getCrsInfo: (authId: string) => ipcRenderer.invoke('crs:get-info', authId),
+  /** @ipc crs:get-catalogue */
+  getCrsCatalogue: () => ipcRenderer.invoke('crs:get-catalogue'),
+  /** @ipc crs:catalogue-updated */
+  onCrsCatalogueUpdated: (callback: (state: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: any) => callback(state);
+    ipcRenderer.on('crs:catalogue-updated', handler);
+    return () => {
+      ipcRenderer.removeListener('crs:catalogue-updated', handler);
+    };
+  },
+  /** @ipc dialog:open-directory */
+  openDirectory: (options?: any) => ipcRenderer.invoke('dialog:open-directory', options),
   /** @ipc dialog:save-file */
   saveFile: (options?: any) => ipcRenderer.invoke('dialog:save-file', options),
   /** @ipc gis:open-project */
@@ -117,6 +133,8 @@ const electronAPI: ElectronAPI = {
   getCurrentProject: () => ipcRenderer.invoke('gis:get-current-project'),
   /** @ipc gis:save-project */
   saveProject: (filePath?: string, viewport?: any, timeFilter?: any) => ipcRenderer.invoke('gis:save-project', filePath, viewport, timeFilter),
+  /** @ipc project:update-properties */
+  updateProjectProperties: (patch: any) => ipcRenderer.invoke('project:update-properties', patch),
   /** @ipc project:loaded */
   onProjectLoaded: (callback: (project: any) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, project: any) => callback(project);
@@ -147,6 +165,14 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('project:metadata-updated', handler);
     return () => {
       ipcRenderer.removeListener('project:metadata-updated', handler);
+    };
+  },
+  /** @ipc project:crs-updated */
+  onProjectCrsUpdated: (callback: (crs: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, crs: any) => callback(crs);
+    ipcRenderer.on('project:crs-updated', handler);
+    return () => {
+      ipcRenderer.removeListener('project:crs-updated', handler);
     };
   },
   /** @ipc project:dirty-state-changed */

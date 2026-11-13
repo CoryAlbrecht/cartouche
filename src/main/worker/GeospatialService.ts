@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -17,6 +17,7 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import * as inspector from 'node:inspector';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
+import type { CrsCatalogueEntry } from '../../shared/types/crs';
 import type {
   BoundingBox,
   LayerDetailedInfo,
@@ -939,6 +940,13 @@ export class GeospatialService {
           result = { pong: true };
           break;
 
+        case 'buildCrsCatalogue': {
+          const { runCrsCatalogueBuild } = await import('../crs/runCrsCatalogueBuild');
+          const built = await runCrsCatalogueBuild(req.cacheDir);
+          result = { entries: built.entries, fromCache: built.fromCache };
+          break;
+        }
+
         default:
           throw new Error(`Unsupported in-process operation type: ${(req as any).type}`);
       }
@@ -981,6 +989,26 @@ export class GeospatialService {
     this.activeLayers.set(layerId, filePath);
     this.circuitBreaker.delete(layerId);
     return meta;
+  }
+
+  /**
+   * @description Loads the cached CRS Catalogue or builds it in the worker (about 50 s on a cold cache, so a long timeout is used).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @param {string} cacheDir - App preferences directory holding `crs-catalogue.json`.
+   * @param {number} [timeoutMs=900000] - Timeout override.
+   * @returns {Promise<{ entries: CrsCatalogueEntry[]; fromCache: boolean }>} Catalogue entries.
+   */
+  public async buildCrsCatalogue(
+    cacheDir: string,
+    timeoutMs: number = 15 * 60 * 1000
+  ): Promise<{ entries: CrsCatalogueEntry[]; fromCache: boolean }> {
+    return this.sendRequest<{ entries: CrsCatalogueEntry[]; fromCache: boolean }>(
+      { type: 'buildCrsCatalogue', cacheDir },
+      timeoutMs
+    );
   }
 
   /**

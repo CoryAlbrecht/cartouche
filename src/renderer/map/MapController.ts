@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-11
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -23,7 +23,19 @@ import {
   all as allStrategy,
   bbox as bboxStrategy,
 } from "ol/loadingstrategy.js";
-import { fromLonLat, toLonLat, transformExtent } from "ol/proj.js";
+import { fromLonLat, transform, transformExtent } from "ol/proj.js";
+import type { ProjectViewport } from "../../shared/types";
+import {
+  NO_CRS_CODE,
+  DEFAULT_DISPLAY_CRS,
+  resolveDisplayCrs,
+  resolveLayerDataCrs,
+  isProjectionRegistered,
+  registerProjectionDefinition,
+  ensureProjectionRegistered,
+  ensureNoCrsProjection,
+  type DisplayCrs,
+} from "./projectionRegistry";
 import Feature from "ol/Feature.js";
 import { getScale } from "./getScale";
 import {
@@ -33,13 +45,21 @@ import {
   mapActionSignal,
   activeMapControllerSignal,
   addConsoleLog,
+  selectedFeatureIdsSignal,
+  activeLayerIdSignal,
 } from "../state/gisSignals";
+import VectorLayer from "ol/layer/Vector.js";
+import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
 import {
   projectLayersSignal,
   layerStylesSignal,
   currentProjectSignal,
   projectTreeSignal,
   projectVisibleSignal,
+  mapBackgroundColourSignal,
+  selectionColourSignal,
+  measurementSettingsSignal,
+  projectCrsSignal,
 } from "../state/projectSignals";
 import {
   isTimeFilterActiveSignal,
@@ -190,15 +210,66 @@ export interface VectorLayerEntry {
  * @property {[number, number, number, number]} [padding] - Pixel padding [top, right, bottom, left].
  * @property {number} [duration] - Animation duration in milliseconds.
  * @property {[number, number]} [size] - Explicit [width, height] dimensions overriding map DOM size.
+ * @property {string} [extentCrs='EPSG:4326'] - CRS of the extent; it is reprojected into the display CRS (ignored under No CRS).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 export interface FitExtentOptions {
   padding?: [number, number, number, number];
   duration?: number;
   size?: [number, number];
+  extentCrs?: string;
+}
+
+/**
+ * @typedef {Object} FeatureQueryParameters
+ * @description How a layer's features are queried and decoded for the current display CRS.
+ * @property {number[]} queryExtent - Extent sent to the worker.
+ * @property {string | undefined} targetProjection - CRS of `queryExtent` the worker reprojects from, or undefined when it is already in layer coordinates.
+ * @property {string} dataProjection - CRS the returned geometries are read in.
+ * @property {string} featureProjection - CRS the geometries are drawn in.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export interface FeatureQueryParameters {
+  queryExtent: number[];
+  targetProjection: string | undefined;
+  dataProjection: string;
+  featureProjection: string;
+}
+
+/**
+ * @function resolveFeatureQueryParameters
+ * @description Decides how to query and decode a layer for the display CRS (ADR 0033). Under No CRS the viewport extent is already in raw layer coordinates and geometries are not reprojected. A layer with no declared CRS is assumed to be EPSG:3857: its query extent is reprojected here (the worker has no source CRS to reproject into) and its geometries are read as EPSG:3857. Otherwise the worker reprojects the extent from the display CRS and geometries are reprojected from the Layer CRS.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {LayerDescriptor} descriptor - Layer descriptor (its `crs` is the Layer CRS, possibly absent).
+ * @param {number[]} extent - Viewport extent in display CRS units.
+ * @param {string} displayCode - Display CRS code (or the No CRS code).
+ * @returns {FeatureQueryParameters} Query parameters.
+ */
+export function resolveFeatureQueryParameters(
+  descriptor: Pick<LayerDescriptor, "crs">,
+  extent: number[],
+  displayCode: string
+): FeatureQueryParameters {
+  if (displayCode === NO_CRS_CODE) {
+    return { queryExtent: extent, targetProjection: undefined, dataProjection: NO_CRS_CODE, featureProjection: NO_CRS_CODE };
+  }
+  const dataProjection = resolveLayerDataCrs(descriptor.crs);
+  if (!descriptor.crs?.authId) {
+    const finite = extent.every((v) => Number.isFinite(v));
+    const queryExtent =
+      finite && displayCode !== dataProjection ? transformExtent(extent, displayCode, dataProjection) : extent;
+    return { queryExtent, targetProjection: undefined, dataProjection, featureProjection: displayCode };
+  }
+  return { queryExtent: extent, targetProjection: displayCode, dataProjection, featureProjection: displayCode };
 }
 
 /**
@@ -288,6 +359,12 @@ export class MapController {
   private previousLayerCount = 0;
   private scaleThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private lastScaleUpdateTime = 0;
+  private selectionHighlightLayer: VectorLayer<VectorSource> | null = null;
+  private selectionHighlightSource: VectorSource | null = null;
+  private displayCrs: DisplayCrs = { code: DEFAULT_DISPLAY_CRS, none: false };
+  private displayCrsTask: Promise<void> = Promise.resolve();
+  private pendingProjectViewport: Parameters<MapController["setViewport"]>[0] | null = null;
+  private viewListenerKeys: Array<() => void> = [];
 
   /**
    * @constructor
@@ -303,12 +380,20 @@ export class MapController {
   constructor(container: HTMLElement, options?: { view?: View }) {
     this.container = container;
 
-    this.view =
-      options?.view
-      ?? new View({
-        center: fromLonLat([15, 35]),
-        zoom: 3,
-      });
+    const initialCrs = resolveDisplayCrs(projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs);
+    const canUseInitial =
+      initialCrs.none
+      || isProjectionRegistered(initialCrs.code)
+      || (initialCrs.proj4 ? registerProjectionDefinition(initialCrs.code, initialCrs.proj4) : false);
+    if (canUseInitial && !options?.view) {
+      this.displayCrs = initialCrs;
+    }
+
+    this.view = options?.view ?? this.createDefaultView(this.displayCrs);
+    if (options?.view) {
+      const code = options.view.getProjection()?.getCode?.() ?? DEFAULT_DISPLAY_CRS;
+      this.displayCrs = { code, none: code === NO_CRS_CODE };
+    }
 
     this.map = new OlMap({
       target: container,
@@ -344,6 +429,7 @@ export class MapController {
     const currentProject = currentProjectSignal.value;
     if (currentProject?.viewport) {
       this.setViewport({
+        units: currentProject.crs ? "project" : "lonlat",
         extent:
           currentProject.viewport.extent ?
             [
@@ -378,7 +464,7 @@ export class MapController {
       const coordinate = evt.coordinate;
       if (coordinate) {
         const pixel = evt.pixel;
-        const [lon, lat] = toLonLat(coordinate);
+        const [lon, lat] = this.toLonLatOrRaw(coordinate);
         cursorCoordsSignal.value = {
           lon: Math.round(lon * 100000) / 100000,
           lat: Math.round(lat * 100000) / 100000,
@@ -388,10 +474,8 @@ export class MapController {
       }
     });
 
-    // View resolution change signal updates
-    this.view.on("change:resolution", () => {
-      this.updateScaleSignal(false);
-    });
+    // View resolution change signal updates (rebound whenever the view is replaced)
+    this.bindViewEvents(this.view);
 
     // Viewport bounding box updates on movement completion
     this.map.on("moveend", () => {
@@ -434,6 +518,16 @@ export class MapController {
    * @returns {void}
    */
   private bindSignals(): void {
+    // Draw the map in the Project CRS (ADR 0033); switching CRS replaces the view
+    const disposeProjectCrs = effect(() => {
+      const crs = projectCrsSignal.value;
+      const next = resolveDisplayCrs(crs);
+      if (next.code !== this.displayCrs.code || this.view.getProjection()?.getCode?.() !== next.code) {
+        void this.setDisplayCrs(next);
+      }
+    });
+    this.disposeSignals.push(disposeProjectCrs);
+
     // Synchronize loaded layer descriptors from projectLayersSignal
     const disposeLayers = effect(() => {
       const descriptors = projectLayersSignal.value;
@@ -473,6 +567,28 @@ export class MapController {
     });
     this.disposeSignals.push(disposeActions);
 
+    // Paint the project's Map Background Colour on the viewport container behind all layers
+    const disposeBackground = effect(() => {
+      this.applyBackgroundColour(mapBackgroundColourSignal.value);
+    });
+    this.disposeSignals.push(disposeBackground);
+
+    // Recompute the status bar scale when the project's Scale Calculation method changes
+    const disposeScaleMethod = effect(() => {
+      void measurementSettingsSignal.value.scaleMethod;
+      this.updateScaleSignal(true);
+    });
+    this.disposeSignals.push(disposeScaleMethod);
+
+    // Highlight selected features with the Selection Colour whenever the selection, active layer or colour changes
+    const disposeSelection = effect(() => {
+      void selectedFeatureIdsSignal.value;
+      void activeLayerIdSignal.value;
+      void selectionColourSignal.value;
+      this.refreshSelectionHighlight();
+    });
+    this.disposeSignals.push(disposeSelection);
+
     // Trigger visual refresh of temporal layers when time filter is toggled or frame advances
     const disposeTimeFilter = effect(() => {
       // Read reactive signals to establish dependency tracking
@@ -482,6 +598,91 @@ export class MapController {
       this.refreshTemporalLayers();
     });
     this.disposeSignals.push(disposeTimeFilter);
+  }
+
+  /**
+   * @description Paints the Map Background Colour on the unmanaged viewport container so it shows behind every layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-12
+   * @updated 2026-11-12
+   * @since 0.1.0-dev
+   * @param {string} colour - Opaque CSS colour.
+   * @returns {void}
+   */
+  public applyBackgroundColour(colour: string): void {
+    if (this.container && this.container.style) {
+      this.container.style.backgroundColor = colour;
+    }
+  }
+
+  /**
+   * @description Returns the selection overlay layer, or null while nothing is selected (the overlay is created lazily and removed when the selection empties).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {VectorLayer<VectorSource> | null} The highlight layer.
+   */
+  public getSelectionHighlightLayer(): VectorLayer<VectorSource> | null {
+    return this.selectionHighlightLayer;
+  }
+
+  /**
+   * @description Rebuilds the selection overlay: for every selected feature id found in the active layer's source (or in any layer when no active layer is set), a highlight feature sharing the geometry is drawn above all layers, styled with the Selection Colour (fill for polygons and point markers, stroke for lines). Called from the selection effect and after new features load.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public refreshSelectionHighlight(): void {
+    const selectedIds = selectedFeatureIdsSignal.value;
+    if (!selectedIds || selectedIds.size === 0) {
+      if (this.selectionHighlightLayer) {
+        this.map.removeLayer(this.selectionHighlightLayer);
+        this.selectionHighlightSource?.clear();
+        this.selectionHighlightLayer = null;
+        this.selectionHighlightSource = null;
+      }
+      return;
+    }
+
+    if (!this.selectionHighlightLayer || !this.selectionHighlightSource) {
+      this.selectionHighlightSource = new VectorSource({ wrapX: false });
+      this.selectionHighlightLayer = new VectorLayer({
+        source: this.selectionHighlightSource,
+        zIndex: 5000,
+        updateWhileAnimating: true,
+        updateWhileInteracting: true,
+      });
+      this.selectionHighlightLayer.set("cartoucheRole", "selection-highlight");
+      this.map.addLayer(this.selectionHighlightLayer);
+    }
+
+    this.selectionHighlightLayer.setStyle(
+      createSelectionHighlightStyleFunction(selectionColourSignal.value)
+    );
+
+    const activeLayerId = activeLayerIdSignal.value;
+    const activeEntry = activeLayerId ? this.vectorLayers.get(activeLayerId) : undefined;
+    const entries = activeEntry ? [activeEntry] : Array.from(this.vectorLayers.values());
+
+    const highlightFeatures: Feature[] = [];
+    for (const entry of entries) {
+      for (const id of selectedIds) {
+        const found = entry.source.getFeatureById(id as string | number);
+        const geometry = found?.getGeometry();
+        if (!found || !geometry) continue;
+        const highlight = new Feature({ geometry });
+        highlight.setId(`${entry.descriptor.id}::${String(id)}`);
+        highlightFeatures.push(highlight);
+      }
+    }
+
+    this.selectionHighlightSource.clear(true);
+    if (highlightFeatures.length > 0) {
+      this.selectionHighlightSource.addFeatures(highlightFeatures);
+    }
   }
 
   /**
@@ -1016,11 +1217,12 @@ export class MapController {
           viewCrs?.getCode?.() || "EPSG:3857"
         );
 
+      const queryParams = resolveFeatureQueryParameters(descriptor, extent as number[], projectionCode);
       const queryBox: BoundingBox = [
-        extent[0],
-        extent[1],
-        extent[2],
-        extent[3],
+        queryParams.queryExtent[0],
+        queryParams.queryExtent[1],
+        queryParams.queryExtent[2],
+        queryParams.queryExtent[3],
       ];
       const newFeatures: Feature[] = [];
 
@@ -1065,9 +1267,22 @@ export class MapController {
           fields = Array.from(fieldSet);
         }
 
+        if (
+          queryParams.dataProjection !== NO_CRS_CODE
+          && !isProjectionRegistered(queryParams.dataProjection)
+          && !(await ensureProjectionRegistered(queryParams.dataProjection, descriptor.crs?.proj4))
+        ) {
+          logging.warn("Layer CRS cannot be registered for display; skipping layer", {
+            scope: "MapController",
+            layerId: descriptor.id,
+            crs: queryParams.dataProjection,
+          });
+          return [];
+        }
+
         const options: QueryExtentOptions = {
           extent: queryBox,
-          targetProjection: projectionCode,
+          ...(queryParams.targetProjection ? { targetProjection: queryParams.targetProjection } : {}),
           includeGeometry: true,
           fields,
         };
@@ -1075,7 +1290,7 @@ export class MapController {
         const result = await api.queryExtent(
           descriptor.id,
           options,
-          projectionCode
+          queryParams.targetProjection
         );
 
         if (!result) {
@@ -1095,7 +1310,7 @@ export class MapController {
               )
             : undefined);
 
-        const dataProjection = descriptor.crs?.authId || "EPSG:4326";
+        const dataProjection = queryParams.dataProjection;
 
         let buffer: ArrayBuffer | null = null;
         if ("buffer" in result && result.buffer) {
@@ -1140,7 +1355,7 @@ export class MapController {
                 try {
                   geometry = this.wkbFormat.readGeometry(wkbSlice, {
                     dataProjection,
-                    featureProjection: projectionCode,
+                    featureProjection: queryParams.featureProjection,
                   });
                 } catch (geomErr) {
                   logging.warn(
@@ -1204,12 +1419,12 @@ export class MapController {
               if (featRecord.wkb) {
                 geometry = this.wkbFormat.readGeometry(featRecord.wkb, {
                   dataProjection,
-                  featureProjection: projectionCode,
+                  featureProjection: queryParams.featureProjection,
                 });
               } else if (featRecord.geojson) {
                 geometry = this.geojsonFormat.readGeometry(featRecord.geojson, {
                   dataProjection,
-                  featureProjection: projectionCode,
+                  featureProjection: queryParams.featureProjection,
                 });
               }
 
@@ -1248,6 +1463,9 @@ export class MapController {
 
         if (newFeatures.length > 0) {
           source.addFeatures(newFeatures);
+          if (selectedFeatureIdsSignal.value.size > 0) {
+            this.refreshSelectionHighlight();
+          }
         }
       } catch (err) {
         logging.error("Failed to load features for layer", err, {
@@ -1296,12 +1514,10 @@ export class MapController {
     }
 
     try {
-      const sourceCrs = descriptor.crs?.authId || "EPSG:4326";
-      const extent3857 = transformExtent(
-        descriptor.extent,
-        sourceCrs,
-        "EPSG:3857"
-      );
+      const extent3857 = this.layerExtentInDisplayCrs(descriptor);
+      if (!extent3857) {
+        return;
+      }
 
       if (!extent3857 || extent3857.some((val) => !isFinite(val))) {
         return;
@@ -1340,11 +1556,8 @@ export class MapController {
     const extent3857 = this.view.calculateExtent(size);
     if (!extent3857 || extent3857.some((val) => !isFinite(val))) return;
 
-    const [minLon, minLat, maxLon, maxLat] = transformExtent(
-      extent3857,
-      "EPSG:3857",
-      "EPSG:4326"
-    );
+    const [minLon, minLat, maxLon, maxLat] =
+      this.displayCrs.none ? extent3857 : transformExtent(extent3857, this.view.getProjection(), "EPSG:4326");
 
     viewportExtentSignal.value = [
       Math.round(minLon * 100000) / 100000,
@@ -1376,7 +1589,10 @@ export class MapController {
         clearTimeout(this.scaleThrottleTimer);
         this.scaleThrottleTimer = null;
       }
-      scaleDenominatorSignal.value = getScale(this.view);
+      scaleDenominatorSignal.value = getScale(this.view, {
+        method: measurementSettingsSignal.value.scaleMethod,
+        size: this.map.getSize(),
+      });
     };
 
     if (immediate || elapsed >= 250) {
@@ -1482,7 +1698,19 @@ export class MapController {
    * @returns {void}
    */
   public resetExtent(): void {
-    this.view.animate({ center: fromLonLat([15, 35]), zoom: 3, duration: 300 });
+    if (this.displayCrs.none) {
+      this.fitAllLayers();
+      return;
+    }
+    if (this.displayCrs.code === DEFAULT_DISPLAY_CRS) {
+      this.view.animate({ center: fromLonLat([15, 35]), zoom: 3, duration: 300 });
+      return;
+    }
+    try {
+      this.fitExtent([-25, 10, 55, 60], { duration: 300 });
+    } catch {
+      this.fitAllLayers();
+    }
   }
 
   /**
@@ -1505,7 +1733,12 @@ export class MapController {
     if (!extent || extent.length !== 4) return;
 
     const viewCrs = this.view.getProjection() || "EPSG:3857";
-    const projected = transformExtent(extent, "EPSG:4326", viewCrs);
+    const extentCrs =
+      !Array.isArray(optionsOrSize) && optionsOrSize?.extentCrs ? optionsOrSize.extentCrs : "EPSG:4326";
+    const projected =
+      this.displayCrs.none || extentCrs.toUpperCase() === this.displayCrs.code ?
+        extent
+      : transformExtent(extent, extentCrs, viewCrs);
     const [minX, minY, maxX, maxY] = projected;
     const deltaX = Math.abs(maxX - minX);
     const deltaY = Math.abs(maxY - minY);
@@ -1589,18 +1822,284 @@ export class MapController {
     rotation?: number;
     padding?: [number, number, number, number];
     duration?: number;
+    units?: "lonlat" | "project";
+    extentCrs?: string;
   }): void {
+    const units = payload.units ?? "lonlat";
+    if (units === "project") {
+      const target = resolveDisplayCrs(projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs);
+      if (target.code !== this.displayCrs.code) {
+        // The view is still switching to the Project CRS; apply once it has.
+        this.pendingProjectViewport = payload;
+        return;
+      }
+    }
     if (payload.rotation !== undefined) {
       this.view.setRotation(payload.rotation);
     }
+    const viewCode = this.displayCrs.code;
     if (payload.extent && payload.extent.length === 4) {
       this.fitExtent(payload.extent, {
         padding: payload.padding,
         duration: payload.duration,
+        extentCrs: payload.extentCrs ?? (units === "project" ? viewCode : "EPSG:4326"),
       });
     } else if (payload.center) {
-      this.view.setCenter(fromLonLat([payload.center.x, payload.center.y]));
+      const center = [payload.center.x, payload.center.y];
+      this.view.setCenter(
+        units === "project" || this.displayCrs.none ? center : transform(center, "EPSG:4326", this.view.getProjection())
+      );
     }
+  }
+
+  /**
+   * @description Viewport to persist in `<viewport>` (ADR 0033): in Project CRS units when the project has a Project CRS (including No CRS), otherwise in lon/lat (the legacy rule for files without `<crs>`).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {ProjectViewport | null} Viewport, or null when the map has no size yet.
+   */
+  public getViewportForSave(): ProjectViewport | null {
+    const size = this.map.getSize();
+    if (!size || size[0] <= 0 || size[1] <= 0) return null;
+    const viewExtent = this.view.calculateExtent(size);
+    if (!viewExtent || viewExtent.some((v) => !isFinite(v))) return null;
+    const hasProjectCrs = Boolean(projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs);
+    const extent =
+      hasProjectCrs || this.displayCrs.none ? viewExtent : transformExtent(viewExtent, this.view.getProjection(), "EPSG:4326");
+    const round = (v: number) => Math.round(v * 100000) / 100000;
+    const [xmin, ymin, xmax, ymax] = extent.map(round);
+    return {
+      extent: { xmin, ymin, xmax, ymax },
+      center: { x: round((xmin + xmax) / 2), y: round((ymin + ymax) / 2) },
+      scale: scaleDenominatorSignal.peek(),
+      rotation: this.view.getRotation() || 0,
+    };
+  }
+
+  /**
+   * @description Current display CRS of the map viewport.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {DisplayCrs} Display CRS.
+   */
+  public getDisplayCrs(): DisplayCrs {
+    return { ...this.displayCrs };
+  }
+
+  /**
+   * @description Resolves once every pending display CRS switch has finished.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {Promise<void>}
+   */
+  public whenDisplayCrsSettled(): Promise<void> {
+    return this.displayCrsTask;
+  }
+
+  /**
+   * @description Switches the map to another display CRS: registers it, replaces the OpenLayers view, keeps the camera in place by reprojecting its extent (or applies a pending Project CRS viewport), zooms to fit all layers when switching to or from No CRS, and reloads every layer in the new CRS. Queued so switches apply in order.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @param {DisplayCrs} next - Target display CRS.
+   * @returns {Promise<void>}
+   */
+  public setDisplayCrs(next: DisplayCrs): Promise<void> {
+    this.displayCrsTask = this.displayCrsTask.then(async () => {
+      const currentCode = this.view.getProjection()?.getCode?.();
+      if (currentCode === next.code) {
+        this.displayCrs = next;
+        return;
+      }
+      if (!next.none && !(await ensureProjectionRegistered(next.code, next.proj4))) {
+        logging.warn("Project CRS cannot be registered; keeping the current display CRS", {
+          scope: "MapController",
+          crs: next.code,
+        });
+        addConsoleLog("warn", `Cannot display in ${next.code}: no CRS definition available.`, "Map");
+        return;
+      }
+      if (next.none) ensureNoCrsProjection();
+
+      const previous = this.displayCrs;
+      const size = this.map.getSize();
+      const oldExtent =
+        size && size[0] > 0 && size[1] > 0 ? this.view.calculateExtent(size) : null;
+      const rotation = this.view.getRotation() || 0;
+
+      const newView = this.createDefaultView(next);
+      newView.setRotation(rotation);
+      this.unbindViewEvents();
+      this.view = newView;
+      this.displayCrs = next;
+      this.map.setView(newView);
+      this.bindViewEvents(newView);
+
+      const pending = this.pendingProjectViewport;
+      this.pendingProjectViewport = null;
+      if (pending) {
+        this.setViewport(pending);
+      } else if (previous.none || next.none) {
+        this.fitAllLayers();
+      } else if (oldExtent && oldExtent.every((v) => isFinite(v))) {
+        try {
+          const reprojected = transformExtent(oldExtent, previous.code, next.code);
+          if (reprojected.every((v) => isFinite(v))) {
+            newView.fit(reprojected, size ? { size } : undefined);
+          }
+        } catch (err) {
+          logging.warn("Failed to reproject camera into the new display CRS", err, { scope: "MapController" });
+          this.fitAllLayers();
+        }
+      }
+
+      for (const entry of this.vectorLayers.values()) {
+        entry.source.clear(true);
+        entry.source.refresh();
+      }
+      this.refreshSelectionHighlight();
+      this.updateViewportSignals();
+      this.updateScaleSignal(true);
+      addConsoleLog("info", `Map display CRS set to ${next.none ? "No CRS" : next.code}.`, "Map");
+    }).catch((err) => {
+      logging.error("Display CRS switch failed", err, { scope: "MapController" });
+    });
+    return this.displayCrsTask;
+  }
+
+  /**
+   * @description Fits the camera to the union of every layer's extent in the display CRS.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public fitAllLayers(): void {
+    let union: number[] | null = null;
+    for (const entry of this.vectorLayers.values()) {
+      const ext = this.layerExtentInDisplayCrs(entry.descriptor);
+      if (!ext) continue;
+      union = union ?
+        [Math.min(union[0], ext[0]), Math.min(union[1], ext[1]), Math.max(union[2], ext[2]), Math.max(union[3], ext[3])]
+      : [...ext];
+    }
+    if (!union) return;
+    const size = this.map.getSize();
+    try {
+      this.view.fit(union, {
+        ...(size && size[0] > 0 && size[1] > 0 ? { size } : {}),
+        padding: [40, 40, 40, 40],
+      });
+    } catch (err) {
+      logging.warn("Failed to fit all layers", err, { scope: "MapController" });
+    }
+  }
+
+  /**
+   * @description A layer's native extent expressed in the display CRS (raw under No CRS), or null when it is missing, empty or cannot be reprojected.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @private
+   * @param {LayerDescriptor} descriptor - Layer descriptor.
+   * @returns {number[] | null} Extent.
+   */
+  private layerExtentInDisplayCrs(descriptor: LayerDescriptor): number[] | null {
+    const ext = descriptor.extent;
+    if (!ext || !Array.isArray(ext) || ext.length !== 4) return null;
+    if (ext.every((v) => v === 0) || ext.some((v) => !isFinite(v))) return null;
+    if (this.displayCrs.none) return [...ext];
+    const dataCrs = resolveLayerDataCrs(descriptor.crs);
+    if (!isProjectionRegistered(dataCrs) && !(descriptor.crs?.proj4 && registerProjectionDefinition(dataCrs, descriptor.crs.proj4))) {
+      return null;
+    }
+    const out = transformExtent(ext, dataCrs, this.view.getProjection());
+    return out.every((v) => isFinite(v)) ? out : null;
+  }
+
+  /**
+   * @description Converts a view coordinate to lon/lat, or returns it unchanged under No CRS.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @private
+   * @param {number[]} coordinate - View coordinate.
+   * @returns {number[]} Lon/lat (or raw) coordinate.
+   */
+  private toLonLatOrRaw(coordinate: number[]): number[] {
+    if (this.displayCrs.none) return coordinate;
+    try {
+      return transform(coordinate, this.view.getProjection(), "EPSG:4326");
+    } catch {
+      return coordinate;
+    }
+  }
+
+  /**
+   * @description Creates a view in a display CRS centred on the default location (the origin under No CRS).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @private
+   * @param {DisplayCrs} crs - Display CRS.
+   * @returns {View} The view.
+   */
+  private createDefaultView(crs: DisplayCrs): View {
+    if (crs.none) {
+      ensureNoCrsProjection();
+      return new View({ projection: NO_CRS_CODE, center: [0, 0], resolution: 1 });
+    }
+    if (crs.code === DEFAULT_DISPLAY_CRS) {
+      return new View({ center: fromLonLat([15, 35]), zoom: 3 });
+    }
+    let center = [0, 0];
+    try {
+      center = transform([15, 35], "EPSG:4326", crs.code);
+    } catch {
+      // keep origin
+    }
+    return new View({ projection: crs.code, center, zoom: 3 });
+  }
+
+  /**
+   * @description Subscribes to view events that drive the scale signal.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @private
+   * @param {View} view - View to observe.
+   * @returns {void}
+   */
+  private bindViewEvents(view: View): void {
+    const handler = () => this.updateScaleSignal(false);
+    view.on("change:resolution", handler);
+    this.viewListenerKeys.push(() => view.un("change:resolution", handler));
+  }
+
+  /**
+   * @description Removes the current view's event subscriptions.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @private
+   * @returns {void}
+   */
+  private unbindViewEvents(): void {
+    for (const off of this.viewListenerKeys) off();
+    this.viewListenerKeys = [];
   }
 
   /**
@@ -1732,6 +2231,17 @@ export class MapController {
       }
     }
     this.vectorLayers.clear();
+
+    if (this.selectionHighlightLayer) {
+      try {
+        this.map.removeLayer(this.selectionHighlightLayer);
+        this.selectionHighlightSource?.clear();
+      } catch {
+        // Suppress overlay cleanup errors
+      }
+      this.selectionHighlightLayer = null;
+      this.selectionHighlightSource = null;
+    }
 
     if (activeMapControllerSignal.value === this) {
       activeMapControllerSignal.value = null;

@@ -4,13 +4,14 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-11-08
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 
 import type { ActionDefinition } from "@shared/types";
 import * as ApiFunctions from "../api/ApiFunctions";
 import {
+  mdiEarthArrowRight,
   mdiHandBackRightOutline,
   mdiFolderPlusOutline,
   mdiFolderOpenOutline,
@@ -205,6 +206,11 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     description: "Zooms viewport to fit selected features",
     icon: mdiLoupe,
     keyCombination: { key: "j", ctrl: true },
+  },
+  {
+    name: "set_project_crs_from_layer",
+    description: "Sets the Project CRS to the CRS of the active layer",
+    icon: mdiEarthArrowRight,
   },
   {
     name: "zoom_to_layer",
