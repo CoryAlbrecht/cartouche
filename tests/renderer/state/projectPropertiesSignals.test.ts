@@ -57,6 +57,19 @@ const {
   setMeasurementSettings,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const gis = jiti('../../../src/renderer/state/gisSignals.ts');
+const {
+  isTimeFilterActiveSignal,
+  timeFilterFrameStartSignal,
+  timeFilterFrameEndSignal,
+  timeFilterRangeStartSignal,
+  timeFilterRangeEndSignal,
+  timeFilterStepSignal,
+  timeFilterUnitSignal,
+  setTimeFilterRange,
+  setTimeFilterFrame,
+  setTimeFilterStep,
+  resetTimeFilterState,
+} = jiti('../../../src/renderer/state/timeFilterSignals.ts');
 const { resolveProjectDisplayName, isDefaultProjectTitle } = jiti('../../../src/shared/project/projectTitle.ts');
 
 describe('projectPropertiesSignals draft store (Ticket #271)', () => {
@@ -294,6 +307,53 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     activeProjectPropertiesTabSignal.value = 'general';
     assert.equal(projectPropertiesDraftSignal.value.title, 'Across Tabs');
     assert.equal(projectPropertiesDraftSignal.value.scaleMethod, 'bottom');
+  });
+
+  it('seeds the Time Filter draft from the widget signals and reaches them only on Apply, leaving the playhead alone (Ticket #276)', async () => {
+    resetTimeFilterState();
+    setTimeFilterRange(1000, 9000);
+    setTimeFilterFrame(4000, 5000);
+    setTimeFilterStep(2, 'Hours');
+    openProjectPropertiesDialog();
+    const draft = projectPropertiesDraftSignal.value;
+    assert.equal(draft.timeFilterEnabled, false);
+    assert.equal(draft.timeFilterFrom, 1000);
+    assert.equal(draft.timeFilterTo, 9000);
+    assert.equal(draft.timeFilterStep, 2);
+    assert.equal(draft.timeFilterUnit, 'Hours');
+
+    updateProjectPropertiesDraft({ timeFilterEnabled: true, timeFilterFrom: 2000, timeFilterTo: 8000, timeFilterStep: 3, timeFilterUnit: 'Minutes' });
+    assert.equal(isTimeFilterActiveSignal.value, false, 'widget untouched before Apply');
+    assert.equal(timeFilterRangeStartSignal.value, 1000);
+    assert.equal(timeFilterStepSignal.value, 2);
+
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    assert.equal(isTimeFilterActiveSignal.value, true, 'Enabled reaches the widget on Apply');
+    assert.equal(timeFilterRangeStartSignal.value, 2000);
+    assert.equal(timeFilterRangeEndSignal.value, 8000);
+    assert.equal(timeFilterStepSignal.value, 3);
+    assert.equal(timeFilterUnitSignal.value, 'Minutes');
+    assert.equal(timeFilterFrameStartSignal.value, 4000, 'current (playhead) untouched');
+    assert.equal(timeFilterFrameEndSignal.value, 5000, 'frame end untouched');
+    assert.deepEqual(currentProjectSignal.value.timeFilter, { enabled: true, from: 2000, to: 8000, step: 3, unit: 'Minutes' });
+    assert.equal(isProjectDirtySignal.value, true);
+    resetTimeFilterState();
+  });
+
+  it('Cancel throws away Time Filter draft edits without touching the widget (Ticket #276)', () => {
+    resetTimeFilterState();
+    setTimeFilterRange(1000, 9000);
+    setTimeFilterFrame(4000, 5000);
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ timeFilterEnabled: true, timeFilterFrom: 0, timeFilterTo: 1, timeFilterStep: 7, timeFilterUnit: 'Years' });
+    cancelProjectPropertiesEdits();
+    assert.equal(isTimeFilterActiveSignal.value, false);
+    assert.equal(timeFilterRangeStartSignal.value, 1000);
+    assert.equal(timeFilterRangeEndSignal.value, 9000);
+    assert.equal(timeFilterStepSignal.value, 1);
+    assert.equal(timeFilterUnitSignal.value, 'Days');
+    assert.equal(timeFilterFrameStartSignal.value, 4000);
+    resetTimeFilterState();
   });
 
   it('Cancel discards a draft background colour (Ticket #272)', () => {

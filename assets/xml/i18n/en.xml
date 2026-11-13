@@ -241,6 +241,8 @@
     <string name="project_properties_scale_method_bottom">Bottom of Map</string>
     <string name="project_properties_scale_method_average">Average of Top, Middle, and Bottom Scales</string>
     <string name="project_properties_scale_method_equator">At Equator</string>
+    <string name="project_properties_tab_time_filter">Time Filter</string>
+    <string name="project_properties_group_time_filter">Project Time Filter</string>
     <string name="project_properties_label_home">Project Home</string>
     <string name="project_properties_btn_browse_home">Choose Project Home directory...</string>
     <string name="project_properties_label_path_mode">Save Path</string>

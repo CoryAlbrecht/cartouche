@@ -107,6 +107,8 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
       project_properties_path_mode_absolute: 'Absolute',
       project_properties_path_mode_relative: 'Relative',
       project_properties_tab_measurements: 'Measurements',
+      project_properties_tab_time_filter: 'Time Filter',
+      project_properties_group_time_filter: 'Project Time Filter',
       project_properties_group_measurements: 'Measurements',
       project_properties_label_distance_unit: 'Units for Distance',
       project_properties_label_area_unit: 'Units for Area',
@@ -244,6 +246,22 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     assert.ok(html.includes('<option value="square-kilometres" selected="">Square Kilometres</option>'));
     assert.ok(html.includes('<option value="average" selected="">Average of Top, Middle, and Bottom Scales</option>'));
     assert.equal((html.match(/<option value="/g) || []).length, 10 + 12 + 5, 'ten distance units, twelve area units, five scale methods');
+    activeProjectPropertiesTabSignal.value = 'general';
+  });
+
+  it('renders a Time Filter tab with the shared controls bound to the draft and no playhead (Ticket #276)', () => {
+    openProjectPropertiesDialog();
+    activeProjectPropertiesTabSignal.value = 'time_filter';
+    updateProjectPropertiesDraft({ timeFilterEnabled: true, timeFilterStep: 2.5, timeFilterUnit: 'Hours' });
+    const html = render();
+    assert.ok(/data-tab-id="time_filter" class="project-properties-tab-btn active"/.test(html), 'Time Filter tab button active');
+    assert.ok(html.includes('project-properties-tab-pane time-filter'));
+    assert.ok(html.includes('class="time-filter-controls"'), 'uses the shared TimeFilterControls component');
+    assert.ok(html.includes('class="toolbar-btn active"'), 'Enabled toggle reflects the draft');
+    assert.ok(html.includes('From:') && html.includes('To:') && html.includes('Step:'));
+    assert.ok(html.includes('value="2.5"'), 'step from the draft');
+    assert.ok(html.includes('<option value="Hours" selected=""'), 'unit from the draft');
+    assert.ok(!html.includes('Frame:') && !html.includes('time-filter-slider'), 'no playhead or scrubber in the dialog');
     activeProjectPropertiesTabSignal.value = 'general';
   });
 

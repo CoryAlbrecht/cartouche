@@ -216,6 +216,8 @@
     <string name="project_properties_scale_method_bottom">Bas de la carte</string>
     <string name="project_properties_scale_method_average">Moyenne des échelles haut, milieu et bas</string>
     <string name="project_properties_scale_method_equator">À l'équateur</string>
+    <string name="project_properties_tab_time_filter">Filtre temporel</string>
+    <string name="project_properties_group_time_filter">Filtre temporel du projet</string>
     <string name="project_properties_label_home">Dossier du projet</string>
     <string name="project_properties_btn_browse_home">Choisir le dossier du projet...</string>
     <string name="project_properties_label_path_mode">Chemins enregistrés</string>

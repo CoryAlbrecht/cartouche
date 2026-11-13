@@ -1,7 +1,7 @@
 /**
  * @file ProjectPropertiesDialog.tsx
  * @module renderer/workbench/dialogs/ProjectPropertiesDialog
- * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
+ * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The Time Filter tab edits Enabled / From / To / Step / Unit through the shared TimeFilterControls (no playhead); edits reach the TimeFilterWidget and the map only on Apply / OK. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-13
@@ -11,11 +11,13 @@
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
  * @see {@link ColourPickerWidget}
+ * @see {@link TimeFilterControls}
  */
 
 import React, { useCallback } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal, mdiRuler } from "@mdi/js";
+import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal, mdiRuler, mdiClockOutline } from "@mdi/js";
+import { TimeFilterControls } from "@renderer/components/common/TimeFilterControls";
 import Icon from "@renderer/components/common/Icon";
 import {
   isProjectPropertiesOpenSignal,
@@ -72,6 +74,11 @@ const SIDEBAR_TABS: ProjectPropertiesSidebarTabDef[] = [
     id: "measurements",
     labelKey: "project_properties_tab_measurements",
     icon: mdiRuler,
+  },
+  {
+    id: "time_filter",
+    labelKey: "project_properties_tab_time_filter",
+    icon: mdiClockOutline,
   },
 ];
 
@@ -566,6 +573,39 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </select>
                 </div>
               </div>
+            </fieldset>
+          </div>
+        )}
+        {activeTab === "time_filter" && (
+          <div
+            className='project-properties-tab-pane time-filter'
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <fieldset className='preference-group-box'>
+              <legend className='preference-group-legend'>
+                {t("project_properties_group_time_filter")}
+              </legend>
+              <TimeFilterControls
+                enabled={draft.timeFilterEnabled}
+                from={draft.timeFilterFrom}
+                to={draft.timeFilterTo}
+                step={draft.timeFilterStep}
+                unit={draft.timeFilterUnit}
+                onEnabledChange={(enabled) =>
+                  updateProjectPropertiesDraft({ timeFilterEnabled: enabled })
+                }
+                onFromChange={(from) =>
+                  updateProjectPropertiesDraft({ timeFilterFrom: from })
+                }
+                onToChange={(to) =>
+                  updateProjectPropertiesDraft({ timeFilterTo: to })
+                }
+                onStepChange={(step) =>
+                  updateProjectPropertiesDraft({ timeFilterStep: step })
+                }
+                onUnitChange={(unit) =>
+                  updateProjectPropertiesDraft({ timeFilterUnit: unit })
+                }
+              />
             </fieldset>
           </div>
         )}

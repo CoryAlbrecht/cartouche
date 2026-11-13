@@ -1,7 +1,7 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-13
@@ -13,9 +13,21 @@
  */
 
 import { signal, batch, type Signal } from '@preact/signals-react';
-import type { ProjectPropertiesPatch } from '@shared/types';
+import type { ProjectPropertiesPatch, TimeFilterUnit } from '@shared/types';
+import {
+  isTimeFilterActiveSignal,
+  timeFilterRangeStartSignal,
+  timeFilterRangeEndSignal,
+  timeFilterStepSignal,
+  timeFilterUnitSignal,
+  setTimeFilterActive,
+  setTimeFilterRange,
+  setTimeFilterStep,
+} from './timeFilterSignals';
+import { MIN_TIME_FILTER_STEP } from '../map/timeFilterMath';
 import { logging } from '../../shared/logging';
 import {
+  currentProjectSignal,
   hasProjectSignal,
   isProjectDirtySignal,
   projectTitleSignal,
@@ -52,14 +64,14 @@ import {
 } from '../../shared/project/projectHome';
 
 /**
- * @typedef {'general' | 'measurements'} ProjectPropertiesTabId
+ * @typedef {'general' | 'measurements' | 'time_filter'} ProjectPropertiesTabId
  * @description Identifier of a sidebar tab in the Project Properties dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export type ProjectPropertiesTabId = 'general' | 'measurements';
+export type ProjectPropertiesTabId = 'general' | 'measurements' | 'time_filter';
 
 /**
  * @typedef {Object} ProjectPropertiesDraft
@@ -76,6 +88,11 @@ export type ProjectPropertiesTabId = 'general' | 'measurements';
  * @property {ProjectDistanceUnit} distanceUnit - Draft Units for Distance.
  * @property {ProjectAreaUnit} areaUnit - Draft Units for Area.
  * @property {ScaleCalculationMethod} scaleMethod - Draft Scale Calculation method.
+ * @property {boolean} timeFilterEnabled - Draft Time Filter Enabled flag.
+ * @property {number} timeFilterFrom - Draft Time Filter range start (From) in UTC epoch ms.
+ * @property {number} timeFilterTo - Draft Time Filter range end (To) in UTC epoch ms.
+ * @property {number} timeFilterStep - Draft Time Filter step magnitude.
+ * @property {TimeFilterUnit} timeFilterUnit - Draft Time Filter step unit.
  */
 export interface ProjectPropertiesDraft {
   title: string;
@@ -86,6 +103,11 @@ export interface ProjectPropertiesDraft {
   distanceUnit: ProjectDistanceUnit;
   areaUnit: ProjectAreaUnit;
   scaleMethod: ScaleCalculationMethod;
+  timeFilterEnabled: boolean;
+  timeFilterFrom: number;
+  timeFilterTo: number;
+  timeFilterStep: number;
+  timeFilterUnit: TimeFilterUnit;
 }
 
 /**
@@ -105,6 +127,11 @@ function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
     home: '',
     pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
     ...DEFAULT_MEASUREMENT_SETTINGS,
+    timeFilterEnabled: false,
+    timeFilterFrom: 0,
+    timeFilterTo: 0,
+    timeFilterStep: 1,
+    timeFilterUnit: 'Days',
   };
 }
 
@@ -172,6 +199,11 @@ export function beginProjectPropertiesDraft(): void {
       home: resolveEffectiveProjectHome(projectHomeSignal.value, projectFilePathSignal.value) ?? '',
       pathMode: projectPathModeSignal.value,
       ...measurementSettingsSignal.value,
+      timeFilterEnabled: isTimeFilterActiveSignal.value,
+      timeFilterFrom: timeFilterRangeStartSignal.value,
+      timeFilterTo: timeFilterRangeEndSignal.value,
+      timeFilterStep: timeFilterStepSignal.value,
+      timeFilterUnit: timeFilterUnitSignal.value,
     };
     projectPropertiesBaselineKeySignal.value += 1;
   });
@@ -270,6 +302,47 @@ export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): Proj
 }
 
 /**
+ * @function applyTimeFilterDraft
+ * @description Commits the draft Time Filter settings (Enabled, From, To, Step, Unit) to the time filter signals that drive the TimeFilterWidget and the map, exactly as the widget's own controls do. The playhead (`current` frame) is never written; it only moves if the range setter has to clamp it inside the new range. The committed values are mirrored into the current project model so the next save persists them.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectPropertiesDraft} draft - Draft whose time filter members are committed.
+ * @returns {void}
+ */
+export function applyTimeFilterDraft(draft: ProjectPropertiesDraft): void {
+  const step = Number.isFinite(draft.timeFilterStep) && draft.timeFilterStep >= MIN_TIME_FILTER_STEP ?
+    draft.timeFilterStep
+  : timeFilterStepSignal.value;
+  batch(() => {
+    if (isTimeFilterActiveSignal.value !== Boolean(draft.timeFilterEnabled)) {
+      setTimeFilterActive(Boolean(draft.timeFilterEnabled));
+    }
+    if (
+      timeFilterRangeStartSignal.value !== draft.timeFilterFrom
+      || timeFilterRangeEndSignal.value !== draft.timeFilterTo
+    ) {
+      setTimeFilterRange(draft.timeFilterFrom, draft.timeFilterTo);
+    }
+    if (timeFilterStepSignal.value !== step || timeFilterUnitSignal.value !== draft.timeFilterUnit) {
+      setTimeFilterStep(step, draft.timeFilterUnit);
+    }
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.timeFilter = {
+        ...(project.timeFilter || {}),
+        enabled: Boolean(draft.timeFilterEnabled),
+        from: draft.timeFilterFrom,
+        to: draft.timeFilterTo,
+        step,
+        unit: draft.timeFilterUnit,
+      };
+    }
+  });
+}
+
+/**
  * @function applyProjectPropertiesEdits
  * @description Apply: commits the whole draft to the Project Store in one IPC round trip, mirrors it into the renderer signals, and sets the Project Dirty State. The dialog stays open with the committed values as its new baseline.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -316,6 +389,7 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
       areaUnit: patch.areaUnit,
       scaleMethod: patch.scaleMethod,
     });
+    applyTimeFilterDraft(projectPropertiesDraftSignal.value);
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();
   });
