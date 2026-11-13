@@ -127,7 +127,11 @@ jobs:
   build-windows:
     name: Build (Windows)
     if: inputs.platforms == 'all' || inputs.platforms == 'windows'
-    runs-on: windows-latest
+    # Pinned to VS 2022, the toolchain upstream gdal-async builds and tests on.
+    # windows-latest (Server 2025 + VS 2026 / UCRT 10.0.26100) fails to link
+    # bundled netCDF: its config.h `#define fstat _fstat64` collides with the
+    # newer UCRT inline fstat (LNK2005 _fstat64 in ocdump.obj).
+    runs-on: windows-2022
 
     steps:
       - name: Checkout repository
