@@ -486,6 +486,7 @@ export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> 
  * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
  * @property {ProjectCrs | null} [crs] - Explicit Project CRS (null removes it); `{ none: true }` selects No CRS.
  * @property {ProjectCrs[]} [recentCrs] - Recently Used CRSs, most recent first (at most 20).
+ * @property {Partial<Record<'point' | 'line' | 'polygon', string | null>>} [defaultStyles] - Project Default Styles in Cartouche JSON per slot; null clears a slot, an absent slot is left unchanged.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -502,6 +503,7 @@ export interface ProjectPropertiesPatch {
   scaleMethod?: ScaleCalculationMethod;
   crs?: ProjectCrs | null;
   recentCrs?: ProjectCrs[];
+  defaultStyles?: Partial<Record<'point' | 'line' | 'polygon', string | null>>;
 }
 
 /**

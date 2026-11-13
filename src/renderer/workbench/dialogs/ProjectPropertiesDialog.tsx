@@ -13,11 +13,13 @@
  * @see {@link ColourPickerWidget}
  * @see {@link TimeFilterControls}
  * @see {@link ProjectCrsTab}
+ * @see {@link ProjectDefaultStylesTab}
  */
 
 import React, { useCallback } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal, mdiRuler, mdiClockOutline, mdiEarth } from "@mdi/js";
+import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal, mdiRuler, mdiClockOutline, mdiEarth, mdiPaletteOutline } from "@mdi/js";
+import { ProjectDefaultStylesTab } from "./ProjectDefaultStylesTab";
 import { ProjectCrsTab } from "./ProjectCrsTab";
 import { TimeFilterControls } from "@renderer/components/common/TimeFilterControls";
 import Icon from "@renderer/components/common/Icon";
@@ -81,6 +83,11 @@ const SIDEBAR_TABS: ProjectPropertiesSidebarTabDef[] = [
     id: "crs",
     labelKey: "project_properties_tab_crs",
     icon: mdiEarth,
+  },
+  {
+    id: "default_styles",
+    labelKey: "project_properties_tab_default_styles",
+    icon: mdiPaletteOutline,
   },
   {
     id: "time_filter",
@@ -584,6 +591,8 @@ export const ProjectPropertiesDialog: React.FC = () => {
           </div>
         )}
         {activeTab === "crs" && <ProjectCrsTab />}
+
+        {activeTab === "default_styles" && <ProjectDefaultStylesTab />}
 
         {activeTab === "time_filter" && (
           <div

@@ -20,7 +20,7 @@ import { projectStore } from '../../project/ProjectStore';
 import { Layer } from '../../project/models/Layer';
 import { geospatialService } from '../../worker/GeospatialService';
 import { mapGdalGeometryKind } from '../../worker/GeospatialEngine';
-import { createDefaultCartoucheLayerStyleJson } from '../../../shared/styles/defaultLayerStyles';
+import { getProjectDefaultStyles, resolveNewLayerStyleContent } from '../../../shared/styles/projectDefaultStyles';
 import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/ProjectBroadcaster';
 import { adoptFirstLayerCrs, broadcastProjectCrs } from '../../project/projectCrs';
 
@@ -107,10 +107,14 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   newLayer.geometryKind = isRaster ? 'Raster' : (metadata.geometryKind || 'Unknown');
   newLayer.crs = metadata.crs;
 
-  // Attach default Cartouche Symbology style to vector layers (exclude raster)
+  // Attach the Project Default Style for the layer's geometry family (or the random-colour
+  // application default when no slot applies) to vector layers; existing layers are never restyled.
   if (!isRaster) {
     newLayer.style = {
-      content: createDefaultCartoucheLayerStyleJson(newLayer.geometryKind),
+      content: resolveNewLayerStyleContent(
+        newLayer.geometryKind,
+        getProjectDefaultStyles(projectStore.getProject()?.styles)
+      ),
       format: 'cartouche'
     };
   }

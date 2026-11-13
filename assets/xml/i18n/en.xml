@@ -254,6 +254,11 @@
     <string name="project_properties_crs_hide_deprecated">Hide Deprecated CRSs</string>
     <string name="project_properties_crs_info">Coordinate Reference System Info</string>
     <string name="project_properties_crs_info_loading">Loading…</string>
+    <string name="project_properties_tab_default_styles">Default Styles</string>
+    <string name="project_properties_default_style_point">Point</string>
+    <string name="project_properties_default_style_line">Line</string>
+    <string name="project_properties_default_style_polygon">Polygon</string>
+    <string name="project_properties_default_style_use_app">Use application default</string>
     <string name="project_properties_label_home">Project Home</string>
     <string name="project_properties_btn_browse_home">Choose Project Home directory...</string>
     <string name="project_properties_label_path_mode">Save Path</string>

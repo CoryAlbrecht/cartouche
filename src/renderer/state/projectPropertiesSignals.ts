@@ -1,7 +1,7 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit, Project CRS / No CRS and the Recently Used CRSs). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit, Project CRS / No CRS and the Recently Used CRSs, Project Default Styles). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-13
@@ -54,6 +54,16 @@ import {
 import { findCrsCatalogueEntry } from './crsCatalogueSignals';
 import { MAX_RECENT_CRS, addToRecentCrsIfMissing } from '../../shared/types/crs';
 import {
+  DEFAULT_STYLE_SLOTS,
+  DEFAULT_STYLE_SLOT_GEOMETRY,
+  getProjectDefaultStyles,
+  setProjectDefaultStyles,
+  type DefaultStyleSlot,
+} from '../../shared/styles/projectDefaultStyles';
+import { createDefaultCartoucheLayerStyleJson } from '../../shared/styles/defaultLayerStyles';
+import { convertStyleFormat } from '../../shared/styles/flatStyleConverter';
+import type { StyleEditorValue } from '../../shared/styles/styleFormatSwitch';
+import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
   DEFAULT_NEW_PROJECT_PATH_MODE,
@@ -73,14 +83,14 @@ import {
 } from '../../shared/project/projectHome';
 
 /**
- * @typedef {'general' | 'measurements' | 'crs' | 'time_filter'} ProjectPropertiesTabId
+ * @typedef {'general' | 'measurements' | 'crs' | 'default_styles' | 'time_filter'} ProjectPropertiesTabId
  * @description Identifier of a sidebar tab in the Project Properties dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export type ProjectPropertiesTabId = 'general' | 'measurements' | 'crs' | 'time_filter';
+export type ProjectPropertiesTabId = 'general' | 'measurements' | 'crs' | 'default_styles' | 'time_filter';
 
 /**
  * @typedef {Object} ProjectPropertiesDraft
@@ -105,6 +115,7 @@ export type ProjectPropertiesTabId = 'general' | 'measurements' | 'crs' | 'time_
  * @property {boolean} crsNone - Draft "No CRS" flag.
  * @property {string} crsAuthId - Draft selected Project CRS (`AUTH:code`), empty when none is chosen.
  * @property {string[]} recentCrs - Draft Recently Used CRS ids, most recent first (trimmed to 20 on Apply).
+ * @property {Record<DefaultStyleSlot, StyleEditorValue | null>} defaultStyles - Draft Project Default Styles; null means "Use application default".
  */
 export interface ProjectPropertiesDraft {
   title: string;
@@ -123,6 +134,7 @@ export interface ProjectPropertiesDraft {
   crsNone: boolean;
   crsAuthId: string;
   recentCrs: string[];
+  defaultStyles: Record<DefaultStyleSlot, StyleEditorValue | null>;
 }
 
 /**
@@ -150,6 +162,7 @@ function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
     crsNone: false,
     crsAuthId: '',
     recentCrs: [],
+    defaultStyles: { point: null, line: null, polygon: null },
   };
 }
 
@@ -225,6 +238,7 @@ export function beginProjectPropertiesDraft(): void {
       crsNone: Boolean(projectCrsSignal.value?.none),
       crsAuthId: projectCrsSignal.value?.none ? '' : projectCrsSignal.value?.authId ?? '',
       recentCrs: projectRecentCrsSignal.value.map((c) => c.authId),
+      defaultStyles: seedDefaultStylesDraft(),
     };
     projectPropertiesBaselineKeySignal.value += 1;
   });
@@ -367,6 +381,117 @@ export function buildCrsPatch(draft: ProjectPropertiesDraft): Pick<ProjectProper
 }
 
 /**
+ * @function styleEditorValueFor
+ * @description Wraps Cartouche Symbology JSON as a style editor value.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string} content - Cartouche JSON.
+ * @returns {StyleEditorValue} Editor value.
+ */
+export function styleEditorValueFor(content: string): StyleEditorValue {
+  return {
+    styleFormat: 'cartouche',
+    sldVersion: '1.0.0',
+    styleContent: content,
+    styleValidationError: null,
+    formatCache: { cartouche: content },
+  };
+}
+
+/**
+ * @function seedDefaultStylesDraft
+ * @description Draft Project Default Styles from the committed shared styles (null for unset slots).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @returns {Record<DefaultStyleSlot, StyleEditorValue | null>} Draft slots.
+ */
+function seedDefaultStylesDraft(): Record<DefaultStyleSlot, StyleEditorValue | null> {
+  const committed = getProjectDefaultStyles(currentProjectSignal.value?.styles);
+  const result = { point: null, line: null, polygon: null } as Record<DefaultStyleSlot, StyleEditorValue | null>;
+  for (const slot of DEFAULT_STYLE_SLOTS) {
+    if (committed[slot]) result[slot] = styleEditorValueFor(committed[slot] as string);
+  }
+  return result;
+}
+
+/**
+ * @function setDraftUseApplicationDefault
+ * @description "Use application default" checkbox of a Default Styles section: checking clears the slot (removed on Apply); unchecking seeds the editor with a generated default for that geometry.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {DefaultStyleSlot} slot - Geometry family.
+ * @param {boolean} useApplicationDefault - Checkbox state.
+ * @returns {void}
+ */
+export function setDraftUseApplicationDefault(slot: DefaultStyleSlot, useApplicationDefault: boolean): void {
+  const current = projectPropertiesDraftSignal.value.defaultStyles ?? { point: null, line: null, polygon: null };
+  updateProjectPropertiesDraft({
+    defaultStyles: {
+      ...current,
+      [slot]: useApplicationDefault ? null : styleEditorValueFor(createDefaultCartoucheLayerStyleJson(DEFAULT_STYLE_SLOT_GEOMETRY[slot])),
+    },
+  });
+}
+
+/**
+ * @function updateDraftDefaultStyle
+ * @description Merges a style editor patch into a Default Styles slot of the draft.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {DefaultStyleSlot} slot - Geometry family.
+ * @param {Partial<StyleEditorValue>} patch - Editor patch.
+ * @returns {void}
+ */
+export function updateDraftDefaultStyle(slot: DefaultStyleSlot, patch: Partial<StyleEditorValue>): void {
+  const current = projectPropertiesDraftSignal.value.defaultStyles;
+  const value = current?.[slot];
+  if (!value) return;
+  updateProjectPropertiesDraft({ defaultStyles: { ...current, [slot]: { ...value, ...patch } } });
+}
+
+/**
+ * @function resolveDefaultStylesPatch
+ * @description Converts the draft Default Styles into Cartouche JSON per slot (null for "Use application default"), converting OpenLayers / SLD drafts to Cartouche. Throws when a slot has a validation error.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {Record<DefaultStyleSlot, StyleEditorValue | null> | undefined} slots - Draft slots.
+ * @returns {Promise<Record<DefaultStyleSlot, string | null>>} Patch slots.
+ * @throws {Error} When a slot's style is invalid.
+ */
+export async function resolveDefaultStylesPatch(
+  slots: Record<DefaultStyleSlot, StyleEditorValue | null> | undefined
+): Promise<Record<DefaultStyleSlot, string | null>> {
+  const result = { point: null, line: null, polygon: null } as Record<DefaultStyleSlot, string | null>;
+  for (const slot of DEFAULT_STYLE_SLOTS) {
+    const value = slots?.[slot];
+    if (!value) continue;
+    if (value.styleValidationError) {
+      throw new Error(`Default ${slot} style is invalid: ${value.styleValidationError}`);
+    }
+    result[slot] =
+      value.styleFormat === 'cartouche' ?
+        value.styleContent
+      : await convertStyleFormat(value.styleContent, {
+          fromFormat: value.styleFormat,
+          fromVersion: value.sldVersion,
+          toFormat: 'cartouche',
+          geometryKind: DEFAULT_STYLE_SLOT_GEOMETRY[slot],
+        });
+  }
+  return result;
+}
+
+/**
  * @function selectDraftCrs
  * @description Selects a CRS on the CRS tab. Selecting from the Predefined list also adds it to the top of the draft Recently Used list when it is not already there; selecting from Recently Used only selects it.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -438,6 +563,12 @@ export function applyTimeFilterDraft(draft: ProjectPropertiesDraft): void {
 export async function applyProjectPropertiesEdits(): Promise<boolean> {
   if (!hasProjectSignal.value) return false;
   const patch = buildProjectPropertiesPatch(projectPropertiesDraftSignal.value);
+  try {
+    patch.defaultStyles = await resolveDefaultStylesPatch(projectPropertiesDraftSignal.value.defaultStyles);
+  } catch (err) {
+    logging.warn('Project Default Styles not applied', err, { scope: 'projectProperties' });
+    return false;
+  }
 
   if (window.electronAPI?.updateProjectProperties) {
     try {
@@ -479,6 +610,9 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
     }
     if (patch.recentCrs !== undefined) {
       setProjectRecentCrs(patch.recentCrs);
+    }
+    if (patch.defaultStyles && currentProjectSignal.value) {
+      currentProjectSignal.value.styles = setProjectDefaultStyles(currentProjectSignal.value.styles, patch.defaultStyles);
     }
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();

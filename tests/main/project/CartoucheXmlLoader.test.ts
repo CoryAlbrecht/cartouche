@@ -1485,4 +1485,33 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const overflow = xml.replace('</recentCrs>', '<crs><authId>EPSG:1</authId></crs></recentCrs>');
     assert.equal(validateXmlAgainstSchema(overflow).valid, false, 'more than 20 entries fail validation');
   });
+  it('round-trips Project Default Styles under the reserved ids with no XSD change and rejects other _ ids (Ticket #282)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'default-styles.cproj');
+    const pointStyle = '{"format":"simple","version":1,"components":[]}';
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Defaults', appVersion: '0.1.0-dev' },
+      layers: [],
+      styles: [{ id: '_project_default_point', format: 'cartouche', content: pointStyle }]
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('<style id="_project_default_point" format="cartouche">'));
+    assert.ok(!xml.includes('_project_default_line'), 'unset slots are not written');
+    assert.equal(validateXmlAgainstSchema(xml).valid, true);
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.deepEqual(loaded.styles, [{ id: '_project_default_point', format: 'cartouche', content: pointStyle }]);
+
+    const badStyle = xml.replace('_project_default_point', '_my_style');
+    const badFile = path.join(tempDir, 'bad-reserved.cproj');
+    fs.writeFileSync(badFile, badStyle, 'utf-8');
+    await assert.rejects(() => loader.load(badFile), /reserved for application use/);
+
+    const badRef = xml.replace(/<layers>\s*<\/layers>/, '<layers><layer id="l"><name>L</name><type>vector</type><source>/x.shp</source><style href="#_project_default_point" /></layer></layers>');
+    assert.ok(badRef.includes('href="#_project_default_point"'), 'fixture references a reserved style');
+    const badRefFile = path.join(tempDir, 'bad-ref.cproj');
+    fs.writeFileSync(badRefFile, badRef, 'utf-8');
+    await assert.rejects(() => loader.load(badRefFile), /reserved for application use/);
+  });
 });

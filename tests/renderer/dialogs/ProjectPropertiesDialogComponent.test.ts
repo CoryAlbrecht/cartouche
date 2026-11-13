@@ -35,6 +35,9 @@ const {
   closeProjectPropertiesDialog,
   updateProjectPropertiesDraft,
   applyProjectPropertiesEdits,
+  setDraftUseApplicationDefault,
+  updateDraftDefaultStyle,
+  cancelProjectPropertiesEdits,
 } = jiti('../../../src/renderer/state/projectPropertiesSignals.ts');
 const {
   hasProjectSignal,
@@ -108,6 +111,11 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
       project_properties_path_mode_relative: 'Relative',
       project_properties_tab_measurements: 'Measurements',
       project_properties_tab_time_filter: 'Time Filter',
+      project_properties_tab_default_styles: 'Default Styles',
+      project_properties_default_style_point: 'Point',
+      project_properties_default_style_line: 'Line',
+      project_properties_default_style_polygon: 'Polygon',
+      project_properties_default_style_use_app: 'Use application default',
       project_properties_group_time_filter: 'Project Time Filter',
       project_properties_group_measurements: 'Measurements',
       project_properties_label_distance_unit: 'Units for Distance',
@@ -262,6 +270,40 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     assert.ok(html.includes('value="2.5"'), 'step from the draft');
     assert.ok(html.includes('<option value="Hours" selected=""'), 'unit from the draft');
     assert.ok(!html.includes('Frame:') && !html.includes('time-filter-slider'), 'no playhead or scrubber in the dialog');
+    activeProjectPropertiesTabSignal.value = 'general';
+  });
+
+  it('Default Styles tab: checkboxes checked with no default, unchecking seeds an editor, Apply stores and Cancel discards (Ticket #282)', async () => {
+    openProjectPropertiesDialog();
+    activeProjectPropertiesTabSignal.value = 'default_styles';
+    let html = render();
+    for (const slot of ['point', 'line', 'polygon']) {
+      assert.ok(new RegExp(`id="project-prop-default-style-${slot}-app"[^>]*checked=""|checked=""[^>]*id="project-prop-default-style-${slot}-app"`).test(html), `${slot} uses the application default`);
+      assert.ok(!html.includes(`id="project-default-${slot}-styling-format"`), `${slot} editor hidden while checked`);
+    }
+
+    setDraftUseApplicationDefault('point', false);
+    html = render();
+    assert.ok(html.includes('id="project-default-point-styling-format"'), 'Point editor shown after unchecking');
+    const seeded = JSON.parse(projectPropertiesDraftSignal.value.defaultStyles.point.styleContent);
+    assert.equal(seeded.components[0].type, 'simple-marker', 'seeded with a generated point default');
+
+    updateDraftDefaultStyle('point', { styleContent: '{"format":"simple","version":1,"components":[]}' });
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    const sent = patches[patches.length - 1].defaultStyles;
+    assert.equal(sent.point, '{"format":"simple","version":1,"components":[]}');
+    assert.equal(sent.line, null);
+    assert.ok(currentProjectSignal.value.styles.some((s: any) => s.id === '_project_default_point'), 'mirrored into the project model');
+
+    setDraftUseApplicationDefault('point', true);
+    cancelProjectPropertiesEdits();
+    openProjectPropertiesDialog();
+    assert.ok(projectPropertiesDraftSignal.value.defaultStyles.point, 'Cancel kept the committed default');
+
+    setDraftUseApplicationDefault('point', true);
+    await applyProjectPropertiesEdits();
+    assert.equal(patches[patches.length - 1].defaultStyles.point, null, 'checking again clears the default on Apply');
+    assert.ok(!currentProjectSignal.value.styles.some((s: any) => s.id === '_project_default_point'));
     activeProjectPropertiesTabSignal.value = 'general';
   });
 

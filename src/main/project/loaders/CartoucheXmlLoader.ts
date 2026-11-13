@@ -14,6 +14,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import type { IProjectLoader } from "./IProjectLoader";
+import { isReservedStyleId, PROJECT_DEFAULT_STYLE_IDS } from "../../../shared/styles/projectDefaultStyles";
+
+/**
+ * @constant {ReadonlySet<string>} RESERVED_DEFAULT_STYLE_ID_SET
+ * @description Reserved shared-style ids the loader accepts (the Project Default Styles); every other `_`-prefixed id is rejected.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+const RESERVED_DEFAULT_STYLE_ID_SET: ReadonlySet<string> = new Set(Object.values(PROJECT_DEFAULT_STYLE_IDS));
 import {
   isRewritableFilePath,
   resolveProjectPath,
@@ -589,6 +600,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
             `Invalid shared style "${styleId}": shared styles in <styles> cannot reference another style via href.`
           );
         }
+        if (isReservedStyleId(styleId) && !RESERVED_DEFAULT_STYLE_ID_SET.has(styleId)) {
+          throw new Error(
+            `Invalid shared style "${styleId}": ids starting with "_" are reserved for application use.`
+          );
+        }
         const rawFormat = s["@_format"];
         const format: ProjectStyleFormat =
           rawFormat === "sld" ? "sld"
@@ -631,6 +647,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
           const l = item as ProjectLayerItem;
           if (l.style && isProjectLayerStyleWrapper(l.style) && l.style.href) {
             const rawHref = l.style.href;
+            if (rawHref.startsWith("#") && isReservedStyleId(rawHref)) {
+              throw new Error(
+                `Invalid style reference "${rawHref}": shared styles starting with "_" are reserved for application use.`
+              );
+            }
             const targetId =
               rawHref.startsWith("#") ? rawHref.slice(1) : rawHref;
             const target = catalogStyles.get(targetId);

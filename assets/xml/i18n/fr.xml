@@ -229,6 +229,11 @@
     <string name="project_properties_crs_hide_deprecated">Masquer les SCR obsolètes</string>
     <string name="project_properties_crs_info">Informations sur le système de coordonnées</string>
     <string name="project_properties_crs_info_loading">Chargement…</string>
+    <string name="project_properties_tab_default_styles">Styles par défaut</string>
+    <string name="project_properties_default_style_point">Point</string>
+    <string name="project_properties_default_style_line">Ligne</string>
+    <string name="project_properties_default_style_polygon">Polygone</string>
+    <string name="project_properties_default_style_use_app">Utiliser le style par défaut de l'application</string>
     <string name="project_properties_label_home">Dossier du projet</string>
     <string name="project_properties_btn_browse_home">Choisir le dossier du projet...</string>
     <string name="project_properties_label_path_mode">Chemins enregistrés</string>

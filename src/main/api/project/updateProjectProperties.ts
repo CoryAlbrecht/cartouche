@@ -20,10 +20,11 @@ import {
   SCALE_CALCULATION_METHODS,
 } from '../../../shared/types';
 import { logging } from '../../../shared/logging';
+import { setProjectDefaultStyles } from '../../../shared/styles/projectDefaultStyles';
 
 /**
  * @ipc project:update-properties
- * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. An explicit Project CRS replaces or removes `<crs>`; the Recently Used CRSs is stored trimmed to 20. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project; distance / area units and the Scale Calculation method go to the measurement settings. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
+ * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. An explicit Project CRS replaces or removes `<crs>`; the Recently Used CRSs are stored trimmed to 20; Project Default Styles replace their reserved shared-style entries. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project; distance / area units and the Scale Calculation method go to the measurement settings. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -121,6 +122,15 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
       } else {
         delete project.recentCrs;
       }
+      changed = true;
+    }
+  }
+
+  if (patch && patch.defaultStyles && typeof patch.defaultStyles === 'object') {
+    const before = JSON.stringify(project.styles ?? []);
+    const next = setProjectDefaultStyles(project.styles, patch.defaultStyles);
+    if (JSON.stringify(next) !== before) {
+      project.styles = next;
       changed = true;
     }
   }

@@ -4,12 +4,13 @@
  * @description Main Process API functions for reading, writing, and assigning vector layer styles (OpenLayers Flat Style and OGC SLD 1.0.0/1.1.0), promoting shared styles across multi-layer selections, and cleaning up orphaned shared styles in ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-01
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
  */
 
+import { isReservedStyleId } from '../../../shared/styles/projectDefaultStyles';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { dialog } from 'electron';
@@ -114,7 +115,8 @@ export function cleanupOrphanedSharedStyles(): void {
   }
 
   if (Array.isArray(project.styles)) {
-    project.styles = project.styles.filter((s) => referencedIds.has(s.id));
+    // Reserved application styles (Project Default Styles) are never referenced by layers but must be kept.
+    project.styles = project.styles.filter((s) => referencedIds.has(s.id) || isReservedStyleId(s.id));
   }
 
   project.layers = serializeProjectLayersTree();
@@ -195,6 +197,9 @@ export async function setLayerStyle(
 ): Promise<void> {
   if (!Array.isArray(layerIds) || layerIds.length === 0) {
     return;
+  }
+  if (style?.href && isReservedStyleId(style.href)) {
+    throw new Error(`Shared style id "${style.href}" is reserved for application use.`);
   }
 
   const idSet = new Set(layerIds);
