@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  */
 
@@ -328,6 +328,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerId: string, options?: import('./project').QueryExtentOptions | BoundingBox, targetProjection?: string) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>} [queryExtent] - Queries intersecting features within spatial extent and target projection.
  * @property {(draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>} [reorderNodes] - Reorders layer tree nodes relative to target node.
  * @property {(layerIds: string[], style: import('./project').ProjectLayerStyleItem | undefined, opacity?: number) => Promise<void>} [setLayerStyle] - Assigns a layer style container to one or more vector layers, promoting shared styles when applied to multiple layers.
+ * @property {(patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>} [updateProjectProperties] - Commits a Project Properties draft (title, …) to the Project Store in one round trip and sets the Project Dirty State.
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
  * @property {(style: import('./project').ProjectLayerStyleItem, defaultPath?: string) => Promise<string | null>} [saveStyleFile] - Saves a ProjectLayerStyleItem to disk via explicit path or native save dialog.
  * @property {(layerId: string, edit: import('./project').StagedFeatureEdit) => Promise<void>} [stageFeatureEdit] - Stages an uncommitted feature modification or addition into Main's crash-resilient edit cache.
@@ -399,6 +400,8 @@ export interface ElectronAPI {
     viewport?: import('./project').ProjectViewport,
     timeFilter?: import('./project').ProjectTimeFilterConfig
   ) => Promise<boolean>;
+  /** @ipc project:update-properties */
+  updateProjectProperties?: (patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>;
   /** @ipc project:loaded */
   onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
   /** @ipc project:layers-tree-updated */

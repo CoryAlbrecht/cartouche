@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-11
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -42,6 +42,8 @@ import {
   hasProjectSignal,
   projectNameSignal,
   projectFilePathSignal,
+  projectTitleSignal,
+  setProjectTitle,
   projectVisibleSignal,
   isProjectDirtySignal,
   isDirtySignal,
@@ -85,6 +87,12 @@ import {
   resetLayerToolbarMemoryState,
   type LayerToolbarState
 } from './layerToolbarMemory';
+import {
+  closeProjectPropertiesDialog,
+  applyProjectPropertiesEdits,
+  beginProjectPropertiesDraft,
+} from './projectPropertiesSignals';
+import { resolveProjectDisplayName, isDefaultProjectTitle } from '../../shared/project/projectTitle';
 
 export {
   getLayerToolbarPreference,
@@ -1641,6 +1649,7 @@ export function createNewProject(name: string = 'New Project') {
     layers: []
   };
   hasProjectSignal.value = true;
+  projectTitleSignal.value = name;
   projectNameSignal.value = name;
   projectFilePathSignal.value = null;
   projectVisibleSignal.value = true;
@@ -1892,7 +1901,8 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     currentProjectSignal.value = project;
     hasProjectSignal.value = true;
     projectFilePathSignal.value = project.filePath || null;
-    projectNameSignal.value = project.metadata?.title || (project.filePath ? project.filePath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '') : null) || 'Untitled Project';
+    projectTitleSignal.value = project.metadata?.title || '';
+    projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
     layerGroupsSignal.value = groups;
@@ -2054,6 +2064,24 @@ export async function openProjectAction(): Promise<void> {
 }
 
 /**
+ * @description After a save, mirrors the main-process rule for the Project Title: a default placeholder title (or none) adopts the saved file's base name, while an explicit title is kept. The display name is re-resolved against the new path either way.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @param {string} savedPath - Path the project was just saved to.
+ * @returns {void}
+ */
+function adoptFileNameForDefaultTitle(savedPath: string): void {
+  const title = projectTitleSignal.value;
+  if (isDefaultProjectTitle(title)) {
+    setProjectTitle(resolveProjectDisplayName('', savedPath), savedPath);
+  } else {
+    setProjectTitle(title, savedPath);
+  }
+}
+
+/**
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
@@ -2114,13 +2142,7 @@ export async function saveProjectAction(): Promise<boolean> {
       if (!success) return false;
     }
     projectFilePathSignal.value = targetPath;
-    const baseName = targetPath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '');
-    if (baseName && (!projectNameSignal.value || projectNameSignal.value === 'Untitled Project' || projectNameSignal.value === 'New Project')) {
-      projectNameSignal.value = baseName;
-      if (currentProjectSignal.value?.metadata) {
-        currentProjectSignal.value.metadata.title = baseName;
-      }
-    }
+    adoptFileNameForDefaultTitle(targetPath);
     isProjectDirtySignal.value = false;
     addConsoleLog('info', `Project "${projectNameSignal.value || 'Untitled'}" saved successfully.`, 'Project');
     return true;
@@ -2187,10 +2209,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
       if (!success) return false;
     }
     projectFilePathSignal.value = chosenPath;
-    const baseName = chosenPath.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, '');
-    if (baseName) {
-      projectNameSignal.value = baseName;
-    }
+    adoptFileNameForDefaultTitle(chosenPath);
     isProjectDirtySignal.value = false;
     addConsoleLog('info', `Project saved as "${projectNameSignal.value}" (${chosenPath}).`, 'Project');
     return true;
@@ -2451,6 +2470,7 @@ export async function closeProjectAction(): Promise<boolean> {
 
   hasProjectSignal.value = false;
   projectNameSignal.value = null;
+  projectTitleSignal.value = '';
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;
@@ -3165,54 +3185,29 @@ export function selectFeaturesByValueAction(): void {
 }
 
 /**
- * @signal isProjectPropertiesOpenSignal
- * @description Modeless visibility toggle signal for the Project Properties dialog.
+ * @description Save As launched from the Project Properties dialog: applies the draft first so the saved file matches what the dialog shows, runs the regular Save As flow, and on success re-seeds the draft baseline from the saved project.
  * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
+ * @date 2026-11-12
+ * @updated 2026-11-12
  * @since 0.1.0-dev
- * @type {Signal<boolean>}
+ * @returns {Promise<boolean>} True when the draft was applied and the project saved.
  */
-export const isProjectPropertiesOpenSignal = signal<boolean>(false);
-
-/**
- * @description Opens modeless Project Properties dialog box if an active project is open.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-28
- * @since 0.1.0-dev
- * @returns {void}
- */
-export function openProjectPropertiesDialog(): void {
-  if (!hasProjectSignal.value) return;
-  isProjectPropertiesOpenSignal.value = true;
-  addConsoleLog('info', 'Project Properties dialog opened.', 'Project');
+export async function saveAsProjectFromPropertiesDialogAction(): Promise<boolean> {
+  const applied = await applyProjectPropertiesEdits();
+  if (!applied) return false;
+  const saved = await saveAsProjectAction();
+  if (saved) {
+    beginProjectPropertiesDraft();
+  }
+  return saved;
 }
 
-/**
- * @description Closes modeless Project Properties dialog box.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
- * @since 0.1.0-dev
- * @returns {void}
- */
-export function closeProjectPropertiesDialog(): void {
-  isProjectPropertiesOpenSignal.value = false;
-  addConsoleLog('info', 'Project Properties dialog closed.', 'Project');
-}
-
-/**
- * @description Opens Project Properties dialog.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
- * @since 0.1.0-dev
- * @returns {void}
- */
-export function projectPropertiesAction(): void {
-  openProjectPropertiesDialog();
-}
+export {
+  isProjectPropertiesOpenSignal,
+  openProjectPropertiesDialog,
+  closeProjectPropertiesDialog,
+  projectPropertiesAction,
+} from './projectPropertiesSignals';
 
 /**
  * @signal isCreateLayerOpenSignal

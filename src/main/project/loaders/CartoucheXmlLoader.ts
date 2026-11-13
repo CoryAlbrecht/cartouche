@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -147,11 +147,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     // Parse Metadata (Dublin Core + application tags)
     const rawMeta = root.metadata || {};
+    const rawTitle = rawMeta["dc:title"] ?? rawMeta.title;
     const metadata: ProjectMetadata = {
-      title:
-        rawMeta["dc:title"]
-        || rawMeta.title
-        || path.basename(filePath, path.extname(filePath)),
+      // The Project Title is independent of the file name: a missing <dc:title> loads as an empty title.
+      title: rawTitle === undefined || rawTitle === null ? "" : String(rawTitle),
       creator: rawMeta["dc:creator"] || rawMeta.creator,
       description: rawMeta["dc:description"] || rawMeta.description,
       date: rawMeta["dc:date"] || rawMeta.date,
@@ -666,7 +665,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
 
     // 1. Metadata
     lines.push("  <metadata>");
-    lines.push(`    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`);
+    if (project.metadata.title) {
+      lines.push(`    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`);
+    }
     if (project.metadata.creator) {
       lines.push(
         `    <dc:creator>${escapeXml(project.metadata.creator)}</dc:creator>`

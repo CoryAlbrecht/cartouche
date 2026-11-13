@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -86,6 +86,7 @@ import {
   requestAppExitAction,
 } from "@renderer/state/gisSignals";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
+import { workbenchWindowTitleSignal } from "@renderer/state/projectSignals";
 import {
   loadActionsFromMain,
   getActionFormattedKey,
@@ -360,6 +361,17 @@ export const Workbench: React.FC = () => {
         unsubscribe?.();
       };
     }
+  }, []);
+
+  // Mirror the computed Workbench window title (project display name, falling back to the file base name) onto the document
+  useEffect(() => {
+    const dispose = effect(() => {
+      const title = workbenchWindowTitleSignal.value;
+      if (typeof document !== "undefined" && document.title !== title) {
+        document.title = title;
+      }
+    });
+    return () => dispose();
   }, []);
 
   // Synchronize base font size preference signal with CSS custom property on document root

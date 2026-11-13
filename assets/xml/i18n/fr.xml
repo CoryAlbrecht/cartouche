@@ -176,6 +176,17 @@
     <string name="layer_properties_btn_apply">Appliquer</string>
     <string name="layer_properties_btn_cancel">Annuler</string>
     <string name="layer_properties_loading">Chargement des propriétés de la couche...</string>
+    <!-- Project Properties Dialog -->
+    <string name="project_properties_dialog_title">Propriétés du projet</string>
+    <string name="project_properties_tab_general">Général</string>
+    <string name="project_properties_group_general">Général</string>
+    <string name="project_properties_label_file">Fichier du projet</string>
+    <string name="project_properties_file_unsaved">(non enregistré)</string>
+    <string name="project_properties_btn_save_as">Enregistrer sous...</string>
+    <string name="project_properties_label_title">Titre du projet</string>
+    <string name="project_properties_btn_ok">OK</string>
+    <string name="project_properties_btn_apply">Appliquer</string>
+    <string name="project_properties_btn_cancel">Annuler</string>
     <string name="layer_properties_tab_styling">Style</string>
     <string name="layer_properties_styling_group">Symbologie et style de couche</string>
     <string name="layer_properties_styling_format">Format de style</string>

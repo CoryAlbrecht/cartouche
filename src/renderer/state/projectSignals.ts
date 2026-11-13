@@ -4,12 +4,14 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-06
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
  * @see {@link ProjectGroupItem}
  * @see {@link updateLayerFields}
+ * @see {@link projectTitleSignal}
+ * @see {@link workbenchWindowTitleSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -22,6 +24,7 @@ import type {
   LayerFieldInfo
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
+import { resolveProjectDisplayName } from '../../shared/project/projectTitle';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -147,6 +150,57 @@ export const projectNameSignal = signal<string | null>(null);
  * @type {Signal<string | null>}
  */
 export const projectFilePathSignal = signal<string | null>(null);
+
+/**
+ * @signal projectTitleSignal
+ * @description Reactive signal holding the raw Project Title (`dc:title`) of the active project, independent of the file name. Empty when the project has no title; use {@link projectNameSignal} for the resolved display name.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const projectTitleSignal = signal<string>('');
+
+/**
+ * @signal workbenchWindowTitleSignal
+ * @description Computed Workbench window title: the project display name ({@link projectNameSignal}, which falls back to the project file's base name when the title is empty) followed by the application name, or just the application name when no project is open.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @type {ReadonlySignal<string>}
+ */
+export const workbenchWindowTitleSignal = computed<string>(() => {
+  if (!hasProjectSignal.value) return 'Cartouche';
+  const name = projectNameSignal.value || resolveProjectDisplayName(projectTitleSignal.value, projectFilePathSignal.value);
+  return `${name} — Cartouche`;
+});
+
+/**
+ * @function setProjectTitle
+ * @description Sets the raw Project Title and re-resolves the display name shown in the Workbench window title and layer tree root.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @param {string} title - New Project Title; an empty string clears it.
+ * @param {string | null} [filePath] - Project file path used for the fallback; defaults to {@link projectFilePathSignal}.
+ * @returns {void}
+ */
+export function setProjectTitle(title: string, filePath?: string | null): void {
+  const nextTitle = (title ?? '').trim();
+  batch(() => {
+    projectTitleSignal.value = nextTitle;
+    projectNameSignal.value = resolveProjectDisplayName(
+      nextTitle,
+      filePath === undefined ? projectFilePathSignal.value : filePath
+    );
+    if (currentProjectSignal.value?.metadata) {
+      currentProjectSignal.value.metadata.title = nextTitle;
+    }
+  });
+}
 
 /**
  * @signal projectVisibleSignal
@@ -454,7 +508,7 @@ export function renameNode(nodeId: string, newName: string): void {
 
   if (nodeId === 'project') {
     if (projectNameSignal.value !== trimmed) {
-      projectNameSignal.value = trimmed;
+      setProjectTitle(trimmed);
       isProjectDirtySignal.value = true;
     }
   } else {
@@ -773,7 +827,7 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpda
 if (typeof window !== 'undefined' && window.electronAPI?.onProjectMetadataUpdated) {
   window.electronAPI.onProjectMetadataUpdated((metadata: any) => {
     if (metadata && typeof metadata.title === 'string') {
-      projectNameSignal.value = metadata.title;
+      setProjectTitle(metadata.title);
     }
   });
 }

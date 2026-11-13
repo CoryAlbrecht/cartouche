@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -117,6 +117,8 @@ const electronAPI: ElectronAPI = {
   getCurrentProject: () => ipcRenderer.invoke('gis:get-current-project'),
   /** @ipc gis:save-project */
   saveProject: (filePath?: string, viewport?: any, timeFilter?: any) => ipcRenderer.invoke('gis:save-project', filePath, viewport, timeFilter),
+  /** @ipc project:update-properties */
+  updateProjectProperties: (patch: any) => ipcRenderer.invoke('project:update-properties', patch),
   /** @ipc project:loaded */
   onProjectLoaded: (callback: (project: any) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, project: any) => callback(project);

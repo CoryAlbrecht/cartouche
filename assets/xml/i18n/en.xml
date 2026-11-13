@@ -201,6 +201,17 @@
     <string name="layer_properties_btn_apply">Apply</string>
     <string name="layer_properties_btn_cancel">Cancel</string>
     <string name="layer_properties_loading">Loading layer properties...</string>
+    <!-- Project Properties Dialog -->
+    <string name="project_properties_dialog_title">Project Properties</string>
+    <string name="project_properties_tab_general">General</string>
+    <string name="project_properties_group_general">General</string>
+    <string name="project_properties_label_file">Project File</string>
+    <string name="project_properties_file_unsaved">(unsaved)</string>
+    <string name="project_properties_btn_save_as">Save As...</string>
+    <string name="project_properties_label_title">Project Title</string>
+    <string name="project_properties_btn_ok">OK</string>
+    <string name="project_properties_btn_apply">Apply</string>
+    <string name="project_properties_btn_cancel">Cancel</string>
     <string name="layer_properties_tab_styling">Styling</string>
     <string name="layer_properties_styling_group">Layer Style &amp; Formatting</string>
     <string name="layer_properties_styling_format">Style Format</string>

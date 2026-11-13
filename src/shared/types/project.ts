@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-11
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  */
 
@@ -312,6 +312,19 @@ export interface ProjectTimeFilterConfig {
   current?: number;
   step?: number;
   unit?: TimeFilterUnit;
+}
+
+/**
+ * @typedef {Object} ProjectPropertiesPatch
+ * @description Partial set of project-wide properties committed from the Project Properties dialog draft in one IPC round trip. Every member is optional; absent members are left unchanged.
+ * @property {string} [title] - Project Title (`dc:title`), independent of the file name. An empty string clears the title.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ */
+export interface ProjectPropertiesPatch {
+  title?: string;
 }
 
 /**

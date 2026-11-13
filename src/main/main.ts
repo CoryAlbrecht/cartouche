@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -602,6 +602,14 @@ function startApp(): void {
     ) => {
       const { default: saveProject } = await import('./api/project/saveProject');
       return saveProject(filePath, viewport, timeFilter);
+    }
+  );
+
+  handleIpc(
+    'project:update-properties',
+    async (_event, patch: import('../shared/types/project').ProjectPropertiesPatch) => {
+      const { default: updateProjectProperties } = await import('./api/project/updateProjectProperties');
+      return updateProjectProperties(patch);
     }
   );
 

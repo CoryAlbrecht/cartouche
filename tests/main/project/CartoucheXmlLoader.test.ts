@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-10
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  */
 
@@ -1183,5 +1183,39 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(loaded.timeFilter.step, 0.000000031623);
     assert.equal(loaded.timeFilter.unit, 'Years');
   });
-});
+  it('round-trips the Project Title through <dc:title> independently of the file name (Ticket #271)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'some-other-file-name.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'World Atlas & Friends', appVersion: '0.1.0-dev' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('<dc:title>World Atlas &amp; Friends</dc:title>'));
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
 
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.metadata.title, 'World Atlas & Friends');
+  });
+
+  it('omits <dc:title> for an empty title and loads a missing <dc:title> as an empty title, never the file name (Ticket #271)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'untitled-on-disk.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: '', appVersion: '0.1.0-dev' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(!xml.includes('<dc:title'), 'empty title must not be written');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.metadata.title, '', 'missing <dc:title> loads as an empty title so the display name falls back to the file base name');
+  });
+});
