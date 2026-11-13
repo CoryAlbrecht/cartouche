@@ -102,6 +102,11 @@
         <xs:documentation>Opaque CSS colour painted behind all layers in the map viewport. Missing means #ffffff.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
+    <xs:attribute name="selectionColour" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>CSS colour (alpha allowed) used to highlight selected features. Missing means rgba(255,255,0,0.6).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
   </xs:complexType>
 
   <!-- Viewport Type -->

@@ -4,7 +4,7 @@
  * @description Tests for the Project Properties draft store (ADR 0024): opening seeds the draft from the committed state, edits stay in the draft, Apply commits through one IPC round trip and sets the Project Dirty State, Cancel/Close roll back, the draft survives tab switches, and the Workbench window title falls back to the project file's base name when the title is empty.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
@@ -47,6 +47,8 @@ const {
   setProjectTitle,
   mapBackgroundColourSignal,
   setMapBackgroundColour,
+  selectionColourSignal,
+  setSelectionColour,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const gis = jiti('../../../src/renderer/state/gisSignals.ts');
 const { resolveProjectDisplayName, isDefaultProjectTitle } = jiti('../../../src/shared/project/projectTitle.ts');
@@ -153,8 +155,14 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
   });
 
   it('buildProjectPropertiesPatch trims the title, allows clearing it, and defaults an empty background to white', () => {
-    assert.deepEqual(buildProjectPropertiesPatch({ title: '  Atlas  ', backgroundColour: '#abcdef' }), { title: 'Atlas', backgroundColour: '#abcdef' });
-    assert.deepEqual(buildProjectPropertiesPatch({ title: '   ', backgroundColour: '' }), { title: '', backgroundColour: '#ffffff' });
+    const a = buildProjectPropertiesPatch({ title: '  Atlas  ', backgroundColour: '#abcdef', selectionColour: '#ff0' });
+    assert.equal(a.title, 'Atlas');
+    assert.equal(a.backgroundColour, '#abcdef');
+    assert.equal(a.selectionColour, '#ff0');
+    const b = buildProjectPropertiesPatch({ title: '   ', backgroundColour: '', selectionColour: '' });
+    assert.equal(b.title, '');
+    assert.equal(b.backgroundColour, '#ffffff');
+    assert.equal(b.selectionColour, 'rgba(255,255,0,0.6)');
   });
 
   it('seeds the Map Background Colour draft from the committed value and applies it on Apply (Ticket #272)', async () => {
@@ -171,6 +179,26 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     assert.equal(mapBackgroundColourSignal.value, '#aabbcc');
     assert.equal(currentProjectSignal.value.display.backgroundColour, '#aabbcc');
     setMapBackgroundColour('#ffffff');
+  });
+
+  it('seeds the Selection Colour draft (default semi-transparent yellow), applies it on Apply and discards it on Cancel (Ticket #273)', async () => {
+    setSelectionColour('');
+    assert.equal(selectionColourSignal.value, 'rgba(255,255,0,0.6)', 'empty resets to the default');
+    openProjectPropertiesDialog();
+    assert.equal(projectPropertiesDraftSignal.value.selectionColour, 'rgba(255,255,0,0.6)');
+
+    updateProjectPropertiesDraft({ selectionColour: 'rgba(0,0,255,0.3)' });
+    assert.equal(selectionColourSignal.value, 'rgba(255,255,0,0.6)', 'draft edit does not touch the committed colour');
+    cancelProjectPropertiesEdits();
+    assert.equal(selectionColourSignal.value, 'rgba(255,255,0,0.6)');
+
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ selectionColour: 'rgba(0,0,255,0.3)' });
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    assert.equal(patches[0].selectionColour, 'rgba(0,0,255,0.3)');
+    assert.equal(selectionColourSignal.value, 'rgba(0,0,255,0.3)');
+    assert.equal(currentProjectSignal.value.display.selectionColour, 'rgba(0,0,255,0.3)');
+    setSelectionColour('');
   });
 
   it('Cancel discards a draft background colour (Ticket #272)', () => {

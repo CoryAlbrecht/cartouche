@@ -1,10 +1,10 @@
 /**
  * @file ProjectPropertiesDialog.tsx
  * @module renderer/workbench/dialogs/ProjectPropertiesDialog
- * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Title, and picks the opaque Map Background Colour with an embedded ColourPickerWidget.
+ * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link TabbedDialogShell}
@@ -290,6 +290,32 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     }
                     style={INPUT_STYLE}
                   />
+                </div>
+
+                {/* Selection Colour (transparency allowed) */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                  <span style={LABEL_STYLE}>
+                    {t("project_properties_label_selection_colour")}:
+                  </span>
+                  <div
+                    id='project-prop-selection-colour-picker'
+                    className='project-prop-selection-colour-picker'
+                    style={{ width: "280px", flexShrink: 0 }}>
+                    <ColourPickerWidget
+                      key={`selection-${draftBaselineKey}`}
+                      showHeader={false}
+                      initialColor={draft.selectionColour}
+                      format={parseCssColor(draft.selectionColour)?.format ?? "RGB"}
+                      allowAlpha={true}
+                      minWidth={280}
+                      style={{ border: "none", background: "transparent", padding: 0 }}
+                      onChange={(colour) =>
+                        updateProjectPropertiesDraft({ selectionColour: colour })
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Map Background Colour (opaque) */}

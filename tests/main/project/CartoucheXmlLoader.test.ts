@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 
@@ -1258,5 +1258,41 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
     assert.equal(loaded.display, undefined);
+  });
+  it('round-trips <display selectionColour> alongside backgroundColour, validated against project.xsd (Ticket #273)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'display-selection.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Selection Display Test', appVersion: '0.1.0-dev' },
+      display: { backgroundColour: '#000000', selectionColour: 'rgba(0,128,255,0.4)' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model);
+    assert.ok(xml.includes('backgroundColour="#000000"'));
+    assert.ok(xml.includes('selectionColour="rgba(0,128,255,0.4)"'));
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.display?.selectionColour, 'rgba(0,128,255,0.4)');
+    assert.equal(loaded.display?.backgroundColour, '#000000');
+
+    // Selection colour alone is also written, and a missing attribute loads as undefined so the default applies.
+    const onlySelection: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Only Selection', appVersion: '0.1.0-dev' },
+      display: { selectionColour: '#ffff00' },
+      layers: []
+    };
+    const xml2 = loader.serializeToXml(onlySelection);
+    assert.ok(xml2.includes('<display selectionColour="#ffff00" />'));
+    assert.equal(validateXmlAgainstSchema(xml2).valid, true);
+    const file2 = path.join(tempDir, 'display-selection-only.cproj');
+    await loader.save(onlySelection, file2);
+    const loaded2 = await loader.load(file2);
+    assert.equal(loaded2.display?.selectionColour, '#ffff00');
+    assert.equal(loaded2.display?.backgroundColour, undefined);
   });
 });

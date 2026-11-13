@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -98,6 +98,7 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
       project_properties_btn_save_as: 'Save As...',
       project_properties_label_title: 'Project Title',
       project_properties_label_background_colour: 'Map Background Colour',
+      project_properties_label_selection_colour: 'Selection Colour',
       project_properties_btn_ok: 'OK',
       project_properties_btn_apply: 'Apply',
       project_properties_btn_cancel: 'Cancel',
@@ -174,14 +175,28 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     assert.equal(isProjectDirtySignal.value, false);
   });
 
+  it('renders an embedded Selection Colour picker with transparency bound to the draft (Ticket #273)', () => {
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ selectionColour: 'rgba(0,128,255,0.4)' });
+    const html = render();
+    assert.ok(html.includes('Selection Colour'));
+    const pickerStart = html.indexOf('id="project-prop-selection-colour-picker"');
+    assert.ok(pickerStart > 0);
+    const pickerHtml = html.slice(pickerStart, html.indexOf('id="project-prop-background-colour-picker"'));
+    assert.ok(pickerHtml.includes('colour-picker-widget'), 'embeds ColourPickerWidget');
+    assert.ok(pickerHtml.includes('colour-picker-alpha-strip'), 'selection picker allows transparency');
+  });
+
   it('renders an embedded opaque Map Background Colour picker bound to the draft (Ticket #272)', () => {
     openProjectPropertiesDialog();
     updateProjectPropertiesDraft({ backgroundColour: '#336699' });
     const html = render();
     assert.ok(html.includes('Map Background Colour'));
-    assert.ok(html.includes('id="project-prop-background-colour-picker"'));
-    assert.ok(html.includes('colour-picker-widget'), 'embeds ColourPickerWidget');
-    assert.ok(!html.includes('colour-picker-alpha-strip'), 'opaque-only picker hides the transparency strip');
+    const bgStart = html.indexOf('id="project-prop-background-colour-picker"');
+    assert.ok(bgStart > 0);
+    const bgHtml = html.slice(bgStart);
+    assert.ok(bgHtml.includes('colour-picker-widget'), 'embeds ColourPickerWidget');
+    assert.ok(!bgHtml.includes('colour-picker-alpha-strip'), 'opaque-only picker hides the transparency strip');
     assert.ok(html.includes('#336699') || html.includes('336699'), 'picker seeded from the draft colour');
   });
 

@@ -4,7 +4,7 @@
  * @description Main Process API function committing a Project Properties dialog draft to the Project Store in one IPC round trip: applies every member present in the patch, sets the Project Dirty State, and broadcasts the updated metadata to all windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectPropertiesPatch}
@@ -18,7 +18,7 @@ import { logging } from '../../../shared/logging';
 
 /**
  * @ipc project:update-properties
- * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. A background colour is stored in the project's display settings. Returns false when no project is open.
+ * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. Background and selection colours are stored in the project's display settings. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -48,6 +48,15 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     const current = project.display?.backgroundColour;
     if (next && next !== current) {
       project.display = { ...(project.display || {}), backgroundColour: next };
+      changed = true;
+    }
+  }
+
+  if (patch && typeof patch.selectionColour === 'string') {
+    const next = patch.selectionColour.trim();
+    const current = project.display?.selectionColour;
+    if (next && next !== current) {
+      project.display = { ...(project.display || {}), selectionColour: next };
       changed = true;
     }
   }

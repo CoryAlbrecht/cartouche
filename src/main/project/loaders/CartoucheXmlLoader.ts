@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -175,12 +175,13 @@ export class CartoucheXmlLoader implements IProjectLoader {
     // Parse Display settings (optional)
     let display: ProjectDisplaySettings | undefined;
     if (root.display) {
-      const rawBackground = root.display["@_backgroundColour"];
+      const readColourAttr = (value: unknown): string | undefined =>
+        value !== undefined && value !== null && String(value).trim() ?
+          String(value).trim()
+        : undefined;
       display = {
-        backgroundColour:
-          rawBackground !== undefined && rawBackground !== null && String(rawBackground).trim() ?
-            String(rawBackground).trim()
-          : undefined,
+        backgroundColour: readColourAttr(root.display["@_backgroundColour"]),
+        selectionColour: readColourAttr(root.display["@_selectionColour"]),
       };
     }
 
@@ -730,10 +731,15 @@ export class CartoucheXmlLoader implements IProjectLoader {
     }
 
     // 2b. Display settings (optional; written only when something is set)
-    if (project.display && project.display.backgroundColour) {
-      lines.push(
-        `  <display backgroundColour="${escapeXml(project.display.backgroundColour)}" />`
-      );
+    if (project.display && (project.display.backgroundColour || project.display.selectionColour)) {
+      const displayAttrs: string[] = [];
+      if (project.display.backgroundColour) {
+        displayAttrs.push(`backgroundColour="${escapeXml(project.display.backgroundColour)}"`);
+      }
+      if (project.display.selectionColour) {
+        displayAttrs.push(`selectionColour="${escapeXml(project.display.selectionColour)}"`);
+      }
+      lines.push(`  <display ${displayAttrs.join(" ")} />`);
     }
 
     // 3. Viewport (optional)

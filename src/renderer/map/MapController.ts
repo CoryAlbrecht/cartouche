@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -33,7 +33,11 @@ import {
   mapActionSignal,
   activeMapControllerSignal,
   addConsoleLog,
+  selectedFeatureIdsSignal,
+  activeLayerIdSignal,
 } from "../state/gisSignals";
+import VectorLayer from "ol/layer/Vector.js";
+import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
 import {
   projectLayersSignal,
   layerStylesSignal,
@@ -41,6 +45,7 @@ import {
   projectTreeSignal,
   projectVisibleSignal,
   mapBackgroundColourSignal,
+  selectionColourSignal,
 } from "../state/projectSignals";
 import {
   isTimeFilterActiveSignal,
@@ -289,6 +294,8 @@ export class MapController {
   private previousLayerCount = 0;
   private scaleThrottleTimer: ReturnType<typeof setTimeout> | null = null;
   private lastScaleUpdateTime = 0;
+  private selectionHighlightLayer: VectorLayer<VectorSource> | null = null;
+  private selectionHighlightSource: VectorSource | null = null;
 
   /**
    * @constructor
@@ -480,6 +487,15 @@ export class MapController {
     });
     this.disposeSignals.push(disposeBackground);
 
+    // Highlight selected features with the Selection Colour whenever the selection, active layer or colour changes
+    const disposeSelection = effect(() => {
+      void selectedFeatureIdsSignal.value;
+      void activeLayerIdSignal.value;
+      void selectionColourSignal.value;
+      this.refreshSelectionHighlight();
+    });
+    this.disposeSignals.push(disposeSelection);
+
     // Trigger visual refresh of temporal layers when time filter is toggled or frame advances
     const disposeTimeFilter = effect(() => {
       // Read reactive signals to establish dependency tracking
@@ -503,6 +519,76 @@ export class MapController {
   public applyBackgroundColour(colour: string): void {
     if (this.container && this.container.style) {
       this.container.style.backgroundColor = colour;
+    }
+  }
+
+  /**
+   * @description Returns the selection overlay layer, or null while nothing is selected (the overlay is created lazily and removed when the selection empties).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {VectorLayer<VectorSource> | null} The highlight layer.
+   */
+  public getSelectionHighlightLayer(): VectorLayer<VectorSource> | null {
+    return this.selectionHighlightLayer;
+  }
+
+  /**
+   * @description Rebuilds the selection overlay: for every selected feature id found in the active layer's source (or in any layer when no active layer is set), a highlight feature sharing the geometry is drawn above all layers, styled with the Selection Colour (fill for polygons and point markers, stroke for lines). Called from the selection effect and after new features load.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public refreshSelectionHighlight(): void {
+    const selectedIds = selectedFeatureIdsSignal.value;
+    if (!selectedIds || selectedIds.size === 0) {
+      if (this.selectionHighlightLayer) {
+        this.map.removeLayer(this.selectionHighlightLayer);
+        this.selectionHighlightSource?.clear();
+        this.selectionHighlightLayer = null;
+        this.selectionHighlightSource = null;
+      }
+      return;
+    }
+
+    if (!this.selectionHighlightLayer || !this.selectionHighlightSource) {
+      this.selectionHighlightSource = new VectorSource({ wrapX: false });
+      this.selectionHighlightLayer = new VectorLayer({
+        source: this.selectionHighlightSource,
+        zIndex: 5000,
+        updateWhileAnimating: true,
+        updateWhileInteracting: true,
+      });
+      this.selectionHighlightLayer.set("cartoucheRole", "selection-highlight");
+      this.map.addLayer(this.selectionHighlightLayer);
+    }
+
+    this.selectionHighlightLayer.setStyle(
+      createSelectionHighlightStyleFunction(selectionColourSignal.value)
+    );
+
+    const activeLayerId = activeLayerIdSignal.value;
+    const activeEntry = activeLayerId ? this.vectorLayers.get(activeLayerId) : undefined;
+    const entries = activeEntry ? [activeEntry] : Array.from(this.vectorLayers.values());
+
+    const highlightFeatures: Feature[] = [];
+    for (const entry of entries) {
+      for (const id of selectedIds) {
+        const found = entry.source.getFeatureById(id as string | number);
+        const geometry = found?.getGeometry();
+        if (!found || !geometry) continue;
+        const highlight = new Feature({ geometry });
+        highlight.setId(`${entry.descriptor.id}::${String(id)}`);
+        highlightFeatures.push(highlight);
+      }
+    }
+
+    this.selectionHighlightSource.clear(true);
+    if (highlightFeatures.length > 0) {
+      this.selectionHighlightSource.addFeatures(highlightFeatures);
     }
   }
 
@@ -1270,6 +1356,9 @@ export class MapController {
 
         if (newFeatures.length > 0) {
           source.addFeatures(newFeatures);
+          if (selectedFeatureIdsSignal.value.size > 0) {
+            this.refreshSelectionHighlight();
+          }
         }
       } catch (err) {
         logging.error("Failed to load features for layer", err, {
@@ -1754,6 +1843,17 @@ export class MapController {
       }
     }
     this.vectorLayers.clear();
+
+    if (this.selectionHighlightLayer) {
+      try {
+        this.map.removeLayer(this.selectionHighlightLayer);
+        this.selectionHighlightSource?.clear();
+      } catch {
+        // Suppress overlay cleanup errors
+      }
+      this.selectionHighlightLayer = null;
+      this.selectionHighlightSource = null;
+    }
 
     if (activeMapControllerSignal.value === this) {
       activeMapControllerSignal.value = null;

@@ -1,10 +1,10 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link projectPropertiesDraftSignal}
@@ -22,8 +22,10 @@ import {
   setProjectTitle,
   mapBackgroundColourSignal,
   setMapBackgroundColour,
+  selectionColourSignal,
+  setSelectionColour,
 } from './projectSignals';
-import { DEFAULT_MAP_BACKGROUND_COLOUR } from '../../shared/types/project';
+import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR } from '../../shared/types/project';
 
 /**
  * @typedef {'general'} ProjectPropertiesTabId
@@ -44,10 +46,12 @@ export type ProjectPropertiesTabId = 'general';
  * @since 0.1.0-dev
  * @property {string} title - Draft Project Title (`dc:title`).
  * @property {string} backgroundColour - Draft Map Background Colour (opaque CSS colour).
+ * @property {string} selectionColour - Draft Selection Colour (CSS colour, alpha allowed).
  */
 export interface ProjectPropertiesDraft {
   title: string;
   backgroundColour: string;
+  selectionColour: string;
 }
 
 /**
@@ -60,7 +64,7 @@ export interface ProjectPropertiesDraft {
  * @returns {ProjectPropertiesDraft} Blank draft.
  */
 function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
-  return { title: '', backgroundColour: DEFAULT_MAP_BACKGROUND_COLOUR };
+  return { title: '', backgroundColour: DEFAULT_MAP_BACKGROUND_COLOUR, selectionColour: DEFAULT_SELECTION_COLOUR };
 }
 
 /**
@@ -123,6 +127,7 @@ export function beginProjectPropertiesDraft(): void {
     projectPropertiesDraftSignal.value = {
       title: projectTitleSignal.value ?? '',
       backgroundColour: mapBackgroundColourSignal.value || DEFAULT_MAP_BACKGROUND_COLOUR,
+      selectionColour: selectionColourSignal.value || DEFAULT_SELECTION_COLOUR,
     };
     projectPropertiesBaselineKeySignal.value += 1;
   });
@@ -207,6 +212,7 @@ export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): Proj
   return {
     title: (draft.title ?? '').trim(),
     backgroundColour: (draft.backgroundColour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR,
+    selectionColour: (draft.selectionColour ?? '').trim() || DEFAULT_SELECTION_COLOUR,
   };
 }
 
@@ -242,6 +248,9 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
     }
     if (patch.backgroundColour !== undefined) {
       setMapBackgroundColour(patch.backgroundColour);
+    }
+    if (patch.selectionColour !== undefined) {
+      setSelectionColour(patch.selectionColour);
     }
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();

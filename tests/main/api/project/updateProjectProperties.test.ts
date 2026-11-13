@@ -4,7 +4,7 @@
  * @description Unit tests for the Main process project properties commit handler: title application and trimming, dirty flagging, no-op when nothing changed, and rejection when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link updateProjectProperties}
  */
@@ -59,6 +59,12 @@ describe('updateProjectProperties (Ticket #271)', () => {
     projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Bg' }, layers: [] });
     assert.equal(updateProjectProperties({ backgroundColour: ' #1b446c ' }), true);
     assert.equal(projectStore.getProject()?.display?.backgroundColour, '#1b446c');
+    assert.equal(projectStore.isProjectDirty(), true);
+  });
+  it('stores the Selection Colour in the project display settings next to the background (Ticket #273)', () => {
+    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Sel' }, display: { backgroundColour: '#ffffff' }, layers: [] });
+    assert.equal(updateProjectProperties({ selectionColour: 'rgba(255,0,0,0.5)' }), true);
+    assert.deepEqual(projectStore.getProject()?.display, { backgroundColour: '#ffffff', selectionColour: 'rgba(255,0,0,0.5)' });
     assert.equal(projectStore.isProjectDirty(), true);
   });
 });

@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -16,8 +16,9 @@ import {
   layerStylesSignal,
   currentProjectSignal,
   mapBackgroundColourSignal,
+  selectionColourSignal,
 } from '../../../src/renderer/state/projectSignals';
-import { cursorCoordsSignal } from '../../../src/renderer/state/gisSignals';
+import { cursorCoordsSignal, selectedFeatureIdsSignal, activeLayerIdSignal } from '../../../src/renderer/state/gisSignals';
 import { preferencesMapSignal } from '../../../src/renderer/state/preferencesSignals';
 import {
   MapController,
@@ -203,6 +204,8 @@ describe('MapController Isolated Canvas Engine', () => {
     projectLayersSignal.value = [];
     layerStylesSignal.value = {};
     currentProjectSignal.value = null;
+    selectedFeatureIdsSignal.value = new Set();
+    activeLayerIdSignal.value = null;
     (globalThis as any).window.electronAPI = undefined;
   });
 
@@ -509,6 +512,65 @@ describe('MapController Isolated Canvas Engine', () => {
 
     // Still exactly 2 features because duplicates by ID were ignored
     assert.equal(entry.source.getFeatures().length, 2, 'Features must be deduplicated by ID');
+  });
+
+  it('highlights selected features of the active layer with the Selection Colour and follows selection and colour changes (Ticket #273)', async () => {
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string) => ({
+        layerId,
+        features: [
+          { id: 101, wkb: pointWkb1, properties: { name: 'Point A' } },
+          { id: 102, wkb: pointWkb2, properties: { name: 'Point B' } },
+        ],
+      }),
+    };
+    const descriptor: LayerDescriptor = {
+      id: 'layer-selection-test',
+      name: 'Selection Test',
+      type: 'shp',
+      source: '/path/to/sel.shp',
+      geometryKind: 'Point',
+      layerKind: 'vector',
+      extent: [-90, 40, -80, 50],
+      featureCount: 2,
+    };
+    projectLayersSignal.value = [descriptor];
+    const entry = controller.getLayer('layer-selection-test')!;
+    assert.equal(controller.getSelectionHighlightLayer(), null, 'no overlay while nothing is selected');
+
+    // Selecting before features are loaded: the overlay appears once the features arrive.
+    activeLayerIdSignal.value = 'layer-selection-test';
+    selectedFeatureIdsSignal.value = new Set([101]);
+    await controller.loadFeaturesForExtent(descriptor, entry.source, [-10000000, 4000000, -8000000, 6000000], 'EPSG:3857');
+
+    const overlay = controller.getSelectionHighlightLayer();
+    assert.ok(overlay, 'overlay layer created');
+    assert.ok(overlay!.getZIndex()! > 1000, 'overlay draws above every layer');
+    const overlaySource = overlay!.getSource()!;
+    assert.equal(overlaySource.getFeatures().length, 1, 'one highlight for the one selected feature');
+    const highlighted = overlaySource.getFeatures()[0];
+    assert.equal(highlighted.getGeometry(), entry.source.getFeatureById(101)!.getGeometry(), 'highlight shares the selected geometry');
+
+    // Point markers are filled with the Selection Colour (default semi-transparent yellow).
+    const styleFn = overlay!.getStyle() as any;
+    let style = styleFn(highlighted, 1);
+    assert.equal(style.getImage().getFill().getColor(), 'rgba(255,255,0,0.6)');
+
+    // Selection change: two features highlighted.
+    selectedFeatureIdsSignal.value = new Set([101, 102]);
+    assert.equal(overlaySource.getFeatures().length, 2);
+
+    // Applying a new Selection Colour restyles the overlay.
+    selectionColourSignal.value = 'rgba(255,0,0,0.5)';
+    style = (controller.getSelectionHighlightLayer()!.getStyle() as any)(highlighted, 1);
+    assert.equal(style.getImage().getFill().getColor(), 'rgba(255,0,0,0.5)');
+
+    // Clearing the selection removes the overlay.
+    selectedFeatureIdsSignal.value = new Set();
+    assert.equal(controller.getSelectionHighlightLayer(), null);
+
+    selectionColourSignal.value = 'rgba(255,255,0,0.6)';
+    activeLayerIdSignal.value = null;
   });
 
   it('automatically fits and centers viewport to first imported layer on empty canvas', () => {

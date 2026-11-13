@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -13,6 +13,7 @@
  * @see {@link projectTitleSignal}
  * @see {@link workbenchWindowTitleSignal}
  * @see {@link mapBackgroundColourSignal}
+ * @see {@link selectionColourSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -26,7 +27,7 @@ import type {
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 import { resolveProjectDisplayName } from '../../shared/project/projectTitle';
-import { DEFAULT_MAP_BACKGROUND_COLOUR } from '../../shared/types/project';
+import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR } from '../../shared/types/project';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -192,6 +193,38 @@ export function setMapBackgroundColour(colour: string | null | undefined): void 
     const project = currentProjectSignal.value;
     if (project) {
       project.display = { ...(project.display || {}), backgroundColour: next };
+    }
+  });
+}
+
+/**
+ * @signal selectionColourSignal
+ * @description Reactive signal holding the project's Selection Colour (CSS colour, alpha allowed) used to highlight selected features in the map viewport. Defaults to {@link DEFAULT_SELECTION_COLOUR}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const selectionColourSignal = signal<string>(DEFAULT_SELECTION_COLOUR);
+
+/**
+ * @function setSelectionColour
+ * @description Sets the Selection Colour signal (falling back to the default for an empty value) and mirrors it into the current project model's display settings.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} colour - CSS colour (alpha allowed), or empty for the default.
+ * @returns {void}
+ */
+export function setSelectionColour(colour: string | null | undefined): void {
+  const next = (colour ?? '').trim() || DEFAULT_SELECTION_COLOUR;
+  batch(() => {
+    selectionColourSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.display = { ...(project.display || {}), selectionColour: next };
     }
   });
 }

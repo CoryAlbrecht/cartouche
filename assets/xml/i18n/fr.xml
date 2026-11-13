@@ -184,6 +184,7 @@
     <string name="project_properties_file_unsaved">(non enregistré)</string>
     <string name="project_properties_btn_save_as">Enregistrer sous...</string>
     <string name="project_properties_label_title">Titre du projet</string>
+    <string name="project_properties_label_selection_colour">Couleur de sélection</string>
     <string name="project_properties_label_background_colour">Couleur de fond de la carte</string>
     <string name="project_properties_btn_ok">OK</string>
     <string name="project_properties_btn_apply">Appliquer</string>

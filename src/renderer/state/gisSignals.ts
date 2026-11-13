@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -45,6 +45,7 @@ import {
   projectTitleSignal,
   setProjectTitle,
   mapBackgroundColourSignal,
+  selectionColourSignal,
   projectVisibleSignal,
   isProjectDirtySignal,
   isDirtySignal,
@@ -94,7 +95,7 @@ import {
   beginProjectPropertiesDraft,
 } from './projectPropertiesSignals';
 import { resolveProjectDisplayName, isDefaultProjectTitle } from '../../shared/project/projectTitle';
-import { DEFAULT_MAP_BACKGROUND_COLOUR } from '../../shared/types/project';
+import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR } from '../../shared/types/project';
 
 export {
   getLayerToolbarPreference,
@@ -1655,6 +1656,7 @@ export function createNewProject(name: string = 'New Project') {
   projectNameSignal.value = name;
   projectFilePathSignal.value = null;
   mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
+  selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
   projectVisibleSignal.value = true;
   isProjectDirtySignal.value = false;
   layerGroupsSignal.value = [];
@@ -1906,6 +1908,7 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     projectFilePathSignal.value = project.filePath || null;
     projectTitleSignal.value = project.metadata?.title || '';
     mapBackgroundColourSignal.value = project.display?.backgroundColour || DEFAULT_MAP_BACKGROUND_COLOUR;
+    selectionColourSignal.value = project.display?.selectionColour || DEFAULT_SELECTION_COLOUR;
     projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
@@ -2476,6 +2479,7 @@ export async function closeProjectAction(): Promise<boolean> {
   projectNameSignal.value = null;
   projectTitleSignal.value = '';
   mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
+  selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;
