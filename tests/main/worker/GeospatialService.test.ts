@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialService process lifecycle, correlated request-response message bridge, timeout handling, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  */
@@ -15,7 +15,11 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EventEmitter } from 'node:events';
 import WKB from 'ol/format/WKB.js';
-import { GeospatialService, geospatialService } from '../../../src/main/worker/GeospatialService';
+import {
+  GeospatialService,
+  geospatialService,
+  resolveWorkerExecArgv
+} from '../../../src/main/worker/GeospatialService';
 import type { WorkerRequest, WorkerResponse } from '../../../src/main/worker/types';
 import type { BoundingBox } from '../../../src/shared/types';
 
@@ -51,6 +55,22 @@ class MockWorker extends EventEmitter {
     this.emit('message', res);
   }
 }
+
+describe('resolveWorkerExecArgv worker debugger port', () => {
+  it('forks the worker with its debugger on the main debugger port + 1 when unpackaged', () => {
+    assert.deepEqual(resolveWorkerExecArgv(false, 'ws://127.0.0.1:5860/0f6c1d2e-aaaa-bbbb-cccc-123456789abc'), [
+      '--inspect=5861'
+    ]);
+  });
+
+  it('opens no worker debugger in a packaged app even when the main process has a debugger', () => {
+    assert.deepEqual(resolveWorkerExecArgv(true, 'ws://127.0.0.1:5858/0f6c1d2e-aaaa-bbbb-cccc-123456789abc'), []);
+  });
+
+  it('opens no worker debugger when the main process has no debugger', () => {
+    assert.deepEqual(resolveWorkerExecArgv(false, undefined), []);
+  });
+});
 
 describe('GeospatialService In-Process Headless Fallback', () => {
   let service: GeospatialService;

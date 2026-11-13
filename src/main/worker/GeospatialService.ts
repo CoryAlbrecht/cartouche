@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-06
+ * @updated 2026-11-12
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -15,6 +15,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
+import * as inspector from 'node:inspector';
 import { app, utilityProcess, type UtilityProcess } from 'electron';
 import type {
   BoundingBox,
@@ -37,6 +38,28 @@ import type {
   WorkerRequestPayload,
   WorkerResponse
 } from './types';
+
+/**
+ * @description Decides the Node `execArgv` for the geospatial worker's utility process. The worker gets a
+ * debugger only when the app is unpackaged and the main process has an active debugger; its port is then
+ * the main process's debugger port + 1 (so the default `npm run dev` pairs 5858 with 5859, and isolated
+ * instances on other main ports never collide or cross-attach).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-12
+ * @updated 2026-11-12
+ * @since 0.1.0-dev
+ * @param {boolean} isPackaged - Whether the app is a packaged build (`app.isPackaged`).
+ * @param {string | undefined} mainInspectorUrl - The main process's active debugger URL (`inspector.url()`), or `undefined` when none is open.
+ * @returns {string[]} `['--inspect=<main port + 1>']` when the worker should be debuggable, otherwise `[]`.
+ * @throws {TypeError} If `mainInspectorUrl` is a non-empty string that is not a valid URL.
+ */
+export function resolveWorkerExecArgv(isPackaged: boolean, mainInspectorUrl: string | undefined): string[] {
+  if (isPackaged || !mainInspectorUrl) {
+    return [];
+  }
+  const mainPort = Number(new URL(mainInspectorUrl).port);
+  return [`--inspect=${mainPort + 1}`];
+}
 
 /**
  * @typedef {Object} PendingRequestEntry
@@ -340,19 +363,21 @@ export class GeospatialService {
 
   /**
    * @description Spawns the background Electron utility process and registers message, error, and exit listeners.
+   * The worker's debugger flags come from {@link resolveWorkerExecArgv} (main debugger port + 1, unpackaged only).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-15
+   * @updated 2026-11-12
+   * @since 0.1.0-dev
    * @private
    * @param {string} workerPath - Path to compiled worker script.
    * @returns {void}
    */
   private spawnWorker(workerPath: string): void {
     try {
-      const isDev =
-        process.env.NODE_ENV === 'development' ||
-        process.argv.some((arg) => arg.startsWith('--inspect'));
       this.worker = utilityProcess.fork(workerPath, [], {
         serviceName: 'geospatial-worker',
         stdio: 'pipe',
-        execArgv: isDev ? ['--inspect=5859'] : []
+        execArgv: resolveWorkerExecArgv(app?.isPackaged ?? false, inspector.url())
       });
       this.bindWorkerEvents(this.worker);
       logging.info('Background geospatial worker process spawned successfully', { scope: 'GeospatialService' });
