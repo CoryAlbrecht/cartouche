@@ -15,6 +15,7 @@ import type { FileCategory, FileTypeDescriptor } from './filetypes';
 export * from './actions';
 export * from './filetypes';
 export * from './project';
+export * from './crs';
 export * from './styling';
 export * from './i18n';
 export * from './layers';
@@ -330,6 +331,8 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerIds: string[], style: import('./project').ProjectLayerStyleItem | undefined, opacity?: number) => Promise<void>} [setLayerStyle] - Assigns a layer style container to one or more vector layers, promoting shared styles when applied to multiple layers.
  * @property {(patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>} [updateProjectProperties] - Commits a Project Properties draft (title, …) to the Project Store in one round trip and sets the Project Dirty State.
  * @property {(options?: { title?: string; defaultPath?: string }) => Promise<string | null>} [openDirectory] - Opens the native directory picker and returns the chosen directory, or null when cancelled.
+ * @property {() => Promise<import('./crs').CrsCatalogueState>} [getCrsCatalogue] - Returns the CRS Catalogue state (building, ready with entries, or error).
+ * @property {(callback: (state: import('./crs').CrsCatalogueState) => void) => () => void} [onCrsCatalogueUpdated] - Subscribes to CRS Catalogue state changes.
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
  * @property {(style: import('./project').ProjectLayerStyleItem, defaultPath?: string) => Promise<string | null>} [saveStyleFile] - Saves a ProjectLayerStyleItem to disk via explicit path or native save dialog.
  * @property {(layerId: string, edit: import('./project').StagedFeatureEdit) => Promise<void>} [stageFeatureEdit] - Stages an uncommitted feature modification or addition into Main's crash-resilient edit cache.
@@ -386,6 +389,10 @@ export interface ElectronAPI {
   }) => Promise<string[]>;
   /** @ipc dialog:open-directory */
   openDirectory?: (options?: { title?: string; defaultPath?: string }) => Promise<string | null>;
+  /** @ipc crs:get-catalogue */
+  getCrsCatalogue?: () => Promise<import('./crs').CrsCatalogueState>;
+  /** @ipc crs:catalogue-updated */
+  onCrsCatalogueUpdated?: (callback: (state: import('./crs').CrsCatalogueState) => void) => () => void;
   /** @ipc dialog:save-file */
   saveFile?: (options?: {
     title?: string;

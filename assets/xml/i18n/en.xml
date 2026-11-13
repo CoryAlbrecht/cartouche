@@ -201,6 +201,8 @@
     <string name="layer_properties_btn_apply">Apply</string>
     <string name="layer_properties_btn_cancel">Cancel</string>
     <string name="layer_properties_loading">Loading layer properties...</string>
+    <string name="crs_catalogue_building">Building CRS list…</string>
+    <string name="prefs_crs_hide_deprecated">Hide Deprecated CRSs</string>
     <!-- Project Properties Dialog -->
     <string name="project_properties_dialog_title">Project Properties</string>
     <string name="project_properties_tab_general">General</string>

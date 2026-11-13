@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -57,6 +57,7 @@ import {
 } from "../map/timeFilterMath";
 import { logging } from "../../shared/logging";
 import { computeStyleFormatSwitch } from "../../shared/styles/styleFormatSwitch";
+import { findCrsCatalogueEntry } from "./crsCatalogueSignals";
 
 /**
  * @typedef {'information' | 'source' | 'fields' | 'time_filter' | 'styling'} LayerPropertiesTabId
@@ -807,9 +808,9 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
   }
 
   // 3. Update CRS and custom feature filter on local layer and set isProjectDirtySignal
-  const crsMatch = POPULAR_CRS_OPTIONS.find(
-    (c) => c.authId === draft.crsAuthId
-  );
+  const crsMatch =
+    findCrsCatalogueEntry(draft.crsAuthId)
+    ?? POPULAR_CRS_OPTIONS.find((c) => c.authId === draft.crsAuthId);
   const updatedCrs = {
     authId: draft.crsAuthId,
     description: crsMatch?.name || draft.crsAuthId,

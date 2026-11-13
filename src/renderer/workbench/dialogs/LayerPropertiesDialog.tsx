@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -45,9 +45,9 @@ import {
   applyLayerPropertiesEdits,
   commitAndCloseLayerPropertiesDialog,
   findLayerInTree,
+  POPULAR_CRS_OPTIONS,
   isDiscardFieldChangesModalOpenSignal,
   discardUnappliedFieldChanges,
-  POPULAR_CRS_OPTIONS,
   type LayerPropertiesTabId,
 } from "@renderer/state/layerPropertiesSignals";
 import {
@@ -74,6 +74,8 @@ import { Dialog } from "./Dialog";
 import { TabbedDialogShell, type TabbedDialogTabDef } from "./TabbedDialogShell";
 import { ModalDialog } from "./ModalDialog";
 import { StyleEditor } from "./StyleEditor";
+import { crsCatalogueSignal, listCrsChooserEntries } from "@renderer/state/crsCatalogueSignals";
+import { formatCrsEntryLabel } from "@shared/types/crs";
 
 
 
@@ -88,6 +90,18 @@ export {
   type UseRawStyleTextEditorHistoryOptions,
   type UseRawStyleTextEditorHistoryResult,
 } from "./StyleEditor";
+
+/**
+ * Names of well-known CRSs keyed by upper-cased `AUTH:code`, used to label the current CRS while the CRS Catalogue is still building.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Record<string, string>}
+ */
+const POPULAR_CRS_NAMES: Record<string, string> = Object.fromEntries(
+  POPULAR_CRS_OPTIONS.map((c) => [c.authId.toUpperCase(), c.name])
+);
 
 /**
  * @typedef {Object} SidebarTabDef
@@ -1144,11 +1158,16 @@ export const LayerPropertiesDialog: React.FC = () => {
                       fontSize: "0.875rem",
                       backgroundColor: "#ffffff",
                     }}>
-                    {POPULAR_CRS_OPTIONS.map((crs) => (
+                    {listCrsChooserEntries(draft.crsAuthId ? [draft.crsAuthId] : [], POPULAR_CRS_NAMES).map((crs) => (
                       <option key={crs.authId} value={crs.authId}>
-                        {crs.authId} — {crs.name}
+                        {formatCrsEntryLabel(crs)}
                       </option>
                     ))}
+                    {crsCatalogueSignal.value.status === "building" && (
+                      <option value='' disabled className='crs-catalogue-building'>
+                        {t("crs_catalogue_building")}
+                      </option>
+                    )}
                   </select>
                 </div>
               </fieldset>

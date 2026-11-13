@@ -176,6 +176,8 @@
     <string name="layer_properties_btn_apply">Appliquer</string>
     <string name="layer_properties_btn_cancel">Annuler</string>
     <string name="layer_properties_loading">Chargement des propriétés de la couche...</string>
+    <string name="crs_catalogue_building">Construction de la liste des SCR…</string>
+    <string name="prefs_crs_hide_deprecated">Masquer les SCR obsolètes</string>
     <!-- Project Properties Dialog -->
     <string name="project_properties_dialog_title">Propriétés du projet</string>
     <string name="project_properties_tab_general">Général</string>

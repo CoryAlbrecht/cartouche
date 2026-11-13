@@ -109,6 +109,16 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('layers:getDirtyLayerIds'),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  /** @ipc crs:get-catalogue */
+  getCrsCatalogue: () => ipcRenderer.invoke('crs:get-catalogue'),
+  /** @ipc crs:catalogue-updated */
+  onCrsCatalogueUpdated: (callback: (state: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: any) => callback(state);
+    ipcRenderer.on('crs:catalogue-updated', handler);
+    return () => {
+      ipcRenderer.removeListener('crs:catalogue-updated', handler);
+    };
+  },
   /** @ipc dialog:open-directory */
   openDirectory: (options?: any) => ipcRenderer.invoke('dialog:open-directory', options),
   /** @ipc dialog:save-file */

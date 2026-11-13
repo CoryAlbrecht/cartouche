@@ -154,6 +154,19 @@ function createWindow() {
       geospatialService.setBackgroundScanEnabled(Boolean(value));
     }
   });
+
+  // Load or build the CRS Catalogue in the geospatial worker without blocking startup
+  void (async () => {
+    const [{ startCrsCatalogueBuild }, { emitToWindows }] = await Promise.all([
+      import('./crs/crsCatalogueService'),
+      import('./project/ProjectBroadcaster'),
+    ]);
+    await startCrsCatalogueBuild(
+      app.getPath('userData'),
+      (cacheDir) => geospatialService.buildCrsCatalogue(cacheDir),
+      (crsState) => emitToWindows('crs:catalogue-updated', crsState)
+    );
+  })();
   const wbPrefs = PreferencesStore.get();
   const savedWbX = wbPrefs['ui.workbench.location.x']?.value;
   const savedWbY = wbPrefs['ui.workbench.location.y']?.value;
@@ -604,6 +617,11 @@ function startApp(): void {
     } finally {
       isFileDialogOpen = false;
     }
+  });
+
+  handleIpc('crs:get-catalogue', async () => {
+    const { getCrsCatalogueState } = await import('./crs/crsCatalogueService');
+    return getCrsCatalogueState();
   });
 
   // Project Management IPC Handlers

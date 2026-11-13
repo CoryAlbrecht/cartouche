@@ -454,6 +454,18 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     category: 'ui',
     type: 'number'
   },
+  'crs.hideDeprecated': {
+    displayName: 'Hide Deprecated CRSs',
+    value: true,
+    defaultValue: true,
+    ephemeral: false,
+    hidden: true,
+    category: 'general',
+    description: 'Hides deprecated coordinate reference systems in every CRS chooser; the current CRS and Recently Used entries are always shown.',
+    type: 'boolean',
+    controls: ['checkbox'],
+    i18nId: 'prefs_crs_hide_deprecated'
+  },
   'ui.layerProperties.fields.showNativeType': {
     displayName: 'Show Native Type in Layer Fields',
     value: false,
