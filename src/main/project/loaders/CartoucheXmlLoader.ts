@@ -201,6 +201,20 @@ export class CartoucheXmlLoader implements IProjectLoader {
       };
     }
 
+    // Parse Recently Used CRSs (optional, most recent first, at most 20)
+    let recentCrs: ProjectCrs[] | undefined;
+    if (root.recentCrs && root.recentCrs.crs) {
+      const rawList = Array.isArray(root.recentCrs.crs) ? root.recentCrs.crs : [root.recentCrs.crs];
+      recentCrs = rawList
+        .filter((c: any) => c && c.authId)
+        .slice(0, 20)
+        .map((c: any): ProjectCrs => ({
+          authId: String(c.authId),
+          ...(c.srid ? { srid: parseInt(c.srid, 10) } : {}),
+          ...(c.description ? { description: String(c.description) } : {}),
+        }));
+    }
+
     // Parse Display settings (optional)
     let display: ProjectDisplaySettings | undefined;
     if (root.display) {
@@ -670,6 +684,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       ...(home ? { home } : {}),
       ...(pathMode ? { pathMode } : {}),
       crs,
+      ...(recentCrs && recentCrs.length > 0 ? { recentCrs } : {}),
       display,
       measurement,
       viewport,
@@ -796,6 +811,23 @@ export class CartoucheXmlLoader implements IProjectLoader {
         lines.push(`    <wkt>${escapeXml(project.crs.wkt)}</wkt>`);
       }
       lines.push("  </crs>");
+    }
+
+    // 2a. Recently Used CRSs (optional; at most 20, most recent first)
+    if (project.recentCrs && project.recentCrs.length > 0) {
+      lines.push("  <recentCrs>");
+      for (const recent of project.recentCrs.slice(0, 20)) {
+        lines.push("    <crs>");
+        lines.push(`      <authId>${escapeXml(recent.authId)}</authId>`);
+        if (recent.srid !== undefined) {
+          lines.push(`      <srid>${recent.srid}</srid>`);
+        }
+        if (recent.description) {
+          lines.push(`      <description>${escapeXml(recent.description)}</description>`);
+        }
+        lines.push("    </crs>");
+      }
+      lines.push("  </recentCrs>");
     }
 
     // 2b. Display settings (optional; written only when something is set)

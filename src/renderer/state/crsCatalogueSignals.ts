@@ -17,7 +17,7 @@ import {
   type CrsCatalogueEntry,
   type CrsCatalogueState,
 } from '../../shared/types/crs';
-import { preferencesMapSignal } from './preferencesSignals';
+import { preferencesMapSignal, updatePreference } from './preferencesSignals';
 import { logging } from '../../shared/logging';
 
 /**
@@ -136,4 +136,23 @@ export async function refreshCrsCatalogue(): Promise<void> {
 if (typeof window !== 'undefined' && window.electronAPI?.onCrsCatalogueUpdated) {
   window.electronAPI.onCrsCatalogueUpdated((state) => setCrsCatalogueState(state));
   void refreshCrsCatalogue();
+}
+
+/**
+ * @function setHideDeprecatedCrs
+ * @description Sets the `crs.hideDeprecated` app preference: updates the local preference map immediately (so every CRS chooser re-filters) and persists it through the main process.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {boolean} hide - Whether deprecated CRSs are hidden.
+ * @returns {Promise<void>}
+ */
+export async function setHideDeprecatedCrs(hide: boolean): Promise<void> {
+  const current = preferencesMapSignal.value[CRS_HIDE_DEPRECATED_PREF] ?? {};
+  preferencesMapSignal.value = {
+    ...preferencesMapSignal.value,
+    [CRS_HIDE_DEPRECATED_PREF]: { ...current, value: hide },
+  } as typeof preferencesMapSignal.value;
+  await updatePreference(CRS_HIDE_DEPRECATED_PREF, hide);
 }

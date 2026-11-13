@@ -246,6 +246,12 @@
     <string name="project_properties_scale_method_equator">At Equator</string>
     <string name="project_properties_tab_time_filter">Time Filter</string>
     <string name="project_properties_group_time_filter">Project Time Filter</string>
+    <string name="project_properties_tab_crs">CRS</string>
+    <string name="project_properties_crs_none">No CRS (or unknown/non-Earth projection)</string>
+    <string name="project_properties_crs_filter">Filter</string>
+    <string name="project_properties_crs_recent">Recently Used Coordinate Reference Systems</string>
+    <string name="project_properties_crs_predefined">Predefined Coordinate Reference Systems</string>
+    <string name="project_properties_crs_hide_deprecated">Hide Deprecated CRSs</string>
     <string name="project_properties_label_home">Project Home</string>
     <string name="project_properties_btn_browse_home">Choose Project Home directory...</string>
     <string name="project_properties_label_path_mode">Save Path</string>

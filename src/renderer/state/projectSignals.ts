@@ -372,6 +372,42 @@ export function setMeasurementSettings(updates: ProjectMeasurementSettings): voi
 export const projectCrsSignal = signal<ProjectCrs | null>(null);
 
 /**
+ * @signal projectRecentCrsSignal
+ * @description Reactive signal holding the project's Recently Used CRSs, most recent first (at most 20).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectCrs[]>}
+ */
+export const projectRecentCrsSignal = signal<ProjectCrs[]>([]);
+
+/**
+ * @function setProjectRecentCrs
+ * @description Sets the Recently Used CRSs (trimmed to 20) and mirrors it into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectCrs[]} list - New list, most recent first.
+ * @returns {void}
+ */
+export function setProjectRecentCrs(list: ProjectCrs[]): void {
+  const next = list.slice(0, 20).map((c) => ({ ...c }));
+  batch(() => {
+    projectRecentCrsSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      if (next.length > 0) {
+        project.recentCrs = next;
+      } else {
+        delete project.recentCrs;
+      }
+    }
+  });
+}
+
+/**
  * @function setProjectCrs
  * @description Sets the Project CRS signal and mirrors it into the current project model (null removes `<crs>`).
  * @author Cory Albrecht <cory@albrecht.name>

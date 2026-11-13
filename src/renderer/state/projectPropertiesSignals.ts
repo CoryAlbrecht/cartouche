@@ -1,7 +1,7 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit, Project CRS / No CRS and the Recently Used CRSs). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-13
@@ -47,7 +47,12 @@ import {
   projectTreeSignal,
   findItemInTree,
   setProjectCrs,
+  projectCrsSignal,
+  projectRecentCrsSignal,
+  setProjectRecentCrs,
 } from './projectSignals';
+import { findCrsCatalogueEntry } from './crsCatalogueSignals';
+import { MAX_RECENT_CRS, addToRecentCrsIfMissing } from '../../shared/types/crs';
 import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
@@ -68,14 +73,14 @@ import {
 } from '../../shared/project/projectHome';
 
 /**
- * @typedef {'general' | 'measurements' | 'time_filter'} ProjectPropertiesTabId
+ * @typedef {'general' | 'measurements' | 'crs' | 'time_filter'} ProjectPropertiesTabId
  * @description Identifier of a sidebar tab in the Project Properties dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export type ProjectPropertiesTabId = 'general' | 'measurements' | 'time_filter';
+export type ProjectPropertiesTabId = 'general' | 'measurements' | 'crs' | 'time_filter';
 
 /**
  * @typedef {Object} ProjectPropertiesDraft
@@ -97,6 +102,9 @@ export type ProjectPropertiesTabId = 'general' | 'measurements' | 'time_filter';
  * @property {number} timeFilterTo - Draft Time Filter range end (To) in UTC epoch ms.
  * @property {number} timeFilterStep - Draft Time Filter step magnitude.
  * @property {TimeFilterUnit} timeFilterUnit - Draft Time Filter step unit.
+ * @property {boolean} crsNone - Draft "No CRS" flag.
+ * @property {string} crsAuthId - Draft selected Project CRS (`AUTH:code`), empty when none is chosen.
+ * @property {string[]} recentCrs - Draft Recently Used CRS ids, most recent first (trimmed to 20 on Apply).
  */
 export interface ProjectPropertiesDraft {
   title: string;
@@ -112,6 +120,9 @@ export interface ProjectPropertiesDraft {
   timeFilterTo: number;
   timeFilterStep: number;
   timeFilterUnit: TimeFilterUnit;
+  crsNone: boolean;
+  crsAuthId: string;
+  recentCrs: string[];
 }
 
 /**
@@ -136,6 +147,9 @@ function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
     timeFilterTo: 0,
     timeFilterStep: 1,
     timeFilterUnit: 'Days',
+    crsNone: false,
+    crsAuthId: '',
+    recentCrs: [],
   };
 }
 
@@ -208,6 +222,9 @@ export function beginProjectPropertiesDraft(): void {
       timeFilterTo: timeFilterRangeEndSignal.value,
       timeFilterStep: timeFilterStepSignal.value,
       timeFilterUnit: timeFilterUnitSignal.value,
+      crsNone: Boolean(projectCrsSignal.value?.none),
+      crsAuthId: projectCrsSignal.value?.none ? '' : projectCrsSignal.value?.authId ?? '',
+      recentCrs: projectRecentCrsSignal.value.map((c) => c.authId),
     };
     projectPropertiesBaselineKeySignal.value += 1;
   });
@@ -302,7 +319,70 @@ export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): Proj
     distanceUnit: PROJECT_DISTANCE_UNITS.includes(draft.distanceUnit) ? draft.distanceUnit : DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
     areaUnit: PROJECT_AREA_UNITS.includes(draft.areaUnit) ? draft.areaUnit : DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
     scaleMethod: SCALE_CALCULATION_METHODS.includes(draft.scaleMethod) ? draft.scaleMethod : DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
+    ...buildCrsPatch(draft),
   };
+}
+
+/**
+ * @function describeCrs
+ * @description Builds a stored CRS record for an `AUTH:code`, naming it from the CRS Catalogue (or the committed Project CRS / Recently Used entry) when known.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string} authId - CRS id.
+ * @returns {ProjectCrs} CRS record.
+ */
+function describeCrs(authId: string): ProjectCrs {
+  const key = authId.toUpperCase();
+  const known =
+    findCrsCatalogueEntry(authId)?.name
+    ?? projectRecentCrsSignal.value.find((c) => c.authId.toUpperCase() === key)?.description
+    ?? (projectCrsSignal.value?.authId?.toUpperCase() === key ? projectCrsSignal.value?.description : undefined);
+  return { authId, ...(known ? { description: known } : {}) };
+}
+
+/**
+ * @function buildCrsPatch
+ * @description CRS tab part of the patch: the Project CRS only when the selection changed (so an adopted CRS keeps its proj4 definition), and the Recently Used list trimmed to 20 by dropping the oldest.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectPropertiesDraft} draft - Draft.
+ * @returns {Pick<ProjectPropertiesPatch, 'crs' | 'recentCrs'>} Patch members.
+ */
+export function buildCrsPatch(draft: ProjectPropertiesDraft): Pick<ProjectPropertiesPatch, 'crs' | 'recentCrs'> {
+  const committed = projectCrsSignal.value;
+  const patch: Pick<ProjectPropertiesPatch, 'crs' | 'recentCrs'> = {
+    recentCrs: (draft.recentCrs ?? []).slice(0, MAX_RECENT_CRS).map(describeCrs),
+  };
+  if (draft.crsNone) {
+    if (!committed?.none) patch.crs = { authId: '', none: true };
+  } else if (draft.crsAuthId) {
+    const same = !committed?.none && committed?.authId?.toUpperCase() === draft.crsAuthId.toUpperCase();
+    if (!same) patch.crs = describeCrs(draft.crsAuthId);
+  }
+  return patch;
+}
+
+/**
+ * @function selectDraftCrs
+ * @description Selects a CRS on the CRS tab. Selecting from the Predefined list also adds it to the top of the draft Recently Used list when it is not already there; selecting from Recently Used only selects it.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string} authId - Selected CRS.
+ * @param {'recent' | 'predefined'} source - List the selection came from.
+ * @returns {void}
+ */
+export function selectDraftCrs(authId: string, source: 'recent' | 'predefined'): void {
+  const draft = projectPropertiesDraftSignal.value;
+  updateProjectPropertiesDraft({
+    crsAuthId: authId,
+    ...(source === 'predefined' ? { recentCrs: addToRecentCrsIfMissing(draft.recentCrs, authId) } : {}),
+  });
 }
 
 /**
@@ -394,6 +474,12 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
       scaleMethod: patch.scaleMethod,
     });
     applyTimeFilterDraft(projectPropertiesDraftSignal.value);
+    if (patch.crs !== undefined) {
+      setProjectCrs(patch.crs);
+    }
+    if (patch.recentCrs !== undefined) {
+      setProjectRecentCrs(patch.recentCrs);
+    }
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();
   });

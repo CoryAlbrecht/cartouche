@@ -111,3 +111,63 @@ export function selectVisibleCrsEntries(
 export function formatCrsEntryLabel(entry: CrsCatalogueEntry): string {
   return `${entry.authId} — ${entry.name}${entry.deprecated ? ' (deprecated)' : ''}`;
 }
+
+/**
+ * @constant {number} MAX_RECENT_CRS
+ * @description Maximum number of Recently Used CRSs kept per project.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const MAX_RECENT_CRS = 20;
+
+/**
+ * @function crsEntryMatchesFilter
+ * @description Case-insensitive substring match of a filter text against a CRS name and its `AUTH:code`; an empty filter matches everything.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {{ authId: string; name: string }} entry - CRS entry.
+ * @param {string} filter - Filter text.
+ * @returns {boolean} True when the entry matches.
+ */
+export function crsEntryMatchesFilter(entry: { authId: string; name: string }, filter: string): boolean {
+  const needle = filter.trim().toLowerCase();
+  if (!needle) return true;
+  return entry.name.toLowerCase().includes(needle) || entry.authId.toLowerCase().includes(needle);
+}
+
+/**
+ * @function pushRecentCrs
+ * @description Returns a Recently Used list with `authId` at the top (moved there if present, added otherwise), trimmed to `max` by dropping the oldest entries.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {readonly string[]} recent - Current list, most recent first.
+ * @param {string} authId - CRS to put on top.
+ * @param {number} [max=MAX_RECENT_CRS] - Maximum length.
+ * @returns {string[]} New list.
+ */
+export function pushRecentCrs(recent: readonly string[], authId: string, max: number = MAX_RECENT_CRS): string[] {
+  const key = authId.toUpperCase();
+  return [authId, ...recent.filter((id) => id.toUpperCase() !== key)].slice(0, max);
+}
+
+/**
+ * @function addToRecentCrsIfMissing
+ * @description Adds `authId` to the top of the Recently Used list only when it is not already listed; the list order is otherwise unchanged.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {readonly string[]} recent - Current list, most recent first.
+ * @param {string} authId - CRS selected in the Predefined list.
+ * @returns {string[]} New list (untrimmed; trimming happens on Apply).
+ */
+export function addToRecentCrsIfMissing(recent: readonly string[], authId: string): string[] {
+  const key = authId.toUpperCase();
+  return recent.some((id) => id.toUpperCase() === key) ? [...recent] : [authId, ...recent];
+}

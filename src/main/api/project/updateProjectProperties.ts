@@ -23,7 +23,7 @@ import { logging } from '../../../shared/logging';
 
 /**
  * @ipc project:update-properties
- * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. An explicit Project CRS replaces or removes `<crs>`. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project; distance / area units and the Scale Calculation method go to the measurement settings. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
+ * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. An explicit Project CRS replaces or removes `<crs>`; the Recently Used CRSs is stored trimmed to 20. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project; distance / area units and the Scale Calculation method go to the measurement settings. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -108,6 +108,18 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
         project.crs = next;
       } else {
         delete project.crs;
+      }
+      changed = true;
+    }
+  }
+
+  if (patch && Array.isArray(patch.recentCrs)) {
+    const next = patch.recentCrs.filter((c) => c && c.authId).slice(0, 20).map((c) => ({ ...c }));
+    if (JSON.stringify(project.recentCrs ?? []) !== JSON.stringify(next)) {
+      if (next.length > 0) {
+        project.recentCrs = next;
+      } else {
+        delete project.recentCrs;
       }
       changed = true;
     }

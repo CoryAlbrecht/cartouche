@@ -1457,4 +1457,32 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.ok(projectedXml.includes('<authId>EPSG:2154</authId>') && !projectedXml.includes('none='));
     assert.equal(validateXmlAgainstSchema(projectedXml).valid, true);
   });
+  it('round-trips <recentCrs> (at most 20, most recent first) after <crs> and before <display>, validated against project.xsd (Ticket #280)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'recent-crs.cproj');
+    const recent = Array.from({ length: 22 }, (_, i) => ({ authId: `EPSG:${32601 + i}`, description: `WGS 84 / UTM zone ${i + 1}N` }));
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Recent CRS', appVersion: '0.1.0-dev' },
+      crs: { authId: 'EPSG:32601' },
+      recentCrs: recent,
+      display: { backgroundColour: '#ffffff' },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.indexOf('</crs>') < xml.indexOf('<recentCrs>'), '<recentCrs> follows <crs>');
+    assert.ok(xml.indexOf('</recentCrs>') < xml.indexOf('<display'), '<recentCrs> precedes <display>');
+    assert.equal((xml.match(/<recentCrs>[\s\S]*<\/recentCrs>/)![0].match(/<authId>/g) || []).length, 20, 'trimmed to 20');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.recentCrs?.length, 20);
+    assert.deepEqual(loaded.recentCrs?.[0], { authId: 'EPSG:32601', description: 'WGS 84 / UTM zone 1N' });
+    assert.equal(loaded.recentCrs?.[19].authId, 'EPSG:32620', 'most recent first, oldest dropped');
+
+    const overflow = xml.replace('</recentCrs>', '<crs><authId>EPSG:1</authId></crs></recentCrs>');
+    assert.equal(validateXmlAgainstSchema(overflow).valid, false, 'more than 20 entries fail validation');
+  });
 });

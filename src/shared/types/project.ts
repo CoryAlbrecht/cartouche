@@ -485,6 +485,7 @@ export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> 
  * @property {ProjectAreaUnit} [areaUnit] - Units for Area.
  * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
  * @property {ProjectCrs | null} [crs] - Explicit Project CRS (null removes it); `{ none: true }` selects No CRS.
+ * @property {ProjectCrs[]} [recentCrs] - Recently Used CRSs, most recent first (at most 20).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -500,6 +501,7 @@ export interface ProjectPropertiesPatch {
   areaUnit?: ProjectAreaUnit;
   scaleMethod?: ScaleCalculationMethod;
   crs?: ProjectCrs | null;
+  recentCrs?: ProjectCrs[];
 }
 
 /**
@@ -550,6 +552,7 @@ export interface ProjectStyleItem {
  * @property {string} [home] - Explicit Project Home directory, absolute in memory; written relative to the project file where possible. Unset means the project file's directory.
  * @property {ProjectPathMode} [pathMode] - Save Path Mode; unset means `absolute` (legacy files).
  * @property {ProjectCrs} [crs] - Project-wide default coordinate reference system.
+ * @property {ProjectCrs[]} [recentCrs] - Recently Used CRSs of the project, most recent first (at most 20).
  * @property {ProjectDisplaySettings} [display] - Project-wide map display settings (Map Background Colour, Selection Colour).
  * @property {ProjectMeasurementSettings} [measurement] - Distance / area units and the Scale Calculation method.
  * @property {ProjectViewport} [viewport] - Initial map camera and extent parameters.
@@ -569,6 +572,7 @@ export interface ProjectModel {
   home?: string;
   pathMode?: ProjectPathMode;
   crs?: ProjectCrs;
+  recentCrs?: ProjectCrs[];
   display?: ProjectDisplaySettings;
   measurement?: ProjectMeasurementSettings;
   viewport?: ProjectViewport;

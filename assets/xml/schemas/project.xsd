@@ -33,6 +33,9 @@
       <!-- Project CRS: the display authority of the map (ADR 0033); none="true" means No CRS - Optional -->
       <xs:element name="crs" type="ProjectCrsType" minOccurs="0" />
 
+      <!-- Recently Used CRSs, most recent first (at most 20) - Optional -->
+      <xs:element name="recentCrs" type="RecentCrsType" minOccurs="0" />
+
       <!-- Project-wide Map Display Settings (background colour) - Optional -->
       <xs:element name="display" type="DisplayType" minOccurs="0" />
 
@@ -184,6 +187,13 @@
       <xs:element name="wkt" type="xs:string" minOccurs="0" />
     </xs:sequence>
     <xs:attribute name="none" type="xs:boolean" default="false" />
+  </xs:complexType>
+
+  <!-- Recently Used CRS list -->
+  <xs:complexType name="RecentCrsType">
+    <xs:sequence>
+      <xs:element name="crs" type="CrsType" minOccurs="0" maxOccurs="20" />
+    </xs:sequence>
   </xs:complexType>
 
   <!-- Viewport Type -->
