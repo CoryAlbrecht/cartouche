@@ -17,11 +17,13 @@
  * @see {@link projectHomeSignal}
  * @see {@link projectPathModeSignal}
  * @see {@link measurementSettingsSignal}
+ * @see {@link projectCrsSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
 import type {
   ProjectModel,
+  ProjectCrs,
   ProjectLayerItem,
   ProjectGroupItem,
   ProjectLayerStyleItem,
@@ -354,6 +356,41 @@ export function setMeasurementSettings(updates: ProjectMeasurementSettings): voi
     const project = currentProjectSignal.value;
     if (project) {
       project.measurement = { ...next };
+    }
+  });
+}
+
+/**
+ * @signal projectCrsSignal
+ * @description Reactive signal holding the Project CRS (the map's display authority, ADR 0033): null when the project has none yet (the map shows EPSG:3857), a CRS, or `{ none: true }` for "No CRS".
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectCrs | null>}
+ */
+export const projectCrsSignal = signal<ProjectCrs | null>(null);
+
+/**
+ * @function setProjectCrs
+ * @description Sets the Project CRS signal and mirrors it into the current project model (null removes `<crs>`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectCrs | null} crs - New Project CRS.
+ * @returns {void}
+ */
+export function setProjectCrs(crs: ProjectCrs | null): void {
+  batch(() => {
+    projectCrsSignal.value = crs ? { ...crs } : null;
+    const project = currentProjectSignal.value;
+    if (project) {
+      if (crs) {
+        project.crs = { ...crs };
+      } else {
+        delete project.crs;
+      }
     }
   });
 }

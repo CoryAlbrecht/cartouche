@@ -109,6 +109,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('layers:getDirtyLayerIds'),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  /** @ipc crs:get-definition */
+  getCrsDefinition: (authId: string) => ipcRenderer.invoke('crs:get-definition', authId),
   /** @ipc crs:get-catalogue */
   getCrsCatalogue: () => ipcRenderer.invoke('crs:get-catalogue'),
   /** @ipc crs:catalogue-updated */

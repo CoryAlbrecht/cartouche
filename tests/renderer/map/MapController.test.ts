@@ -18,6 +18,7 @@ import {
   mapBackgroundColourSignal,
   selectionColourSignal,
   measurementSettingsSignal,
+  projectCrsSignal,
 } from '../../../src/renderer/state/projectSignals';
 import { cursorCoordsSignal, selectedFeatureIdsSignal, activeLayerIdSignal, scaleDenominatorSignal } from '../../../src/renderer/state/gisSignals';
 import { preferencesMapSignal } from '../../../src/renderer/state/preferencesSignals';
@@ -28,8 +29,9 @@ import {
 } from '../../../src/renderer/map/MapController';
 import Feature from 'ol/Feature.js';
 import VectorImageLayer from 'ol/layer/VectorImage.js';
-import { fromLonLat, transformExtent } from 'ol/proj.js';
+import { fromLonLat, transformExtent, transform } from 'ol/proj.js';
 import { generateDefaultVectorStyleJson } from '../../../src/shared/styles/defaultLayerStyles';
+import { NO_CRS_CODE } from '../../../src/renderer/map/projectionRegistry';
 import { WKB_PACKET_MAGIC } from '../../../src/shared/types';
 import type { LayerDescriptor } from '../../../src/shared/types';
 
@@ -396,6 +398,7 @@ describe('MapController Isolated Canvas Engine', () => {
       layerKind: 'vector',
       extent: [-90, 40, -80, 50],
       featureCount: 1,
+      crs: { authId: 'EPSG:4326' }, // lon/lat data: ADR 0033 treats a layer with no CRS as EPSG:3857
     };
 
     projectLayersSignal.value = [descriptor];
@@ -457,6 +460,7 @@ describe('MapController Isolated Canvas Engine', () => {
       layerKind: 'vector',
       extent: [-90, 40, -80, 50],
       featureCount: 1,
+      crs: { authId: 'EPSG:4326' }, // lon/lat data: ADR 0033 treats a layer with no CRS as EPSG:3857
     };
 
     projectLayersSignal.value = [descriptor];
@@ -601,6 +605,7 @@ describe('MapController Isolated Canvas Engine', () => {
       layerKind: 'vector',
       extent: [-92, 41, -76, 49],
       featureCount: 34,
+      crs: { authId: 'EPSG:4326' }, // lon/lat data: ADR 0033 treats a layer with no CRS as EPSG:3857
     };
 
     projectLayersSignal.value = [descriptor];
@@ -737,6 +742,7 @@ describe('MapController Isolated Canvas Engine', () => {
       layerKind: 'vector',
       extent: [-90, 40, -80, 50],
       featureCount: 1,
+      crs: { authId: 'EPSG:4326' }, // lon/lat data: ADR 0033 treats a layer with no CRS as EPSG:3857
     };
 
     projectLayersSignal.value = [descriptor];
@@ -2367,3 +2373,83 @@ describe('MapController SLD Compilation & Delayed Field-Subset Reload', () => {
   });
 });
 
+describe('MapController draws in the Project CRS (Ticket #278)', () => {
+  let controller: MapController | null = null;
+  const LAMBERT_93 = '+proj=lcc +lat_0=46.5 +lon_0=3 +lat_1=49 +lat_2=44 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs';
+  const newContainer = () => (globalThis as any).document.createElement('div');
+
+  beforeEach(() => {
+    projectLayersSignal.value = [];
+    layerStylesSignal.value = {};
+    currentProjectSignal.value = null;
+    projectCrsSignal.value = null;
+  });
+
+  afterEach(() => {
+    controller?.dispose();
+    controller = null;
+    projectCrsSignal.value = null;
+    currentProjectSignal.value = null;
+  });
+
+  it('starts in EPSG:3857 without a Project CRS and in the Project CRS when one is set', () => {
+    controller = new MapController(newContainer());
+    assert.equal(controller.getView().getProjection().getCode(), 'EPSG:3857');
+    controller.dispose();
+
+    projectCrsSignal.value = { authId: 'EPSG:2154', proj4: LAMBERT_93 };
+    controller = new MapController(newContainer());
+    assert.equal(controller.getView().getProjection().getCode(), 'EPSG:2154');
+  });
+
+  it('switches the view to a new Project CRS and keeps the camera on the same place', async () => {
+    controller = new MapController(newContainer());
+    controller.getMap().setSize([800, 600]);
+    controller.getView().fit(transformExtent([2, 45, 4, 47], 'EPSG:4326', 'EPSG:3857'), { size: [800, 600] });
+    const before = transform(controller.getView().getCenter()!, 'EPSG:3857', 'EPSG:4326');
+
+    projectCrsSignal.value = { authId: 'EPSG:4326' };
+    await controller.whenDisplayCrsSettled();
+    assert.equal(controller.getView().getProjection().getCode(), 'EPSG:4326');
+    const after = controller.getView().getCenter()!;
+    assert.ok(Math.abs(after[0] - before[0]) < 0.05 && Math.abs(after[1] - before[1]) < 0.05, `camera kept: ${before} vs ${after}`);
+  });
+
+  it('draws raw cartesian coordinates under No CRS', async () => {
+    controller = new MapController(newContainer());
+    projectCrsSignal.value = { authId: '', none: true };
+    await controller.whenDisplayCrsSettled();
+    assert.equal(controller.getView().getProjection().getCode(), NO_CRS_CODE);
+    assert.equal(controller.getDisplayCrs().none, true);
+  });
+
+  it('saves <viewport> in Project CRS units, and in lon/lat for projects without a Project CRS', async () => {
+    controller = new MapController(newContainer());
+    controller.getMap().setSize([800, 600]);
+    const legacy = controller.getViewportForSave()!;
+    assert.ok(legacy.extent!.xmin >= -180 && legacy.extent!.xmax <= 180, 'lon/lat without a Project CRS');
+
+    projectCrsSignal.value = { authId: 'EPSG:2154', proj4: LAMBERT_93 };
+    await controller.whenDisplayCrsSettled();
+    controller.getView().fit([600000, 6500000, 800000, 6700000], { size: [800, 600] });
+    const projected = controller.getViewportForSave()!;
+    assert.ok(projected.center!.x > 600000 && projected.center!.x < 800000, 'centre in Lambert-93 metres');
+    assert.ok(projected.center!.y > 6500000 && projected.center!.y < 6700000);
+  });
+
+  it('applies a Project CRS viewport after the view has switched, and reads legacy viewports as lon/lat', async () => {
+    controller = new MapController(newContainer());
+    controller.getMap().setSize([800, 600]);
+    // Legacy: lon/lat centre on an EPSG:3857 view
+    controller.setViewport({ units: 'lonlat', center: { x: 10, y: 50 } });
+    const legacyCentre = transform(controller.getView().getCenter()!, 'EPSG:3857', 'EPSG:4326');
+    assert.ok(Math.abs(legacyCentre[0] - 10) < 1e-6 && Math.abs(legacyCentre[1] - 50) < 1e-6);
+
+    // Project units: deferred until the view is in the Project CRS
+    projectCrsSignal.value = { authId: 'EPSG:2154', proj4: LAMBERT_93 };
+    controller.setViewport({ units: 'project', center: { x: 700000, y: 6600000 } });
+    await controller.whenDisplayCrsSettled();
+    const c = controller.getView().getCenter()!;
+    assert.ok(Math.abs(c[0] - 700000) < 1e-6 && Math.abs(c[1] - 6600000) < 1e-6, `pending project viewport applied: ${c}`);
+  });
+});

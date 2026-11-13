@@ -331,6 +331,7 @@ export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
  * @property {(layerIds: string[], style: import('./project').ProjectLayerStyleItem | undefined, opacity?: number) => Promise<void>} [setLayerStyle] - Assigns a layer style container to one or more vector layers, promoting shared styles when applied to multiple layers.
  * @property {(patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>} [updateProjectProperties] - Commits a Project Properties draft (title, …) to the Project Store in one round trip and sets the Project Dirty State.
  * @property {(options?: { title?: string; defaultPath?: string }) => Promise<string | null>} [openDirectory] - Opens the native directory picker and returns the chosen directory, or null when cancelled.
+ * @property {(authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>} [getCrsDefinition] - Resolves a CRS to its proj4 / WKT definitions with GDAL.
  * @property {() => Promise<import('./crs').CrsCatalogueState>} [getCrsCatalogue] - Returns the CRS Catalogue state (building, ready with entries, or error).
  * @property {(callback: (state: import('./crs').CrsCatalogueState) => void) => () => void} [onCrsCatalogueUpdated] - Subscribes to CRS Catalogue state changes.
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
@@ -389,6 +390,8 @@ export interface ElectronAPI {
   }) => Promise<string[]>;
   /** @ipc dialog:open-directory */
   openDirectory?: (options?: { title?: string; defaultPath?: string }) => Promise<string | null>;
+  /** @ipc crs:get-definition */
+  getCrsDefinition?: (authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>;
   /** @ipc crs:get-catalogue */
   getCrsCatalogue?: () => Promise<import('./crs').CrsCatalogueState>;
   /** @ipc crs:catalogue-updated */

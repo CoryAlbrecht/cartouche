@@ -189,8 +189,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
     // Parse CRS (optional)
     let crs: ProjectCrs | undefined;
     if (root.crs) {
+      const rawNone = root.crs["@_none"];
+      const isNone = rawNone === true || rawNone === "true" || rawNone === "1";
       crs = {
-        authId: root.crs.authId || "EPSG:4326",
+        authId: isNone ? String(root.crs.authId ?? "") : root.crs.authId || "EPSG:4326",
+        ...(isNone ? { none: true } : {}),
         srid: root.crs.srid ? parseInt(root.crs.srid, 10) : undefined,
         description: root.crs.description,
         proj4: root.crs.proj4,
@@ -771,7 +774,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
     }
 
     // 2. CRS (optional)
-    if (project.crs) {
+    if (project.crs && project.crs.none) {
+      lines.push('  <crs none="true" />');
+    } else if (project.crs) {
       lines.push("  <crs>");
       lines.push(
         `    <authId>${escapeXml(project.crs.authId || "EPSG:4326")}</authId>`

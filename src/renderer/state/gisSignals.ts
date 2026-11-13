@@ -50,6 +50,7 @@ import {
   projectPathModeSignal,
   measurementSettingsSignal,
   resolveMeasurementSettings,
+  projectCrsSignal,
   projectVisibleSignal,
   isProjectDirtySignal,
   isDirtySignal,
@@ -718,10 +719,14 @@ export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
  * @property {number} [rotation] - Camera rotation for setViewport command.
  * @property {[number, number, number, number]} [padding] - Pixel padding [top, right, bottom, left].
  * @property {number} [duration] - Animation duration in milliseconds.
+ * @property {'lonlat' | 'project'} [units='lonlat'] - Units of `extent` / `center`: lon/lat, or Project CRS units (ADR 0033).
+ * @property {string} [extentCrs] - CRS of `extent` when it is neither lon/lat nor in Project CRS units.
  * @property {number} timestamp - Epoch timestamp distinguishing repeated trigger invocations.
  */
 export interface MapActionPayload {
   action: MapActionType;
+  units?: 'lonlat' | 'project';
+  extentCrs?: string;
   extent?: BoundingBox;
   center?: { x: number; y: number };
   rotation?: number;
@@ -732,7 +737,7 @@ export interface MapActionPayload {
 
 /**
  * @typedef {Object} ActiveMapController
- * @property {(extent: BoundingBox, optionsOrSize?: { padding?: [number, number, number, number]; duration?: number; size?: [number, number] } | [number, number]) => void} fitExtent - Fits viewport to spatial extent.
+ * @property {(extent: BoundingBox, optionsOrSize?: { padding?: [number, number, number, number]; duration?: number; size?: [number, number]; extentCrs?: string } | [number, number]) => void} fitExtent - Fits viewport to spatial extent (in `extentCrs`, lon/lat by default).
  * @property {() => void} zoomIn - Steps viewport resolution closer.
  * @property {() => void} zoomOut - Steps viewport resolution farther.
  * @property {() => void} resetExtent - Resets viewport camera.
@@ -749,6 +754,7 @@ export interface ActiveMapController {
           padding?: [number, number, number, number];
           duration?: number;
           size?: [number, number];
+          extentCrs?: string;
         }
       | [number, number]
   ): void;
@@ -1665,6 +1671,7 @@ export function createNewProject(name: string = 'New Project') {
   projectHomeSignal.value = null;
   projectPathModeSignal.value = DEFAULT_NEW_PROJECT_PATH_MODE;
   measurementSettingsSignal.value = resolveMeasurementSettings(undefined);
+  projectCrsSignal.value = null;
   projectVisibleSignal.value = true;
   isProjectDirtySignal.value = false;
   layerGroupsSignal.value = [];
@@ -1920,6 +1927,7 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     projectHomeSignal.value = project.home?.trim() || null;
     projectPathModeSignal.value = project.pathMode ?? 'absolute';
     measurementSettingsSignal.value = resolveMeasurementSettings(project.measurement);
+    projectCrsSignal.value = project.crs ? { ...project.crs } : null;
     projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
@@ -1947,6 +1955,8 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
       }
       mapActionSignal.value = {
         action: 'setViewport',
+        // ADR 0033: <viewport> is in Project CRS units; files without <crs> keep the legacy lon/lat reading.
+        units: project.crs ? 'project' : 'lonlat',
         extent: project.viewport.extent ? [
           project.viewport.extent.xmin,
           project.viewport.extent.ymin,
@@ -2082,6 +2092,29 @@ export async function openProjectAction(): Promise<void> {
 }
 
 /**
+ * @description Viewport persisted on save: taken from the active map controller in Project CRS units (lon/lat for projects without a Project CRS, ADR 0033), falling back to the lon/lat viewport extent signal when no map is mounted.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @returns {ProjectViewport} Viewport to save.
+ */
+export function resolveViewportForSave(): ProjectViewport {
+  const fromMap = (activeMapControllerSignal.value as any)?.getViewportForSave?.();
+  if (fromMap) return fromMap;
+  const [xmin, ymin, xmax, ymax] = viewportExtentSignal.value;
+  return {
+    extent: { xmin, ymin, xmax, ymax },
+    center: {
+      x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
+      y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
+    },
+    scale: scaleDenominatorSignal.value,
+    rotation: 0
+  };
+}
+
+/**
  * @description After a save, mirrors the main-process rule for the Project Title: a default placeholder title (or none) adopts the saved file's base name, while an explicit title is kept. The display name is re-resolved against the new path either way.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
@@ -2133,16 +2166,7 @@ export async function saveProjectAction(): Promise<boolean> {
   }
 
   try {
-    const [xmin, ymin, xmax, ymax] = viewportExtentSignal.value;
-    const viewport: ProjectViewport = {
-      extent: { xmin, ymin, xmax, ymax },
-      center: {
-        x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
-        y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
-      },
-      scale: scaleDenominatorSignal.value,
-      rotation: 0
-    };
+    const viewport: ProjectViewport = resolveViewportForSave();
     const timeFilterConfig: ProjectTimeFilterConfig = {
       enabled: isTimeFilterActiveSignal.value,
       from: timeFilterRangeStartSignal.value,
@@ -2200,16 +2224,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
   }
 
   try {
-    const [xmin, ymin, xmax, ymax] = viewportExtentSignal.value;
-    const viewport: ProjectViewport = {
-      extent: { xmin, ymin, xmax, ymax },
-      center: {
-        x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
-        y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
-      },
-      scale: scaleDenominatorSignal.value,
-      rotation: 0
-    };
+    const viewport: ProjectViewport = resolveViewportForSave();
     const timeFilterConfig: ProjectTimeFilterConfig = {
       enabled: isTimeFilterActiveSignal.value,
       from: timeFilterRangeStartSignal.value,
@@ -2494,6 +2509,7 @@ export async function closeProjectAction(): Promise<boolean> {
   projectHomeSignal.value = null;
   projectPathModeSignal.value = DEFAULT_NEW_PROJECT_PATH_MODE;
   measurementSettingsSignal.value = resolveMeasurementSettings(undefined);
+  projectCrsSignal.value = null;
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;
@@ -2954,8 +2970,11 @@ export function zoomToLayerAction(): void {
   let layerExtent: BoundingBox | null = null;
 
   const descriptor = projectLayersSignal.value.find((l) => l.id === activeId);
+  // Descriptor extents are in the Layer CRS (EPSG:3857 when the layer declares none, ADR 0033).
+  let layerExtentCrs = 'EPSG:4326';
   if (descriptor && isValidExtent(descriptor.extent)) {
     layerExtent = descriptor.extent;
+    layerExtentCrs = descriptor.crs?.authId || 'EPSG:3857';
   }
 
   if (!layerExtent && controller) {
@@ -2963,6 +2982,7 @@ export function zoomToLayerAction(): void {
     if (entry) {
       if (isValidExtent(entry.descriptor?.extent)) {
         layerExtent = entry.descriptor.extent;
+        layerExtentCrs = entry.descriptor.crs?.authId || 'EPSG:3857';
       } else if (entry.source?.getExtent) {
         const sourceExtent = entry.source.getExtent();
         if (sourceExtent && sourceExtent.every((v: number) => Number.isFinite(v))) {
@@ -2992,10 +3012,11 @@ export function zoomToLayerAction(): void {
 
   if (layerExtent && isValidExtent(layerExtent)) {
     if (controller) {
-      controller.fitExtent(layerExtent, { padding: [8, 8, 8, 8], duration: 200 });
+      controller.fitExtent(layerExtent, { padding: [8, 8, 8, 8], duration: 200, extentCrs: layerExtentCrs });
     } else {
       mapActionSignal.value = {
         action: 'setViewport',
+        extentCrs: layerExtentCrs,
         extent: layerExtent,
         padding: [8, 8, 8, 8],
         duration: 200,

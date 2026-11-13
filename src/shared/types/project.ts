@@ -50,13 +50,15 @@ export interface ProjectMetadata {
  * @property {string} [description] - Human-readable projection title.
  * @property {string} [proj4] - Proj4 definition parameter string.
  * @property {string} [wkt] - Well-Known Text coordinate system definition.
+ * @property {boolean} [none] - Project CRS only: "No CRS", drawing layer coordinates as raw cartesian values with no reprojection (`authId` is then ignored).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-08
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  */
 export interface ProjectCrs {
   authId: string;
+  none?: boolean;
   srid?: number;
   description?: string;
   proj4?: string;

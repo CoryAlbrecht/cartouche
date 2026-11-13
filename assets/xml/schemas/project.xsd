@@ -30,8 +30,8 @@
       <!-- Project Home: directory relative paths are resolved from; relative to the project file where possible - Optional -->
       <xs:element name="home" type="xs:string" minOccurs="0" />
 
-      <!-- Coordinate Reference System (CRS) - Optional -->
-      <xs:element name="crs" type="CrsType" minOccurs="0" />
+      <!-- Project CRS: the display authority of the map (ADR 0033); none="true" means No CRS - Optional -->
+      <xs:element name="crs" type="ProjectCrsType" minOccurs="0" />
 
       <!-- Project-wide Map Display Settings (background colour) - Optional -->
       <xs:element name="display" type="DisplayType" minOccurs="0" />
@@ -173,6 +173,18 @@
       <xs:enumeration value="equator" />
     </xs:restriction>
   </xs:simpleType>
+
+  <!-- Project CRS Type: CRS definition plus the No CRS flag. authId may be omitted only when none="true". -->
+  <xs:complexType name="ProjectCrsType">
+    <xs:sequence>
+      <xs:element name="authId" type="xs:string" minOccurs="0" />
+      <xs:element name="srid" type="xs:integer" minOccurs="0" />
+      <xs:element name="description" type="xs:string" minOccurs="0" />
+      <xs:element name="proj4" type="xs:string" minOccurs="0" />
+      <xs:element name="wkt" type="xs:string" minOccurs="0" />
+    </xs:sequence>
+    <xs:attribute name="none" type="xs:boolean" default="false" />
+  </xs:complexType>
 
   <!-- Viewport Type -->
   <xs:complexType name="ViewportType">

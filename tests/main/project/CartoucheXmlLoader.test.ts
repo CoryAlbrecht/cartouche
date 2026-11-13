@@ -1426,4 +1426,35 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const invalid = bareXml.replace('</metadata>', '</metadata>\n  <measurement scaleMethod="sideways" />');
     assert.equal(validateXmlAgainstSchema(invalid).valid, false, 'unknown scaleMethod must fail schema validation');
   });
+  it('round-trips the Project CRS "No CRS" flag, keeps each Layer CRS unchanged, and stores <viewport> as given (Ticket #278)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'no-crs.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'No CRS Project', appVersion: '0.1.0-dev' },
+      crs: { authId: '', none: true },
+      viewport: { extent: { xmin: 100, ymin: 200, xmax: 300, ymax: 400 }, center: { x: 200, y: 300 } },
+      layers: [
+        { id: 'lambert', name: 'Lambert', type: 'esri-shapefile', source: '/data/l93.shp', crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93' } },
+        { id: 'plain', name: 'No Layer CRS', type: 'esri-shapefile', source: '/data/plain.shp' },
+      ]
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('<crs none="true" />'));
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.crs?.none, true);
+    assert.deepEqual(loaded.viewport?.extent, { xmin: 100, ymin: 200, xmax: 300, ymax: 400 }, 'viewport kept in Project CRS units');
+    assert.equal((loaded.layers[0] as any).crs.authId, 'EPSG:2154', 'Layer CRS saved unchanged, separate from the Project CRS');
+    assert.equal((loaded.layers[1] as any).crs, undefined, 'unknown Layer CRS is never written');
+
+    // A projected Project CRS round-trips without the none flag
+    const projected: ProjectModel = { ...model, crs: { authId: 'EPSG:2154' } };
+    const projectedXml = loader.serializeToXml(projected, testFile);
+    assert.ok(projectedXml.includes('<authId>EPSG:2154</authId>') && !projectedXml.includes('none='));
+    assert.equal(validateXmlAgainstSchema(projectedXml).valid, true);
+  });
 });
