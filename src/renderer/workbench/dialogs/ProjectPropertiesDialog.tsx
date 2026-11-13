@@ -1,7 +1,7 @@
 /**
  * @file ProjectPropertiesDialog.tsx
  * @module renderer/workbench/dialogs/ProjectPropertiesDialog
- * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
+ * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-13
@@ -15,7 +15,7 @@
 
 import React, { useCallback } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal } from "@mdi/js";
+import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal, mdiRuler } from "@mdi/js";
 import Icon from "@renderer/components/common/Icon";
 import {
   isProjectPropertiesOpenSignal,
@@ -34,6 +34,14 @@ import { saveAsProjectFromPropertiesDialogAction } from "@renderer/state/gisSign
 import { t } from "@renderer/state/i18nSignals";
 import { ColourPickerWidget } from "@renderer/workbench/widgets/ColourPickerWidget";
 import { parseCssColor, resolveColorToHex } from "@shared/colors";
+import {
+  PROJECT_DISTANCE_UNITS,
+  PROJECT_AREA_UNITS,
+  SCALE_CALCULATION_METHODS,
+  type ProjectDistanceUnit,
+  type ProjectAreaUnit,
+  type ScaleCalculationMethod,
+} from "@shared/types";
 import { Dialog } from "./Dialog";
 import { TabbedDialogShell } from "./TabbedDialogShell";
 
@@ -60,7 +68,31 @@ const SIDEBAR_TABS: ProjectPropertiesSidebarTabDef[] = [
     labelKey: "project_properties_tab_general",
     icon: mdiInformationOutline,
   },
+  {
+    id: "measurements",
+    labelKey: "project_properties_tab_measurements",
+    icon: mdiRuler,
+  },
 ];
+
+/**
+ * Shared inline style for dropdowns on the Measurements tab.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {React.CSSProperties}
+ */
+const SELECT_STYLE: React.CSSProperties = {
+  flex: 1,
+  padding: "0.375rem 0.625rem",
+  borderRadius: "0.25rem",
+  border: "1px solid #cbd5e1",
+  fontSize: "0.875rem",
+  backgroundColor: "#ffffff",
+  color: "#0f172a",
+  minWidth: 0,
+};
 
 /**
  * Shared inline style for text inputs on the General tab.
@@ -440,6 +472,98 @@ export const ProjectPropertiesDialog: React.FC = () => {
                       }
                     />
                   </div>
+                </div>
+              </div>
+            </fieldset>
+          </div>
+        )}
+        {activeTab === "measurements" && (
+          <div
+            className='project-properties-tab-pane measurements'
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <fieldset className='preference-group-box'>
+              <legend className='preference-group-legend'>
+                {t("project_properties_group_measurements")}
+              </legend>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.75rem",
+                }}>
+                {/* Units for Distance */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <label htmlFor='project-prop-distance-unit' style={LABEL_STYLE}>
+                    {t("project_properties_label_distance_unit")}:
+                  </label>
+                  <select
+                    id='project-prop-distance-unit'
+                    className='project-prop-distance-unit'
+                    value={draft.distanceUnit}
+                    onChange={(e) =>
+                      updateProjectPropertiesDraft({
+                        distanceUnit: e.target.value as ProjectDistanceUnit,
+                      })
+                    }
+                    style={SELECT_STYLE}>
+                    {PROJECT_DISTANCE_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {t(`project_properties_distance_unit_${unit.replace(/-/g, "_")}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Units for Area */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <label htmlFor='project-prop-area-unit' style={LABEL_STYLE}>
+                    {t("project_properties_label_area_unit")}:
+                  </label>
+                  <select
+                    id='project-prop-area-unit'
+                    className='project-prop-area-unit'
+                    value={draft.areaUnit}
+                    onChange={(e) =>
+                      updateProjectPropertiesDraft({
+                        areaUnit: e.target.value as ProjectAreaUnit,
+                      })
+                    }
+                    style={SELECT_STYLE}>
+                    {PROJECT_AREA_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {t(`project_properties_area_unit_${unit.replace(/-/g, "_")}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Scale Calculation */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <label htmlFor='project-prop-scale-method' style={LABEL_STYLE}>
+                    {t("project_properties_label_scale_method")}:
+                  </label>
+                  <select
+                    id='project-prop-scale-method'
+                    className='project-prop-scale-method'
+                    value={draft.scaleMethod}
+                    onChange={(e) =>
+                      updateProjectPropertiesDraft({
+                        scaleMethod: e.target.value as ScaleCalculationMethod,
+                      })
+                    }
+                    style={SELECT_STYLE}>
+                    {SCALE_CALCULATION_METHODS.map((method) => (
+                      <option key={method} value={method}>
+                        {t(`project_properties_scale_method_${method}`)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </fieldset>

@@ -1391,4 +1391,39 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.ok(!resaved.includes('pathMode='));
     assert.ok(resaved.includes(`<source>${path.join(tempDir, 'data', 'legacy.shp')}</source>`));
   });
+  it('round-trips <measurement> after <display> and before <viewport>, validated against project.xsd, with defaults when missing (Ticket #275)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'measurement.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'Measurement Test', appVersion: '0.1.0-dev' },
+      display: { backgroundColour: '#ffffff' },
+      measurement: { distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' },
+      viewport: { center: { x: 0, y: 0 }, scale: 1000 },
+      layers: []
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('<measurement distanceUnit="kilometres" areaUnit="square-kilometres" scaleMethod="average" />'));
+    assert.ok(xml.indexOf('<display') < xml.indexOf('<measurement'), '<measurement> follows <display>');
+    assert.ok(xml.indexOf('<measurement') < xml.indexOf('<viewport>'), '<measurement> precedes <viewport>');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.deepEqual(loaded.measurement, { distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' });
+
+    // Missing element loads as undefined (defaults: degrees / square-degrees / middle apply downstream); empty settings are not written.
+    const bare: ProjectModel = { format: 'cartouche-xml', metadata: { title: 'Bare', appVersion: '0.1.0-dev' }, measurement: {}, layers: [] };
+    const bareXml = loader.serializeToXml(bare);
+    assert.ok(!bareXml.includes('<measurement'));
+    assert.equal(validateXmlAgainstSchema(bareXml).valid, true);
+    const bareFile = path.join(tempDir, 'bare-measurement.cproj');
+    await loader.save(bare, bareFile);
+    assert.equal((await loader.load(bareFile)).measurement, undefined);
+
+    // An invalid token is rejected by the schema
+    const invalid = bareXml.replace('</metadata>', '</metadata>\n  <measurement scaleMethod="sideways" />');
+    assert.equal(validateXmlAgainstSchema(invalid).valid, false, 'unknown scaleMethod must fail schema validation');
+  });
 });

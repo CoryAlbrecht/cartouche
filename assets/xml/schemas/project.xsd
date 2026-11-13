@@ -36,6 +36,9 @@
       <!-- Project-wide Map Display Settings (background colour) - Optional -->
       <xs:element name="display" type="DisplayType" minOccurs="0" />
 
+      <!-- Measurement units and Scale Calculation method - Optional -->
+      <xs:element name="measurement" type="MeasurementType" minOccurs="0" />
+
       <!-- Map Viewport Extent and Camera State - Optional -->
       <xs:element name="viewport" type="ViewportType" minOccurs="0" />
 
@@ -121,6 +124,55 @@
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
+
+  <!-- Measurement Type: distance / area units and the Scale Calculation method -->
+  <xs:complexType name="MeasurementType">
+    <xs:attribute name="distanceUnit" type="DistanceUnitType" />
+    <xs:attribute name="areaUnit" type="AreaUnitType" />
+    <xs:attribute name="scaleMethod" type="ScaleMethodType" />
+  </xs:complexType>
+
+  <xs:simpleType name="DistanceUnitType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="degrees" />
+      <xs:enumeration value="millimetres" />
+      <xs:enumeration value="centimetres" />
+      <xs:enumeration value="metres" />
+      <xs:enumeration value="kilometres" />
+      <xs:enumeration value="inches" />
+      <xs:enumeration value="feet" />
+      <xs:enumeration value="yards" />
+      <xs:enumeration value="miles" />
+      <xs:enumeration value="nautical-miles" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AreaUnitType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="square-degrees" />
+      <xs:enumeration value="square-millimetres" />
+      <xs:enumeration value="square-centimetres" />
+      <xs:enumeration value="square-metres" />
+      <xs:enumeration value="hectares" />
+      <xs:enumeration value="square-kilometres" />
+      <xs:enumeration value="square-inches" />
+      <xs:enumeration value="square-feet" />
+      <xs:enumeration value="square-yards" />
+      <xs:enumeration value="square-miles" />
+      <xs:enumeration value="acres" />
+      <xs:enumeration value="square-nautical-miles" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ScaleMethodType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="top" />
+      <xs:enumeration value="middle" />
+      <xs:enumeration value="bottom" />
+      <xs:enumeration value="average" />
+      <xs:enumeration value="equator" />
+    </xs:restriction>
+  </xs:simpleType>
 
   <!-- Viewport Type -->
   <xs:complexType name="ViewportType">

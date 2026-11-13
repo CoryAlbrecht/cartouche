@@ -29,6 +29,10 @@ import {
   type ProjectViewport,
   type ProjectDisplaySettings,
   type ProjectPathMode,
+  type ProjectMeasurementSettings,
+  PROJECT_DISTANCE_UNITS,
+  PROJECT_AREA_UNITS,
+  SCALE_CALCULATION_METHODS,
   type ProjectLayerItem,
   type ProjectGroupItem,
   type ProjectStyleItem,
@@ -204,6 +208,18 @@ export class CartoucheXmlLoader implements IProjectLoader {
       display = {
         backgroundColour: readColourAttr(root.display["@_backgroundColour"]),
         selectionColour: readColourAttr(root.display["@_selectionColour"]),
+      };
+    }
+
+    // Parse Measurement settings (optional); unknown tokens are dropped so defaults apply
+    let measurement: ProjectMeasurementSettings | undefined;
+    if (root.measurement) {
+      const pick = <T extends string>(value: unknown, allowed: readonly T[]): T | undefined =>
+        typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+      measurement = {
+        distanceUnit: pick(root.measurement["@_distanceUnit"], PROJECT_DISTANCE_UNITS),
+        areaUnit: pick(root.measurement["@_areaUnit"], PROJECT_AREA_UNITS),
+        scaleMethod: pick(root.measurement["@_scaleMethod"], SCALE_CALCULATION_METHODS),
       };
     }
 
@@ -652,6 +668,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       ...(pathMode ? { pathMode } : {}),
       crs,
       display,
+      measurement,
       viewport,
       layers,
       styles,
@@ -786,6 +803,18 @@ export class CartoucheXmlLoader implements IProjectLoader {
         displayAttrs.push(`selectionColour="${escapeXml(project.display.selectionColour)}"`);
       }
       lines.push(`  <display ${displayAttrs.join(" ")} />`);
+    }
+
+    // 2c. Measurement settings (optional; written only when something is set)
+    if (project.measurement) {
+      const m = project.measurement;
+      const attrs: string[] = [];
+      if (m.distanceUnit) attrs.push(`distanceUnit="${m.distanceUnit}"`);
+      if (m.areaUnit) attrs.push(`areaUnit="${m.areaUnit}"`);
+      if (m.scaleMethod) attrs.push(`scaleMethod="${m.scaleMethod}"`);
+      if (attrs.length > 0) {
+        lines.push(`  <measurement ${attrs.join(" ")} />`);
+      }
     }
 
     // 3. Viewport (optional)

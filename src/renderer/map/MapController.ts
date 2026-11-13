@@ -46,6 +46,7 @@ import {
   projectVisibleSignal,
   mapBackgroundColourSignal,
   selectionColourSignal,
+  measurementSettingsSignal,
 } from "../state/projectSignals";
 import {
   isTimeFilterActiveSignal,
@@ -486,6 +487,13 @@ export class MapController {
       this.applyBackgroundColour(mapBackgroundColourSignal.value);
     });
     this.disposeSignals.push(disposeBackground);
+
+    // Recompute the status bar scale when the project's Scale Calculation method changes
+    const disposeScaleMethod = effect(() => {
+      void measurementSettingsSignal.value.scaleMethod;
+      this.updateScaleSignal(true);
+    });
+    this.disposeSignals.push(disposeScaleMethod);
 
     // Highlight selected features with the Selection Colour whenever the selection, active layer or colour changes
     const disposeSelection = effect(() => {
@@ -1487,7 +1495,10 @@ export class MapController {
         clearTimeout(this.scaleThrottleTimer);
         this.scaleThrottleTimer = null;
       }
-      scaleDenominatorSignal.value = getScale(this.view);
+      scaleDenominatorSignal.value = getScale(this.view, {
+        method: measurementSettingsSignal.value.scaleMethod,
+        size: this.map.getSize(),
+      });
     };
 
     if (immediate || elapsed >= 250) {

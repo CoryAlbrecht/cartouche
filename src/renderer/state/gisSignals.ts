@@ -48,6 +48,8 @@ import {
   selectionColourSignal,
   projectHomeSignal,
   projectPathModeSignal,
+  measurementSettingsSignal,
+  resolveMeasurementSettings,
   projectVisibleSignal,
   isProjectDirtySignal,
   isDirtySignal,
@@ -1662,6 +1664,7 @@ export function createNewProject(name: string = 'New Project') {
   selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
   projectHomeSignal.value = null;
   projectPathModeSignal.value = DEFAULT_NEW_PROJECT_PATH_MODE;
+  measurementSettingsSignal.value = resolveMeasurementSettings(undefined);
   projectVisibleSignal.value = true;
   isProjectDirtySignal.value = false;
   layerGroupsSignal.value = [];
@@ -1916,6 +1919,7 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     selectionColourSignal.value = project.display?.selectionColour || DEFAULT_SELECTION_COLOUR;
     projectHomeSignal.value = project.home?.trim() || null;
     projectPathModeSignal.value = project.pathMode ?? 'absolute';
+    measurementSettingsSignal.value = resolveMeasurementSettings(project.measurement);
     projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
@@ -2489,6 +2493,7 @@ export async function closeProjectAction(): Promise<boolean> {
   selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
   projectHomeSignal.value = null;
   projectPathModeSignal.value = DEFAULT_NEW_PROJECT_PATH_MODE;
+  measurementSettingsSignal.value = resolveMeasurementSettings(undefined);
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;

@@ -349,6 +349,9 @@ export interface ProjectDisplaySettings {
   selectionColour?: string;
   home?: string | null;
   pathMode?: ProjectPathMode;
+  distanceUnit?: ProjectDistanceUnit;
+  areaUnit?: ProjectAreaUnit;
+  scaleMethod?: ScaleCalculationMethod;
 }
 
 /**
@@ -372,6 +375,103 @@ export type ProjectPathMode = 'absolute' | 'relative';
 export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = 'relative';
 
 /**
+ * @constant {readonly string[]} PROJECT_DISTANCE_UNITS
+ * @description Distance unit tokens (kebab-case as written in `<measurement distanceUnit>`), in dropdown order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const PROJECT_DISTANCE_UNITS = [
+  'degrees', 'millimetres', 'centimetres', 'metres', 'kilometres',
+  'inches', 'feet', 'yards', 'miles', 'nautical-miles',
+] as const;
+
+/**
+ * @typedef {typeof PROJECT_DISTANCE_UNITS[number]} ProjectDistanceUnit
+ * @description Units for Distance chosen on the Measurements tab (stored only until a measure tool exists).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ProjectDistanceUnit = typeof PROJECT_DISTANCE_UNITS[number];
+
+/**
+ * @constant {readonly string[]} PROJECT_AREA_UNITS
+ * @description Area unit tokens (kebab-case as written in `<measurement areaUnit>`), in dropdown order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const PROJECT_AREA_UNITS = [
+  'square-degrees', 'square-millimetres', 'square-centimetres', 'square-metres', 'hectares', 'square-kilometres',
+  'square-inches', 'square-feet', 'square-yards', 'square-miles', 'acres', 'square-nautical-miles',
+] as const;
+
+/**
+ * @typedef {typeof PROJECT_AREA_UNITS[number]} ProjectAreaUnit
+ * @description Units for Area chosen on the Measurements tab (stored only until a measure tool exists).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ProjectAreaUnit = typeof PROJECT_AREA_UNITS[number];
+
+/**
+ * @constant {readonly string[]} SCALE_CALCULATION_METHODS
+ * @description Scale Calculation method tokens as written in `<measurement scaleMethod>`, in dropdown order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const SCALE_CALCULATION_METHODS = ['top', 'middle', 'bottom', 'average', 'equator'] as const;
+
+/**
+ * @typedef {typeof SCALE_CALCULATION_METHODS[number]} ScaleCalculationMethod
+ * @description Where the status bar scale is measured: top, middle or bottom of the map, the average of the three, or at the equator.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ScaleCalculationMethod = typeof SCALE_CALCULATION_METHODS[number];
+
+/**
+ * @typedef {Object} ProjectMeasurementSettings
+ * @description Project-wide measurement settings persisted in the optional `<measurement>` element. Every member is optional in files; the defaults are Degrees, Square Degrees and Middle of Map.
+ * @property {ProjectDistanceUnit} [distanceUnit] - Units for Distance.
+ * @property {ProjectAreaUnit} [areaUnit] - Units for Area.
+ * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export interface ProjectMeasurementSettings {
+  distanceUnit?: ProjectDistanceUnit;
+  areaUnit?: ProjectAreaUnit;
+  scaleMethod?: ScaleCalculationMethod;
+}
+
+/**
+ * @constant {Required<ProjectMeasurementSettings>} DEFAULT_MEASUREMENT_SETTINGS
+ * @description Measurement defaults applied when a project declares none.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> = Object.freeze({
+  distanceUnit: 'degrees',
+  areaUnit: 'square-degrees',
+  scaleMethod: 'middle',
+});
+
+/**
  * @typedef {Object} ProjectPropertiesPatch
  * @description Partial set of project-wide properties committed from the Project Properties dialog draft in one IPC round trip. Every member is optional; absent members are left unchanged.
  * @property {string} [title] - Project Title (`dc:title`), independent of the file name. An empty string clears the title.
@@ -379,6 +479,9 @@ export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = 'relative';
  * @property {string} [selectionColour] - Selection Colour (alpha allowed).
  * @property {string | null} [home] - Explicit absolute Project Home; an empty string or null clears it so the project file's directory applies.
  * @property {ProjectPathMode} [pathMode] - Save Path Mode.
+ * @property {ProjectDistanceUnit} [distanceUnit] - Units for Distance.
+ * @property {ProjectAreaUnit} [areaUnit] - Units for Area.
+ * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -390,6 +493,9 @@ export interface ProjectPropertiesPatch {
   selectionColour?: string;
   home?: string | null;
   pathMode?: ProjectPathMode;
+  distanceUnit?: ProjectDistanceUnit;
+  areaUnit?: ProjectAreaUnit;
+  scaleMethod?: ScaleCalculationMethod;
 }
 
 /**
@@ -441,6 +547,7 @@ export interface ProjectStyleItem {
  * @property {ProjectPathMode} [pathMode] - Save Path Mode; unset means `absolute` (legacy files).
  * @property {ProjectCrs} [crs] - Project-wide default coordinate reference system.
  * @property {ProjectDisplaySettings} [display] - Project-wide map display settings (Map Background Colour, Selection Colour).
+ * @property {ProjectMeasurementSettings} [measurement] - Distance / area units and the Scale Calculation method.
  * @property {ProjectViewport} [viewport] - Initial map camera and extent parameters.
  * @property {Array<ProjectLayerItem | ProjectGroupItem>} layers - Hierarchical layer and group tree.
  * @property {ProjectStyleItem[]} [styles] - Project shared style collection.
@@ -459,6 +566,7 @@ export interface ProjectModel {
   pathMode?: ProjectPathMode;
   crs?: ProjectCrs;
   display?: ProjectDisplaySettings;
+  measurement?: ProjectMeasurementSettings;
   viewport?: ProjectViewport;
   layers: Array<ProjectLayerItem | ProjectGroupItem>;
   styles?: ProjectStyleItem[];

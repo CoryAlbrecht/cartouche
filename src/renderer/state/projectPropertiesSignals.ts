@@ -1,7 +1,7 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-13
@@ -29,12 +29,21 @@ import {
   projectPathModeSignal,
   setProjectHome,
   setProjectPathMode,
+  measurementSettingsSignal,
+  setMeasurementSettings,
 } from './projectSignals';
 import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
   DEFAULT_NEW_PROJECT_PATH_MODE,
+  DEFAULT_MEASUREMENT_SETTINGS,
+  PROJECT_DISTANCE_UNITS,
+  PROJECT_AREA_UNITS,
+  SCALE_CALCULATION_METHODS,
   type ProjectPathMode,
+  type ProjectDistanceUnit,
+  type ProjectAreaUnit,
+  type ScaleCalculationMethod,
 } from '../../shared/types/project';
 import {
   projectFileDirectory,
@@ -43,14 +52,14 @@ import {
 } from '../../shared/project/projectHome';
 
 /**
- * @typedef {'general'} ProjectPropertiesTabId
+ * @typedef {'general' | 'measurements'} ProjectPropertiesTabId
  * @description Identifier of a sidebar tab in the Project Properties dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export type ProjectPropertiesTabId = 'general';
+export type ProjectPropertiesTabId = 'general' | 'measurements';
 
 /**
  * @typedef {Object} ProjectPropertiesDraft
@@ -64,6 +73,9 @@ export type ProjectPropertiesTabId = 'general';
  * @property {string} selectionColour - Draft Selection Colour (CSS colour, alpha allowed).
  * @property {string} home - Draft Project Home as shown in the dialog: the explicit home, or the project file's directory when none is set (empty for an unsaved project).
  * @property {ProjectPathMode} pathMode - Draft Save Path Mode.
+ * @property {ProjectDistanceUnit} distanceUnit - Draft Units for Distance.
+ * @property {ProjectAreaUnit} areaUnit - Draft Units for Area.
+ * @property {ScaleCalculationMethod} scaleMethod - Draft Scale Calculation method.
  */
 export interface ProjectPropertiesDraft {
   title: string;
@@ -71,6 +83,9 @@ export interface ProjectPropertiesDraft {
   selectionColour: string;
   home: string;
   pathMode: ProjectPathMode;
+  distanceUnit: ProjectDistanceUnit;
+  areaUnit: ProjectAreaUnit;
+  scaleMethod: ScaleCalculationMethod;
 }
 
 /**
@@ -89,6 +104,7 @@ function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
     selectionColour: DEFAULT_SELECTION_COLOUR,
     home: '',
     pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
+    ...DEFAULT_MEASUREMENT_SETTINGS,
   };
 }
 
@@ -155,6 +171,7 @@ export function beginProjectPropertiesDraft(): void {
       selectionColour: selectionColourSignal.value || DEFAULT_SELECTION_COLOUR,
       home: resolveEffectiveProjectHome(projectHomeSignal.value, projectFilePathSignal.value) ?? '',
       pathMode: projectPathModeSignal.value,
+      ...measurementSettingsSignal.value,
     };
     projectPropertiesBaselineKeySignal.value += 1;
   });
@@ -246,6 +263,9 @@ export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): Proj
     selectionColour: (draft.selectionColour ?? '').trim() || DEFAULT_SELECTION_COLOUR,
     home,
     pathMode: draft.pathMode === 'absolute' ? 'absolute' : 'relative',
+    distanceUnit: PROJECT_DISTANCE_UNITS.includes(draft.distanceUnit) ? draft.distanceUnit : DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
+    areaUnit: PROJECT_AREA_UNITS.includes(draft.areaUnit) ? draft.areaUnit : DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
+    scaleMethod: SCALE_CALCULATION_METHODS.includes(draft.scaleMethod) ? draft.scaleMethod : DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
   };
 }
 
@@ -291,6 +311,11 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
     if (patch.pathMode !== undefined) {
       setProjectPathMode(patch.pathMode);
     }
+    setMeasurementSettings({
+      distanceUnit: patch.distanceUnit,
+      areaUnit: patch.areaUnit,
+      scaleMethod: patch.scaleMethod,
+    });
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();
   });

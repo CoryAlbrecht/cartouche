@@ -106,6 +106,18 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
       project_properties_label_path_mode: 'Save Path',
       project_properties_path_mode_absolute: 'Absolute',
       project_properties_path_mode_relative: 'Relative',
+      project_properties_tab_measurements: 'Measurements',
+      project_properties_group_measurements: 'Measurements',
+      project_properties_label_distance_unit: 'Units for Distance',
+      project_properties_label_area_unit: 'Units for Area',
+      project_properties_label_scale_method: 'Scale Calculation',
+      project_properties_distance_unit_degrees: 'Degrees',
+      project_properties_distance_unit_metres: 'Metres',
+      project_properties_distance_unit_kilometres: 'Kilometres',
+      project_properties_area_unit_square_degrees: 'Square Degrees',
+      project_properties_area_unit_square_kilometres: 'Square Kilometres',
+      project_properties_scale_method_middle: 'Middle of Map',
+      project_properties_scale_method_average: 'Average of Top, Middle, and Bottom Scales',
       project_properties_btn_ok: 'OK',
       project_properties_btn_apply: 'Apply',
       project_properties_btn_cancel: 'Cancel',
@@ -213,6 +225,26 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     const ok = await saveAsProjectFromPropertiesDialogAction();
     assert.equal(ok, true);
     assert.equal(projectPropertiesDraftSignal.value.home, '/projects/renamed', 'default home follows the new file location');
+  });
+
+  it('renders a Measurements tab with the three dropdowns using Canadian spelling and the draft values (Ticket #275)', () => {
+    openProjectPropertiesDialog();
+    let html = render();
+    assert.ok(/data-tab-id="measurements" class="project-properties-tab-btn /.test(html), 'Measurements tab button in the sidebar');
+    assert.ok(!html.includes('id="project-prop-distance-unit"'), 'General tab does not show the dropdowns');
+
+    activeProjectPropertiesTabSignal.value = 'measurements';
+    updateProjectPropertiesDraft({ distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' });
+    html = render();
+    assert.ok(html.includes('project-properties-tab-pane measurements'));
+    assert.ok(html.includes('Units for Distance') && html.includes('Units for Area') && html.includes('Scale Calculation'));
+    assert.ok(html.includes('id="project-prop-distance-unit"') && html.includes('id="project-prop-area-unit"') && html.includes('id="project-prop-scale-method"'));
+    assert.ok(html.includes('<option value="metres">Metres</option>'), 'Canadian spelling Metres');
+    assert.ok(html.includes('<option value="kilometres" selected="">Kilometres</option>'), 'draft distance unit selected, Canadian spelling');
+    assert.ok(html.includes('<option value="square-kilometres" selected="">Square Kilometres</option>'));
+    assert.ok(html.includes('<option value="average" selected="">Average of Top, Middle, and Bottom Scales</option>'));
+    assert.equal((html.match(/<option value="/g) || []).length, 10 + 12 + 5, 'ten distance units, twelve area units, five scale methods');
+    activeProjectPropertiesTabSignal.value = 'general';
   });
 
   it('renders an embedded Selection Colour picker with transparency bound to the draft (Ticket #273)', () => {

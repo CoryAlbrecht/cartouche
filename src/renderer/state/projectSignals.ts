@@ -16,6 +16,7 @@
  * @see {@link selectionColourSignal}
  * @see {@link projectHomeSignal}
  * @see {@link projectPathModeSignal}
+ * @see {@link measurementSettingsSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -33,7 +34,9 @@ import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
   DEFAULT_NEW_PROJECT_PATH_MODE,
+  DEFAULT_MEASUREMENT_SETTINGS,
   type ProjectPathMode,
+  type ProjectMeasurementSettings,
 } from '../../shared/types/project';
 
 /**
@@ -299,6 +302,58 @@ export function setProjectPathMode(mode: ProjectPathMode): void {
     const project = currentProjectSignal.value;
     if (project) {
       project.pathMode = mode;
+    }
+  });
+}
+
+/**
+ * @signal measurementSettingsSignal
+ * @description Reactive signal holding the project's measurement settings with defaults filled in (Units for Distance, Units for Area, Scale Calculation method). The status bar scale follows `scaleMethod`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<Required<ProjectMeasurementSettings>>}
+ */
+export const measurementSettingsSignal = signal<Required<ProjectMeasurementSettings>>({ ...DEFAULT_MEASUREMENT_SETTINGS });
+
+/**
+ * @function resolveMeasurementSettings
+ * @description Fills a (possibly partial or missing) measurement settings object with the defaults.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectMeasurementSettings | undefined} settings - Stored settings.
+ * @returns {Required<ProjectMeasurementSettings>} Complete settings.
+ */
+export function resolveMeasurementSettings(
+  settings: ProjectMeasurementSettings | undefined
+): Required<ProjectMeasurementSettings> {
+  return {
+    distanceUnit: settings?.distanceUnit ?? DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
+    areaUnit: settings?.areaUnit ?? DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
+    scaleMethod: settings?.scaleMethod ?? DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
+  };
+}
+
+/**
+ * @function setMeasurementSettings
+ * @description Merges measurement settings into the signal and mirrors them into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectMeasurementSettings} updates - Members to change.
+ * @returns {void}
+ */
+export function setMeasurementSettings(updates: ProjectMeasurementSettings): void {
+  const next = resolveMeasurementSettings({ ...measurementSettingsSignal.value, ...updates });
+  batch(() => {
+    measurementSettingsSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.measurement = { ...next };
     }
   });
 }

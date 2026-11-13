@@ -13,12 +13,17 @@
 
 import { projectStore } from '../../project/ProjectStore';
 import { broadcastProjectMetadata } from '../../project/ProjectBroadcaster';
-import type { ProjectPropertiesPatch } from '@shared/types';
+import {
+  type ProjectPropertiesPatch,
+  PROJECT_DISTANCE_UNITS,
+  PROJECT_AREA_UNITS,
+  SCALE_CALCULATION_METHODS,
+} from '../../../shared/types';
 import { logging } from '../../../shared/logging';
 
 /**
  * @ipc project:update-properties
- * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
+ * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project; distance / area units and the Scale Calculation method go to the measurement settings. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -78,6 +83,21 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     if (project.pathMode !== patch.pathMode) {
       project.pathMode = patch.pathMode;
       changed = true;
+    }
+  }
+
+  if (patch) {
+    const measurementUpdates: Array<['distanceUnit' | 'areaUnit' | 'scaleMethod', readonly string[]]> = [
+      ['distanceUnit', PROJECT_DISTANCE_UNITS],
+      ['areaUnit', PROJECT_AREA_UNITS],
+      ['scaleMethod', SCALE_CALCULATION_METHODS],
+    ];
+    for (const [key, allowed] of measurementUpdates) {
+      const value = patch[key];
+      if (typeof value === 'string' && allowed.includes(value) && project.measurement?.[key] !== value) {
+        project.measurement = { ...(project.measurement || {}), [key]: value } as typeof project.measurement;
+        changed = true;
+      }
     }
   }
 

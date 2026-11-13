@@ -87,4 +87,15 @@ describe('updateProjectProperties (Ticket #271)', () => {
     assert.equal(updateProjectProperties({ pathMode: 'absolute', home: null }), true);
     assert.equal(projectStore.isProjectDirty(), false, 'no change leaves the Project Dirty State alone');
   });
+  it('stores measurement units and the Scale Calculation method, ignoring unknown tokens (Ticket #275)', () => {
+    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Measure' }, layers: [] });
+    assert.equal(updateProjectProperties({ distanceUnit: 'metres', areaUnit: 'hectares', scaleMethod: 'equator' }), true);
+    assert.deepEqual(projectStore.getProject()?.measurement, { distanceUnit: 'metres', areaUnit: 'hectares', scaleMethod: 'equator' });
+    assert.equal(projectStore.isProjectDirty(), true);
+
+    projectStore.setProjectDirty(false);
+    assert.equal(updateProjectProperties({ scaleMethod: 'sideways' as any }), true);
+    assert.equal(projectStore.getProject()?.measurement?.scaleMethod, 'equator', 'unknown token ignored');
+    assert.equal(projectStore.isProjectDirty(), false);
+  });
 });

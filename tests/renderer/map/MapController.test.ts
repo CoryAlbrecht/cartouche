@@ -17,8 +17,9 @@ import {
   currentProjectSignal,
   mapBackgroundColourSignal,
   selectionColourSignal,
+  measurementSettingsSignal,
 } from '../../../src/renderer/state/projectSignals';
-import { cursorCoordsSignal, selectedFeatureIdsSignal, activeLayerIdSignal } from '../../../src/renderer/state/gisSignals';
+import { cursorCoordsSignal, selectedFeatureIdsSignal, activeLayerIdSignal, scaleDenominatorSignal } from '../../../src/renderer/state/gisSignals';
 import { preferencesMapSignal } from '../../../src/renderer/state/preferencesSignals';
 import {
   MapController,
@@ -216,6 +217,20 @@ describe('MapController Isolated Canvas Engine', () => {
     mapBackgroundColourSignal.value = 'rgb(10, 20, 30)';
     assert.equal(container.style.backgroundColor, 'rgb(10, 20, 30)');
     mapBackgroundColourSignal.value = '#ffffff';
+  });
+
+  it('recomputes the status bar scale with the project Scale Calculation method (Ticket #275)', () => {
+    const view = controller.getView();
+    view.setCenter(fromLonLat([0, 60]));
+    view.setResolution(100);
+    measurementSettingsSignal.value = { ...measurementSettingsSignal.value, scaleMethod: 'middle' };
+    const middle = scaleDenominatorSignal.value;
+    measurementSettingsSignal.value = { ...measurementSettingsSignal.value, scaleMethod: 'equator' };
+    const equator = scaleDenominatorSignal.value;
+    assert.notEqual(middle, equator, 'equator method changes the displayed scale at 60°N');
+    assert.ok(equator > middle, 'equator denominator is larger than the 60°N middle denominator in Mercator');
+    measurementSettingsSignal.value = { ...measurementSettingsSignal.value, scaleMethod: 'middle' };
+    assert.equal(scaleDenominatorSignal.value, middle, 'Middle of Map matches the previous output');
   });
 
   it('mounts OpenLayers map in unmanaged container with default EPSG:3857 view and empty layers', () => {

@@ -53,6 +53,8 @@ const {
   projectPathModeSignal,
   setProjectHome,
   setProjectPathMode,
+  measurementSettingsSignal,
+  setMeasurementSettings,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const gis = jiti('../../../src/renderer/state/gisSignals.ts');
 const { resolveProjectDisplayName, isDefaultProjectTitle } = jiti('../../../src/shared/project/projectTitle.ts');
@@ -258,6 +260,40 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     openProjectPropertiesDialog();
     assert.equal(projectPropertiesDraftSignal.value.home, '');
     projectFilePathSignal.value = '/projects/atlas.cproj';
+  });
+
+  it('seeds the measurement draft with the defaults, applies changes on Apply and discards them on Cancel (Ticket #275)', async () => {
+    setMeasurementSettings({ distanceUnit: 'degrees', areaUnit: 'square-degrees', scaleMethod: 'middle' });
+    openProjectPropertiesDialog();
+    const draft = projectPropertiesDraftSignal.value;
+    assert.equal(draft.distanceUnit, 'degrees');
+    assert.equal(draft.areaUnit, 'square-degrees');
+    assert.equal(draft.scaleMethod, 'middle');
+
+    updateProjectPropertiesDraft({ distanceUnit: 'metres', areaUnit: 'hectares', scaleMethod: 'top' });
+    assert.equal(measurementSettingsSignal.value.scaleMethod, 'middle', 'draft edit does not touch committed state');
+    cancelProjectPropertiesEdits();
+    assert.equal(measurementSettingsSignal.value.scaleMethod, 'middle');
+
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ distanceUnit: 'metres', areaUnit: 'hectares', scaleMethod: 'top' });
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    assert.equal(patches[0].distanceUnit, 'metres');
+    assert.equal(patches[0].areaUnit, 'hectares');
+    assert.equal(patches[0].scaleMethod, 'top');
+    assert.deepEqual(measurementSettingsSignal.value, { distanceUnit: 'metres', areaUnit: 'hectares', scaleMethod: 'top' });
+    assert.deepEqual(currentProjectSignal.value.measurement, { distanceUnit: 'metres', areaUnit: 'hectares', scaleMethod: 'top' });
+    assert.equal(isProjectDirtySignal.value, true);
+    setMeasurementSettings({ distanceUnit: 'degrees', areaUnit: 'square-degrees', scaleMethod: 'middle' });
+  });
+
+  it('keeps the draft when switching between the General and Measurements tabs (Ticket #275)', () => {
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ title: 'Across Tabs', scaleMethod: 'bottom' });
+    activeProjectPropertiesTabSignal.value = 'measurements';
+    activeProjectPropertiesTabSignal.value = 'general';
+    assert.equal(projectPropertiesDraftSignal.value.title, 'Across Tabs');
+    assert.equal(projectPropertiesDraftSignal.value.scaleMethod, 'bottom');
   });
 
   it('Cancel discards a draft background colour (Ticket #272)', () => {
