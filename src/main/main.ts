@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -575,6 +575,31 @@ function startApp(): void {
       return res.filePath;
     } catch (err) {
       logging.error('Failed to show save file dialog', err, { scope: 'Main' });
+      return null;
+    } finally {
+      isFileDialogOpen = false;
+    }
+  });
+
+  /**
+   * @ipc dialog:open-directory
+   * @description Opens the native directory picker (used by the Project Properties Project Home field) and returns the chosen directory or null.
+   * @param {Object} [options] - Dialog options: title and defaultPath.
+   */
+  handleIpc('dialog:open-directory', async (_event, options?: { title?: string; defaultPath?: string }) => {
+    if (isFileDialogOpen) return null;
+    isFileDialogOpen = true;
+    try {
+      const defaultPath = options?.defaultPath || resolveDialogDefaultPath('open');
+      const res = await dialog.showOpenDialog({
+        title: options?.title || 'Select Project Home',
+        ...(defaultPath ? { defaultPath } : {}),
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      if (res.canceled || res.filePaths.length === 0) return null;
+      return res.filePaths[0];
+    } catch (err) {
+      logging.error('Failed to show directory dialog', err, { scope: 'Main' });
       return null;
     } finally {
       isFileDialogOpen = false;

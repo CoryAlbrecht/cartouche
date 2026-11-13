@@ -18,7 +18,7 @@ import { logging } from '../../../shared/logging';
 
 /**
  * @ipc project:update-properties
- * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. Background and selection colours are stored in the project's display settings. Returns false when no project is open.
+ * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -57,6 +57,26 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     const current = project.display?.selectionColour;
     if (next && next !== current) {
       project.display = { ...(project.display || {}), selectionColour: next };
+      changed = true;
+    }
+  }
+
+  if (patch && (typeof patch.home === 'string' || patch.home === null)) {
+    const next = typeof patch.home === 'string' ? patch.home.trim() : '';
+    const current = project.home ?? '';
+    if (next !== current) {
+      if (next) {
+        project.home = next;
+      } else {
+        delete project.home;
+      }
+      changed = true;
+    }
+  }
+
+  if (patch && (patch.pathMode === 'absolute' || patch.pathMode === 'relative')) {
+    if (project.pathMode !== patch.pathMode) {
+      project.pathMode = patch.pathMode;
       changed = true;
     }
   }

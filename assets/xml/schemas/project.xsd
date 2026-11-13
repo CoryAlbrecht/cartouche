@@ -27,6 +27,9 @@
       <!-- Project Metadata (Dublin Core + application properties) -->
       <xs:element name="metadata" type="MetadataType" />
 
+      <!-- Project Home: directory relative paths are resolved from; relative to the project file where possible - Optional -->
+      <xs:element name="home" type="xs:string" minOccurs="0" />
+
       <!-- Coordinate Reference System (CRS) - Optional -->
       <xs:element name="crs" type="CrsType" minOccurs="0" />
 
@@ -53,7 +56,17 @@
     </xs:sequence>
     <xs:attribute name="version" type="xs:string" default="1.0" />
     <xs:attribute name="encoding" type="xs:string" default="UTF-8" />
+    <!-- Save Path Mode: how project-referenced file paths are written. Missing means absolute. -->
+    <xs:attribute name="pathMode" type="PathModeType" />
   </xs:complexType>
+
+  <!-- Save Path Mode enumeration -->
+  <xs:simpleType name="PathModeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="absolute" />
+      <xs:enumeration value="relative" />
+    </xs:restriction>
+  </xs:simpleType>
 
   <!-- Metadata Type (supports standard Dublin Core elements and Cartouche metadata) -->
   <xs:complexType name="MetadataType">

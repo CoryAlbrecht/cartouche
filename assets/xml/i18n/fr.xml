@@ -184,6 +184,11 @@
     <string name="project_properties_file_unsaved">(non enregistré)</string>
     <string name="project_properties_btn_save_as">Enregistrer sous...</string>
     <string name="project_properties_label_title">Titre du projet</string>
+    <string name="project_properties_label_home">Dossier du projet</string>
+    <string name="project_properties_btn_browse_home">Choisir le dossier du projet...</string>
+    <string name="project_properties_label_path_mode">Chemins enregistrés</string>
+    <string name="project_properties_path_mode_absolute">Absolus</string>
+    <string name="project_properties_path_mode_relative">Relatifs</string>
     <string name="project_properties_label_selection_colour">Couleur de sélection</string>
     <string name="project_properties_label_background_colour">Couleur de fond de la carte</string>
     <string name="project_properties_btn_ok">OK</string>

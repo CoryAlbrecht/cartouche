@@ -1,7 +1,7 @@
 /**
  * @file projectPropertiesSignals.ts
  * @module renderer/state/projectPropertiesSignals
- * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
+ * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-13
@@ -24,8 +24,23 @@ import {
   setMapBackgroundColour,
   selectionColourSignal,
   setSelectionColour,
+  projectFilePathSignal,
+  projectHomeSignal,
+  projectPathModeSignal,
+  setProjectHome,
+  setProjectPathMode,
 } from './projectSignals';
-import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR } from '../../shared/types/project';
+import {
+  DEFAULT_MAP_BACKGROUND_COLOUR,
+  DEFAULT_SELECTION_COLOUR,
+  DEFAULT_NEW_PROJECT_PATH_MODE,
+  type ProjectPathMode,
+} from '../../shared/types/project';
+import {
+  projectFileDirectory,
+  resolveEffectiveProjectHome,
+  normalizeDirectoryPath,
+} from '../../shared/project/projectHome';
 
 /**
  * @typedef {'general'} ProjectPropertiesTabId
@@ -47,11 +62,15 @@ export type ProjectPropertiesTabId = 'general';
  * @property {string} title - Draft Project Title (`dc:title`).
  * @property {string} backgroundColour - Draft Map Background Colour (opaque CSS colour).
  * @property {string} selectionColour - Draft Selection Colour (CSS colour, alpha allowed).
+ * @property {string} home - Draft Project Home as shown in the dialog: the explicit home, or the project file's directory when none is set (empty for an unsaved project).
+ * @property {ProjectPathMode} pathMode - Draft Save Path Mode.
  */
 export interface ProjectPropertiesDraft {
   title: string;
   backgroundColour: string;
   selectionColour: string;
+  home: string;
+  pathMode: ProjectPathMode;
 }
 
 /**
@@ -64,7 +83,13 @@ export interface ProjectPropertiesDraft {
  * @returns {ProjectPropertiesDraft} Blank draft.
  */
 function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
-  return { title: '', backgroundColour: DEFAULT_MAP_BACKGROUND_COLOUR, selectionColour: DEFAULT_SELECTION_COLOUR };
+  return {
+    title: '',
+    backgroundColour: DEFAULT_MAP_BACKGROUND_COLOUR,
+    selectionColour: DEFAULT_SELECTION_COLOUR,
+    home: '',
+    pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
+  };
 }
 
 /**
@@ -128,6 +153,8 @@ export function beginProjectPropertiesDraft(): void {
       title: projectTitleSignal.value ?? '',
       backgroundColour: mapBackgroundColourSignal.value || DEFAULT_MAP_BACKGROUND_COLOUR,
       selectionColour: selectionColourSignal.value || DEFAULT_SELECTION_COLOUR,
+      home: resolveEffectiveProjectHome(projectHomeSignal.value, projectFilePathSignal.value) ?? '',
+      pathMode: projectPathModeSignal.value,
     };
     projectPropertiesBaselineKeySignal.value += 1;
   });
@@ -200,7 +227,7 @@ export function cancelProjectPropertiesEdits(): void {
 
 /**
  * @function buildProjectPropertiesPatch
- * @description Converts the draft into the patch sent to the Project Store.
+ * @description Converts the draft into the patch sent to the Project Store. A Project Home equal to the project file's directory is sent as empty (unset).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -209,10 +236,16 @@ export function cancelProjectPropertiesEdits(): void {
  * @returns {ProjectPropertiesPatch} Patch with every editable property.
  */
 export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): ProjectPropertiesPatch {
+  // A home equal to the project file's directory is the default and is stored as "unset".
+  const defaultHome = normalizeDirectoryPath(projectFileDirectory(projectFilePathSignal.value));
+  const draftHome = normalizeDirectoryPath(draft.home);
+  const home = draftHome && draftHome !== defaultHome ? draftHome : '';
   return {
     title: (draft.title ?? '').trim(),
     backgroundColour: (draft.backgroundColour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR,
     selectionColour: (draft.selectionColour ?? '').trim() || DEFAULT_SELECTION_COLOUR,
+    home,
+    pathMode: draft.pathMode === 'absolute' ? 'absolute' : 'relative',
   };
 }
 
@@ -251,6 +284,12 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
     }
     if (patch.selectionColour !== undefined) {
       setSelectionColour(patch.selectionColour);
+    }
+    if (patch.home !== undefined) {
+      setProjectHome(patch.home);
+    }
+    if (patch.pathMode !== undefined) {
+      setProjectPathMode(patch.pathMode);
     }
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();

@@ -209,6 +209,11 @@
     <string name="project_properties_file_unsaved">(unsaved)</string>
     <string name="project_properties_btn_save_as">Save As...</string>
     <string name="project_properties_label_title">Project Title</string>
+    <string name="project_properties_label_home">Project Home</string>
+    <string name="project_properties_btn_browse_home">Choose Project Home directory...</string>
+    <string name="project_properties_label_path_mode">Save Path</string>
+    <string name="project_properties_path_mode_absolute">Absolute</string>
+    <string name="project_properties_path_mode_relative">Relative</string>
     <string name="project_properties_label_selection_colour">Selection Colour</string>
     <string name="project_properties_label_background_colour">Map Background Colour</string>
     <string name="project_properties_btn_ok">OK</string>

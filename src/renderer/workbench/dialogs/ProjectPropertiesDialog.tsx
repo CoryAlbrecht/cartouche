@@ -1,7 +1,7 @@
 /**
  * @file ProjectPropertiesDialog.tsx
  * @module renderer/workbench/dialogs/ProjectPropertiesDialog
- * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
+ * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-13
@@ -15,7 +15,8 @@
 
 import React, { useCallback } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiFolderCogOutline, mdiInformationOutline } from "@mdi/js";
+import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal } from "@mdi/js";
+import Icon from "@renderer/components/common/Icon";
 import {
   isProjectPropertiesOpenSignal,
   activeProjectPropertiesTabSignal,
@@ -131,6 +132,27 @@ export const ProjectPropertiesDialog: React.FC = () => {
 
   const handleSaveAs = useCallback(async () => {
     await saveAsProjectFromPropertiesDialogAction();
+  }, []);
+
+  /**
+   * @function handleBrowseHome
+   * @description Opens the native directory picker starting at the draft Project Home and writes the chosen directory into the draft.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-13
+   * @updated 2026-11-13
+   * @since 0.1.0-dev
+   * @returns {Promise<void>}
+   */
+  const handleBrowseHome = useCallback(async () => {
+    if (!window.electronAPI?.openDirectory) return;
+    const current = projectPropertiesDraftSignal.value.home;
+    const chosen = await window.electronAPI.openDirectory({
+      title: t("project_properties_label_home"),
+      ...(current ? { defaultPath: current } : {}),
+    });
+    if (chosen) {
+      updateProjectPropertiesDraft({ home: chosen });
+    }
   }, []);
 
   if (!isOpen) {
@@ -273,6 +295,46 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Project Home + directory picker */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <label htmlFor='project-prop-home' style={LABEL_STYLE}>
+                    {t("project_properties_label_home")}:
+                  </label>
+                  <input
+                    id='project-prop-home'
+                    className='project-prop-home'
+                    type='text'
+                    value={draft.home}
+                    placeholder={filePath ? "" : t("project_properties_file_unsaved")}
+                    onChange={(e) =>
+                      updateProjectPropertiesDraft({ home: e.target.value })
+                    }
+                    style={INPUT_STYLE}
+                  />
+                  <button
+                    type='button'
+                    id='project-prop-home-browse'
+                    className='project-properties-btn browse-home'
+                    title={t("project_properties_btn_browse_home")}
+                    aria-label={t("project_properties_btn_browse_home")}
+                    onClick={handleBrowseHome}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0.25rem 0.5rem",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "0.25rem",
+                      cursor: "pointer",
+                      color: "#334155",
+                    }}>
+                    <Icon path={mdiDotsHorizontal} size='16px' />
+                  </button>
+                </div>
+
                 {/* Project Title */}
                 <div
                   className='project-properties-row'
@@ -290,6 +352,40 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     }
                     style={INPUT_STYLE}
                   />
+                </div>
+
+                {/* Save Path Mode */}
+                <div
+                  className='project-properties-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <span style={LABEL_STYLE}>{t("project_properties_label_path_mode")}:</span>
+                  <div
+                    role='radiogroup'
+                    aria-label={t("project_properties_label_path_mode")}
+                    style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.875rem" }}>
+                      <input
+                        type='radio'
+                        name='project-prop-path-mode'
+                        id='project-prop-path-mode-absolute'
+                        value='absolute'
+                        checked={draft.pathMode === "absolute"}
+                        onChange={() => updateProjectPropertiesDraft({ pathMode: "absolute" })}
+                      />
+                      {t("project_properties_path_mode_absolute")}
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.875rem" }}>
+                      <input
+                        type='radio'
+                        name='project-prop-path-mode'
+                        id='project-prop-path-mode-relative'
+                        value='relative'
+                        checked={draft.pathMode === "relative"}
+                        onChange={() => updateProjectPropertiesDraft({ pathMode: "relative" })}
+                      />
+                      {t("project_properties_path_mode_relative")}
+                    </label>
+                  </div>
                 </div>
 
                 {/* Selection Colour (transparency allowed) */}

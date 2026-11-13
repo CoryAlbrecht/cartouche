@@ -4,7 +4,7 @@
  * @description Main Process API function for serializing and saving the active project state to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -47,6 +47,7 @@ export default async function saveProject(
     const baseName = path.basename(destination, path.extname(destination)) || 'Untitled Project';
     project = {
       format: 'cartouche-xml',
+      pathMode: 'relative',
       metadata: {
         title: baseName,
         appVersion: '0.1.0-dev',

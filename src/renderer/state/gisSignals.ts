@@ -46,6 +46,8 @@ import {
   setProjectTitle,
   mapBackgroundColourSignal,
   selectionColourSignal,
+  projectHomeSignal,
+  projectPathModeSignal,
   projectVisibleSignal,
   isProjectDirtySignal,
   isDirtySignal,
@@ -95,7 +97,7 @@ import {
   beginProjectPropertiesDraft,
 } from './projectPropertiesSignals';
 import { resolveProjectDisplayName, isDefaultProjectTitle } from '../../shared/project/projectTitle';
-import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR } from '../../shared/types/project';
+import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR, DEFAULT_NEW_PROJECT_PATH_MODE } from '../../shared/types/project';
 
 export {
   getLayerToolbarPreference,
@@ -1645,6 +1647,7 @@ export function resetToolbarsToDefault(): void {
 export function createNewProject(name: string = 'New Project') {
   currentProjectSignal.value = {
     format: 'cartouche-xml',
+    pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
     metadata: {
       title: name,
       appVersion: '0.1.0-dev'
@@ -1657,6 +1660,8 @@ export function createNewProject(name: string = 'New Project') {
   projectFilePathSignal.value = null;
   mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
   selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
+  projectHomeSignal.value = null;
+  projectPathModeSignal.value = DEFAULT_NEW_PROJECT_PATH_MODE;
   projectVisibleSignal.value = true;
   isProjectDirtySignal.value = false;
   layerGroupsSignal.value = [];
@@ -1909,6 +1914,8 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     projectTitleSignal.value = project.metadata?.title || '';
     mapBackgroundColourSignal.value = project.display?.backgroundColour || DEFAULT_MAP_BACKGROUND_COLOUR;
     selectionColourSignal.value = project.display?.selectionColour || DEFAULT_SELECTION_COLOUR;
+    projectHomeSignal.value = project.home?.trim() || null;
+    projectPathModeSignal.value = project.pathMode ?? 'absolute';
     projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
@@ -2480,6 +2487,8 @@ export async function closeProjectAction(): Promise<boolean> {
   projectTitleSignal.value = '';
   mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
   selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
+  projectHomeSignal.value = null;
+  projectPathModeSignal.value = DEFAULT_NEW_PROJECT_PATH_MODE;
   projectFilePathSignal.value = null;
   currentProjectSignal.value = null;
   isProjectDirtySignal.value = false;

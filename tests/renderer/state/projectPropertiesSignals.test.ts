@@ -49,6 +49,10 @@ const {
   setMapBackgroundColour,
   selectionColourSignal,
   setSelectionColour,
+  projectHomeSignal,
+  projectPathModeSignal,
+  setProjectHome,
+  setProjectPathMode,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const gis = jiti('../../../src/renderer/state/gisSignals.ts');
 const { resolveProjectDisplayName, isDefaultProjectTitle } = jiti('../../../src/shared/project/projectTitle.ts');
@@ -199,6 +203,61 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     assert.equal(selectionColourSignal.value, 'rgba(0,0,255,0.3)');
     assert.equal(currentProjectSignal.value.display.selectionColour, 'rgba(0,0,255,0.3)');
     setSelectionColour('');
+  });
+
+  it('seeds the Project Home draft with the project file directory by default and sends it as unset on Apply (Ticket #274)', async () => {
+    setProjectHome(null);
+    setProjectPathMode('relative');
+    openProjectPropertiesDialog();
+    assert.equal(projectPropertiesDraftSignal.value.home, '/projects', 'default home is the project file directory');
+    assert.equal(projectPropertiesDraftSignal.value.pathMode, 'relative');
+
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    assert.equal(patches[0].home, '', 'default home is sent as unset');
+    assert.equal(patches[0].pathMode, 'relative');
+    assert.equal(projectHomeSignal.value, null);
+
+    // A trailing separator still counts as the default
+    updateProjectPropertiesDraft({ home: '/projects/' });
+    await applyProjectPropertiesEdits();
+    assert.equal(patches[1].home, '');
+  });
+
+  it('applies an explicit Project Home and Save Path Mode, marks dirty, and Cancel discards them (Ticket #274)', async () => {
+    setProjectHome(null);
+    setProjectPathMode('relative');
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ home: '/gis/data', pathMode: 'absolute' });
+    assert.equal(projectHomeSignal.value, null, 'draft edit does not touch committed state');
+    cancelProjectPropertiesEdits();
+    assert.equal(projectHomeSignal.value, null);
+    assert.equal(projectPathModeSignal.value, 'relative');
+
+    openProjectPropertiesDialog();
+    updateProjectPropertiesDraft({ home: '/gis/data', pathMode: 'absolute' });
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    assert.equal(patches[0].home, '/gis/data');
+    assert.equal(patches[0].pathMode, 'absolute');
+    assert.equal(projectHomeSignal.value, '/gis/data');
+    assert.equal(projectPathModeSignal.value, 'absolute');
+    assert.equal(currentProjectSignal.value.home, '/gis/data');
+    assert.equal(currentProjectSignal.value.pathMode, 'absolute');
+    assert.equal(isProjectDirtySignal.value, true);
+
+    // Reopening shows the explicit home, not the file directory
+    closeProjectPropertiesDialog();
+    openProjectPropertiesDialog();
+    assert.equal(projectPropertiesDraftSignal.value.home, '/gis/data');
+    setProjectHome(null);
+    setProjectPathMode('relative');
+  });
+
+  it('shows an empty Project Home for an unsaved project (Ticket #274)', () => {
+    projectFilePathSignal.value = null;
+    setProjectHome(null);
+    openProjectPropertiesDialog();
+    assert.equal(projectPropertiesDraftSignal.value.home, '');
+    projectFilePathSignal.value = '/projects/atlas.cproj';
   });
 
   it('Cancel discards a draft background colour (Ticket #272)', () => {

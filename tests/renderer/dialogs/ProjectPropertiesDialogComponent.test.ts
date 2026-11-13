@@ -44,6 +44,8 @@ const {
   projectFilePathSignal,
   currentProjectSignal,
   setProjectTitle,
+  setProjectHome,
+  setProjectPathMode,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const { saveAsProjectFromPropertiesDialogAction } = jiti('../../../src/renderer/state/gisSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
@@ -99,6 +101,11 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
       project_properties_label_title: 'Project Title',
       project_properties_label_background_colour: 'Map Background Colour',
       project_properties_label_selection_colour: 'Selection Colour',
+      project_properties_label_home: 'Project Home',
+      project_properties_btn_browse_home: 'Choose Project Home directory...',
+      project_properties_label_path_mode: 'Save Path',
+      project_properties_path_mode_absolute: 'Absolute',
+      project_properties_path_mode_relative: 'Relative',
       project_properties_btn_ok: 'OK',
       project_properties_btn_apply: 'Apply',
       project_properties_btn_cancel: 'Cancel',
@@ -173,6 +180,39 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     assert.ok(html.match(/<input[^>]*id="project-prop-title"[^>]*value="Draft Atlas"/));
     assert.equal(projectTitleSignal.value, 'World Atlas', 'committed title untouched until Apply');
     assert.equal(isProjectDirtySignal.value, false);
+  });
+
+  it('renders the Project Home field defaulting to the project file directory, with a directory picker button (Ticket #274)', () => {
+    setProjectHome(null);
+    openProjectPropertiesDialog();
+    const html = render();
+    assert.ok(html.includes('Project Home'));
+    const homeInput = html.match(/<input[^>]*id="project-prop-home"[^>]*>/)?.[0];
+    assert.ok(homeInput, 'Project Home input rendered');
+    assert.ok(homeInput.includes('value="/projects"'), 'defaults to the project file directory');
+    const browse = html.match(/<button[^>]*id="project-prop-home-browse"[^>]*>[\s\S]*?<\/button>/)?.[0];
+    assert.ok(browse, 'directory picker button rendered');
+    assert.ok(browse.includes('<svg'), 'picker button shows the dots-horizontal icon');
+  });
+
+  it('renders Absolute / Relative Save Path radios reflecting the draft (Ticket #274)', () => {
+    setProjectPathMode('relative');
+    openProjectPropertiesDialog();
+    let html = render();
+    assert.ok(html.includes('Save Path'));
+    assert.ok(/id="project-prop-path-mode-relative"[^>]*checked=""/.test(html) || /checked=""[^>]*id="project-prop-path-mode-relative"/.test(html), 'Relative checked by default for new projects');
+    updateProjectPropertiesDraft({ pathMode: 'absolute' });
+    html = render();
+    assert.ok(/id="project-prop-path-mode-absolute"[^>]*checked=""/.test(html) || /checked=""[^>]*id="project-prop-path-mode-absolute"/.test(html), 'Absolute checked after draft change');
+  });
+
+  it('Project Home refreshes after Save As when it was still the default (Ticket #274)', async () => {
+    setProjectHome(null);
+    openProjectPropertiesDialog();
+    assert.equal(projectPropertiesDraftSignal.value.home, '/projects');
+    const ok = await saveAsProjectFromPropertiesDialogAction();
+    assert.equal(ok, true);
+    assert.equal(projectPropertiesDraftSignal.value.home, '/projects/renamed', 'default home follows the new file location');
   });
 
   it('renders an embedded Selection Colour picker with transparency bound to the draft (Ticket #273)', () => {

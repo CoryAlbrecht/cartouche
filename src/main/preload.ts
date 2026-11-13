@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-12
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -109,6 +109,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('layers:getDirtyLayerIds'),
 
   openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  /** @ipc dialog:open-directory */
+  openDirectory: (options?: any) => ipcRenderer.invoke('dialog:open-directory', options),
   /** @ipc dialog:save-file */
   saveFile: (options?: any) => ipcRenderer.invoke('dialog:save-file', options),
   /** @ipc gis:open-project */

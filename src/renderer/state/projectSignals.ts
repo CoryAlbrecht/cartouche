@@ -14,6 +14,8 @@
  * @see {@link workbenchWindowTitleSignal}
  * @see {@link mapBackgroundColourSignal}
  * @see {@link selectionColourSignal}
+ * @see {@link projectHomeSignal}
+ * @see {@link projectPathModeSignal}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -27,7 +29,12 @@ import type {
 } from '@shared/types';
 import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
 import { resolveProjectDisplayName } from '../../shared/project/projectTitle';
-import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR } from '../../shared/types/project';
+import {
+  DEFAULT_MAP_BACKGROUND_COLOUR,
+  DEFAULT_SELECTION_COLOUR,
+  DEFAULT_NEW_PROJECT_PATH_MODE,
+  type ProjectPathMode,
+} from '../../shared/types/project';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -225,6 +232,73 @@ export function setSelectionColour(colour: string | null | undefined): void {
     const project = currentProjectSignal.value;
     if (project) {
       project.display = { ...(project.display || {}), selectionColour: next };
+    }
+  });
+}
+
+/**
+ * @signal projectHomeSignal
+ * @description Reactive signal holding the project's explicit Project Home (absolute directory), or null when unset so the project file's directory applies.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<string | null>}
+ */
+export const projectHomeSignal = signal<string | null>(null);
+
+/**
+ * @signal projectPathModeSignal
+ * @description Reactive signal holding the project's Save Path Mode. New projects start `relative`; legacy files without a `pathMode` load as `absolute`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @type {Signal<ProjectPathMode>}
+ */
+export const projectPathModeSignal = signal<ProjectPathMode>(DEFAULT_NEW_PROJECT_PATH_MODE);
+
+/**
+ * @function setProjectHome
+ * @description Sets the explicit Project Home signal (empty clears it) and mirrors it into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} home - Absolute directory, or empty/null to clear.
+ * @returns {void}
+ */
+export function setProjectHome(home: string | null | undefined): void {
+  const next = (home ?? '').trim() || null;
+  batch(() => {
+    projectHomeSignal.value = next;
+    const project = currentProjectSignal.value;
+    if (project) {
+      if (next) {
+        project.home = next;
+      } else {
+        delete project.home;
+      }
+    }
+  });
+}
+
+/**
+ * @function setProjectPathMode
+ * @description Sets the Save Path Mode signal and mirrors it into the current project model.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {ProjectPathMode} mode - Save Path Mode.
+ * @returns {void}
+ */
+export function setProjectPathMode(mode: ProjectPathMode): void {
+  batch(() => {
+    projectPathModeSignal.value = mode;
+    const project = currentProjectSignal.value;
+    if (project) {
+      project.pathMode = mode;
     }
   });
 }

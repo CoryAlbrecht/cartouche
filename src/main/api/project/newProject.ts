@@ -4,7 +4,7 @@
  * @description Main Process API function for initializing a new blank project document in ProjectStore.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-10-21
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  */
@@ -33,6 +33,7 @@ export default function newProject(): void {
   projectStore.closeProject();
   const project: ProjectModel = {
     format: "cartouche-xml",
+    pathMode: "relative",
     metadata: {
       title: "New Project",
       appVersion: "0.1.0-dev",

@@ -787,8 +787,9 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     fs.writeFileSync(projPath, xml, 'utf-8');
     const loaded = await loader.load(projPath);
     const layer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    // Since Ticket #274 paths in memory are always absolute: the href is resolved against the Project Home on load.
     assert.deepEqual(layer.style, {
-      href: 'rivers.sld',
+      href: externalSldPath,
       content: externalSldContent,
       format: 'sld',
       version: '1.0.0',
@@ -1294,5 +1295,100 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const loaded2 = await loader.load(file2);
     assert.equal(loaded2.display?.selectionColour, '#ffff00');
     assert.equal(loaded2.display?.backgroundColour, undefined);
+  });
+  it('writes layer sources, style hrefs and <home> relative to the Project Home in relative mode and resolves them back to absolute on load (Ticket #274)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const projectDir = path.join(tempDir, 'maps');
+    const homeDir = path.join(tempDir, 'gisdata');
+    fs.mkdirSync(projectDir, { recursive: true });
+    fs.mkdirSync(path.join(homeDir, 'styles'), { recursive: true });
+    fs.writeFileSync(path.join(homeDir, 'styles', 'lakes.json'), '[{"style":{"fill-color":"#00f"}}]');
+    const testFile = path.join(projectDir, 'atlas.cproj');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      pathMode: 'relative',
+      home: homeDir,
+      metadata: { title: 'Relative Paths', appVersion: '0.1.0-dev' },
+      layers: [
+        {
+          id: 'lakes', name: 'Lakes', type: 'esri-shapefile',
+          source: path.join(homeDir, 'vectors', 'lakes.shp'),
+          style: { href: path.join(homeDir, 'styles', 'lakes.json'), format: 'openlayers' }
+        },
+        { id: 'wfs', name: 'WFS Layer', type: 'wfs', source: 'https://example.com/wfs?service=WFS' },
+        { id: 'pg', name: 'PostGIS', type: 'postgis', source: 'PG:dbname=gis host=localhost' },
+        { id: 'shared', name: 'Shared Style Ref', type: 'esri-shapefile', source: path.join(homeDir, 'rivers.shp'), style: { href: '#river-style', format: 'openlayers' } }
+      ],
+      styles: [{ id: 'river-style', content: '{"stroke":"#000"}' }]
+    };
+
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('pathMode="relative"'), 'root carries pathMode');
+    assert.ok(xml.includes('<home>../gisdata</home>'), '<home> is relative to the project file');
+    assert.ok(xml.indexOf('</metadata>') < xml.indexOf('<home>'), '<home> follows <metadata>');
+    assert.ok(xml.includes('<source>vectors/lakes.shp</source>'), 'layer source relative to the Project Home');
+    assert.ok(xml.includes('href="styles/lakes.json"'), 'style href relative to the Project Home');
+    assert.ok(xml.includes('<source>https://example.com/wfs?service=WFS</source>'), 'URI untouched');
+    assert.ok(xml.includes('<source>PG:dbname=gis host=localhost</source>'), 'connection string untouched');
+    assert.ok(xml.includes('href="#river-style"'), 'shared style reference untouched');
+    const validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    await loader.save(model, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.pathMode, 'relative');
+    assert.equal(loaded.home, homeDir, 'home is absolute in memory');
+    const lakes = loaded.layers[0] as any;
+    assert.equal(lakes.source, path.join(homeDir, 'vectors', 'lakes.shp'), 'source resolved against the Project Home');
+    assert.equal(lakes.style.href, path.join(homeDir, 'styles', 'lakes.json'), 'href resolved against the Project Home');
+    assert.ok(lakes.style.content?.includes('#00f'), 'external style content read through the resolved href');
+    assert.equal((loaded.layers[1] as any).source, 'https://example.com/wfs?service=WFS');
+    assert.equal((loaded.layers[2] as any).source, 'PG:dbname=gis host=localhost');
+    assert.equal((loaded.layers[3] as any).style.href, '#river-style');
+  });
+
+  it('keeps absolute paths in absolute mode, writes <home> absolute when requested, and reads a missing pathMode as absolute (Ticket #274)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'absolute.cproj');
+    const absSource = path.join(tempDir, 'data', 'roads.shp');
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      pathMode: 'absolute',
+      metadata: { title: 'Absolute Paths', appVersion: '0.1.0-dev' },
+      layers: [{ id: 'roads', name: 'Roads', type: 'esri-shapefile', source: absSource }]
+    };
+    const xml = loader.serializeToXml(model, testFile);
+    assert.ok(xml.includes('pathMode="absolute"'));
+    assert.ok(xml.includes(`<source>${absSource}</source>`), 'absolute mode writes the absolute path');
+    assert.ok(!xml.includes('<home>'), 'no <home> when unset');
+    assert.equal(validateXmlAgainstSchema(xml).valid, true);
+
+    // Legacy document: no pathMode attribute, relative source resolved against the file directory
+    const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata><dc:title>Legacy</dc:title></metadata>
+  <layers>
+    <layer id="legacy-1" visible="true">
+      <name>Legacy Layer</name>
+      <type>esri-shapefile</type>
+      <source>data/legacy.shp</source>
+    </layer>
+  </layers>
+  <styles />
+</cartouche:project>`;
+    assert.equal(validateXmlAgainstSchema(legacyXml).valid, true);
+    const legacyFile = path.join(tempDir, 'legacy.cproj');
+    fs.writeFileSync(legacyFile, legacyXml, 'utf-8');
+    const legacy = await loader.load(legacyFile);
+    assert.equal(legacy.pathMode, undefined, 'missing pathMode stays unset (treated as absolute)');
+    assert.equal(legacy.home, undefined);
+    assert.equal((legacy.layers[0] as any).source, path.join(tempDir, 'data', 'legacy.shp'));
+
+    // Re-saving a legacy project writes absolute paths (no pathMode => absolute behaviour)
+    const resaved = loader.serializeToXml(legacy, legacyFile);
+    assert.ok(!resaved.includes('pathMode='));
+    assert.ok(resaved.includes(`<source>${path.join(tempDir, 'data', 'legacy.shp')}</source>`));
   });
 });

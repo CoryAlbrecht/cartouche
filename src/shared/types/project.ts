@@ -347,7 +347,29 @@ export const DEFAULT_SELECTION_COLOUR = 'rgba(255,255,0,0.6)';
 export interface ProjectDisplaySettings {
   backgroundColour?: string;
   selectionColour?: string;
+  home?: string | null;
+  pathMode?: ProjectPathMode;
 }
+
+/**
+ * @typedef {'absolute' | 'relative'} ProjectPathMode
+ * @description Save Path Mode: whether project-referenced file paths are written absolute or relative to the Project Home. A missing `pathMode` attribute in a project file means `absolute`; new projects default to `relative`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export type ProjectPathMode = 'absolute' | 'relative';
+
+/**
+ * @constant {ProjectPathMode} DEFAULT_NEW_PROJECT_PATH_MODE
+ * @description Save Path Mode given to newly created projects.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ */
+export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = 'relative';
 
 /**
  * @typedef {Object} ProjectPropertiesPatch
@@ -355,6 +377,8 @@ export interface ProjectDisplaySettings {
  * @property {string} [title] - Project Title (`dc:title`), independent of the file name. An empty string clears the title.
  * @property {string} [backgroundColour] - Opaque Map Background Colour.
  * @property {string} [selectionColour] - Selection Colour (alpha allowed).
+ * @property {string | null} [home] - Explicit absolute Project Home; an empty string or null clears it so the project file's directory applies.
+ * @property {ProjectPathMode} [pathMode] - Save Path Mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -364,6 +388,8 @@ export interface ProjectPropertiesPatch {
   title?: string;
   backgroundColour?: string;
   selectionColour?: string;
+  home?: string | null;
+  pathMode?: ProjectPathMode;
 }
 
 /**
@@ -411,6 +437,8 @@ export interface ProjectStyleItem {
  * @property {string} format - Format descriptor identifier (e.g. "cartouche-xml", "cartouche-bundled").
  * @property {string} [filePath] - Absolute path to underlying project document on disk.
  * @property {ProjectMetadata} metadata - Project Dublin Core and application metadata.
+ * @property {string} [home] - Explicit Project Home directory, absolute in memory; written relative to the project file where possible. Unset means the project file's directory.
+ * @property {ProjectPathMode} [pathMode] - Save Path Mode; unset means `absolute` (legacy files).
  * @property {ProjectCrs} [crs] - Project-wide default coordinate reference system.
  * @property {ProjectDisplaySettings} [display] - Project-wide map display settings (Map Background Colour, Selection Colour).
  * @property {ProjectViewport} [viewport] - Initial map camera and extent parameters.
@@ -427,6 +455,8 @@ export interface ProjectModel {
   format: string;
   filePath?: string;
   metadata: ProjectMetadata;
+  home?: string;
+  pathMode?: ProjectPathMode;
   crs?: ProjectCrs;
   display?: ProjectDisplaySettings;
   viewport?: ProjectViewport;

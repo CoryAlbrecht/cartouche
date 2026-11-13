@@ -15,12 +15,20 @@ import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import type { IProjectLoader } from "./IProjectLoader";
 import {
+  isRewritableFilePath,
+  resolveProjectPath,
+  toProjectRelativePath,
+  resolveProjectHomeDirectory,
+  toWrittenProjectHome,
+} from "../projectPaths";
+import {
   isProjectLayerStyleWrapper,
   type ProjectModel,
   type ProjectMetadata,
   type ProjectCrs,
   type ProjectViewport,
   type ProjectDisplaySettings,
+  type ProjectPathMode,
   type ProjectLayerItem,
   type ProjectGroupItem,
   type ProjectStyleItem,
@@ -160,6 +168,20 @@ export class CartoucheXmlLoader implements IProjectLoader {
       appVersion: rawMeta.appVersion,
     };
 
+    // Parse Save Path Mode and Project Home (optional). Paths in memory are always absolute.
+    const rawPathMode = root["@_pathMode"];
+    const pathMode: ProjectPathMode | undefined =
+      rawPathMode === "relative" ? "relative"
+      : rawPathMode === "absolute" ? "absolute"
+      : undefined;
+    const projectDir = path.dirname(filePath);
+    let home: string | undefined;
+    if (root.home !== undefined && root.home !== null && String(root.home).trim()) {
+      const rawHome = String(root.home).trim();
+      home = path.isAbsolute(rawHome) ? rawHome : path.resolve(projectDir, rawHome);
+    }
+    const homeDir = home ?? projectDir;
+
     // Parse CRS (optional)
     let crs: ProjectCrs | undefined;
     if (root.crs) {
@@ -270,10 +292,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
           if (!resolvedContent && !String(href).startsWith("#")) {
             try {
               const cleanHref = String(href).replace(/^file:\/\//i, "");
-              const extStylePath =
-                path.isAbsolute(cleanHref) ? cleanHref : (
-                  path.resolve(path.dirname(filePath), cleanHref)
-                );
+              const extStylePath = resolveProjectPath(cleanHref, homeDir);
               if (fs.existsSync(extStylePath)) {
                 resolvedContent = fs
                   .readFileSync(extStylePath, "utf-8")
@@ -283,8 +302,11 @@ export class CartoucheXmlLoader implements IProjectLoader {
               // Ignore external style file read failures; fallback handled downstream
             }
           }
+          const storedHref =
+            String(href).startsWith("#") ? String(href)
+            : resolveProjectPath(String(href), homeDir);
           style = {
-            href,
+            href: storedHref,
             format,
             ...(resolvedContent ? { content: resolvedContent } : {}),
             ...(version ? { version } : {}),
@@ -313,10 +335,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
         };
       }
 
-      let resolvedSource = raw.source || "";
-      if (resolvedSource && !path.isAbsolute(resolvedSource)) {
-        resolvedSource = path.resolve(path.dirname(filePath), resolvedSource);
-      }
+      const resolvedSource = resolveProjectPath(String(raw.source || ""), homeDir);
 
       let layerFields: LayerFieldInfo[] | undefined;
       if (raw.fields && raw.fields.field) {
@@ -629,6 +648,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
       format: this.id,
       filePath,
       metadata,
+      ...(home ? { home } : {}),
+      ...(pathMode ? { pathMode } : {}),
       crs,
       display,
       viewport,
@@ -650,8 +671,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @returns {Promise<void>}
    */
   public async save(project: ProjectModel, target: string): Promise<void> {
-    const xmlContent = this.serializeToXml(project);
     const resolvedPath = path.resolve(target);
+    const xmlContent = this.serializeToXml(project, resolvedPath);
     await fs.promises.mkdir(path.dirname(resolvedPath), { recursive: true });
     await fs.promises.writeFile(resolvedPath, xmlContent, "utf-8");
     project.filePath = resolvedPath;
@@ -664,10 +685,23 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @updated 2026-11-10
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
+   * @param {string} [targetPath] - Destination project file path; with `project.filePath` as fallback it anchors the Project Home and relative paths. Without either, paths are written as held in memory.
    * @returns {string} XML project document string.
    */
-  public serializeToXml(project: ProjectModel): string {
+  public serializeToXml(project: ProjectModel, targetPath?: string): string {
     const lines: string[] = [];
+
+    const anchorPath = targetPath || project.filePath;
+    const projectDir = anchorPath ? path.dirname(path.resolve(anchorPath)) : undefined;
+    const homeDir =
+      projectDir !== undefined ? resolveProjectHomeDirectory(project, path.resolve(anchorPath as string))
+      : project.home && path.isAbsolute(project.home) ? project.home
+      : undefined;
+    const writeRelative = project.pathMode === "relative" && homeDir !== undefined;
+    const writePath = (value: string): string =>
+      writeRelative && isRewritableFilePath(value) && path.isAbsolute(value) ?
+        toProjectRelativePath(value, homeDir as string)
+      : value;
 
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push(
@@ -676,7 +710,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
     lines.push(
       '  xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"'
     );
-    lines.push('  xmlns:dc="http://purl.org/dc/elements/1.1/">');
+    lines.push(
+      `  xmlns:dc="http://purl.org/dc/elements/1.1/"${project.pathMode ? ` pathMode="${project.pathMode}"` : ""}>`
+    );
 
     // 1. Metadata
     lines.push("  <metadata>");
@@ -706,6 +742,16 @@ export class CartoucheXmlLoader implements IProjectLoader {
     const appVersion = project.metadata.appVersion || "0.1.0-dev";
     lines.push(`    <appVersion>${escapeXml(appVersion)}</appVersion>`);
     lines.push("  </metadata>");
+
+    // 1b. Project Home (optional; relative to the project file where possible)
+    if (project.home && project.home.trim()) {
+      const homeAbsolute = project.home.trim();
+      const written =
+        projectDir !== undefined && path.isAbsolute(homeAbsolute) ?
+          toWrittenProjectHome(homeAbsolute, projectDir)
+        : homeAbsolute;
+      lines.push(`  <home>${escapeXml(written)}</home>`);
+    }
 
     // 2. CRS (optional)
     if (project.crs) {
@@ -808,7 +854,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       res.push(`${pad}<layer ${attrs.join(" ")}>`);
       res.push(`${pad}  <name>${escapeXml(layer.name)}</name>`);
       res.push(`${pad}  <type>${escapeXml(layer.type || "vector")}</type>`);
-      res.push(`${pad}  <source>${escapeXml(layer.source || "")}</source>`);
+      res.push(`${pad}  <source>${escapeXml(writePath(layer.source || ""))}</source>`);
 
       if (layer.style) {
         if (typeof layer.style === "string") {
@@ -828,7 +874,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
             const formatAttr =
               layer.style.format ? ` format="${layer.style.format}"` : "";
             res.push(
-              `${pad}  <style href="${escapeXml(layer.style.href)}"${formatAttr}${versionAttr} />`
+              `${pad}  <style href="${escapeXml(writePath(layer.style.href))}"${formatAttr}${versionAttr} />`
             );
           } else if (layer.style.content) {
             const formatAttr =

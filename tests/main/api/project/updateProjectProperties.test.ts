@@ -67,4 +67,24 @@ describe('updateProjectProperties (Ticket #271)', () => {
     assert.deepEqual(projectStore.getProject()?.display, { backgroundColour: '#ffffff', selectionColour: 'rgba(255,0,0,0.5)' });
     assert.equal(projectStore.isProjectDirty(), true);
   });
+  it('sets, replaces and clears the Project Home and changes the Save Path Mode (Ticket #274)', () => {
+    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Home' }, layers: [] });
+    assert.equal(updateProjectProperties({ home: ' /gis/data ' }), true);
+    assert.equal(projectStore.getProject()?.home, '/gis/data');
+    assert.equal(projectStore.isProjectDirty(), true);
+
+    projectStore.setProjectDirty(false);
+    assert.equal(updateProjectProperties({ home: '' }), true);
+    assert.equal(projectStore.getProject()?.home, undefined, 'empty clears the home');
+    assert.equal(projectStore.isProjectDirty(), true);
+
+    projectStore.setProjectDirty(false);
+    assert.equal(updateProjectProperties({ pathMode: 'absolute' }), true);
+    assert.equal(projectStore.getProject()?.pathMode, 'absolute');
+    assert.equal(projectStore.isProjectDirty(), true);
+
+    projectStore.setProjectDirty(false);
+    assert.equal(updateProjectProperties({ pathMode: 'absolute', home: null }), true);
+    assert.equal(projectStore.isProjectDirty(), false, 'no change leaves the Project Dirty State alone');
+  });
 });
