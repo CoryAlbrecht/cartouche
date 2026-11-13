@@ -4,7 +4,7 @@
  * @description Main Process API function for adding spatial dataset layers to the active in-memory ProjectStore and notifying the Renderer via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-07
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link FileTypeRegistry}
@@ -22,6 +22,7 @@ import { geospatialService } from '../../worker/GeospatialService';
 import { mapGdalGeometryKind } from '../../worker/GeospatialEngine';
 import { createDefaultCartoucheLayerStyleJson } from '../../../shared/styles/defaultLayerStyles';
 import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/ProjectBroadcaster';
+import { adoptFirstLayerCrs, broadcastProjectCrs } from '../../project/projectCrs';
 
 export { mapGdalGeometryKind };
 
@@ -149,6 +150,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   if (!projectStore.hasProject()) {
     projectStore.setProject({
       format: 'cartouche-xml',
+      pathMode: 'relative',
       metadata: {
         title: 'Untitled Project',
         appVersion: '0.1.0-dev'
@@ -160,6 +162,13 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
 
   projectStore.getRootGroup().addChild(newLayer);
   projectStore.setProjectDirty(true);
+
+  // ADR 0033: a project with no Project CRS adopts the first added layer's CRS (add order decides for batches)
+  const project = projectStore.getProject();
+  const adoptedCrs = project ? adoptFirstLayerCrs(project, newLayer.crs) : null;
+  if (adoptedCrs) {
+    broadcastProjectCrs(adoptedCrs);
+  }
 
   // 7. Broadcast layer added event and updated hierarchy over IPC to Renderer
   broadcastLayerAdded(layerDescriptor);

@@ -165,6 +165,14 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('project:metadata-updated', handler);
     };
   },
+  /** @ipc project:crs-updated */
+  onProjectCrsUpdated: (callback: (crs: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, crs: any) => callback(crs);
+    ipcRenderer.on('project:crs-updated', handler);
+    return () => {
+      ipcRenderer.removeListener('project:crs-updated', handler);
+    };
+  },
   /** @ipc project:dirty-state-changed */
   onProjectDirtyStateChanged: (callback: (isDirty: boolean) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, isDirty: boolean) => callback(isDirty);

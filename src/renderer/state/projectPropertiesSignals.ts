@@ -13,7 +13,7 @@
  */
 
 import { signal, batch, type Signal } from '@preact/signals-react';
-import type { ProjectPropertiesPatch, TimeFilterUnit } from '@shared/types';
+import type { ProjectPropertiesPatch, TimeFilterUnit, ProjectCrs } from '@shared/types';
 import {
   isTimeFilterActiveSignal,
   timeFilterRangeStartSignal,
@@ -43,6 +43,10 @@ import {
   setProjectPathMode,
   measurementSettingsSignal,
   setMeasurementSettings,
+  projectLayersSignal,
+  projectTreeSignal,
+  findItemInTree,
+  setProjectCrs,
 } from './projectSignals';
 import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
@@ -411,6 +415,46 @@ export async function commitAndCloseProjectPropertiesDialog(): Promise<boolean> 
     closeProjectPropertiesDialog();
   }
   return ok;
+}
+
+/**
+ * @function setProjectCrsFromLayerAction
+ * @description "Set Project CRS from Layer": adopts a layer's CRS as the explicit Project CRS, commits it to the Project Store, sets the Project Dirty State, and lets the map redraw in it (camera kept in place). Layers without a declared CRS are refused because the EPSG:3857 assumption is never saved.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-13
+ * @since 0.1.0-dev
+ * @param {string | null | undefined} layerId - Layer whose CRS is adopted.
+ * @returns {Promise<boolean>} True when the Project CRS was set.
+ */
+export async function setProjectCrsFromLayerAction(layerId: string | null | undefined): Promise<boolean> {
+  if (!layerId || !hasProjectSignal.value) return false;
+  const layerCrs =
+    projectLayersSignal.value.find((l) => l.id === layerId)?.crs
+    ?? (findItemInTree(projectTreeSignal.value, layerId) as { crs?: ProjectCrs } | null)?.crs;
+  if (!layerCrs?.authId) {
+    logging.warn('Layer has no CRS to adopt as the Project CRS', { scope: 'projectProperties', layerId });
+    return false;
+  }
+  const crs: ProjectCrs = {
+    authId: layerCrs.authId,
+    ...(layerCrs.description ? { description: layerCrs.description } : {}),
+    ...(layerCrs.proj4 ? { proj4: layerCrs.proj4 } : {}),
+  };
+  if (window.electronAPI?.updateProjectProperties) {
+    try {
+      const ok = await window.electronAPI.updateProjectProperties({ crs });
+      if (!ok) return false;
+    } catch (err) {
+      logging.error('Failed to set Project CRS from layer', err, { scope: 'projectProperties', layerId });
+      return false;
+    }
+  }
+  batch(() => {
+    setProjectCrs(crs);
+    isProjectDirtySignal.value = true;
+  });
+  return true;
 }
 
 /**

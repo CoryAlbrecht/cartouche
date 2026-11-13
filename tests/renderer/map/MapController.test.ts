@@ -2415,6 +2415,25 @@ describe('MapController draws in the Project CRS (Ticket #278)', () => {
     assert.ok(Math.abs(after[0] - before[0]) < 0.05 && Math.abs(after[1] - before[1]) < 0.05, `camera kept: ${before} vs ${after}`);
   });
 
+  it('zooms to fit all layers when switching to and from No CRS instead of reprojecting the camera (Ticket #279)', async () => {
+    controller = new MapController(newContainer());
+    controller.getMap().setSize([800, 600]);
+    projectLayersSignal.value = [{
+      id: 'raw-layer', name: 'Raw', type: 'shp', source: '/raw.shp', geometryKind: 'Point', layerKind: 'vector',
+      crs: { authId: 'EPSG:2154', proj4: LAMBERT_93 }, extent: [600000, 6500000, 800000, 6700000], featureCount: 1,
+    } as any];
+    projectCrsSignal.value = { authId: '', none: true };
+    await controller.whenDisplayCrsSettled();
+    const raw = controller.getView().getCenter()!;
+    assert.ok(Math.abs(raw[0] - 700000) < 1 && Math.abs(raw[1] - 6600000) < 1, `fit to the raw layer extent, got ${raw}`);
+
+    projectCrsSignal.value = { authId: 'EPSG:2154', proj4: LAMBERT_93 };
+    await controller.whenDisplayCrsSettled();
+    const back = controller.getView().getCenter()!;
+    assert.ok(Math.abs(back[0] - 700000) < 1 && Math.abs(back[1] - 6600000) < 1, `fit to layers again after leaving No CRS, got ${back}`);
+    projectLayersSignal.value = [];
+  });
+
   it('draws raw cartesian coordinates under No CRS', async () => {
     controller = new MapController(newContainer());
     projectCrsSignal.value = { authId: '', none: true };

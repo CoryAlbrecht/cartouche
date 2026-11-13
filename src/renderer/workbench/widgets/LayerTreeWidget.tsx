@@ -4,7 +4,7 @@
  * @description Layer tree panel widget managing project layer hierarchy, multi-selection, context menus, drag-and-drop reordering, inline group creation, and modal removal confirmations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-11
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link PopupMenu}
@@ -37,12 +37,14 @@ import {
   mdiPencilOutline,
   mdiClockTimeFourOutline,
   mdiLayersOutline,
+  mdiEarthArrowRight,
   mdiContentSaveOutline,
   mdiContentCopy,
   mdiContentPaste,
   mdiLayersTripleOutline,
 } from "@mdi/js";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
+import { setProjectCrsFromLayerAction } from "@renderer/state/projectPropertiesSignals";
 import { getActionFormattedKey } from "@renderer/state/actionSignals";
 import {
   editableLayerIdsSignal,
@@ -634,6 +636,19 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         formattedKey: getActionFormattedKey("layer_properties", "Ctrl+Shift+,"),
         onClick: () => {
           openLayerPropertiesDialog(layerId);
+        },
+      });
+      const layerHasCrs = Boolean(
+        (targetNode as ProjectLayerItem).crs?.authId
+        || projectLayersSignal.value.find((l) => l.id === layerId)?.crs?.authId
+      );
+      items.push({
+        id: "set_project_crs_from_layer",
+        label: t("set_project_crs_from_layer") || "Set Project CRS from Layer",
+        icon: mdiEarthArrowRight,
+        disabled: !layerHasCrs,
+        onClick: () => {
+          void setProjectCrsFromLayerAction(layerId);
         },
       });
     }

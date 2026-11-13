@@ -1065,6 +1065,13 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectMetadataUpdate
   });
 }
 
+// Follow Project CRS changes made by the main process (first layer adoption, ADR 0033)
+if (typeof window !== 'undefined' && window.electronAPI?.onProjectCrsUpdated) {
+  window.electronAPI.onProjectCrsUpdated((crs) => {
+    setProjectCrs(crs ?? null);
+  });
+}
+
 // Automatically subscribe to IPC dirty state broadcasts from Electron Main process
 if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChanged) {
   window.electronAPI.onProjectDirtyStateChanged((dirty: boolean) => {

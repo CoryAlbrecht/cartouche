@@ -19,6 +19,7 @@
     <string name="zoom_in">Zoom Avant</string>
     <string name="zoom_out">Zoom Arrière</string>
     <string name="zoom_to_selection">Zoom sur la Sélection</string>
+    <string name="set_project_crs_from_layer">Définir le SCR du projet depuis la couche</string>
     <string name="zoom_to_layer">Zoom sur la Couche</string>
     <string name="select_feature">Sélectionner une Entité</string>
     <string name="select_features_by_drag">Sélectionner des Entités par Glissement</string>

@@ -35,6 +35,7 @@ const {
   applyProjectPropertiesEdits,
   commitAndCloseProjectPropertiesDialog,
   buildProjectPropertiesPatch,
+  setProjectCrsFromLayerAction,
 } = jiti('../../../src/renderer/state/projectPropertiesSignals.ts');
 const {
   hasProjectSignal,
@@ -55,6 +56,8 @@ const {
   setProjectPathMode,
   measurementSettingsSignal,
   setMeasurementSettings,
+  projectCrsSignal,
+  projectLayersSignal,
 } = jiti('../../../src/renderer/state/projectSignals.ts');
 const gis = jiti('../../../src/renderer/state/gisSignals.ts');
 const {
@@ -354,6 +357,26 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
     assert.equal(timeFilterUnitSignal.value, 'Days');
     assert.equal(timeFilterFrameStartSignal.value, 4000);
     resetTimeFilterState();
+  });
+
+  it('Set Project CRS from Layer adopts the layer CRS, commits it, and sets the Project Dirty State (Ticket #279)', async () => {
+    projectCrsSignal.value = { authId: 'EPSG:4326' };
+    projectLayersSignal.value = [
+      { id: 'l93', name: 'Lambert', crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93', wkt: 'PROJCS[]', proj4: '+proj=lcc' }, extent: [0, 0, 1, 1], featureCount: 1 },
+      { id: 'nocrs', name: 'No CRS', extent: [0, 0, 1, 1], featureCount: 1 },
+    ];
+    assert.equal(await setProjectCrsFromLayerAction('l93'), true);
+    assert.deepEqual(patches[0], { crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93', proj4: '+proj=lcc' } });
+    assert.equal(projectCrsSignal.value.authId, 'EPSG:2154');
+    assert.equal(currentProjectSignal.value.crs.authId, 'EPSG:2154');
+    assert.equal(isProjectDirtySignal.value, true);
+
+    isProjectDirtySignal.value = false;
+    assert.equal(await setProjectCrsFromLayerAction('nocrs'), false, 'a layer without a CRS cannot be adopted');
+    assert.equal(projectCrsSignal.value.authId, 'EPSG:2154');
+    assert.equal(isProjectDirtySignal.value, false);
+    projectLayersSignal.value = [];
+    projectCrsSignal.value = null;
   });
 
   it('Cancel discards a draft background colour (Ticket #272)', () => {

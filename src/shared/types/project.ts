@@ -484,6 +484,7 @@ export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> 
  * @property {ProjectDistanceUnit} [distanceUnit] - Units for Distance.
  * @property {ProjectAreaUnit} [areaUnit] - Units for Area.
  * @property {ScaleCalculationMethod} [scaleMethod] - Scale Calculation method.
+ * @property {ProjectCrs | null} [crs] - Explicit Project CRS (null removes it); `{ none: true }` selects No CRS.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
  * @updated 2026-11-12
@@ -498,6 +499,7 @@ export interface ProjectPropertiesPatch {
   distanceUnit?: ProjectDistanceUnit;
   areaUnit?: ProjectAreaUnit;
   scaleMethod?: ScaleCalculationMethod;
+  crs?: ProjectCrs | null;
 }
 
 /**

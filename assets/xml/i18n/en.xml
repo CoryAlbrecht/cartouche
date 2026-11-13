@@ -33,6 +33,7 @@
     <string name="zoom_in">Zoom In</string>
     <string name="zoom_out">Zoom Out</string>
     <string name="zoom_to_selection">Zoom to Selection</string>
+    <string name="set_project_crs_from_layer">Set Project CRS from Layer</string>
     <string name="zoom_to_layer">Zoom to Layer</string>
     <string name="select_feature">Select Feature</string>
     <string name="select_features_by_drag">Select Features by Drag</string>

@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget PopupMenu Layer Properties and Rename Actions, Action key slot display, dynamic Action Registry resolution, multi-selection suppression, group suppression, row double-click dispatch, and active target synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-11
+ * @updated 2026-11-13
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link LayerPropertiesDialog}
@@ -332,7 +332,8 @@ describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Tickets #
       create_group: 'Create Group',
       remove_layer: 'Remove Layer',
       remove_group: 'Remove Group',
-      remove_selected_items: 'Remove Selected Items'
+      remove_selected_items: 'Remove Selected Items',
+      set_project_crs_from_layer: 'Set Project CRS from Layer'
     };
 
     projectTreeSignal.value = [
@@ -347,7 +348,8 @@ describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Tickets #
             name: 'Major Cities',
             type: 'vector',
             source: '/data/cities.geojson',
-            visible: true
+            visible: true,
+            crs: { authId: 'EPSG:4326' }
           },
           {
             id: 'layer-rivers',
@@ -480,6 +482,32 @@ describe('LayerTreeWidget Layer Properties PopupMenu and Double-Click (Tickets #
     )[0];
     assert(renameKeySlot, 'Rename must render menu-key-slot');
     assert.equal(renameKeySlot.textContent, 'Alt+F2', 'Rename key slot must reflect registered action formattedKey');
+  });
+
+  it('offers Set Project CRS from Layer for a solitary layer, enabled only when the layer declares a CRS (Ticket #279)', () => {
+    act(() => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+    const openMenuOn = (index: number) => {
+      const rows = findAllNodes(
+        container,
+        (el) => el.className.includes('tree-node-row') && el.className.includes('tree-node-layer')
+      );
+      act(() => {
+        rows[index].dispatchEvent({ type: 'contextmenu', clientX: 10, clientY: 10, preventDefault: () => {}, stopPropagation: () => {}, _bubblesStopped: false });
+      });
+      const labels = findAllNodes(doc.body, (el) => el.className.includes('menu-item-label'));
+      return labels.find((el) => (el as any).textContent?.includes('Set Project CRS from Layer'));
+    };
+
+    const withCrs = openMenuOn(0);
+    assert(withCrs, 'menu includes Set Project CRS from Layer');
+    const rowWithCrs = withCrs.parentNode as any;
+    assert.ok(!String(rowWithCrs.className).includes('disabled'), 'enabled for a layer with a CRS');
+
+    const withoutCrs = openMenuOn(1);
+    assert(withoutCrs, 'menu still lists the action for a layer without a CRS');
+    assert.ok(String((withoutCrs.parentNode as any).className).includes('disabled'), 'disabled when the layer has no CRS');
   });
 
   it('hides Layer Properties... from PopupMenu when a group is secondary-clicked', () => {
