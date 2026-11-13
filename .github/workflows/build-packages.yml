@@ -207,7 +207,37 @@ jobs:
         run: npm run rebuild:gdal
 
       - name: Smoke-test native addons inside Electron
+        id: smoke
         run: npm run smoke:native
+
+      # On a load failure ("The specified procedure could not be found"), list
+      # every function gdal.node imports (normal + delay-load) that its target
+      # DLL does not export. Imports from node.exe resolve to electron.exe via
+      # node-gyp's delay-load hook, so they are checked against electron.exe.
+      - name: Diagnose unresolved native imports
+        if: failure() && steps.smoke.conclusion == 'failure'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = (Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object FullName -like '*Hostx64\x64*' | Select-Object -First 1).FullName
+          $addon = "node_modules\gdal-async\lib\binding\electron-v45.0-win32-x64\gdal.node"
+          & $dumpbin /nologo /imports $addon > imports.txt
+          $dlls = Select-String -Path imports.txt -Pattern '^\s{4}(\S+\.(dll|exe))\s*$' | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique
+          Write-Output "Imported modules: $($dlls -join ', ')"
+          foreach ($dll in $dlls) {
+            if ($dll -ieq 'node.exe') { $path = 'node_modules\electron\dist\electron.exe' }
+            else { $path = (Get-Command $dll -ErrorAction SilentlyContinue).Source; if (-not $path) { $path = "$env:SystemRoot\System32\$dll" } }
+            if (-not (Test-Path $path)) { Write-Output "MISSING MODULE: $dll"; continue }
+            & $dumpbin /nologo /exports $path > "exports-$dll.txt"
+            node -e "
+              const fs=require('fs'); const [imp,exp,dll]=process.argv.slice(1);
+              const ex=new Set(fs.readFileSync(exp,'utf8').split(/\r?\n/).map(l=>l.trim().split(/\s+/).pop()));
+              const lines=fs.readFileSync(imp,'utf8').split(/\r?\n/); let cur=null, missing=[];
+              for (const l of lines) { const m=l.match(/^\s{4}(\S+\.(?:dll|exe))\s*$/i); if (m) { cur=m[1]; continue; }
+                const f=l.match(/^\s+[0-9A-F]+\s+(\S+)$/); if (f && cur && cur.toLowerCase()===dll.toLowerCase() && !ex.has(f[1])) missing.push(f[1]); }
+              console.log(dll+': '+missing.length+' unresolved'); for (const n of [...new Set(missing)].slice(0,60)) console.log('  '+n);
+            " imports.txt "exports-$dll.txt" $dll
+          }
 
       - name: Pre-flight Verification Gates
         run: |
