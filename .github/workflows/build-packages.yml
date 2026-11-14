@@ -10,8 +10,9 @@
 #                  for 7 days. A newer Test Build on the same ref cancels the older one.
 #
 # Native Electron bindings are cached per OS, keyed on the installed Electron
-# version plus package-lock.json and this file (package.json is excluded because
-# Release Builds stamp the tag version into it).
+# version, package-lock.json, and NATIVE_CACHE_VERSION (package.json is excluded
+# because Release Builds stamp the tag version into it). The cache is saved as
+# soon as the bindings build, so later failures still keep it.
 #
 # See GLOSSARY `Test Build` vs. `Release Build`, ADR 0018, and PROCESSES.md.
 name: Build Desktop Packages
@@ -46,6 +47,8 @@ concurrency:
 env:
   IS_RELEASE_BUILD: ${{ github.event_name != 'workflow_dispatch' }}
   ARTIFACT_RETENTION_DAYS: ${{ github.event_name == 'workflow_dispatch' && 7 || 1 }}
+  # Bump when the native rebuild steps or flags change, to invalidate cached bindings.
+  NATIVE_CACHE_VERSION: 1
 
 jobs:
   build-linux:
@@ -95,16 +98,27 @@ jobs:
 
       - name: Restore Native Electron Bindings
         id: native-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: |
             node_modules/gdal-async/lib/binding
             node_modules/better-sqlite3/build
-          key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json', '.github/workflows/build-packages.yml') }}
+          key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json') }}-v${{ env.NATIVE_CACHE_VERSION }}
 
       - name: Rebuild native Electron dependencies
         if: steps.native-cache.outputs.cache-hit != 'true'
         run: npm run rebuild
+
+      # Saved as soon as the bindings are built (not at job end), so a later
+      # smoke-test or packaging failure does not discard a long native compile.
+      - name: Save Native Electron Bindings
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            node_modules/gdal-async/lib/binding
+            node_modules/better-sqlite3/build
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
 
       - name: Smoke-test native addons inside Electron
         run: npm run smoke:native
@@ -187,12 +201,12 @@ jobs:
 
       - name: Restore Native Electron Bindings
         id: native-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: |
             node_modules/gdal-async/lib/binding
             node_modules/better-sqlite3/build
-          key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json', '.github/workflows/build-packages.yml') }}
+          key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json') }}-v${{ env.NATIVE_CACHE_VERSION }}
 
       - name: Rebuild better-sqlite3 for Electron
         if: steps.native-cache.outputs.cache-hit != 'true'
@@ -206,38 +220,42 @@ jobs:
         if: steps.native-cache.outputs.cache-hit != 'true'
         run: npm run rebuild:gdal
 
+      # Saved as soon as the bindings are built (not at job end), so a later
+      # smoke-test or packaging failure does not discard a long native compile.
+      - name: Save Native Electron Bindings
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            node_modules/gdal-async/lib/binding
+            node_modules/better-sqlite3/build
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
+
       - name: Smoke-test native addons inside Electron
         id: smoke
         run: npm run smoke:native
 
-      # On a load failure ("The specified procedure could not be found"), list
-      # every function gdal.node imports (normal + delay-load) that its target
-      # DLL does not export. Imports from node.exe resolve to electron.exe via
-      # node-gyp's delay-load hook, so they are checked against electron.exe.
-      - name: Diagnose unresolved native imports
+      # On a load failure (e.g. "The specified procedure could not be found"),
+      # capture gdal.node's import table and electron.exe's export table
+      # (node.exe imports resolve to electron.exe via the delay-load hook) for
+      # offline comparison.
+      - name: Dump native import/export tables
         if: failure() && steps.smoke.conclusion == 'failure'
         shell: pwsh
         run: |
           $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
           $dumpbin = (Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object FullName -like '*Hostx64\x64*' | Select-Object -First 1).FullName
-          $addon = "node_modules\gdal-async\lib\binding\electron-v45.0-win32-x64\gdal.node"
-          & $dumpbin /nologo /imports $addon > imports.txt
-          $dlls = Select-String -Path imports.txt -Pattern '^\s{4}(\S+\.(dll|exe))\s*$' | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique
-          Write-Output "Imported modules: $($dlls -join ', ')"
-          foreach ($dll in $dlls) {
-            if ($dll -ieq 'node.exe') { $path = 'node_modules\electron\dist\electron.exe' }
-            else { $path = (Get-Command $dll -ErrorAction SilentlyContinue).Source; if (-not $path) { $path = "$env:SystemRoot\System32\$dll" } }
-            if (-not (Test-Path $path)) { Write-Output "MISSING MODULE: $dll"; continue }
-            & $dumpbin /nologo /exports $path > "exports-$dll.txt"
-            node -e "
-              const fs=require('fs'); const [imp,exp,dll]=process.argv.slice(1);
-              const ex=new Set(fs.readFileSync(exp,'utf8').split(/\r?\n/).map(l=>l.trim().split(/\s+/).pop()));
-              const lines=fs.readFileSync(imp,'utf8').split(/\r?\n/); let cur=null, missing=[];
-              for (const l of lines) { const m=l.match(/^\s{4}(\S+\.(?:dll|exe))\s*$/i); if (m) { cur=m[1]; continue; }
-                const f=l.match(/^\s+[0-9A-F]+\s+(\S+)$/); if (f && cur && cur.toLowerCase()===dll.toLowerCase() && !ex.has(f[1])) missing.push(f[1]); }
-              console.log(dll+': '+missing.length+' unresolved'); for (const n of [...new Set(missing)].slice(0,60)) console.log('  '+n);
-            " imports.txt "exports-$dll.txt" $dll
-          }
+          New-Item -ItemType Directory -Force native-diagnostics | Out-Null
+          & $dumpbin /nologo /imports node_modules\gdal-async\lib\binding\electron-v45.0-win32-x64\gdal.node > native-diagnostics\gdal-imports.txt
+          & $dumpbin /nologo /exports node_modules\electron\dist\electron.exe > native-diagnostics\electron-exports.txt
+
+      - name: Upload native diagnostics
+        if: failure() && steps.smoke.conclusion == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-diagnostics-windows
+          path: native-diagnostics/
+          retention-days: 7
 
       - name: Pre-flight Verification Gates
         run: |
