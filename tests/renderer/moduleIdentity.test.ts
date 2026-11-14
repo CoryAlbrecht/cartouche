@@ -1,0 +1,87 @@
+/**
+ * @file moduleIdentity.test.ts
+ * @module tests/renderer/moduleIdentity.test
+ * @description Guards the renderer test harness against duplicate module instances: a module reached through the `@renderer` jiti alias (as tests import it) and through a relative import inside `src/` (as components import it) must resolve to one cached instance, or a test sets one signal while the component reads another. On failure it prints the raw module-cache keys so the diverging path spellings (e.g. Windows separators or drive-letter case) are visible. It also reports, without asserting, how alternative jiti configurations behave.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-14
+ * @updated 2026-11-14
+ * @since 0.1.0-dev
+ * @see src/renderer/hooks/useTranslation.ts
+ */
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import createJiti from 'jiti';
+
+const moduleCache = createRequire(import.meta.url).cache;
+
+/**
+ * @function i18nCacheKeys
+ * @description Lists module-cache keys that refer to `src/renderer/state/i18nSignals.ts` or `src/renderer/hooks/useTranslation.ts`, however their path is spelled.
+ * @returns {string[]} Raw cache keys.
+ */
+function i18nCacheKeys(): string[] {
+  return Object.keys(moduleCache).filter((k) => /[\\/]renderer[\\/](state[\\/]i18nSignals|hooks[\\/]useTranslation)\.ts$/i.test(k));
+}
+
+/**
+ * @function clearI18nCache
+ * @description Removes the i18n modules from the module cache so each jiti configuration starts cold.
+ * @returns {void}
+ */
+function clearI18nCache(): void {
+  for (const key of i18nCacheKeys()) delete moduleCache[key];
+}
+
+/**
+ * @function loadBothWays
+ * @description Loads `i18nSignals` through the `@renderer` alias and through `useTranslation`'s relative import, then counts the distinct cached instances of `i18nSignals`.
+ * @param {ReturnType<typeof createJiti>} jiti - jiti instance under test.
+ * @returns {{ instances: number, keys: string[] }} Distinct `i18nSignals` cache entries and all matching keys.
+ */
+function loadBothWays(jiti: ReturnType<typeof createJiti>): { instances: number; keys: string[] } {
+  jiti('@renderer/state/i18nSignals');
+  jiti('@renderer/hooks/useTranslation');
+  const keys = i18nCacheKeys();
+  return { instances: keys.filter((k) => /i18nSignals\.ts$/i.test(k)).length, keys };
+}
+
+describe('Renderer test harness module identity', () => {
+  it('resolves a module reached by @renderer alias and by relative import to a single instance', () => {
+    clearI18nCache();
+    const jiti = createJiti(import.meta.url, {
+      jsx: true,
+      alias: {
+        '@renderer': path.resolve(process.cwd(), 'src/renderer'),
+        '@shared': path.resolve(process.cwd(), 'src/shared'),
+      },
+    });
+    const { instances, keys } = loadBothWays(jiti);
+    assert.equal(instances, 1, `Expected one i18nSignals instance; module cache keys:\n  ${keys.join('\n  ')}`);
+  });
+
+  it('reports how alternative jiti configurations resolve (diagnostic, not asserted)', () => {
+    const variants: Record<string, Parameters<typeof createJiti>[1]> = {
+      'forward-slash alias': {
+        jsx: true,
+        alias: {
+          '@renderer': path.resolve(process.cwd(), 'src/renderer').replace(/\\/g, '/'),
+          '@shared': path.resolve(process.cwd(), 'src/shared').replace(/\\/g, '/'),
+        },
+      },
+      tsconfigPaths: { jsx: true, tsconfigPaths: true },
+    };
+    for (const [name, options] of Object.entries(variants)) {
+      clearI18nCache();
+      try {
+        const { instances, keys } = loadBothWays(createJiti(import.meta.url, options));
+        console.log(`[moduleIdentity] ${name}: ${instances} instance(s)\n  ${keys.join('\n  ')}`);
+      } catch (err) {
+        console.log(`[moduleIdentity] ${name}: failed to load (${(err as Error).message})`);
+      }
+    }
+    clearI18nCache();
+  });
+});
