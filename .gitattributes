@@ -1,2 +1,6 @@
+# Check out text files with LF on every platform: tests read CSS/XML/source and
+# match with "\n", which breaks under Windows CRLF checkouts.
+* text=auto eol=lf
+
 # Test datasets must stay byte-identical on every platform (no line-ending conversion).
 tests/data/** -text
