@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-11
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -56,6 +56,13 @@ const assertExtentClose = (actual: BoundingBox, expected: BoundingBox, tolerance
     );
   }
 };
+
+/**
+ * @description Skip reason for tests quarantined until the upstream gdal-async SpatialReference identity bug is fixed: after a dataset closes, a newly created SpatialReference can be handed the stale wrapper of the dataset's layer SRS, so any reprojection test in the two suites below can fail intermittently (~6% of runs; which test fails varies from run to run). Un-quarantine once mmomtchev/node-gdal-async#389 is resolved and the fix is pulled into CoryAlbrecht/node-gdal-async (Ticket #294).
+ * @type {string}
+ */
+const QUARANTINED_294 =
+  'Quarantined (Ticket #294): intermittent gdal-async SpatialReference identity bug, mmomtchev/node-gdal-async#389';
 
 describe('GeospatialEngine Helper Functions', () => {
   it('mapGdalGeometryKind correctly maps GDAL geometry types', () => {
@@ -139,7 +146,7 @@ describe('GeospatialEngine Helper Functions', () => {
     assert.deepEqual(result, inputBbox);
   });
 
-  describe('antimeridian clamping (Ticket #262)', () => {
+  describe('antimeridian clamping (Ticket #262)', { skip: QUARANTINED_294 }, () => {
     /**
      * @function layerWgs84Srs
      * @description Returns the SpatialReference of an in-memory WGS 84 GeoJSON layer, matching the lon/lat axis order of real vector layer sessions.
@@ -191,7 +198,7 @@ describe('GeospatialEngine Helper Functions', () => {
     });
   });
 
-  describe('geographic source CRS axis order (Ticket #264)', () => {
+  describe('geographic source CRS axis order (Ticket #264)', { skip: QUARANTINED_294 }, () => {
     it('reprojects a lon/lat EPSG:4326 extent to EPSG:3857 despite authority lat/lon axis order', () => {
       // Expected values from the spherical Mercator forward formula:
       // x = R · lon · π/180, y = R · ln(tan(π/4 + lat · π/360)), R = 6378137.
