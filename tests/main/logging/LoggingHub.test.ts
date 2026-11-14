@@ -4,7 +4,7 @@
  * @description Unit tests verifying Logging Hub Winston configuration, transport routing, directory auto-creation, formatting, and colorization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-10-22
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link LoggingHub}
  */
@@ -151,7 +151,11 @@ describe('LoggingHub Transports and Formatting', () => {
   });
 
   it('falls back safely to stderr when target file path is invalid or unwritable', () => {
-    const unwritablePath = '/root/non_existent_dir_cannot_write_12345/cartouche.log';
+    // A path beneath an existing regular file is unwritable on every OS (ENOTDIR),
+    // unlike '/root/...', which Windows resolves to a creatable '<drive>:\\root\\...'.
+    const blockingFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-log-')), 'not-a-dir');
+    fs.writeFileSync(blockingFile, '');
+    const unwritablePath = path.join(blockingFile, 'cartouche.log');
     let warningEmitted = false;
     const originalStderrWrite = process.stderr.write;
     process.stderr.write = ((chunk: any) => {
@@ -169,6 +173,7 @@ describe('LoggingHub Transports and Formatting', () => {
       hub.destroy();
     } finally {
       process.stderr.write = originalStderrWrite;
+      fs.rmSync(path.dirname(blockingFile), { recursive: true, force: true });
     }
   });
 
