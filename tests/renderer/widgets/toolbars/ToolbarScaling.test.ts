@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying ToolbarWidget, SelectionToolbarWidget, and DigitizingToolbarWidget scaling and showGrabber props.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-05
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link SelectionToolbarWidget}
@@ -13,21 +13,14 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/ToolbarWidget';
 import type { SelectionToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/toolbars/SelectionToolbarWidget';
 import type { DigitizingToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/toolbars/DigitizingToolbarWidget';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { ToolbarWidget } = jiti(
   '../../../../src/renderer/workbench/widgets/ToolbarWidget'

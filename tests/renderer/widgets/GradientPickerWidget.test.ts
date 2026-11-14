@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-09
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -15,8 +15,7 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import path from "node:path";
-import createJiti from "jiti";
+import { createRendererJiti } from "../rendererJiti";
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -369,14 +368,7 @@ function getStopButtonsSorted(el: MockElement): MockElement[] {
 }
 
 // Load GradientPickerWidget using jiti
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    "@renderer": path.resolve(process.cwd(), "src/renderer"),
-    "@shared": path.resolve(process.cwd(), "src/shared"),
-    "@main": path.resolve(process.cwd(), "src/main"),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { GradientPickerWidget, parseInitialStops, serializeGradientStops } =
   jiti("../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx");

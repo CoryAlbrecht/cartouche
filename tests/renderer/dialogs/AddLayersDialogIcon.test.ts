@@ -4,7 +4,7 @@
  * @description Regression tests verifying that custom file: SVG icons in AddLayersDialog (title bar and Add Layers button) render as inline SVGs with white fill instead of black external img tags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-19
- * @updated 2026-10-19
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link AddLayersDialog}
  * @see {@link Icon}
@@ -12,16 +12,9 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 describe('AddLayersDialog and file: SVG Icon Color Rendering', () => {
   let originalDocument: typeof globalThis.document;

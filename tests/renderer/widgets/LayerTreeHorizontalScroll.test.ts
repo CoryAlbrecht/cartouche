@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget horizontal and vertical viewport scrolling, intrinsic display name sizing without ellipsis shortening, full-width row selection highlights, sticky visible-width drop markers, and inline rename sizing transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-07
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0010-layer-tree-horizontal-scroll-and-nodeline-layout.md (ADR 0010)
@@ -18,7 +18,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Mock .svg import for headless Node testing
 const require = createRequire(import.meta.url);
@@ -436,14 +436,7 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
 }
 
 // Instantiate jiti with aliases
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   hasProjectSignal,

@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget tree node line icons (layer geometry, group chevrons, folder outlines, and project root logo) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and adapt row line slot dimensions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-10
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link prefsUiIconSize}
@@ -17,7 +17,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Mock .svg import for headless Node testing
 const require = createRequire(import.meta.url);
@@ -396,14 +396,7 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
 }
 
 // Instantiate jiti with aliases
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 import {
   hasProjectSignal,

@@ -4,7 +4,7 @@
  * @description Unit and component tests for SnappingToolbarWidget verifying master toggle cascade, split-button scope switching, discrete vertex/midpoint/segment toggles, distance spinner mutations, and non-modal SnappingOptionsDialog lifecycle.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link SnappingToolbarWidget}
  * @see {@link SnappingOptionsDialog}
@@ -14,8 +14,7 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 import {
   mdiMagnet,
   mdiLayersOutline,
@@ -44,13 +43,7 @@ import { dictionarySignal } from '../../../../src/renderer/state/i18nSignals';
 import { cancelTopDialog } from '../../../../src/renderer/state/dialogSignals';
 import type { LayerDescriptor } from '../../../../src/shared/types';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   SnappingToolbarWidget,

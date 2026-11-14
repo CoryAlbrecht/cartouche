@@ -4,7 +4,7 @@
  * @description Unit tests verifying that Widget and BasicWidget omit hardcoded inline background and border styles by default, bind to theme CSS tokens, correctly accept custom prop overrides, and synchronize detached window body styles (ADR 0027 / Ticket #197).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-07
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link BasicWidget}
@@ -19,7 +19,7 @@ import { createRequire } from 'node:module';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 
 // Mock .svg import for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
@@ -248,14 +248,7 @@ function findNode(rootNode: MockElement, predicate: (el: MockElement) => boolean
   return null;
 }
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { Widget } = jiti('../../../../src/renderer/workbench/widgets/Widget.tsx');
 const { BasicWidget } = jiti('../../../../src/renderer/workbench/widgets/BasicWidget.tsx');

@@ -4,7 +4,7 @@
  * @description Unit tests for pure calendar-aware UTC temporal mathematics, stepping, range calculation, and auto-detection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
@@ -20,15 +20,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   isLeapYearUtc,

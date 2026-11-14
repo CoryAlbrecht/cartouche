@@ -4,23 +4,16 @@
  * @description Component tests for the shared TabbedDialogShell: sidebar tab rendering, active-tab styling, class prefixing, tab change callbacks, and pane content passthrough.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link TabbedDialogShell}
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const React = jiti('react');
 const { renderToStaticMarkup } = jiti('react-dom/server');

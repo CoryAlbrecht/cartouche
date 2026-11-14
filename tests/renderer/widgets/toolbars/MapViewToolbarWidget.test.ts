@@ -4,7 +4,7 @@
  * @description Unit and component tests for MapViewToolbarWidget verifying map navigation tools, MDI icons, accelerator key combinations, pan active toggle, zoom in/out resolution scaling, and zoom to selection/layer extent fitting with 8px margin.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link MapViewToolbarWidget}
  * @see {@link isZoomToSelectionDisabled}
@@ -13,8 +13,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 import {
   mdiHandBackRightOutline,
   mdiMagnifyPlusOutline,
@@ -39,13 +38,7 @@ import { projectLayersSignal } from '../../../../src/renderer/state/projectSigna
 import { preferencesMapSignal } from '../../../../src/renderer/state/preferencesSignals';
 import type { BoundingBox, LayerDescriptor } from '../../../../src/shared/types';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   MapViewToolbarWidget,

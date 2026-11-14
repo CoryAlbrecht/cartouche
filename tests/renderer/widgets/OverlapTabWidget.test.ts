@@ -4,7 +4,7 @@
  * @description Unit tests for OverlapTabWidget container, verifying double-header hierarchy, tab switching, extraction, single-child auto-dissolution, master close, and recursive nesting prohibition.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link OverlapTabWidget}
  * @see {@link BasicWidget}
@@ -12,11 +12,10 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import { createRequire } from 'node:module';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Mock .svg and .css imports for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
@@ -274,14 +273,7 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
   return result;
 }
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main'),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { BasicWidget } = jiti('../../../src/renderer/workbench/widgets/BasicWidget.tsx');
 const { OverlapTabWidget } = jiti('../../../src/renderer/workbench/widgets/OverlapTabWidget.tsx');

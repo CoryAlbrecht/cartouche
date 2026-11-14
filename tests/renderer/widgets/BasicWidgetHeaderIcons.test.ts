@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying BasicWidget 2-control header bar control icons (close) scale to 80% of --cartouche-ui-icon-size via CSS custom properties, optional title bar icon parameter scales to 50% of --cartouche-ui-icon-size, and react to prefsUiIconSize signal changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-07
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link prefsUiIconSize}
@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -380,14 +380,7 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
 }
 
 // Instantiate jiti with aliases
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { BasicWidget } = jiti('../../../src/renderer/workbench/widgets/BasicWidget.tsx');
 const { prefsUiIconSize } = jiti('../../../src/renderer/state/preferencesSignals.ts');

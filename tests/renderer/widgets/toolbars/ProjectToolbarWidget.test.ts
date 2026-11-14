@@ -4,7 +4,7 @@
  * @description Unit and component tests for ProjectToolbarWidget verifying project file actions, outline MDI icons, ProjectPropertiesDialog trigger, layer widget integration, save button disabled states, and toolbar layout migration.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-08
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ProjectToolbarWidget}
  * @see {@link isProjectToolbarSaveDisabled}
@@ -14,8 +14,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 import {
   mdiFolderPlusOutline,
   mdiFolderOpenOutline,
@@ -42,13 +41,7 @@ import {
   type ToolbarZone
 } from '../../../../src/renderer/state/gisSignals';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   ProjectToolbarWidget,

@@ -4,7 +4,7 @@
  * @description Component tests verifying ColourPickerDialog portal rendering, keyboard Escape dismissal, backdrop click cancellation, Apply/Cancel actions, and integration with ColorInput and PreferencesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link ColorInput}
@@ -13,10 +13,9 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -310,14 +309,7 @@ function findElementsByClass(el: MockElement, className: string): MockElement[] 
   return matches;
 }
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { ColourPickerDialog } = jiti(
   '../../../src/renderer/workbench/dialogs/ColourPickerDialog.tsx'

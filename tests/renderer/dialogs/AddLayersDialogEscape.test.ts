@@ -4,7 +4,7 @@
  * @description Unit tests verifying Escape key cancellation behavior and draft input clearing for AddLayersDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link AddLayersDialog}
  * @see {@link closeAddLayersDialog}
@@ -12,20 +12,13 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { AddLayersDialog } = jiti('@renderer/workbench/dialogs/AddLayersDialog');
 const {

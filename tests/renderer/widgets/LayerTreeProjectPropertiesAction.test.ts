@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget PopupMenu Project Properties Action, Rename key slot display, dynamic Action Registry resolution, icon display, and dialog dispatch when secondary-clicking the project root node.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link openProjectPropertiesDialog}
@@ -13,12 +13,11 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import { createRequire } from 'node:module';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { mdiFolderCogOutline } from '@mdi/js';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 const require = createRequire(import.meta.url);
 require.extensions['.svg'] = (mod: any) => {
@@ -285,14 +284,7 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
   return result;
 }
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   hasProjectSignal,
