@@ -15,4 +15,8 @@ trap on_failure ERR
 
 .git/hooks/update-version.sh
 npm run lint:jsdoc
-npm run lint:glossary -- --staged
+# Glossary lint belongs to the AI-agent workspace wrapper (../.agents), not this
+# repository; run it only when the workspace is present (skipped in bare clones/CI).
+if [ -f ../.agents/scripts/lint-glossary.js ]; then
+  node ../.agents/scripts/lint-glossary.js --staged
+fi
