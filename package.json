@@ -33,7 +33,8 @@
     "test:main": "node --import jiti/register --test \"tests/main/**/*.test.ts\"",
     "test:renderer": "node --import jiti/register --test \"tests/renderer/**/*.test.ts\"",
     "test:shared": "node --import jiti/register --test \"tests/shared/**/*.test.ts\"",
-    "smoke:native": "node scripts/smoke-native-electron.cjs"
+    "smoke:native": "node scripts/smoke-native-electron.cjs",
+    "generate:test-data": "node scripts/generate-test-data.js"
   },
   "keywords": [
     "gis",

@@ -22,7 +22,7 @@ import { isProjectLayerStyleWrapper } from '../../../../src/shared/styles/defaul
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sampleShpPath = path.resolve(__dirname, '../../../../../test/files/ne_10m_lakes.shp');
+const sampleShpPath = path.resolve(__dirname, '../../../data/ne_10m_lakes.shp');
 
 describe('addLayer API & Ingestion Pipeline', () => {
   let sentEvents: Array<{ channel: string; payload: any }> = [];

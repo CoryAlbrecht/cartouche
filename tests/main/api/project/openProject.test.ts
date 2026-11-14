@@ -24,7 +24,7 @@ import { isProjectLayerStyleWrapper, type ProjectLayerItem } from '../../../../s
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sampleShpPath = path.resolve(__dirname, '../../../../../test/files/ne_10m_lakes.shp');
+const sampleShpPath = path.resolve(__dirname, '../../../data/ne_10m_lakes.shp');
 
 describe('openProject Native Session Hydration', () => {
   let tempDir: string;
@@ -92,7 +92,7 @@ describe('openProject Native Session Hydration', () => {
   it('updates non-matching <layer geometryKind> from authoritative dataset on openProject while keeping project clean', async () => {
     const centrelinesPath = path.resolve(
       __dirname,
-      '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+      '../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson'
     );
     const tempProjPath = path.join(tempDir, `temp_mismatch_project_${Date.now()}.cproj`);
 
@@ -165,7 +165,7 @@ describe('openProject Native Session Hydration', () => {
   it('opening a legacy .cproj lacking <fields> infers fields on load and marks projectStore as dirty (Ticket #138)', async () => {
     const centrelinesPath = path.resolve(
       __dirname,
-      '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+      '../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson'
     );
     const legacyProjPath = path.join(tempDir, `legacy_project_${Date.now()}.cproj`);
 
@@ -193,7 +193,7 @@ describe('openProject Native Session Hydration', () => {
   });
 
   it('loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors', async () => {
-    const project4Path = path.resolve(__dirname, '../../../../../test/projects/project-1/project-4.cproj');
+    const project4Path = path.resolve(__dirname, '../../../data/project-4.cproj');
     const project = await openProject(project4Path);
 
     assert.ok(project, 'project-4.cproj must load successfully');
@@ -233,7 +233,7 @@ describe('openProject Native Session Hydration', () => {
   it('initializes empty project.styles = [] if absent and assigns distinct colors across multiple unstyled vector layers, excluding raster layers', async () => {
     const riversPath = path.resolve(
       __dirname,
-      '../../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+      '../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson'
     );
     const tempProjPath = path.join(tempDir, `temp_styles_init_project_${Date.now()}.cproj`);
 

@@ -25,8 +25,8 @@ import type { BoundingBox } from '../../../src/shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const lakesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes_north_america.geojson');
-const lakesShpPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes.shp');
+const lakesGeoJsonPath = path.resolve(__dirname, '../../data/ne_10m_lakes_north_america.geojson');
+const lakesShpPath = path.resolve(__dirname, '../../data/ne_10m_lakes.shp');
 
 /**
  * @class MockWorker

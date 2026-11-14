@@ -36,10 +36,10 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const lakesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes_north_america.geojson');
-const lakesShpPath = path.resolve(__dirname, '../../../../test/files/ne_10m_lakes.shp');
-const centrelinesGeoJsonPath = path.resolve(__dirname, '../../../../test/files/ne_10m_rivers_lake_centerline_scale_rank.geojson');
-const timelineGpkgPath = path.resolve(__dirname, '../../../../test/files/timeline_level_0.gpkg');
+const lakesGeoJsonPath = path.resolve(__dirname, '../../data/ne_10m_lakes_north_america.geojson');
+const lakesShpPath = path.resolve(__dirname, '../../data/ne_10m_lakes.shp');
+const centrelinesGeoJsonPath = path.resolve(__dirname, '../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson');
+const timelineGpkgPath = path.resolve(__dirname, '../../data/timeline_level_0.gpkg');
 
 /**
  * @function assertExtentClose
@@ -1446,7 +1446,7 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
   });
 
   describe('Sorted Feature Queries via GDAL SQL (Ticket #238)', () => {
-    const timelineGpkgPath = path.resolve(__dirname, '../../../../test/files/timeline_level_0.gpkg');
+    const timelineGpkgPath = path.resolve(__dirname, '../../data/timeline_level_0.gpkg');
 
     beforeEach(async () => {
       await engine.openDataset('timeline-test', timelineGpkgPath);

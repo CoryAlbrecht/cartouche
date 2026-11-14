@@ -24,7 +24,7 @@ describe('LayerSessionRegistry', () => {
   });
 
   it('registers and retrieves paired native dataset and layer handles', async () => {
-    const ds = await gdal.openAsync('../test/files/ne_10m_lakes.shp');
+    const ds = await gdal.openAsync('tests/data/ne_10m_lakes.shp');
     const layer = ds.layers.get(0);
     const layerId = 'test-layer-1';
 
