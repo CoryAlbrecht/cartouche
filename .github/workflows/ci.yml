@@ -28,6 +28,11 @@ jobs:
           node-version: 24
           cache: "npm"
 
+      # CartoucheXmlLoader tests validate saved projects against project.xsd
+      # with xmllint, which the ubuntu runner image does not ship.
+      - name: Install xmllint
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libxml2-utils
+
       - name: Install dependencies
         run: npm ci
 
