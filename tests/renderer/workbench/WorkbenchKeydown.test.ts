@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-08
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  * @see {@link executeWorkbenchAction}
@@ -12,8 +12,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 import {
   hasProjectSignal,
   isProjectDirtySignal,
@@ -36,13 +35,7 @@ import { activeLayerPropertiesIdSignal } from '../../../src/renderer/state/layer
 import { activeDialogStackSignal } from '../../../src/renderer/state/dialogSignals';
 import { registeredActionsSignal } from '../../../src/renderer/state/actionSignals';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { handleWorkbenchKeyDown, executeWorkbenchAction } = jiti('../../../src/renderer/workbench/workbenchShortcuts') as {
   handleWorkbenchKeyDown: (e: any) => void;

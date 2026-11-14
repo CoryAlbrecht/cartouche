@@ -4,7 +4,7 @@
  * @description Tests for the Project Properties draft store (ADR 0024): opening seeds the draft from the committed state, edits stay in the draft, Apply commits through one IPC round trip and sets the Project Dirty State, Cancel/Close roll back, the draft survives tab switches, and the Workbench window title falls back to the project file's base name when the title is empty.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-13
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
@@ -13,16 +13,9 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   isProjectPropertiesOpenSignal,

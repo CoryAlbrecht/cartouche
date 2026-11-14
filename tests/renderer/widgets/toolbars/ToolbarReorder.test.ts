@@ -4,7 +4,7 @@
  * @description Component and interaction tests for ToolbarWidget and ToolbarContainerWidget drag-and-drop reordering, insertion indicators, and zone relocation (Ticket #110).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
- * @updated 2026-10-28
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link ToolbarContainerWidget}
@@ -13,8 +13,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -26,13 +25,7 @@ import {
   type ToolbarId
 } from '../../../../src/renderer/state/gisSignals';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { ToolbarWidget } = jiti(
   '../../../../src/renderer/workbench/widgets/ToolbarWidget'

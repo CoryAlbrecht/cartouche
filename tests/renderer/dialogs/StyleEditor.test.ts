@@ -4,7 +4,7 @@
  * @description Tests for the reusable StyleEditor component and the shared style format switch helpers: controlled rendering from a StyleEditorValue, id prefixing, optional opacity row, onChange patches from the Cartouche component editor, and format switching / reset computed without any draft store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link StyleEditor}
  * @see {@link computeStyleFormatSwitch}
@@ -12,16 +12,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const React = jiti('react');
 const { renderToStaticMarkup } = jiti('react-dom/server');

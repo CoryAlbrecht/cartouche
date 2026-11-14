@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality (Ticket #92, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-10
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -16,7 +16,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { createJiti } from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Mock .svg import for headless Node testing
 // @ts-ignore
@@ -283,14 +283,7 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
   return result;
 }
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const {
   hasProjectSignal,

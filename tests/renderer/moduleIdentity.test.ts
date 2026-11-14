@@ -1,19 +1,19 @@
 /**
  * @file moduleIdentity.test.ts
  * @module tests/renderer/moduleIdentity.test
- * @description Guards the renderer test harness against duplicate module instances: a module reached through the `@renderer` jiti alias (as tests import it) and through a relative import inside `src/` (as components import it) must resolve to one cached instance, or a test sets one signal while the component reads another. On failure it prints the raw module-cache keys so the diverging path spellings (e.g. Windows separators or drive-letter case) are visible. It also reports, without asserting, how alternative jiti configurations behave.
+ * @description Guards the renderer test harness against duplicate module instances: a module reached through the `@renderer` jiti alias (as tests import it) and through a relative import inside `src/` (as components import it) must resolve to one cached instance, or a test sets one signal while the component reads another. On failure it prints the raw module-cache keys so the diverging path spellings (e.g. Windows separators or drive-letter case) are visible.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-14
  * @updated 2026-11-14
  * @since 0.1.0-dev
- * @see src/renderer/hooks/useTranslation.ts
+ * @see tests/renderer/rendererJiti.ts
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import { createRequire } from 'node:module';
-import createJiti from 'jiti';
+import type createJiti from 'jiti';
+import { createRendererJiti, rootRelativePosix } from './rendererJiti';
 
 const moduleCache = createRequire(import.meta.url).cache;
 
@@ -51,37 +51,13 @@ function loadBothWays(jiti: ReturnType<typeof createJiti>): { instances: number;
 describe('Renderer test harness module identity', () => {
   it('resolves a module reached by @renderer alias and by relative import to a single instance', () => {
     clearI18nCache();
-    const jiti = createJiti(import.meta.url, {
-      jsx: true,
-      alias: {
-        '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-        '@shared': path.resolve(process.cwd(), 'src/shared'),
-      },
-    });
-    const { instances, keys } = loadBothWays(jiti);
+    const { instances, keys } = loadBothWays(createRendererJiti(import.meta.url));
+    clearI18nCache();
     assert.equal(instances, 1, `Expected one i18nSignals instance; module cache keys:\n  ${keys.join('\n  ')}`);
   });
 
-  it('reports how alternative jiti configurations resolve (diagnostic, not asserted)', () => {
-    const variants: Record<string, Parameters<typeof createJiti>[1]> = {
-      'forward-slash alias': {
-        jsx: true,
-        alias: {
-          '@renderer': path.resolve(process.cwd(), 'src/renderer').replace(/\\/g, '/'),
-          '@shared': path.resolve(process.cwd(), 'src/shared').replace(/\\/g, '/'),
-        },
-      },
-      tsconfigPaths: { jsx: true, tsconfigPaths: true },
-    };
-    for (const [name, options] of Object.entries(variants)) {
-      clearI18nCache();
-      try {
-        const { instances, keys } = loadBothWays(createJiti(import.meta.url, options));
-        console.log(`[moduleIdentity] ${name}: ${instances} instance(s)\n  ${keys.join('\n  ')}`);
-      } catch (err) {
-        console.log(`[moduleIdentity] ${name}: failed to load (${(err as Error).message})`);
-      }
-    }
-    clearI18nCache();
+  it('writes alias targets as root-relative POSIX paths so jiti never reads a drive letter as a URL scheme', () => {
+    assert.equal(rootRelativePosix('D:\\a\\cartouche\\src\\renderer'), '/a/cartouche/src/renderer');
+    assert.equal(rootRelativePosix('/home/user/cartouche/src/renderer'), '/home/user/cartouche/src/renderer');
   });
 });

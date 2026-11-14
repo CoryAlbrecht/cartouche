@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -25,7 +25,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Mock .svg and .css imports for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
@@ -38,13 +38,7 @@ nodeRequire.extensions['.css'] = (mod: any) => {
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const React = jiti('react') as typeof import('react');
 const { act } = React;

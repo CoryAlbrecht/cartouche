@@ -4,7 +4,7 @@
  * @description Component and draft tests for the Project Properties CRS tab: No CRS disabling the lists, the case-insensitive filter on name and `AUTH:code`, the five / ten visible rows, selection staying in sync between the two lists, Predefined selections added to the top of the draft Recently Used list, Apply committing the Project CRS (or No CRS) and the list trimmed to 20, Cancel discarding both, Hide Deprecated bound to the app preference with the current and recent CRSs always shown and marked, and the catalogue-building state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ProjectCrsTab}
  * @see {@link selectDraftCrs}
@@ -12,16 +12,9 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const React = jiti('react');
 const { renderToStaticMarkup } = jiti('react-dom/server');

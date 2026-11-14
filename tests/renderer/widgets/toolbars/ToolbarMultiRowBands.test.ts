@@ -4,7 +4,7 @@
  * @description Unit tests for discrete Toolbar Row bands, empty row collapse, and multi-row drop markers (Ticket #116, ADR 0020).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
- * @updated 2026-10-28
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ToolbarPanel}
  * @see {@link ToolbarContainerWidget}
@@ -13,8 +13,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -28,13 +27,7 @@ import {
 import type { ToolbarWidgetProps } from '../../../../src/renderer/workbench/widgets/ToolbarWidget';
 import type { ToolbarContainerWidgetProps } from '../../../../src/renderer/workbench/widgets/ToolbarContainerWidget';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { ToolbarPanel } = jiti(
   '../../../../src/renderer/workbench/widgets/toolbars/ToolbarPanel'

@@ -4,7 +4,7 @@
  * @description Unit and component tests for Widget background context menu standardization, PopupMenu portal integration, Escape key dismissal, outside click dismissal, action execution, and viewport boundary collision clamping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link PopupMenu}
@@ -14,7 +14,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../rendererJiti';
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -372,17 +372,9 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
   return result;
 }
 
-import path from 'node:path';
 
 // Instantiate jiti with aliases
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const { Widget } = jiti('../../../src/renderer/workbench/widgets/Widget.tsx');
 const { BasicWidget } = jiti('../../../src/renderer/workbench/widgets/BasicWidget.tsx');

@@ -4,17 +4,16 @@
  * @description Unit tests verifying Icon component support for CSS custom properties, calc expressions, and default --cartouche-ui-icon-size inheritance.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-08
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link Icon}
  */
 
-import path from 'node:path';
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -307,14 +306,7 @@ function tearDownDom(): void {
 }
 
 // Instantiate jiti with JSX and aliases
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-    '@main': path.resolve(process.cwd(), 'src/main')
-  }
-});
+const jiti = createRendererJiti(import.meta.url);
 const { default: Icon, BUILTIN_CUSTOM_SVG_ICONS } = jiti('../../../../src/renderer/components/common/Icon.tsx') as {
   default: React.FC<any>;
   BUILTIN_CUSTOM_SVG_ICONS: Record<string, { viewBox: string; paths: string[] }>;

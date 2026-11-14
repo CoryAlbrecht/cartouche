@@ -4,7 +4,7 @@
  * @description Unit tests for ColorInput component verifying hex and CSS color rendering, validation error states, swatch preview preservation, disabled behavior, and chevron omission.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-08
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ColorInput}
  * @see {@link CssColorsDatalist}
@@ -12,16 +12,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import createJiti from 'jiti';
+import { createRendererJiti } from '../../rendererJiti';
 
-const jiti = createJiti(import.meta.url, {
-  jsx: true,
-  alias: {
-    '@renderer': path.resolve(process.cwd(), 'src/renderer'),
-    '@shared': path.resolve(process.cwd(), 'src/shared'),
-  },
-});
+const jiti = createRendererJiti(import.meta.url);
 
 const React = jiti('react') as typeof import('react');
 const { renderToStaticMarkup } = jiti('react-dom/server') as typeof import('react-dom/server');
