@@ -217,7 +217,7 @@ jobs:
         if: steps.native-cache.outputs.cache-hit != 'true'
         run:
           npx node-gyp rebuild --directory=node_modules/better-sqlite3
-          --target=45.0.0 --arch=x64 --dist-url=https://electronjs.org/headers
+          --target=45.3.2 --arch=x64 --dist-url=https://electronjs.org/headers
 
       # Compiles the forked gdal-async (V8-sandbox fix, ADR 0006) and its bundled
       # GDAL/PROJ/GEOS with MSVC against Electron headers. Slow on a cold cache.

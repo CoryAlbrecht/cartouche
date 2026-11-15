@@ -1,0 +1,19 @@
+# Dependabot version updates (Electron Version Policy).
+#
+# Watches `electron` only. Its PRs announce new stable releases and trigger an
+# Electron In-Major Upgrade or an Electron Major Upgrade; they are never merged.
+# The upgrade is done on a work branch, which syncs the exact version strings,
+# `@types/node` and the native rebuilds, and the Dependabot PR is then closed as
+# superseded. Majors are deliberately not ignored: they trigger the major
+# procedure. `@types/node` is not covered because it follows Electron's bundled
+# Node.js, not its own latest release. Prereleases need no ignore rule:
+# Dependabot does not propose them while the current version is stable, and
+# nightlies ship as the separate `electron-nightly` package.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-name: "electron"
