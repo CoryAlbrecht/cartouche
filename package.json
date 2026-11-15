@@ -135,7 +135,7 @@
     "dockview-react": "^8.3.1",
     "fast-xml-parser": "^5.11.1",
     "flatgeobuf": "^4.4.0",
-    "gdal-async": "github:CoryAlbrecht/node-gdal-async#fix/v8-sandbox-wkb",
+    "gdal-async": "github:CoryAlbrecht/node-gdal-async#electron",
     "geostyler-openlayers-parser": "^5.8.0",
     "geostyler-sld-parser": "^8.5.0",
     "geostyler-style": "^11.1.0",
