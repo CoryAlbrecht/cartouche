@@ -1,10 +1,10 @@
 /**
  * @file WorkbenchStatusBar.test.ts
  * @module tests/renderer/workbench/WorkbenchStatusBar.test
- * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, and active CRS, while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
+ * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, and the Project CRS item (ADR 0033 display rules and tooltips), while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link WorkbenchStatusBar}
  * @see {@link Workbench}
@@ -32,11 +32,11 @@ const jiti = createRendererJiti(import.meta.url);
 const {
   cursorCoordsSignal,
   scaleDenominatorSignal,
-  activeCrsSignal,
   selectedFeatureIdsSignal,
   selectedFeaturesCountSignal,
 } = jiti('@renderer/state/gisSignals');
 const { dictionarySignal } = jiti('@renderer/state/i18nSignals');
+const { setProjectCrs } = jiti('@renderer/state/projectSignals');
 
 /**
  * @class MockElement
@@ -300,11 +300,7 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
 
     cursorCoordsSignal.value = null;
     scaleDenominatorSignal.value = 25000000;
-    activeCrsSignal.value = {
-      authId: 'EPSG:3857',
-      name: 'WGS 84 / Pseudo-Mercator',
-      units: 'meters',
-    };
+    setProjectCrs(null);
     selectedFeatureIdsSignal.value = new Set();
     dictionarySignal.value = {};
   });
@@ -318,11 +314,7 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
     }
     cursorCoordsSignal.value = null;
     scaleDenominatorSignal.value = 25000000;
-    activeCrsSignal.value = {
-      authId: 'EPSG:3857',
-      name: 'WGS 84 / Pseudo-Mercator',
-      units: 'meters',
-    };
+    setProjectCrs(null);
     selectedFeatureIdsSignal.value = new Set();
   });
 
@@ -342,11 +334,11 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
     assert.ok(text.includes('Coordinate: 0.0000°, 0.0000°'), 'Expected fallback coordinate text');
     assert.ok(text.includes(`Scale: 1 : ${(25000000).toLocaleString()}`), 'Expected formatted cartographic scale');
     assert.ok(text.includes('Selected: 0'), 'Expected selected features count');
-    assert.ok(text.includes('🌐 EPSG:3857'), 'Expected active CRS authId');
+    assert.ok(text.includes('EPSG:3857'), 'Expected default drawing CRS when no Project CRS is set');
     assert.ok(text.includes('● Ready'), 'Expected application core status');
   });
 
-  it('updates reactively when cursorCoordsSignal, scaleDenominatorSignal, activeCrsSignal, and selectedFeaturesCountSignal change', async () => {
+  it('updates reactively when cursorCoordsSignal, scaleDenominatorSignal, the Project CRS, and selectedFeaturesCountSignal change', async () => {
     const { WorkbenchStatusBar } = jiti('@renderer/workbench/WorkbenchStatusBar') as {
       WorkbenchStatusBar: React.FC;
     };
@@ -373,11 +365,7 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
 
     await act(async () => {
       scaleDenominatorSignal.value = 50000;
-      activeCrsSignal.value = {
-        authId: 'EPSG:4326',
-        name: 'WGS 84',
-        units: 'degrees',
-      };
+      setProjectCrs({ authId: 'EPSG:2003', description: 'Grenada 1953 / British West Indies Grid' });
       selectedFeatureIdsSignal.value = new Set(['feat-1', 'feat-2', 'feat-3']);
     });
 
@@ -387,7 +375,39 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       'Expected updated scale denominator'
     );
     assert.ok(container.textContent.includes('Selected: 3'), 'Expected updated selected feature count');
-    assert.ok(container.textContent.includes('🌐 EPSG:4326'), 'Expected updated active CRS');
+    assert.ok(container.textContent.includes('EPSG:2003'), 'Expected updated Project CRS');
+  });
+
+  it('shows the Project CRS display rules with their tooltips', async () => {
+    const { WorkbenchStatusBar } = jiti('@renderer/workbench/WorkbenchStatusBar') as {
+      WorkbenchStatusBar: React.FC;
+    };
+
+    await act(async () => {
+      root!.render(React.createElement(WorkbenchStatusBar));
+    });
+
+    /**
+     * @function crsItem
+     * @description Finds the status bar CRS item.
+     * @returns {any} The CRS item element.
+     */
+    const crsItem = () => findAllNodes(container, (el) => String(el.className).split(' ').includes('statusbar-crs'))[0];
+
+    assert.equal(crsItem().textContent, 'EPSG:3857');
+    assert.match(crsItem().getAttribute('title') ?? '', /default drawing CRS.*no Project CRS is set/i);
+
+    await act(async () => {
+      setProjectCrs({ authId: 'EPSG:2003', description: 'Grenada 1953 / British West Indies Grid' });
+    });
+    assert.equal(crsItem().textContent, 'EPSG:2003');
+    assert.equal(crsItem().getAttribute('title'), 'Grenada 1953 / British West Indies Grid');
+
+    await act(async () => {
+      setProjectCrs({ authId: '', none: true });
+    });
+    assert.equal(crsItem().textContent, 'No CRS');
+    assert.match(crsItem().getAttribute('title') ?? '', /no reprojection/i);
   });
 
   it('isolates coordinate and status bar signal mutations from Workbench and ToolbarPanel re-renders', async () => {
@@ -434,7 +454,7 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       assert.ok(initialToolbarRenders >= 4, 'All 4 outer ToolbarPanel zones must render on initial mount');
       assert.ok(initialStatusBarRenders >= 1, 'WorkbenchStatusBar must render on initial mount');
 
-      // Mutate cursorCoordsSignal, scaleDenominatorSignal, and activeCrsSignal repeatedly (simulating pointermove and pan/zoom frames)
+      // Mutate cursorCoordsSignal, scaleDenominatorSignal, and the Project CRS repeatedly (simulating pointermove and pan/zoom frames)
       await act(async () => {
         cursorCoordsSignal.value = { lon: 10.1234, lat: 20.5678, x: 50, y: 60 };
       });
@@ -444,7 +464,7 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       await act(async () => {
         cursorCoordsSignal.value = { lon: 12.3456, lat: 22.789, x: 60, y: 70 };
         scaleDenominatorSignal.value = 100000;
-        activeCrsSignal.value = { authId: 'EPSG:4326', name: 'WGS 84', units: 'degrees' };
+        setProjectCrs({ authId: 'EPSG:2003' });
       });
 
       // Verify WorkbenchStatusBar inside Workbench updated its rendered output and re-rendered
@@ -452,7 +472,7 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       assert.equal(footers.length, 1);
       assert.ok(footers[0].textContent.includes('12.3456°E, 22.7890°N'));
       assert.ok(footers[0].textContent.includes(`Scale: 1 : ${(100000).toLocaleString()}`));
-      assert.ok(footers[0].textContent.includes('🌐 EPSG:4326'));
+      assert.ok(footers[0].textContent.includes('EPSG:2003'));
       assert.ok(
         statusBarRenderCount > initialStatusBarRenders,
         'WorkbenchStatusBar must re-render when status bar signals mutate'

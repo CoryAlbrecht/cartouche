@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -18,6 +18,8 @@
  * @see {@link projectPathModeSignal}
  * @see {@link measurementSettingsSignal}
  * @see {@link projectCrsSignal}
+ * @see {@link projectCrsStatusSignal}
+ * @see {@link describeProjectCrsStatus}
  */
 
 import { signal, computed, batch } from '@preact/signals-react';
@@ -40,6 +42,7 @@ import {
   type ProjectPathMode,
   type ProjectMeasurementSettings,
 } from '../../shared/types/project';
+import { resolveDisplayCrs } from '../map/projectionRegistry';
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -430,6 +433,53 @@ export function setProjectCrs(crs: ProjectCrs | null): void {
     }
   });
 }
+
+/**
+ * @typedef {Object} ProjectCrsStatus
+ * @description What the Workbench status bar CRS item shows for the Project CRS.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-15
+ * @updated 2026-11-15
+ * @since 0.1.0-dev
+ * @property {string} label - Item text: the `AUTH:code`, "No CRS", or the default drawing CRS.
+ * @property {string} tooltip - Item tooltip.
+ */
+export interface ProjectCrsStatus {
+  label: string;
+  tooltip: string;
+}
+
+/**
+ * @function describeProjectCrsStatus
+ * @description Describes the Project CRS for the status bar CRS item (ADR 0033): its `AUTH:code` with its name as the tooltip when set, "No CRS" under No CRS, and the default drawing CRS (EPSG:3857) when unset. Built on {@link resolveDisplayCrs}, so it names the CRS the map actually draws in.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-15
+ * @updated 2026-11-15
+ * @since 0.1.0-dev
+ * @param {ProjectCrs | null | undefined} crs - Project CRS.
+ * @returns {ProjectCrsStatus} Label and tooltip.
+ */
+export function describeProjectCrsStatus(crs: ProjectCrs | null | undefined): ProjectCrsStatus {
+  const display = resolveDisplayCrs(crs);
+  if (display.none) {
+    return { label: 'No CRS', tooltip: 'No CRS: layer coordinates are drawn as raw cartesian values with no reprojection' };
+  }
+  if (!crs?.authId?.trim()) {
+    return { label: display.code, tooltip: `${display.code}: the default drawing CRS, because no Project CRS is set` };
+  }
+  return { label: display.code, tooltip: crs?.description || display.code };
+}
+
+/**
+ * @signal projectCrsStatusSignal
+ * @description Computed status bar CRS item, derived from {@link projectCrsSignal} by {@link describeProjectCrsStatus}, so it follows every Project CRS change (CRS tab Apply/OK, Set Project CRS from Layer, the first layer added, project open, new, and close) without a separate copy to synchronise.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-15
+ * @updated 2026-11-15
+ * @since 0.1.0-dev
+ * @type {ReadonlySignal<ProjectCrsStatus>}
+ */
+export const projectCrsStatusSignal = computed<ProjectCrsStatus>(() => describeProjectCrsStatus(projectCrsSignal.value));
 
 /**
  * @signal workbenchWindowTitleSignal

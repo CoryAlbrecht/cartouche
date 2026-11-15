@@ -1,29 +1,32 @@
 /**
  * @file WorkbenchStatusBar.tsx
  * @module renderer/workbench/WorkbenchStatusBar
- * @description Dedicated leaf status bar component for the Workbench shell, isolating high-frequency cursor coordinate, cartographic scale, feature selection count, and CRS signal subscriptions from the root Workbench component.
+ * @description Dedicated leaf status bar component for the Workbench shell, isolating high-frequency cursor coordinate, cartographic scale, feature selection count, and Project CRS signal subscriptions from the root Workbench component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link Workbench}
+ * @see {@link projectCrsStatusSignal}
  */
 
 import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
+import { mdiEarth } from "@mdi/js";
+import Icon from "@renderer/components/common/Icon";
 import {
   cursorCoordsSignal,
-  activeCrsSignal,
   scaleDenominatorSignal,
   selectedFeaturesCountSignal,
 } from "@renderer/state/gisSignals";
+import { projectCrsStatusSignal } from "@renderer/state/projectSignals";
 
 /**
  * @component WorkbenchStatusBar
- * @description Renders the bottom Workbench status bar displaying live cursor coordinates, cartographic scale denominator, selected feature count, active Coordinate Reference System (CRS), and application readiness indicator.
+ * @description Renders the bottom Workbench status bar displaying live cursor coordinates, cartographic scale denominator, selected feature count, the Project CRS (the CRS the map draws in, ADR 0033; see {@link projectCrsStatusSignal}), and application readiness indicator.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-10-29
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @returns {JSX.Element} Rendered status bar footer element.
  */
@@ -31,7 +34,7 @@ export const WorkbenchStatusBar: React.FC = () => {
   useSignals();
 
   const coords = cursorCoordsSignal.value;
-  const crs = activeCrsSignal.value;
+  const crsStatus = projectCrsStatusSignal.value;
   const scale = scaleDenominatorSignal.value;
   const selectedCount = selectedFeaturesCountSignal.value;
 
@@ -67,10 +70,9 @@ export const WorkbenchStatusBar: React.FC = () => {
 
       <div className='statusbar-spacer' />
 
-      <div
-        className='statusbar-item'
-        title='Active Coordinate Reference System'>
-        🌐 {crs.authId}
+      <div className='statusbar-item statusbar-crs' title={crsStatus.tooltip}>
+        <Icon path={mdiEarth} size='1rem' />
+        {crsStatus.label}
       </div>
 
       <div className='statusbar-separator' />

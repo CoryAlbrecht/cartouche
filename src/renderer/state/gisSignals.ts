@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -16,7 +16,6 @@ import { signal, computed, batch } from '@preact/signals-react';
 import { logging } from '../../shared/logging';
 import { transformExtent } from 'ol/proj.js';
 import type {
-  CRS,
   GisLayer,
   GisLayerGroup,
   GisFeature,
@@ -842,22 +841,6 @@ export const viewportExtentSignal = signal<BoundingBox>([-180, -90, 180, 90]);
  * @type {Signal<number>}
  */
 export const scaleDenominatorSignal = signal<number>(25000000);
-
-// Geographic projection state
-/**
- * @signal activeCrsSignal
- * @description Active coordinate reference system (CRS) definition signal.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<CRS>}
- */
-export const activeCrsSignal = signal<CRS>({
-  authId: 'EPSG:4326',
-  name: 'WGS 84 (Geographic Lat/Lon)',
-  isGeographic: true
-});
 
 // Layer & Group & Feature Selection State
 /**
