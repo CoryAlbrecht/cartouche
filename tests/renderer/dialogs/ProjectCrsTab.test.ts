@@ -1,7 +1,7 @@
 /**
  * @file ProjectCrsTab.test.ts
  * @module tests/renderer/dialogs/ProjectCrsTab.test
- * @description Component and draft tests for the Project Properties CRS tab: No CRS disabling the lists, the case-insensitive filter on name and `AUTH:code`, the five / ten visible rows, selection staying in sync between the two lists, Predefined selections added to the top of the draft Recently Used list, Apply committing the Project CRS (or No CRS) and the list trimmed to 20, Cancel discarding both, Hide Deprecated bound to the app preference with the current and recent CRSs always shown and marked, and the catalogue-building state.
+ * @description Component and draft tests for the Project Properties CRS tab: No CRS disabling the lists, the case-insensitive filter on name and `AUTH:code`, the five / ten visible rows, selection staying in sync between the two lists, Predefined selections added to the top of the draft Recently Used list, Apply committing the Project CRS (or No CRS) and the list trimmed to 20, Cancel discarding both, Hide Deprecated bound to the app preference with the current and recent CRSs always shown and marked, and the catalogue-building state. Ticket #296 adds: a list that does not hold the selected CRS keeps no row selected (React's first-row fallback is cleared), the Filter box has a visible label and placeholder, and the filter is cleared each time the dialog opens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
  * @updated 2026-11-14
@@ -13,12 +13,13 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRendererJiti } from '../rendererJiti';
+import type { SelectableListBox } from '../../../src/renderer/workbench/dialogs/ProjectCrsTab.tsx';
 
 const jiti = createRendererJiti(import.meta.url);
 
 const React = jiti('react');
 const { renderToStaticMarkup } = jiti('react-dom/server');
-const { ProjectCrsTab, crsTabFilterSignal } = jiti('../../../src/renderer/workbench/dialogs/ProjectCrsTab.tsx');
+const { ProjectCrsTab, clearUnmatchedListSelection } = jiti('../../../src/renderer/workbench/dialogs/ProjectCrsTab.tsx');
 const {
   projectPropertiesDraftSignal,
   openProjectPropertiesDialog,
@@ -27,6 +28,7 @@ const {
   updateProjectPropertiesDraft,
   applyProjectPropertiesEdits,
   selectDraftCrs,
+  crsTabFilterSignal,
 } = jiti('../../../src/renderer/state/projectPropertiesSignals.ts');
 const {
   hasProjectSignal,
@@ -87,6 +89,41 @@ describe('CRS helpers (Ticket #280)', () => {
   });
 });
 
+describe('CRS tab list box false selection (Ticket #296)', () => {
+  /**
+   * @function fakeList
+   * @description Stand-in for a list box after React's update: the value the browser reports and its selected index.
+   * @param {string} value - Value the list reports.
+   * @param {number} selectedIndex - Selected option index.
+   * @returns {SelectableListBox} Fake list box.
+   */
+  function fakeList(value: string, selectedIndex: number): SelectableListBox {
+    return { value, selectedIndex };
+  }
+
+  it('clears the first row React selected when the selected CRS is not in the list', () => {
+    const list = fakeList('EPSG:3161', 0);
+    clearUnmatchedListSelection(list, 'EPSG:3857');
+    assert.equal(list.selectedIndex, -1, 'no row selected');
+  });
+
+  it('clears the first row React selected when nothing is selected', () => {
+    const list = fakeList('EPSG:2000', 0);
+    clearUnmatchedListSelection(list, '');
+    assert.equal(list.selectedIndex, -1);
+  });
+
+  it('keeps a row that really is the selected CRS', () => {
+    const list = fakeList('EPSG:3857', 7);
+    clearUnmatchedListSelection(list, 'EPSG:3857');
+    assert.equal(list.selectedIndex, 7);
+  });
+
+  it('tolerates a missing list', () => {
+    assert.doesNotThrow(() => clearUnmatchedListSelection(null, 'EPSG:3857'));
+  });
+});
+
 describe('Project Properties CRS tab (Ticket #280)', () => {
   let originalWindow: any;
   let patches: any[];
@@ -103,6 +140,7 @@ describe('Project Properties CRS tab (Ticket #280)', () => {
     dictionarySignal.value = {
       project_properties_crs_none: 'No CRS',
       project_properties_crs_filter: 'Filter',
+      project_properties_crs_filter_placeholder: 'FILTER_PLACEHOLDER',
       project_properties_crs_recent: 'Recently Used Coordinate Reference Systems',
       project_properties_crs_predefined: 'Predefined Coordinate Reference Systems',
       project_properties_crs_hide_deprecated: 'Hide Deprecated CRSs',
@@ -170,6 +208,20 @@ describe('Project Properties CRS tab (Ticket #280)', () => {
     assert.ok(listHtml(html, 'project-prop-crs-recent').includes('EPSG:4326'));
     assert.ok(!listHtml(html, 'project-prop-crs-recent').includes('EPSG:3785'));
     crsTabFilterSignal.value = '';
+  });
+
+  it('clears the filter each time the dialog opens, including after Cancel (Ticket #296)', () => {
+    crsTabFilterSignal.value = 'Ontario';
+    cancelProjectPropertiesEdits();
+    openProjectPropertiesDialog();
+    assert.equal(crsTabFilterSignal.value, '');
+    assert.ok(!render().includes('Ontario'), 'the filter box starts empty');
+  });
+
+  it('labels the Filter box like the two lists (Ticket #296)', () => {
+    const html = render();
+    assert.ok(/<label for="project-prop-crs-filter"[^>]*>Filter<\/label>/.test(html), 'visible label tied to the input');
+    assert.ok(/id="project-prop-crs-filter"[^>]*placeholder="FILTER_PLACEHOLDER"/.test(html) || /placeholder="FILTER_PLACEHOLDER"[^>]*id="project-prop-crs-filter"/.test(html), 'placeholder hints at what to type');
   });
 
   it('No CRS disables the filter and both lists', () => {

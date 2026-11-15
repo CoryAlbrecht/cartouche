@@ -249,6 +249,7 @@
     <string name="project_properties_tab_crs">CRS</string>
     <string name="project_properties_crs_none">No CRS (or unknown/non-Earth projection)</string>
     <string name="project_properties_crs_filter">Filter</string>
+    <string name="project_properties_crs_filter_placeholder">Name or code, e.g. EPSG:4326</string>
     <string name="project_properties_crs_recent">Recently Used Coordinate Reference Systems</string>
     <string name="project_properties_crs_predefined">Predefined Coordinate Reference Systems</string>
     <string name="project_properties_crs_hide_deprecated">Hide Deprecated CRSs</string>

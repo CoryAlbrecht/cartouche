@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-11
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  */
 
@@ -1283,6 +1283,19 @@
 .gis-data-table tr.selected-row {
   background-color: var(--cartouche-theme-info-subtle);
   color: var(--cartouche-theme-info);
+}
+
+/* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget
+   and AttributeTableWidget, focused or not, instead of Chromium's grey / blue list-box selection.
+   Chromium paints its own selection over a plain background-colour and its own text colour in a
+   focused list, so the gradient and -webkit-text-fill-color are both needed. */
+.project-prop-crs-recent option:checked,
+.project-prop-crs-predefined option:checked,
+.project-prop-crs-recent:focus option:checked,
+.project-prop-crs-predefined:focus option:checked {
+  background: var(--cartouche-theme-info-subtle) linear-gradient(var(--cartouche-theme-info-subtle), var(--cartouche-theme-info-subtle));
+  color: var(--cartouche-theme-info);
+  -webkit-text-fill-color: var(--cartouche-theme-info);
 }
 
 .cell-id {

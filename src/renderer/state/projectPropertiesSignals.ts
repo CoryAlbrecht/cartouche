@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit, Project CRS / No CRS and the Recently Used CRSs, Project Default Styles). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-13
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link projectPropertiesDraftSignal}
@@ -202,6 +202,17 @@ export const projectPropertiesDraftSignal: Signal<ProjectPropertiesDraft> =
   signal<ProjectPropertiesDraft>(createEmptyProjectPropertiesDraft());
 
 /**
+ * @signal crsTabFilterSignal
+ * @description Filter text of the CRS tab. UI state only: never committed to the project, and cleared each time the dialog opens.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-13
+ * @updated 2026-11-14
+ * @since 0.1.0-dev
+ * @type {Signal<string>}
+ */
+export const crsTabFilterSignal: Signal<string> = signal<string>('');
+
+/**
  * @signal projectPropertiesBaselineKeySignal
  * @description Counter bumped every time the draft is (re)seeded from committed state. Embedded controls that hold their own internal state (such as colour pickers) key on it so they re-initialise from the new baseline.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -263,10 +274,10 @@ export function updateProjectPropertiesDraft(updates: Partial<ProjectPropertiesD
 
 /**
  * @function openProjectPropertiesDialog
- * @description Opens the modeless Project Properties dialog if a project is open, starting a fresh draft from the committed state.
+ * @description Opens the modeless Project Properties dialog if a project is open, starting a fresh draft from the committed state and an empty CRS tab filter.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-12
+ * @updated 2026-11-14
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -274,6 +285,7 @@ export function openProjectPropertiesDialog(): void {
   if (!hasProjectSignal.value) return;
   batch(() => {
     beginProjectPropertiesDraft();
+    crsTabFilterSignal.value = '';
     isProjectPropertiesOpenSignal.value = true;
   });
   logging.info('Project Properties dialog opened.', { scope: 'projectProperties' });

@@ -224,6 +224,7 @@
     <string name="project_properties_tab_crs">SCR</string>
     <string name="project_properties_crs_none">Aucun SCR (inconnu ou non terrestre)</string>
     <string name="project_properties_crs_filter">Filtre</string>
+    <string name="project_properties_crs_filter_placeholder">Nom ou code, p. ex. EPSG:4326</string>
     <string name="project_properties_crs_recent">Systèmes de coordonnées récemment utilisés</string>
     <string name="project_properties_crs_predefined">Systèmes de coordonnées prédéfinis</string>
     <string name="project_properties_crs_hide_deprecated">Masquer les SCR obsolètes</string>
