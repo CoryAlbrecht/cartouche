@@ -20,6 +20,8 @@
     "package:linux": "node scripts/package-linux.js",
     "package:win": "electron-builder build --win msi nsis",
     "postinstall": "electron-builder install-app-deps",
+    "prepare": "npm run hooks:install",
+    "hooks:install": "node scripts/install-git-hooks.js",
     "clean:rebuild": "rimraf node_modules/gdal-async/build node_modules/better-sqlite3/build",
     "clean:build": "rimraf dist dist-electron",
     "clean:package": "rimraf release",

@@ -13,7 +13,9 @@ on_failure() {
 
 trap on_failure ERR
 
-.git/hooks/update-version.sh
+HOOKS_DIR=$(dirname "$0")
+"$HOOKS_DIR/check-protected-branch.sh"
+"$HOOKS_DIR/update-version.sh"
 npm run lint:jsdoc
 # Glossary lint belongs to the AI-agent workspace wrapper (../.agents), not this
 # repository; run it only when the workspace is present (skipped in bare clones/CI).
