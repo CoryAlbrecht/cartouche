@@ -4,9 +4,10 @@
  * @description Main Process API function for serializing and saving the active project state to disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
+ * @see {@link completeProjectCrs}
  * @see {@link ProjectLoaderRegistry}
  */
 
@@ -17,14 +18,16 @@ import { serializeProjectLayersTree, broadcastProjectMetadata } from '../../proj
 import type { ProjectViewport, ProjectTimeFilterConfig } from '@shared/types';
 import { logging } from '../../../shared/logging';
 import { isDefaultProjectTitle } from '../../../shared/project/projectTitle';
+import { completeProjectCrs } from '../../project/projectCrs';
 
 /**
  * @description Saves current active Cartouche project state to its destination file path.
  * If a target path is provided, updates project destination; otherwise saves to existing project path.
  * Synchronizes in-memory layer tree into ProjectModel, stamps updatedAt, updates viewport, sets time filter, and resets Project Dirty State.
+ * Every save writes the current project format in full: a Project CRS missing its proj4 (e.g. from a file written before Ticket #298) is completed with its proj4 and WKT, whether or not the Project CRS changed.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-10
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @param {string} [targetPath] - Optional destination file path.
  * @param {ProjectViewport} [viewport] - Optional viewport extent and camera configuration to persist.
@@ -82,6 +85,11 @@ export default async function saveProject(
   const baseName = path.basename(destination, path.extname(destination));
   if (isDefaultProjectTitle(project.metadata.title)) {
     project.metadata.title = baseName;
+  }
+
+  // Every save writes the current format in full: complete a Project CRS saved before it carried its definition
+  if (project.crs) {
+    project.crs = completeProjectCrs(project.crs);
   }
 
   await saver.save(project, destination);

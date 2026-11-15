@@ -4,7 +4,7 @@
  * @description Tests for the Project Properties draft store (ADR 0024): opening seeds the draft from the committed state, edits stay in the draft, Apply commits through one IPC round trip and sets the Project Dirty State, Cancel/Close roll back, the draft survives tab switches, and the Workbench window title falls back to the project file's base name when the title is empty.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
@@ -359,7 +359,11 @@ describe('projectPropertiesSignals draft store (Ticket #271)', () => {
       { id: 'nocrs', name: 'No CRS', extent: [0, 0, 1, 1], featureCount: 1 },
     ];
     assert.equal(await setProjectCrsFromLayerAction('l93'), true);
-    assert.deepEqual(patches[0], { crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93', proj4: '+proj=lcc' } });
+    assert.deepEqual(
+      patches[0],
+      { crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93', proj4: '+proj=lcc', wkt: 'PROJCS[]' } },
+      'the layer proj4 and WKT travel with the Project CRS (Ticket #298)',
+    );
     assert.equal(projectCrsSignal.value.authId, 'EPSG:2154');
     assert.equal(currentProjectSignal.value.crs.authId, 'EPSG:2154');
     assert.equal(isProjectDirtySignal.value, true);

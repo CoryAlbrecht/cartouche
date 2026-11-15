@@ -1,10 +1,10 @@
 /**
  * @file saveProject.test.ts
  * @module tests/main/api/project/saveProject.test
- * @description Unit tests for Main process project persistence API functions (saveProject, saveAsProject, closeProject).
+ * @description Unit tests for Main process project persistence API functions (saveProject, saveAsProject, closeProject), including the Project CRS definition written on every save.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-26
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  */
 
@@ -347,5 +347,33 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.ok(content.includes('<layers>'));
     assert.ok(content.includes('</layers>'));
   });
-});
 
+  it('every save writes the Project CRS proj4 and WKT, even when the Project CRS was not changed, keeping a proj4 already present (Ticket #298)', async () => {
+    const filePath = path.join(tempDir, 'old-format.cproj');
+    projectStore.setProject({
+      format: 'cartouche-xml',
+      metadata: { title: 'Old Format' },
+      crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93' },
+      layers: []
+    }, filePath);
+    assert.equal(await saveProject(), true);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    assert.match(content, /<crs>\s*<authId>EPSG:2154<\/authId>\s*<description>RGF93 v1 \/ Lambert-93<\/description>\s*<proj4>\+proj=lcc[^<]*<\/proj4>\s*<wkt>PROJCS\[/);
+    assert.equal(projectStore.isProjectDirty(), false, 'completing the definition on save leaves the Project Dirty State clear');
+
+    projectStore.setProject({
+      format: 'cartouche-xml',
+      metadata: { title: 'Custom' },
+      crs: { authId: 'EPSG:2154', proj4: '+proj=hand-written' },
+      layers: []
+    }, filePath);
+    assert.equal(await saveProject(), true);
+    const custom = fs.readFileSync(filePath, 'utf-8');
+    assert.ok(custom.includes('<proj4>+proj=hand-written</proj4>'));
+    assert.ok(!custom.includes('<wkt>'), 'no looked-up WKT is paired with a hand-written proj4');
+
+    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'None' }, crs: { authId: '', none: true }, layers: [] }, filePath);
+    assert.equal(await saveProject(), true);
+    assert.ok(fs.readFileSync(filePath, 'utf-8').includes('<crs none="true" />'));
+  });
+});

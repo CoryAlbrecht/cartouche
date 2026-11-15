@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit, Project CRS / No CRS and the Recently Used CRSs, Project Default Styles). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link projectPropertiesDraftSignal}
@@ -651,10 +651,10 @@ export async function commitAndCloseProjectPropertiesDialog(): Promise<boolean> 
 
 /**
  * @function setProjectCrsFromLayerAction
- * @description "Set Project CRS from Layer": adopts a layer's CRS as the explicit Project CRS, commits it to the Project Store, sets the Project Dirty State, and lets the map redraw in it (camera kept in place). Layers without a declared CRS are refused because the EPSG:3857 assumption is never saved.
+ * @description "Set Project CRS from Layer": adopts a layer's CRS, with its proj4 and WKT definitions, as the explicit Project CRS, commits it to the Project Store (which fills in a missing proj4), sets the Project Dirty State, and lets the map redraw in it (camera kept in place). Layers without a declared CRS are refused because the EPSG:3857 assumption is never saved.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @param {string | null | undefined} layerId - Layer whose CRS is adopted.
  * @returns {Promise<boolean>} True when the Project CRS was set.
@@ -672,6 +672,7 @@ export async function setProjectCrsFromLayerAction(layerId: string | null | unde
     authId: layerCrs.authId,
     ...(layerCrs.description ? { description: layerCrs.description } : {}),
     ...(layerCrs.proj4 ? { proj4: layerCrs.proj4 } : {}),
+    ...(layerCrs.wkt ? { wkt: layerCrs.wkt } : {}),
   };
   if (window.electronAPI?.updateProjectProperties) {
     try {

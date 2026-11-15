@@ -1,10 +1,10 @@
 /**
  * @file projectCrsAdoption.test.ts
  * @module tests/main/project/projectCrsAdoption.test
- * @description Tests for how the Project CRS is first chosen (ADR 0033): the first layer added to a project without a Project CRS sets it, the first file in add order decides for a batch, an explicit Project CRS is never overridden, removing the first layer leaves it unchanged, and an explicit change through the properties patch replaces it and sets the Project Dirty State.
+ * @description Tests for how the Project CRS is first chosen (ADR 0033): the first layer added to a project without a Project CRS sets it, the first file in add order decides for a batch, an explicit Project CRS is never overridden, removing the first layer leaves it unchanged, an explicit change through the properties patch replaces it and sets the Project Dirty State, and every committed Project CRS carries its proj4 (and WKT when available) without replacing a proj4 already present (Ticket #298).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link adoptFirstLayerCrs}
  * @see {@link addLayers}
@@ -20,7 +20,7 @@ import { geospatialService } from '../../../src/main/worker/GeospatialService';
 import { addLayers } from '../../../src/main/api/layers/addLayer';
 import { removeNodes } from '../../../src/main/api/project/layerTreeOperations';
 import updateProjectProperties from '../../../src/main/api/project/updateProjectProperties';
-import { adoptFirstLayerCrs, toProjectCrs } from '../../../src/main/project/projectCrs';
+import { adoptFirstLayerCrs, completeProjectCrs, toProjectCrs } from '../../../src/main/project/projectCrs';
 import { onBroadcast } from '../../../src/main/project/ProjectBroadcaster';
 
 /**
@@ -71,10 +71,10 @@ describe('Project CRS adoption (Ticket #279)', () => {
     assert.equal(adoptFirstLayerCrs(project, undefined), null, 'unknown Layer CRS sets nothing');
     assert.equal(project.crs, undefined);
     const adopted = adoptFirstLayerCrs(project, { authId: 'EPSG:2154', description: 'RGF93', wkt: 'PROJCS[...]', proj4: '+proj=lcc' });
-    assert.deepEqual(adopted, { authId: 'EPSG:2154', description: 'RGF93', proj4: '+proj=lcc' });
+    assert.deepEqual(adopted, { authId: 'EPSG:2154', description: 'RGF93', proj4: '+proj=lcc', wkt: 'PROJCS[...]' }, 'the layer proj4 is kept, never replaced');
     assert.equal(adoptFirstLayerCrs(project, { authId: 'EPSG:4326' }), null, 'never overrides an existing Project CRS');
     assert.equal(project.crs.authId, 'EPSG:2154');
-    assert.deepEqual(toProjectCrs({ authId: 'EPSG:4326', srid: 4326, wkt: 'x' }), { authId: 'EPSG:4326', srid: 4326 });
+    assert.deepEqual(toProjectCrs({ authId: 'EPSG:4326', srid: 4326, wkt: 'x' }), { authId: 'EPSG:4326', srid: 4326, wkt: 'x' });
   });
 
   it('the first file in add order decides the Project CRS for a batch, and it is broadcast before the layer', async () => {
@@ -116,12 +116,79 @@ describe('Project CRS adoption (Ticket #279)', () => {
   it('an explicit change through the properties patch replaces or removes the Project CRS and sets the Project Dirty State', () => {
     projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Patch' }, crs: { authId: 'EPSG:4326' }, layers: [] });
     assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154' } }), true);
-    assert.deepEqual(projectStore.getProject()?.crs, { authId: 'EPSG:2154' });
+    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:2154');
     assert.equal(projectStore.isProjectDirty(), true);
     projectStore.setProjectDirty(false);
     assert.equal(updateProjectProperties({ crs: { authId: '', none: true } }), true);
     assert.equal(projectStore.getProject()?.crs?.none, true);
     assert.equal(updateProjectProperties({ crs: null }), true);
     assert.equal(projectStore.getProject()?.crs, undefined);
+  });
+});
+
+describe('Project CRS definition on commit (Ticket #298)', () => {
+  it('completeProjectCrs fills proj4 and WKT from the lookup when proj4 is missing', () => {
+    const lookup = (authId: string) => ({ authId, proj4: '+proj=lcc +lat_0=46.5', wkt: 'PROJCS["RGF93"]' });
+    assert.deepEqual(
+      completeProjectCrs({ authId: 'EPSG:2154', description: 'RGF93 / Lambert-93' }, lookup),
+      { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93', proj4: '+proj=lcc +lat_0=46.5', wkt: 'PROJCS["RGF93"]' },
+    );
+  });
+
+  it('completeProjectCrs never replaces a proj4 already present and does not look it up', () => {
+    let calls = 0;
+    const lookup = (authId: string) => { calls++; return { authId, proj4: '+proj=looked-up' }; };
+    assert.deepEqual(
+      completeProjectCrs({ authId: 'EPSG:2154', proj4: '+proj=hand-written' }, lookup),
+      { authId: 'EPSG:2154', proj4: '+proj=hand-written' },
+    );
+    assert.equal(calls, 0);
+  });
+
+  it('completeProjectCrs gives No CRS no definition', () => {
+    const lookup = (authId: string) => ({ authId, proj4: '+proj=longlat' });
+    assert.deepEqual(completeProjectCrs({ authId: '', none: true }, lookup), { authId: '', none: true });
+  });
+
+  it('completeProjectCrs keeps an unresolvable CRS without proj4', () => {
+    assert.deepEqual(completeProjectCrs({ authId: 'FOO:1' }, () => null), { authId: 'FOO:1' });
+  });
+
+  it('a Project CRS committed through the properties patch is saved with its proj4 and WKT, keeping a proj4 already present', () => {
+    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Patch' }, layers: [] });
+    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93' } }), true);
+    const crs = projectStore.getProject()?.crs;
+    assert.equal(crs?.authId, 'EPSG:2154');
+    assert.match(crs?.proj4 ?? '', /\+proj=lcc/);
+    assert.match(crs?.wkt ?? '', /^PROJCS\[/);
+
+    projectStore.setProjectDirty(false);
+    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93' } }), true);
+    assert.equal(projectStore.isProjectDirty(), false, 're-applying the same CRS is not a change');
+
+    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154', proj4: '+proj=hand-written' } }), true);
+    assert.deepEqual(projectStore.getProject()?.crs, { authId: 'EPSG:2154', proj4: '+proj=hand-written' });
+
+    assert.equal(updateProjectProperties({ crs: { authId: 'FOO:1' } }), true);
+    assert.deepEqual(projectStore.getProject()?.crs, { authId: 'FOO:1' }, 'an unresolvable CRS is still committed, without proj4');
+  });
+
+  it('the Project CRS adopted from the first layer added is saved with its proj4 and WKT', async () => {
+    projectStore.closeProject();
+    await geospatialService.closeAll();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-crs-def-'));
+    try {
+      const file = writeGeoJson(dir, 'mercator.geojson', 'urn:ogc:def:crs:EPSG::3857', [1000000, 6000000]);
+      projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'First' }, layers: [] });
+      await addLayers([{ sourceType: 'vector', filePath: file }]);
+      const crs = projectStore.getProject()?.crs;
+      assert.equal(crs?.authId, 'EPSG:3857');
+      assert.match(crs?.proj4 ?? '', /\+proj=merc/);
+      assert.match(crs?.wkt ?? '', /^PROJCS\[/);
+    } finally {
+      await geospatialService.closeAll();
+      projectStore.closeProject();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

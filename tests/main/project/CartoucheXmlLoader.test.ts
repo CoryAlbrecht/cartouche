@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  */
 
@@ -1513,5 +1513,62 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const badRefFile = path.join(tempDir, 'bad-ref.cproj');
     fs.writeFileSync(badRefFile, badRef, 'utf-8');
     await assert.rejects(() => loader.load(badRefFile), /reserved for application use/);
+  });
+  it('project.xsd compiles and defines CrsType and ProjectCrsType from one shared CRS base type (Ticket #298)', () => {
+    const xsdPath = 'assets/xml/schemas/project.xsd';
+    const wellFormed = spawnSync('xmllint', ['--noout', xsdPath], { encoding: 'utf-8' });
+    assert.equal(wellFormed.status, 0, wellFormed.stderr);
+    // xmllint compiles the schema before validating any document, so a valid minimal project proves project.xsd is a sound schema.
+    const minimal = new CartoucheXmlLoader().serializeToXml({ format: 'cartouche-xml', metadata: { title: 'Schema', appVersion: '0.1.0-dev' }, layers: [] });
+    const validation = validateXmlAgainstSchema(minimal);
+    assert.equal(validation.valid, true, validation.error);
+
+    const xsd = fs.readFileSync(xsdPath, 'utf-8');
+    const crsType = xsd.match(/<xs:complexType name="CrsType">[\s\S]*?<\/xs:complexType>/)?.[0] ?? '';
+    const projectCrsType = xsd.match(/<xs:complexType name="ProjectCrsType">[\s\S]*?<\/xs:complexType>/)?.[0] ?? '';
+    const restrictionBase = crsType.match(/<xs:restriction base="([^"]+)"/)?.[1];
+    const extensionBase = projectCrsType.match(/<xs:extension base="([^"]+)"/)?.[1];
+    assert.ok(restrictionBase, 'CrsType is derived by restriction');
+    assert.equal(extensionBase, restrictionBase, 'ProjectCrsType extends the same base type CrsType restricts');
+    assert.match(projectCrsType, /<xs:attribute name="none" type="xs:boolean" default="false"/);
+  });
+
+  it('validates a Project CRS with proj4, No CRS, a Layer CRS with proj4, and rejects a Layer CRS without authId (Ticket #298)', () => {
+    const loader = new CartoucheXmlLoader();
+    const model: ProjectModel = {
+      format: 'cartouche-xml',
+      metadata: { title: 'CRS Schema', appVersion: '0.1.0-dev' },
+      crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93', proj4: '+proj=lcc +lat_0=46.5', wkt: 'PROJCS["RGF93 v1 / Lambert-93"]' },
+      layers: [
+        { id: 'l93', name: 'Lambert', type: 'esri-shapefile', source: '/data/l93.shp', crs: { authId: 'EPSG:2154', proj4: '+proj=lcc +lat_0=46.5' } },
+      ]
+    };
+    const xml = loader.serializeToXml(model);
+    assert.match(xml, /<crs>\s*<authId>EPSG:2154<\/authId>\s*<description>RGF93 v1 \/ Lambert-93<\/description>\s*<proj4>\+proj=lcc \+lat_0=46\.5<\/proj4>\s*<wkt>/);
+    let validation = validateXmlAgainstSchema(xml);
+    assert.equal(validation.valid, true, validation.error);
+
+    const noCrs = loader.serializeToXml({ ...model, crs: { authId: '', none: true } });
+    assert.ok(noCrs.includes('<crs none="true" />'));
+    validation = validateXmlAgainstSchema(noCrs);
+    assert.equal(validation.valid, true, validation.error);
+
+    const layerWithoutAuthId = xml.replace(/(<layer\b[\s\S]*?<crs>\s*)<authId>EPSG:2154<\/authId>/, '$1');
+    assert.notEqual(layerWithoutAuthId, xml, 'fixture removed the layer authId');
+    assert.equal(validateXmlAgainstSchema(layerWithoutAuthId).valid, false, 'a Layer CRS without authId is rejected');
+
+    const layerWithNone = xml.replace(/(<layer\b[\s\S]*?)<crs>/, '$1<crs none="true">');
+    assert.equal(validateXmlAgainstSchema(layerWithNone).valid, false, 'the none flag belongs to the Project CRS only');
+  });
+
+  it('round-trips the Project CRS proj4 and WKT through save() and load() (Ticket #298)', async () => {
+    const loader = new CartoucheXmlLoader();
+    const testFile = path.join(tempDir, 'crs-definition.cproj');
+    const crs = { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93', proj4: '+proj=lcc +lat_0=46.5 +units=m', wkt: 'PROJCS["RGF93 v1 / Lambert-93",UNIT["metre",1]]' };
+    await loader.save({ format: 'cartouche-xml', metadata: { title: 'Definition', appVersion: '0.1.0-dev' }, crs, layers: [] }, testFile);
+    const loaded = await loader.load(testFile);
+    assert.equal(loaded.crs?.authId, crs.authId);
+    assert.equal(loaded.crs?.proj4, crs.proj4);
+    assert.equal(loaded.crs?.wkt, crs.wkt);
   });
 });
