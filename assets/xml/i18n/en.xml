@@ -373,6 +373,7 @@
     <string name="unsaved_changes_save">Save Changes</string>
     <string name="colour_picker_dialog_title">Pick Colour</string>
     <string name="colour_button_pick_for">Pick colour for {label}</string>
+    <string name="gradient_picker_dialog_title">Pick Gradient</string>
     <string name="boolean_true">True</string>
     <string name="boolean_false">False</string>
 </ci18n:localization>

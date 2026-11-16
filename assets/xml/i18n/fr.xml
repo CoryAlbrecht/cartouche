@@ -348,6 +348,7 @@
     <string name="unsaved_changes_save">Enregistrer les modifications</string>
     <string name="colour_picker_dialog_title">Choisir une couleur</string>
     <string name="colour_button_pick_for">Choisir la couleur : {label}</string>
+    <string name="gradient_picker_dialog_title">Choisir un dégradé</string>
     <string name="boolean_true">Vrai</string>
     <string name="boolean_false">Faux</string>
 </ci18n:localization>
