@@ -4,7 +4,7 @@
  * @description Component tests for the shared TabbedDialogShell: sidebar tab rendering, active-tab styling, class prefixing, tab change callbacks, and pane content passthrough.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link TabbedDialogShell}
  */
@@ -49,15 +49,15 @@ describe('TabbedDialogShell (Ticket #268)', () => {
 
   it('marks only the active tab with the active class', () => {
     const html = render({ tabs: TABS, activeTabId: 'styling', onTabChange: () => {}, children: null });
-    assert.ok(/data-tab-id="styling" class="tabbed-dialog-tab-btn active"/.test(html));
-    assert.ok(/data-tab-id="general" class="tabbed-dialog-tab-btn "/.test(html));
+    assert.ok(/data-tab-id="styling" class="dialog-sidebar-tab tabbed-dialog-tab-btn active"/.test(html));
+    assert.ok(/data-tab-id="general" class="dialog-sidebar-tab tabbed-dialog-tab-btn "/.test(html));
   });
 
   it('uses the classPrefix for container, sidebar, tab buttons and content', () => {
     const html = render({ tabs: TABS, activeTabId: 'general', onTabChange: () => {}, classPrefix: 'layer-properties', children: null });
     assert.ok(html.includes('class="layer-properties-container"'));
     assert.ok(html.includes('class="layer-properties-sidebar"'));
-    assert.ok(html.includes('class="layer-properties-tab-btn active"'));
+    assert.ok(html.includes('class="dialog-sidebar-tab layer-properties-tab-btn active"'));
     assert.ok(html.includes('class="layer-properties-content"'));
     assert.ok(!html.includes('tabbed-dialog-'));
   });

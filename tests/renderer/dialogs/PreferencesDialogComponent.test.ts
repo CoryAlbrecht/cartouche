@@ -235,8 +235,12 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
 
     assert.ok(
-      html.includes('preference-input-invalid'),
-      'Must apply preference-input-invalid class when value does not match regex pattern'
+      html.includes('aria-invalid="true"'),
+      'Must flag aria-invalid="true" when value does not match regex pattern'
+    );
+    assert.ok(
+      !html.includes('preference-input-invalid'),
+      'Must not apply the retired preference-input-invalid class (Ticket #318)'
     );
     assert.ok(
       html.includes('title="Value does not match required format"'),
@@ -495,24 +499,23 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
 
     assert.ok(
-      html.includes('preference-input-invalid'),
-      'Must apply preference-input-invalid class on invalid color string'
+      !html.includes('preference-input-invalid'),
+      'Must not apply the retired preference-input-invalid class (Ticket #318)'
     );
     assert.ok(
       html.includes('aria-invalid="true"'),
       'Must apply aria-invalid="true" on invalid color input'
     );
     assert.ok(
-      html.includes('color:var(--cartouche-theme-danger)') ||
-        html.includes('color:#ef4444'),
-      'Must color invalid text red with danger theme token'
+      !html.includes('color:var(--cartouche-theme-danger)'),
+      'Must leave the invalid text colour to the aria-invalid rule, not an inline style (Ticket #318)'
     );
     assert.ok(
-      html.includes('class="preference-input-error-icon"'),
-      'Must render error icon container'
+      html.includes('class="preference-input-error-icon cartouche-focus-invalid"'),
+      'Must render error icon container opted into the Invalid Focus Indicator'
     );
     assert.ok(
-      html.includes('tabindex="0" class="preference-input-error-icon"'),
+      html.includes('tabindex="0" class="preference-input-error-icon cartouche-focus-invalid"'),
       'Error icon container must have tabIndex={0} for keyboard accessibility'
     );
     assert.ok(

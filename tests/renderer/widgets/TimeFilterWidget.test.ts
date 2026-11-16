@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -355,9 +355,8 @@ describe('TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)',
       'Unit select dropdown must exist'
     );
     assert.ok(
-      markup.includes('border:1px solid var(--cartouche-theme-border, #cbd5e1)')
-      || markup.includes('border: 1px solid var(--cartouche-theme-border, #cbd5e1)'),
-      'Unit select must render theme border variable'
+      !/class="time-filter-unit-select"[^>]*style=/.test(markup),
+      'Unit select must take its border from the token-bound .time-filter-unit-select class, not an inline style (Ticket #318)'
     );
 
     // 4. Step input border and box-sizing
@@ -369,7 +368,7 @@ describe('TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)',
 });
 
 describe('TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)', () => {
-  it('assigns time-filter-unit-select, time-filter-step-input, and time-filter-btn classes with outline none', () => {
+  it('assigns time-filter-unit-select, time-filter-step-input, and time-filter-btn classes without suppressing the outline', () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
@@ -388,10 +387,10 @@ describe('TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)', () => 
       'VCR transport buttons must have time-filter-btn class'
     );
 
-    // 2. Verify outline: none inline suppression
+    // 2. The global Focus Indicator must reach the controls: no inline outline suppression (Ticket #318)
     assert.ok(
-      markup.includes('outline:none') || markup.includes('outline: none'),
-      'Markup must suppress default browser outline'
+      !markup.includes('outline:none') && !markup.includes('outline: none'),
+      'Markup must not suppress the Focus Indicator inline'
     );
   });
 });

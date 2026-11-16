@@ -4,7 +4,7 @@
  * @description Shared, controlled Time Filter settings controls used by TimeFilterWidget and the Project Properties Time Filter tab: the Enabled toggle button, the From / To range spinners, the Step numeric input with discrete 1.00 arrows and the Unit dropdown. The controls receive their values as props and report edits through callbacks; they never touch the time filter signals and carry no playhead (current frame) control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link TimestampSpinner}
@@ -129,7 +129,7 @@ export interface TimeFilterRangeStepControlsProps {
  * @description Inline row of From / To timestamp spinners, a separator, and the Step numeric input (with Step Up / Step Down 1.00 arrows and blur normalisation to {@link MIN_TIME_FILTER_STEP}) followed by the Unit dropdown. Renders as a fragment so the owner's flex row lays the groups out.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {TimeFilterRangeStepControlsProps} props - Component properties.
  * @returns {React.ReactElement} The range and step control groups.
@@ -307,18 +307,6 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
             onChange={handleStepChange}
             onBlur={handleStepBlur}
             onKeyDown={handleStepKeyDown}
-            style={{
-              boxSizing: "border-box",
-              width: "90px",
-              height: "24px",
-              padding: "2px 18px 2px 6px",
-              border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
-              borderRadius: "3px",
-              background: "#ffffff",
-              fontSize: "0.8333rem",
-              color: "#000000",
-              outline: "none",
-            }}
           />
           <div
             style={{
@@ -339,19 +327,8 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
               title='Step Up by 1.00'
               aria-label='Step Up by 1.00'
               disabled={disabled}
-              onClick={handleStepUp}
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#ffffff",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                lineHeight: 0,
-                outline: "none",
-              }}>
+              className='time-filter-step-arrow time-filter-step-arrow-up'
+              onClick={handleStepUp}>
               <Icon path={mdiChevronUp} size='12px' />
             </button>
             <button
@@ -360,21 +337,8 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
               title='Step Down by 1.00'
               aria-label='Step Down by 1.00'
               disabled={disabled}
-              onClick={handleStepDown}
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#ffffff",
-                border: "none",
-                borderTop:
-                  "1px solid var(--cartouche-theme-border, #cbd5e1)",
-                padding: 0,
-                cursor: "pointer",
-                lineHeight: 0,
-                outline: "none",
-              }}>
+              className='time-filter-step-arrow time-filter-step-arrow-down'
+              onClick={handleStepDown}>
               <Icon path={mdiChevronDown} size='12px' />
             </button>
           </div>
@@ -386,19 +350,7 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
           aria-label='Temporal Step Unit'
           value={unit}
           disabled={disabled}
-          onChange={handleUnitChange}
-          style={{
-            boxSizing: "border-box",
-            height: "24px",
-            padding: "2px 6px",
-            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
-            borderRadius: "3px",
-            background: "#ffffff",
-            fontSize: "0.8333rem",
-            color: "#000000",
-            cursor: "pointer",
-            outline: "none",
-          }}>
+          onChange={handleUnitChange}>
           {TIME_FILTER_UNIT_OPTIONS.map((u) => (
             <option key={u} value={u}>
               {u}

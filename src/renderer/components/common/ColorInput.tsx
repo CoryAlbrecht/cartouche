@@ -164,18 +164,14 @@ export const ColorInput: React.FC<ColorInputProps> = ({
             list="css-colors-datalist"
             value={textValue}
             onChange={handleTextChange}
-            className={`preference-input-text ${!isValid ? 'preference-input-invalid' : ''}`.trim()}
-            style={{
-              ...(!isValid ? { color: 'var(--cartouche-theme-danger)' } : undefined),
-              ...(disabled ? { cursor: 'not-allowed', backgroundColor: 'var(--cartouche-theme-surface-alt)' } : undefined),
-              ...inputStyle,
-            }}
+            className="preference-input-text color-input-text"
+            style={inputStyle}
             title={!isValid ? 'Invalid CSS color name or hex format' : undefined}
           />
           {!isValid && (
             <span
               tabIndex={0}
-              className="preference-input-error-icon"
+              className="preference-input-error-icon cartouche-focus-invalid"
               title="Invalid CSS color name or hex format"
               aria-label="Invalid CSS color name or hex format">
               <Icon

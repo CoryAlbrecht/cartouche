@@ -571,7 +571,7 @@ export const PreferencesDialog: React.FC = () => {
                 const valid = validateTextPattern(val, item.patterns);
                 handleFieldChange(key, val, valid);
               }}
-              className={`preference-input-text ${!isValid ? "preference-input-invalid" : ""}`}
+              className='preference-input-text'
               title={
                 !isValid ? "Value does not match required format" : undefined
               }
@@ -1042,18 +1042,8 @@ export const PreferencesDialog: React.FC = () => {
           </div>
           <button
             type='button'
-            className='preferences-cancel-btn'
-            onClick={handleCancel}
-            style={{
-              padding: "6px 14px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            className='preferences-cancel-btn dialog-btn dialog-btn-secondary'
+            onClick={handleCancel}>
             Cancel
           </button>
         </div>

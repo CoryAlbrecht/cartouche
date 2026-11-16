@@ -132,20 +132,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
         }}
       >
         {/* Header Bar */}
-        <div
-          className={`${classPrefix}-header`}
-          style={{
-            padding: '10px 14px',
-            backgroundColor: 'var(--cartouche-menubar-bg, #1b446c)',
-            color: 'var(--cartouche-menubar-fg, #ffffff)',
-            fontWeight: 600,
-            fontSize: '0.9375rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            userSelect: 'none'
-          }}
-        >
+        <div className={`${classPrefix}-header picker-dialog-header`}>
           <span>{title}</span>
           <button
             type='button'
@@ -195,35 +182,15 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
         >
           <button
             type='button'
-            className={`${classPrefix}-btn ${classPrefix}-cancel-btn`}
+            className={`${classPrefix}-btn ${classPrefix}-cancel-btn dialog-btn dialog-btn-secondary`}
             onClick={onCancel}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '4px',
-              border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-              backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-              color: 'var(--cartouche-theme-fg, #000000)',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 500
-            }}
           >
             {t('dialog_cancel')}
           </button>
           <button
             type='button'
-            className={`${classPrefix}-btn ${classPrefix}-apply-btn`}
+            className={`${classPrefix}-btn ${classPrefix}-apply-btn dialog-btn dialog-btn-primary`}
             onClick={onApply}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '4px',
-              border: '1px solid var(--cartouche-theme-primary, #1b446c)',
-              backgroundColor: 'var(--cartouche-theme-primary, #1b446c)',
-              color: 'var(--cartouche-theme-fg-inverted, #ffffff)',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 500
-            }}
           >
             {t('dialog_apply')}
           </button>

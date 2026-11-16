@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  */
 
@@ -136,6 +136,7 @@
   --cartouche-theme-danger: #dc2626;
   --cartouche-theme-danger-hover: #b91c1c;
   --cartouche-theme-danger-subtle: #fef2f2;
+  --cartouche-theme-danger-focus: rgba(220, 38, 38, 0.25);
   --cartouche-theme-warning: #f59e0b;
   --cartouche-theme-warning-subtle: #fffbeb;
   --cartouche-theme-success: #16a34a;
@@ -182,6 +183,10 @@
   --cartouche-theme-tab-active-fg: var(--cartouche-theme-fg);
   --cartouche-theme-tab-inactive-fg: var(--cartouche-theme-fg-muted);
   --cartouche-theme-tab-border: var(--cartouche-theme-border);
+  --cartouche-sidebar-tab-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
+  --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
 
   /* Buttons & Badges */
   --cartouche-theme-badge-bg: var(--cartouche-theme-primary);
@@ -189,6 +194,18 @@
   --cartouche-theme-button-bg: var(--cartouche-theme-primary);
   --cartouche-theme-button-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-theme-button-hover-bg: var(--cartouche-theme-primary-hover);
+
+  /* Dialog Buttons: primary (OK, Apply, Add), secondary (Cancel, Browse…) and a pressed toggle (Toggle Layer Edit Mode) */
+  --cartouche-button-primary-bg: var(--cartouche-theme-primary);
+  --cartouche-button-primary-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-button-primary-border: var(--cartouche-theme-primary);
+  --cartouche-button-secondary-bg: var(--cartouche-theme-surface);
+  --cartouche-button-secondary-alt-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-button-secondary-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-button-secondary-border: var(--cartouche-theme-border-strong);
+  --cartouche-button-toggle-active-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-button-toggle-active-fg: var(--cartouche-theme-info);
+  --cartouche-button-toggle-active-border: var(--cartouche-theme-info);
 
   /* Dockview Theme Overrides */
   --dockview-theme-background-color: var(--cartouche-theme-surface);
@@ -208,6 +225,7 @@
   --cartouche-widget-header-border: var(--cartouche-theme-border);
   --cartouche-widget-content-bg: var(--cartouche-theme-surface);
   --cartouche-widget-content-fg: var(--cartouche-theme-fg);
+  --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);
@@ -216,6 +234,14 @@
   --cartouche-menu-item-hover-bg: var(--cartouche-theme-primary);
   --cartouche-menu-item-hover-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-menu-separator: var(--cartouche-theme-border);
+  --cartouche-menu-focus-color: var(--cartouche-theme-primary);
+
+  /* Listbox Popups (DashPatternSelect): a form control's popup, styled like its
+     trigger input with a light highlight, unlike the primary-highlight command menus above */
+  --cartouche-listbox-option-hover-bg: var(--cartouche-theme-surface-active);
+  --cartouche-listbox-option-selected-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
+  --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 
   /* Toolbars */
   --cartouche-toolbar-bg: var(--cartouche-theme-surface);
@@ -243,16 +269,64 @@
   --cartouche-table-row-selected-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-table-row-alt-bg: var(--cartouche-theme-surface-subtle);
 
-  /* Form Inputs & Controls */
+  /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
   --cartouche-input-fg: var(--cartouche-theme-fg);
   --cartouche-input-border: var(--cartouche-theme-border-strong);
-  --cartouche-input-focus-border: var(--cartouche-theme-primary);
-  --cartouche-input-focus-ring: var(--cartouche-theme-accent-focus);
+  --cartouche-input-icon-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-input-placeholder-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-input-readonly-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-code-input-font-family: var(--cartouche-theme-font-family-mono);
+
+  /* Disabled Controls (inputs, selects and buttons; read-only fields stay focusable and use --cartouche-input-readonly-bg) */
+  --cartouche-control-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-control-disabled-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-control-disabled-border: var(--cartouche-theme-border);
+
+  /* Field Type Select (Layer Properties Fields tab): inferred type, and a type the user has overridden */
+  --cartouche-field-type-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-field-type-overridden-fg: var(--cartouche-theme-success);
+  --cartouche-field-type-overridden-bg: var(--cartouche-theme-success-subtle);
+  --cartouche-field-type-overridden-border: var(--cartouche-theme-success);
+
+  /* Table Cell Editors (Attribute Table cells, Layer Properties field table) */
+  --cartouche-cell-editor-bg: var(--cartouche-theme-surface);
+  --cartouche-cell-editor-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-cell-editor-border: var(--cartouche-theme-info);
+
+  /* Chips (removable path tokens in Add Layers) */
+  --cartouche-chip-remove-fg: var(--cartouche-theme-fg-muted);
+
+  /* Timestamp Spinner: highlight of the segment being edited */
+  --cartouche-timestamp-segment-active-bg: var(--cartouche-theme-info-subtle);
+
+  /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
+  --cartouche-focus-color: var(--cartouche-theme-primary);
+  --cartouche-focus-ring: var(--cartouche-theme-accent-focus);
+  --cartouche-focus-width: 0.125rem;
+  --cartouche-focus-offset: 0.125rem;
+  /* Focus colour re-scoped onto primary-coloured surfaces (menubar, status bar, dialog header bars), where the primary colour would vanish. */
+  --cartouche-focus-on-primary-color: var(--cartouche-theme-fg-inverted);
+
+  /* Invalid Focus Indicator and unfocused invalid state: disallowed values only, never destructive actions. */
+  --cartouche-focus-invalid-color: var(--cartouche-theme-danger);
+  --cartouche-focus-invalid-ring: var(--cartouche-theme-danger-focus);
+  --cartouche-invalid-border: var(--cartouche-theme-danger);
+  --cartouche-invalid-fg: var(--cartouche-theme-danger);
+
+  /* Native control accents (checkbox, radio, range, progress) */
+  --cartouche-control-accent: var(--cartouche-theme-primary);
 
   /* Drop Targets & Highlights */
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-drop-target-border: var(--cartouche-theme-primary);
+
+  /* Colour & Gradient Pickers */
+  --cartouche-picker-control-border: var(--cartouche-theme-border);
+  --cartouche-gradient-stop-bg: var(--cartouche-theme-surface);
+  --cartouche-gradient-stop-border: var(--cartouche-theme-fg-muted);
+  --cartouche-gradient-stop-active-border: var(--cartouche-theme-primary);
+  --cartouche-gradient-stop-active-ring: var(--cartouche-theme-accent-focus);
 }
 
 /* Global Reset & Theme Root Application */

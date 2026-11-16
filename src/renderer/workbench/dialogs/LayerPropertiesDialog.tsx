@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-13
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -275,7 +275,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -594,61 +594,21 @@ export const LayerPropertiesDialog: React.FC = () => {
           <button
             type='button'
             className='layer-properties-btn cancel'
-            onClick={handleCancel}
-            style={{
-              padding: "6px 14px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            onClick={handleCancel}>
             {t("layer_properties_btn_cancel")}
           </button>
           <button
             type='button'
             className='layer-properties-btn apply'
             onClick={handleApply}
-            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}
-            style={{
-              padding: "6px 14px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor:
-                draft.idValidationError || draft.styleValidationError ?
-                  "not-allowed"
-                : "pointer",
-              opacity:
-                draft.idValidationError || draft.styleValidationError ? 0.6 : 1,
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}>
             {t("layer_properties_btn_apply")}
           </button>
           <button
             type='button'
             className='layer-properties-btn ok'
             onClick={handleOk}
-            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}
-            style={{
-              padding: "6px 16px",
-              backgroundColor: "#1b446c",
-              border: "1px solid #1b446c",
-              borderRadius: "4px",
-              cursor:
-                draft.idValidationError || draft.styleValidationError ?
-                  "not-allowed"
-                : "pointer",
-              opacity:
-                draft.idValidationError || draft.styleValidationError ? 0.6 : 1,
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              color: "#ffffff",
-            }}>
+            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}>
             {t("layer_properties_btn_ok")}
           </button>
         </div>
@@ -1067,17 +1027,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                   </label>
                   <input
                     id='layer-prop-name'
+                    className='layer-prop-input'
                     type='text'
                     value={draft.layerName}
                     onChange={(e) =>
                       updateLayerPropertiesDraft({ layerName: e.target.value })
                     }
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.875rem",
-                    }}
                   />
                 </div>
 
@@ -1100,20 +1055,13 @@ export const LayerPropertiesDialog: React.FC = () => {
                   </label>
                   <input
                     id='layer-prop-id'
+                    className='layer-prop-input'
                     type='text'
+                    aria-invalid={Boolean(draft.idValidationError)}
                     value={draft.layerId}
                     onChange={(e) =>
                       updateLayerPropertiesDraft({ layerId: e.target.value })
                     }
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: "4px",
-                      border:
-                        draft.idValidationError ? "1px solid #ef4444" : (
-                          "1px solid #cbd5e1"
-                        ),
-                      fontSize: "0.875rem",
-                    }}
                   />
                   {draft.idValidationError && (
                     <span
@@ -1147,17 +1095,11 @@ export const LayerPropertiesDialog: React.FC = () => {
                   </label>
                   <select
                     id='layer-prop-crs'
+                    className='layer-prop-input'
                     value={draft.crsAuthId}
                     onChange={(e) =>
                       updateLayerPropertiesDraft({ crsAuthId: e.target.value })
-                    }
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.875rem",
-                      backgroundColor: "#ffffff",
-                    }}>
+                    }>
                     {listCrsChooserEntries(draft.crsAuthId ? [draft.crsAuthId] : [], POPULAR_CRS_NAMES).map((crs) => (
                       <option key={crs.authId} value={crs.authId}>
                         {formatCrsEntryLabel(crs)}
@@ -1186,6 +1128,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <textarea
                     id='layer-prop-feature-filter'
+                    className='layer-prop-input layer-prop-textarea'
                     rows={4}
                     value={draft.featureFilter}
                     placeholder={t(
@@ -1196,15 +1139,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                         featureFilter: e.target.value,
                       })
                     }
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: "4px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.8125rem",
-                      fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
-                      resize: "vertical",
-                      lineHeight: 1.4,
-                    }}
                   />
                   <span
                     className='layer-prop-dialect-caption'
@@ -1276,18 +1210,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     if (activeId) {
                       toggleLayerEditingAction(activeId);
                     }
-                  }}
-                  style={{
-                    padding: "4px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: isEditing ? "1px solid #0284c7" : "1px solid #cbd5e1",
-                    borderRadius: "3px",
-                    backgroundColor: isEditing ? "#e0f2fe" : "#ffffff",
-                    color: isEditing ? "#0369a1" : "#334155",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiPencilOutline} size='14px' />
                 </button>
@@ -1301,20 +1223,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     if (isEditing) {
                       setIsNewFieldOpen(true);
                     }
-                  }}
-                  style={{
-                    padding: "4px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "1px solid",
-                    borderColor: isEditing ? "#cbd5e1" : "#e2e8f0",
-                    borderRadius: "3px",
-                    backgroundColor: isEditing ? "#ffffff" : "#f8fafc",
-                    cursor: isEditing ? "pointer" : "not-allowed",
-                    color: isEditing ? "#334155" : "#94a3b8",
-                    opacity: isEditing ? 1 : 0.5,
-                    fontSize: "0.75rem",
                   }}>
                   <Icon path={mdiTablePlus} size='14px' />
                 </button>
@@ -1324,26 +1232,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_delete_field")}
                   aria-label={t("layer_properties_fields_delete_field")}
                   disabled={!isEditing || !selectedFieldName}
-                  onClick={handleDeleteSelectedField}
-                  style={{
-                    padding: "4px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "1px solid",
-                    borderColor:
-                      isEditing && selectedFieldName ? "#cbd5e1" : "#e2e8f0",
-                    borderRadius: "3px",
-                    backgroundColor:
-                      isEditing && selectedFieldName ? "#ffffff" : "#f8fafc",
-                    cursor:
-                      isEditing && selectedFieldName ? "pointer" : "not-allowed",
-                    color:
-                      isEditing && selectedFieldName ? "#334155" : "#94a3b8",
-                    opacity:
-                      isEditing && selectedFieldName ? 1 : 0.5,
-                    fontSize: "0.75rem",
-                  }}>
+                  onClick={handleDeleteSelectedField}>
                   <Icon path={mdiTrashCanOutline} size='14px' />
                 </button>
                 <button
@@ -1351,21 +1240,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className='layer-prop-toolbar-btn calculate'
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
-                  disabled={!isEditing}
-                  style={{
-                    padding: "4px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "1px solid",
-                    borderColor: isEditing ? "#cbd5e1" : "#e2e8f0",
-                    borderRadius: "3px",
-                    backgroundColor: isEditing ? "#ffffff" : "#f8fafc",
-                    cursor: isEditing ? "pointer" : "not-allowed",
-                    color: isEditing ? "#334155" : "#94a3b8",
-                    opacity: isEditing ? 1 : 0.5,
-                    fontSize: "0.75rem",
-                  }}>
+                  disabled={!isEditing}>
                   <Icon path={mdiCalculator} size='14px' />
                 </button>
                 <button
@@ -1373,19 +1248,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   className={`layer-prop-toolbar-btn show-native-type ${showNativeType ? "active" : ""}`}
                   title={t("layer_properties_fields_show_native_type")}
                   aria-pressed={showNativeType}
-                  onClick={handleToggleShowNativeType}
-                  style={{
-                    padding: "4px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "3px",
-                    backgroundColor: showNativeType ? "#e2e8f0" : "#ffffff",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
-                    marginLeft: "auto",
-                  }}>
+                  onClick={handleToggleShowNativeType}>
                   <Icon path={mdiCodeTags} size='14px' />
                   <span>{t("layer_properties_fields_show_native_type")}</span>
                 </button>
@@ -1544,7 +1407,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                               }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                 <select
-                                  className='layer-field-type-select'
+                                  className={`layer-field-type-select${field.userOverridden ? " is-overridden" : ""}`}
                                   aria-label={`Field type for ${field.name}`}
                                   disabled={!isEditing}
                                   value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
@@ -1554,29 +1417,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                       field.name,
                                       e.target.value as InferredFieldType
                                     )
-                                  }
-                                  style={{
-                                    padding: "2px 6px",
-                                    fontSize: "0.8125rem",
-                                    fontFamily:
-                                      "var(--cartouche-theme-font-family-mono, monospace)",
-                                    fontWeight: field.userOverridden ? 600 : 400,
-                                    color:
-                                      field.userOverridden ? "#047857"
-                                      : !isEditing ? "#94a3b8"
-                                      : "#0f766e",
-                                    backgroundColor:
-                                      field.userOverridden ? "#f0fdf4"
-                                      : !isEditing ? "#f8fafc"
-                                      : "#ffffff",
-                                    border:
-                                      field.userOverridden ? "1px solid #10b981"
-                                      : !isEditing ? "1px solid #e2e8f0"
-                                      : "1px solid #cbd5e1",
-                                    borderRadius: "3px",
-                                    cursor: !isEditing ? "not-allowed" : "pointer",
-                                    opacity: !isEditing ? 0.8 : 1,
-                                  }}>
+                                  }>
                                   {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
                                     <option key={typeOption} value={typeOption}>
                                       {typeOption}
@@ -1617,19 +1458,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleResetFieldType(field.name);
-                                      }}
-                                      style={{
-                                        padding: "2px 4px",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        border: "1px solid",
-                                        borderColor: isResetEnabled ? "#cbd5e1" : "#e2e8f0",
-                                        borderRadius: "3px",
-                                        backgroundColor: isResetEnabled ? "#ffffff" : "#f8fafc",
-                                        cursor: isResetEnabled ? "pointer" : "not-allowed",
-                                        color: isResetEnabled ? "#334155" : "#94a3b8",
-                                        opacity: isResetEnabled ? 1 : 0.5,
                                       }}>
                                       <Icon path={mdiUndo} size='14px' />
                                     </button>
@@ -1681,17 +1509,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 onChange={(e) => setCellInputValue(e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, field, "width", cellInputValue)}
                                 onBlur={() => handleCellBlur(field, "width", cellInputValue)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "2px 4px",
-                                  fontSize: "0.8125rem",
-                                  border: "1px solid #0284c7",
-                                  borderRadius: "2px",
-                                  outline: "none",
-                                  backgroundColor: "#ffffff",
-                                  color: "#0f172a",
-                                }}
                               />
                             ) : (
                               field.width !== undefined && field.width > 0 ?
@@ -1732,17 +1549,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 onChange={(e) => setCellInputValue(e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, field, "precision", cellInputValue)}
                                 onBlur={() => handleCellBlur(field, "precision", cellInputValue)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "2px 4px",
-                                  fontSize: "0.8125rem",
-                                  border: "1px solid #0284c7",
-                                  borderRadius: "2px",
-                                  outline: "none",
-                                  backgroundColor: "#ffffff",
-                                  color: "#0f172a",
-                                }}
                               />
                             ) : (
                               field.precision !== undefined && field.precision > 0 ?
@@ -1783,17 +1589,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 onChange={(e) => setCellInputValue(e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, field, "comment", cellInputValue)}
                                 onBlur={() => handleCellBlur(field, "comment", cellInputValue)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "2px 4px",
-                                  fontSize: "0.8125rem",
-                                  border: "1px solid #0284c7",
-                                  borderRadius: "2px",
-                                  outline: "none",
-                                  backgroundColor: "#ffffff",
-                                  color: "#0f172a",
-                                }}
                               />
                             ) : (
                               field.comment || ""
@@ -1889,6 +1684,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                         </label>
                         <select
                           id='layer-prop-time-mode'
+                          className='layer-prop-input'
                           value={temporalConfig.mode || "start_end"}
                           onChange={(e) => {
                             const nextMode = e.target.value as
@@ -1901,13 +1697,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 mode: nextMode,
                               },
                             });
-                          }}
-                          style={{
-                            padding: "0.375rem 0.625rem",
-                            borderRadius: "0.25rem",
-                            border: "1px solid #cbd5e1",
-                            fontSize: "0.875rem",
-                            backgroundColor: "#ffffff",
                           }}>
                           <option value='start'>
                             {t("layer_properties_time_mode_start") || "Start Field"}
@@ -1945,6 +1734,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                           }}>
                           <button
                             id='layer-prop-time-start-op-toggle'
+                            className='layer-prop-btn-secondary layer-prop-op-toggle'
                             type='button'
                             disabled={isStartDisabled}
                             aria-label='Toggle start comparison operator'
@@ -1964,18 +1754,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   startOp: nextOp,
                                 },
                               });
-                            }}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "0.3125rem 0.5rem",
-                              backgroundColor: "#ffffff",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: "0.25rem",
-                              cursor:
-                                isStartDisabled ? "not-allowed" : "pointer",
-                              color: "#334155",
                             }}>
                             <Icon
                               path={
@@ -1988,6 +1766,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                           </button>
                           <select
                             id='layer-prop-time-start'
+                            className='layer-prop-input layer-prop-time-field-select'
                             disabled={isStartDisabled}
                             value={temporalConfig.startField ?? ""}
                             onChange={(e) => {
@@ -1997,17 +1776,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   startField: e.target.value || undefined,
                                 },
                               });
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: "0.375rem 0.625rem",
-                              borderRadius: "0.25rem",
-                              border: "1px solid #cbd5e1",
-                              fontSize: "0.875rem",
-                              backgroundColor:
-                                isStartDisabled ? "#f1f5f9" : "#ffffff",
-                              cursor:
-                                isStartDisabled ? "not-allowed" : "default",
                             }}>
                             <option value=''>—</option>
                             {temporalFields.map((f) => (
@@ -2043,6 +1811,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                           }}>
                           <button
                             id='layer-prop-time-end-op-toggle'
+                            className='layer-prop-btn-secondary layer-prop-op-toggle'
                             type='button'
                             disabled={isEndDisabled}
                             aria-label='Toggle end comparison operator'
@@ -2062,18 +1831,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   endOp: nextOp,
                                 },
                               });
-                            }}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "0.3125rem 0.5rem",
-                              backgroundColor: "#ffffff",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: "0.25rem",
-                              cursor:
-                                isEndDisabled ? "not-allowed" : "pointer",
-                              color: "#334155",
                             }}>
                             <Icon
                               path={
@@ -2086,6 +1843,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                           </button>
                           <select
                             id='layer-prop-time-end'
+                            className='layer-prop-input layer-prop-time-field-select'
                             disabled={isEndDisabled}
                             value={temporalConfig.endField ?? ""}
                             onChange={(e) => {
@@ -2095,17 +1853,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   endField: e.target.value || undefined,
                                 },
                               });
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: "0.375rem 0.625rem",
-                              borderRadius: "0.25rem",
-                              border: "1px solid #cbd5e1",
-                              fontSize: "0.875rem",
-                              backgroundColor:
-                                isEndDisabled ? "#f1f5f9" : "#ffffff",
-                              cursor:
-                                isEndDisabled ? "not-allowed" : "default",
                             }}>
                             <option value=''>—</option>
                             {temporalFields.map((f) => (
@@ -2144,33 +1891,14 @@ export const LayerPropertiesDialog: React.FC = () => {
           }}>
           <button
             type='button'
-            className='new-field-dialog-cancel-btn'
-            onClick={() => setIsNewFieldOpen(false)}
-            style={{
-              padding: "0.375rem 0.75rem",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "0.25rem",
-              cursor: "pointer",
-              fontSize: "0.8125rem",
-              color: "#334155",
-            }}>
+            className='new-field-dialog-btn layer-prop-btn-secondary new-field-dialog-cancel-btn'
+            onClick={() => setIsNewFieldOpen(false)}>
             {t("layer_properties_btn_cancel")}
           </button>
           <button
             type='button'
-            className='new-field-dialog-ok-btn'
-            onClick={() => setIsNewFieldOpen(false)}
-            style={{
-              padding: "0.375rem 0.75rem",
-              backgroundColor: "#2563eb",
-              border: "1px solid #1d4ed8",
-              borderRadius: "0.25rem",
-              color: "#ffffff",
-              cursor: "pointer",
-              fontSize: "0.8125rem",
-              fontWeight: 500,
-            }}>
+            className='new-field-dialog-btn layer-prop-btn-primary new-field-dialog-ok-btn'
+            onClick={() => setIsNewFieldOpen(false)}>
             {t("layer_properties_btn_ok")}
           </button>
         </div>

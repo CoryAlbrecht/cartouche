@@ -155,13 +155,13 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     const html = render();
     assert.ok(html.includes('class="project-properties-container"'), 'uses TabbedDialogShell with the project-properties prefix');
     assert.ok(html.includes('class="project-properties-sidebar"'));
-    assert.ok(/data-tab-id="general" class="project-properties-tab-btn active"/.test(html));
+    assert.ok(/data-tab-id="general" class="dialog-sidebar-tab project-properties-tab-btn active"/.test(html));
     assert.ok(html.includes('<span>General</span>'));
     assert.ok(html.includes('project-properties-tab-pane general'));
     assert.ok(html.includes('Project Properties'), 'dialog title');
-    assert.ok(html.includes('class="project-properties-btn cancel"'));
-    assert.ok(html.includes('class="project-properties-btn apply"'));
-    assert.ok(html.includes('class="project-properties-btn ok"'));
+    assert.ok(html.includes('class="dialog-btn dialog-btn-secondary project-properties-btn cancel"'));
+    assert.ok(html.includes('class="dialog-btn dialog-btn-secondary project-properties-btn apply"'));
+    assert.ok(html.includes('class="dialog-btn dialog-btn-wide dialog-btn-strong dialog-btn-primary project-properties-btn ok"'));
   });
 
   it('shows the full project file path read-only, with a Save As button beside it', () => {
@@ -233,7 +233,7 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
   it('renders a Measurements tab with the three dropdowns using Canadian spelling and the draft values (Ticket #275)', () => {
     openProjectPropertiesDialog();
     let html = render();
-    assert.ok(/data-tab-id="measurements" class="project-properties-tab-btn /.test(html), 'Measurements tab button in the sidebar');
+    assert.ok(/data-tab-id="measurements" class="dialog-sidebar-tab project-properties-tab-btn /.test(html), 'Measurements tab button in the sidebar');
     assert.ok(!html.includes('id="project-prop-distance-unit"'), 'General tab does not show the dropdowns');
 
     activeProjectPropertiesTabSignal.value = 'measurements';
@@ -255,7 +255,7 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     activeProjectPropertiesTabSignal.value = 'time_filter';
     updateProjectPropertiesDraft({ timeFilterEnabled: true, timeFilterStep: 2.5, timeFilterUnit: 'Hours' });
     const html = render();
-    assert.ok(/data-tab-id="time_filter" class="project-properties-tab-btn active"/.test(html), 'Time Filter tab button active');
+    assert.ok(/data-tab-id="time_filter" class="dialog-sidebar-tab project-properties-tab-btn active"/.test(html), 'Time Filter tab button active');
     assert.ok(html.includes('project-properties-tab-pane time-filter'));
     assert.ok(html.includes('class="time-filter-controls"'), 'uses the shared TimeFilterControls component');
     assert.ok(html.includes('class="toolbar-btn active"'), 'Enabled toggle reflects the draft');

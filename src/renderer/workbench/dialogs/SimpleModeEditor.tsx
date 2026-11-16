@@ -106,40 +106,6 @@ function dashLineInputId(index: number): string {
 const MAX_COMPONENTS = 32;
 
 /**
- * @description Standard CSS style applied to compact icon action buttons in the component stack grid.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-01
- * @updated 2026-11-01
- * @since 0.1.0-dev
- */
-const BUTTON_STYLE: React.CSSProperties = {
-  padding: "0.25rem",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "0.25rem",
-  border: "1px solid #cbd5e1",
-  backgroundColor: "#ffffff",
-  cursor: "pointer",
-  color: "#1e293b",
-  lineHeight: 0,
-};
-
-/**
- * @description Standard CSS style applied to disabled icon action buttons in the component stack grid.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-01
- * @updated 2026-11-01
- * @since 0.1.0-dev
- */
-const DISABLED_BUTTON_STYLE: React.CSSProperties = {
-  ...BUTTON_STYLE,
-  opacity: 0.5,
-  cursor: "not-allowed",
-  backgroundColor: "#f1f5f9",
-};
-
-/**
  * Helper to safely parse Cartouche Symbology JSON or fall back to default template.
  *
  * @function parseCartoucheStyleSafe
@@ -682,62 +648,57 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             <button
               type='button'
               id='layer-prop-component-add'
-              className='layer-prop-component-btn add'
+              className='layer-prop-component-btn add styling-editor-icon-btn'
               title={t("layer_properties_component_add")}
               aria-label={t("layer_properties_component_add")}
               disabled={!canAdd}
-              onClick={handleAdd}
-              style={canAdd ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              onClick={handleAdd}>
               <Icon path={mdiPlus} />
             </button>
             <button
               type='button'
               id='layer-prop-component-remove'
-              className='layer-prop-component-btn remove'
+              className='layer-prop-component-btn remove styling-editor-icon-btn'
               title={t("layer_properties_component_remove")}
               aria-label={t("layer_properties_component_remove")}
               disabled={!canRemove}
-              onClick={handleRemove}
-              style={canRemove ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              onClick={handleRemove}>
               <Icon path={mdiMinus} />
             </button>
             <button
               type='button'
               id='layer-prop-component-move-up'
-              className='layer-prop-component-btn move-up'
+              className='layer-prop-component-btn move-up styling-editor-icon-btn'
               title={t("layer_properties_component_move_up")}
               aria-label={t("layer_properties_component_move_up")}
               disabled={!canMoveUp}
-              onClick={handleMoveUp}
-              style={canMoveUp ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              onClick={handleMoveUp}>
               <Icon path={mdiArrowUp} />
             </button>
             <button
               type='button'
               id='layer-prop-component-move-down'
-              className='layer-prop-component-btn move-down'
+              className='layer-prop-component-btn move-down styling-editor-icon-btn'
               title={t("layer_properties_component_move_down")}
               aria-label={t("layer_properties_component_move_down")}
               disabled={!canMoveDown}
-              onClick={handleMoveDown}
-              style={canMoveDown ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              onClick={handleMoveDown}>
               <Icon path={mdiArrowDown} />
             </button>
             <button
               type='button'
               id='layer-prop-component-duplicate'
-              className='layer-prop-component-btn duplicate'
+              className='layer-prop-component-btn duplicate styling-editor-icon-btn'
               title={t("layer_properties_component_duplicate")}
               aria-label={t("layer_properties_component_duplicate")}
               disabled={!canDuplicate}
-              onClick={handleDuplicate}
-              style={canDuplicate ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              onClick={handleDuplicate}>
               <Icon path={mdiContentCopy} />
             </button>
             <button
               type='button'
               id='layer-prop-component-lock'
-              className='layer-prop-component-btn lock'
+              className='layer-prop-component-btn lock styling-editor-icon-btn'
               title={
                 activeComponent?.locked ?
                   t("layer_properties_component_unlock")
@@ -749,8 +710,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 : t("layer_properties_component_lock")
               }
               disabled={!canLock}
-              onClick={handleToggleLock}
-              style={canLock ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}>
+              onClick={handleToggleLock}>
               <Icon
                 path={
                   activeComponent?.locked ? mdiLockOutline : (
@@ -780,6 +740,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             {t("layer_properties_component_type")}:
           </label>
           <select
+            className='styling-editor-field'
             id='layer-prop-component-type-select'
             value={activeComponent?.type || typeToAdd}
             disabled={activeComponent?.locked}
@@ -789,14 +750,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
               if (activeComponent && activeComponent.type !== val) {
                 handleMorphType(val);
               }
-            }}
-            style={{
-              padding: "0.25rem 0.5rem",
-              borderRadius: "0.25rem",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.8125rem",
-              backgroundColor: activeComponent?.locked ? "#f1f5f9" : "#ffffff",
-              cursor: activeComponent?.locked ? "not-allowed" : "pointer",
             }}>
             {availableTypes.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -898,6 +851,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                   <input
+                    className='styling-editor-field styling-editor-angle'
                     id='layer-prop-gradient-angle'
                     type='number'
                     min='0'
@@ -910,14 +864,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       updateActiveComponent({
                         angle: isNaN(val) ? 0 : Math.min(360, Math.max(0, val)),
                       });
-                    }}
-                    style={{
-                      width: "4.5rem",
-                      padding: "0.25rem 0.5rem",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.25rem",
-                      fontSize: "0.8125rem",
-                      textAlign: "right",
                     }}
                   />
                   <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>°</span>
@@ -1017,6 +963,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     t("layer_properties_styling_stroke_width"),
                     <>
                       <input
+                        className='styling-editor-field styling-editor-number'
                         id='layer-prop-stroke-width'
                         type='number'
                         min='0'
@@ -1028,13 +975,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           updateActiveComponent({
                             width: isNaN(val) ? 0 : Math.max(0, val),
                           });
-                        }}
-                        style={{
-                          width: "5rem",
-                          padding: "0.25rem 0.5rem",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "0.25rem",
-                          fontSize: "0.8125rem",
                         }}
                       />
                       <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
@@ -1048,6 +988,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     t("layer_properties_styling_line_offset"),
                     <>
                       <input
+                        className='styling-editor-field styling-editor-number'
                         id='layer-prop-line-offset'
                         type='number'
                         step='0.1'
@@ -1056,13 +997,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
                           updateActiveComponent({ offset: isNaN(val) ? 0 : val });
-                        }}
-                        style={{
-                          width: "5rem",
-                          padding: "0.25rem 0.5rem",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "0.25rem",
-                          fontSize: "0.8125rem",
                         }}
                       />
                       <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
@@ -1075,6 +1009,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   {renderOptionRow(
                     t("layer_properties_styling_line_cap"),
                     <select
+                      className='styling-editor-field'
                       id='layer-prop-line-cap'
                       disabled={activeComponent.locked}
                       value={lineComp.cap ?? "round"}
@@ -1082,13 +1017,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         updateActiveComponent({
                           cap: e.target.value as "butt" | "round" | "square",
                         })
-                      }
-                      style={{
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}>
+                      }>
                       <option value='butt'>
                         {t("layer_properties_line_cap_butt")}
                       </option>
@@ -1105,6 +1034,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   {renderOptionRow(
                     t("layer_properties_styling_line_join"),
                     <select
+                      className='styling-editor-field'
                       id='layer-prop-line-join'
                       disabled={activeComponent.locked}
                       value={lineComp.join ?? "round"}
@@ -1112,13 +1042,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         updateActiveComponent({
                           join: e.target.value as "bevel" | "miter" | "round",
                         })
-                      }
-                      style={{
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}>
+                      }>
                       <option value='bevel'>
                         {t("layer_properties_line_join_bevel")}
                       </option>
@@ -1176,6 +1100,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     t("layer_properties_styling_dash_offset"),
                     <>
                       <input
+                        className='styling-editor-field styling-editor-number'
                         id='layer-prop-dash-offset'
                         type='number'
                         min='0'
@@ -1187,13 +1112,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           updateActiveComponent({
                             dashOffset: isNaN(val) ? 0 : Math.max(0, val),
                           });
-                        }}
-                        style={{
-                          width: "5rem",
-                          padding: "0.25rem 0.5rem",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "0.25rem",
-                          fontSize: "0.8125rem",
                         }}
                       />
                       <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
@@ -1281,6 +1199,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                   }}>
                                   <td style={{ padding: "0.125rem 0.25rem" }}>
                                     <input
+                                      className='styling-editor-dash-cell'
                                       id={dashLineInputId(idx)}
                                       type='number'
                                       min='0'
@@ -1304,20 +1223,11 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                         });
                                       }}
                                       onFocus={() => setSelectedDashRow(idx)}
-                                      style={{
-                                        width: "100%",
-                                        boxSizing: "border-box",
-                                        padding: "0.125rem 0.25rem",
-                                        fontSize: "0.8125rem",
-                                        border: "1px solid #cbd5e1",
-                                        borderRadius: "0.125rem",
-                                        backgroundColor:
-                                          isReadOnly ? "#f1f5f9" : "#ffffff",
-                                      }}
                                     />
                                   </td>
                                   <td style={{ padding: "0.125rem 0.25rem" }}>
                                     <input
+                                      className='styling-editor-dash-cell'
                                       type='number'
                                       min='0'
                                       step='0.1'
@@ -1340,16 +1250,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                         });
                                       }}
                                       onFocus={() => setSelectedDashRow(idx)}
-                                      style={{
-                                        width: "100%",
-                                        boxSizing: "border-box",
-                                        padding: "0.125rem 0.25rem",
-                                        fontSize: "0.8125rem",
-                                        border: "1px solid #cbd5e1",
-                                        borderRadius: "0.125rem",
-                                        backgroundColor:
-                                          isReadOnly ? "#f1f5f9" : "#ffffff",
-                                      }}
                                     />
                                   </td>
                                 </tr>
@@ -1367,6 +1267,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           gap: "0.25rem",
                         }}>
                         <button
+                          className='styling-editor-icon-btn'
                           type='button'
                           id='layer-prop-dash-array-add'
                           title={t("layer_properties_dash_array_add")}
@@ -1386,13 +1287,11 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                 p.gap,
                               ]),
                             });
-                          }}
-                          style={
-                            canAddDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE
-                          }>
+                          }}>
                           <Icon path={mdiPlus} />
                         </button>
                         <button
+                          className='styling-editor-icon-btn'
                           type='button'
                           id='layer-prop-dash-array-remove'
                           title={t("layer_properties_dash_array_remove")}
@@ -1416,13 +1315,11 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                 p.gap,
                               ]),
                             });
-                          }}
-                          style={
-                            canRemoveDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE
-                          }>
+                          }}>
                           <Icon path={mdiMinus} />
                         </button>
                         <button
+                          className='styling-editor-icon-btn'
                           type='button'
                           id='layer-prop-dash-array-move-up'
                           title={t("layer_properties_dash_array_move_up")}
@@ -1444,13 +1341,11 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                 p.gap,
                               ]),
                             });
-                          }}
-                          style={
-                            canMoveUpDash ? BUTTON_STYLE : DISABLED_BUTTON_STYLE
-                          }>
+                          }}>
                           <Icon path={mdiArrowUp} />
                         </button>
                         <button
+                          className='styling-editor-icon-btn'
                           type='button'
                           id='layer-prop-dash-array-move-down'
                           title={t("layer_properties_dash_array_move_down")}
@@ -1474,12 +1369,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                 p.gap,
                               ]),
                             });
-                          }}
-                          style={
-                            canMoveDownDash ? BUTTON_STYLE : (
-                              DISABLED_BUTTON_STYLE
-                            )
-                          }>
+                          }}>
                           <Icon path={mdiArrowDown} />
                         </button>
                       </div>
@@ -1509,6 +1399,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 {renderOptionRow(
                   t("layer_properties_styling_point_shape"),
                   <select
+                    className='styling-editor-field'
                     id='layer-prop-point-shape'
                     disabled={activeComponent.locked}
                     value={markerShape}
@@ -1516,14 +1407,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       updateActiveComponent({
                         shape: e.target.value as "circle",
                       })
-                    }
-                    style={{
-                      padding: "0.25rem 0.5rem",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.25rem",
-                      fontSize: "0.8125rem",
-                      backgroundColor: "#ffffff",
-                    }}>
+                    }>
                     <option value='circle'>
                       {t("layer_properties_shape_circle")}
                     </option>
@@ -1535,6 +1419,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   t("layer_properties_styling_point_radius"),
                   <>
                     <input
+                      className='styling-editor-field styling-editor-number'
                       id='layer-prop-marker-radius'
                       type='number'
                       min='1'
@@ -1548,13 +1433,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           radius: Math.max(1, parseInt(e.target.value, 10) || 1),
                         })
                       }
-                      style={{
-                        width: "5rem",
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}
                     />
                     <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
                       px
@@ -1619,6 +1497,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   t("layer_properties_styling_stroke_width"),
                   <>
                     <input
+                      className='styling-editor-field styling-editor-number'
                       id='layer-prop-marker-stroke-width'
                       type='number'
                       min='0'
@@ -1636,13 +1515,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           ),
                         })
                       }
-                      style={{
-                        width: "5rem",
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}
                     />
                     <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
                       px

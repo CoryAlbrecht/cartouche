@@ -80,9 +80,9 @@ describe('ColorInput Component (Ticket #133)', () => {
       })
     );
 
-    assert.ok(html.includes('preference-input-invalid'), 'Must apply invalid input class');
+    assert.ok(!html.includes('preference-input-invalid'), 'Must not apply the retired invalid input class (Ticket #318)');
     assert.ok(html.includes('aria-invalid="true"'), 'Must flag aria-invalid="true"');
-    assert.ok(html.includes('class="preference-input-error-icon"'), 'Must render error icon container');
+    assert.ok(html.includes('class="preference-input-error-icon cartouche-focus-invalid"'), 'Must render error icon container opted into the Invalid Focus Indicator');
     assert.ok(html.includes('title="Invalid CSS color name or hex format"'), 'Must set error tooltip');
     assert.ok(html.includes('style="background-color:#336699"'), 'Swatch must preserve fallback/last valid color');
   });

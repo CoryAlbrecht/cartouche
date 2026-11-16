@@ -4,7 +4,7 @@
  * @description Modeless Dialog window providing advanced per-layer snapping matrix configuration (layers, vertices, segments, and pixel tolerances).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isSnappingOptionsOpenSignal}
@@ -48,7 +48,7 @@ export interface LayerSnappingConfig {
  * @description Modeless Dialog rendering a per-layer snapping matrix table with discrete vertex, segment, and tolerance controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Snapping Options dialog window element or null if closed.
  */
@@ -131,16 +131,9 @@ export const SnappingOptionsDialog: React.FC = () => {
           }}>
           <button
             type='button'
-            className='btn btn-secondary'
+            className='btn btn-secondary dialog-btn dialog-btn-wide dialog-btn-secondary'
             id='snapping-options-close-button'
-            onClick={closeSnappingOptionsDialog}
-            style={{
-              padding: "0.375rem 1rem",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "0.25rem",
-              cursor: "pointer",
-            }}>
+            onClick={closeSnappingOptionsDialog}>
             Close
           </button>
         </div>
@@ -275,6 +268,7 @@ export const SnappingOptionsDialog: React.FC = () => {
                           min={0}
                           max={256}
                           step={1}
+                          className='snap-layer-tolerance-input'
                           value={cfg.tolerance}
                           disabled={!cfg.enabled}
                           onChange={(e) => {
@@ -283,13 +277,6 @@ export const SnappingOptionsDialog: React.FC = () => {
                               Math.max(0, Number(e.target.value) || 0)
                             );
                             updateLayerConfig(layer.id, { tolerance: val });
-                          }}
-                          style={{
-                            width: "4rem",
-                            padding: "0.2rem 0.4rem",
-                            textAlign: "right",
-                            border: "1px solid #cbd5e1",
-                            borderRadius: "0.2rem",
                           }}
                         />
                       </td>

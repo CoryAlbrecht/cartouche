@@ -4,7 +4,7 @@
  * @description Reusable style editor shared by the Layer Properties Styling Tab and the Project Properties Default Styles tab: the style format dropdown, Load / Export / Reset actions, the Cartouche Symbology component editor or the raw text editor (with validation banner and undo/redo history), and the live preview canvas. The editor is controlled: it receives a StyleEditorValue and a geometry kind and reports every change as a value patch through `onChange`, with no dependency on any dialog draft store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link SimpleModeEditor}
@@ -360,25 +360,6 @@ export function useRawStyleTextEditorHistory({
 
 
 /**
- * Common secondary button style for the Load / Export / Reset actions.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-31
- * @updated 2026-11-12
- * @since 0.1.0-dev
- * @type {React.CSSProperties}
- */
-const SECONDARY_BUTTON_STYLE: React.CSSProperties = {
-  padding: "0.3125rem 0.75rem",
-  backgroundColor: "#ffffff",
-  border: "1px solid #cbd5e1",
-  borderRadius: "0.25rem",
-  cursor: "pointer",
-  fontSize: "0.8125rem",
-  color: "#334155",
-  fontWeight: 500,
-};
-
-/**
  * @typedef {Object} StyleEditorProps
  * @description Properties of {@link StyleEditor}.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -410,7 +391,7 @@ export interface StyleEditorProps {
  * @description Controlled editor for one style value: format selection with per-format text cache, file load/export/reset, Cartouche Symbology component editing or raw text editing with live validation, and a 120×120 preview.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {StyleEditorProps} props - Component properties.
  * @returns {JSX.Element} The editor controls.
@@ -581,14 +562,8 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
           <select
             id={`${idPrefix}-styling-format`}
             value={selectedFormatOption}
-            onChange={handleFormatOptionChange}
-            style={{
-              padding: "0.3125rem 0.625rem",
-              borderRadius: "0.25rem",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.875rem",
-              backgroundColor: "#ffffff",
-            }}>
+            className='styling-editor-format-select'
+            onChange={handleFormatOptionChange}>
             <option value='cartouche'>
               {t("layer_properties_format_simple")}
             </option>
@@ -615,25 +590,22 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
           <button
             type='button'
             id={`${idPrefix}-styling-load`}
-            className='layer-properties-btn'
-            onClick={handleLoadStyle}
-            style={SECONDARY_BUTTON_STYLE}>
+            className='layer-properties-btn styling-editor-secondary-btn'
+            onClick={handleLoadStyle}>
             {t("layer_properties_styling_load")}
           </button>
           <button
             type='button'
             id={`${idPrefix}-styling-export`}
-            className='layer-properties-btn'
-            onClick={handleExportStyle}
-            style={SECONDARY_BUTTON_STYLE}>
+            className='layer-properties-btn styling-editor-secondary-btn'
+            onClick={handleExportStyle}>
             {t("layer_properties_styling_export")}
           </button>
           <button
             type='button'
             id={`${idPrefix}-styling-reset`}
-            className='layer-properties-btn'
-            onClick={handleResetStyle}
-            style={SECONDARY_BUTTON_STYLE}>
+            className='layer-properties-btn styling-editor-secondary-btn'
+            onClick={handleResetStyle}>
             {t("layer_properties_styling_reset")}
           </button>
         </div>
@@ -683,7 +655,6 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                 step='0.01'
                 value={previewOpacity}
                 onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
-                style={{ flex: 1, cursor: "pointer" }}
               />
               <span
                 style={{
@@ -781,19 +752,6 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                   onBlur={handleRawStyleBlur}
                   rows={12}
                   spellCheck={false}
-                  style={{
-                    width: "100%",
-                    fontFamily:
-                      "var(--cartouche-theme-font-family-mono, monospace)",
-                    fontSize: "0.8125rem",
-                    padding: "0.5rem",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "0.25rem",
-                    boxSizing: "border-box",
-                    resize: "vertical",
-                    backgroundColor: "#ffffff",
-                    color: "#0f172a",
-                  }}
                 />
               </div>
             </div>

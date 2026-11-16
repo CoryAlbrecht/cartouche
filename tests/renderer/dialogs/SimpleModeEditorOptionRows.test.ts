@@ -108,13 +108,13 @@ function includesRow(html: string, expected: string): void {
 
 /**
  * @function numberInput
- * @description Builds the opening markup of a number input with the shared field style.
+ * @description Builds the opening markup of a number input with the shared styling editor field classes (#318).
  * @param {string} id - Element id of the input.
- * @param {string} attrs - Literal attributes between `type` and `style` (e.g. `min="0" step="0.1"`).
+ * @param {string} attrs - Literal attributes after `type` (e.g. `min="0" step="0.1"`).
  * @returns {string} Literal opening markup, without the closing of the tag.
  */
 function numberInput(id: string, attrs: string): string {
-  return `<input id="${id}" type="number" ${attrs} style="width:5rem;padding:0.25rem 0.5rem;border:1px solid #cbd5e1;border-radius:0.25rem;font-size:0.8125rem"`;
+  return `<input class="styling-editor-field styling-editor-number" id="${id}" type="number" ${attrs}`;
 }
 
 describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
@@ -123,7 +123,6 @@ describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
   });
 
   const LINE = { type: 'simple-line', color: '#000000ff', width: 2 };
-  const SELECT_STYLE = 'padding:0.25rem 0.5rem;border:1px solid #cbd5e1;border-radius:0.25rem;font-size:0.8125rem';
 
   it('renders Stroke Width, Line Offset and Dash Offset as labelled number inputs', () => {
     dictionarySignal.value = {
@@ -143,8 +142,8 @@ describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
       layer_properties_styling_line_join: 'Line Join'
     };
     const html = render(LINE, 'LineString');
-    includesRow(html, labelledRow('layer-prop-line-cap', 'Line Cap', `<select id="layer-prop-line-cap" style="${SELECT_STYLE}">`));
-    includesRow(html, labelledRow('layer-prop-line-join', 'Line Join', `<select id="layer-prop-line-join" style="${SELECT_STYLE}">`));
+    includesRow(html, labelledRow('layer-prop-line-cap', 'Line Cap', '<select class="styling-editor-field" id="layer-prop-line-cap">'));
+    includesRow(html, labelledRow('layer-prop-line-join', 'Line Join', '<select class="styling-editor-field" id="layer-prop-line-join">'));
   });
 
   it('renders the Dash Pattern row labelling its pattern select', () => {
@@ -162,8 +161,8 @@ describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
       `<label for="layer-prop-dash-array-line-0" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</label>` +
       '<div style="display:flex;gap:0.5rem;align-items:flex-start">'
     );
-    assert.match(html, /<input id="layer-prop-dash-array-line-0" type="number"[^>]* aria-label="layer_properties_dash_array_col_line 1"/);
-    assert.match(html, /<input id="layer-prop-dash-array-line-1" type="number"[^>]* aria-label="layer_properties_dash_array_col_line 2"/);
+    assert.match(html, /<input class="styling-editor-dash-cell" id="layer-prop-dash-array-line-0" type="number"[^>]* aria-label="layer_properties_dash_array_col_line 1"/);
+    assert.match(html, /<input class="styling-editor-dash-cell" id="layer-prop-dash-array-line-1" type="number"[^>]* aria-label="layer_properties_dash_array_col_line 2"/);
   });
 
   it('renders the Dash Array label as a span when there are no dashes to name (#315)', () => {
@@ -195,7 +194,7 @@ describe('SimpleModeEditor Simple Marker option rows (Ticket #315)', () => {
       labelledRow(
         'layer-prop-point-shape',
         'Point Shape',
-        '<select id="layer-prop-point-shape" style="padding:0.25rem 0.5rem;border:1px solid #cbd5e1;border-radius:0.25rem;font-size:0.8125rem;background-color:#ffffff">'
+        '<select class="styling-editor-field" id="layer-prop-point-shape">'
       )
     );
   });

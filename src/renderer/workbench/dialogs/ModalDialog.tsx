@@ -4,7 +4,7 @@
  * @description Standardized React portal-based modal dialog to block interaction with parent window, plus the sequential UnsavedChangesModal confirmation component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-06
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @component ModalDialog
  * @see {@link UnsavedChangesModal}
@@ -42,7 +42,7 @@ export interface ModalDialogProps {
  * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-06
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {ModalDialogProps} props - Component properties.
  * @returns {React.ReactPortal | null} Rendered portal or null when closed.
@@ -128,17 +128,8 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
               <button
                 key={i}
                 type="button"
+                className={`dialog-btn dialog-btn-wide modal-dialog-btn ${btn.primary ? 'dialog-btn-primary' : 'dialog-btn-secondary'}`}
                 onClick={btn.onClick}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: '4px',
-                  border: btn.primary ? '1px solid #1b446c' : '1px solid #cbd5e1',
-                  backgroundColor: btn.primary ? '#1b446c' : '#ffffff',
-                  color: btn.primary ? '#ffffff' : '#000000',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: '1rem'
-                }}
               >
                 {btn.label}
               </button>
