@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -205,7 +205,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       'Must render text input control'
     );
     assert.ok(
-      html.includes('class="preference-color-button-wrapper"'),
+      html.includes('class="colour-button"'),
       'Must render color button control'
     );
     assert.ok(
@@ -396,7 +396,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
 
     assert.ok(html.includes('class="preference-input-text'), 'renders text');
     assert.ok(html.includes('class="preference-textarea"'), 'renders multiline-text');
-    assert.ok(html.includes('class="preference-color-button-wrapper"'), 'renders colour');
+    assert.ok(html.includes('class="colour-button"'), 'renders colour');
     assert.ok(html.includes('class="preference-checkbox"'), 'renders checkbox');
     assert.ok(html.includes('class="preference-btn-toggle'), 'renders button');
     assert.ok(html.includes('class="preference-switch-toggle'), 'renders toggle');
@@ -428,11 +428,11 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       'Must render button element with tabIndex={0} and aria-haspopup="dialog"'
     );
     assert.ok(
-      html.includes('class="preference-color-button-wrapper"'),
-      'Button must have preference-color-button-wrapper class'
+      html.includes('class="colour-button"'),
+      'Button must have colour-button class'
     );
     assert.ok(
-      html.includes('class="preference-color-swatch" style="background-color:#eab308"'),
+      html.includes('class="colour-button-swatch-fill" style="background-color:#eab308"'),
       'Must contain inner swatch with matching background color'
     );
     assert.ok(

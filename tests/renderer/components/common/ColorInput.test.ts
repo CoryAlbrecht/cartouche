@@ -4,7 +4,7 @@
  * @description Unit tests for ColorInput component verifying hex and CSS color rendering, validation error states, swatch preview preservation, disabled behavior, and chevron omission.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link ColorInput}
  * @see {@link CssColorsDatalist}
@@ -19,6 +19,7 @@ const jiti = createRendererJiti(import.meta.url);
 const React = jiti('react') as typeof import('react');
 const { renderToStaticMarkup } = jiti('react-dom/server') as typeof import('react-dom/server');
 const { ColorInput, CssColorsDatalist } = jiti('@renderer/components/common/ColorInput') as typeof import('@renderer/components/common/ColorInput');
+const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
 
 describe('ColorInput Component (Ticket #133)', () => {
   it('renders text input and swatch button with matching hex background by default', () => {
@@ -36,7 +37,7 @@ describe('ColorInput Component (Ticket #133)', () => {
     assert.ok(html.includes('value="#3388ff"'), 'Must populate text input with color value');
     assert.ok(html.includes('aria-label="Fill Color"'), 'Must set accessible aria-label');
     assert.ok(html.includes('list="css-colors-datalist"'), 'Must attach css-colors-datalist to text input');
-    assert.ok(html.includes('class="preference-color-button-wrapper"'), 'Must render swatch button');
+    assert.ok(html.includes('class="colour-button"'), 'Must render ColourButton');
     assert.ok(html.includes('style="background-color:#3388ff"'), 'Swatch must render with matching hex color');
     assert.ok(!html.includes('preference-color-chevron'), 'Must NOT render dropdown chevron icon');
   });
@@ -65,7 +66,7 @@ describe('ColorInput Component (Ticket #133)', () => {
     );
 
     assert.ok(!html.includes('type="text"'), 'Must not render text input');
-    assert.ok(html.includes('class="preference-color-button-wrapper"'), 'Must render swatch button');
+    assert.ok(html.includes('class="colour-button"'), 'Must render ColourButton');
     assert.ok(html.includes('style="background-color:#ff0000"'), 'Swatch must display hex color');
   });
 
@@ -98,8 +99,21 @@ describe('ColorInput Component (Ticket #133)', () => {
     );
 
     assert.ok(/id="disabled-color"[^>]*disabled=""/.test(html), 'Text input must have disabled attribute');
-    assert.ok(/class="preference-color-button-wrapper"[^>]*disabled=""/.test(html), 'Swatch button must have disabled attribute');
+    assert.ok(/class="colour-button"[^>]*disabled=""/.test(html), 'ColourButton must have disabled attribute');
     assert.ok(!html.includes('type="color"'), 'Native type="color" input must be replaced by ColourPickerDialog');
+  });
+
+  it('names the ColourButton "Pick colour for <label>" so it differs from the text input (Ticket #302)', () => {
+    dictionarySignal.value = { colour_button_pick_for: 'Pick colour for {label}' };
+    try {
+      const html = renderToStaticMarkup(
+        React.createElement(ColorInput, { value: '#3388ff', ariaLabel: 'Fill Color', onChange: () => {} })
+      );
+      assert.ok(/<button[^>]*aria-label="Pick colour for Fill Color"/.test(html), 'Button has its own accessible name');
+      assert.ok(/<button[^>]*title="Fill Color"/.test(html), 'Dialog title (button tooltip) is the field label');
+    } finally {
+      dictionarySignal.value = {};
+    }
   });
 
   it('renders CssColorsDatalist containing all 148 standard W3C CSS named colors', () => {

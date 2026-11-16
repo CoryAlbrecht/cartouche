@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  */
 
@@ -1829,15 +1829,17 @@
   border-radius: 2px;
 }
 
-.preference-color-button-wrapper {
-  position: relative;
+/* ColourButton: width/height size the button; the swatch fills it minus the 1px border and a 0.1rem inset. */
+.colour-button {
+  box-sizing: border-box;
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
+  flex: none;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0.1rem;
   background-color: var(--cartouche-theme-surface);
   border: 1px solid var(--cartouche-theme-border-strong);
-  border-radius: 4px;
+  border-radius: 0.25rem;
   cursor: pointer;
   outline: none;
   transition:
@@ -1846,23 +1848,43 @@
     box-shadow 0.15s ease;
 }
 
-.preference-color-button-wrapper:hover {
+.colour-button:hover:not(:disabled) {
   background-color: var(--cartouche-theme-surface-subtle);
   border-color: var(--cartouche-theme-fg-subtle);
 }
 
-.preference-color-button-wrapper:focus-visible {
+.colour-button:focus-visible {
   border-color: var(--cartouche-theme-primary);
-  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
+  box-shadow: 0 0 0 0.125rem var(--cartouche-theme-accent-focus);
 }
 
-.preference-color-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  border: 1px solid var(--cartouche-theme-fg-subtle);
-  display: inline-block;
-  box-shadow: 0 1px 2px var(--cartouche-theme-shadow-subtle);
+.colour-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background-color: var(--cartouche-theme-surface-alt);
+}
+
+.colour-button-swatch {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.125rem;
+  overflow: hidden;
+  background-color: var(--cartouche-theme-checker-light);
+  background-image:
+    linear-gradient(45deg, var(--cartouche-theme-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-theme-checker-dark) 75%),
+    linear-gradient(45deg, var(--cartouche-theme-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-theme-checker-dark) 75%);
+  background-size: 0.5rem 0.5rem;
+  background-position: 0 0, 0.25rem 0.25rem;
+}
+
+.colour-button-swatch-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* Hairline outline keeps white and near-white colours distinct from the button face. */
+  box-shadow: inset 0 0 0 1px var(--cartouche-theme-fg-subtle);
 }
 
 .preference-color-chevron {

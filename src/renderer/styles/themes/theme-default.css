@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-07
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  */
 
@@ -106,6 +106,10 @@
   --cartouche-theme-surface-alt: #f1f5f9;
   --cartouche-theme-surface-hover: #f1f5f9;
   --cartouche-theme-surface-active: #e2e8f0;
+
+  /* Transparency Checkerboard (drawn under translucent colour swatches) */
+  --cartouche-theme-checker-light: #ffffff;
+  --cartouche-theme-checker-dark: #cccccc;
 
   /* Borders & Dividers */
   --cartouche-theme-border: #e2e8f0;

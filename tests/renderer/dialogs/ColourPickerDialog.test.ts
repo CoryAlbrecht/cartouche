@@ -598,7 +598,7 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
     assert.equal(backdrops.length, 0);
 
     // Click swatch button
-    const swatchBtn = findElementsByClass(container, 'preference-color-button-wrapper')[0];
+    const swatchBtn = findElementsByClass(container, 'colour-button')[0];
     assert.ok(swatchBtn);
 
     await act(async () => {
@@ -650,7 +650,7 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
     });
 
     // Verify color swatch button exists for logging preference in doc.body (rendered via Dialog portal)
-    const swatchBtns = findElementsByClass(doc.body, 'preference-color-button-wrapper');
+    const swatchBtns = findElementsByClass(doc.body, 'colour-button');
     assert.ok(swatchBtns.length >= 1, 'Must render color swatch button in PreferencesDialog');
 
     // Click the swatch button to trigger ColourPickerDialog
@@ -800,7 +800,7 @@ function createMockSecondaryWindow(listenersRef: { current: Record<string, Array
       );
     });
 
-    const swatchBtns = findElementsByClass(childContainer, 'preference-color-button-wrapper');
+    const swatchBtns = findElementsByClass(childContainer, 'colour-button');
     assert.ok(swatchBtns.length >= 1, 'Must render swatch button in child container');
 
     // Click swatch button
