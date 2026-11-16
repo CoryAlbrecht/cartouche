@@ -213,22 +213,11 @@ export const projectPropertiesDraftSignal: Signal<ProjectPropertiesDraft> =
 export const crsTabFilterSignal: Signal<string> = signal<string>('');
 
 /**
- * @signal projectPropertiesBaselineKeySignal
- * @description Counter bumped every time the draft is (re)seeded from committed state. Embedded controls that hold their own internal state (such as colour pickers) key on it so they re-initialise from the new baseline.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-12
- * @updated 2026-11-12
- * @since 0.1.0-dev
- * @type {Signal<number>}
- */
-export const projectPropertiesBaselineKeySignal: Signal<number> = signal<number>(0);
-
-/**
  * @function beginProjectPropertiesDraft
  * @description Seeds (or re-seeds) the draft from the committed project state. Called when the dialog opens and after a successful Save As so the baseline matches what is on disk.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -251,7 +240,6 @@ export function beginProjectPropertiesDraft(): void {
       recentCrs: projectRecentCrsSignal.value.map((c) => c.authId),
       defaultStyles: seedDefaultStylesDraft(),
     };
-    projectPropertiesBaselineKeySignal.value += 1;
   });
 }
 

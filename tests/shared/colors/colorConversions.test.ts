@@ -4,7 +4,7 @@
  * @description Unit tests verifying zero-dependency CSS Color 4 engine conversions, wide-gamut and cylindrical models, CSS parsing/formatting, and interpolation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link colorConversions}
  */
@@ -12,6 +12,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  toOpaqueHex,
   srgbToLinearRgb,
   linearRgbToSrgb,
   linearRgbToXyzD65,
@@ -428,5 +429,14 @@ describe('Zero-Dependency CSS Color 4 Engine (Ticket #204)', () => {
       assert.ok(mid.g > 100);
       assert.equal(mid.alpha, 1);
     });
+  });
+});
+
+describe('toOpaqueHex (Ticket #304)', () => {
+  it('normalizes any notation to opaque #rrggbb and passes unparseable input through', () => {
+    assert.equal(toOpaqueHex('rgb(255 136 0)'), '#ff8800');
+    assert.equal(toOpaqueHex('#ff880080'), '#ff8800');
+    assert.equal(toOpaqueHex('navy'), '#000080');
+    assert.equal(toOpaqueHex('not-a-colour'), 'not-a-colour');
   });
 });

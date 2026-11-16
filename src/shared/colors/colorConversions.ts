@@ -4,7 +4,7 @@
  * @description Zero-dependency mathematical color science and conversion engine supporting CSS Color 4 spaces, cylindrical models, and interpolation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link parseCssColor}
  * @see {@link formatCssColor}
@@ -1046,4 +1046,18 @@ export function interpolateColor(
     b: Math.round(color1.b + (color2.b - color1.b) * t),
     alpha: blendedAlpha
   };
+}
+
+/**
+ * @description Normalizes any parseable CSS colour to opaque six-digit hex (#rrggbb), dropping alpha. Unparseable input is returned unchanged.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-15
+ * @updated 2026-11-15
+ * @since 0.1.0-dev
+ * @param {string} color - Colour in any notation parseCssColor understands (hex, named, rgb(), hsl(), …).
+ * @returns {string} Opaque hex colour, or the input when it does not parse.
+ */
+export function toOpaqueHex(color: string): string {
+  const parsed = parseCssColor(color);
+  return parsed ? srgbToHex(parsed.srgb, false) : color;
 }

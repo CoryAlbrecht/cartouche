@@ -1,10 +1,10 @@
 /**
  * @file ColourPickerDialog.test.ts
  * @module tests/renderer/dialogs/ColourPickerDialog.test
- * @description Component tests verifying ColourPickerDialog portal rendering, keyboard Escape dismissal, backdrop click cancellation, Apply/Cancel actions, and integration with ColorInput and PreferencesDialog.
+ * @description Component tests verifying ColourPickerDialog portal rendering, localized default title, allowAlpha passthrough, keyboard Escape dismissal, backdrop click cancellation, Apply/Cancel actions, and integration with ColorInput and PreferencesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link ColorInput}
@@ -309,6 +309,18 @@ function findElementsByClass(el: MockElement, className: string): MockElement[] 
   return matches;
 }
 
+/**
+ * @function textOf
+ * @description Collects the rendered text of a mock element, whether React wrote it as `textContent` or as text nodes.
+ * @param {any} el - Mock element or text node.
+ * @returns {string} Concatenated text content.
+ */
+function textOf(el: any): string {
+  if (el.nodeType === 3) return String(el.nodeValue ?? '');
+  if (typeof el.textContent === 'string') return el.textContent;
+  return (el.childNodes ?? []).map(textOf).join('');
+}
+
 const jiti = createRendererJiti(import.meta.url);
 
 const { ColourPickerDialog } = jiti(
@@ -326,6 +338,19 @@ const {
   preferencesMapSignal
 } = jiti('../../../src/renderer/state/preferencesSignals.ts');
 const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const { parseCssColor } = jiti('../../../src/shared/colors/index.ts');
+
+/**
+ * @function assertOpaqueGreen
+ * @description Asserts that a CSS colour string is fully opaque pure green, in any notation.
+ * @param {string} color - Colour string returned by the dialog.
+ */
+function assertOpaqueGreen(color: string): void {
+  const parsed = parseCssColor(color);
+  assert.ok(parsed, `Applied colour must parse, got "${color}"`);
+  const { r, g, b, alpha } = parsed.srgb;
+  assert.deepEqual([r, g, b, alpha ?? 1], [0, 255, 0, 1], `Applied colour must be opaque #00ff00, got "${color}"`);
+}
 
 describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () => {
   beforeEach(() => {
@@ -333,6 +358,7 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
   });
 
   afterEach(() => {
+    dictionarySignal.value = {};
     teardownDom();
   });
 
@@ -379,6 +405,108 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
 
     const cancelBtns = findElementsByClass(doc.body, 'colour-picker-dialog-cancel-btn');
     assert.equal(cancelBtns.length, 1, 'Must render Cancel button');
+  });
+
+  it('uses the localized "Pick Colour" default title when no title is given (Ticket #301)', async () => {
+    dictionarySignal.value = { colour_picker_dialog_title: 'Pick Colour' };
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          initialColor: '#0000ffff',
+          onApply: () => {},
+          onCancel: () => {}
+        })
+      );
+    });
+
+    const header = findElementsByClass(doc.body, 'colour-picker-dialog-header')[0];
+    assert.equal(textOf(header.childNodes[0]), 'Pick Colour', 'Default title must come from the colour_picker_dialog_title locale key');
+  });
+
+  it('shows an explicit title instead of the localized default (Ticket #301)', async () => {
+    dictionarySignal.value = { colour_picker_dialog_title: 'Pick Colour' };
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          title: 'Fill Colour',
+          initialColor: '#0000ffff',
+          onApply: () => {},
+          onCancel: () => {}
+        })
+      );
+    });
+
+    const header = findElementsByClass(doc.body, 'colour-picker-dialog-header')[0];
+    assert.equal(textOf(header.childNodes[0]), 'Fill Colour', 'An explicit title must win over the default');
+  });
+
+  it('shows the alpha strip by default (Ticket #301)', async () => {
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          initialColor: '#00ff0080',
+          onApply: () => {},
+          onCancel: () => {}
+        })
+      );
+    });
+
+    assert.equal(findElementsByClass(doc.body, 'colour-picker-alpha-strip').length, 1, 'allowAlpha defaults to true');
+  });
+
+  it('with allowAlpha={false} hides the alpha strip and Apply returns an opaque colour (Ticket #301)', async () => {
+    let appliedColor = '';
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          allowAlpha: false,
+          initialColor: '#00ff0080',
+          format: 'HEX',
+          onApply: (c: string) => {
+            appliedColor = c;
+          },
+          onCancel: () => {}
+        })
+      );
+    });
+
+    assert.equal(findElementsByClass(doc.body, 'colour-picker-alpha-strip').length, 0, 'Alpha strip must be hidden');
+
+    const applyBtn = findElementsByClass(doc.body, 'colour-picker-dialog-apply-btn')[0];
+    await act(async () => {
+      applyBtn.dispatchEvent({ type: 'click', bubbles: true });
+    });
+
+    assertOpaqueGreen(appliedColor);
+  });
+
+  it('with allowAlpha={false} and no format prop, Apply keeps the starting colour notation (Ticket #301)', async () => {
+    let appliedColor = '';
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          allowAlpha: false,
+          initialColor: 'rgba(0, 255, 0, 0.5)',
+          onApply: (c: string) => {
+            appliedColor = c;
+          },
+          onCancel: () => {}
+        })
+      );
+    });
+
+    const applyBtn = findElementsByClass(doc.body, 'colour-picker-dialog-apply-btn')[0];
+    await act(async () => {
+      applyBtn.dispatchEvent({ type: 'click', bubbles: true });
+    });
+
+    assert.equal(parseCssColor(appliedColor)?.format, parseCssColor('rgba(0, 255, 0, 0.5)').format, 'Notation must be preserved');
+    assertOpaqueGreen(appliedColor);
   });
 
   it('dismisses modal on Escape key press', async () => {
@@ -470,7 +598,7 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
     assert.equal(backdrops.length, 0);
 
     // Click swatch button
-    const swatchBtn = findElementsByClass(container, 'preference-color-button-wrapper')[0];
+    const swatchBtn = findElementsByClass(container, 'colour-button')[0];
     assert.ok(swatchBtn);
 
     await act(async () => {
@@ -522,7 +650,7 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
     });
 
     // Verify color swatch button exists for logging preference in doc.body (rendered via Dialog portal)
-    const swatchBtns = findElementsByClass(doc.body, 'preference-color-button-wrapper');
+    const swatchBtns = findElementsByClass(doc.body, 'colour-button');
     assert.ok(swatchBtns.length >= 1, 'Must render color swatch button in PreferencesDialog');
 
     // Click the swatch button to trigger ColourPickerDialog
@@ -672,7 +800,7 @@ function createMockSecondaryWindow(listenersRef: { current: Record<string, Array
       );
     });
 
-    const swatchBtns = findElementsByClass(childContainer, 'preference-color-button-wrapper');
+    const swatchBtns = findElementsByClass(childContainer, 'colour-button');
     assert.ok(swatchBtns.length >= 1, 'Must render swatch button in child container');
 
     // Click swatch button
