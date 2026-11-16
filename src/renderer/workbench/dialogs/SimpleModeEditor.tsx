@@ -11,6 +11,7 @@
  * @see {@link StyleComponent}
  * @see {@link ColorInput}
  * @see {@link ColourButton}
+ * @see {@link GradientButton}
  * @see {@link DASH_PATTERN_PRESETS}
  * @see {@link matchDashPattern}
  * @see {@link DashPatternSelect}
@@ -27,7 +28,7 @@ import {
   DIALOG_COLOUR_BUTTON_WIDTH,
   DIALOG_COLOUR_BUTTON_HEIGHT,
 } from "@renderer/components/common/ColourButton";
-import { GradientPickerWidget } from "@renderer/workbench/widgets/GradientPickerWidget";
+import { GradientButton } from "@renderer/components/common/GradientButton";
 import { DashPatternSelect } from "./DashPatternSelect";
 import {
   mdiPlus,
@@ -146,7 +147,7 @@ export function parseCartoucheStyleSafe(
  * Visual component stack list and dynamic style options editor for Cartouche Symbology.
  *
  * @component SimpleModeEditor
- * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog.
+ * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog, and gradient stops with a GradientButton that opens a GradientPickerDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
  * @updated 2026-11-16
@@ -808,8 +809,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
               id='layer-prop-gradient-options-container'
               className='layer-prop-gradient-options-container'
               style={{
-                width: "280px",
-                flexShrink: 0,
                 display: "flex",
                 flexDirection: "column",
                 gap: "0.75rem",
@@ -859,19 +858,19 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 </div>
               </div>
 
-              {/* Embedded GradientPickerWidget */}
+              {/* Gradient Stops: GradientButton opening a GradientPickerDialog */}
               <div
-                id='layer-prop-gradient-picker'
-                className='layer-prop-gradient-picker'
-                style={{ width: "280px" }}>
-                <GradientPickerWidget
-                  key={`gradient-picker-${gradComp.id}`}
-                  initialStops={gradComp.stops}
-                  disabled={activeComponent.locked}
-                  onChange={(newStops) => {
-                    if (activeComponent.locked) return;
-                    updateActiveComponent({ stops: newStops });
-                  }}
+                id='layer-prop-gradient-stops-row'
+                className='layer-prop-gradient-stops-row'
+                style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <span style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+                  {t("layer_properties_styling_gradient_stops")}:
+                </span>
+                <GradientButton
+                  value={gradComp.stops}
+                  dialogTitle={t("layer_properties_styling_gradient_stops")}
+                  disabled={Boolean(activeComponent.locked)}
+                  onChange={(newStops) => updateActiveComponent({ stops: newStops })}
                 />
               </div>
             </div>
