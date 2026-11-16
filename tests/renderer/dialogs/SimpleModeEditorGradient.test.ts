@@ -1,7 +1,7 @@
 /**
  * @file SimpleModeEditorGradient.test.ts
  * @module tests/renderer/dialogs/SimpleModeEditorGradient.test
- * @description Interaction tests for the Gradient Stops row of the Gradient Fill options in SimpleModeEditor (Layer Properties) and the Project Default Styles tab: the GradientButton opens a GradientPickerDialog titled "Gradient Stops", Apply writes the stops into the draft, Cancel leaves it unchanged, the angle spinner stays outside the dialog, and a locked component's button never opens.
+ * @description Interaction tests for the Gradient Stops row of the Gradient Fill options, both in SimpleModeEditor (Layer Properties) and in the Project Default Styles tab: the GradientButton opens a GradientPickerDialog titled "Gradient Stops", Apply writes the stops into the draft, Cancel leaves it unchanged, the angle spinner stays outside the dialog, and a locked component's button never opens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -15,7 +15,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRendererJiti } from '../rendererJiti';
-import { installMockDom, teardownMockDom, findElementsByClass, textOf, type MockDom, type MockElement } from '../mockDom';
+import { installMockDom, teardownMockDom, findElementsByClass, findById, textOf, type MockDom, type MockElement } from '../mockDom';
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -84,22 +84,6 @@ function gradientButtonIn(root: MockElement): MockElement {
   const row = findElementsByClass(root, 'layer-prop-gradient-stops-row')[0];
   assert.ok(row, 'Gradient Stops row is rendered');
   return findElementsByClass(row, 'gradient-button')[0];
-}
-
-/**
- * @function findById
- * @description Depth-first search for an element by its id attribute.
- * @param {MockElement} el - Search root.
- * @param {string} id - Element id.
- * @returns {MockElement | null} The element, or null.
- */
-function findById(el: MockElement, id: string): MockElement | null {
-  if (el.getAttribute?.('id') === id) return el;
-  for (const child of el.childNodes ?? []) {
-    const found = child.nodeType === 1 ? findById(child, id) : null;
-    if (found) return found;
-  }
-  return null;
 }
 
 /**
@@ -190,7 +174,7 @@ describe('SimpleModeEditor Gradient Stops row (Ticket #308)', () => {
   });
 });
 
-describe('Project Default Styles Gradient Stops row (Ticket #308)', () => {
+describe('Project Default Styles Gradient Stops row (Tickets #308, #313)', () => {
   let dom: MockDom | null = null;
 
   beforeEach(() => {
@@ -205,20 +189,62 @@ describe('Project Default Styles Gradient Stops row (Ticket #308)', () => {
     dom = null;
   });
 
-  it('Apply in the polygon default style writes the stops into the project draft', async () => {
+  /**
+   * @function renderPolygonDefault
+   * @description Puts a Gradient Fill polygon default style into the project draft, renders the Default Styles tab and returns the polygon section.
+   * @param {Record<string, unknown>} [extra] - Extra component fields.
+   * @returns {Promise<MockElement>} The polygon default style section.
+   */
+  async function renderPolygonDefault(extra: Record<string, unknown> = {}): Promise<MockElement> {
     setDraftUseApplicationDefault('polygon', false);
-    updateDraftDefaultStyle('polygon', styleEditorValueFor(gradientStyle()));
+    updateDraftDefaultStyle('polygon', styleEditorValueFor(gradientStyle(extra)));
     await act(async () => {
       dom!.root.render(React.createElement(ProjectDefaultStylesTab));
     });
-
     const polygon = findElementsByClass(dom!.container, 'polygon')[0];
     assert.ok(polygon, 'Polygon default style section is rendered');
+    return polygon;
+  }
+
+  /**
+   * @function draftStyle
+   * @description Reads the polygon default style content from the project draft.
+   * @returns {string} Serialized style content.
+   */
+  const draftStyle = (): string => projectPropertiesDraftSignal.value.defaultStyles.polygon.styleContent;
+
+  it('the button opens a dialog titled "Gradient Stops", and Apply writes the stops into the project draft', async () => {
+    const polygon = await renderPolygonDefault();
+    const before = draftStyle();
     await click(gradientButtonIn(polygon));
+    assert.equal(textOf(dialogPart(dom!, 'header')!.childNodes[0]), 'Gradient Stops');
+
     await editFirstStop(dom!, '#abcdefff');
+    assert.equal(draftStyle(), before, 'Editing in the dialog does not touch the draft');
     await click(dialogPart(dom!, 'apply-btn')!);
 
-    const content = projectPropertiesDraftSignal.value.defaultStyles.polygon.styleContent;
-    assert.deepEqual(JSON.parse(content).components[0].stops, ['#abcdefff 0%', '#0000ffff 100%']);
+    assert.equal(dialogPart(dom!, 'backdrop'), undefined, 'Apply closes the dialog');
+    const component = JSON.parse(draftStyle()).components[0];
+    assert.deepEqual(component.stops, ['#abcdefff 0%', '#0000ffff 100%']);
+    assert.equal(component.angle, 30, 'The angle is not touched');
+  });
+
+  it('Cancel leaves the project draft unchanged', async () => {
+    const polygon = await renderPolygonDefault();
+    const before = draftStyle();
+    await click(gradientButtonIn(polygon));
+    await editFirstStop(dom!, '#abcdefff');
+    await click(dialogPart(dom!, 'cancel-btn')!);
+
+    assert.equal(dialogPart(dom!, 'backdrop'), undefined, 'Dialog closed');
+    assert.equal(draftStyle(), before);
+  });
+
+  it('a locked GradientFillComponent has a disabled button that never opens', async () => {
+    const polygon = await renderPolygonDefault({ locked: true });
+    const button = gradientButtonIn(polygon);
+    assert.equal(button.disabled, true);
+    await click(button);
+    assert.equal(dialogPart(dom!, 'backdrop'), undefined);
   });
 });

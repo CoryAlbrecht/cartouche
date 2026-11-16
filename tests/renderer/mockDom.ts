@@ -4,7 +4,7 @@
  * @description Shared headless DOM harness for renderer component tests that need real event dispatch (clicks, keydown, portals): a lightweight MockElement, a mock document and window installed on globalThis, a React root, and lookup helpers. Not a test file itself.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  */
 
@@ -338,6 +338,22 @@ export function findElementsByClass(el: MockElement, className: string): MockEle
     }
   }
   return matches;
+}
+
+/**
+ * @function findById
+ * @description Depth-first search for a mock element by its id attribute.
+ * @param {MockElement} el - Search root.
+ * @param {string} id - Element id.
+ * @returns {MockElement | null} The element, or null.
+ */
+export function findById(el: MockElement, id: string): MockElement | null {
+  if (el.getAttribute?.('id') === id) return el;
+  for (const child of el.childNodes ?? []) {
+    const found = child.nodeType === 1 ? findById(child, id) : null;
+    if (found) return found;
+  }
+  return null;
 }
 
 /**
