@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "rebuild:sqlite": "node-gyp rebuild --directory=node_modules/better-sqlite3 --target=45.3.2 --arch=x64 --dist-url=https://electronjs.org/headers --force_build=1",
-    "rebuild:gdal": "node node_modules/gdal-async/node_modules/@mapbox/node-pre-gyp/bin/node-pre-gyp rebuild -j 4 --directory=node_modules/gdal-async --target=45.3.2 --runtime=electron --dist-url=https://electronjs.org/headers",
+    "rebuild:gdal": "node node_modules/gdal-async/node_modules/@mapbox/node-pre-gyp/bin/node-pre-gyp rebuild -j 8 --directory=node_modules/gdal-async --target=45.3.2 --runtime=electron --dist-url=https://electronjs.org/headers",
     "rebuild": "npm run rebuild:sqlite && npm run rebuild:gdal",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
