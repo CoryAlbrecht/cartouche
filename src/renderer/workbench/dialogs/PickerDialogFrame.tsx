@@ -1,7 +1,7 @@
 /**
  * @file PickerDialogFrame.tsx
  * @module renderer/workbench/dialogs/PickerDialogFrame
- * @description Shared modal frame for the picker dialogs (ColourPickerDialog, GradientPickerDialog): a backdrop portaled into a target container, a titled header with a close button, a scrolling body for the hosted picker widget, and Cancel / Apply footer buttons. Escape on the container's window and clicks on the backdrop cancel.
+ * @description Shared modal frame for the picker dialogs (ColourPickerDialog, GradientPickerDialog): a backdrop portaled into a target container, a titled header with a close button, a scrolling body for the hosted picker widget, and localized Cancel / Apply footer buttons. Escape on the container's window and clicks on the backdrop cancel.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -12,6 +12,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from '@renderer/hooks/useTranslation';
 
 /**
  * @typedef {Object} PickerDialogFrameProps
@@ -48,7 +49,7 @@ function resolveWindowContext(targetContainer?: HTMLElement | null): Window | nu
 
 /**
  * @component PickerDialogFrame
- * @description Centered in-window modal frame hosting a picker widget, with a title, Cancel and Apply buttons, Escape and backdrop-click cancellation, and ownerDocument container targeting. Render it only while the dialog is open.
+ * @description Centered in-window modal frame hosting a picker widget, with a title, localized Cancel and Apply buttons (`dialog_cancel`, `dialog_apply`), Escape and backdrop-click cancellation, and ownerDocument container targeting. Render it only while the dialog is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -65,6 +66,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
   onCancel,
   children
 }) => {
+  const { t } = useTranslation();
   const dialogBoxRef = useRef<HTMLDivElement>(null);
   const targetContainer = container ?? (typeof document !== 'undefined' ? document.body : null);
   const targetWindow = resolveWindowContext(targetContainer);
@@ -148,7 +150,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
           <button
             type='button'
             className={`${classPrefix}-close-btn`}
-            title='Cancel'
+            title={t('dialog_cancel')}
             onClick={onCancel}
             style={{
               background: 'none',
@@ -206,7 +208,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
               fontWeight: 500
             }}
           >
-            Cancel
+            {t('dialog_cancel')}
           </button>
           <button
             type='button'
@@ -223,7 +225,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
               fontWeight: 500
             }}
           >
-            Apply
+            {t('dialog_apply')}
           </button>
         </div>
       </div>

@@ -43,6 +43,7 @@
     <string name="reset_toolbar_layout">Rétablir les barres d'outils par défaut</string>
     <string name="more_options">Plus d'options...</string>
     <string name="cancel_action">Annuler</string>
+    <string name="dialog_apply">Appliquer</string>
     <string name="dialog_cancel">Annuler</string>
     <string name="dialog_ok">OK</string>
     <string name="load_layer_style">Charger un style...</string>

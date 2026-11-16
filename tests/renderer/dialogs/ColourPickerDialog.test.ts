@@ -1,10 +1,10 @@
 /**
  * @file ColourPickerDialog.test.ts
  * @module tests/renderer/dialogs/ColourPickerDialog.test
- * @description Component tests verifying ColourPickerDialog portal rendering, localized default title, allowAlpha passthrough, keyboard Escape dismissal, backdrop click cancellation, Apply/Cancel actions, and integration with ColorInput and PreferencesDialog.
+ * @description Component tests verifying ColourPickerDialog portal rendering, localized default title and Apply / Cancel labels, allowAlpha passthrough, keyboard Escape dismissal, backdrop click cancellation, Apply/Cancel actions, and integration with ColorInput and PreferencesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link ColorInput}
@@ -422,6 +422,24 @@ describe('ColourPickerDialog Component & Modal Integration (Ticket #206)', () =>
 
     const header = findElementsByClass(doc.body, 'colour-picker-dialog-header')[0];
     assert.equal(textOf(header.childNodes[0]), 'Pick Colour', 'Default title must come from the colour_picker_dialog_title locale key');
+  });
+
+  it('localizes the Apply and Cancel buttons and the close-button tooltip (Ticket #309)', async () => {
+    dictionarySignal.value = { dialog_apply: 'Appliquer', dialog_cancel: 'Annuler' };
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          initialColor: '#0000ffff',
+          onApply: () => {},
+          onCancel: () => {}
+        })
+      );
+    });
+
+    assert.equal(textOf(findElementsByClass(doc.body, 'colour-picker-dialog-apply-btn')[0]), 'Appliquer');
+    assert.equal(textOf(findElementsByClass(doc.body, 'colour-picker-dialog-cancel-btn')[0]), 'Annuler');
+    assert.equal(findElementsByClass(doc.body, 'colour-picker-dialog-close-btn')[0].getAttribute('title'), 'Annuler');
   });
 
   it('shows an explicit title instead of the localized default (Ticket #301)', async () => {

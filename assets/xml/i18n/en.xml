@@ -66,6 +66,7 @@
     <string name="remove_group_prompt">Are you sure you want to remove group '{0}'? This will also remove all items inside it.</string>
     <string name="remove_items_prompt">Are you sure you want to remove the {0} selected items from the project? Any groups will also have their contents removed.</string>
     <string name="dialog_remove">Remove</string>
+    <string name="dialog_apply">Apply</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_ok">OK</string>
     <string name="create_group">Create Group</string>

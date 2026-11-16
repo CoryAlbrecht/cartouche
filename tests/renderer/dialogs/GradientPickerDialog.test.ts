@@ -1,7 +1,7 @@
 /**
  * @file GradientPickerDialog.test.ts
  * @module tests/renderer/dialogs/GradientPickerDialog.test
- * @description Component tests for GradientPickerDialog: closed renders nothing, the hosted GradientPickerWidget is seeded with the starting stops, explicit and localized default titles, edits reach the caller only on Apply, Cancel / close button / Escape / backdrop cancel without applying, and the dialog portals into the given container.
+ * @description Component tests for GradientPickerDialog: closed renders nothing, the hosted GradientPickerWidget is seeded with the starting stops, explicit and localized default titles, edits reach the caller only on Apply, Cancel / close button / Escape / backdrop cancel without applying, the dialog portals into the given container, and the Apply / Cancel labels and close-button tooltip are localized.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -104,6 +104,14 @@ describe('GradientPickerDialog (Ticket #306)', () => {
     dictionarySignal.value = { gradient_picker_dialog_title: 'Pick Gradient' };
     await render();
     assert.equal(title(), 'Pick Gradient');
+  });
+
+  it('localizes the Apply and Cancel buttons and the close-button tooltip (Ticket #309)', async () => {
+    dictionarySignal.value = { dialog_apply: 'Appliquer', dialog_cancel: 'Annuler' };
+    await render();
+    assert.equal(textOf(button('apply-btn')), 'Appliquer');
+    assert.equal(textOf(button('cancel-btn')), 'Annuler');
+    assert.equal(button('close-btn').getAttribute('title'), 'Annuler');
   });
 
   it('applies the edited stops once, and only on Apply', async () => {
