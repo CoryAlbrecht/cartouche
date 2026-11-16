@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  */
 
@@ -136,6 +136,7 @@
   --cartouche-theme-danger: #dc2626;
   --cartouche-theme-danger-hover: #b91c1c;
   --cartouche-theme-danger-subtle: #fef2f2;
+  --cartouche-theme-danger-focus: rgba(220, 38, 38, 0.25);
   --cartouche-theme-warning: #f59e0b;
   --cartouche-theme-warning-subtle: #fffbeb;
   --cartouche-theme-success: #16a34a;
@@ -247,8 +248,21 @@
   --cartouche-input-bg: var(--cartouche-theme-surface);
   --cartouche-input-fg: var(--cartouche-theme-fg);
   --cartouche-input-border: var(--cartouche-theme-border-strong);
-  --cartouche-input-focus-border: var(--cartouche-theme-primary);
-  --cartouche-input-focus-ring: var(--cartouche-theme-accent-focus);
+
+  /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
+  --cartouche-focus-color: var(--cartouche-theme-primary);
+  --cartouche-focus-ring: var(--cartouche-theme-accent-focus);
+  --cartouche-focus-width: 0.125rem;
+  --cartouche-focus-offset: 0.125rem;
+
+  /* Invalid Focus Indicator and unfocused invalid state: disallowed values only, never destructive actions. */
+  --cartouche-focus-invalid-color: var(--cartouche-theme-danger);
+  --cartouche-focus-invalid-ring: var(--cartouche-theme-danger-focus);
+  --cartouche-invalid-border: var(--cartouche-theme-danger);
+  --cartouche-invalid-fg: var(--cartouche-theme-danger);
+
+  /* Native control accents (checkbox, radio, range, progress) */
+  --cartouche-control-accent: var(--cartouche-theme-primary);
 
   /* Drop Targets & Highlights */
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);

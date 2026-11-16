@@ -1036,7 +1036,6 @@
   border: 1px solid var(--cartouche-theme-primary);
   border-radius: 2px;
   padding: 1px 4px;
-  outline: none;
   color: var(--cartouche-theme-fg);
   background-color: var(--cartouche-theme-surface);
 }
@@ -1079,7 +1078,6 @@
 .tree-checkbox {
   width: 15px;
   height: 15px;
-  accent-color: var(--cartouche-theme-primary);
   cursor: pointer;
   margin: 0;
   flex-shrink: 0;
@@ -1180,7 +1178,6 @@
 .opacity-control input[type="range"] {
   width: 55px;
   height: 3px;
-  accent-color: var(--cartouche-theme-primary);
 }
 
 /* Empty Layers Panel State */
@@ -1788,11 +1785,6 @@
   flex-wrap: wrap;
 }
 
-.preference-input-invalid {
-  border-color: var(--cartouche-theme-danger) !important;
-  box-shadow: 0 0 0 1px var(--cartouche-theme-danger) !important;
-}
-
 .preference-textarea {
   padding: 6px 10px;
   border: 1px solid var(--cartouche-theme-border-strong);
@@ -1800,7 +1792,6 @@
   font-size: 0.9167rem;
   color: var(--cartouche-theme-fg);
   background-color: var(--cartouche-theme-surface);
-  outline: none;
   resize: vertical;
   min-height: 4.5rem;
   width: 100%;
@@ -1821,11 +1812,6 @@
   justify-content: center;
   color: var(--cartouche-theme-danger);
   cursor: help;
-}
-
-.preference-input-error-icon:focus-visible {
-  outline: 2px solid var(--cartouche-theme-danger);
-  outline-offset: 1px;
   border-radius: 2px;
 }
 
@@ -1841,7 +1827,6 @@
   border: 1px solid var(--cartouche-theme-border-strong);
   border-radius: 0.25rem;
   cursor: pointer;
-  outline: none;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -1851,11 +1836,6 @@
 .picker-button:hover:not(:disabled) {
   background-color: var(--cartouche-theme-surface-subtle);
   border-color: var(--cartouche-theme-fg-subtle);
-}
-
-.picker-button:focus-visible {
-  border-color: var(--cartouche-theme-primary);
-  box-shadow: 0 0 0 0.125rem var(--cartouche-theme-accent-focus);
 }
 
 .picker-button:disabled {
@@ -2003,7 +1983,6 @@
 
 .preference-range-slider {
   flex: 1;
-  accent-color: var(--cartouche-theme-primary);
   cursor: pointer;
 }
 
@@ -2054,7 +2033,6 @@
 }
 
 .preference-radio {
-  accent-color: var(--cartouche-theme-primary);
   cursor: pointer;
 }
 
@@ -2077,7 +2055,6 @@
 .preference-checkbox {
   width: 16px;
   height: 16px;
-  accent-color: var(--cartouche-theme-primary);
   cursor: pointer;
 }
 
@@ -2090,7 +2067,6 @@
   font-size: 0.9167rem;
   color: var(--cartouche-theme-fg-primary);
   background-color: var(--cartouche-theme-surface);
-  outline: none;
   transition:
     border-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -2118,13 +2094,6 @@
   color: var(--cartouche-theme-fg-muted);
   font-weight: 500;
   white-space: nowrap;
-}
-
-.preference-select:focus,
-.preference-input-number:focus,
-.preference-input-text:focus {
-  border-color: var(--cartouche-theme-primary);
-  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
 }
 
 .preferences-modal-footer {
@@ -2267,18 +2236,6 @@
    Time Filter Widget Controls
    ============================================================================= */
 
-.time-filter-unit-select,
-.time-filter-step-input {
-  outline: none;
-}
-
-.time-filter-unit-select:focus,
-.time-filter-step-input:focus {
-  outline: none;
-  border-color: var(--cartouche-theme-primary);
-  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
-}
-
 .time-filter-btn {
   display: inline-flex;
   align-items: center;
@@ -2289,7 +2246,6 @@
   background-color: var(--cartouche-theme-surface);
   color: var(--cartouche-theme-fg-primary);
   cursor: pointer;
-  outline: none;
   transition: all 0.12s ease;
 }
 
@@ -2307,12 +2263,6 @@
   cursor: default;
 }
 
-.time-filter-btn:focus-visible {
-  outline: none;
-  border-color: var(--cartouche-theme-primary);
-  box-shadow: 0 0 0 2px var(--cartouche-theme-accent-focus);
-}
-
 /* Time Filter Range Scrubber Slider & Pseudo-Elements (Ticket #256) */
 .time-filter-slider {
   flex: 1;
@@ -2320,7 +2270,6 @@
   height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   margin: 0;
   padding: 0;
-  outline: none;
   background: transparent;
   cursor: pointer;
   -webkit-appearance: none;
@@ -2330,10 +2279,6 @@
 .time-filter-slider:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.time-filter-slider:focus-visible {
-  outline: none;
 }
 
 /* WebKit / Chromium / Safari Track & Thumb */
@@ -2414,4 +2359,64 @@
 
 .timestamp-spinner input {
   user-select: text;
+}
+
+/* =============================================================================
+   Focus Indicator & Invalid Focus Indicator (Spec #316 / Ticket #317)
+   Applied once, globally, and bound only to the Theme's --cartouche-focus-*,
+   --cartouche-focus-invalid-* and --cartouche-invalid-* Component Tokens.
+   Kept last so that, at equal specificity, these rules win over component
+   rules without !important.
+   ============================================================================= */
+
+:root {
+  accent-color: var(--cartouche-control-accent);
+}
+
+/* Every focusable element except text entry: an outline ring. */
+:focus-visible {
+  outline: var(--cartouche-focus-width) solid var(--cartouche-focus-color);
+  outline-offset: var(--cartouche-focus-offset);
+}
+
+/* Text-entry controls: a focus-colour border plus a halo. The transparent
+   outline replaces Chromium's ring and still shows in forced-colours mode. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea):focus-visible {
+  border-color: var(--cartouche-focus-color);
+  box-shadow: 0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-ring);
+  outline: var(--cartouche-focus-width) solid transparent;
+}
+
+/* Scrolling containers: an inset ring, so overflow does not clip it. */
+.layer-tree-container:focus-visible,
+.table-scroll-wrapper:focus-visible {
+  outline-offset: calc(var(--cartouche-focus-width) * -1);
+}
+
+/* Map canvas: the sole opt-out from the Focus Indicator. */
+.ol-viewport:focus-visible,
+.ol-viewport canvas:focus-visible {
+  outline: none;
+}
+
+/* Unfocused invalid state: a disallowed value, never a destructive action. */
+[aria-invalid="true"],
+.cartouche-focus-invalid {
+  color: var(--cartouche-invalid-fg);
+}
+
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea)[aria-invalid="true"] {
+  border-color: var(--cartouche-invalid-border);
+}
+
+/* Invalid Focus Indicator: the same outline / text-entry split, in the invalid tokens. */
+[aria-invalid="true"]:focus-visible,
+.cartouche-focus-invalid:focus-visible {
+  outline: var(--cartouche-focus-width) solid var(--cartouche-focus-invalid-color);
+}
+
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea)[aria-invalid="true"]:focus-visible {
+  border-color: var(--cartouche-focus-invalid-color);
+  box-shadow: 0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-invalid-ring);
+  outline: var(--cartouche-focus-width) solid transparent;
 }

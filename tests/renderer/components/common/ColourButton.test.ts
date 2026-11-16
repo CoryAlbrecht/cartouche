@@ -111,7 +111,7 @@ describe('ColourButton sizing and swatch (Ticket #302)', () => {
     for (const selector of ['.colour-button', '.colour-button-swatch', '.colour-button-swatch-fill']) {
       assert.equal(cssRule(selector), '', `No ${selector} rule remains`);
     }
-    for (const selector of ['.picker-button:hover:not(:disabled)', '.picker-button:focus-visible', '.picker-button-swatch-fill']) {
+    for (const selector of ['.picker-button:hover:not(:disabled)', '.picker-button-swatch-fill']) {
       assert.notEqual(cssRule(selector), '', `${selector} rule exists`);
     }
   });

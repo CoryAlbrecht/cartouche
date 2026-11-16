@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  */
 
@@ -76,6 +76,7 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-theme-danger',
       '--cartouche-theme-danger-hover',
       '--cartouche-theme-danger-subtle',
+      '--cartouche-theme-danger-focus',
       '--cartouche-theme-warning',
       '--cartouche-theme-warning-subtle',
       '--cartouche-theme-success',
@@ -181,8 +182,16 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-input-bg',
       '--cartouche-input-fg',
       '--cartouche-input-border',
-      '--cartouche-input-focus-border',
-      '--cartouche-input-focus-ring',
+      // Focus Indicator, Invalid Focus Indicator & control accent (Spec #316)
+      '--cartouche-focus-color',
+      '--cartouche-focus-ring',
+      '--cartouche-focus-width',
+      '--cartouche-focus-offset',
+      '--cartouche-focus-invalid-color',
+      '--cartouche-focus-invalid-ring',
+      '--cartouche-invalid-border',
+      '--cartouche-invalid-fg',
+      '--cartouche-control-accent',
       // Drop Targets
       '--cartouche-drop-target-bg',
       '--cartouche-drop-target-border',
