@@ -284,6 +284,25 @@
   /* Drop Targets & Highlights */
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-drop-target-border: var(--cartouche-theme-primary);
+
+  /* Layer Properties Dialog controls (#318) */
+  /* Disabled small controls (field toolbar buttons, Reset Type button, field type select). */
+  --cartouche-control-disabled-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-control-disabled-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-control-disabled-border: var(--cartouche-theme-border);
+  /* Disabled form input (Time tab start / end field selects). */
+  --cartouche-input-disabled-bg: var(--cartouche-theme-surface-alt);
+  /* Code-entry font (feature filter expression, field type select). */
+  --cartouche-code-input-font-family: var(--cartouche-theme-font-family-mono);
+  /* Pressed toggle button (Toggle Layer Edit Mode). */
+  --cartouche-button-toggle-active-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-button-toggle-active-fg: var(--cartouche-theme-info);
+  --cartouche-button-toggle-active-border: var(--cartouche-theme-info);
+  /* Field type select: inferred type, and a type the user has overridden. */
+  --cartouche-field-type-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-field-type-overridden-fg: var(--cartouche-theme-success);
+  --cartouche-field-type-overridden-bg: var(--cartouche-theme-success-subtle);
+  --cartouche-field-type-overridden-border: var(--cartouche-theme-success);
 }
 
 /* Global Reset & Theme Root Application */
