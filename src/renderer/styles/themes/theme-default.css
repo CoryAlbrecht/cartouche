@@ -183,6 +183,10 @@
   --cartouche-theme-tab-active-fg: var(--cartouche-theme-fg);
   --cartouche-theme-tab-inactive-fg: var(--cartouche-theme-fg-muted);
   --cartouche-theme-tab-border: var(--cartouche-theme-border);
+  --cartouche-sidebar-tab-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
+  --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
 
   /* Buttons & Badges */
   --cartouche-theme-badge-bg: var(--cartouche-theme-primary);
@@ -190,6 +194,18 @@
   --cartouche-theme-button-bg: var(--cartouche-theme-primary);
   --cartouche-theme-button-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-theme-button-hover-bg: var(--cartouche-theme-primary-hover);
+
+  /* Dialog Buttons: primary (OK, Apply, Add), secondary (Cancel, Browse…) and a pressed toggle (Toggle Layer Edit Mode) */
+  --cartouche-button-primary-bg: var(--cartouche-theme-primary);
+  --cartouche-button-primary-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-button-primary-border: var(--cartouche-theme-primary);
+  --cartouche-button-secondary-bg: var(--cartouche-theme-surface);
+  --cartouche-button-secondary-alt-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-button-secondary-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-button-secondary-border: var(--cartouche-theme-border-strong);
+  --cartouche-button-toggle-active-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-button-toggle-active-fg: var(--cartouche-theme-info);
+  --cartouche-button-toggle-active-border: var(--cartouche-theme-info);
 
   /* Dockview Theme Overrides */
   --dockview-theme-background-color: var(--cartouche-theme-surface);
@@ -209,6 +225,7 @@
   --cartouche-widget-header-border: var(--cartouche-theme-border);
   --cartouche-widget-content-bg: var(--cartouche-theme-surface);
   --cartouche-widget-content-fg: var(--cartouche-theme-fg);
+  --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);
@@ -217,6 +234,14 @@
   --cartouche-menu-item-hover-bg: var(--cartouche-theme-primary);
   --cartouche-menu-item-hover-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-menu-separator: var(--cartouche-theme-border);
+  --cartouche-menu-focus-color: var(--cartouche-theme-primary);
+
+  /* Listbox Popups (DashPatternSelect): a form control's popup, styled like its
+     trigger input with a light highlight, unlike the primary-highlight command menus above */
+  --cartouche-listbox-option-hover-bg: var(--cartouche-theme-surface-active);
+  --cartouche-listbox-option-selected-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
+  --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 
   /* Toolbars */
   --cartouche-toolbar-bg: var(--cartouche-theme-surface);
@@ -248,17 +273,26 @@
   --cartouche-input-bg: var(--cartouche-theme-surface);
   --cartouche-input-fg: var(--cartouche-theme-fg);
   --cartouche-input-border: var(--cartouche-theme-border-strong);
+  --cartouche-input-icon-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-input-placeholder-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-input-readonly-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-code-input-font-family: var(--cartouche-theme-font-family-mono);
+
+  /* Disabled Controls (inputs, selects and buttons; read-only fields stay focusable and use --cartouche-input-readonly-bg) */
+  --cartouche-control-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-control-disabled-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-control-disabled-border: var(--cartouche-theme-border);
+
+  /* Field Type Select (Layer Properties Fields tab): inferred type, and a type the user has overridden */
+  --cartouche-field-type-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-field-type-overridden-fg: var(--cartouche-theme-success);
+  --cartouche-field-type-overridden-bg: var(--cartouche-theme-success-subtle);
+  --cartouche-field-type-overridden-border: var(--cartouche-theme-success);
 
   /* Table Cell Editors (Attribute Table cells, Layer Properties field table) */
   --cartouche-cell-editor-bg: var(--cartouche-theme-surface);
   --cartouche-cell-editor-fg: var(--cartouche-theme-fg-primary);
   --cartouche-cell-editor-border: var(--cartouche-theme-info);
-
-  /* Secondary Dialog Buttons (Cancel, Browse…) */
-  --cartouche-button-secondary-bg: var(--cartouche-theme-surface);
-  --cartouche-button-secondary-alt-bg: var(--cartouche-theme-surface-alt);
-  --cartouche-button-secondary-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-button-secondary-border: var(--cartouche-theme-border-strong);
 
   /* Chips (removable path tokens in Add Layers) */
   --cartouche-chip-remove-fg: var(--cartouche-theme-fg-muted);
@@ -271,6 +305,8 @@
   --cartouche-focus-ring: var(--cartouche-theme-accent-focus);
   --cartouche-focus-width: 0.125rem;
   --cartouche-focus-offset: 0.125rem;
+  /* Focus colour re-scoped onto primary-coloured surfaces (menubar, status bar, dialog header bars), where the primary colour would vanish. */
+  --cartouche-focus-on-primary-color: var(--cartouche-theme-fg-inverted);
 
   /* Invalid Focus Indicator and unfocused invalid state: disallowed values only, never destructive actions. */
   --cartouche-focus-invalid-color: var(--cartouche-theme-danger);
@@ -285,42 +321,8 @@
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-drop-target-border: var(--cartouche-theme-primary);
 
-  /* Styling editor controls (#318) */
-  --cartouche-input-icon-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-listbox-option-hover-bg: var(--cartouche-theme-surface-active);
-  --cartouche-listbox-option-selected-bg: var(--cartouche-theme-surface-hover);
-  --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
-  --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
-  /* Layer Properties Dialog controls (#318) */
-  /* Disabled small controls (field toolbar buttons, Reset Type button, field type select). */
-  --cartouche-control-disabled-bg: var(--cartouche-theme-surface-subtle);
-  --cartouche-control-disabled-fg: var(--cartouche-theme-fg-subtle);
-  --cartouche-control-disabled-border: var(--cartouche-theme-border);
-  /* Disabled input or select (Time tab start / end field selects, styling editor fields). */
-  --cartouche-input-disabled-bg: var(--cartouche-theme-surface-alt);
-  /* Code-entry font (feature filter expression, field type select). */
-  --cartouche-code-input-font-family: var(--cartouche-theme-font-family-mono);
-  /* Pressed toggle button (Toggle Layer Edit Mode). */
-  --cartouche-button-toggle-active-bg: var(--cartouche-theme-info-subtle);
-  --cartouche-button-toggle-active-fg: var(--cartouche-theme-info);
-  --cartouche-button-toggle-active-border: var(--cartouche-theme-info);
-  /* Field type select: inferred type, and a type the user has overridden. */
-  --cartouche-field-type-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-field-type-overridden-fg: var(--cartouche-theme-success);
-  --cartouche-field-type-overridden-bg: var(--cartouche-theme-success-subtle);
-  --cartouche-field-type-overridden-border: var(--cartouche-theme-success);
-
-  /* Remaining renderer controls (#318) */
-  --cartouche-input-readonly-bg: var(--cartouche-theme-surface-alt);
-  --cartouche-input-placeholder-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-button-disabled-bg: var(--cartouche-theme-surface-alt);
-  --cartouche-button-disabled-fg: var(--cartouche-theme-fg-muted);
+  /* Colour & Gradient Pickers */
   --cartouche-picker-control-border: var(--cartouche-theme-border);
-  --cartouche-sidebar-tab-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
-  --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
-  --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
   --cartouche-gradient-stop-bg: var(--cartouche-theme-surface);
   --cartouche-gradient-stop-border: var(--cartouche-theme-fg-muted);
   --cartouche-gradient-stop-active-border: var(--cartouche-theme-primary);

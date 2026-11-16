@@ -132,20 +132,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
         }}
       >
         {/* Header Bar */}
-        <div
-          className={`${classPrefix}-header`}
-          style={{
-            padding: '10px 14px',
-            backgroundColor: 'var(--cartouche-menubar-bg, #1b446c)',
-            color: 'var(--cartouche-menubar-fg, #ffffff)',
-            fontWeight: 600,
-            fontSize: '0.9375rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            userSelect: 'none'
-          }}
-        >
+        <div className={`${classPrefix}-header picker-dialog-header`}>
           <span>{title}</span>
           <button
             type='button'

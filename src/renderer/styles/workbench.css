@@ -112,6 +112,8 @@
   z-index: 1000;
   -webkit-app-region: no-drag;
   color: var(--cartouche-theme-fg-primary);
+  /* Inside the menubar, but on a light surface: restore the surface focus colour. */
+  --cartouche-focus-color: var(--cartouche-menu-focus-color);
 }
 
 .menu-dropdown::before {
@@ -416,7 +418,10 @@
   color: var(--cartouche-theme-fg-primary);
   cursor: pointer;
   padding: 0;
-  transition: all 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .toolbar-btn:hover:not(:disabled) {
@@ -1896,7 +1901,10 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .preference-btn-toggle.active {
@@ -2245,7 +2253,9 @@
   background-color: var(--cartouche-theme-surface);
   color: var(--cartouche-theme-fg-primary);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    transform 0.12s ease;
 }
 
 .time-filter-btn:hover:not(:disabled) {
@@ -2410,20 +2420,14 @@
   font-weight: 500;
 }
 
-.add-layers-btn-secondary {
-  background-color: var(--cartouche-button-secondary-bg);
-  border: 0.0625rem solid var(--cartouche-button-secondary-border);
-  color: var(--cartouche-button-secondary-fg);
-}
-
 .add-layers-btn-primary {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 1.125rem;
-  background-color: var(--cartouche-theme-button-bg);
+  background-color: var(--cartouche-button-primary-bg);
   border: none;
-  color: var(--cartouche-theme-button-fg);
+  color: var(--cartouche-button-primary-fg);
   font-weight: 600;
 }
 
@@ -2563,7 +2567,7 @@ select.styling-editor-field {
 }
 
 .styling-editor-field:disabled {
-  background-color: var(--cartouche-input-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
   cursor: not-allowed;
 }
 
@@ -2589,7 +2593,7 @@ select.styling-editor-field {
 }
 
 .styling-editor-dash-cell:disabled {
-  background-color: var(--cartouche-input-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
 }
 
 /* Icon buttons of the component stack and dash-array toolbars. */
@@ -2607,7 +2611,7 @@ select.styling-editor-field {
 }
 
 .styling-editor-icon-btn:disabled {
-  background-color: var(--cartouche-input-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -2624,10 +2628,7 @@ select.styling-editor-field {
 
 .styling-editor-secondary-btn {
   padding: 0.3125rem 0.75rem;
-  border: 0.0625rem solid var(--cartouche-button-secondary-border);
   border-radius: 0.25rem;
-  background-color: var(--cartouche-button-secondary-bg);
-  color: var(--cartouche-button-secondary-fg);
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
@@ -2648,7 +2649,7 @@ select.styling-editor-field {
   border-radius: 0.25rem;
   background-color: var(--cartouche-input-bg);
   color: var(--cartouche-input-fg);
-  font-family: var(--cartouche-theme-font-family-mono, monospace);
+  font-family: var(--cartouche-code-input-font-family);
   font-size: 0.8125rem;
   resize: vertical;
 }
@@ -2680,7 +2681,7 @@ select.styling-editor-field {
 }
 
 .dash-pattern-select-trigger:disabled {
-  background-color: var(--cartouche-input-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
   cursor: not-allowed;
 }
 
@@ -2759,20 +2760,12 @@ select.styling-editor-field {
   font-weight: 500;
 }
 
-/* Secondary and primary button colours. */
-.layer-prop-btn-secondary,
-.layer-properties-btn.cancel,
-.layer-properties-btn.apply {
-  border: 0.0625rem solid var(--cartouche-button-secondary-border);
-  background-color: var(--cartouche-button-secondary-bg);
-  color: var(--cartouche-button-secondary-fg);
-}
-
+/* Primary button colours (secondary colours share the rule after .dialog-btn). */
 .layer-prop-btn-primary,
 .layer-properties-btn.ok {
-  border: 0.0625rem solid var(--cartouche-theme-button-bg);
-  background-color: var(--cartouche-theme-button-bg);
-  color: var(--cartouche-theme-button-fg);
+  border: 0.0625rem solid var(--cartouche-button-primary-border);
+  background-color: var(--cartouche-button-primary-bg);
+  color: var(--cartouche-button-primary-fg);
 }
 
 /* Source and Time tab inputs and selects. */
@@ -2801,7 +2794,7 @@ select.styling-editor-field {
 }
 
 .layer-prop-time-field-select:disabled {
-  background-color: var(--cartouche-input-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
   cursor: not-allowed;
 }
 
@@ -2919,16 +2912,24 @@ select.styling-editor-field {
   font-weight: 600;
 }
 
-.dialog-btn-secondary {
+/* Secondary button colours, shared by every secondary button family; each
+   family keeps only its own size and padding. Declared after .dialog-btn so the
+   border wins over its transparent one. */
+.dialog-btn-secondary,
+.add-layers-btn-secondary,
+.styling-editor-secondary-btn,
+.layer-prop-btn-secondary,
+.layer-properties-btn.cancel,
+.layer-properties-btn.apply {
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
   background-color: var(--cartouche-button-secondary-bg);
-  border-color: var(--cartouche-button-secondary-border);
   color: var(--cartouche-button-secondary-fg);
 }
 
 .dialog-btn-primary {
-  background-color: var(--cartouche-theme-button-bg);
-  border-color: var(--cartouche-theme-button-bg);
-  color: var(--cartouche-theme-button-fg);
+  background-color: var(--cartouche-button-primary-bg);
+  border-color: var(--cartouche-button-primary-border);
+  color: var(--cartouche-button-primary-fg);
 }
 
 /* ModalDialog buttons keep their base-size label. */
@@ -3019,7 +3020,7 @@ select.styling-editor-field {
 /* ColorInput text field while disabled. */
 .color-input-text:disabled {
   cursor: not-allowed;
-  background-color: var(--cartouche-input-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
 }
 
 /* Snapping Options per-layer tolerance input. */
@@ -3071,7 +3072,7 @@ select.styling-editor-field {
 }
 
 .attribute-table-page-btn:disabled {
-  background-color: var(--cartouche-button-disabled-bg);
+  background-color: var(--cartouche-control-disabled-bg);
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -3132,7 +3133,7 @@ select.styling-editor-field {
 }
 
 .picker-icon-btn:disabled {
-  color: var(--cartouche-button-disabled-fg);
+  color: var(--cartouche-control-disabled-fg);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -3168,6 +3169,19 @@ select.picker-field:disabled {
   width: 100%;
   padding: 0.125rem 0.25rem;
   text-align: center;
+}
+
+/* Colour and Gradient picker dialog header bar (PickerDialogFrame). */
+.picker-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--cartouche-menubar-bg);
+  color: var(--cartouche-menubar-fg);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  user-select: none;
 }
 
 /* Gradient stop toggles: intermediate stops on the track; boundary stops take
@@ -3223,10 +3237,30 @@ select.picker-field:disabled {
   outline: var(--cartouche-focus-width) solid transparent;
 }
 
-/* Scrolling containers: an inset ring, so overflow does not clip it. */
+/* Scrolling containers, and Dockview tabs inside their overflow: auto strip:
+   an inset ring, so overflow does not clip it. */
 .layer-tree-container:focus-visible,
-.table-scroll-wrapper:focus-visible {
+.table-scroll-wrapper:focus-visible,
+.dv-tab:focus-visible {
   outline-offset: calc(var(--cartouche-focus-width) * -1);
+}
+
+/* Dockview draws its own focused-tab ring on a ::after pseudo-element with an
+   !important outline. Removing the pseudo-element (its content is not
+   !important) leaves the Focus Indicator above as the tab's only ring, without
+   answering !important with !important. */
+.dv-tab:focus-visible::after,
+.dv-tab:has(:focus-visible)::after {
+  content: none;
+}
+
+/* Primary-coloured surfaces: the primary focus colour would vanish against
+   them, so controls on them take the on-primary focus colour. */
+.workbench-menubar,
+.workbench-statusbar,
+.cartouche-dialog-header,
+.picker-dialog-header {
+  --cartouche-focus-color: var(--cartouche-focus-on-primary-color);
 }
 
 /* Map canvas: the sole opt-out from the Focus Indicator. */

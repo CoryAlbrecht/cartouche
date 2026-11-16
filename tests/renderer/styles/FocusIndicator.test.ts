@@ -11,102 +11,15 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-
-const THEME_CSS = fs.readFileSync(
-  path.resolve(process.cwd(), 'src/renderer/styles/themes/theme-default.css'),
-  'utf8'
-);
-const WORKBENCH_CSS = fs.readFileSync(
-  path.resolve(process.cwd(), 'src/renderer/styles/workbench.css'),
-  'utf8'
-);
-
-/**
- * @typedef {Object} CssRule
- * @property {string[]} selectors - Comma-separated selectors of the rule, trimmed.
- * @property {string} body - Declaration block between the braces.
- */
-interface CssRule {
-  selectors: string[];
-  body: string;
-}
-
-/**
- * @function parseRules
- * @description Splits a flat stylesheet (no at-rule blocks) into rules, ignoring comments and `@import` lines.
- * @param {string} css - Stylesheet text.
- * @returns {CssRule[]} Parsed rules.
- */
-function parseRules(css: string): CssRule[] {
-  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@import[^;]*;/g, '');
-  const rules: CssRule[] = [];
-  for (const match of stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    rules.push({
-      selectors: splitSelectors(match[1]),
-      body: match[2],
-    });
-  }
-  return rules;
-}
-
-/**
- * @function splitSelectors
- * @description Splits a selector list on top-level commas, keeping commas inside `:is()` / `:not()` together.
- * @param {string} list - Selector list text.
- * @returns {string[]} Normalised selectors.
- */
-function splitSelectors(list: string): string[] {
-  const out: string[] = [];
-  let depth = 0;
-  let current = '';
-  for (const ch of list) {
-    if (ch === '(') depth++;
-    if (ch === ')') depth--;
-    if (ch === ',' && depth === 0) {
-      out.push(current);
-      current = '';
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out.map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
-}
-
-/**
- * @function declaration
- * @description Reads one property's value from a declaration block.
- * @param {string} body - Declaration block.
- * @param {string} property - Property name.
- * @returns {string | undefined} The trimmed value, or undefined when absent.
- */
-function declaration(body: string, property: string): string | undefined {
-  const match = body.match(new RegExp(`(?:^|;|\\s)${property}\\s*:\\s*([^;]+)`));
-  return match ? match[1].trim() : undefined;
-}
-
-/**
- * @function rulesFor
- * @description Finds every workbench.css rule whose selector list contains the given selector.
- * @param {string} selector - Exact selector text (whitespace-normalised).
- * @returns {CssRule[]} Matching rules.
- */
-function rulesFor(selector: string): CssRule[] {
-  return parseRules(WORKBENCH_CSS).filter((r) => r.selectors.includes(selector));
-}
-
-/**
- * @function tokenValue
- * @description Reads a custom property's value from theme-default.css.
- * @param {string} token - Custom property name.
- * @returns {string | undefined} The trimmed value, or undefined when not defined.
- */
-function tokenValue(token: string): string | undefined {
-  const match = THEME_CSS.match(new RegExp(`${token}\\s*:\\s*([^;]+);`));
-  return match ? match[1].trim() : undefined;
-}
+import {
+  WORKBENCH_CSS,
+  THEME_CSS,
+  parseRules,
+  declaration,
+  rulesFor,
+  tokenValue,
+  tier2Tokens,
+} from './cssRules';
 
 /**
  * @function suppressesOutline
@@ -204,8 +117,8 @@ describe('Global Focus Indicator rules in workbench.css (Ticket #317)', () => {
     assert.equal(declaration(rules[0].body, 'outline'), 'none');
   });
 
-  it('draws an inset ring on the LayerTreeWidget container and the AttributeTableWidget body', () => {
-    for (const selector of ['.layer-tree-container:focus-visible', '.table-scroll-wrapper:focus-visible']) {
+  it('draws an inset ring on the LayerTreeWidget container, the AttributeTableWidget body and Dockview tabs', () => {
+    for (const selector of ['.layer-tree-container:focus-visible', '.table-scroll-wrapper:focus-visible', '.dv-tab:focus-visible']) {
       const [rule] = rulesFor(selector);
       assert.ok(rule, `${selector} rule exists`);
       assert.equal(declaration(rule.body, 'outline-offset'), 'calc(var(--cartouche-focus-width) * -1)');
@@ -327,18 +240,8 @@ describe('Invalid-state rules read only the invalid tokens (Ticket #319)', () =>
 });
 
 /**
- * @function tier2Tokens
- * @description Collects the Tier 2 Component Tokens declared in theme-default.css (every custom property after the Tier 2 banner).
- * @returns {Set<string>} Tier 2 token names.
- */
-function tier2Tokens(): Set<string> {
-  const tier2 = THEME_CSS.slice(THEME_CSS.indexOf('Tier 2: Component Tokens'));
-  return new Set([...tier2.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-}
-
-/**
  * @function assertTokenBound
- * @description Asserts that a declaration block sets no outline and no px/pt length, and reads only Tier 2 Component Tokens, UI sizing tokens (`--cartouche-ui-*`) or font family primitives, so its colours come from the theme's Component Tokens.
+ * @description Asserts that a declaration block sets no outline and no px/pt length, and reads only Tier 2 Component Tokens or UI sizing tokens (`--cartouche-ui-*`), so its colours come from the theme's Component Tokens.
  * @param {string} body - Declaration block.
  * @param {string} where - Rule label for assertion messages.
  * @param {Set<string>} tier2 - Tier 2 Component Token names.
@@ -349,11 +252,55 @@ function assertTokenBound(body: string, where: string, tier2: Set<string>): void
   assert.doesNotMatch(body, /\d(?:px|pt)\b/, `${where} uses px/pt units`);
   for (const [, token] of body.matchAll(/var\((--[a-z0-9-]+)/g)) {
     assert.ok(
-      tier2.has(token) || token.startsWith('--cartouche-ui-') || token.startsWith('--cartouche-theme-font-family'),
-      `${where} reads ${token}, which is not a Tier 2 Component Token, a UI sizing token or a font family`
+      tier2.has(token) || token.startsWith('--cartouche-ui-'),
+      `${where} reads ${token}, which is not a Tier 2 Component Token or a UI sizing token`
     );
   }
 }
+
+/** The Tier 2 Component Tokens added for the migrated focusable controls (Ticket #318). */
+const MIGRATED_CONTROL_TOKENS = [
+  '--cartouche-input-icon-fg',
+  '--cartouche-input-placeholder-fg',
+  '--cartouche-input-readonly-bg',
+  '--cartouche-code-input-font-family',
+  '--cartouche-control-disabled-bg',
+  '--cartouche-control-disabled-fg',
+  '--cartouche-control-disabled-border',
+  '--cartouche-cell-editor-bg',
+  '--cartouche-cell-editor-fg',
+  '--cartouche-cell-editor-border',
+  '--cartouche-button-primary-bg',
+  '--cartouche-button-primary-fg',
+  '--cartouche-button-primary-border',
+  '--cartouche-button-secondary-bg',
+  '--cartouche-button-secondary-alt-bg',
+  '--cartouche-button-secondary-fg',
+  '--cartouche-button-secondary-border',
+  '--cartouche-button-toggle-active-bg',
+  '--cartouche-button-toggle-active-fg',
+  '--cartouche-button-toggle-active-border',
+  '--cartouche-field-type-fg',
+  '--cartouche-field-type-overridden-fg',
+  '--cartouche-field-type-overridden-bg',
+  '--cartouche-field-type-overridden-border',
+  '--cartouche-listbox-option-hover-bg',
+  '--cartouche-listbox-option-selected-bg',
+  '--cartouche-listbox-shadow',
+  '--cartouche-listbox-shadow-subtle',
+  '--cartouche-chip-remove-fg',
+  '--cartouche-timestamp-segment-active-bg',
+  '--cartouche-sidebar-tab-fg',
+  '--cartouche-sidebar-tab-active-bg',
+  '--cartouche-sidebar-tab-active-fg',
+  '--cartouche-overlap-tab-border',
+  '--cartouche-widget-control-fg',
+  '--cartouche-picker-control-border',
+  '--cartouche-gradient-stop-bg',
+  '--cartouche-gradient-stop-border',
+  '--cartouche-gradient-stop-active-border',
+  '--cartouche-gradient-stop-active-ring',
+];
 
 /** The workbench.css classes that style the focusable controls migrated off inline styles (Ticket #318). */
 const MIGRATED_CONTROL_CLASSES = [
@@ -423,16 +370,124 @@ describe('Migrated focusable controls\' workbench.css classes (Ticket #318)', ()
   });
 
   it('maps every Tier 2 token added for the migrated controls to a Tier 1 primitive', () => {
-    const start = THEME_CSS.indexOf('/* Styling editor controls (#318) */');
-    assert.ok(start >= 0, 'theme-default.css has the #318 token blocks');
-    for (const header of ['/* Layer Properties Dialog controls (#318) */', '/* Remaining renderer controls (#318) */']) {
-      assert.ok(THEME_CSS.indexOf(header) > start, `${header} follows the styling editor block`);
+    for (const token of MIGRATED_CONTROL_TOKENS) {
+      assert.match(tokenValue(token) ?? '', /^var\(--cartouche-theme-[a-z0-9-]+\)$/, `${token} maps to a Tier 1 primitive`);
     }
-    const blocks = THEME_CSS.slice(start, THEME_CSS.indexOf('}', start)).replace(/\/\*[\s\S]*?\*\//g, '');
-    const decls = [...blocks.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)];
-    assert.ok(decls.length >= 30, `the blocks declare the migrated controls' tokens, found ${decls.length}`);
-    for (const [, name, value] of decls) {
-      assert.match(value.trim(), /^var\(--cartouche-theme-[a-z0-9-]+\)$/, `${name} maps to a Tier 1 primitive`);
+  });
+
+  it('groups the Tier 2 tokens by subsystem, with no ticket-labelled blocks', () => {
+    assert.doesNotMatch(THEME_CSS, /\/\*[^*]*\(#\d+\)[^*]*\*\//, 'theme-default.css has a ticket-labelled comment');
+  });
+});
+
+/** Every primary-coloured surface that hosts focusable controls: the menubar, the status bar and the dialog header bars. */
+const PRIMARY_SURFACES = ['.workbench-menubar', '.workbench-statusbar', '.cartouche-dialog-header', '.picker-dialog-header'];
+
+/** Background tokens that paint a primary-coloured surface. */
+const PRIMARY_SURFACE_BG = /^var\(--cartouche-(?:menubar-bg|theme-status-bar-bg)\)$/;
+
+/**
+ * @function rescopesFocusColour
+ * @description Finds the rule that re-scopes `--cartouche-focus-color` on a selector.
+ * @param {string} selector - Exact selector text.
+ * @returns {string | undefined} The re-scoped value, or undefined when the selector does not re-scope it.
+ */
+function rescopesFocusColour(selector: string): string | undefined {
+  return rulesFor(selector)
+    .map((r) => declaration(r.body, '--cartouche-focus-color'))
+    .find((v) => v !== undefined);
+}
+
+describe('Focus Indicator on primary-coloured surfaces (Spec #316)', () => {
+  it('maps the on-primary focus colour to the inverted foreground', () => {
+    assert.equal(tokenValue('--cartouche-focus-on-primary-color'), 'var(--cartouche-theme-fg-inverted)');
+  });
+
+  it('paints the primary-coloured surfaces from workbench.css classes', () => {
+    const surfaces = parseRules(WORKBENCH_CSS)
+      .filter((r) => PRIMARY_SURFACE_BG.test(declaration(r.body, 'background-color') ?? declaration(r.body, 'background') ?? ''))
+      .flatMap((r) => r.selectors)
+      .filter((s) => !/:|\.(?:active|is-)/.test(s));
+    assert.deepEqual([...new Set(surfaces)].sort(), [...PRIMARY_SURFACES].sort());
+  });
+
+  it('re-scopes the focus colour to the on-primary colour on every primary-coloured surface', () => {
+    for (const selector of PRIMARY_SURFACES) {
+      assert.equal(rescopesFocusColour(selector), 'var(--cartouche-focus-on-primary-color)', `${selector} re-scopes the focus colour`);
     }
+  });
+
+  it('restores the surface focus colour inside the menubar dropdowns', () => {
+    assert.equal(tokenValue('--cartouche-menu-focus-color'), 'var(--cartouche-theme-primary)');
+    assert.equal(rescopesFocusColour('.menu-dropdown'), 'var(--cartouche-menu-focus-color)');
+  });
+});
+
+describe('Dockview tab Focus Indicator (Spec #316)', () => {
+  it('removes Dockview\'s own focused-tab outline pseudo-element without !important', () => {
+    const rules = parseRules(WORKBENCH_CSS).filter(
+      (r) => r.selectors.includes('.dv-tab:focus-visible::after') && r.selectors.includes('.dv-tab:has(:focus-visible)::after')
+    );
+    assert.equal(rules.length, 1, 'one Dockview focused-tab override');
+    assert.equal(declaration(rules[0].body, 'content'), 'none');
+    assert.doesNotMatch(rules[0].body, /!important/);
+  });
+});
+
+describe('Transitions leave the Focus Indicator alone (Spec #316)', () => {
+  it('never transitions all properties or the outline', () => {
+    for (const r of parseRules(WORKBENCH_CSS)) {
+      for (const property of ['transition', 'transition-property']) {
+        const value = declaration(r.body, property);
+        if (value === undefined) continue;
+        assert.doesNotMatch(value, /(?:^|,|\s)(?:all|outline[\w-]*)\b/, `${r.selectors.join(', ')} ${property}: ${value}`);
+      }
+    }
+  });
+});
+
+describe('Dialog button colours (Spec #316)', () => {
+  it('maps the primary button tokens to the same primitives as the theme button tokens', () => {
+    assert.equal(tokenValue('--cartouche-button-primary-bg'), 'var(--cartouche-theme-primary)');
+    assert.equal(tokenValue('--cartouche-button-primary-fg'), 'var(--cartouche-theme-fg-inverted)');
+    assert.equal(tokenValue('--cartouche-button-primary-border'), 'var(--cartouche-theme-primary)');
+  });
+
+  it('colours every primary dialog button from the primary button tokens', () => {
+    for (const selector of ['.add-layers-btn-primary', '.layer-prop-btn-primary', '.layer-properties-btn.ok', '.dialog-btn-primary']) {
+      const rules = rulesFor(selector);
+      assert.ok(rules.length > 0, `${selector} has a rule`);
+      const body = rules.map((r) => r.body).join(';');
+      assert.equal(declaration(body, 'background-color'), 'var(--cartouche-button-primary-bg)', `${selector} background`);
+      assert.equal(declaration(body, 'color'), 'var(--cartouche-button-primary-fg)', `${selector} colour`);
+      assert.doesNotMatch(body, /--cartouche-theme-button-/, `${selector} reads a theme button token`);
+    }
+  });
+
+  it('colours the four secondary button families from one shared rule', () => {
+    const families = ['.add-layers-btn-secondary', '.styling-editor-secondary-btn', '.layer-prop-btn-secondary', '.dialog-btn-secondary'];
+    const colouring = parseRules(WORKBENCH_CSS).filter(
+      (r) =>
+        r.selectors.some((s) => families.includes(s)) &&
+        ['color', 'background-color', 'background', 'border', 'border-color'].some((p) => declaration(r.body, p) !== undefined)
+    );
+    assert.equal(colouring.length, 1, `one colour rule, found ${colouring.map((r) => r.selectors.join(', ')).join(' | ')}`);
+    const [rule] = colouring;
+    for (const family of families) assert.ok(rule.selectors.includes(family), `${family} shares the colour rule`);
+    assert.equal(declaration(rule.body, 'background-color'), 'var(--cartouche-button-secondary-bg)');
+    assert.equal(declaration(rule.body, 'color'), 'var(--cartouche-button-secondary-fg)');
+    assert.equal(declaration(rule.body, 'border'), '0.0625rem solid var(--cartouche-button-secondary-border)');
+  });
+});
+
+describe('Disabled control tokens (Spec #316)', () => {
+  it('keeps one disabled vocabulary', () => {
+    for (const token of ['--cartouche-input-disabled-bg', '--cartouche-button-disabled-bg', '--cartouche-button-disabled-fg']) {
+      assert.equal(tokenValue(token), undefined, `${token} is retired`);
+      assert.doesNotMatch(WORKBENCH_CSS, new RegExp(`${token}\\b`), `workbench.css reads ${token}`);
+    }
+    assert.equal(tokenValue('--cartouche-control-disabled-bg'), 'var(--cartouche-theme-surface-alt)');
+    assert.equal(tokenValue('--cartouche-control-disabled-fg'), 'var(--cartouche-theme-fg-subtle)');
+    assert.equal(tokenValue('--cartouche-control-disabled-border'), 'var(--cartouche-theme-border)');
   });
 });

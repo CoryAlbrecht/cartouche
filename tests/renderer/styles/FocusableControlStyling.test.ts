@@ -187,6 +187,18 @@ describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
     assert.deepEqual(offenders, []);
   });
 
+  it('paints no primary-coloured surface inline, so its Focus Indicator re-scope lives in workbench.css', () => {
+    const offenders: string[] = [];
+    for (const [rel, text] of SOURCES) {
+      for (const tag of openingTags(text)) {
+        if (/\bbackground(?:Color)?\s*:\s*['"]var\(--cartouche-(?:menubar-bg|theme-status-bar-bg)\b/.test(inlineStyle(tag, text))) {
+          offenders.push(`${rel}: ${head(tag)}`);
+        }
+      }
+    }
+    assert.deepEqual(offenders, []);
+  });
+
   it('gives every focusable control no inline colour literal or inline theme token', () => {
     const offenders: string[] = [];
     for (const [rel, text] of SOURCES) {

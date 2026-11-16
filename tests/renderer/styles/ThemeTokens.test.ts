@@ -133,6 +133,10 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-theme-button-bg',
       '--cartouche-theme-button-fg',
       '--cartouche-theme-button-hover-bg',
+      // Dialog Buttons
+      '--cartouche-button-primary-bg',
+      '--cartouche-button-primary-fg',
+      '--cartouche-button-primary-border',
       // Dockview Theme Overrides
       '--dockview-theme-background-color',
       '--dockview-theme-foreground-color',
@@ -155,6 +159,7 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-menu-item-hover-bg',
       '--cartouche-menu-item-hover-fg',
       '--cartouche-menu-separator',
+      '--cartouche-menu-focus-color',
       // Toolbars
       '--cartouche-toolbar-bg',
       '--cartouche-toolbar-fg',
@@ -182,11 +187,16 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-input-bg',
       '--cartouche-input-fg',
       '--cartouche-input-border',
+      // Disabled Controls
+      '--cartouche-control-disabled-bg',
+      '--cartouche-control-disabled-fg',
+      '--cartouche-control-disabled-border',
       // Focus Indicator, Invalid Focus Indicator & control accent (Spec #316)
       '--cartouche-focus-color',
       '--cartouche-focus-ring',
       '--cartouche-focus-width',
       '--cartouche-focus-offset',
+      '--cartouche-focus-on-primary-color',
       '--cartouche-focus-invalid-color',
       '--cartouche-focus-invalid-ring',
       '--cartouche-invalid-border',
