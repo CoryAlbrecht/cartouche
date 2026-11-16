@@ -64,6 +64,36 @@ export interface SimpleModeEditorProps {
 }
 
 /**
+ * @typedef {Object} OptionRowOptions
+ * @description Layout options of a labelled option row rendered by SimpleModeEditor's `renderOptionRow`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @property {string} [rowId] - Element identifier (and class) of the row. Omitted, the row has neither.
+ * @property {string} [htmlFor] - Id of the control the label names. Given, the label is a `<label htmlFor>`; omitted, a `<span>`.
+ * @property {boolean} [alignTop] - Aligns the row to the top and pads the label down to the control's first line, for tall controls such as the Dash Array table.
+ */
+interface OptionRowOptions {
+  rowId?: string;
+  htmlFor?: string;
+  alignTop?: boolean;
+}
+
+/**
+ * @description Builds the element id of a Dash Array table's line-length input, which the Dash Array row's label names for the first pair.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {number} index - Zero-based index of the dash/gap pair.
+ * @returns {string} Element id of that pair's line-length input.
+ */
+function dashLineInputId(index: number): string {
+  return `layer-prop-dash-array-line-${index}`;
+}
+
+/**
  * Maximum allowed components in a Simple Cartouche Symbology stack.
  *
  * @constant {number} MAX_COMPONENTS
@@ -473,27 +503,45 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   };
 
   /**
-   * @description Renders a labelled option row: a flex row (identified by `rowId` as both id and class) with a 9rem label column followed by the given control.
+   * @description Renders a labelled option row: a flex row with a 1rem gap, a 9rem label column and then the given control. The label is a `<label htmlFor>` when `htmlFor` is given and a `<span>` otherwise.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-16
    * @updated 2026-11-16
    * @since 0.1.0-dev
    * @param {string} label - Localized field label.
-   * @param {string} rowId - Element identifier (and class) of the row.
-   * @param {React.ReactNode} control - The row's control.
+   * @param {React.ReactNode} control - The row's control, which may be several elements (e.g. an input and its unit).
+   * @param {OptionRowOptions} [options] - The row's element identifier, label target and alignment.
    * @returns {React.ReactElement} Rendered option row.
    */
-  const renderOptionRow = (label: string, rowId: string, control: React.ReactNode) => (
-    <div
-      id={rowId}
-      className={rowId}
-      style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-      <span style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
-        {label}:
-      </span>
-      {control}
-    </div>
-  );
+  const renderOptionRow = (
+    label: string,
+    control: React.ReactNode,
+    { rowId, htmlFor, alignTop = false }: OptionRowOptions = {}
+  ) => {
+    const labelStyle: React.CSSProperties = {
+      width: "9rem",
+      fontSize: "0.8125rem",
+      color: "#334155",
+      ...(alignTop ? { paddingTop: "0.25rem" } : {}),
+    };
+    return (
+      <div
+        id={rowId}
+        className={rowId}
+        style={{
+          display: "flex",
+          alignItems: alignTop ? "flex-start" : "center",
+          gap: "1rem",
+        }}>
+        {htmlFor ?
+          <label htmlFor={htmlFor} style={labelStyle}>
+            {label}:
+          </label>
+        : <span style={labelStyle}>{label}:</span>}
+        {control}
+      </div>
+    );
+  };
 
   /**
    * @description Renders a `Label: [ColourButton]` option row. Applying a colour in the dialog sets the active component's `color`; a locked component gets a disabled button.
@@ -517,7 +565,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   ) =>
     renderOptionRow(
       label,
-      rowId,
       <ColourButton
         value={color || defaultColor}
         width={DIALOG_COLOUR_BUTTON_WIDTH}
@@ -525,7 +572,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
         dialogTitle={label}
         disabled={Boolean(locked)}
         onChange={(val) => updateActiveComponent({ color: val })}
-      />
+      />,
+      { rowId }
     );
 
   return (
@@ -879,13 +927,13 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
               {/* Gradient Stops: GradientButton opening a GradientPickerDialog */}
               {renderOptionRow(
                 t("layer_properties_styling_gradient_stops"),
-                "layer-prop-gradient-stops-row",
                 <GradientButton
                   value={gradComp.stops}
                   dialogTitle={t("layer_properties_styling_gradient_stops")}
                   disabled={Boolean(activeComponent.locked)}
                   onChange={(newStops) => updateActiveComponent({ stops: newStops })}
-                />
+                />,
+                { rowId: "layer-prop-gradient-stops-row" }
               )}
             </div>
           );
@@ -965,100 +1013,67 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     flex: 1,
                     minWidth: 0,
                   }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-stroke-width'
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_stroke_width")}:
-                    </label>
-                    <input
-                      id='layer-prop-stroke-width'
-                      type='number'
-                      min='0'
-                      step='0.1'
-                      disabled={activeComponent.locked}
-                      value={lineComp.width ?? 1}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        updateActiveComponent({
-                          width: isNaN(val) ? 0 : Math.max(0, val),
-                        });
-                      }}
-                      style={{
-                        width: "5rem",
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}
-                    />
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
-                      px
-                    </span>
-                  </div>
+                  {renderOptionRow(
+                    t("layer_properties_styling_stroke_width"),
+                    <>
+                      <input
+                        id='layer-prop-stroke-width'
+                        type='number'
+                        min='0'
+                        step='0.1'
+                        disabled={activeComponent.locked}
+                        value={lineComp.width ?? 1}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateActiveComponent({
+                            width: isNaN(val) ? 0 : Math.max(0, val),
+                          });
+                        }}
+                        style={{
+                          width: "5rem",
+                          padding: "0.25rem 0.5rem",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "0.25rem",
+                          fontSize: "0.8125rem",
+                        }}
+                      />
+                      <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                        px
+                      </span>
+                    </>,
+                    { htmlFor: "layer-prop-stroke-width" }
+                  )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-line-offset'
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_line_offset")}:
-                    </label>
-                    <input
-                      id='layer-prop-line-offset'
-                      type='number'
-                      step='0.1'
-                      disabled={activeComponent.locked}
-                      value={lineComp.offset ?? 0}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        updateActiveComponent({ offset: isNaN(val) ? 0 : val });
-                      }}
-                      style={{
-                        width: "5rem",
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}
-                    />
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
-                      px
-                    </span>
-                  </div>
+                  {renderOptionRow(
+                    t("layer_properties_styling_line_offset"),
+                    <>
+                      <input
+                        id='layer-prop-line-offset'
+                        type='number'
+                        step='0.1'
+                        disabled={activeComponent.locked}
+                        value={lineComp.offset ?? 0}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateActiveComponent({ offset: isNaN(val) ? 0 : val });
+                        }}
+                        style={{
+                          width: "5rem",
+                          padding: "0.25rem 0.5rem",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "0.25rem",
+                          fontSize: "0.8125rem",
+                        }}
+                      />
+                      <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                        px
+                      </span>
+                    </>,
+                    { htmlFor: "layer-prop-line-offset" }
+                  )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-line-cap'
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_line_cap")}:
-                    </label>
+                  {renderOptionRow(
+                    t("layer_properties_styling_line_cap"),
                     <select
                       id='layer-prop-line-cap'
                       disabled={activeComponent.locked}
@@ -1083,24 +1098,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       <option value='square'>
                         {t("layer_properties_line_cap_square")}
                       </option>
-                    </select>
-                  </div>
+                    </select>,
+                    { htmlFor: "layer-prop-line-cap" }
+                  )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-line-join'
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_line_join")}:
-                    </label>
+                  {renderOptionRow(
+                    t("layer_properties_styling_line_join"),
                     <select
                       id='layer-prop-line-join'
                       disabled={activeComponent.locked}
@@ -1125,24 +1128,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       <option value='round'>
                         {t("layer_properties_line_join_round")}
                       </option>
-                    </select>
-                  </div>
+                    </select>,
+                    { htmlFor: "layer-prop-line-join" }
+                  )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-dash-pattern'
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_dash_pattern")}:
-                    </label>
+                  {renderOptionRow(
+                    t("layer_properties_styling_dash_pattern"),
                     <DashPatternSelect
                       id='layer-prop-dash-pattern'
                       value={currentPattern}
@@ -1177,65 +1168,43 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         }
                       }}
                       t={t}
-                    />
-                  </div>
+                    />,
+                    { htmlFor: "layer-prop-dash-pattern" }
+                  )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      htmlFor='layer-prop-dash-offset'
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                      }}>
-                      {t("layer_properties_styling_dash_offset")}:
-                    </label>
-                    <input
-                      id='layer-prop-dash-offset'
-                      type='number'
-                      min='0'
-                      step='0.1'
-                      disabled={activeComponent.locked}
-                      value={lineComp.dashOffset ?? 0}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        updateActiveComponent({
-                          dashOffset: isNaN(val) ? 0 : Math.max(0, val),
-                        });
-                      }}
-                      style={{
-                        width: "5rem",
-                        padding: "0.25rem 0.5rem",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "0.25rem",
-                        fontSize: "0.8125rem",
-                      }}
-                    />
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
-                      px
-                    </span>
-                  </div>
+                  {renderOptionRow(
+                    t("layer_properties_styling_dash_offset"),
+                    <>
+                      <input
+                        id='layer-prop-dash-offset'
+                        type='number'
+                        min='0'
+                        step='0.1'
+                        disabled={activeComponent.locked}
+                        value={lineComp.dashOffset ?? 0}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateActiveComponent({
+                            dashOffset: isNaN(val) ? 0 : Math.max(0, val),
+                          });
+                        }}
+                        style={{
+                          width: "5rem",
+                          padding: "0.25rem 0.5rem",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "0.25rem",
+                          fontSize: "0.8125rem",
+                        }}
+                      />
+                      <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                        px
+                      </span>
+                    </>,
+                    { htmlFor: "layer-prop-dash-offset" }
+                  )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "1rem",
-                    }}>
-                    <label
-                      style={{
-                        width: "9rem",
-                        fontSize: "0.8125rem",
-                        color: "#334155",
-                        paddingTop: "0.25rem",
-                      }}>
-                      {t("layer_properties_styling_dash_array")}:
-                    </label>
+                  {renderOptionRow(
+                    t("layer_properties_styling_dash_array"),
                     <div
                       style={{
                         display: "flex",
@@ -1312,6 +1281,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                                   }}>
                                   <td style={{ padding: "0.125rem 0.25rem" }}>
                                     <input
+                                      id={dashLineInputId(idx)}
                                       type='number'
                                       min='0'
                                       step='0.1'
@@ -1513,8 +1483,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           <Icon path={mdiArrowDown} />
                         </button>
                       </div>
-                    </div>
-                  </div>
+                    </div>,
+                    {
+                      htmlFor: pairs.length > 0 ? dashLineInputId(0) : undefined,
+                      alignTop: true,
+                    }
+                  )}
                 </div>
               </div>
             );
@@ -1532,21 +1506,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   flexDirection: "column",
                   gap: "0.5rem",
                 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                  }}>
-                  <label
-                    htmlFor='layer-prop-point-shape'
-                    style={{
-                      width: "9rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                    }}>
-                    {t("layer_properties_styling_point_shape")}:
-                  </label>
+                {renderOptionRow(
+                  t("layer_properties_styling_point_shape"),
                   <select
                     id='layer-prop-point-shape'
                     disabled={activeComponent.locked}
@@ -1566,66 +1527,44 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     <option value='circle'>
                       {t("layer_properties_shape_circle")}
                     </option>
-                  </select>
-                </div>
+                  </select>,
+                  { htmlFor: "layer-prop-point-shape" }
+                )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                  }}>
-                  <label
-                    htmlFor='layer-prop-marker-radius'
-                    style={{
-                      width: "9rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                    }}>
-                    {t("layer_properties_styling_point_radius")}:
-                  </label>
-                  <input
-                    id='layer-prop-marker-radius'
-                    type='number'
-                    min='1'
-                    max='100'
-                    disabled={activeComponent.locked}
-                    value={
-                      (activeComponent as SimpleMarkerComponent).radius ?? 6
-                    }
-                    onChange={(e) =>
-                      updateActiveComponent({
-                        radius: Math.max(1, parseInt(e.target.value, 10) || 1),
-                      })
-                    }
-                    style={{
-                      width: "5rem",
-                      padding: "0.25rem 0.5rem",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.25rem",
-                      fontSize: "0.8125rem",
-                    }}
-                  />
-                  <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
-                    px
-                  </span>
-                </div>
+                {renderOptionRow(
+                  t("layer_properties_styling_point_radius"),
+                  <>
+                    <input
+                      id='layer-prop-marker-radius'
+                      type='number'
+                      min='1'
+                      max='100'
+                      disabled={activeComponent.locked}
+                      value={
+                        (activeComponent as SimpleMarkerComponent).radius ?? 6
+                      }
+                      onChange={(e) =>
+                        updateActiveComponent({
+                          radius: Math.max(1, parseInt(e.target.value, 10) || 1),
+                        })
+                      }
+                      style={{
+                        width: "5rem",
+                        padding: "0.25rem 0.5rem",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "0.25rem",
+                        fontSize: "0.8125rem",
+                      }}
+                    />
+                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      px
+                    </span>
+                  </>,
+                  { htmlFor: "layer-prop-marker-radius" }
+                )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                  }}>
-                  <label
-                    htmlFor='layer-prop-marker-fill-color'
-                    style={{
-                      width: "9rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                    }}>
-                    {t("layer_properties_styling_fill_color")}:
-                  </label>
+                {renderOptionRow(
+                  t("layer_properties_styling_fill_color"),
                   <ColorInput
                     id='layer-prop-marker-fill-color'
                     value={
@@ -1646,24 +1585,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         updateActiveComponent({ fillColor: val });
                       }
                     }}
-                  />
-                </div>
+                  />,
+                  { htmlFor: "layer-prop-marker-fill-color" }
+                )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                  }}>
-                  <label
-                    htmlFor='layer-prop-marker-stroke-color'
-                    style={{
-                      width: "9rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                    }}>
-                    {t("layer_properties_styling_stroke_color")}:
-                  </label>
+                {renderOptionRow(
+                  t("layer_properties_styling_stroke_color"),
                   <ColorInput
                     id='layer-prop-marker-stroke-color'
                     value={
@@ -1684,54 +1611,45 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         updateActiveComponent({ strokeColor: val });
                       }
                     }}
-                  />
-                </div>
+                  />,
+                  { htmlFor: "layer-prop-marker-stroke-color" }
+                )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                  }}>
-                  <label
-                    htmlFor='layer-prop-marker-stroke-width'
-                    style={{
-                      width: "9rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                    }}>
-                    {t("layer_properties_styling_stroke_width")}:
-                  </label>
-                  <input
-                    id='layer-prop-marker-stroke-width'
-                    type='number'
-                    min='0'
-                    max='50'
-                    disabled={activeComponent.locked}
-                    value={
-                      (activeComponent as SimpleMarkerComponent).strokeWidth
-                      ?? 1
-                    }
-                    onChange={(e) =>
-                      updateActiveComponent({
-                        strokeWidth: Math.max(
-                          0,
-                          parseInt(e.target.value, 10) || 0
-                        ),
-                      })
-                    }
-                    style={{
-                      width: "5rem",
-                      padding: "0.25rem 0.5rem",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.25rem",
-                      fontSize: "0.8125rem",
-                    }}
-                  />
-                  <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
-                    px
-                  </span>
-                </div>
+                {renderOptionRow(
+                  t("layer_properties_styling_stroke_width"),
+                  <>
+                    <input
+                      id='layer-prop-marker-stroke-width'
+                      type='number'
+                      min='0'
+                      max='50'
+                      disabled={activeComponent.locked}
+                      value={
+                        (activeComponent as SimpleMarkerComponent).strokeWidth
+                        ?? 1
+                      }
+                      onChange={(e) =>
+                        updateActiveComponent({
+                          strokeWidth: Math.max(
+                            0,
+                            parseInt(e.target.value, 10) || 0
+                          ),
+                        })
+                      }
+                      style={{
+                        width: "5rem",
+                        padding: "0.25rem 0.5rem",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "0.25rem",
+                        fontSize: "0.8125rem",
+                      }}
+                    />
+                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      px
+                    </span>
+                  </>,
+                  { htmlFor: "layer-prop-marker-stroke-width" }
+                )}
               </div>
             );
           })()}
