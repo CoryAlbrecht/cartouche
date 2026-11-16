@@ -244,7 +244,7 @@
   --cartouche-table-row-selected-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-table-row-alt-bg: var(--cartouche-theme-surface-subtle);
 
-  /* Form Inputs & Controls */
+  /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
   --cartouche-input-fg: var(--cartouche-theme-fg);
   --cartouche-input-border: var(--cartouche-theme-border-strong);

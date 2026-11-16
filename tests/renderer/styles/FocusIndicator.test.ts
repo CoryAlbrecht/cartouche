@@ -1,11 +1,12 @@
 /**
  * @file FocusIndicator.test.ts
  * @module tests/renderer/styles/FocusIndicator.test
- * @description Guardrail tests for the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316 / Ticket #317): the Tier 1 / Tier 2 focus, invalid-state and control-accent tokens in theme-default.css, and the single global :focus-visible / aria-invalid rule set in workbench.css that replaces the scattered per-component focus styling.
+ * @description Guardrail tests for the stylesheet side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #317 / #318 / #319): the Tier 1 / Tier 2 focus, invalid-state and control-accent tokens in theme-default.css; the single global :focus-visible / aria-invalid rule set in workbench.css that replaces the scattered per-component focus styling; the map-canvas-only outline suppression; the invalid-state rules reading only the invalid tokens; and the workbench.css classes of the migrated focusable controls reading only Tier 2 Component Tokens, in rem.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
  * @since 0.1.0-dev
+ * @see FocusableControlStyling.test.ts
  */
 
 import { describe, it } from 'node:test';
@@ -107,6 +108,21 @@ function tokenValue(token: string): string | undefined {
   return match ? match[1].trim() : undefined;
 }
 
+/**
+ * @function suppressesOutline
+ * @description Decides whether a declaration block hides the outline: `outline: none | 0`, `outline-style: none | hidden`, `outline-width: 0` or `outline-color: transparent`.
+ * @param {string} body - Declaration block.
+ * @returns {boolean} True when the block suppresses the outline.
+ */
+function suppressesOutline(body: string): boolean {
+  return (
+    /^(?:none|0)\b/.test(declaration(body, 'outline') ?? '') ||
+    /^(?:none|hidden)\b/.test(declaration(body, 'outline-style') ?? '') ||
+    /^0\b/.test(declaration(body, 'outline-width') ?? '') ||
+    /^transparent\b/.test(declaration(body, 'outline-color') ?? '')
+  );
+}
+
 /** Non-text `<input>` types that take the outline ring rather than the border-and-halo indicator. */
 const NON_TEXT_INPUT_TYPES = ['checkbox', 'radio', 'range', 'color', 'button', 'submit', 'reset', 'file', 'image'];
 
@@ -197,15 +213,10 @@ describe('Global Focus Indicator rules in workbench.css (Ticket #317)', () => {
   });
 
   it('suppresses outlines nowhere outside the map-canvas allow-list', () => {
-    for (const r of parseRules(WORKBENCH_CSS)) {
-      const outline = declaration(r.body, 'outline');
-      if (outline === 'none' || outline === '0') {
-        assert.ok(
-          r.selectors.every((s) => MAP_CANVAS_OPT_OUT.includes(s)),
-          `outline: ${outline} on ${r.selectors.join(', ')}`
-        );
-      }
-    }
+    const offenders = parseRules(WORKBENCH_CSS)
+      .filter((r) => suppressesOutline(r.body) && !r.selectors.every((s) => MAP_CANVAS_OPT_OUT.includes(s)))
+      .map((r) => r.selectors.join(', '));
+    assert.deepEqual(offenders, []);
   });
 
   it('keeps no per-component focus rules', () => {
@@ -274,5 +285,154 @@ describe('Invalid Focus Indicator rules in workbench.css (Ticket #317)', () => {
 
   it('drops the !important .preference-input-invalid rule', () => {
     assert.equal(rulesFor('.preference-input-invalid').length, 0);
+  });
+});
+
+describe('Invalid-state rules read only the invalid tokens (Ticket #319)', () => {
+  it('binds every invalid-state and invalid-focus rule only to the invalid and shared focus tokens', () => {
+    const invalidRules = parseRules(WORKBENCH_CSS).filter((r) => r.selectors.some((s) => /invalid/i.test(s)));
+    assert.ok(invalidRules.length >= 4, 'the invalid-state and invalid-focus rules exist');
+    for (const r of invalidRules) {
+      const where = r.selectors.join(', ');
+      assert.doesNotMatch(r.body, /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i, `${where} has a colour literal`);
+      assert.doesNotMatch(r.body, /!important/, `${where} uses !important`);
+      for (const [, token] of r.body.matchAll(/var\((--[a-z0-9-]+)/g)) {
+        assert.match(
+          token,
+          /^--cartouche-(?:focus-invalid-(?:color|ring)|invalid-(?:fg|border)|focus-(?:width|offset))$/,
+          `${where} reads ${token}`
+        );
+      }
+    }
+  });
+
+  it('keeps the invalid tokens out of every rule that is not an invalid-state rule', () => {
+    for (const r of parseRules(WORKBENCH_CSS)) {
+      if (r.selectors.some((s) => /invalid/i.test(s))) continue;
+      assert.doesNotMatch(
+        r.body,
+        /var\(--cartouche-(?:focus-invalid-|invalid-)/,
+        `${r.selectors.join(', ')} reads an invalid token without an invalid-state selector`
+      );
+    }
+  });
+
+  it('leaves the ColorInput error icon colour to the invalid tokens', () => {
+    const rules = parseRules(WORKBENCH_CSS).filter((r) => r.selectors.some((s) => s.includes('.preference-input-error-icon')));
+    assert.ok(rules.length > 0, '.preference-input-error-icon has a rule');
+    for (const r of rules) {
+      assert.equal(declaration(r.body, 'color'), undefined, '.preference-input-error-icon sets no colour of its own');
+    }
+  });
+});
+
+/**
+ * @function tier2Tokens
+ * @description Collects the Tier 2 Component Tokens declared in theme-default.css (every custom property after the Tier 2 banner).
+ * @returns {Set<string>} Tier 2 token names.
+ */
+function tier2Tokens(): Set<string> {
+  const tier2 = THEME_CSS.slice(THEME_CSS.indexOf('Tier 2: Component Tokens'));
+  return new Set([...tier2.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+}
+
+/**
+ * @function assertTokenBound
+ * @description Asserts that a declaration block sets no outline and no px/pt length, and reads only Tier 2 Component Tokens, UI sizing tokens (`--cartouche-ui-*`) or font family primitives, so its colours come from the theme's Component Tokens.
+ * @param {string} body - Declaration block.
+ * @param {string} where - Rule label for assertion messages.
+ * @param {Set<string>} tier2 - Tier 2 Component Token names.
+ * @returns {void}
+ */
+function assertTokenBound(body: string, where: string, tier2: Set<string>): void {
+  assert.doesNotMatch(body, /\boutline\s*:/, `${where} sets an outline`);
+  assert.doesNotMatch(body, /\d(?:px|pt)\b/, `${where} uses px/pt units`);
+  for (const [, token] of body.matchAll(/var\((--[a-z0-9-]+)/g)) {
+    assert.ok(
+      tier2.has(token) || token.startsWith('--cartouche-ui-') || token.startsWith('--cartouche-theme-font-family'),
+      `${where} reads ${token}, which is not a Tier 2 Component Token, a UI sizing token or a font family`
+    );
+  }
+}
+
+/** The workbench.css classes that style the focusable controls migrated off inline styles (Ticket #318). */
+const MIGRATED_CONTROL_CLASSES = [
+  // Table cell editors, Add Layers Dialog, Time Filter controls, TimestampSpinner, LayerTreeWidget.
+  'layer-field-cell-input',
+  'cell-editor-input',
+  'add-layers-btn',
+  'add-layers-btn-primary',
+  'add-layers-btn-secondary',
+  'add-layers-btn-browse',
+  'add-layers-chip-remove',
+  'add-layers-chip-input',
+  'add-layers-path-input',
+  'time-filter-step-input',
+  'time-filter-step-arrow',
+  'time-filter-unit-select',
+  'timestamp-spinner-segment',
+  'layer-tree-container',
+  // Styling editors: SimpleModeEditor, StyleEditor, DashPatternSelect.
+  'styling-editor-field',
+  'styling-editor-number',
+  'styling-editor-angle',
+  'styling-editor-dash-cell',
+  'styling-editor-icon-btn',
+  'styling-editor-format-select',
+  'styling-editor-secondary-btn',
+  'layer-prop-layer-opacity',
+  'layer-prop-styling-raw-style',
+  'dash-pattern-select-trigger',
+  'dash-pattern-select-listbox',
+  'dash-pattern-select-option',
+  'dash-pattern-select-caret',
+  // Layer Properties Dialog and its New Field dialog.
+  'layer-properties-btn',
+  'new-field-dialog-btn',
+  'layer-prop-btn-primary',
+  'layer-prop-btn-secondary',
+  'layer-prop-input',
+  'layer-prop-textarea',
+  'layer-prop-time-field-select',
+  'layer-prop-op-toggle',
+  'layer-prop-toolbar-btn',
+  'layer-field-type-select',
+  'layer-field-reset-type-btn',
+];
+
+describe('Migrated focusable controls\' workbench.css classes (Ticket #318)', () => {
+  it('styles each migrated control from a workbench.css class bound only to Tier 2 Component Tokens, in rem', () => {
+    const tier2 = tier2Tokens();
+    for (const className of MIGRATED_CONTROL_CLASSES) {
+      const pattern = new RegExp(`\\.${className}(?![\\w-])`);
+      const rules = parseRules(WORKBENCH_CSS).filter((r) => r.selectors.some((s) => pattern.test(s)));
+      assert.ok(rules.length > 0, `.${className} has a rule in workbench.css`);
+      for (const r of rules) assertTokenBound(r.body, `.${className}`, tier2);
+    }
+  });
+
+  it('binds the Remaining renderer controls section only to Tier 2 Component Tokens, in rem', () => {
+    const start = WORKBENCH_CSS.indexOf('/* === Remaining renderer controls (Spec #316 / #318) === */');
+    const end = WORKBENCH_CSS.indexOf('Focus Indicator & Invalid Focus Indicator');
+    assert.ok(start >= 0, 'workbench.css has the Remaining renderer controls section');
+    assert.ok(start < end, 'the section sits before the Focus Indicator section');
+    const rules = parseRules(WORKBENCH_CSS.slice(start, end));
+    assert.ok(rules.length > 0, 'the section has rules');
+    const tier2 = tier2Tokens();
+    for (const r of rules) assertTokenBound(r.body, r.selectors.join(', '), tier2);
+  });
+
+  it('maps every Tier 2 token added for the migrated controls to a Tier 1 primitive', () => {
+    const start = THEME_CSS.indexOf('/* Styling editor controls (#318) */');
+    assert.ok(start >= 0, 'theme-default.css has the #318 token blocks');
+    for (const header of ['/* Layer Properties Dialog controls (#318) */', '/* Remaining renderer controls (#318) */']) {
+      assert.ok(THEME_CSS.indexOf(header) > start, `${header} follows the styling editor block`);
+    }
+    const blocks = THEME_CSS.slice(start, THEME_CSS.indexOf('}', start)).replace(/\/\*[\s\S]*?\*\//g, '');
+    const decls = [...blocks.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)];
+    assert.ok(decls.length >= 30, `the blocks declare the migrated controls' tokens, found ${decls.length}`);
+    for (const [, name, value] of decls) {
+      assert.match(value.trim(), /^var\(--cartouche-theme-[a-z0-9-]+\)$/, `${name} maps to a Tier 1 primitive`);
+    }
   });
 });
