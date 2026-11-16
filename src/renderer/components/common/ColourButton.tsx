@@ -8,12 +8,14 @@
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link ColorInput}
+ * @see {@link usePickerButton}
  */
 
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { parseCssColor, srgbToHex } from '@shared/colors';
 import { ColourPickerDialog } from '@renderer/workbench/dialogs/ColourPickerDialog';
 import { useTranslation } from '@renderer/hooks/useTranslation';
+import { usePickerButton } from '@renderer/hooks/usePickerButton';
 
 /**
  * @description Default button width and height: a 1rem swatch plus a 0.1rem inset and a 1px border on each side.
@@ -86,7 +88,7 @@ function swatchBackground(parsed: ReturnType<typeof parseCssColor>): string | un
  * @description Button with a colour swatch that opens a ColourPickerDialog, in the value's own format and portaled into the button's document, committing the colour only on Apply.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {ColourButtonProps} props - Component properties.
  * @returns {React.ReactElement} The rendered colour button.
@@ -102,28 +104,9 @@ export const ColourButton: React.FC<ColourButtonProps> = ({
   ariaLabel
 }) => {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const { buttonRef, isOpen, open, close, handleKeyDown, apply, dialogContainer } = usePickerButton<string>(disabled, onChange);
   const title = dialogTitle ?? t('colour_picker_dialog_title');
   const parsed = parseCssColor(value);
-
-  const open = () => {
-    if (!disabled) setIsOpen(true);
-  };
-
-  // Opens on Enter/Space itself and suppresses the native synthesized click, so the
-  // dialog opens exactly once however the keypress is delivered.
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      open();
-    }
-  };
-
-  const handleApply = (color: string) => {
-    setIsOpen(false);
-    onChange(color);
-  };
 
   return (
     <>
@@ -151,9 +134,9 @@ export const ColourButton: React.FC<ColourButtonProps> = ({
           format={parsed?.format}
           title={title}
           allowAlpha={allowAlpha}
-          container={buttonRef.current?.ownerDocument?.body ?? null}
-          onApply={handleApply}
-          onCancel={() => setIsOpen(false)}
+          container={dialogContainer()}
+          onApply={apply}
+          onCancel={close}
         />
       )}
     </>

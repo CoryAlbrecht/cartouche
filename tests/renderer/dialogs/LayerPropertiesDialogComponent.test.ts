@@ -1929,7 +1929,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('value="8"'), 'Must reflect marker radius');
     });
 
-    it('renders type-specific Style Options for Gradient Fill including angle spinner and embedded GradientPickerWidget', () => {
+    it('renders type-specific Style Options for Gradient Fill: angle spinner and an 8rem × 2rem GradientButton instead of an embedded GradientPickerWidget (Ticket #308)', () => {
       const html = renderToStaticMarkup(
         React.createElement(SimpleModeEditor, {
           styleContent: JSON.stringify({
@@ -1954,12 +1954,13 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('id="layer-prop-gradient-angle"'), 'Must render gradient angle spinner');
       assert.ok(html.includes('value="45.5"'), 'Must reflect angle value');
       assert.ok(html.includes('step="1"'), 'Spinner must step by 1');
-      assert.ok(html.includes('id="layer-prop-gradient-picker"'), 'Must render gradient picker container');
-      assert.ok(html.includes('gradient-picker-widget'), 'Must embed GradientPickerWidget');
-      assert.ok(html.includes('width:280px'), 'Gradient options container must adhere to standardized 280px width');
+      assert.ok(!html.includes('gradient-picker-widget'), 'No embedded GradientPickerWidget');
+      assert.ok(html.includes('id="layer-prop-gradient-stops-row"'), 'Must render the Gradient Stops row');
+      assert.ok(html.includes('class="colour-button gradient-button" style="width:8rem;height:2rem"'), 'GradientButton at the default 8rem × 2rem');
+      assert.ok(html.includes('linear-gradient(to right, #ff0000ff 0%, #0000ffff 100%)'), 'Button shows the stops');
     });
 
-    it('locking a Gradient Fill component disables both the angle spinner and embedded GradientPickerWidget', () => {
+    it('locking a Gradient Fill component disables both the angle spinner and the GradientButton (Ticket #308)', () => {
       const html = renderToStaticMarkup(
         React.createElement(SimpleModeEditor, {
           styleContent: JSON.stringify({
@@ -1983,7 +1984,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       assert.ok(html.includes('component-locked-banner'), 'Must render locked banner for gradient fill');
       assert.ok(/id="layer-prop-gradient-angle"[^>]*disabled=""/.test(html), 'Angle spinner must be disabled when locked');
-      assert.ok(html.includes('gradient-picker-widget disabled'), 'GradientPickerWidget must receive disabled class when locked');
+      assert.ok(/class="colour-button gradient-button"[^>]*disabled=""|disabled=""[^>]*class="colour-button gradient-button"/.test(html), 'GradientButton must be disabled when locked');
     });
 
     it('locking a component disables option controls, greys out remove button, and renders lock banner', () => {

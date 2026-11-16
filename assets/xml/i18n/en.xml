@@ -285,6 +285,7 @@
     <string name="layer_properties_styling_visual_group">Visual Symbolizer</string>
     <string name="layer_properties_styling_fill_color">Fill Color</string>
     <string name="layer_properties_styling_gradient_angle">Gradient Angle</string>
+    <string name="layer_properties_styling_gradient_stops">Gradient Stops</string>
     <string name="layer_properties_styling_fill_opacity">Fill Opacity</string>
     <string name="layer_properties_styling_stroke_color">Stroke Color</string>
     <string name="layer_properties_styling_stroke_width">Stroke Width</string>
@@ -373,6 +374,7 @@
     <string name="unsaved_changes_save">Save Changes</string>
     <string name="colour_picker_dialog_title">Pick Colour</string>
     <string name="colour_button_pick_for">Pick colour for {label}</string>
+    <string name="gradient_picker_dialog_title">Pick Gradient</string>
     <string name="boolean_true">True</string>
     <string name="boolean_false">False</string>
 </ci18n:localization>
