@@ -4,7 +4,7 @@
  * @description Sizable colour form control: a button showing a swatch of its current colour (over a checkerboard, so translucency shows) that always opens a ColourPickerDialog and changes the value only when the user applies it. A plain control, not a Widget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link ColorInput}
@@ -24,6 +24,26 @@ import { useTranslation } from '@renderer/hooks/useTranslation';
  * @type {string}
  */
 export const DEFAULT_COLOUR_BUTTON_SIZE = 'calc(1.2rem + 2px)';
+
+/**
+ * @description Width of the colour buttons in the Preferences, Project Properties and Layer Properties dialogs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @type {string}
+ */
+export const DIALOG_COLOUR_BUTTON_WIDTH = '4rem';
+
+/**
+ * @description Height of the colour buttons in the Preferences, Project Properties and Layer Properties dialogs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @type {string}
+ */
+export const DIALOG_COLOUR_BUTTON_HEIGHT = '2rem';
 
 /**
  * @typedef {Object} ColourButtonProps

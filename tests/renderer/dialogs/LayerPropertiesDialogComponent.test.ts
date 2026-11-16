@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -1923,6 +1923,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('id="layer-prop-point-shape"'), 'Must render marker shape for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-radius"'), 'Must render marker radius for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-fill-color"'), 'Must render marker fill color for simple-marker');
+      assert.equal(html.split('class="colour-button" style="width:4rem;height:2rem"').length - 1, 2, 'Both marker colour buttons are 4rem × 2rem');
       assert.ok(html.includes('id="layer-prop-marker-stroke-color"'), 'Must render marker stroke color for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-stroke-width"'), 'Must render marker stroke width for simple-marker');
       assert.ok(html.includes('value="8"'), 'Must reflect marker radius');
@@ -2028,7 +2029,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       const fillRow = html.slice(html.indexOf('id="layer-prop-fill-colour-row"'));
       assert.ok(fillRow.length < html.length, 'Fill Colour row rendered');
       assert.ok(/^[^]*?width:9rem[^]*?class="colour-button"/.test(fillRow), 'Label uses the 9rem column, then the button');
-      assert.ok(fillRow.includes('width:calc(1.2rem + 2px)'), 'Button uses the default size');
+      assert.ok(fillRow.includes('style="width:4rem;height:2rem"'), 'Fill button is 4rem × 2rem');
       assert.ok(!html.includes('width:280px'), 'No 280px picker column');
 
       // 2. Simple Line: one column, Stroke Colour first, then the geometry controls
@@ -2050,6 +2051,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       const strokeRow = html.indexOf('id="layer-prop-stroke-colour-row"');
       assert.ok(strokeRow > -1, 'Stroke Colour row rendered');
       assert.ok(strokeRow < html.indexOf('id="layer-prop-stroke-width"'), 'Stroke Colour comes before the width control');
+      assert.ok(html.slice(strokeRow).includes('style="width:4rem;height:2rem"'), 'Stroke button is 4rem × 2rem');
       assert.ok(!html.includes('width:280px'), 'No 280px picker column');
     });
 

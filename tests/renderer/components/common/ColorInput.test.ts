@@ -4,7 +4,7 @@
  * @description Unit tests for ColorInput component verifying hex and CSS color rendering, validation error states, swatch preview preservation, disabled behavior, and chevron omission.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ColorInput}
  * @see {@link CssColorsDatalist}
@@ -114,6 +114,13 @@ describe('ColorInput Component (Ticket #133)', () => {
     } finally {
       dictionarySignal.value = {};
     }
+  });
+
+  it('passes buttonWidth and buttonHeight to its ColourButton', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ColorInput, { value: '#3388ff', buttonWidth: '4rem', buttonHeight: '2rem', onChange: () => {} })
+    );
+    assert.ok(html.includes('class="colour-button" style="width:4rem;height:2rem"'));
   });
 
   it('renders CssColorsDatalist containing all 148 standard W3C CSS named colors', () => {

@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -430,6 +430,10 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(
       html.includes('class="colour-button"'),
       'Button must have colour-button class'
+    );
+    assert.ok(
+      html.includes('class="colour-button" style="width:4rem;height:2rem"'),
+      'Colour button is 4rem wide and 2rem high'
     );
     assert.ok(
       html.includes('class="colour-button-swatch-fill" style="background-color:#eab308"'),

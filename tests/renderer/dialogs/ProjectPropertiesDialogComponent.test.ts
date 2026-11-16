@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -300,7 +300,7 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     activeProjectPropertiesTabSignal.value = 'general';
   });
 
-  it('renders Selection Colour and Map Background Colour as default-size ColourButtons bound to the draft (Tickets #273, #272, #304)', () => {
+  it('renders Selection Colour and Map Background Colour as 4rem × 2rem ColourButtons bound to the draft (Tickets #273, #272, #304)', () => {
     openProjectPropertiesDialog();
     updateProjectPropertiesDraft({ selectionColour: 'rgba(0,128,255,0.4)', backgroundColour: '#336699' });
     const html = render();
@@ -313,11 +313,11 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     const bgHtml = html.slice(bgStart);
 
     assert.ok(selHtml.includes('Selection Colour'), 'Selection label');
-    assert.ok(/class="colour-button"[^>]*style="width:calc\(1\.2rem \+ 2px\);height:calc\(1\.2rem \+ 2px\)"/.test(selHtml), 'Selection button at the default size');
+    assert.ok(/class="colour-button"[^>]*style="width:4rem;height:2rem"/.test(selHtml), 'Selection button is 4rem × 2rem');
     assert.ok(selHtml.includes('style="background-color:#0080ff66"'), 'Selection swatch keeps its transparency');
 
     assert.ok(bgHtml.includes('Map Background Colour'), 'Background label');
-    assert.ok(/class="colour-button"[^>]*style="width:calc\(1\.2rem \+ 2px\);height:calc\(1\.2rem \+ 2px\)"/.test(bgHtml), 'Background button at the default size');
+    assert.ok(/class="colour-button"[^>]*style="width:4rem;height:2rem"/.test(bgHtml), 'Background button is 4rem × 2rem');
     assert.ok(bgHtml.includes('style="background-color:#336699"'), 'Background swatch seeded from the draft');
   });
 

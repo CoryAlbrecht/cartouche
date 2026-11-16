@@ -4,7 +4,7 @@
  * @description Reusable color input component pairing an editable CSS color / hex text input with a ColourButton that opens ColourPickerDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ColorInput}
  * @see {@link ColourButton}
@@ -37,6 +37,8 @@ import { useTranslation } from '@renderer/hooks/useTranslation';
  * @property {React.CSSProperties} [inputStyle] - Optional CSS style overrides for the text input.
  * @property {boolean} [showTextInput] - Whether to display the text input alongside the swatch button. Defaults to true.
  * @property {string} [fallbackColor] - Fallback hex color if value cannot be resolved. Defaults to '#000000'.
+ * @property {string} [buttonWidth] - Width of the ColourButton (rem CSS length); defaults to the ColourButton default.
+ * @property {string} [buttonHeight] - Height of the ColourButton (rem CSS length); defaults to the ColourButton default.
  */
 export interface ColorInputProps {
   id?: string;
@@ -49,6 +51,8 @@ export interface ColorInputProps {
   inputStyle?: React.CSSProperties;
   showTextInput?: boolean;
   fallbackColor?: string;
+  buttonWidth?: string;
+  buttonHeight?: string;
 }
 
 /**
@@ -75,7 +79,7 @@ export const CssColorsDatalist: React.FC = () => {
  * @description Unified workbench color input combining a hex/named CSS text field with an inline validation indicator and a ColourButton. While the text is invalid the button keeps showing, and opens the dialog on, the last valid colour as hex (the invalid text has no format to keep).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {ColorInputProps} props - Component properties.
  * @returns {React.ReactElement} The rendered color input component.
@@ -91,6 +95,8 @@ export const ColorInput: React.FC<ColorInputProps> = ({
   inputStyle,
   showTextInput = true,
   fallbackColor = '#000000',
+  buttonWidth,
+  buttonHeight,
 }) => {
   const { t } = useTranslation();
   const [textValue, setTextValue] = useState<string>(value || '');
@@ -184,6 +190,8 @@ export const ColorInput: React.FC<ColorInputProps> = ({
 
       <ColourButton
         value={buttonColor}
+        width={buttonWidth}
+        height={buttonHeight}
         onChange={handleButtonChange}
         dialogTitle={ariaLabel}
         ariaLabel={ariaLabel ? t('colour_button_pick_for', { label: ariaLabel }) : undefined}

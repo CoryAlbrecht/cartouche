@@ -4,7 +4,7 @@
  * @description Visual component stack manager and dynamic Style Options panel for Simple Cartouche Symbology mode in LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
@@ -22,7 +22,11 @@ import {
   ColorInput,
   CssColorsDatalist,
 } from "@renderer/components/common/ColorInput";
-import { ColourButton } from "@renderer/components/common/ColourButton";
+import {
+  ColourButton,
+  DIALOG_COLOUR_BUTTON_WIDTH,
+  DIALOG_COLOUR_BUTTON_HEIGHT,
+} from "@renderer/components/common/ColourButton";
 import { GradientPickerWidget } from "@renderer/workbench/widgets/GradientPickerWidget";
 import { DashPatternSelect } from "./DashPatternSelect";
 import {
@@ -145,7 +149,7 @@ export function parseCartoucheStyleSafe(
  * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {SimpleModeEditorProps} props - Component properties.
  * @returns {JSX.Element}
@@ -471,7 +475,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
    * @description Renders a `Label: [ColourButton]` row using the 9rem label column of the other option rows. Applying a colour in the dialog sets the active component's `color`; a locked component gets a disabled button.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-15
-   * @updated 2026-11-15
+   * @updated 2026-11-16
    * @since 0.1.0-dev
    * @param {string} label - Localized field label, also used as the dialog title.
    * @param {string} rowId - Element identifier (and class) of the row.
@@ -496,6 +500,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
       </span>
       <ColourButton
         value={color || defaultColor}
+        width={DIALOG_COLOUR_BUTTON_WIDTH}
+        height={DIALOG_COLOUR_BUTTON_HEIGHT}
         dialogTitle={label}
         disabled={Boolean(locked)}
         onChange={(val) => updateActiveComponent({ color: val })}
@@ -1614,6 +1620,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       || "#3388ff"
                     }
                     disabled={activeComponent.locked}
+                    buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
+                    buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
                     ariaLabel={t("layer_properties_styling_fill_color")}
                     inputStyle={{
                       width: "7.5rem",
@@ -1650,6 +1658,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       || "#000000"
                     }
                     disabled={activeComponent.locked}
+                    buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
+                    buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
                     ariaLabel={t("layer_properties_styling_stroke_color")}
                     inputStyle={{
                       width: "7.5rem",

@@ -4,7 +4,7 @@
  * @description Component tests for ColourButton: independent width/height sizing with a swatch inset by the border and a 0.1rem padding, checkerboard under translucent colours, opening ColourPickerDialog by click/Enter/Space with the dialog title and the value's own format, commit on Apply only, disabled behaviour, and allowAlpha passthrough.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ColourButton}
  * @see {@link ColourPickerDialog}
@@ -29,7 +29,7 @@ import {
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { ColourButton, DEFAULT_COLOUR_BUTTON_SIZE } = jiti('@renderer/components/common/ColourButton.tsx');
+const { ColourButton, DEFAULT_COLOUR_BUTTON_SIZE, DIALOG_COLOUR_BUTTON_WIDTH, DIALOG_COLOUR_BUTTON_HEIGHT } = jiti('@renderer/components/common/ColourButton.tsx');
 const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
 
 const WORKBENCH_CSS = fs.readFileSync(
@@ -79,6 +79,11 @@ describe('ColourButton sizing and swatch (Ticket #302)', () => {
     const html = renderToStaticMarkup(React.createElement(ColourButton, { value: '#3388ff', onChange: () => {} }));
     assert.ok(html.includes('width:calc(1.2rem + 2px)'), 'Default width');
     assert.ok(html.includes('height:calc(1.2rem + 2px)'), 'Default height');
+  });
+
+  it('exports the 4rem × 2rem size used by dialog colour fields', () => {
+    assert.equal(DIALOG_COLOUR_BUTTON_WIDTH, '4rem');
+    assert.equal(DIALOG_COLOUR_BUTTON_HEIGHT, '2rem');
   });
 
   it('applies width and height independently to the button', () => {

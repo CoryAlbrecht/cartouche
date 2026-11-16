@@ -4,7 +4,7 @@
  * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The Time Filter tab edits Enabled / From / To / Step / Unit through the shared TimeFilterControls (no playhead); edits reach the TimeFilterWidget and the map only on Apply / OK. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with ColourButtons that open a ColourPickerDialog and change the draft only on Apply.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link TabbedDialogShell}
@@ -37,7 +37,11 @@ import {
 import { projectFilePathSignal } from "@renderer/state/projectSignals";
 import { saveAsProjectFromPropertiesDialogAction } from "@renderer/state/gisSignals";
 import { t } from "@renderer/state/i18nSignals";
-import { ColourButton } from "@renderer/components/common/ColourButton";
+import {
+  ColourButton,
+  DIALOG_COLOUR_BUTTON_WIDTH,
+  DIALOG_COLOUR_BUTTON_HEIGHT,
+} from "@renderer/components/common/ColourButton";
 import { toOpaqueHex } from "@shared/colors";
 import {
   PROJECT_DISTANCE_UNITS,
@@ -154,7 +158,7 @@ const LABEL_STYLE: React.CSSProperties = {
  * @description Renders the modeless Project Properties dialog with its sidebar tabs, the General tab and the Cancel / Apply / OK footer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Project Properties dialog window element or null if closed.
  */
@@ -449,6 +453,8 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </span>
                   <ColourButton
                     value={draft.selectionColour}
+                    width={DIALOG_COLOUR_BUTTON_WIDTH}
+                    height={DIALOG_COLOUR_BUTTON_HEIGHT}
                     dialogTitle={t("project_properties_label_selection_colour")}
                     allowAlpha={true}
                     onChange={(colour) => updateProjectPropertiesDraft({ selectionColour: colour })}
@@ -465,6 +471,8 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </span>
                   <ColourButton
                     value={draft.backgroundColour}
+                    width={DIALOG_COLOUR_BUTTON_WIDTH}
+                    height={DIALOG_COLOUR_BUTTON_HEIGHT}
                     dialogTitle={t("project_properties_label_background_colour")}
                     allowAlpha={false}
                     onChange={(colour) =>

@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-05
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -15,6 +15,10 @@ import React, { useEffect, useRef, useCallback } from "react";
 import { useSignals, useSignal } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/Icon";
 import { ColorInput } from "@renderer/components/common/ColorInput";
+import {
+  DIALOG_COLOUR_BUTTON_WIDTH,
+  DIALOG_COLOUR_BUTTON_HEIGHT,
+} from "@renderer/components/common/ColourButton";
 import {
   mdiPaletteOutline,
   mdiVectorTriangle,
@@ -168,7 +172,7 @@ function resolveDescription(key: string, item: PreferenceItem): string {
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-05
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -512,7 +516,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a specific control variant for a given preference row with keyboard accessibility and ARIA semantics.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-27
+   * @updated 2026-11-16
    * @since 0.1.0-dev
    * @param {PreferenceControlType} ctrlType - Canonical control type.
    * @param {string} key - Preference descriptor key.
@@ -540,6 +544,8 @@ export const PreferencesDialog: React.FC = () => {
               value={currentValue !== undefined ? String(currentValue) : ""}
               fallbackColor={resolveColorToHex(item.defaultValue) || "#000000"}
               ariaLabel={displayName}
+              buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
+              buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
               showTextInput={true}
               onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
             />
@@ -595,6 +601,8 @@ export const PreferencesDialog: React.FC = () => {
             value={currentValue !== undefined ? String(currentValue) : ""}
             fallbackColor={resolveColorToHex(item.defaultValue) || "#000000"}
             ariaLabel={displayName}
+            buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
+            buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
             showTextInput={false}
             onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
           />
@@ -930,7 +938,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a single preference item row inside a group container.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-10-27
+   * @updated 2026-11-16
    * @since 0.1.0-dev
    * @param {Object} entry - Preference row entry data.
    * @returns {React.ReactNode}
@@ -973,6 +981,8 @@ export const PreferencesDialog: React.FC = () => {
               value={currentValue !== undefined ? String(currentValue) : ""}
               fallbackColor={resolveColorToHex(item.defaultValue) || "#000000"}
               ariaLabel={displayName}
+              buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
+              buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
               showTextInput={controlsToRender.includes("text")}
               onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
             />
