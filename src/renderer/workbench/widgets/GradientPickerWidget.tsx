@@ -4,7 +4,7 @@
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-09
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link ColourPickerWidget}
@@ -151,11 +151,28 @@ export function serializeGradientStops(
 }
 
 /**
+ * @description Builds the comma-separated colour-stop list of a CSS `linear-gradient()` from GradientStop objects, sorted by offset (e.g. `#ff0000ff 0%, #0000ffff 100%`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {GradientStop[]} stops - Gradient stop definitions.
+ * @returns {string} CSS colour-stop list.
+ */
+export function gradientStopsToCss(stops: GradientStop[]): string {
+  return stops
+    .slice()
+    .sort((a, b) => a.offset - b.offset)
+    .map((s) => `${s.color} ${s.offset}%`)
+    .join(", ");
+}
+
+/**
  * @component GradientPickerWidget
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-09
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {GradientPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} GradientPickerWidget React component.
@@ -269,11 +286,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   void prefsUiBaseFontSize.value;
 
   // CSS gradient preview string
-  const gradientCss = stops
-    .slice()
-    .sort((a, b) => a.offset - b.offset)
-    .map((s) => `${s.color} ${s.offset}%`)
-    .join(", ");
+  const gradientCss = gradientStopsToCss(stops);
 
   /**
    * @description Handles primary-click pointer down on a stop button or vertical guide line, selecting the stop and initializing horizontal dragging.
