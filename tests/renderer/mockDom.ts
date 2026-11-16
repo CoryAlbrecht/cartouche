@@ -147,6 +147,15 @@ export class MockElement {
     return !event.defaultPrevented;
   }
 
+  /**
+   * @function getContext
+   * @description Headless canvases have no rendering context; components that guard on a null context skip drawing.
+   * @returns {null} Always null.
+   */
+  getContext(): null {
+    return null;
+  }
+
   setPointerCapture(_id: number): void {}
   releasePointerCapture(_id: number): void {}
 

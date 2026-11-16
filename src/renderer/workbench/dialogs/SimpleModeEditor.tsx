@@ -4,13 +4,13 @@
  * @description Visual component stack manager and dynamic Style Options panel for Simple Cartouche Symbology mode in LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-09
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
  * @see {@link StyleComponent}
  * @see {@link ColorInput}
- * @see {@link ColourPickerWidget}
+ * @see {@link ColourButton}
  * @see {@link DASH_PATTERN_PRESETS}
  * @see {@link matchDashPattern}
  * @see {@link DashPatternSelect}
@@ -22,9 +22,8 @@ import {
   ColorInput,
   CssColorsDatalist,
 } from "@renderer/components/common/ColorInput";
-import { ColourPickerWidget } from "@renderer/workbench/widgets/ColourPickerWidget";
+import { ColourButton } from "@renderer/components/common/ColourButton";
 import { GradientPickerWidget } from "@renderer/workbench/widgets/GradientPickerWidget";
-import { parseCssColor } from "@shared/colors";
 import { DashPatternSelect } from "./DashPatternSelect";
 import {
   mdiPlus,
@@ -143,10 +142,10 @@ export function parseCartoucheStyleSafe(
  * Visual component stack list and dynamic style options editor for Cartouche Symbology.
  *
  * @component SimpleModeEditor
- * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing.
+ * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @param {SimpleModeEditorProps} props - Component properties.
  * @returns {JSX.Element}
@@ -469,65 +468,40 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   };
 
   /**
-   * Helper rendering an embedded ColourPickerWidget column with standardized fixed 280px width,
-   * section label, and component lifecycle keying.
-   *
-   * @param {string} label - Localized section label text.
-   * @param {string} containerId - Element identifier for the picker wrapper.
-   * @param {string} componentId - Unique ID of the active component for keying.
-   * @param {string | undefined} color - Active color value.
-   * @param {string} defaultColor - Fallback color if undefined.
-   * @param {boolean} [locked] - Whether component options are locked.
-   * @returns {React.ReactElement} Rendered color picker column.
+   * @description Renders a `Label: [ColourButton]` row using the 9rem label column of the other option rows. Applying a colour in the dialog sets the active component's `color`; a locked component gets a disabled button.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-15
+   * @updated 2026-11-15
+   * @since 0.1.0-dev
+   * @param {string} label - Localized field label, also used as the dialog title.
+   * @param {string} rowId - Element identifier (and class) of the row.
+   * @param {string | undefined} color - Active colour value.
+   * @param {string} defaultColor - Colour shown when the component has none.
+   * @param {boolean} [locked] - Whether the component's options are locked.
+   * @returns {React.ReactElement} Rendered colour row.
    */
-  const renderColourPickerColumn = (
+  const renderColourButtonRow = (
     label: string,
-    containerId: string,
-    componentId: string,
+    rowId: string,
     color: string | undefined,
     defaultColor: string,
     locked?: boolean
-  ) => {
-    const activeColor = color || defaultColor;
-    const resolvedFormat = parseCssColor(activeColor)?.format ?? "HEX";
-
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.375rem",
-          width: "280px",
-          flexShrink: 0,
-        }}>
-        <div
-          style={{ fontWeight: 500, fontSize: "0.8125rem", color: "#334155" }}>
-          {label}:
-        </div>
-        <div
-          id={containerId}
-          className={containerId}
-          style={{ width: "280px", flexShrink: 0 }}>
-          <ColourPickerWidget
-            key={componentId}
-            showHeader={false}
-            initialColor={activeColor}
-            format={resolvedFormat}
-            disabled={Boolean(locked)}
-            minWidth={280}
-            style={{
-              border: "none",
-              background: "transparent",
-              boxShadow: "none",
-            }}
-            onChange={(val) => {
-              updateActiveComponent({ color: val });
-            }}
-          />
-        </div>
-      </div>
-    );
-  };
+  ) => (
+    <div
+      id={rowId}
+      className={rowId}
+      style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+      <span style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+        {label}:
+      </span>
+      <ColourButton
+        value={color || defaultColor}
+        dialogTitle={label}
+        disabled={Boolean(locked)}
+        onChange={(val) => updateActiveComponent({ color: val })}
+      />
+    </div>
+  );
 
   return (
     <div
@@ -809,11 +783,10 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
           <div
             id='layer-prop-fill-options-container'
             className='layer-prop-fill-options-container'
-            style={{ width: "280px", flexShrink: 0 }}>
-            {renderColourPickerColumn(
+            style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {renderColourButtonRow(
               t("layer_properties_styling_fill_color"),
-              "layer-prop-fill-colour-picker",
-              activeComponent.id,
+              "layer-prop-fill-colour-row",
               (activeComponent as SimpleFillComponent).color,
               "#3388ff",
               activeComponent.locked
@@ -952,20 +925,19 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 className='layer-prop-line-options-container'
                 style={{
                   display: "flex",
-                  gap: "1.25rem",
-                  alignItems: "flex-start",
+                  flexDirection: "column",
+                  gap: "0.5rem",
                 }}>
-                {/* Left Column: Stroke Color Picker */}
-                {renderColourPickerColumn(
+                {/* First row: Stroke Colour */}
+                {renderColourButtonRow(
                   t("layer_properties_styling_stroke_color"),
-                  "layer-prop-stroke-colour-picker",
-                  lineComp.id,
+                  "layer-prop-stroke-colour-row",
                   lineComp.color,
                   "#000000",
                   lineComp.locked
                 )}
 
-                {/* Right Column: Line Stroke Geometry & Dash Pattern Controls */}
+                {/* Line Stroke Geometry & Dash Pattern Controls */}
                 <div
                   style={{
                     display: "flex",
