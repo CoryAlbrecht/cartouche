@@ -473,7 +473,30 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   };
 
   /**
-   * @description Renders a `Label: [ColourButton]` row using the 9rem label column of the other option rows. Applying a colour in the dialog sets the active component's `color`; a locked component gets a disabled button.
+   * @description Renders a labelled option row: a flex row (identified by `rowId` as both id and class) with a 9rem label column followed by the given control.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {string} label - Localized field label.
+   * @param {string} rowId - Element identifier (and class) of the row.
+   * @param {React.ReactNode} control - The row's control.
+   * @returns {React.ReactElement} Rendered option row.
+   */
+  const renderOptionRow = (label: string, rowId: string, control: React.ReactNode) => (
+    <div
+      id={rowId}
+      className={rowId}
+      style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+      <span style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
+        {label}:
+      </span>
+      {control}
+    </div>
+  );
+
+  /**
+   * @description Renders a `Label: [ColourButton]` option row. Applying a colour in the dialog sets the active component's `color`; a locked component gets a disabled button.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-15
    * @updated 2026-11-16
@@ -491,14 +514,10 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
     color: string | undefined,
     defaultColor: string,
     locked?: boolean
-  ) => (
-    <div
-      id={rowId}
-      className={rowId}
-      style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-      <span style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
-        {label}:
-      </span>
+  ) =>
+    renderOptionRow(
+      label,
+      rowId,
       <ColourButton
         value={color || defaultColor}
         width={DIALOG_COLOUR_BUTTON_WIDTH}
@@ -507,8 +526,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
         disabled={Boolean(locked)}
         onChange={(val) => updateActiveComponent({ color: val })}
       />
-    </div>
-  );
+    );
 
   return (
     <div
@@ -859,20 +877,16 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
               </div>
 
               {/* Gradient Stops: GradientButton opening a GradientPickerDialog */}
-              <div
-                id='layer-prop-gradient-stops-row'
-                className='layer-prop-gradient-stops-row'
-                style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <span style={{ width: "9rem", fontSize: "0.8125rem", color: "#334155" }}>
-                  {t("layer_properties_styling_gradient_stops")}:
-                </span>
+              {renderOptionRow(
+                t("layer_properties_styling_gradient_stops"),
+                "layer-prop-gradient-stops-row",
                 <GradientButton
                   value={gradComp.stops}
                   dialogTitle={t("layer_properties_styling_gradient_stops")}
                   disabled={Boolean(activeComponent.locked)}
                   onChange={(newStops) => updateActiveComponent({ stops: newStops })}
                 />
-              </div>
+              )}
             </div>
           );
         })()}
