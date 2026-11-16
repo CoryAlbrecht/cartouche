@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-14
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -300,29 +300,25 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     activeProjectPropertiesTabSignal.value = 'general';
   });
 
-  it('renders an embedded Selection Colour picker with transparency bound to the draft (Ticket #273)', () => {
+  it('renders Selection Colour and Map Background Colour as default-size ColourButtons bound to the draft (Tickets #273, #272, #304)', () => {
     openProjectPropertiesDialog();
-    updateProjectPropertiesDraft({ selectionColour: 'rgba(0,128,255,0.4)' });
+    updateProjectPropertiesDraft({ selectionColour: 'rgba(0,128,255,0.4)', backgroundColour: '#336699' });
     const html = render();
-    assert.ok(html.includes('Selection Colour'));
-    const pickerStart = html.indexOf('id="project-prop-selection-colour-picker"');
-    assert.ok(pickerStart > 0);
-    const pickerHtml = html.slice(pickerStart, html.indexOf('id="project-prop-background-colour-picker"'));
-    assert.ok(pickerHtml.includes('colour-picker-widget'), 'embeds ColourPickerWidget');
-    assert.ok(pickerHtml.includes('colour-picker-alpha-strip'), 'selection picker allows transparency');
-  });
+    assert.ok(!html.includes('colour-picker-widget'), 'No embedded ColourPickerWidget on the General tab');
 
-  it('renders an embedded opaque Map Background Colour picker bound to the draft (Ticket #272)', () => {
-    openProjectPropertiesDialog();
-    updateProjectPropertiesDraft({ backgroundColour: '#336699' });
-    const html = render();
-    assert.ok(html.includes('Map Background Colour'));
-    const bgStart = html.indexOf('id="project-prop-background-colour-picker"');
-    assert.ok(bgStart > 0);
+    const selStart = html.indexOf('id="project-prop-selection-colour-row"');
+    const bgStart = html.indexOf('id="project-prop-background-colour-row"');
+    assert.ok(selStart > 0 && bgStart > selStart, 'Both colour rows rendered, Selection first');
+    const selHtml = html.slice(selStart, bgStart);
     const bgHtml = html.slice(bgStart);
-    assert.ok(bgHtml.includes('colour-picker-widget'), 'embeds ColourPickerWidget');
-    assert.ok(!bgHtml.includes('colour-picker-alpha-strip'), 'opaque-only picker hides the transparency strip');
-    assert.ok(html.includes('#336699') || html.includes('336699'), 'picker seeded from the draft colour');
+
+    assert.ok(selHtml.includes('Selection Colour'), 'Selection label');
+    assert.ok(/class="colour-button"[^>]*style="width:calc\(1\.2rem \+ 2px\);height:calc\(1\.2rem \+ 2px\)"/.test(selHtml), 'Selection button at the default size');
+    assert.ok(selHtml.includes('style="background-color:#0080ff66"'), 'Selection swatch keeps its transparency');
+
+    assert.ok(bgHtml.includes('Map Background Colour'), 'Background label');
+    assert.ok(/class="colour-button"[^>]*style="width:calc\(1\.2rem \+ 2px\);height:calc\(1\.2rem \+ 2px\)"/.test(bgHtml), 'Background button at the default size');
+    assert.ok(bgHtml.includes('style="background-color:#336699"'), 'Background swatch seeded from the draft');
   });
 
   it('Apply commits the draft through the Project Store and sets the Project Dirty State', async () => {

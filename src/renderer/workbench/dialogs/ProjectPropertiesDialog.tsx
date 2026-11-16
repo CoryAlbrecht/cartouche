@@ -1,16 +1,16 @@
 /**
  * @file ProjectPropertiesDialog.tsx
  * @module renderer/workbench/dialogs/ProjectPropertiesDialog
- * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The Time Filter tab edits Enabled / From / To / Step / Unit through the shared TimeFilterControls (no playhead); edits reach the TimeFilterWidget and the map only on Apply / OK. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with embedded ColourPickerWidgets.
+ * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The Time Filter tab edits Enabled / From / To / Step / Unit through the shared TimeFilterControls (no playhead); edits reach the TimeFilterWidget and the map only on Apply / OK. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with ColourButtons that open a ColourPickerDialog and change the draft only on Apply.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-13
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link TabbedDialogShell}
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
- * @see {@link ColourPickerWidget}
+ * @see {@link ColourButton}
  * @see {@link TimeFilterControls}
  * @see {@link ProjectCrsTab}
  * @see {@link ProjectDefaultStylesTab}
@@ -32,14 +32,13 @@ import {
   updateProjectPropertiesDraft,
   applyProjectPropertiesEdits,
   commitAndCloseProjectPropertiesDialog,
-  projectPropertiesBaselineKeySignal,
   type ProjectPropertiesTabId,
 } from "@renderer/state/projectPropertiesSignals";
 import { projectFilePathSignal } from "@renderer/state/projectSignals";
 import { saveAsProjectFromPropertiesDialogAction } from "@renderer/state/gisSignals";
 import { t } from "@renderer/state/i18nSignals";
-import { ColourPickerWidget } from "@renderer/workbench/widgets/ColourPickerWidget";
-import { parseCssColor, resolveColorToHex } from "@shared/colors";
+import { ColourButton } from "@renderer/components/common/ColourButton";
+import { toOpaqueHex } from "@shared/colors";
 import {
   PROJECT_DISTANCE_UNITS,
   PROJECT_AREA_UNITS,
@@ -155,7 +154,7 @@ const LABEL_STYLE: React.CSSProperties = {
  * @description Renders the modeless Project Properties dialog with its sidebar tabs, the General tab and the Cancel / Apply / OK footer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-12
+ * @updated 2026-11-15
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Project Properties dialog window element or null if closed.
  */
@@ -165,7 +164,6 @@ export const ProjectPropertiesDialog: React.FC = () => {
   const activeTab = activeProjectPropertiesTabSignal.value;
   const draft = projectPropertiesDraftSignal.value;
   const filePath = projectFilePathSignal.value;
-  const draftBaselineKey = projectPropertiesBaselineKeySignal.value;
 
   const handleClose = useCallback(() => {
     closeProjectPropertiesDialog();
@@ -443,56 +441,38 @@ export const ProjectPropertiesDialog: React.FC = () => {
 
                 {/* Selection Colour (transparency allowed) */}
                 <div
-                  className='project-properties-row'
-                  style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                  id='project-prop-selection-colour-row'
+                  className='project-properties-row project-prop-selection-colour-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   <span style={LABEL_STYLE}>
                     {t("project_properties_label_selection_colour")}:
                   </span>
-                  <div
-                    id='project-prop-selection-colour-picker'
-                    className='project-prop-selection-colour-picker'
-                    style={{ width: "280px", flexShrink: 0 }}>
-                    <ColourPickerWidget
-                      key={`selection-${draftBaselineKey}`}
-                      showHeader={false}
-                      initialColor={draft.selectionColour}
-                      format={parseCssColor(draft.selectionColour)?.format ?? "RGB"}
-                      allowAlpha={true}
-                      minWidth={280}
-                      style={{ border: "none", background: "transparent", padding: 0 }}
-                      onChange={(colour) =>
-                        updateProjectPropertiesDraft({ selectionColour: colour })
-                      }
-                    />
-                  </div>
+                  <ColourButton
+                    value={draft.selectionColour}
+                    dialogTitle={t("project_properties_label_selection_colour")}
+                    allowAlpha={true}
+                    onChange={(colour) => updateProjectPropertiesDraft({ selectionColour: colour })}
+                  />
                 </div>
 
                 {/* Map Background Colour (opaque) */}
                 <div
-                  className='project-properties-row'
-                  style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                  id='project-prop-background-colour-row'
+                  className='project-properties-row project-prop-background-colour-row'
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   <span style={LABEL_STYLE}>
                     {t("project_properties_label_background_colour")}:
                   </span>
-                  <div
-                    id='project-prop-background-colour-picker'
-                    className='project-prop-background-colour-picker'
-                    style={{ width: "280px", flexShrink: 0 }}>
-                    <ColourPickerWidget
-                      key={`background-${draftBaselineKey}`}
-                      showHeader={false}
-                      initialColor={draft.backgroundColour}
-                      format={parseCssColor(draft.backgroundColour)?.format ?? "HEX"}
-                      allowAlpha={false}
-                      minWidth={280}
-                      style={{ border: "none", background: "transparent", padding: 0 }}
-                      onChange={(colour) =>
-                        updateProjectPropertiesDraft({
-                          backgroundColour: resolveColorToHex(colour) ?? colour,
-                        })
-                      }
-                    />
-                  </div>
+                  <ColourButton
+                    value={draft.backgroundColour}
+                    dialogTitle={t("project_properties_label_background_colour")}
+                    allowAlpha={false}
+                    onChange={(colour) =>
+                      updateProjectPropertiesDraft({
+                        backgroundColour: toOpaqueHex(colour),
+                      })
+                    }
+                  />
                 </div>
               </div>
             </fieldset>
