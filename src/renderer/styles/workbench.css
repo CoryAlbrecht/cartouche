@@ -2543,6 +2543,189 @@
   cursor: not-allowed;
 }
 
+/* === Styling editor controls (Spec #316 / #318) === */
+/* SimpleModeEditor, StyleEditor and DashPatternSelect controls, formerly
+   styled inline. Bound to Tier 2 Component Tokens only; disabled state follows
+   the native :disabled attribute. */
+
+/* Labelled selects and number inputs in the Simple Mode option rows. */
+.styling-editor-field {
+  padding: 0.25rem 0.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+}
+
+select.styling-editor-field {
+  cursor: pointer;
+}
+
+.styling-editor-field:disabled {
+  background-color: var(--cartouche-control-disabled-bg);
+  cursor: not-allowed;
+}
+
+.styling-editor-number {
+  width: 5rem;
+}
+
+.styling-editor-angle {
+  width: 4.5rem;
+  text-align: right;
+}
+
+/* Line / Gap cells of the custom dash-array table. */
+.styling-editor-dash-cell {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.125rem 0.25rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.125rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+}
+
+.styling-editor-dash-cell:disabled {
+  background-color: var(--cartouche-control-disabled-bg);
+}
+
+/* Icon buttons of the component stack and dash-array toolbars. */
+.styling-editor-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
+  line-height: 0;
+  cursor: pointer;
+}
+
+.styling-editor-icon-btn:disabled {
+  background-color: var(--cartouche-control-disabled-bg);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* StyleEditor header: style format select and Load / Export / Reset buttons. */
+.styling-editor-format-select {
+  padding: 0.3125rem 0.625rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.875rem;
+}
+
+.styling-editor-secondary-btn {
+  padding: 0.3125rem 0.75rem;
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* StyleEditor layer opacity slider. */
+.layer-prop-layer-opacity {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* StyleEditor raw style source textarea. */
+.layer-prop-styling-raw-style {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-family: var(--cartouche-theme-font-family-mono, monospace);
+  font-size: 0.8125rem;
+  resize: vertical;
+}
+
+/* DashPatternSelect: trigger button, listbox popup and its options. */
+.dash-pattern-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.25rem 0.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-pattern-select-caret {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+  color: var(--cartouche-input-icon-fg);
+  user-select: none;
+}
+
+.dash-pattern-select-trigger:disabled {
+  background-color: var(--cartouche-control-disabled-bg);
+  cursor: not-allowed;
+}
+
+.dash-pattern-select-listbox {
+  position: absolute;
+  top: calc(100% + 0.125rem);
+  left: 0;
+  z-index: 50;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 16rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  box-shadow:
+    0 0.25rem 0.375rem -0.0625rem var(--cartouche-listbox-shadow),
+    0 0.125rem 0.25rem -0.0625rem var(--cartouche-listbox-shadow-subtle);
+  list-style: none;
+}
+
+.dash-pattern-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background-color: transparent;
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.dash-pattern-select-option[aria-selected="true"] {
+  background-color: var(--cartouche-listbox-option-selected-bg);
+  font-weight: 600;
+}
+
+.dash-pattern-select-option.is-highlighted {
+  background-color: var(--cartouche-listbox-option-hover-bg);
+}
+
 /* =============================================================================
    Focus Indicator & Invalid Focus Indicator (Spec #316 / Ticket #317)
    Applied once, globally, and bound only to the Theme's --cartouche-focus-*,

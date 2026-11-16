@@ -284,6 +284,14 @@
   /* Drop Targets & Highlights */
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-drop-target-border: var(--cartouche-theme-primary);
+
+  /* Styling editor controls (#318) */
+  --cartouche-control-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-input-icon-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-listbox-option-hover-bg: var(--cartouche-theme-surface-active);
+  --cartouche-listbox-option-selected-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
+  --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 }
 
 /* Global Reset & Theme Root Application */
