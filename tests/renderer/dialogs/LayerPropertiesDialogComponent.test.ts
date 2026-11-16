@@ -829,7 +829,8 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert(html.includes('id="layer-prop-name"'), 'Should render Display Name input');
     assert(!html.includes('font-family:monospace" value="layer-lakes-1"'), 'Layer ID input must not have monospace font override');
     assert(
-      html.includes('id="layer-prop-id" type="text" style="padding:6px 10px;border-radius:4px;border:1px solid #cbd5e1;font-size:0.875rem" value="layer-lakes-1"'),
+      html.includes('id="layer-prop-id" class="layer-prop-input" type="text" aria-invalid="false" value="layer-lakes-1"') &&
+        html.includes('id="layer-prop-name" class="layer-prop-input" type="text"'),
       'Layer ID input should match Display Name font style without monospace'
     );
   });
@@ -2284,9 +2285,11 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         fieldsHtml.includes('User</span>'),
         'Must render User text badge for user-overridden field'
       );
-      assert.ok(
-        fieldsHtml.includes('background-color:#f0fdf4') || fieldsHtml.includes('backgroundColor:#f0fdf4'),
-        'Overridden select element must have light green background style'
+      const typeSelects = [...fieldsHtml.matchAll(/<select[^>]*class="([^"]*layer-field-type-select[^"]*)"[^>]*>/g)].map((m) => m[1]);
+      assert.deepEqual(
+        typeSelects,
+        ['layer-field-type-select', 'layer-field-type-select is-overridden'],
+        'Only the overridden field\'s type select carries the is-overridden (green override) class'
       );
     });
 

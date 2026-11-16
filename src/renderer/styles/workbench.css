@@ -2543,6 +2543,357 @@
   cursor: not-allowed;
 }
 
+/* === Styling editor controls (Spec #316 / #318) === */
+/* SimpleModeEditor, StyleEditor and DashPatternSelect controls, formerly
+   styled inline. Bound to Tier 2 Component Tokens only; disabled state follows
+   the native :disabled attribute. */
+
+/* Labelled selects and number inputs in the Simple Mode option rows. */
+.styling-editor-field {
+  padding: 0.25rem 0.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+}
+
+select.styling-editor-field {
+  cursor: pointer;
+}
+
+.styling-editor-field:disabled {
+  background-color: var(--cartouche-input-disabled-bg);
+  cursor: not-allowed;
+}
+
+.styling-editor-number {
+  width: 5rem;
+}
+
+.styling-editor-angle {
+  width: 4.5rem;
+  text-align: right;
+}
+
+/* Line / Gap cells of the custom dash-array table. */
+.styling-editor-dash-cell {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.125rem 0.25rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.125rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+}
+
+.styling-editor-dash-cell:disabled {
+  background-color: var(--cartouche-input-disabled-bg);
+}
+
+/* Icon buttons of the component stack and dash-array toolbars. */
+.styling-editor-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
+  line-height: 0;
+  cursor: pointer;
+}
+
+.styling-editor-icon-btn:disabled {
+  background-color: var(--cartouche-input-disabled-bg);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* StyleEditor header: style format select and Load / Export / Reset buttons. */
+.styling-editor-format-select {
+  padding: 0.3125rem 0.625rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.875rem;
+}
+
+.styling-editor-secondary-btn {
+  padding: 0.3125rem 0.75rem;
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* StyleEditor layer opacity slider. */
+.layer-prop-layer-opacity {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* StyleEditor raw style source textarea. */
+.layer-prop-styling-raw-style {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-family: var(--cartouche-theme-font-family-mono, monospace);
+  font-size: 0.8125rem;
+  resize: vertical;
+}
+
+/* DashPatternSelect: trigger button, listbox popup and its options. */
+.dash-pattern-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.25rem 0.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-pattern-select-caret {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+  color: var(--cartouche-input-icon-fg);
+  user-select: none;
+}
+
+.dash-pattern-select-trigger:disabled {
+  background-color: var(--cartouche-input-disabled-bg);
+  cursor: not-allowed;
+}
+
+.dash-pattern-select-listbox {
+  position: absolute;
+  top: calc(100% + 0.125rem);
+  left: 0;
+  z-index: 50;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 16rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  box-shadow:
+    0 0.25rem 0.375rem -0.0625rem var(--cartouche-listbox-shadow),
+    0 0.125rem 0.25rem -0.0625rem var(--cartouche-listbox-shadow-subtle);
+  list-style: none;
+}
+
+.dash-pattern-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background-color: transparent;
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.dash-pattern-select-option[aria-selected="true"] {
+  background-color: var(--cartouche-listbox-option-selected-bg);
+  font-weight: 600;
+}
+
+.dash-pattern-select-option.is-highlighted {
+  background-color: var(--cartouche-listbox-option-hover-bg);
+}
+
+/* === Layer Properties Dialog controls (Spec #316 / #318) === */
+
+/* Footer buttons (Cancel, Apply, OK): size and disabled state. */
+.layer-properties-btn {
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.layer-properties-btn.ok {
+  padding: 0.375rem 1rem;
+  font-weight: 600;
+}
+
+.layer-properties-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* New Field dialog footer buttons: compact size. */
+.new-field-dialog-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.new-field-dialog-btn.layer-prop-btn-primary {
+  font-weight: 500;
+}
+
+/* Secondary and primary button colours. */
+.layer-prop-btn-secondary,
+.layer-properties-btn.cancel,
+.layer-properties-btn.apply {
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
+}
+
+.layer-prop-btn-primary,
+.layer-properties-btn.ok {
+  border: 0.0625rem solid var(--cartouche-theme-button-bg);
+  background-color: var(--cartouche-theme-button-bg);
+  color: var(--cartouche-theme-button-fg);
+}
+
+/* Source and Time tab inputs and selects. */
+.layer-prop-input {
+  padding: 0.375rem 0.625rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.875rem;
+}
+
+/* Feature filter expression. */
+.layer-prop-textarea {
+  padding: 0.5rem 0.625rem;
+  font-family: var(--cartouche-code-input-font-family);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+/* Time tab start / end field selects. */
+.layer-prop-time-field-select {
+  flex: 1;
+  cursor: default;
+}
+
+.layer-prop-time-field-select:disabled {
+  background-color: var(--cartouche-input-disabled-bg);
+  cursor: not-allowed;
+}
+
+/* Time tab comparison operator toggles (colours from .layer-prop-btn-secondary). */
+.layer-prop-op-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3125rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.layer-prop-op-toggle:disabled {
+  cursor: not-allowed;
+}
+
+/* Fields tab toolbar buttons and the per-field Reset Type button. Declared
+   after .toolbar-btn, so the Toggle Edit button keeps this padding and these
+   colours when it also carries .toolbar-btn. */
+.layer-prop-toolbar-btn,
+.layer-field-reset-type-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.layer-field-reset-type-btn {
+  display: inline-flex;
+  padding: 0.125rem 0.25rem;
+}
+
+.layer-prop-toolbar-btn:disabled,
+.layer-field-reset-type-btn:disabled {
+  border-color: var(--cartouche-control-disabled-border);
+  background-color: var(--cartouche-control-disabled-bg);
+  color: var(--cartouche-control-disabled-fg);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.layer-prop-toolbar-btn.toggle-edit.active {
+  border-color: var(--cartouche-button-toggle-active-border);
+  background-color: var(--cartouche-button-toggle-active-bg);
+  color: var(--cartouche-button-toggle-active-fg);
+}
+
+.layer-prop-toolbar-btn.show-native-type {
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.layer-prop-toolbar-btn.show-native-type.active {
+  background-color: var(--cartouche-toolbar-item-active-bg);
+}
+
+/* Fields tab per-field type select: inferred, disabled (Layer Edit Mode off)
+   and user-overridden; the override wins over the disabled colours. */
+.layer-field-type-select {
+  padding: 0.125rem 0.375rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-field-type-fg);
+  font-family: var(--cartouche-code-input-font-family);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.layer-field-type-select:disabled {
+  border-color: var(--cartouche-control-disabled-border);
+  background-color: var(--cartouche-control-disabled-bg);
+  color: var(--cartouche-control-disabled-fg);
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.layer-field-type-select.is-overridden {
+  border-color: var(--cartouche-field-type-overridden-border);
+  background-color: var(--cartouche-field-type-overridden-bg);
+  color: var(--cartouche-field-type-overridden-fg);
+  font-weight: 600;
+}
+
 /* === Remaining renderer controls (Spec #316 / #318) === */
 /* Every other focusable control formerly coloured inline. Bound to Tier 2
    Component Tokens only. Rules that set a text-entry border stay at
@@ -2810,7 +3161,7 @@ select.picker-field:disabled {
 
 .colour-picker-hex-input {
   width: 100%;
-  font-family: var(--cartouche-input-mono-font-family);
+  font-family: var(--cartouche-code-input-font-family);
 }
 
 .colour-picker-channel-input {

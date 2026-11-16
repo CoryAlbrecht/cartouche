@@ -4,7 +4,7 @@
  * @description Custom accessible dropdown selector for Simple Line dash patterns rendering localized text labels on the left and 128px horizontal stroke samples on the right.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link DashPatternSelect}
  * @see {@link DashPatternSample}
@@ -158,7 +158,7 @@ export interface DashPatternSelectProps {
  * @description Provides a custom select dropdown where the closed trigger button and every item in the dropdown display localized text labels on the left and 128px stroke samples on the right.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {DashPatternSelectProps} props - Component properties.
  * @returns {JSX.Element}
@@ -304,22 +304,7 @@ export const DashPatternSelect: React.FC<DashPatternSelectProps> = ({
           }
         }}
         onKeyDown={handleKeyDown}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "0.5rem",
-          padding: "0.25rem 0.5rem",
-          border: "1px solid #cbd5e1",
-          borderRadius: "0.25rem",
-          backgroundColor: disabled ? "#f1f5f9" : "#ffffff",
-          cursor: disabled ? "not-allowed" : "pointer",
-          fontSize: "0.8125rem",
-          color: "#1e293b",
-          textAlign: "left",
-          boxSizing: "border-box",
-        }}>
+        className='dash-pattern-select-trigger'>
         <span
           style={{
             flex: 1,
@@ -330,14 +315,8 @@ export const DashPatternSelect: React.FC<DashPatternSelectProps> = ({
           {getPatternLabel(value)}
         </span>
         <DashPatternSample pattern={value} dashArray={dashArray} />
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            marginLeft: "0.25rem",
-            userSelect: "none",
-          }}>
-          <Icon path={mdiMenuDown} size='1rem' color='#64748b' />
+        <span className='dash-pattern-select-caret'>
+          <Icon path={mdiMenuDown} size='1rem' />
         </span>
       </button>
 
@@ -345,24 +324,7 @@ export const DashPatternSelect: React.FC<DashPatternSelectProps> = ({
         <ul
           role='listbox'
           id={`${id}-listbox`}
-          style={{
-            position: "absolute",
-            top: "calc(100% + 2px)",
-            left: 0,
-            width: "100%",
-            maxHeight: "16rem",
-            overflowY: "auto",
-            backgroundColor: "#ffffff",
-            border: "1px solid #cbd5e1",
-            borderRadius: "0.25rem",
-            boxShadow:
-              "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            zIndex: 50,
-            margin: 0,
-            padding: "0.25rem 0",
-            listStyle: "none",
-            boxSizing: "border-box",
-          }}>
+          className='dash-pattern-select-listbox'>
           {PATTERN_OPTIONS.map((opt, idx) => {
             const isSelected = opt.value === value;
             const isHighlighted = idx === highlightedIndex;
@@ -374,22 +336,11 @@ export const DashPatternSelect: React.FC<DashPatternSelectProps> = ({
                 aria-selected={isSelected}
                 onClick={() => handleSelect(opt.value)}
                 onMouseEnter={() => setHighlightedIndex(idx)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.5rem",
-                  padding: "0.375rem 0.5rem",
-                  backgroundColor: isHighlighted
-                    ? "#e2e8f0"
-                    : isSelected
-                    ? "#f1f5f9"
-                    : "transparent",
-                  cursor: "pointer",
-                  fontSize: "0.8125rem",
-                  fontWeight: isSelected ? 600 : 400,
-                  color: "#1e293b",
-                }}>
+                className={
+                  isHighlighted ?
+                    "dash-pattern-select-option is-highlighted"
+                  : "dash-pattern-select-option"
+                }>
                 <span
                   style={{
                     flex: 1,

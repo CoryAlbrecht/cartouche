@@ -18,16 +18,6 @@ const RENDERER_DIR = path.resolve(ROOT, 'src/renderer');
 const THEME_CSS = fs.readFileSync(path.resolve(RENDERER_DIR, 'styles/themes/theme-default.css'), 'utf8');
 const WORKBENCH_CSS = fs.readFileSync(path.resolve(RENDERER_DIR, 'styles/workbench.css'), 'utf8');
 
-/**
- * Renderer sources migrated by sibling slices of Ticket #318 and guarded by their own tests. Drop an entry once its slice lands so this sweep covers it too.
- */
-const COVERED_ELSEWHERE = new Set([
-  'workbench/dialogs/LayerPropertiesDialog.tsx',
-  'workbench/dialogs/SimpleModeEditor.tsx',
-  'workbench/dialogs/StyleEditor.tsx',
-  'workbench/dialogs/DashPatternSelect.tsx',
-]);
-
 /** A colour literal: hex, rgb()/rgba() or hsl()/hsla(). */
 const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i;
 
@@ -145,7 +135,6 @@ describe('Remaining renderer focusable controls (Ticket #318, expanded scope)', 
     const offenders: string[] = [];
     for (const file of listTsx(RENDERER_DIR)) {
       const rel = path.relative(RENDERER_DIR, file);
-      if (COVERED_ELSEWHERE.has(rel)) continue;
       const source = fs.readFileSync(file, 'utf8');
       for (const tag of openingTags(source).filter(isFocusableTag)) {
         const style = inlineStyle(tag, source);
