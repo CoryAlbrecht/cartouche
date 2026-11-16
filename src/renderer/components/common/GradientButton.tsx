@@ -9,12 +9,13 @@
  * @see {@link GradientPickerDialog}
  * @see {@link ColourButton}
  * @see {@link usePickerButton}
- * @see {@link parseInitialStops}
+ * @see {@link parseGradientStops}
+ * @see {@link DEFAULT_GRADIENT_STOPS}
  * @see {@link gradientStopsToCss}
  */
 
 import React from 'react';
-import { parseCssColor, parseInitialStops, gradientStopsToCss } from '@shared/colors';
+import { DEFAULT_GRADIENT_STOPS, parseCssColor, parseGradientStops, gradientStopsToCss } from '@shared/colors';
 import { GradientPickerDialog } from '@renderer/workbench/dialogs/GradientPickerDialog';
 import { useTranslation } from '@renderer/hooks/useTranslation';
 import { usePickerButton } from '@renderer/hooks/usePickerButton';
@@ -41,7 +42,7 @@ export const DEFAULT_GRADIENT_BUTTON_HEIGHT = '2rem';
 
 /**
  * @typedef {Object} GradientButtonProps
- * @property {string[]} value - Current `'<color> <percent>'` stop strings.
+ * @property {string[]} value - Current `'<color> <percent>'` stop strings; an empty array shows {@link DEFAULT_GRADIENT_STOPS}.
  * @property {(stops: string[]) => void} onChange - Called with the applied stops when the user clicks Apply in the dialog.
  * @property {string} [width] - Button width as a rem-based CSS length. Defaults to {@link DEFAULT_GRADIENT_BUTTON_WIDTH}.
  * @property {string} [height] - Button height as a rem-based CSS length. Defaults to {@link DEFAULT_GRADIENT_BUTTON_HEIGHT}.
@@ -81,7 +82,8 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
   const { t } = useTranslation();
   const { buttonRef, isOpen, open, close, handleKeyDown, apply, dialogContainer } = usePickerButton<string[]>(disabled, onChange);
   const title = dialogTitle ?? t('gradient_picker_dialog_title');
-  const stops = parseInitialStops(value);
+  const parsedStops = parseGradientStops(value);
+  const stops = parsedStops.length > 0 ? parsedStops : DEFAULT_GRADIENT_STOPS;
   const format = parseCssColor(stops[0]?.color ?? '')?.format;
 
   return (

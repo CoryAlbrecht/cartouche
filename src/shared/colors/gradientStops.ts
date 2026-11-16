@@ -1,7 +1,7 @@
 /**
  * @file gradientStops.ts
  * @module shared/colors/gradientStops
- * @description Gradient stop data helpers with no UI dependency: the GradientStop type, parsing '<color> <percent>' stop strings into GradientStop objects with stable ids, serializing them uniformly in one colour format, and building the colour-stop list of a CSS linear-gradient(). Used by GradientPickerWidget, GradientPickerDialog and GradientButton.
+ * @description Gradient stop data helpers with no UI dependency: the GradientStop type, the DEFAULT_GRADIENT_STOPS black-to-green default, parsing '<color> <percent>' stop strings into GradientStop objects with stable ids, serializing them uniformly in one colour format, and building the colour-stop list of a CSS linear-gradient(). Used by GradientPickerWidget, GradientPickerDialog and GradientButton.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-16
@@ -26,20 +26,32 @@ export interface GradientStop {
 }
 
 /**
- * @description Parses an array of raw '<color> <percent>' CSS gradient stop strings into structured GradientStop objects.
+ * @description The default gradient, black (`#000000ff`) at 0% to green (`#00ff00ff`) at 100%, with the stable ids `stop-0` and `stop-100`. Callers that are given no stops fall back to it explicitly; parseGradientStops never supplies it. Frozen, so a caller cannot change it for everyone else.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @type {ReadonlyArray<Readonly<GradientStop>>}
+ * @see {@link parseGradientStops}
+ */
+export const DEFAULT_GRADIENT_STOPS: ReadonlyArray<Readonly<GradientStop>> = Object.freeze([
+  Object.freeze({ id: 'stop-0', color: '#000000ff', offset: 0 }),
+  Object.freeze({ id: 'stop-100', color: '#00ff00ff', offset: 100 }),
+]);
+
+/**
+ * @description Parses an array of raw '<color> <percent>' CSS gradient stop strings into structured GradientStop objects. Ids are `stop-<offset>`, with a `-<n>` suffix for repeated offsets; offsets are rounded to one decimal and clamped to [0, 100]; a stop without an offset is placed by its index, evenly spaced. Missing or empty input yields no stops: the caller decides on a fallback such as DEFAULT_GRADIENT_STOPS.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
  * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {string[]} [rawStops] - Optional raw stop strings array.
- * @returns {GradientStop[]} Parsed gradient stop definitions sorted by offset ascending.
+ * @returns {GradientStop[]} Parsed gradient stop definitions sorted by offset ascending, or an empty array for missing or empty input.
+ * @see {@link DEFAULT_GRADIENT_STOPS}
  */
-export function parseInitialStops(rawStops?: string[]): GradientStop[] {
+export function parseGradientStops(rawStops?: string[]): GradientStop[] {
   if (!rawStops || rawStops.length === 0) {
-    return [
-      { id: 'stop-0', color: '#000000ff', offset: 0 },
-      { id: 'stop-100', color: '#00ff00ff', offset: 100 },
-    ];
+    return [];
   }
 
   const offsetCounts = new Map<number, number>();
@@ -72,12 +84,12 @@ export function parseInitialStops(rawStops?: string[]): GradientStop[] {
  * @date 2026-11-08
  * @updated 2026-11-16
  * @since 0.1.0-dev
- * @param {GradientStop[]} stops - Array of gradient stop definitions.
+ * @param {readonly GradientStop[]} stops - Array of gradient stop definitions.
  * @param {ColorFormat} format - Target color format.
  * @returns {string[]} Formatted CSS gradient stop strings.
  */
 export function serializeGradientStops(
-  stops: GradientStop[],
+  stops: readonly GradientStop[],
   format: ColorFormat
 ): string[] {
   return stops
@@ -98,10 +110,10 @@ export function serializeGradientStops(
  * @date 2026-11-16
  * @updated 2026-11-16
  * @since 0.1.0-dev
- * @param {GradientStop[]} stops - Gradient stop definitions.
+ * @param {readonly GradientStop[]} stops - Gradient stop definitions.
  * @returns {string} CSS colour-stop list.
  */
-export function gradientStopsToCss(stops: GradientStop[]): string {
+export function gradientStopsToCss(stops: readonly GradientStop[]): string {
   return stops
     .slice()
     .sort((a, b) => a.offset - b.offset)

@@ -1,7 +1,7 @@
 /**
  * @file GradientButton.test.ts
  * @module tests/renderer/components/common/GradientButton.test
- * @description Component tests for GradientButton: the 8rem × 2rem default and independent width/height, a left-to-right strip over the shared picker-button frame and checkerboard, opening GradientPickerDialog by click/Enter/Space with the dialog title and the first stop's format, commit on Apply only, disabled behaviour, and the accessible label.
+ * @description Component tests for GradientButton: the 8rem × 2rem default and independent width/height, a left-to-right strip over the shared picker-button frame and checkerboard, opening GradientPickerDialog by click/Enter/Space with the dialog title and the first stop's format, commit on Apply only, the default gradient for an empty value, disabled behaviour, and the accessible label.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -74,6 +74,11 @@ describe('GradientButton sizing and strip (Ticket #307)', () => {
   it('draws the stops left to right, in offset order', () => {
     const html = markup({ value: ['#0000ffff 100%', '#ff0000ff 0%'] });
     assert.ok(html.includes('background-image:linear-gradient(to right, #ff0000ff 0%, #0000ffff 100%)'), html);
+  });
+
+  it('draws the black-to-green default gradient for an empty value (#314)', () => {
+    const html = markup({ value: [] });
+    assert.ok(html.includes('background-image:linear-gradient(to right, #000000ff 0%, #00ff00ff 100%)'), html);
   });
 
   it('keeps translucent stops translucent', () => {

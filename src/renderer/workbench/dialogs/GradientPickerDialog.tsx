@@ -9,18 +9,19 @@
  * @see {@link GradientPickerWidget}
  * @see {@link PickerDialogFrame}
  * @see {@link ColourPickerDialog}
+ * @see {@link DEFAULT_GRADIENT_STOPS}
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { PickerDialogFrame } from './PickerDialogFrame';
 import { GradientPickerWidget } from '@renderer/workbench/widgets/GradientPickerWidget';
-import { type ColorFormat, parseInitialStops, serializeGradientStops } from '@shared/colors';
+import { type ColorFormat, DEFAULT_GRADIENT_STOPS, serializeGradientStops } from '@shared/colors';
 import { useTranslation } from '@renderer/hooks/useTranslation';
 
 /**
  * @typedef {Object} GradientPickerDialogProps
  * @property {boolean} isOpen - Whether the dialog is visible.
- * @property {string[]} [initialStops] - Starting `'<color> <percent>'` stop strings. Defaults to the GradientPickerWidget default stops.
+ * @property {string[]} [initialStops] - Starting `'<color> <percent>'` stop strings. Defaults to {@link DEFAULT_GRADIENT_STOPS}.
  * @property {ColorFormat} [format] - Colour format the hosted picker starts in and serializes stops with.
  * @property {string} [title] - Header title. Defaults to the localized "Pick Gradient" string (`gradient_picker_dialog_title`).
  * @property {HTMLElement | null} [container] - DOM container the dialog is portaled into (defaults to document.body).
@@ -66,7 +67,7 @@ export const GradientPickerDialog: React.FC<GradientPickerDialogProps> = ({
     () =>
       initialStops && initialStops.length > 0 ?
         initialStops
-      : serializeGradientStops(parseInitialStops(undefined), format ?? 'HEX'),
+      : serializeGradientStops(DEFAULT_GRADIENT_STOPS, format ?? 'HEX'),
     [startKey, format]
   );
   const [draftStops, setDraftStops] = useState<string[]>(startStops);

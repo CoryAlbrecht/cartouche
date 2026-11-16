@@ -10,7 +10,8 @@
  * @see {@link ColourPickerWidget}
  * @see {@link interpolateColor}
  * @see {@link formatCssColor}
- * @see {@link parseInitialStops}
+ * @see {@link parseGradientStops}
+ * @see {@link DEFAULT_GRADIENT_STOPS}
  * @see {@link serializeGradientStops}
  * @see {@link gradientStopsToCss}
  * @see {@link prefsUiIconSize}
@@ -34,7 +35,8 @@ import {
   parseCssColor,
   formatCssColor,
   interpolateColor,
-  parseInitialStops,
+  DEFAULT_GRADIENT_STOPS,
+  parseGradientStops,
   serializeGradientStops,
   gradientStopsToCss,
 } from "@shared/colors";
@@ -42,7 +44,7 @@ import {
 /**
  * @typedef {Object} GradientPickerWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
- * @property {string[]} [initialStops] - Array of '<color> <percent>' stop definitions (defaults to ['#000000ff 0%', '#00ff00ff 100%']).
+ * @property {string[]} [initialStops] - Array of '<color> <percent>' stop definitions (defaults to {@link DEFAULT_GRADIENT_STOPS}, black to green).
  * @property {ColorFormat} [format='HEX'] - Preferred initial color format for serialization and embedded color picker.
  * @property {(stops: string[]) => void} [onChange] - Callback fired whenever gradient stops change, with formatted strings.
  * @property {boolean} [disabled=false] - Whether the gradient picker and stop controls are disabled against user interactions.
@@ -55,6 +57,21 @@ export interface GradientPickerWidgetProps extends Omit<
   format?: ColorFormat;
   onChange?: (stops: string[]) => void;
   disabled?: boolean;
+}
+
+/**
+ * @description Parses the widget's '<color> <percent>' stop strings, falling back to a new array of the frozen {@link DEFAULT_GRADIENT_STOPS} when none are given. The widget only ever replaces stops, never edits one in place, so the frozen stop objects can be shared.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {string[]} [rawStops] - Optional raw stop strings array.
+ * @returns {GradientStop[]} The parsed stops, or the default gradient's stops.
+ * @see {@link parseGradientStops}
+ */
+function parseStopsOrDefault(rawStops?: string[]): GradientStop[] {
+  const parsed = parseGradientStops(rawStops);
+  return parsed.length > 0 ? parsed : [...DEFAULT_GRADIENT_STOPS];
 }
 
 /**
@@ -105,10 +122,10 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
 
   // Internal stops array and currently active stop identifier
   const [stops, setStops] = useState<GradientStop[]>(() =>
-    parseInitialStops(initialStops)
+    parseStopsOrDefault(initialStops)
   );
   const [activeStopId, setActiveStopId] = useState<string>(() => {
-    const initial = parseInitialStops(initialStops);
+    const initial = parseStopsOrDefault(initialStops);
     return initial[0]?.id || "stop-0";
   });
 
@@ -150,7 +167,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       }
 
       const prevActive = stopsRef.current.find((s) => s.id === activeStopId);
-      const nextStops = parseInitialStops(initialStops);
+      const nextStops = parseStopsOrDefault(initialStops);
       stopsRef.current = nextStops;
       setStops(nextStops);
 
@@ -174,7 +191,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
 
   // Active stop reference
   const activeStop = stops.find((s) => s.id === activeStopId)
-    || stops[0] || { id: "stop-0", color: "#000000ff", offset: 0 };
+    || stops[0] || DEFAULT_GRADIENT_STOPS[0];
 
   const isBoundaryStop = activeStop.offset <= 0 || activeStop.offset >= 100;
   const isDeleteDisabled = isBoundaryStop || stops.length <= 2;
