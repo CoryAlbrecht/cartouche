@@ -205,7 +205,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       'Must render text input control'
     );
     assert.ok(
-      html.includes('class="colour-button"'),
+      html.includes('class="picker-button colour-button"'),
       'Must render color button control'
     );
     assert.ok(
@@ -396,7 +396,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
 
     assert.ok(html.includes('class="preference-input-text'), 'renders text');
     assert.ok(html.includes('class="preference-textarea"'), 'renders multiline-text');
-    assert.ok(html.includes('class="colour-button"'), 'renders colour');
+    assert.ok(html.includes('class="picker-button colour-button"'), 'renders colour');
     assert.ok(html.includes('class="preference-checkbox"'), 'renders checkbox');
     assert.ok(html.includes('class="preference-btn-toggle'), 'renders button');
     assert.ok(html.includes('class="preference-switch-toggle'), 'renders toggle');
@@ -428,15 +428,15 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
       'Must render button element with tabIndex={0} and aria-haspopup="dialog"'
     );
     assert.ok(
-      html.includes('class="colour-button"'),
-      'Button must have colour-button class'
+      html.includes('class="picker-button colour-button"'),
+      'Button must have the picker-button and colour-button classes'
     );
     assert.ok(
-      html.includes('class="colour-button" style="width:4rem;height:2rem"'),
+      html.includes('class="picker-button colour-button" style="width:4rem;height:2rem"'),
       'Colour button is 4rem wide and 2rem high'
     );
     assert.ok(
-      html.includes('class="colour-button-swatch-fill" style="background-color:#eab308"'),
+      html.includes('class="picker-button-swatch-fill" style="background-color:#eab308"'),
       'Must contain inner swatch with matching background color'
     );
     assert.ok(

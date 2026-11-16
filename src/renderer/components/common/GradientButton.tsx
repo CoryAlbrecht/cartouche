@@ -1,7 +1,7 @@
 /**
  * @file GradientButton.tsx
  * @module renderer/components/common/GradientButton
- * @description Sizable gradient form control: a button showing its current Gradient Stops as a left-to-right strip (over a checkerboard, so translucency shows) that always opens a GradientPickerDialog and changes the value only when the user applies it. A plain control, not a Widget. It shares the ColourButton styling.
+ * @description Sizable gradient form control: a button showing its current Gradient Stops as a left-to-right strip (over a checkerboard, so translucency shows) that always opens a GradientPickerDialog and changes the value only when the user applies it. A plain control, not a Widget. It shares the neutral `picker-button` frame and checkerboard styling with ColourButton.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -93,14 +93,14 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
         aria-haspopup="dialog"
         aria-label={ariaLabel ?? title}
         title={title}
-        className="colour-button gradient-button"
+        className="picker-button gradient-button"
         disabled={disabled}
         onClick={open}
         onKeyDown={handleKeyDown}
         style={{ width, height }}>
-        <span className="colour-button-swatch">
+        <span className="picker-button-swatch">
           <span
-            className="colour-button-swatch-fill gradient-button-strip"
+            className="picker-button-swatch-fill gradient-button-strip"
             style={{ backgroundImage: `linear-gradient(to right, ${gradientStopsToCss(stops)})` }}
           />
         </span>

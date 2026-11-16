@@ -1858,7 +1858,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
       assert.ok(html.includes('id="layer-prop-fill-colour-row"'), 'Must render the Fill Colour row for simple-fill');
-      assert.ok(html.includes('class="colour-button"'), 'Fill Colour is a ColourButton');
+      assert.ok(html.includes('class="picker-button colour-button"'), 'Fill Colour is a ColourButton');
       assert.ok(!html.includes('colour-picker-widget'), 'No embedded ColourPickerWidget');
       assert.ok(html.includes('style="background-color:#123456"'), 'Swatch reflects the fill colour');
 
@@ -1884,7 +1884,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
       assert.ok(html.includes('id="layer-prop-stroke-colour-row"'), 'Must render the Stroke Colour row for simple-line');
-      assert.ok(html.includes('class="colour-button"'), 'Stroke Colour is a ColourButton');
+      assert.ok(html.includes('class="picker-button colour-button"'), 'Stroke Colour is a ColourButton');
       assert.ok(!html.includes('colour-picker-widget'), 'No embedded ColourPickerWidget');
       assert.ok(html.includes('id="layer-prop-stroke-width"'), 'Must render stroke width input for simple-line');
       assert.ok(html.includes('id="layer-prop-line-offset"'), 'Must render line offset input for simple-line');
@@ -1923,7 +1923,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('id="layer-prop-point-shape"'), 'Must render marker shape for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-radius"'), 'Must render marker radius for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-fill-color"'), 'Must render marker fill color for simple-marker');
-      assert.equal(html.split('class="colour-button" style="width:4rem;height:2rem"').length - 1, 2, 'Both marker colour buttons are 4rem × 2rem');
+      assert.equal(html.split('class="picker-button colour-button" style="width:4rem;height:2rem"').length - 1, 2, 'Both marker colour buttons are 4rem × 2rem');
       assert.ok(html.includes('id="layer-prop-marker-stroke-color"'), 'Must render marker stroke color for simple-marker');
       assert.ok(html.includes('id="layer-prop-marker-stroke-width"'), 'Must render marker stroke width for simple-marker');
       assert.ok(html.includes('value="8"'), 'Must reflect marker radius');
@@ -1956,7 +1956,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('step="1"'), 'Spinner must step by 1');
       assert.ok(!html.includes('gradient-picker-widget'), 'No embedded GradientPickerWidget');
       assert.ok(html.includes('id="layer-prop-gradient-stops-row"'), 'Must render the Gradient Stops row');
-      assert.ok(html.includes('class="colour-button gradient-button" style="width:8rem;height:2rem"'), 'GradientButton at the default 8rem × 2rem');
+      assert.ok(html.includes('class="picker-button gradient-button" style="width:8rem;height:2rem"'), 'GradientButton at the default 8rem × 2rem');
       assert.ok(html.includes('linear-gradient(to right, #ff0000ff 0%, #0000ffff 100%)'), 'Button shows the stops');
     });
 
@@ -1984,7 +1984,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       assert.ok(html.includes('component-locked-banner'), 'Must render locked banner for gradient fill');
       assert.ok(/id="layer-prop-gradient-angle"[^>]*disabled=""/.test(html), 'Angle spinner must be disabled when locked');
-      assert.ok(/class="colour-button gradient-button"[^>]*disabled=""|disabled=""[^>]*class="colour-button gradient-button"/.test(html), 'GradientButton must be disabled when locked');
+      assert.ok(/class="picker-button gradient-button"[^>]*disabled=""|disabled=""[^>]*class="picker-button gradient-button"/.test(html), 'GradientButton must be disabled when locked');
     });
 
     it('locking a component disables option controls, greys out remove button, and renders lock banner', () => {
@@ -2006,7 +2006,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       // Active component is fill-2 (top component) which is locked
       assert.ok(html.includes('component-locked-banner'), 'Must render component locked banner');
       assert.ok(html.includes('id="layer-prop-fill-colour-row"'), 'Must render the Fill Colour row');
-      assert.ok(/class="colour-button"[^>]*disabled=""/.test(html), 'Fill ColourButton must be disabled for a locked component');
+      assert.ok(/class="picker-button colour-button"[^>]*disabled=""/.test(html), 'Fill ColourButton must be disabled for a locked component');
       assert.ok(html.includes('id="layer-prop-component-remove"'), 'Must render remove button');
       assert.ok(
         /id="layer-prop-component-remove"[^>]*disabled=""/.test(html),
@@ -2029,7 +2029,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       );
       const fillRow = html.slice(html.indexOf('id="layer-prop-fill-colour-row"'));
       assert.ok(fillRow.length < html.length, 'Fill Colour row rendered');
-      assert.ok(/^[^]*?width:9rem[^]*?class="colour-button"/.test(fillRow), 'Label uses the 9rem column, then the button');
+      assert.ok(/^[^]*?width:9rem[^]*?class="picker-button colour-button"/.test(fillRow), 'Label uses the 9rem column, then the button');
       assert.ok(fillRow.includes('style="width:4rem;height:2rem"'), 'Fill button is 4rem × 2rem');
       assert.ok(!html.includes('width:280px'), 'No 280px picker column');
 

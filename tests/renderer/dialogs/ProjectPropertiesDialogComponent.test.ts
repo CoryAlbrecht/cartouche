@@ -313,11 +313,11 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     const bgHtml = html.slice(bgStart);
 
     assert.ok(selHtml.includes('Selection Colour'), 'Selection label');
-    assert.ok(/class="colour-button"[^>]*style="width:4rem;height:2rem"/.test(selHtml), 'Selection button is 4rem × 2rem');
+    assert.ok(/class="picker-button colour-button"[^>]*style="width:4rem;height:2rem"/.test(selHtml), 'Selection button is 4rem × 2rem');
     assert.ok(selHtml.includes('style="background-color:#0080ff66"'), 'Selection swatch keeps its transparency');
 
     assert.ok(bgHtml.includes('Map Background Colour'), 'Background label');
-    assert.ok(/class="colour-button"[^>]*style="width:4rem;height:2rem"/.test(bgHtml), 'Background button is 4rem × 2rem');
+    assert.ok(/class="picker-button colour-button"[^>]*style="width:4rem;height:2rem"/.test(bgHtml), 'Background button is 4rem × 2rem');
     assert.ok(bgHtml.includes('style="background-color:#336699"'), 'Background swatch seeded from the draft');
   });
 

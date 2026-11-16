@@ -37,7 +37,7 @@ describe('ColorInput Component (Ticket #133)', () => {
     assert.ok(html.includes('value="#3388ff"'), 'Must populate text input with color value');
     assert.ok(html.includes('aria-label="Fill Color"'), 'Must set accessible aria-label');
     assert.ok(html.includes('list="css-colors-datalist"'), 'Must attach css-colors-datalist to text input');
-    assert.ok(html.includes('class="colour-button"'), 'Must render ColourButton');
+    assert.ok(html.includes('class="picker-button colour-button"'), 'Must render ColourButton');
     assert.ok(html.includes('style="background-color:#3388ff"'), 'Swatch must render with matching hex color');
     assert.ok(!html.includes('preference-color-chevron'), 'Must NOT render dropdown chevron icon');
   });
@@ -66,7 +66,7 @@ describe('ColorInput Component (Ticket #133)', () => {
     );
 
     assert.ok(!html.includes('type="text"'), 'Must not render text input');
-    assert.ok(html.includes('class="colour-button"'), 'Must render ColourButton');
+    assert.ok(html.includes('class="picker-button colour-button"'), 'Must render ColourButton');
     assert.ok(html.includes('style="background-color:#ff0000"'), 'Swatch must display hex color');
   });
 
@@ -99,7 +99,7 @@ describe('ColorInput Component (Ticket #133)', () => {
     );
 
     assert.ok(/id="disabled-color"[^>]*disabled=""/.test(html), 'Text input must have disabled attribute');
-    assert.ok(/class="colour-button"[^>]*disabled=""/.test(html), 'ColourButton must have disabled attribute');
+    assert.ok(/class="picker-button colour-button"[^>]*disabled=""/.test(html), 'ColourButton must have disabled attribute');
     assert.ok(!html.includes('type="color"'), 'Native type="color" input must be replaced by ColourPickerDialog');
   });
 
@@ -120,7 +120,7 @@ describe('ColorInput Component (Ticket #133)', () => {
     const html = renderToStaticMarkup(
       React.createElement(ColorInput, { value: '#3388ff', buttonWidth: '4rem', buttonHeight: '2rem', onChange: () => {} })
     );
-    assert.ok(html.includes('class="colour-button" style="width:4rem;height:2rem"'));
+    assert.ok(html.includes('class="picker-button colour-button" style="width:4rem;height:2rem"'));
   });
 
   it('renders CssColorsDatalist containing all 148 standard W3C CSS named colors', () => {

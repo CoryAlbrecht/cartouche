@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-15
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  */
 
@@ -1829,8 +1829,8 @@
   border-radius: 2px;
 }
 
-/* ColourButton: width/height size the button; the swatch fills it minus the 1px border and a 0.1rem inset. */
-.colour-button {
+/* Picker buttons (ColourButton, GradientButton): width/height size the button; the swatch fills it minus the 1px border and a 0.1rem inset. */
+.picker-button {
   box-sizing: border-box;
   display: inline-flex;
   flex: none;
@@ -1848,23 +1848,23 @@
     box-shadow 0.15s ease;
 }
 
-.colour-button:hover:not(:disabled) {
+.picker-button:hover:not(:disabled) {
   background-color: var(--cartouche-theme-surface-subtle);
   border-color: var(--cartouche-theme-fg-subtle);
 }
 
-.colour-button:focus-visible {
+.picker-button:focus-visible {
   border-color: var(--cartouche-theme-primary);
   box-shadow: 0 0 0 0.125rem var(--cartouche-theme-accent-focus);
 }
 
-.colour-button:disabled {
+.picker-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
   background-color: var(--cartouche-theme-surface-alt);
 }
 
-.colour-button-swatch {
+.picker-button-swatch {
   position: relative;
   display: block;
   width: 100%;
@@ -1879,7 +1879,7 @@
   background-position: 0 0, 0.25rem 0.25rem;
 }
 
-.colour-button-swatch-fill {
+.picker-button-swatch-fill {
   position: absolute;
   inset: 0;
   border-radius: inherit;

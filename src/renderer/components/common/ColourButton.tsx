@@ -1,7 +1,7 @@
 /**
  * @file ColourButton.tsx
  * @module renderer/components/common/ColourButton
- * @description Sizable colour form control: a button showing a swatch of its current colour (over a checkerboard, so translucency shows) that always opens a ColourPickerDialog and changes the value only when the user applies it. A plain control, not a Widget.
+ * @description Sizable colour form control: a button showing a swatch of its current colour (over a checkerboard, so translucency shows) that always opens a ColourPickerDialog and changes the value only when the user applies it. A plain control, not a Widget. Styled by the neutral `picker-button` frame it shares with GradientButton.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
  * @updated 2026-11-16
@@ -117,13 +117,13 @@ export const ColourButton: React.FC<ColourButtonProps> = ({
         aria-haspopup="dialog"
         aria-label={ariaLabel ?? title}
         title={title}
-        className="colour-button"
+        className="picker-button colour-button"
         disabled={disabled}
         onClick={open}
         onKeyDown={handleKeyDown}
         style={{ width, height }}>
-        <span className="colour-button-swatch">
-          <span className="colour-button-swatch-fill" style={{ backgroundColor: swatchBackground(parsed) }} />
+        <span className="picker-button-swatch">
+          <span className="picker-button-swatch-fill" style={{ backgroundColor: swatchBackground(parsed) }} />
         </span>
       </button>
 

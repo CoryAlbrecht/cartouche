@@ -1,7 +1,7 @@
 /**
  * @file ColourButton.test.ts
  * @module tests/renderer/components/common/ColourButton.test
- * @description Component tests for ColourButton: independent width/height sizing with a swatch inset by the border and a 0.1rem padding, checkerboard under translucent colours, opening ColourPickerDialog by click/Enter/Space with the dialog title and the value's own format, commit on Apply only, disabled behaviour, and allowAlpha passthrough.
+ * @description Component tests for ColourButton: the neutral picker-button frame classes shared with GradientButton, independent width/height sizing with a swatch inset by the border and a 0.1rem padding, checkerboard under translucent colours, opening ColourPickerDialog by click/Enter/Space with the dialog title and the value's own format, commit on Apply only, disabled behaviour, and allowAlpha passthrough.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
  * @updated 2026-11-16
@@ -95,20 +95,32 @@ describe('ColourButton sizing and swatch (Ticket #302)', () => {
   });
 
   it('insets the swatch by a 1px border and a 0.1rem padding, filling the rest', () => {
-    const button = cssRule('.colour-button');
+    const button = cssRule('.picker-button');
     assert.match(button, /box-sizing:\s*border-box/);
     assert.match(button, /border:\s*1px solid/);
     assert.match(button, /padding:\s*0\.1rem/);
-    const swatch = cssRule('.colour-button-swatch');
+    const swatch = cssRule('.picker-button-swatch');
     assert.match(swatch, /width:\s*100%/);
     assert.match(swatch, /height:\s*100%/);
   });
 
+  it('styles the shared frame under neutral picker-button names, not colour-button (Ticket #312)', () => {
+    const html = renderToStaticMarkup(React.createElement(ColourButton, { value: '#ff0000', onChange: () => {} }));
+    assert.ok(html.includes('class="picker-button colour-button"'), 'Neutral frame class plus the control class');
+    assert.ok(html.includes('class="picker-button-swatch-fill"'), 'Neutral fill class');
+    for (const selector of ['.colour-button', '.colour-button-swatch', '.colour-button-swatch-fill']) {
+      assert.equal(cssRule(selector), '', `No ${selector} rule remains`);
+    }
+    for (const selector of ['.picker-button:hover:not(:disabled)', '.picker-button:focus-visible', '.picker-button-swatch-fill']) {
+      assert.notEqual(cssRule(selector), '', `${selector} rule exists`);
+    }
+  });
+
   it('draws the colour over a checkerboard so translucent colours read as translucent', () => {
     const html = renderToStaticMarkup(React.createElement(ColourButton, { value: '#00ff0080', onChange: () => {} }));
-    assert.ok(html.includes('class="colour-button-swatch"'), 'Swatch element');
+    assert.ok(html.includes('class="picker-button-swatch"'), 'Swatch element');
     assert.ok(html.includes('style="background-color:#00ff0080"'), 'Fill keeps the alpha channel');
-    assert.match(cssRule('.colour-button-swatch'), /background-image:[^;]*gradient/, 'Checkerboard behind the fill');
+    assert.match(cssRule('.picker-button-swatch'), /background-image:[^;]*gradient/, 'Checkerboard behind the fill');
   });
 
   it('renders opaque colours as six-digit hex and resolves named colours', () => {
@@ -208,8 +220,8 @@ describe('ColourButton dialog flow (Ticket #302)', () => {
     await render(dom!, { value: '#ff0000', disabled: true });
     const btn = button();
     assert.equal(btn.disabled, true);
-    assert.match(cssRule('.colour-button:disabled'), /cursor:\s*not-allowed/);
-    assert.match(cssRule('.colour-button:disabled'), /opacity:/);
+    assert.match(cssRule('.picker-button:disabled'), /cursor:\s*not-allowed/);
+    assert.match(cssRule('.picker-button:disabled'), /opacity:/);
     await dispatch(btn, { type: 'click' });
     await dispatch(btn, { type: 'keydown', key: 'Enter' });
     assert.equal(dialogs().length, 0);

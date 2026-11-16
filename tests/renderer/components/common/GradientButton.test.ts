@@ -1,7 +1,7 @@
 /**
  * @file GradientButton.test.ts
  * @module tests/renderer/components/common/GradientButton.test
- * @description Component tests for GradientButton: the 8rem × 2rem default and independent width/height, a left-to-right strip over the shared ColourButton checkerboard, opening GradientPickerDialog by click/Enter/Space with the dialog title and the first stop's format, commit on Apply only, disabled behaviour, and the accessible label.
+ * @description Component tests for GradientButton: the 8rem × 2rem default and independent width/height, a left-to-right strip over the shared picker-button frame and checkerboard, opening GradientPickerDialog by click/Enter/Space with the dialog title and the first stop's format, commit on Apply only, disabled behaviour, and the accessible label.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -64,10 +64,11 @@ describe('GradientButton sizing and strip (Ticket #307)', () => {
     assert.ok(markup({ width: '10rem', height: '1.5rem' }).includes('style="width:10rem;height:1.5rem"'));
   });
 
-  it('reuses the ColourButton frame and checkerboard', () => {
+  it('reuses the shared picker-button frame and checkerboard', () => {
     const html = markup();
-    assert.ok(html.includes('class="colour-button gradient-button"'), 'Shared button styling');
-    assert.ok(html.includes('class="colour-button-swatch"'), 'Checkerboard swatch');
+    assert.ok(html.includes('class="picker-button gradient-button"'), 'Shared button styling');
+    assert.ok(html.includes('class="picker-button-swatch"'), 'Checkerboard swatch');
+    assert.ok(html.includes('class="picker-button-swatch-fill gradient-button-strip"'), 'Shared fill plus the strip class');
   });
 
   it('draws the stops left to right, in offset order', () => {

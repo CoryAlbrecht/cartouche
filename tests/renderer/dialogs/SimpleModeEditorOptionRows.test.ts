@@ -61,18 +61,18 @@ describe('SimpleModeEditor labelled option rows (Ticket #311)', () => {
   it('renders the Fill Colour row', () => {
     dictionarySignal.value = { layer_properties_styling_fill_color: 'Fill Colour' };
     const html = render({ type: 'simple-fill', color: '#ff0000ff' }, 'Polygon');
-    assert.match(html, row('layer-prop-fill-colour-row', 'Fill Colour', 'colour-button'));
+    assert.match(html, row('layer-prop-fill-colour-row', 'Fill Colour', 'picker-button colour-button'));
   });
 
   it('renders the Stroke Colour row', () => {
     dictionarySignal.value = { layer_properties_styling_stroke_color: 'Stroke Colour' };
     const html = render({ type: 'simple-line', color: '#000000ff', width: 1 }, 'LineString');
-    assert.match(html, row('layer-prop-stroke-colour-row', 'Stroke Colour', 'colour-button'));
+    assert.match(html, row('layer-prop-stroke-colour-row', 'Stroke Colour', 'picker-button colour-button'));
   });
 
   it('renders the Gradient Stops row', () => {
     dictionarySignal.value = { layer_properties_styling_gradient_stops: 'Gradient Stops' };
     const html = render({ type: 'gradient-fill', angle: 0, stops: ['#ff0000ff 0%', '#0000ffff 100%'] }, 'Polygon');
-    assert.match(html, row('layer-prop-gradient-stops-row', 'Gradient Stops', 'colour-button gradient-button'));
+    assert.match(html, row('layer-prop-gradient-stops-row', 'Gradient Stops', 'picker-button gradient-button'));
   });
 });
