@@ -13,12 +13,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { PickerDialogFrame } from './PickerDialogFrame';
-import {
-  GradientPickerWidget,
-  parseInitialStops,
-  serializeGradientStops
-} from '@renderer/workbench/widgets/GradientPickerWidget';
-import { type ColorFormat } from '@shared/colors';
+import { GradientPickerWidget } from '@renderer/workbench/widgets/GradientPickerWidget';
+import { type ColorFormat, parseInitialStops, serializeGradientStops } from '@shared/colors';
 import { useTranslation } from '@renderer/hooks/useTranslation';
 
 /**

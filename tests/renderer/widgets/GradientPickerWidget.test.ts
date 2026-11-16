@@ -1,10 +1,10 @@
 /**
  * @file GradientPickerWidget.test.ts
  * @module tests/renderer/widgets/GradientPickerWidget.test
- * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, and UI preference scaling.
+ * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, and UI preference scaling. The stop parsing and serialization helper tests live in tests/shared/colors/gradientStops.test.ts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -370,7 +370,7 @@ function getStopButtonsSorted(el: MockElement): MockElement[] {
 // Load GradientPickerWidget using jiti
 const jiti = createRendererJiti(import.meta.url);
 
-const { GradientPickerWidget, parseInitialStops, serializeGradientStops } =
+const { GradientPickerWidget } =
   jiti("../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx");
 
 const { prefsUiIconSize, prefsUiBaseFontSize } = jiti(
@@ -737,24 +737,6 @@ describe("GradientPickerWidget Component & Interactions (Ticket #207)", () => {
       "Active stop color must update from ColourPickerWidget"
     );
   });
-
-  it("serializes stops uniformly across various color formats", () => {
-    const stops = [
-      { id: "s1", color: "#ff0000ff", offset: 0 },
-      { id: "s2", color: "#00ff00ff", offset: 100 },
-    ];
-
-    const hexSerialized = serializeGradientStops(stops, "HEX");
-    assert.deepEqual(hexSerialized, ["#ff0000ff 0%", "#00ff00ff 100%"]);
-
-    const rgbSerialized = serializeGradientStops(stops, "RGB");
-    assert.deepEqual(rgbSerialized, ["rgb(255 0 0) 0%", "rgb(0 255 0) 100%"]);
-
-    const parsed = parseInitialStops(["#112233 10%", "#445566 90%"]);
-    assert.equal(parsed.length, 2);
-    assert.equal(parsed[0].offset, 10);
-    assert.equal(parsed[1].offset, 90);
-  });
 });
 
 describe("GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #222)", () => {
@@ -765,39 +747,6 @@ describe("GradientPickerWidget Stop ID Stability & Selection Retention (Ticket #
 
   afterEach(() => {
     tearDownDom();
-  });
-
-  it("generates deterministic stop IDs matching default stops and across array re-indexing", () => {
-    // Default initial stops
-    const defaultStops = parseInitialStops();
-    assert.deepEqual(
-      defaultStops.map((s: any) => s.id),
-      ["stop-0", "stop-100"],
-      "Default initial stops must produce stable IDs stop-0 and stop-100"
-    );
-
-    // Explicit 2-stop array
-    const parsedTwoStops = parseInitialStops([
-      "#000000ff 0%",
-      "#00ff00ff 100%",
-    ]);
-    assert.deepEqual(
-      parsedTwoStops.map((s: any) => s.id),
-      ["stop-0", "stop-100"],
-      "Parsed initial stops must match default initial stop IDs without index prefix divergence"
-    );
-
-    // 3-stop array: inserting intermediate stop must not alter 100% stop ID
-    const parsedThreeStops = parseInitialStops([
-      "#000000ff 0%",
-      "#008000ff 50%",
-      "#00ff00ff 100%",
-    ]);
-    assert.deepEqual(
-      parsedThreeStops.map((s: any) => s.id),
-      ["stop-0", "stop-50", "stop-100"],
-      "100% boundary stop must retain stop-100 ID regardless of intermediate stops count"
-    );
   });
 
   it("preserves selection of newly created stop across parent prop resynchronization", async () => {

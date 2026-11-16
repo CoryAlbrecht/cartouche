@@ -9,12 +9,13 @@
  * @see {@link GradientPickerDialog}
  * @see {@link ColourButton}
  * @see {@link usePickerButton}
+ * @see {@link parseInitialStops}
+ * @see {@link gradientStopsToCss}
  */
 
 import React from 'react';
-import { parseCssColor } from '@shared/colors';
+import { parseCssColor, parseInitialStops, gradientStopsToCss } from '@shared/colors';
 import { GradientPickerDialog } from '@renderer/workbench/dialogs/GradientPickerDialog';
-import { gradientStopsToCss, parseInitialStops } from '@renderer/workbench/widgets/GradientPickerWidget';
 import { useTranslation } from '@renderer/hooks/useTranslation';
 import { usePickerButton } from '@renderer/hooks/usePickerButton';
 
