@@ -4,7 +4,7 @@
  * @description CRS tab of the Project Properties dialog: a "No CRS" checkbox (disabling the lists), a labelled filter box (cleared each time the dialog opens) matching name and `AUTH:code` case-insensitively on both lists, the Recently Used list (five rows, scrolling), the Predefined list from the CRS Catalogue (ten rows, scrolling, a building placeholder while the catalogue builds), and the "Hide Deprecated CRSs" checkbox bound to the `crs.hideDeprecated` app preference. Selecting in either list selects in the other, and a list that does not hold the selected CRS shows no row selected; selecting in Predefined adds the CRS to the top of the draft Recently Used list. The current Project CRS and Recently Used entries stay visible even when deprecated, marked "(deprecated)". Below the lists, the Coordinate Reference System Info panel shows the selected CRS as selectable plain text, built in the main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link selectDraftCrs}
@@ -56,23 +56,6 @@ export const RECENT_CRS_VISIBLE_ROWS = 5;
  * @since 0.1.0-dev
  */
 export const PREDEFINED_CRS_VISIBLE_ROWS = 10;
-
-/**
- * Shared list box style.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-13
- * @updated 2026-11-13
- * @since 0.1.0-dev
- * @type {React.CSSProperties}
- */
-const LIST_STYLE: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid #cbd5e1",
-  borderRadius: "0.25rem",
-  fontSize: "0.8125rem",
-  backgroundColor: "#ffffff",
-  color: "#0f172a",
-};
 
 /**
  * Shared style of a labelled section (label above its control).
@@ -146,7 +129,7 @@ export function clearUnmatchedListSelection(list: SelectableListBox | null, sele
  * @description Renders the CRS tab bound to the project properties draft. After every render it clears any selection React left on a list that does not hold the selected CRS ({@link clearUnmatchedListSelection}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {Object} props - Component properties (none).
  * @returns {JSX.Element} The CRS tab pane.
@@ -217,14 +200,13 @@ export const ProjectCrsTab: React.FC = () => {
         <input
           type='search'
           id='project-prop-crs-filter'
-          className='project-prop-crs-filter'
+          className='project-prop-crs-list project-prop-crs-filter'
           placeholder={t("project_properties_crs_filter_placeholder")}
           value={filter}
           disabled={disabled}
           onChange={(e) => {
             crsTabFilterSignal.value = e.target.value;
           }}
-          style={{ ...LIST_STYLE, padding: "0.375rem 0.625rem" }}
         />
       </div>
 
@@ -235,12 +217,11 @@ export const ProjectCrsTab: React.FC = () => {
         <select
           id='project-prop-crs-recent'
           ref={recentListRef}
-          className='project-prop-crs-recent'
+          className='project-prop-crs-list project-prop-crs-recent'
           size={RECENT_CRS_VISIBLE_ROWS}
           disabled={disabled}
           value={recentEntries.some((e) => e.authId === selected) ? selected : ""}
-          onChange={(e) => e.target.value && selectDraftCrs(e.target.value, "recent")}
-          style={LIST_STYLE}>
+          onChange={(e) => e.target.value && selectDraftCrs(e.target.value, "recent")}>
           {recentEntries.map((entry) => (
             <option key={entry.authId} value={entry.authId}>
               {formatCrsEntryLabel(entry)}
@@ -256,12 +237,11 @@ export const ProjectCrsTab: React.FC = () => {
         <select
           id='project-prop-crs-predefined'
           ref={predefinedListRef}
-          className='project-prop-crs-predefined'
+          className='project-prop-crs-list project-prop-crs-predefined'
           size={PREDEFINED_CRS_VISIBLE_ROWS}
           disabled={disabled}
           value={predefinedEntries.some((e) => e.authId === selected) ? selected : ""}
-          onChange={(e) => e.target.value && selectDraftCrs(e.target.value, "predefined")}
-          style={LIST_STYLE}>
+          onChange={(e) => e.target.value && selectDraftCrs(e.target.value, "predefined")}>
           {catalogue.status === "building" ?
             <option value='' disabled className='crs-catalogue-building'>
               {t("crs_catalogue_building")}
@@ -279,9 +259,8 @@ export const ProjectCrsTab: React.FC = () => {
         <span style={SECTION_LABEL_STYLE}>{t("project_properties_crs_info")}</span>
         <pre
           id='project-prop-crs-info'
-          className='project-prop-crs-info'
+          className='project-prop-crs-list project-prop-crs-info'
           style={{
-            ...LIST_STYLE,
             margin: 0,
             padding: "0.5rem",
             minHeight: "6rem",

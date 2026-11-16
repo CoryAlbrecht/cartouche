@@ -4,7 +4,7 @@
  * @description Toolbar widget managing feature vertex and line segment snapping settings, discrete geometry mode toggles, and search tolerance during spatial digitizing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link SplitToolButton}
@@ -171,7 +171,7 @@ export function handleSnappingScopeExecute(scope: string): void {
  * @description Renders snapping control buttons to toggle vertex, midpoint, and segment snapping, switch snapping scope, and configure tolerance.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {SnappingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} SnappingToolbarWidget instance.
@@ -331,14 +331,6 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
             value={snappingDistanceSignal.value}
             disabled={disabled}
             onChange={handleDistanceChange}
-            style={{
-              width: "3.25rem",
-              padding: "0.1rem 0.25rem",
-              fontSize: "0.85rem",
-              border: "1px solid var(--cartouche-input-border)",
-              borderRadius: "0.2rem",
-              textAlign: "right",
-            }}
             title='Snapping Tolerance (px)'
             aria-label='Snapping Tolerance in pixels'
           />
@@ -362,21 +354,13 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
           <input
             type='number'
             id='toolbar-input-snapping-distance'
-            className='toolbar-input-snapping-distance'
+            className='toolbar-input-snapping-distance toolbar-input-snapping-distance-vertical'
             min={0}
             max={256}
             step={1}
             value={snappingDistanceSignal.value}
             disabled={disabled}
             onChange={handleDistanceChange}
-            style={{
-              width: "2.5rem",
-              padding: "0.1rem",
-              fontSize: "0.75rem",
-              border: "1px solid var(--cartouche-input-border)",
-              borderRadius: "0.2rem",
-              textAlign: "center",
-            }}
             title='Snapping Tolerance (px)'
             aria-label='Snapping Tolerance in pixels'
           />

@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, bottom channel inputs, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link ColourPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -15,7 +15,19 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createRendererJiti } from '../rendererJiti';
+
+/**
+ * @function pickerFieldRule
+ * @description Returns the declaration block of the `.picker-field` rule in workbench.css, which sizes the picker dropdowns and text fields.
+ * @returns {string} The rule's declarations.
+ */
+function pickerFieldRule(): string {
+  const css = fs.readFileSync(path.resolve(process.cwd(), 'src/renderer/styles/workbench.css'), 'utf8');
+  return css.match(/\n\.picker-field \{([^}]*)\}/)?.[1] ?? '';
+}
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -722,16 +734,17 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
 
     assert.ok(formatSelect, 'Must render format selector dropdown');
     assert.ok(hexInput, 'Must render HEX input');
-    assert.equal(formatSelect.style.fontSize, '1rem', 'Format dropdown font size must be 1rem');
-    assert.equal(hexInput.style.fontSize, '1rem', 'HEX input font size must be 1rem');
+    assert.ok(formatSelect.className.split(' ').includes('picker-field'), 'Format dropdown takes the picker-field class');
+    assert.ok(hexInput.className.split(' ').includes('picker-field'), 'HEX input takes the picker-field class');
+    assert.match(pickerFieldRule(), /font-size:\s*1rem/, '.picker-field font size must be 1rem');
 
     // Dynamically update prefsUiBaseFontSize signal to 16pt
     await act(async () => {
       prefsUiBaseFontSize.value = 16;
     });
 
-    assert.equal(formatSelect.style.fontSize, '1rem', 'Format dropdown retains 1rem relative font size');
-    assert.equal(hexInput.style.fontSize, '1rem', 'HEX input retains 1rem relative font size');
+    assert.ok(!formatSelect.style.fontSize, 'Format dropdown sets no inline font size over the 1rem class');
+    assert.ok(!hexInput.style.fontSize, 'HEX input sets no inline font size over the 1rem class');
   });
 
   it('sets channel number inputs to 1rem and channel labels to 0.9rem in non-HEX formats', async () => {
@@ -747,8 +760,10 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
     const channelInputs = findElementsByClass(container, 'colour-picker-channel-input');
     assert.equal(channelInputs.length, 4, 'Must render 4 channel inputs for RGB format (R, G, B, A)');
     for (const input of channelInputs) {
-      assert.equal(input.style.fontSize, '1rem', 'Channel input font size must be 1rem');
+      assert.ok(input.className.split(' ').includes('picker-field'), 'Channel input takes the 1rem picker-field class');
+      assert.ok(!input.style.fontSize, 'Channel input sets no inline font size');
     }
+    assert.match(pickerFieldRule(), /font-size:\s*1rem/, '.picker-field font size must be 1rem');
 
     // Inspect label span elements (parent container of each channel input has a span child)
     for (const input of channelInputs) {
@@ -765,7 +780,7 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
     });
 
     for (const input of channelInputs) {
-      assert.equal(input.style.fontSize, '1rem');
+      assert.ok(input.className.split(' ').includes('picker-field'));
     }
   });
 

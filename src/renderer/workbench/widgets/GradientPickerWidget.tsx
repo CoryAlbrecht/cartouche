@@ -488,7 +488,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
    * @description Renders a boundary stop button flanking the preview bar scaled to ui.icon.size.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-09
-   * @updated 2026-11-09
+   * @updated 2026-11-16
    * @since 0.1.0-dev
    * @param {GradientStop} stop - Target boundary gradient stop.
    * @returns {React.ReactElement} Stop button element.
@@ -506,21 +506,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         title={`Stop at ${stop.offset}%`}
         onPointerDown={(e) => handleStopPointerDown(e, stop)}
         onClick={() => setActiveStopId(stop.id)}
-        style={{
-          width: `${iconSize}px`,
-          height: `${iconSize}px`,
-          padding: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: isActive ? "2px solid #1b446c" : "1px solid #777777",
-          borderRadius: "2px",
-          backgroundColor: "#ffffff",
-          boxShadow: isActive ? "0 0 0 2px rgba(27, 68, 108, 0.4)" : "none",
-          cursor: "pointer",
-          flexShrink: 0,
-          boxSizing: "border-box",
-        }}>
+        style={{ width: `${iconSize}px`, height: `${iconSize}px` }}>
         <div
           className='gradient-stop-swatch'
           style={{
@@ -580,20 +566,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
                 position: "absolute",
                 left: `${stop.offset}%`,
                 transform: "translateX(-50%)",
-                width: "16px",
-                height: "16px",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: isActive ? "2px solid #1b446c" : "1px solid #777777",
-                borderRadius: "2px",
-                backgroundColor: "#ffffff",
-                boxShadow:
-                  isActive ? "0 0 0 2px rgba(27, 68, 108, 0.4)" : "none",
-                cursor: "ew-resize",
                 zIndex: isActive ? 4 : 2,
-                boxSizing: "border-box",
               }}>
               <div
                 className='gradient-stop-swatch'
@@ -708,7 +681,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
         />
 
         <select
-          className='gradient-picker-stop-select'
+          className='picker-field gradient-picker-stop-select'
           aria-label='Select gradient stop'
           value={activeStop.id}
           disabled={disabled}
@@ -716,16 +689,6 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
             const targetId = e.target.value;
             setActiveStopId(targetId);
             activeStopIdRef.current = targetId;
-          }}
-          style={{
-            flex: 1,
-            padding: "3px 6px",
-            fontSize: "1rem",
-            backgroundColor: "var(--cartouche-theme-surface, #ffffff)",
-            color: "var(--cartouche-theme-fg, #000000)",
-            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
-            borderRadius: "3px",
-            cursor: disabled ? "not-allowed" : "pointer",
           }}>
           {sortedStops.map((stop) => (
             <option key={stop.id} value={stop.id}>
@@ -736,29 +699,12 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
 
         <button
           type='button'
-          className='gradient-picker-delete-btn'
+          className='picker-icon-btn gradient-picker-delete-btn'
           title='Delete active stop'
           aria-label='Delete active stop'
           disabled={disabled || isDeleteDisabled}
           onClick={handleDeleteActiveStop}
-          style={{
-            width: `${iconSize}px`,
-            height: `${iconSize}px`,
-            padding: 0,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: disabled || isDeleteDisabled ? 0.35 : 1,
-            cursor: disabled || isDeleteDisabled ? "not-allowed" : "pointer",
-            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
-            borderRadius: "3px",
-            backgroundColor: "var(--cartouche-theme-surface-alt, #f1f5f9)",
-            color: !disabled && !isDeleteDisabled
-              ? "var(--cartouche-theme-fg-primary, #0f172a)"
-              : "var(--cartouche-theme-fg-muted, #94a3b8)",
-            flexShrink: 0,
-            boxSizing: "border-box",
-          }}>
+          style={{ width: `${iconSize}px`, height: `${iconSize}px` }}>
           <Icon path={mdiTrashCanOutline} size={iconSize} />
         </button>
       </div>

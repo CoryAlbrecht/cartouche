@@ -2543,6 +2543,309 @@
   cursor: not-allowed;
 }
 
+/* === Remaining renderer controls (Spec #316 / #318) === */
+/* Every other focusable control formerly coloured inline. Bound to Tier 2
+   Component Tokens only. Rules that set a text-entry border stay at
+   single-class specificity, so the global Focus Indicator below still wins. */
+
+/* Dialog footer buttons: shared base, a wider padding, and primary / secondary
+   colourings (ModalDialog, PickerDialogFrame, Preferences, Project Properties,
+   Create Layer, Select by Value, Snapping Options). */
+.dialog-btn {
+  padding: 0.375rem 0.875rem;
+  border: 0.0625rem solid transparent;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.dialog-btn-wide {
+  padding: 0.375rem 1rem;
+}
+
+.dialog-btn-strong {
+  font-weight: 600;
+}
+
+.dialog-btn-secondary {
+  background-color: var(--cartouche-button-secondary-bg);
+  border-color: var(--cartouche-button-secondary-border);
+  color: var(--cartouche-button-secondary-fg);
+}
+
+.dialog-btn-primary {
+  background-color: var(--cartouche-theme-button-bg);
+  border-color: var(--cartouche-theme-button-bg);
+  color: var(--cartouche-theme-button-fg);
+}
+
+/* ModalDialog buttons keep their base-size label. */
+.modal-dialog-btn {
+  font-size: 1rem;
+}
+
+/* Compact secondary button beside a text field (Project Properties Save As…). */
+.dialog-btn-compact {
+  padding: 0.3125rem 0.75rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+/* Icon-only secondary button beside a text field (Project Home browse). */
+.dialog-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Console panel toolbar buttons (no colours of their own). */
+.console-panel .small-action-btn {
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Tabbed dialog sidebar tabs (Project Properties, Layer Properties, pickers). */
+.dialog-sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  background-color: transparent;
+  color: var(--cartouche-sidebar-tab-fg);
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dialog-sidebar-tab.active {
+  background-color: var(--cartouche-sidebar-tab-active-bg);
+  color: var(--cartouche-sidebar-tab-active-fg);
+  font-weight: 600;
+}
+
+/* Project Properties text inputs and Measurements dropdowns. */
+.project-prop-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.375rem 0.625rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.875rem;
+}
+
+/* Read-only Project File field; italic muted text while the project is unsaved. */
+.project-prop-file {
+  background-color: var(--cartouche-input-readonly-bg);
+}
+
+.project-prop-file.is-unsaved {
+  color: var(--cartouche-input-placeholder-fg);
+  font-style: italic;
+}
+
+/* Project CRS tab: filter field, Recent / Predefined lists and the info pane. */
+.project-prop-crs-list {
+  width: 100%;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8125rem;
+}
+
+.project-prop-crs-filter {
+  padding: 0.375rem 0.625rem;
+}
+
+/* ColorInput text field while disabled. */
+.color-input-text:disabled {
+  cursor: not-allowed;
+  background-color: var(--cartouche-input-disabled-bg);
+}
+
+/* Snapping Options per-layer tolerance input. */
+.snap-layer-tolerance-input {
+  width: 4rem;
+  padding: 0.2rem 0.4rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.2rem;
+  text-align: right;
+}
+
+/* Snapping toolbar tolerance input, horizontal and vertical toolbar layouts. */
+.toolbar-input-snapping-distance {
+  width: 3.25rem;
+  padding: 0.1rem 0.25rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.2rem;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.toolbar-input-snapping-distance-vertical {
+  width: 2.5rem;
+  padding: 0.1rem;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* Attribute Table footer: the filter dropdown and the pagination buttons. */
+.attribute-table-filter-select {
+  padding: 0.125rem 0.375rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8333rem;
+  cursor: pointer;
+}
+
+.attribute-table-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.25rem;
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-button-secondary-bg);
+  cursor: pointer;
+}
+
+.attribute-table-page-btn:disabled {
+  background-color: var(--cartouche-button-disabled-bg);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* BasicWidget header Close control. */
+.widget-control-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.125rem;
+  border: none;
+  border-radius: 0.125rem;
+  background: none;
+  color: var(--cartouche-widget-control-fg);
+  cursor: pointer;
+}
+
+/* Overlap tab strip tabs. */
+.overlap-tab-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0;
+  padding: 0.25rem 0.625rem;
+  border: 0.0625rem solid var(--cartouche-overlap-tab-border);
+  border-top-left-radius: 0.25rem;
+  border-top-right-radius: 0.25rem;
+  background-color: var(--cartouche-theme-tab-inactive-bg);
+  color: var(--cartouche-theme-tab-inactive-fg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.overlap-tab-item.is-active {
+  margin-bottom: -0.0625rem;
+  border-bottom-color: var(--cartouche-theme-tab-active-bg);
+  background-color: var(--cartouche-theme-tab-active-bg);
+  color: var(--cartouche-theme-tab-active-fg);
+  font-weight: 600;
+}
+
+/* Colour and Gradient picker controls: icon buttons, dropdowns and text fields.
+   Icon buttons take their width and height inline from the UI icon size
+   preference, matching the inline-sized actions-row spacer. */
+.picker-icon-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0.0625rem solid var(--cartouche-picker-control-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-button-secondary-alt-bg);
+  color: var(--cartouche-button-secondary-fg);
+  cursor: pointer;
+}
+
+.picker-icon-btn:disabled {
+  color: var(--cartouche-button-disabled-fg);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.gradient-picker-delete-btn:disabled {
+  opacity: 0.35;
+}
+
+.picker-field {
+  padding: 0.1875rem 0.375rem;
+  border: 0.0625rem solid var(--cartouche-picker-control-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 1rem;
+}
+
+select.picker-field {
+  flex: 1;
+  cursor: pointer;
+}
+
+select.picker-field:disabled {
+  cursor: not-allowed;
+}
+
+.colour-picker-hex-input {
+  width: 100%;
+  font-family: var(--cartouche-input-mono-font-family);
+}
+
+.colour-picker-channel-input {
+  width: 100%;
+  padding: 0.125rem 0.25rem;
+  text-align: center;
+}
+
+/* Gradient stop toggles: intermediate stops on the track; boundary stops take
+   their size inline from the UI icon size preference. The active stop takes a
+   primary border and halo. */
+.gradient-stop-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0.0625rem solid var(--cartouche-gradient-stop-border);
+  border-radius: 0.125rem;
+  background-color: var(--cartouche-gradient-stop-bg);
+  cursor: ew-resize;
+}
+
+.gradient-stop-toggle-btn.gradient-stop-btn-active {
+  border: 0.125rem solid var(--cartouche-gradient-stop-active-border);
+  box-shadow: 0 0 0 0.125rem var(--cartouche-gradient-stop-active-ring);
+}
+
+.gradient-stop-toggle-btn.gradient-stop-boundary-btn {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
 /* =============================================================================
    Focus Indicator & Invalid Focus Indicator (Spec #316 / Ticket #317)
    Applied once, globally, and bound only to the Theme's --cartouche-focus-*,

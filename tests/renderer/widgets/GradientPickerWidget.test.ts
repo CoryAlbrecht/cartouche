@@ -15,7 +15,30 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import fs from "node:fs";
+import path from "node:path";
 import { createRendererJiti } from "../rendererJiti";
+
+/**
+ * @function cssRule
+ * @description Returns the declaration block of the workbench.css rule with exactly the given selector.
+ * @param {string} selector - Rule selector, as written in workbench.css.
+ * @returns {string} The rule's declarations, or an empty string.
+ */
+function cssRule(selector: string): string {
+  const css = fs.readFileSync(path.resolve(process.cwd(), 'src/renderer/styles/workbench.css'), 'utf8');
+  const start = css.indexOf(`\n${selector} {`);
+  return start < 0 ? '' : css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
+}
+
+/**
+ * @function pickerFieldRule
+ * @description Returns the declaration block of the `.picker-field` rule in workbench.css, which sizes the picker dropdowns and text fields.
+ * @returns {string} The rule's declarations.
+ */
+function pickerFieldRule(): string {
+  return cssRule('.picker-field');
+}
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -1229,8 +1252,8 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
     assert.equal(boundaryBtns[0].style.height, "20px");
     assert.equal(boundaryBtns[0].getAttribute("aria-pressed"), "true");
     assert.ok(
-      boundaryBtns[0].style.boxShadow.includes("rgba(27, 68, 108"),
-      "Active boundary stop must have ring shadow"
+      boundaryBtns[0].className.split(" ").includes("gradient-stop-btn-active"),
+      "Active boundary stop must take the active ring class"
     );
 
     // Click 100% boundary button
@@ -1241,8 +1264,12 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
     assert.equal(boundaryBtns[0].getAttribute("aria-pressed"), "false");
     assert.equal(boundaryBtns[1].getAttribute("aria-pressed"), "true");
     assert.ok(
-      boundaryBtns[1].style.boxShadow.includes("rgba(27, 68, 108"),
-      "100% stop must receive ring shadow when active"
+      boundaryBtns[1].className.split(" ").includes("gradient-stop-btn-active"),
+      "100% stop must take the active ring class when active"
+    );
+    assert.ok(
+      !boundaryBtns[0].className.split(" ").includes("gradient-stop-btn-active"),
+      "0% stop must drop the active ring class"
     );
   });
 
@@ -1565,13 +1592,15 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
 
     const selectEl = findElementsByClass(actionsRow, "gradient-picker-stop-select")[0];
     assert.ok(selectEl, "Stop selector select must be present");
-    assert.equal(selectEl.style.flex, "1", "Select must fill space between spacer and delete button");
+    assert.ok(selectEl.className.split(" ").includes("picker-field"), "Select takes the picker-field class");
+    assert.match(cssRule("select.picker-field"), /flex:\s*1;/, "Select must fill space between spacer and delete button");
 
     const deleteBtn = findElementsByClass(actionsRow, "gradient-picker-delete-btn")[0];
     assert.ok(deleteBtn, "Delete button must be present");
     assert.equal(deleteBtn.style.width, "24px", "Delete button width must match ui.icon.size");
     assert.equal(deleteBtn.style.height, "24px", "Delete button height must match ui.icon.size");
-    assert.equal(deleteBtn.style.flexShrink, "0", "Delete button must not shrink");
+    assert.ok(deleteBtn.className.split(" ").includes("picker-icon-btn"), "Delete button takes the picker-icon-btn class");
+    assert.match(cssRule(".picker-icon-btn"), /flex-shrink:\s*0;/, "Delete button must not shrink");
 
     // Both rows must feature 6px gap to preserve identical column alignment
     assert.equal(previewRow.style.gap, "6px", "Preview row gap must be 6px");
@@ -1632,14 +1661,15 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
     });
 
     const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
-    assert.equal(selectEl.style.fontSize, "1rem", "Select font size must be 1rem");
+    assert.ok(selectEl.className.split(" ").includes("picker-field"), "Select takes the 1rem picker-field class");
+    assert.match(pickerFieldRule(), /font-size:\s*1rem/, ".picker-field font size must be 1rem");
 
     // Changing prefsUiBaseFontSize signal triggers reactive re-render
     await act(async () => {
       prefsUiBaseFontSize.value = 16;
     });
 
-    assert.equal(selectEl.style.fontSize, "1rem", "Select font size remains 1rem scaling with root rem");
+    assert.ok(!selectEl.style.fontSize, "Select sets no inline font size over the 1rem class");
   });
 
   it("scales delete button and trash can icon dynamically with prefsUiIconSize", async () => {

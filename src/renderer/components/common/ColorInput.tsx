@@ -164,11 +164,8 @@ export const ColorInput: React.FC<ColorInputProps> = ({
             list="css-colors-datalist"
             value={textValue}
             onChange={handleTextChange}
-            className="preference-input-text"
-            style={{
-              ...(disabled ? { cursor: 'not-allowed', backgroundColor: 'var(--cartouche-theme-surface-alt)' } : undefined),
-              ...inputStyle,
-            }}
+            className="preference-input-text color-input-text"
+            style={inputStyle}
             title={!isValid ? 'Invalid CSS color name or hex format' : undefined}
           />
           {!isValid && (

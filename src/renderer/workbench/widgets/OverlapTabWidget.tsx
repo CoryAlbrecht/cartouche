@@ -4,7 +4,7 @@
  * @description Tabbed container subclass of BasicWidget hosting multiple tool widgets, managing tab selection, drag-and-drop tab extraction, and single-child auto-dissolution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see docs/adr/0025-flex-proportional-docking-and-overlap-tab-widgets.md (ADR 0025)
@@ -82,7 +82,7 @@ export interface OverlapTabWidgetProps extends Partial<BasicWidgetProps> {
  * @description Subclass of BasicWidget providing a tabbed container for grouping overlappable tool widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {OverlapTabWidgetProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered tabbed container element or null when empty.
@@ -429,23 +429,6 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
                   if (e.key === "Enter" || e.key === " ") {
                     handleSelectTab(tab.id);
                   }
-                }}
-                style={{
-                  padding: "4px 10px",
-                  fontSize: "0.8125rem",
-                  fontWeight: isActive ? 600 : 500,
-                  color: isActive ? "var(--cartouche-theme-fg-primary)" : "var(--cartouche-theme-fg-muted)",
-                  backgroundColor: isActive ? "var(--cartouche-theme-surface)" : "var(--cartouche-theme-surface-alt)",
-                  borderTopLeftRadius: "4px",
-                  borderTopRightRadius: "4px",
-                  border: "1px solid var(--cartouche-theme-border-strong)",
-                  borderBottom: isActive ? "1px solid var(--cartouche-theme-surface)" : "1px solid var(--cartouche-theme-border-strong)",
-                  marginBottom: isActive ? "-1px" : "0",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  whiteSpace: "nowrap",
                 }}>
                 <span className='overlap-tab-title'>{tab.title}</span>
               </div>

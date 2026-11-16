@@ -4,7 +4,7 @@
  * @description Reusable sidebar-tabbed dialog body shared by LayerPropertiesDialog and ProjectPropertiesDialog: a left column of tab buttons (icon plus label) and a scrollable content area for the active tab's pane. The shell is presentational only; the caller owns the active tab id and the pane content.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link ProjectPropertiesDialog}
@@ -58,7 +58,7 @@ export interface TabbedDialogShellProps<TId extends string = string> {
  * @description Renders the sidebar-tab layout used by property dialogs: a fixed-width left column of tab buttons and a flexible, vertically scrolling content column. Clicking a tab reports its id; the caller decides which pane to render as children.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @template TId - String literal union of tab identifiers.
  * @param {TabbedDialogShellProps<TId>} props - Component properties.
@@ -101,23 +101,8 @@ export function TabbedDialogShell<TId extends string = string>(
               key={tab.id}
               type='button'
               data-tab-id={tab.id}
-              className={`${prefix}-tab-btn ${isActive ? "active" : ""}`}
-              onClick={() => onTabChange(tab.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.625rem",
-                padding: "0.5rem 0.75rem",
-                border: "none",
-                borderRadius: "4px",
-                backgroundColor: isActive ? "#e2e8f0" : "transparent",
-                color: isActive ? "#0f172a" : "#475569",
-                fontWeight: isActive ? 600 : 400,
-                fontSize: "0.875rem",
-                cursor: "pointer",
-                textAlign: "left",
-                width: "100%",
-              }}>
+              className={`dialog-sidebar-tab ${prefix}-tab-btn ${isActive ? "active" : ""}`}
+              onClick={() => onTabChange(tab.id)}>
               <Icon path={tab.icon} />
               <span>{tab.label}</span>
             </button>

@@ -4,7 +4,7 @@
  * @description Modeless dialog window stub configuring and creating new spatial data layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isCreateLayerOpenSignal}
@@ -24,7 +24,7 @@ import { Dialog } from "./Dialog";
  * @description Renders a modeless dialog stub for authoring and creating new spatial data layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Create Layer dialog window element or null if closed.
  */
@@ -46,15 +46,8 @@ export const CreateLayerDialog: React.FC = () => {
         <div style={{ display: "flex", justifyContent: "flex-end", width: "100%", gap: "8px" }}>
           <button
             type='button'
-            className='btn btn-secondary'
-            onClick={closeCreateLayerDialog}
-            style={{
-              padding: "6px 16px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}>
+            className='btn btn-secondary dialog-btn dialog-btn-wide dialog-btn-secondary'
+            onClick={closeCreateLayerDialog}>
             Close
           </button>
         </div>

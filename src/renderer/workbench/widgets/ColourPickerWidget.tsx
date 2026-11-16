@@ -4,7 +4,7 @@
  * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link parseCssColor}
@@ -80,7 +80,7 @@ export interface ColourPickerWidgetProps extends Omit<BasicWidgetProps, 'childre
  * @description Custom color picker widget subclassing BasicWidget, embeddable across Dockview panels, dialogs, and parent widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-12
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {ColourPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ColourPickerWidget React component.
@@ -651,7 +651,7 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
           >
             <button
               type='button'
-              className='colour-picker-eyedropper-btn'
+              className='picker-icon-btn colour-picker-eyedropper-btn'
               disabled={disabled || !isEyeDropperSupported}
               title={
                 disabled
@@ -661,42 +661,16 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                   : 'Screen eyedropper is not supported in this environment'
               }
               onClick={handleEyeDropper}
-              style={{
-                width: `${iconSize}px`,
-                height: `${iconSize}px`,
-                padding: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'var(--cartouche-theme-surface-alt, #f1f5f9)',
-                color: !disabled && isEyeDropperSupported
-                  ? 'var(--cartouche-theme-fg-primary, #0f172a)'
-                  : 'var(--cartouche-theme-fg-muted, #94a3b8)',
-                border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                borderRadius: '3px',
-                cursor: !disabled && isEyeDropperSupported ? 'pointer' : 'not-allowed',
-                opacity: !disabled && isEyeDropperSupported ? 1 : 0.6,
-                flexShrink: 0,
-                boxSizing: 'border-box'
-              }}
+              style={{ width: `${iconSize}px`, height: `${iconSize}px` }}
             >
               <Icon path={mdiEyedropper} size={iconSize} />
             </button>
 
             <select
-              className='colour-picker-format-select'
+              className='picker-field colour-picker-format-select'
               value={activeFormat}
               disabled={disabled}
               onChange={handleFormatChange}
-              style={{
-                flex: 1,
-                padding: '3px 6px',
-                fontSize: '1rem',
-                backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-                color: 'var(--cartouche-theme-fg, #000000)',
-                border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                borderRadius: '3px'
-              }}
             >
               {COLOR_FORMATS.map((fmt) => (
                 <option key={fmt} value={fmt}>
@@ -718,23 +692,13 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             {activeFormat === 'HEX' ? (
               <input
                 type='text'
-                className='colour-picker-hex-input'
+                className='picker-field colour-picker-hex-input'
                 disabled={disabled}
                 value={srgbToHex(currentSrgb, true)}
                 onChange={handleHexInputChange}
                 onInput={handleHexInputChange}
                 spellCheck={false}
                 placeholder='#rrggbbaa'
-                style={{
-                  width: '100%',
-                  padding: '3px 6px',
-                  fontSize: '1rem',
-                  fontFamily: 'var(--cartouche-theme-font-family-mono, monospace)',
-                  backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-                  color: 'var(--cartouche-theme-fg, #000000)',
-                  border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                  borderRadius: '3px'
-                }}
               />
             ) : (
               channels.map((chan) => (
@@ -752,21 +716,11 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                     type='number'
                     step={chan.step}
                     disabled={disabled}
-                    className={`colour-picker-channel-input colour-picker-channel-${chan.key}`}
+                    className={`picker-field colour-picker-channel-input colour-picker-channel-${chan.key}`}
                     value={chan.value}
                     onChange={(e) => handleChannelInputChange(chan.key, e.target.value)}
                     onInput={(e) => handleChannelInputChange(chan.key, (e.target as HTMLInputElement).value)}
                     title={chan.label}
-                    style={{
-                      width: '100%',
-                      padding: '2px 4px',
-                      fontSize: '1rem',
-                      textAlign: 'center',
-                      backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-                      color: 'var(--cartouche-theme-fg, #000000)',
-                      border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-                      borderRadius: '3px'
-                    }}
                   />
                   <span
                     style={{

@@ -1642,16 +1642,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   setFilterMode(e.target.value as AttributeTableFilterMode);
                   setPageStart(0);
                 }}
-                aria-label={t("filter_dropdown_label")}
-                style={{
-                  fontSize: "0.8333rem",
-                  padding: "2px 6px",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "3px",
-                  backgroundColor: "#ffffff",
-                  color: "#1e293b",
-                  cursor: "pointer",
-                }}>
+                aria-label={t("filter_dropdown_label")}>
                 <option value='all'>{t("filter_show_all")}</option>
                 <option value='selected'>{t("filter_show_selected")}</option>
                 <option value='visible'>{t("filter_show_visible")}</option>
@@ -1683,18 +1674,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   aria-label={t("attribute_table_page_first")}
                   title={t("attribute_table_page_first")}
                   disabled={isFirstDisabled}
-                  onClick={() => setPageStart(0)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "2px 4px",
-                    border: "1px solid var(--cartouche-theme-border-strong)",
-                    borderRadius: "3px",
-                    backgroundColor: isFirstDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
-                    cursor: isFirstDisabled ? "not-allowed" : "pointer",
-                    opacity: isFirstDisabled ? 0.5 : 1,
-                  }}>
+                  onClick={() => setPageStart(0)}>
                   <Icon path={mdiPageFirst} size='1rem' />
                 </button>
                 <button
@@ -1705,18 +1685,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   disabled={isPrevDisabled}
                   onClick={() =>
                     setPageStart(Math.max(0, pageStart - maxRows))
-                  }
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "2px 4px",
-                    border: "1px solid var(--cartouche-theme-border-strong)",
-                    borderRadius: "3px",
-                    backgroundColor: isPrevDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
-                    cursor: isPrevDisabled ? "not-allowed" : "pointer",
-                    opacity: isPrevDisabled ? 0.5 : 1,
-                  }}>
+                  }>
                   <Icon path={mdiChevronLeft} size='1rem' />
                 </button>
                 <button
@@ -1725,18 +1694,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   aria-label={t("attribute_table_page_next")}
                   title={t("attribute_table_page_next")}
                   disabled={isNextDisabled}
-                  onClick={() => setPageStart(pageStart + maxRows)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "2px 4px",
-                    border: "1px solid var(--cartouche-theme-border-strong)",
-                    borderRadius: "3px",
-                    backgroundColor: isNextDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
-                    cursor: isNextDisabled ? "not-allowed" : "pointer",
-                    opacity: isNextDisabled ? 0.5 : 1,
-                  }}>
+                  onClick={() => setPageStart(pageStart + maxRows)}>
                   <Icon path={mdiChevronRight} size='1rem' />
                 </button>
                 <button
@@ -1745,18 +1703,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   aria-label={t("attribute_table_page_last")}
                   title={t("attribute_table_page_last")}
                   disabled={isLastDisabled}
-                  onClick={() => setPageStart(lastPageStart)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "2px 4px",
-                    border: "1px solid var(--cartouche-theme-border-strong)",
-                    borderRadius: "3px",
-                    backgroundColor: isLastDisabled ? "var(--cartouche-theme-surface-alt)" : "var(--cartouche-theme-surface)",
-                    cursor: isLastDisabled ? "not-allowed" : "pointer",
-                    opacity: isLastDisabled ? 0.5 : 1,
-                  }}>
+                  onClick={() => setPageStart(lastPageStart)}>
                   <Icon path={mdiPageLast} size='1rem' />
                 </button>
               </div>

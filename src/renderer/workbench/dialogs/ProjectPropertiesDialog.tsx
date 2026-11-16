@@ -100,44 +100,6 @@ const SIDEBAR_TABS: ProjectPropertiesSidebarTabDef[] = [
 ];
 
 /**
- * Shared inline style for dropdowns on the Measurements tab.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-13
- * @updated 2026-11-13
- * @since 0.1.0-dev
- * @type {React.CSSProperties}
- */
-const SELECT_STYLE: React.CSSProperties = {
-  flex: 1,
-  padding: "0.375rem 0.625rem",
-  borderRadius: "0.25rem",
-  border: "1px solid #cbd5e1",
-  fontSize: "0.875rem",
-  backgroundColor: "#ffffff",
-  color: "#0f172a",
-  minWidth: 0,
-};
-
-/**
- * Shared inline style for text inputs on the General tab.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-12
- * @updated 2026-11-12
- * @since 0.1.0-dev
- * @type {React.CSSProperties}
- */
-const INPUT_STYLE: React.CSSProperties = {
-  flex: 1,
-  padding: "0.375rem 0.625rem",
-  borderRadius: "0.25rem",
-  border: "1px solid #cbd5e1",
-  fontSize: "0.875rem",
-  backgroundColor: "#ffffff",
-  color: "#0f172a",
-  minWidth: 0,
-};
-
-/**
  * Shared inline style for row labels on the General tab.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
@@ -236,50 +198,20 @@ export const ProjectPropertiesDialog: React.FC = () => {
           }}>
           <button
             type='button'
-            className='project-properties-btn cancel'
-            onClick={handleCancel}
-            style={{
-              padding: "6px 14px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            className='dialog-btn dialog-btn-secondary project-properties-btn cancel'
+            onClick={handleCancel}>
             {t("project_properties_btn_cancel")}
           </button>
           <button
             type='button'
-            className='project-properties-btn apply'
-            onClick={handleApply}
-            style={{
-              padding: "6px 14px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            className='dialog-btn dialog-btn-secondary project-properties-btn apply'
+            onClick={handleApply}>
             {t("project_properties_btn_apply")}
           </button>
           <button
             type='button'
-            className='project-properties-btn ok'
-            onClick={handleOk}
-            style={{
-              padding: "6px 16px",
-              backgroundColor: "#1b446c",
-              border: "1px solid #1b446c",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              color: "#ffffff",
-            }}>
+            className='dialog-btn dialog-btn-wide dialog-btn-strong dialog-btn-primary project-properties-btn ok'
+            onClick={handleOk}>
             {t("project_properties_btn_ok")}
           </button>
         </div>
@@ -318,34 +250,17 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </label>
                   <input
                     id='project-prop-file'
-                    className='project-prop-file'
+                    className={`project-prop-input project-prop-file${filePath ? "" : " is-unsaved"}`}
                     type='text'
                     readOnly
                     value={filePath || t("project_properties_file_unsaved")}
                     title={filePath || undefined}
-                    style={{
-                      ...INPUT_STYLE,
-                      backgroundColor: "#f1f5f9",
-                      color: filePath ? "#0f172a" : "#64748b",
-                      fontStyle: filePath ? "normal" : "italic",
-                    }}
                   />
                   <button
                     type='button'
                     id='project-prop-save-as'
-                    className='project-properties-btn save-as'
-                    onClick={handleSaveAs}
-                    style={{
-                      padding: "0.3125rem 0.75rem",
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.25rem",
-                      cursor: "pointer",
-                      fontSize: "0.8125rem",
-                      fontWeight: 500,
-                      color: "#334155",
-                      whiteSpace: "nowrap",
-                    }}>
+                    className='dialog-btn dialog-btn-secondary dialog-btn-compact project-properties-btn save-as'
+                    onClick={handleSaveAs}>
                     {t("project_properties_btn_save_as")}
                   </button>
                 </div>
@@ -359,33 +274,21 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </label>
                   <input
                     id='project-prop-home'
-                    className='project-prop-home'
+                    className='project-prop-input project-prop-home'
                     type='text'
                     value={draft.home}
                     placeholder={filePath ? "" : t("project_properties_file_unsaved")}
                     onChange={(e) =>
                       updateProjectPropertiesDraft({ home: e.target.value })
                     }
-                    style={INPUT_STYLE}
                   />
                   <button
                     type='button'
                     id='project-prop-home-browse'
-                    className='project-properties-btn browse-home'
+                    className='dialog-btn dialog-btn-secondary dialog-btn-icon project-properties-btn browse-home'
                     title={t("project_properties_btn_browse_home")}
                     aria-label={t("project_properties_btn_browse_home")}
-                    onClick={handleBrowseHome}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0.25rem 0.5rem",
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.25rem",
-                      cursor: "pointer",
-                      color: "#334155",
-                    }}>
+                    onClick={handleBrowseHome}>
                     <Icon path={mdiDotsHorizontal} size='16px' />
                   </button>
                 </div>
@@ -399,13 +302,12 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </label>
                   <input
                     id='project-prop-title'
-                    className='project-prop-title'
+                    className='project-prop-input project-prop-title'
                     type='text'
                     value={draft.title}
                     onChange={(e) =>
                       updateProjectPropertiesDraft({ title: e.target.value })
                     }
-                    style={INPUT_STYLE}
                   />
                 </div>
 
@@ -509,14 +411,13 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </label>
                   <select
                     id='project-prop-distance-unit'
-                    className='project-prop-distance-unit'
+                    className='project-prop-input project-prop-distance-unit'
                     value={draft.distanceUnit}
                     onChange={(e) =>
                       updateProjectPropertiesDraft({
                         distanceUnit: e.target.value as ProjectDistanceUnit,
                       })
-                    }
-                    style={SELECT_STYLE}>
+                    }>
                     {PROJECT_DISTANCE_UNITS.map((unit) => (
                       <option key={unit} value={unit}>
                         {t(`project_properties_distance_unit_${unit.replace(/-/g, "_")}`)}
@@ -534,14 +435,13 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </label>
                   <select
                     id='project-prop-area-unit'
-                    className='project-prop-area-unit'
+                    className='project-prop-input project-prop-area-unit'
                     value={draft.areaUnit}
                     onChange={(e) =>
                       updateProjectPropertiesDraft({
                         areaUnit: e.target.value as ProjectAreaUnit,
                       })
-                    }
-                    style={SELECT_STYLE}>
+                    }>
                     {PROJECT_AREA_UNITS.map((unit) => (
                       <option key={unit} value={unit}>
                         {t(`project_properties_area_unit_${unit.replace(/-/g, "_")}`)}
@@ -559,14 +459,13 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   </label>
                   <select
                     id='project-prop-scale-method'
-                    className='project-prop-scale-method'
+                    className='project-prop-input project-prop-scale-method'
                     value={draft.scaleMethod}
                     onChange={(e) =>
                       updateProjectPropertiesDraft({
                         scaleMethod: e.target.value as ScaleCalculationMethod,
                       })
-                    }
-                    style={SELECT_STYLE}>
+                    }>
                     {SCALE_CALCULATION_METHODS.map((method) => (
                       <option key={method} value={method}>
                         {t(`project_properties_scale_method_${method}`)}

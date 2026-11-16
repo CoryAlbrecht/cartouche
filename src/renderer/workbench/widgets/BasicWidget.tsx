@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-08
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -230,7 +230,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -767,16 +767,6 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClose();
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "2px",
-                  color: "var(--cartouche-theme-fg-muted)",
-                  borderRadius: "2px",
-                  display: "flex",
-                  alignItems: "center",
                 }}>
                 <Icon
                   path={mdiClose}

@@ -284,6 +284,24 @@
   /* Drop Targets & Highlights */
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-drop-target-border: var(--cartouche-theme-primary);
+
+  /* Remaining renderer controls (#318) */
+  --cartouche-input-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-input-readonly-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-input-placeholder-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-input-mono-font-family: var(--cartouche-theme-font-family-mono);
+  --cartouche-button-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-button-disabled-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-picker-control-border: var(--cartouche-theme-border);
+  --cartouche-sidebar-tab-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
+  --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
+  --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-gradient-stop-bg: var(--cartouche-theme-surface);
+  --cartouche-gradient-stop-border: var(--cartouche-theme-fg-muted);
+  --cartouche-gradient-stop-active-border: var(--cartouche-theme-primary);
+  --cartouche-gradient-stop-active-ring: var(--cartouche-theme-accent-focus);
 }
 
 /* Global Reset & Theme Root Application */

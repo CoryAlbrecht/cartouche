@@ -4,7 +4,7 @@
  * @description Dockview panel component displaying system event logs, execution warnings, and error messages.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  */
@@ -29,7 +29,7 @@ export interface ConsolePanelProps extends Partial<IDockviewPanelProps> {
  * @description Renders output logs list panel inside Dockview layout.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-04
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {ConsolePanelProps} props - Dockview panel properties.
  * @returns {React.ReactElement} ConsolePanel element.
@@ -80,14 +80,12 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = (props) => {
             style={{ display: "flex", gap: "4px" }}>
             <button
               className='small-action-btn'
-              onClick={handleTestLog}
-              style={{ fontSize: "0.75rem", padding: "2px 8px" }}>
+              onClick={handleTestLog}>
               + Run Task
             </button>
             <button
               className='small-action-btn'
-              onClick={handleClear}
-              style={{ fontSize: "0.75rem", padding: "2px 8px" }}>
+              onClick={handleClear}>
               Clear
             </button>
           </div>

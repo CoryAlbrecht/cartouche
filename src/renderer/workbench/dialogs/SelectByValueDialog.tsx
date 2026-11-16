@@ -4,7 +4,7 @@
  * @description Modeless dialog window stub providing attribute query filtering and selection criteria controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isSelectByValueOpenSignal}
@@ -25,7 +25,7 @@ import { Dialog } from "./Dialog";
  * @description Renders a modeless dialog stub for selecting features by attribute query criteria.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Select by Value dialog window element or null if closed.
  */
@@ -47,15 +47,8 @@ export const SelectByValueDialog: React.FC = () => {
         <div style={{ display: "flex", justifyContent: "flex-end", width: "100%", gap: "8px" }}>
           <button
             type='button'
-            className='btn btn-secondary'
-            onClick={closeSelectByValueDialog}
-            style={{
-              padding: "6px 16px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}>
+            className='btn btn-secondary dialog-btn dialog-btn-wide dialog-btn-secondary'
+            onClick={closeSelectByValueDialog}>
             Close
           </button>
         </div>
