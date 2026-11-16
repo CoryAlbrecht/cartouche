@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -3645,16 +3645,17 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           (el) => el.tagName === "INPUT"
         )[0];
         assert.ok(textInput, "text input must be active in cell editor");
-        assert.strictEqual(
-          textInput.style.width,
-          "100%",
-          "editor input must have width 100%"
+        // Editor sizing lives in the token-bound .cell-editor-input class (Ticket #318)
+        assert.ok(
+          textInput.className.includes("cell-editor-input"),
+          "editor input must carry the cell-editor-input class"
         );
-        assert.strictEqual(
-          textInput.style.boxSizing,
-          "border-box",
-          "editor input must have boxSizing border-box"
-        );
+        const cellEditorRule = fs
+          .readFileSync(path.resolve(__dirname, "../../../src/renderer/styles/workbench.css"), "utf-8")
+          .match(/\.cell-editor-input\s*\{[^}]*\}/);
+        assert.ok(cellEditorRule, ".cell-editor-input rule must exist in workbench.css");
+        assert.match(cellEditorRule[0], /width:\s*100%/, "editor input must have width 100%");
+        assert.match(cellEditorRule[0], /box-sizing:\s*border-box/, "editor input must have box-sizing border-box");
 
         const triggerChange = (el: any, val: string) => {
           const propKey = Object.keys(el).find((k) =>
@@ -3718,15 +3719,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             && el.className.includes("cell-editor-boolean")
         )[0];
         assert.ok(boolSelect, "boolean select must be active in cell editor");
-        assert.strictEqual(
-          boolSelect.style.width,
-          "100%",
-          "editor select must have width 100%"
-        );
-        assert.strictEqual(
-          boolSelect.style.boxSizing,
-          "border-box",
-          "editor select must have boxSizing border-box"
+        // Sized by the same .cell-editor-input class verified above (Ticket #318)
+        assert.ok(
+          boolSelect.className.includes("cell-editor-input"),
+          "editor select must carry the cell-editor-input class"
         );
 
         await act(async () => {

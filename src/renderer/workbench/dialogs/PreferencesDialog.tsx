@@ -571,7 +571,7 @@ export const PreferencesDialog: React.FC = () => {
                 const valid = validateTextPattern(val, item.patterns);
                 handleFieldChange(key, val, valid);
               }}
-              className={`preference-input-text ${!isValid ? "preference-input-invalid" : ""}`}
+              className='preference-input-text'
               title={
                 !isValid ? "Value does not match required format" : undefined
               }

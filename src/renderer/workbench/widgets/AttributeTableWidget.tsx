@@ -4,7 +4,7 @@
  * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link SelectionToolbarWidget}
@@ -674,7 +674,7 @@ export function parseNumericInput(text: string): number | null {
  * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-08
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {AttributeTableWidgetProps} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTableWidget element.
@@ -1571,16 +1571,6 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                               e.preventDefault();
                                               cancelEditingCell();
                                             }
-                                          }}
-                                          style={{
-                                            width: "100%",
-                                            boxSizing: "border-box",
-                                            padding: "2px 4px",
-                                            fontSize: "0.8333rem",
-                                            border: "1px solid #0284c7",
-                                            borderRadius: "2px",
-                                            outline: "none",
-                                            backgroundColor: "#ffffff",
                                           }}>
                                           <option value='true'>
                                             {t("boolean_true")}
@@ -1597,7 +1587,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                               "datetime-local"
                                             : "text"
                                           }
-                                          className={`cell-editor-input cell-editor-${fieldType || "text"}`}
+                                          className={`cell-editor-input cell-editor-${fieldType || "text"}${isNumeric ? " cell-editor-numeric" : ""}`}
                                           autoFocus
                                           value={editValue}
                                           onChange={(e) =>
@@ -1612,18 +1602,6 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                                               e.preventDefault();
                                               cancelEditingCell();
                                             }
-                                          }}
-                                          style={{
-                                            width: "100%",
-                                            boxSizing: "border-box",
-                                            padding: "2px 4px",
-                                            fontSize: "0.8333rem",
-                                            border: "1px solid #0284c7",
-                                            borderRadius: "2px",
-                                            outline: "none",
-                                            backgroundColor: "#ffffff",
-                                            textAlign:
-                                              isNumeric ? "right" : "left",
                                           }}
                                         />
                                     : formatAttributeCellValue(

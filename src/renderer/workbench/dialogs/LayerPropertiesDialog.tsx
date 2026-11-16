@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-13
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -275,7 +275,7 @@ export function getEditableColumnsForField(
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-10
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1681,17 +1681,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 onChange={(e) => setCellInputValue(e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, field, "width", cellInputValue)}
                                 onBlur={() => handleCellBlur(field, "width", cellInputValue)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "2px 4px",
-                                  fontSize: "0.8125rem",
-                                  border: "1px solid #0284c7",
-                                  borderRadius: "2px",
-                                  outline: "none",
-                                  backgroundColor: "#ffffff",
-                                  color: "#0f172a",
-                                }}
                               />
                             ) : (
                               field.width !== undefined && field.width > 0 ?
@@ -1732,17 +1721,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 onChange={(e) => setCellInputValue(e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, field, "precision", cellInputValue)}
                                 onBlur={() => handleCellBlur(field, "precision", cellInputValue)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "2px 4px",
-                                  fontSize: "0.8125rem",
-                                  border: "1px solid #0284c7",
-                                  borderRadius: "2px",
-                                  outline: "none",
-                                  backgroundColor: "#ffffff",
-                                  color: "#0f172a",
-                                }}
                               />
                             ) : (
                               field.precision !== undefined && field.precision > 0 ?
@@ -1783,17 +1761,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                                 onChange={(e) => setCellInputValue(e.target.value)}
                                 onKeyDown={(e) => handleCellKeyDown(e, field, "comment", cellInputValue)}
                                 onBlur={() => handleCellBlur(field, "comment", cellInputValue)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "2px 4px",
-                                  fontSize: "0.8125rem",
-                                  border: "1px solid #0284c7",
-                                  borderRadius: "2px",
-                                  outline: "none",
-                                  backgroundColor: "#ffffff",
-                                  color: "#0f172a",
-                                }}
                               />
                             ) : (
                               field.comment || ""

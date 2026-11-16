@@ -1810,7 +1810,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-danger);
   cursor: help;
   border-radius: 2px;
 }
@@ -2359,6 +2358,189 @@
 
 .timestamp-spinner input {
   user-select: text;
+}
+
+/* =============================================================================
+   Focusable controls formerly styled inline (Spec #316 / Ticket #318)
+   Bound to Tier 2 Component Tokens only, so the global Focus Indicator below
+   reaches them.
+   ============================================================================= */
+
+/* Layer tree container: focusable, scrolling; takes the inset ring below. */
+.layer-tree-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--cartouche-widget-content-bg);
+}
+
+/* Attribute Table cell editors (text, numeric, date/time inputs and the boolean select). */
+.cell-editor-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.8333rem;
+  border: 0.0625rem solid var(--cartouche-cell-editor-border);
+  border-radius: 0.125rem;
+  background-color: var(--cartouche-cell-editor-bg);
+}
+
+.cell-editor-input.cell-editor-numeric {
+  text-align: right;
+}
+
+/* Layer Properties field-table cell editors (Length, Precision, Comment). */
+.layer-field-cell-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.8125rem;
+  border: 0.0625rem solid var(--cartouche-cell-editor-border);
+  border-radius: 0.125rem;
+  background-color: var(--cartouche-cell-editor-bg);
+  color: var(--cartouche-cell-editor-fg);
+}
+
+/* Add Layers dialog buttons: shared base plus primary / secondary / browse variants. */
+.add-layers-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.add-layers-btn-secondary {
+  background-color: var(--cartouche-button-secondary-bg);
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  color: var(--cartouche-button-secondary-fg);
+}
+
+.add-layers-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1.125rem;
+  background-color: var(--cartouche-theme-button-bg);
+  border: none;
+  color: var(--cartouche-theme-button-fg);
+  font-weight: 600;
+}
+
+.add-layers-btn-browse {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.375rem;
+  padding: 0.5rem 0.875rem;
+  background-color: var(--cartouche-button-secondary-alt-bg);
+  border: 0.0625rem solid var(--cartouche-button-secondary-border);
+  color: var(--cartouche-button-secondary-fg);
+}
+
+/* Remove button on an Add Layers path chip. */
+.add-layers-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--cartouche-ui-icon-size) * 0.5 + 0.125rem);
+  height: calc(var(--cartouche-ui-icon-size) * 0.5 + 0.125rem);
+  min-width: calc(var(--cartouche-ui-icon-size) * 0.5 + 0.125rem);
+  min-height: calc(var(--cartouche-ui-icon-size) * 0.5 + 0.125rem);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--cartouche-chip-remove-fg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Borderless text input that follows the path chips inside the vector chip box. */
+.add-layers-chip-input {
+  flex: 1;
+  min-width: 7.5rem;
+  padding: 0.125rem 0.25rem;
+  border: none;
+  background-color: transparent;
+  font-size: 0.875rem;
+}
+
+/* Single path input for raster and database sources. */
+.add-layers-path-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+/* Time Filter Step input, its 1.00 arrows and the Unit dropdown. */
+.time-filter-step-input,
+.time-filter-unit-select {
+  box-sizing: border-box;
+  height: 1.5rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 0.8333rem;
+}
+
+.time-filter-step-input {
+  width: 5.625rem;
+  padding: 0.125rem 1.125rem 0.125rem 0.375rem;
+}
+
+.time-filter-unit-select {
+  padding: 0.125rem 0.375rem;
+  cursor: pointer;
+}
+
+.time-filter-step-arrow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background-color: var(--cartouche-input-bg);
+  line-height: 0;
+  cursor: pointer;
+}
+
+.time-filter-step-arrow-down {
+  border-top: 0.0625rem solid var(--cartouche-input-border);
+}
+
+/* TimestampSpinner segment inputs (year, month, day, hour, minute, second). */
+.timestamp-spinner-segment {
+  box-sizing: border-box;
+  width: 1.65rem;
+  margin: 0;
+  padding: 0 0.1rem;
+  border: none;
+  border-radius: 0.15rem;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: center;
+  cursor: text;
+  user-select: text;
+}
+
+.timestamp-spinner-segment-year {
+  width: 2.85rem;
+}
+
+.timestamp-spinner-segment.is-focused {
+  background-color: var(--cartouche-timestamp-segment-active-bg);
+}
+
+.timestamp-spinner-segment:disabled {
+  cursor: not-allowed;
 }
 
 /* =============================================================================

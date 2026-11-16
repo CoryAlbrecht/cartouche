@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-27
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -64,7 +64,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-27
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -267,35 +267,14 @@ export const AddLayersDialog: React.FC = () => {
         <>
           <button
             type='button'
-            onClick={() => closeAddLayersDialog()}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            className='add-layers-btn add-layers-btn-secondary'
+            onClick={() => closeAddLayersDialog()}>
             Cancel
           </button>
           <button
             type='button'
-            onClick={handleAdd}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 18px",
-              backgroundColor: "#1b446c",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              color: "#ffffff",
-            }}>
+            className='add-layers-btn add-layers-btn-primary'
+            onClick={handleAdd}>
             <Icon name="file:layers-plus-outline.svg" size="calc(var(--cartouche-ui-icon-size, 24px) * 0.67)" color="#ffffff" />
             <span>Add Layers</span>
           </button>
@@ -426,23 +405,7 @@ export const AddLayersDialog: React.FC = () => {
                               );
                           }}
                           title='Remove file'
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            margin: 0,
-                            cursor: "pointer",
-                            color: "#64748b",
-                            borderRadius: "50%",
-                            width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
-                            height: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
-                            minWidth: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
-                            minHeight: "calc(var(--cartouche-ui-icon-size, 24px) * 0.5 + 2px)",
-                            lineHeight: 1,
-                          }}>
+                          className='add-layers-chip-remove'>
                           <Icon path={mdiClose} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)' />
                         </button>
                       </span>
@@ -451,6 +414,7 @@ export const AddLayersDialog: React.FC = () => {
                   <input
                     ref={inputRef}
                     type='text'
+                    className='add-layers-chip-input'
                     value={vectorInputText}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -482,15 +446,6 @@ export const AddLayersDialog: React.FC = () => {
                         "Select or paste vector file path(s)..."
                       : ""
                     }
-                    style={{
-                      flex: 1,
-                      minWidth: "120px",
-                      border: "none",
-                      outline: "none",
-                      fontSize: "0.875rem",
-                      backgroundColor: "transparent",
-                      padding: "2px 4px",
-                    }}
                   />
                 </div>
               : <input
@@ -500,33 +455,13 @@ export const AddLayersDialog: React.FC = () => {
                     filePathSignal.value = e.target.value;
                   }}
                   placeholder={`Select ${activeTab} data file (GeoTIFF, GeoPackage...)`}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "4px",
-                    fontSize: "0.875rem",
-                    outline: "none",
-                  }}
+                  className='add-layers-path-input'
                 />
               }
               <button
                 type='button'
-                onClick={handleBrowse}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 14px",
-                  backgroundColor: "#f1f5f9",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#334155",
-                  height: "38px",
-                }}>
+                className='add-layers-btn add-layers-btn-browse'
+                onClick={handleBrowse}>
                 <Icon path={mdiFolderOpenOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 <span>Browse...</span>
               </button>

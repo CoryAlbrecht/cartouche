@@ -249,6 +249,23 @@
   --cartouche-input-fg: var(--cartouche-theme-fg);
   --cartouche-input-border: var(--cartouche-theme-border-strong);
 
+  /* Table Cell Editors (Attribute Table cells, Layer Properties field table) */
+  --cartouche-cell-editor-bg: var(--cartouche-theme-surface);
+  --cartouche-cell-editor-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-cell-editor-border: var(--cartouche-theme-info);
+
+  /* Secondary Dialog Buttons (Cancel, Browse…) */
+  --cartouche-button-secondary-bg: var(--cartouche-theme-surface);
+  --cartouche-button-secondary-alt-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-button-secondary-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-button-secondary-border: var(--cartouche-theme-border-strong);
+
+  /* Chips (removable path tokens in Add Layers) */
+  --cartouche-chip-remove-fg: var(--cartouche-theme-fg-muted);
+
+  /* Timestamp Spinner: highlight of the segment being edited */
+  --cartouche-timestamp-segment-active-bg: var(--cartouche-theme-info-subtle);
+
   /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
   --cartouche-focus-color: var(--cartouche-theme-primary);
   --cartouche-focus-ring: var(--cartouche-theme-accent-focus);

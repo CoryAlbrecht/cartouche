@@ -4,7 +4,7 @@
  * @description Discrete, segmented numeric input component providing non-cascading calendar date and timestamp editing strictly in UTC epoch milliseconds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link TimestampSpinner}
  * @see {@link UtcTimestampParts}
@@ -276,7 +276,7 @@ const SPINNER_BUTTON_BASE_STYLE: React.CSSProperties = {
  * @description Discrete non-cascading segmented UTC timestamp spinner component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {TimestampSpinnerProps} props - Component properties.
  * @returns {JSX.Element} The rendered timestamp spinner component.
@@ -497,23 +497,12 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
         onBlur={handleSegmentBlur}
         onKeyDown={(e) => handleSegmentKeyDown(seg, e)}
         onChange={(e) => handleSegmentChange(seg, e)}
-        style={{
-          border: 'none',
-          outline: 'none',
-          padding: '0 0.1rem',
-          margin: 0,
-          background: isFocused ? 'var(--cartouche-theme-info-subtle, #e0f2fe)' : 'transparent',
-          color: 'inherit',
-          fontFamily: 'inherit',
-          fontSize: 'inherit',
-          textAlign: 'center',
-          boxSizing: 'border-box',
-          width: len === 4 ? '2.85rem' : '1.65rem',
-          borderRadius: '0.15rem',
-          cursor: disabled ? 'not-allowed' : 'text',
-          userSelect: 'text',
-          ...inputStyle,
-        }}
+        className={[
+          'timestamp-spinner-segment',
+          len === 4 ? 'timestamp-spinner-segment-year' : '',
+          isFocused ? 'is-focused' : '',
+        ].filter(Boolean).join(' ')}
+        style={inputStyle}
       />
     );
   };
