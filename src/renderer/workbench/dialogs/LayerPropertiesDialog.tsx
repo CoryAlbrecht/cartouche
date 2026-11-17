@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -349,7 +349,7 @@ function stopTablePropagation(event: React.SyntheticEvent): void {
  * @description The Fields tab Data Type cell: the field's data type select (enabled in Layer Edit Mode), the "User" badge on overridden fields, and the Reset Type button (enabled in Layer Edit Mode on an overridden field). Its clicks and keys stay in the cell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {Object} props - Component properties.
  * @param {LayerFieldInfo} props.field - The cell's field.
@@ -400,7 +400,7 @@ const FieldTypeControls: React.FC<{
           e.stopPropagation();
           onResetType(field.name);
         }}>
-        <Icon path={mdiUndo} size='14px' />
+        <Icon path={mdiUndo} size='1rem' />
       </button>
     </div>
   );

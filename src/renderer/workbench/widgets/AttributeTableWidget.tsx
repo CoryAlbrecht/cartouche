@@ -56,8 +56,10 @@ import { DigitizingToolbarWidget } from "./toolbars/DigitizingToolbarWidget";
 import { useTranslation } from "@renderer/hooks/useTranslation";
 import {
   parseNumericInput,
+  tableEditorKeyDown,
   TableNumberEditor,
   TableTextEditor,
+  useTableEditorFocus,
 } from "./tableEditors";
 import {
   TableWidget,
@@ -689,40 +691,11 @@ function temporalInputText(value: unknown, fieldType: TemporalFieldType): string
 }
 
 /**
- * @function handleEditorKeyDown
- * @description Shared key handling of the attribute table's own cell editors: Enter commits, Escape cancels, Tab / Shift+Tab commit and move to the next / previous editable cell.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-16
- * @updated 2026-11-16
- * @since 0.1.0-dev
- * @param {React.KeyboardEvent} event - The key event.
- * @param {(move?: TableEditMove) => void} commit - Commits the editor's value, then moves when asked.
- * @param {() => void} cancel - Abandons the edit.
- * @returns {void}
- */
-function handleEditorKeyDown(
-  event: React.KeyboardEvent,
-  commit: (move?: TableEditMove) => void,
-  cancel: () => void
-): void {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    commit();
-  } else if (event.key === "Escape") {
-    event.preventDefault();
-    cancel();
-  } else if (event.key === "Tab") {
-    event.preventDefault();
-    commit(event.shiftKey ? "previous" : "next");
-  }
-}
-
-/**
  * @component TemporalEditor
  * @description Attribute table cell editor for date, time and date-time fields: a native date, time or datetime-local input, focused when it opens, committing its text on Enter, Tab and when focus leaves it.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {Object} props - Component properties: the {@link TableCellEditorProps} plus the field's temporal type.
  * @returns {React.ReactElement} The input.
@@ -736,10 +709,17 @@ function TemporalEditor({
   fieldType: TemporalFieldType;
 }): React.ReactElement {
   const [text, setText] = useState(() => temporalInputText(value, fieldType));
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current?.focus?.();
-  }, []);
+  const inputRef = useTableEditorFocus<HTMLInputElement>();
+  /**
+   * @function commit
+   * @description Commits the input's text, then moves to the next or previous editable cell when asked.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {TableEditMove} [move] - Where to move after committing.
+   * @returns {void}
+   */
   const commit = (move?: TableEditMove): void => onCommit(text, move);
   return (
     <input
@@ -749,7 +729,7 @@ function TemporalEditor({
       value={text}
       onChange={(event) => setText(event.target.value)}
       onBlur={() => commit()}
-      onKeyDown={(event) => handleEditorKeyDown(event, commit, onCancel)}
+      onKeyDown={(event) => tableEditorKeyDown(event, commit, onCancel)}
     />
   );
 }
@@ -801,7 +781,7 @@ function DateTimeEditor(props: TableCellEditorProps<AttributeTableRow>): React.R
  * @description Attribute table cell editor for boolean fields: a localized True / False select, focused when it opens, committing a boolean on Enter, Tab and when focus leaves it.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
  * @returns {React.ReactElement} The select.
@@ -813,10 +793,17 @@ function BooleanEditor({
 }: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
   const { t } = useTranslation();
   const [text, setText] = useState(value ? "true" : "false");
-  const selectRef = useRef<HTMLSelectElement>(null);
-  useEffect(() => {
-    selectRef.current?.focus?.();
-  }, []);
+  const selectRef = useTableEditorFocus<HTMLSelectElement>();
+  /**
+   * @function commit
+   * @description Commits the selected option as a boolean, then moves to the next or previous editable cell when asked.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {TableEditMove} [move] - Where to move after committing.
+   * @returns {void}
+   */
   const commit = (move?: TableEditMove): void => onCommit(text === "true", move);
   return (
     <select
@@ -825,7 +812,7 @@ function BooleanEditor({
       value={text}
       onChange={(event) => setText(event.target.value)}
       onBlur={() => commit()}
-      onKeyDown={(event) => handleEditorKeyDown(event, commit, onCancel)}>
+      onKeyDown={(event) => tableEditorKeyDown(event, commit, onCancel)}>
       <option value='true'>{t("boolean_true")}</option>
       <option value='false'>{t("boolean_false")}</option>
     </select>
@@ -906,7 +893,7 @@ function sameIds(a: ReadonlySet<TableRowId>, b: ReadonlySet<TableRowId>): boolea
 const ID_COLUMN_KEY = "__id__";
 
 /** Column key of the `#` column when it shows the Sequential Row Index. */
-const COUNTER_COLUMN_KEY = "__counter__";
+const ROW_INDEX_COLUMN_KEY = "__counter__";
 
 /**
  * @function sortFieldForColumn
@@ -921,7 +908,7 @@ const COUNTER_COLUMN_KEY = "__counter__";
  */
 function sortFieldForColumn(columnKey: string, fidColumnName: string): string | null {
   if (columnKey === ID_COLUMN_KEY) return fidColumnName || null;
-  if (columnKey === COUNTER_COLUMN_KEY) return null;
+  if (columnKey === ROW_INDEX_COLUMN_KEY) return null;
   return columnKey;
 }
 
@@ -1181,6 +1168,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     return map;
   }, [schemaFields]);
 
+  /** Names of the layer's Virtual Fields, whose columns cannot be sorted: a Virtual Field cannot be a Sort Key (Ticket #330). */
   const virtualFieldNames = useMemo(
     () => new Set((schemaFields ?? []).filter((f) => f.isVirtual).map((f) => f.name)),
     [schemaFields]
@@ -1211,7 +1199,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const isLayerEditable =
     activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
 
-  const identityColKey = hasGuaranteedFid ? ID_COLUMN_KEY : COUNTER_COLUMN_KEY;
+  const identityColKey = hasGuaranteedFid ? ID_COLUMN_KEY : ROW_INDEX_COLUMN_KEY;
   const identityTitle =
     hasGuaranteedFid ?
       fidColumnName.toLowerCase() === "id" ?

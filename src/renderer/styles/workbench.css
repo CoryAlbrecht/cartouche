@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  */
 
@@ -2384,7 +2384,7 @@
   color: var(--cartouche-theme-success);
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.025rem;
   text-transform: uppercase;
 }
 

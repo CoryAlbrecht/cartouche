@@ -4,7 +4,7 @@
  * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. A host `cellStyle` function can give individual cells a 1px border colour, drawn over the shared row and column lines and shown on selected rows too, and a background that sits above the row colours and below the selection colours. Cells can be edited in place (double-click, or F2 / Enter in the focused column) with the default text and number editors or a column's own editor, unless they are Read-Only Cells through the table, their column, their row or themselves; each committed change goes to the host's `onCellEdit`, which can reject it.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
@@ -76,9 +76,13 @@ export interface TableCellEdit {
 
 /**
  * @callback TableCellEditHandler
- * @description Called when the user commits a changed cell value (Ticket #327). The host validates and saves it, updating `rows`; it rejects the edit by returning `false` or throwing, and the cell then keeps showing the row's old value. TableWidget adds no error styling of its own.
+ * @description Called when the user commits a changed cell value (Ticket #327). TableWidget keeps no optimistic copy of the new value: every cell always shows its row in `rows`, so the host's `rows` are the only record of the edit.
+ * - To accept the edit, the host saves it by updating `rows` so the edited row carries `newValue`, and returns nothing (or anything but `false`).
+ * - To reject the edit, the host returns `false` or throws, and must not update `rows` for it. TableWidget then leaves edit mode and the cell shows the row's unchanged old value again. A host that updates `rows` and then returns `false` or throws has accepted the edit as far as the table can show: the cell shows the updated row.
+ *
+ * In both cases the edit ends (moving on to the next or previous editable cell on Tab / Shift+Tab). TableWidget adds no error styling of its own; a host can mark the cell through `cellStyle`.
  * @param {TableCellEdit} edit - The committed edit.
- * @returns {boolean | void} `false` to reject the edit.
+ * @returns {boolean | void} `false` to reject the edit, leaving `rows` unchanged.
  */
 export type TableCellEditHandler = (edit: TableCellEdit) => boolean | void;
 
@@ -185,7 +189,7 @@ export type { TableSort, TableSortDirection, TableSortState } from './tableSort'
  * @property {boolean} [readOnly=false] - Whether every cell is a Read-Only Cell (Ticket #327). Read-only tables still select and sort.
  * @property {(row: R) => boolean} [isRowReadOnly] - Whether every cell of a row is a Read-Only Cell (Ticket #327).
  * @property {(row: R, column: TableColumn<R>) => boolean} [isCellReadOnly] - Whether one cell is a Read-Only Cell (Ticket #327). A cell is read-only when any of the table, its column, its row or the cell itself is.
- * @property {TableCellEditHandler} [onCellEdit] - Called when the user commits a changed cell value; the host saves it by updating `rows`, or rejects it (Ticket #327).
+ * @property {TableCellEditHandler} [onCellEdit] - Called when the user commits a changed cell value (Ticket #327). The host accepts it by updating `rows`, or rejects it by returning `false` or throwing without updating `rows`; TableWidget shows only `rows`, so a rejected edit reverts only when `rows` is left unchanged.
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -408,7 +412,7 @@ interface CellMetrics {
  * @description Reads a header cell's fonts and horizontal padding from its computed style, falling back to the 1rem table font and the default cell padding.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {HTMLElement | null} header - Header cell, or null when unknown.
  * @returns {CellMetrics} Fonts and padding for measuring the column.
@@ -423,6 +427,16 @@ function cellMetrics(header: HTMLElement | null): CellMetrics {
       sortChevron: FALLBACK_SORT_CHEVRON_WIDTH,
     };
   }
+  /**
+   * @function px
+   * @description Parses a computed CSS length such as `12px` into its number of px, treating an empty or unparsable value as 0.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {string} value - Computed CSS length.
+   * @returns {number} The length in px, or 0.
+   */
   const px = (value: string): number => parseFloat(value) || 0;
   return {
     headerFont: `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
@@ -501,7 +515,7 @@ interface ColumnResizing<R> {
  * @description Holds TableWidget's column widths, in the host's `columnWidths` signal when given or else in TableWidget's own state, and drives the resize handles: mousedown on a handle follows the pointer through window mousemove events until mouseup, never below the column's minimum width, and double-click auto-sizes the column.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @template R
  * @param {readonly R[]} rows - The displayed rows, measured when auto-sizing.
@@ -515,6 +529,17 @@ function useColumnResizing<R>(
   const [ownWidths, setOwnWidths] = useState<Record<string, number>>({});
   const widths = hostWidths ? hostWidths.value : ownWidths;
 
+  /**
+   * @function setWidth
+   * @description Stores one column's width: in the host's `columnWidths` signal when the host owns the widths (Ticket #324), otherwise in TableWidget's own state.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {string} key - Key of the resized column.
+   * @param {number} width - The column's new width in px.
+   * @returns {void}
+   */
   const setWidth = (key: string, width: number): void => {
     if (hostWidths) hostWidths.value = { ...hostWidths.value, [key]: width };
     else setOwnWidths((prev) => ({ ...prev, [key]: width }));
@@ -523,8 +548,29 @@ function useColumnResizing<R>(
 
   useEffect(() => () => endDrag.current?.(), []);
 
+  /**
+   * @function widthOf
+   * @description A column's current width: the resized or auto-sized width when there is one, else the column definition's `width`.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {TableColumn<R>} column - The column.
+   * @returns {number | undefined} Width in px, or undefined when the column shares the remaining width.
+   */
   const widthOf = (column: TableColumn<R>): number | undefined => widths[column.key] ?? column.width;
 
+  /**
+   * @function startResize
+   * @description Starts dragging a column's resize handle on a primary-button mousedown: ends any drag still in progress, then follows the pointer through window `mousemove` events, never below the column's minimum width, until `mouseup`. The event never reaches the header, so resizing never sorts.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent<HTMLElement>} event - Mousedown on the column's resize handle.
+   * @param {TableColumn<R>} column - The column being resized.
+   * @returns {void}
+   */
   const startResize = (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>): void => {
     if (event.button !== 0) return;
     event.preventDefault();
@@ -534,10 +580,29 @@ function useColumnResizing<R>(
     const startWidth = widthOf(column) ?? header?.getBoundingClientRect?.().width ?? 0;
     const startX = event.clientX;
     const minWidth = minWidthOf(column, cellMetrics(header));
+    /**
+     * @function onMove
+     * @description Resizes the column by how far the pointer has moved since the drag started, clamped to its minimum width.
+     * @author Cory Albrecht <cory@albrecht.name>
+     * @date 2026-11-16
+     * @updated 2026-11-17
+     * @since 0.1.0-dev
+     * @param {MouseEvent} move - Window mousemove event.
+     * @returns {void}
+     */
     const onMove = (move: MouseEvent): void => {
       const width = Math.max(minWidth, startWidth + move.clientX - startX);
       setWidth(column.key, width);
     };
+    /**
+     * @function onUp
+     * @description Ends the drag when the mouse button is released, removing the window listeners.
+     * @author Cory Albrecht <cory@albrecht.name>
+     * @date 2026-11-16
+     * @updated 2026-11-17
+     * @since 0.1.0-dev
+     * @returns {void}
+     */
     const onUp = (): void => endDrag.current?.();
     endDrag.current = () => {
       window.removeEventListener('mousemove', onMove);
@@ -548,6 +613,17 @@ function useColumnResizing<R>(
     window.addEventListener('mouseup', onUp);
   };
 
+  /**
+   * @function autoSize
+   * @description Auto-sizes a column on a resize handle double-click: the width of its widest displayed cell text or its header, whichever is wider, never below its `minWidth`. The event never reaches the header, so auto-sizing never sorts.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent<HTMLElement>} event - Double-click on the column's resize handle.
+   * @param {TableColumn<R>} column - The column to auto-size.
+   * @returns {void}
+   */
   const autoSize = (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -637,7 +713,7 @@ interface RowSelection {
  * @description Row selection over the displayed rows (Ticket #326): primary-click selects one row, Ctrl+primary-click toggles a row, Shift+primary-click selects the range from the last-clicked row; ↑/↓ move the Active Row, Shift+↑/↓ extend the selection, Ctrl+A selects every displayed row. Each change writes the host's `selectedRowIds` and `activeRowId` signals, then reports itself through `onSelectionChange`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {readonly TableRowId[]} displayedRowIds - Row IDs of the displayed rows, in display order.
  * @param {Signal<Set<TableRowId>>} selectedRowIds - Host-owned Selected Rows.
@@ -655,11 +731,17 @@ function useRowSelection(
   const anchorRef = useRef<TableRowId | null>(null);
 
   /**
-   * Writes the host's signals and reports the change.
+   * @function commit
+   * @description Applies a selection change: writes the host's `selectedRowIds` and `activeRowId` signals, then reports the change through `onSelectionChange`.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
    * @param {TableSelectionChangeKind} kind - Kind of change.
-   * @param {TableRowId[]} rowIds - Rows the change covers.
+   * @param {TableRowId[]} rowIds - Rows the change covers, in display order.
    * @param {Set<TableRowId>} selection - The new selection.
    * @param {TableRowId | null} active - The new Active Row.
+   * @returns {void}
    */
   const commit = (
     kind: TableSelectionChangeKind,
@@ -673,8 +755,14 @@ function useRowSelection(
   };
 
   /**
-   * Selects only one row and makes it the Active Row and the range anchor.
+   * @function selectOnly
+   * @description Selects only one row, making it the Active Row and the anchor of later Shift ranges (a `replace` change).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
    * @param {TableRowId} rowId - The row.
+   * @returns {void}
    */
   const selectOnly = (rowId: TableRowId): void => {
     anchorRef.current = rowId;
@@ -682,15 +770,32 @@ function useRowSelection(
   };
 
   /**
-   * Selects exactly the displayed rows from the anchor to `rowId`, making `rowId` the Active Row.
+   * @function selectRange
+   * @description Selects exactly the displayed rows from the anchor to the given row, making that row the Active Row (a `range` change). The anchor is left unchanged.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
    * @param {number} anchorIndex - Display index of the range anchor.
    * @param {number} index - Display index of the row the range runs to.
+   * @returns {void}
    */
   const selectRange = (anchorIndex: number, index: number): void => {
     const rowIds = displayedRowIds.slice(Math.min(anchorIndex, index), Math.max(anchorIndex, index) + 1);
     commit('range', rowIds, new Set(rowIds), displayedRowIds[index]);
   };
 
+  /**
+   * @function onRowClick
+   * @description Handles a primary-button click anywhere in a row, including its `#` cell: Ctrl/Cmd+click toggles the row (a `toggle` change), Shift+click selects the range from the anchor (a `range` change), and a plain click selects only the row (a `replace` change).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent} event - The click.
+   * @param {TableRowId} rowId - Row ID of the clicked row.
+   * @returns {void}
+   */
   const onRowClick = (event: React.MouseEvent, rowId: TableRowId): void => {
     if (event.button !== 0) return;
     if (event.ctrlKey || event.metaKey) {
@@ -713,6 +818,16 @@ function useRowSelection(
     selectOnly(rowId);
   };
 
+  /**
+   * @function onKeyDown
+   * @description Handles selection keys pressed on the table: Ctrl/Cmd+A selects every displayed row, ↑/↓ move the Active Row and select only it, Shift+↑/↓ extend the range from the anchor. Other keys are ignored, and nothing happens when no rows are displayed.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {React.KeyboardEvent} event - The key event.
+   * @returns {void}
+   */
   const onKeyDown = (event: React.KeyboardEvent): void => {
     if (displayedRowIds.length === 0) return;
     const last = displayedRowIds.length - 1;
@@ -800,10 +915,10 @@ interface CellEditing<R> {
 
 /**
  * @function useCellEditing
- * @description Inline cell editing (Ticket #327): one cell at a time, never a Read-Only Cell. Remembers the focused column, the column of the most recently clicked or edited cell, so F2 and Enter can edit the Active Row's cell in it. A commit reports a changed value through `onCellEdit` (an unchanged value is not reported); the host saves it by updating its rows, and a host that returns `false` or throws leaves the row's old value showing. Tab/Shift+Tab commits and moves on to the next/previous editable cell in display order, selecting its row when it is another row. When an edit ends with nothing focused (its editor was removed), the table takes focus back for keyboard use.
+ * @description Inline cell editing (Ticket #327): one cell at a time, never a Read-Only Cell. Remembers the focused column, the column of the most recently clicked or edited cell, so F2 and Enter can edit the Active Row's cell in it. A commit reports a changed value through `onCellEdit` (an unchanged value is not reported) and always ends the edit; the host saves it by updating its rows, and a host that rejects it returns `false` or throws without updating its rows, so the row's old value shows again. Tab/Shift+Tab commits and moves on to the next/previous editable cell in display order, selecting its row when it is another row. When an edit ends with nothing focused (its editor was removed), the table takes focus back for keyboard use.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @template R
  * @param {CellEditingOptions<R>} options - Rows, columns, read-only test, selection and host callback.
@@ -839,8 +954,14 @@ function useCellEditing<R>({
   }, [editing, tableRef]);
 
   /**
-   * Opens (or closes, with null) an edit.
-   * @param {EditingCell | null} cell - The cell to edit, or null.
+   * @function open
+   * @description Opens an edit on a cell, making its column the focused column, or closes the current edit when given null. The edit is recorded synchronously in `editingRef` so a second commit or cancel from the same editor is ignored.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {EditingCell | null} cell - The cell to edit, or null to close the edit.
+   * @returns {void}
    */
   const open = (cell: EditingCell | null): void => {
     editingRef.current = cell;
@@ -848,16 +969,46 @@ function useCellEditing<R>({
     if (cell) focusedColumnRef.current = cell.columnKey;
   };
 
+  /**
+   * @function focusColumn
+   * @description Makes a column the focused column, where F2 and Enter edit (set by clicking one of its cells).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {string} columnKey - Key of the column.
+   * @returns {void}
+   */
   const focusColumn = (columnKey: string): void => {
     focusedColumnRef.current = columnKey;
   };
 
+  /**
+   * @function startEdit
+   * @description Makes a cell's column the focused column and starts editing the cell, unless it is a Read-Only Cell.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {R} row - The cell's row.
+   * @param {TableColumn<R>} column - The cell's column.
+   * @returns {void}
+   */
   const startEdit = (row: R, column: TableColumn<R>): void => {
     focusedColumnRef.current = column.key;
     if (isReadOnly(row, column)) return;
     open({ rowId: getRowId(row), columnKey: column.key });
   };
 
+  /**
+   * @function startEditInActiveRow
+   * @description Starts editing the Active Row's cell in the focused column (F2 / Enter), or its first editable cell when no column has been focused. Does nothing when there is no displayed Active Row.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
   const startEditInActiveRow = (): void => {
     const active = activeRowId.peek();
     const row = displayedRows.find((candidate) => getRowId(candidate) === active);
@@ -868,9 +1019,14 @@ function useCellEditing<R>({
   };
 
   /**
-   * Finds the next or previous editable cell from a cell, in display order, row by row.
+   * @function neighbour
+   * @description Finds the next or previous editable cell from a cell, in display order, row by row, skipping Read-Only Cells.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
    * @param {EditingCell} from - The cell to move from.
-   * @param {TableEditMove} move - Direction.
+   * @param {TableEditMove} move - Direction: `next` (Tab) or `previous` (Shift+Tab).
    * @returns {EditingCell | null} The cell, or null when there is none.
    */
   const neighbour = (from: EditingCell, move: TableEditMove): EditingCell | null => {
@@ -885,6 +1041,18 @@ function useCellEditing<R>({
     return null;
   };
 
+  /**
+   * @function commit
+   * @description Ends an edit with a new value. A changed value is reported to the host through `onCellEdit`; a host that rejects it (returns `false` or throws) has left `rows` unchanged, so the cell shows the row's old value again. Either way the edit closes, then moves to the next or previous editable cell when `move` is given, selecting its row when it is another row. A commit for an edit that has already ended is ignored.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {EditingCell} cell - The edited cell.
+   * @param {unknown} newValue - The value the user committed.
+   * @param {TableEditMove} [move] - Where to move after committing.
+   * @returns {void}
+   */
   const commit = (cell: EditingCell, newValue: unknown, move?: TableEditMove): void => {
     if (editingRef.current !== cell) return;
     editingRef.current = null;
@@ -894,10 +1062,11 @@ function useCellEditing<R>({
       const oldValue = cellValue(row, column);
       if (!Object.is(oldValue, newValue)) {
         try {
-          // A `false` result rejects the edit: the host leaves its row unchanged, so the old value keeps showing.
+          // A `false` result rejects the edit. The table shows only `rows`, so the old value shows again
+          // because a rejecting host leaves its row unchanged; the edit ends below either way.
           onCellEdit?.({ rowId: cell.rowId, columnKey: cell.columnKey, oldValue, newValue });
         } catch {
-          // A throwing host rejects the edit the same way.
+          // A throwing host rejects the edit the same way, and the edit still ends below.
         }
       }
     }
@@ -906,6 +1075,16 @@ function useCellEditing<R>({
     open(next);
   };
 
+  /**
+   * @function cancel
+   * @description Ends an edit without reporting it, so the cell keeps its old value. A cancel for an edit that has already ended is ignored.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {EditingCell} cell - The edited cell.
+   * @returns {void}
+   */
   const cancel = (cell: EditingCell): void => {
     if (editingRef.current !== cell) return;
     open(null);
