@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -11,7 +11,7 @@
  * @see {@link sortTableRows}
  */
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSignal, type Signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from '@mdi/js';
@@ -63,7 +63,7 @@ export interface TableCellEditorProps<R> {
  * @property {boolean} [readOnly=false] - Whether every cell of the column is a Read-Only Cell (Ticket #327).
  * @property {React.ComponentType<TableCellEditorProps<R>>} [editor] - Cell editor component (Ticket #327).
  * @property {number} [width] - Initial width in px; the column shares the remaining width when absent.
- * @property {number} [minWidth] - Minimum width in px the column can be resized to (Ticket #324).
+ * @property {number} [minWidth] - Minimum width in px the column can be resized or auto-sized to (Ticket #324); defaults to the width its header text and any sort chevron need.
  */
 export interface TableColumn<R> {
   key: string;
@@ -126,6 +126,7 @@ export type { TableSort, TableSortDirection, TableSortState } from './tableSort'
  * @property {(change: TableSelectionChange) => void} [onSelectionChange] - Called after every selection change, with its kind.
  * @property {Signal<TableSort>} [sort] - Host-owned sort state, read and written by TableWidget; without it TableWidget keeps the sort itself (Ticket #325).
  * @property {TableSortHandler} [sortHandler] - Host sorting: when given, TableWidget only updates the sort state and chevrons and calls it, and the host supplies `rows` in sorted order; without it TableWidget sorts `rows` in memory (Ticket #325).
+ * @property {Signal<Record<string, number>>} [columnWidths] - Host-owned column widths in px by column key (Ticket #324). TableWidget reads widths from it over the column definitions' `width`, and writes resized and auto-sized widths back to it; without it, TableWidget keeps the widths itself.
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -138,6 +139,7 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   onSelectionChange?: (change: TableSelectionChange) => void;
   sort?: Signal<TableSort>;
   sortHandler?: TableSortHandler;
+  columnWidths?: Signal<Record<string, number>>;
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
@@ -188,6 +190,17 @@ const ROW_NUMBER_CELL_STYLE: React.CSSProperties = {
   zIndex: Z_INDEX.rowNumber,
 };
 
+/** Column resize handle: a strip over the header cell's right edge (the sticky header cell is its containing block). */
+const RESIZE_HANDLE_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  bottom: 0,
+  width: '0.375rem',
+  cursor: 'col-resize',
+  userSelect: 'none',
+};
+
 /**
  * @function tableWidth
  * @description Computes the table's CSS width: the sum of the column widths (plus the Row Number Column) when every column has one, otherwise the full frame width so columns without a width share it.
@@ -195,14 +208,13 @@ const ROW_NUMBER_CELL_STYLE: React.CSSProperties = {
  * @date 2026-11-16
  * @updated 2026-11-16
  * @since 0.1.0-dev
- * @template R
- * @param {readonly TableColumn<R>[]} columns - Column definitions.
+ * @param {readonly (number | undefined)[]} widths - Current width in px of each column, in display order; undefined where a column has none.
  * @param {boolean} showRowNumberColumn - Whether the Row Number Column is shown.
  * @returns {string} CSS width.
  */
-function tableWidth<R>(columns: readonly TableColumn<R>[], showRowNumberColumn: boolean): string {
-  if (columns.length === 0 || columns.some((column) => column.width === undefined)) return '100%';
-  const total = `${columns.reduce((sum, column) => sum + (column.width ?? 0), 0)}px`;
+function tableWidth(widths: readonly (number | undefined)[], showRowNumberColumn: boolean): string {
+  if (widths.length === 0 || widths.some((width) => width === undefined)) return '100%';
+  const total = `${widths.reduce<number>((sum, width) => sum + (width ?? 0), 0)}px`;
   return showRowNumberColumn ? `calc(${total} + ${ROW_NUMBER_COLUMN_WIDTH})` : total;
 }
 
@@ -238,6 +250,218 @@ function displayCell<R>(row: R, column: TableColumn<R>): React.ReactNode {
   const value = cellValue(row, column);
   if (column.display) return column.display(value, row);
   return value === null || value === undefined ? '' : String(value);
+}
+
+/** Character width in px assumed where text cannot be measured (no canvas 2D context, as in headless tests). */
+const FALLBACK_CHARACTER_WIDTH = 8;
+
+/** Cell padding plus column line in px assumed where a cell's computed style is unavailable: 0.5rem each side at 16px, plus 1px. */
+const FALLBACK_CELL_EXTRAS = 17;
+
+/** Sort chevron width in px assumed where a cell's computed style is unavailable: the 1rem icon plus its 0.25rem margin at 16px. */
+const FALLBACK_SORT_CHEVRON_WIDTH = 20;
+
+/** Offscreen canvas reused for text measurement. */
+let measuringCanvas: HTMLCanvasElement | null = null;
+
+/**
+ * @function measureText
+ * @description Measures the rendered width of text in a CSS font with an offscreen canvas, falling back to a fixed width per character where there is no canvas 2D context.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {string} text - Text to measure.
+ * @param {string} font - CSS font shorthand, e.g. from a cell's computed style.
+ * @returns {number} Width in px.
+ */
+function measureText(text: string, font: string): number {
+  try {
+    measuringCanvas ??= document.createElement('canvas');
+    const context = measuringCanvas.getContext('2d');
+    if (context) {
+      context.font = font;
+      return context.measureText(text).width;
+    }
+  } catch {
+    // No canvas: fall back to the per-character estimate.
+  }
+  return text.length * FALLBACK_CHARACTER_WIDTH;
+}
+
+/**
+ * @typedef {Object} CellMetrics
+ * @description What sizing a column needs from its header cell's computed style.
+ * @property {string} headerFont - CSS font of the header text.
+ * @property {string} bodyFont - CSS font of the column's cell text: the header font at normal weight.
+ * @property {number} extras - Horizontal padding plus column line, in px, around a cell's text.
+ * @property {number} sortChevron - Width in px of a sortable header's sort chevron: the 1rem icon plus its 0.25rem margin.
+ */
+interface CellMetrics {
+  headerFont: string;
+  bodyFont: string;
+  extras: number;
+  sortChevron: number;
+}
+
+/**
+ * @function cellMetrics
+ * @description Reads a header cell's fonts and horizontal padding from its computed style, falling back to the 1rem table font and the default cell padding.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {HTMLElement | null} header - Header cell, or null when unknown.
+ * @returns {CellMetrics} Fonts and padding for measuring the column.
+ */
+function cellMetrics(header: HTMLElement | null): CellMetrics {
+  const style = header && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(header) : null;
+  if (!style?.fontSize) {
+    return {
+      headerFont: 'bold 1rem sans-serif',
+      bodyFont: '1rem sans-serif',
+      extras: FALLBACK_CELL_EXTRAS,
+      sortChevron: FALLBACK_SORT_CHEVRON_WIDTH,
+    };
+  }
+  const px = (value: string): number => parseFloat(value) || 0;
+  return {
+    headerFont: `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
+    bodyFont: `${style.fontStyle} normal ${style.fontSize} ${style.fontFamily}`,
+    extras: px(style.paddingLeft) + px(style.paddingRight) + px(style.borderRightWidth),
+    sortChevron: 1.25 * px(style.fontSize),
+  };
+}
+
+/**
+ * @function headerWidth
+ * @description The width in px a column's header content needs: its header text, plus the sort chevron when the column is sortable (Ticket #325), plus cell padding.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @template R
+ * @param {TableColumn<R>} column - The column.
+ * @param {CellMetrics} metrics - The column header's fonts and padding.
+ * @returns {number} Header width in px.
+ */
+function headerWidth<R>(column: TableColumn<R>, metrics: CellMetrics): number {
+  const chevron = column.sortable === false ? 0 : metrics.sortChevron;
+  return measureText(column.header, metrics.headerFont) + chevron + metrics.extras;
+}
+
+/**
+ * @function minWidthOf
+ * @description A column's minimum width in px: the column definition's `minWidth`, or else the width its header (text and any sort chevron) needs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @template R
+ * @param {TableColumn<R>} column - The column.
+ * @param {CellMetrics} metrics - The column header's fonts and padding.
+ * @returns {number} Minimum width in px.
+ */
+function minWidthOf<R>(column: TableColumn<R>, metrics: CellMetrics): number {
+  return column.minWidth ?? Math.ceil(headerWidth(column, metrics));
+}
+
+/**
+ * @function nodeText
+ * @description Extracts the text a rendered cell shows from its React content: strings and numbers as they are, arrays and elements through their children, and nothing for booleans, null and undefined.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {React.ReactNode} node - Rendered cell content.
+ * @returns {string} The content's text.
+ */
+function nodeText(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number' || typeof node === 'bigint') return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) return nodeText(node.props.children);
+  return '';
+}
+
+/**
+ * @typedef {Object} ColumnResizing
+ * @description What {@link useColumnResizing} gives TableWidget to size its columns.
+ * @template R
+ * @property {(column: TableColumn<R>) => number | undefined} widthOf - A column's current width in px; undefined while it has none and shares the remaining width.
+ * @property {(event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void} startResize - Starts dragging a column's resize handle.
+ * @property {(event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void} autoSize - Sizes a column to the widest of its header (text and any sort chevron) and its displayed values.
+ */
+interface ColumnResizing<R> {
+  widthOf: (column: TableColumn<R>) => number | undefined;
+  startResize: (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void;
+  autoSize: (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void;
+}
+
+/**
+ * @function useColumnResizing
+ * @description Holds TableWidget's column widths, in the host's `columnWidths` signal when given or else in TableWidget's own state, and drives the resize handles: mousedown on a handle follows the pointer through window mousemove events until mouseup, never below the column's minimum width, and double-click auto-sizes the column.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @template R
+ * @param {readonly R[]} rows - The displayed rows, measured when auto-sizing.
+ * @param {Signal<Record<string, number>>} [hostWidths] - The host's column widths signal, if the host owns the widths.
+ * @returns {ColumnResizing<R>} Column widths and resize handlers.
+ */
+function useColumnResizing<R>(
+  rows: readonly R[],
+  hostWidths: Signal<Record<string, number>> | undefined
+): ColumnResizing<R> {
+  const [ownWidths, setOwnWidths] = useState<Record<string, number>>({});
+  const widths = hostWidths ? hostWidths.value : ownWidths;
+
+  const setWidth = (key: string, width: number): void => {
+    if (hostWidths) hostWidths.value = { ...hostWidths.value, [key]: width };
+    else setOwnWidths((prev) => ({ ...prev, [key]: width }));
+  };
+  const endDrag = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => endDrag.current?.(), []);
+
+  const widthOf = (column: TableColumn<R>): number | undefined => widths[column.key] ?? column.width;
+
+  const startResize = (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>): void => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    endDrag.current?.();
+    const header = event.currentTarget.parentNode as HTMLElement | null;
+    const startWidth = widthOf(column) ?? header?.getBoundingClientRect?.().width ?? 0;
+    const startX = event.clientX;
+    const minWidth = minWidthOf(column, cellMetrics(header));
+    const onMove = (move: MouseEvent): void => {
+      const width = Math.max(minWidth, startWidth + move.clientX - startX);
+      setWidth(column.key, width);
+    };
+    const onUp = (): void => endDrag.current?.();
+    endDrag.current = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      endDrag.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const autoSize = (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    const metrics = cellMetrics(event.currentTarget.parentNode as HTMLElement | null);
+    const widest = rows.reduce(
+      (max, row) => Math.max(max, measureText(nodeText(displayCell(row, column)), metrics.bodyFont) + metrics.extras),
+      headerWidth(column, metrics)
+    );
+    const width = Math.max(column.minWidth ?? 0, Math.ceil(widest));
+    setWidth(column.key, width);
+  };
+
+  return { widthOf, startResize, autoSize };
 }
 
 /**
@@ -428,12 +652,14 @@ export function TableWidget<R>({
   onSelectionChange,
   sort: hostSortSignal,
   sortHandler,
+  columnWidths,
   name = 'table-widget',
   displayName = 'Table',
   className = '',
   ...basicWidgetProps
 }: TableWidgetProps<R>): React.ReactElement {
   useSignals();
+  const { widthOf, startResize, autoSize } = useColumnResizing(rows, columnWidths);
 
   /**
    * @signal internalSortSignal
@@ -496,7 +722,7 @@ export function TableWidget<R>({
           tabIndex={0}
           onKeyDown={onKeyDown}
           style={{
-            width: tableWidth(columns, showRowNumberColumn),
+            width: tableWidth(columns.map(widthOf), showRowNumberColumn),
             tableLayout: 'fixed',
             borderCollapse: 'separate',
             borderSpacing: 0,
@@ -528,7 +754,7 @@ export function TableWidget<R>({
                     onClick={() => handleHeaderClick(column)}
                     style={{
                       ...HEADER_CELL_STYLE,
-                      width: column.width,
+                      width: widthOf(column),
                       textAlign: column.align ?? 'left',
                       cursor: sortable ? 'pointer' : undefined,
                     }}>
@@ -541,6 +767,13 @@ export function TableWidget<R>({
                         style={{ verticalAlign: 'middle', marginLeft: '0.25rem' }}
                       />
                     )}
+                    <div
+                      className='table-widget-resize-handle'
+                      style={RESIZE_HANDLE_STYLE}
+                      onMouseDown={(event) => startResize(event, column)}
+                      onDoubleClick={(event) => autoSize(event, column)}
+                      onClick={(event) => event.stopPropagation()}
+                    />
                   </th>
                 );
               })}

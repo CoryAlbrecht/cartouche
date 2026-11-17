@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.test.ts
  * @module tests/renderer/widgets/TableWidget.test
- * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; and (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours.
+ * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -718,6 +718,202 @@ describe('TableWidget Selected Row and Active Row colours (Ticket #326)', () => 
       assert.equal(numberCell.style.backgroundColor, 'var(--cartouche-table-header-bg)');
       assert.equal(numberCell.style.color, 'var(--cartouche-table-header-fg)');
     }
+  });
+});
+
+/**
+ * @function resizeHandleOf
+ * @description Returns the resize handle inside a column header cell.
+ * @param {MockElement} header - Column header cell.
+ * @returns {MockElement} The header's resize handle.
+ */
+function resizeHandleOf(header: MockElement): MockElement {
+  const [handle] = findElementsByClass(header, 'table-widget-resize-handle');
+  assert.ok(handle, `header ${textOf(header)} has a resize handle`);
+  return handle;
+}
+
+/**
+ * @function dataHeaders
+ * @description Returns the column header cells, excluding the Row Number Column's `#` header.
+ * @returns {MockElement[]} Data column header cells.
+ */
+function dataHeaders(): MockElement[] {
+  return headerCells().filter((cell) => !cell.className.includes('table-widget-row-number-header'));
+}
+
+/**
+ * @function drag
+ * @description Drags a resize handle from `fromX` to `toX`: mousedown on the handle, then mousemove and mouseup on the window.
+ * @param {MockElement} handle - Resize handle.
+ * @param {number} fromX - Pointer x at mousedown.
+ * @param {number} toX - Pointer x at mousemove and mouseup.
+ */
+async function drag(handle: MockElement, fromX: number, toX: number): Promise<void> {
+  await act(async () => {
+    handle.dispatchEvent({ type: 'mousedown', button: 0, clientX: fromX, bubbles: true });
+  });
+  await act(async () => {
+    dom!.win.dispatchEvent({ type: 'mousemove', clientX: toX });
+  });
+  await act(async () => {
+    dom!.win.dispatchEvent({ type: 'mouseup', clientX: toX });
+  });
+}
+
+/** City columns with explicit widths, used by the resize tests. */
+const SIZED_COLUMNS = [
+  { key: 'name', header: 'Name', width: 120 },
+  { key: 'population', header: 'Population', width: 100, align: 'right' }
+];
+
+describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
+  beforeEach(() => {
+    installHost();
+  });
+
+  afterEach(() => {
+    teardownMockDom(dom);
+    dom = null;
+  });
+
+  it('puts a resize handle with a col-resize cursor at the right edge of each column header', async () => {
+    await render();
+    const headers = dataHeaders();
+    assert.equal(headers.length, 2);
+    for (const header of headers) {
+      const handle = resizeHandleOf(header);
+      assert.equal(handle.style.cursor, 'col-resize');
+      assert.equal(handle.style.position, 'absolute');
+      assert.match(handle.style.right, /^0(px)?$/);
+    }
+  });
+
+  it('widens and narrows only the dragged column, and the table with it', async () => {
+    await render({ columns: SIZED_COLUMNS, showRowNumberColumn: false });
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, 280);
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['200px', '100px']);
+    const [table] = findElementsByClass(dom!.container, 'table-widget-table');
+    assert.equal(table.style.width, '300px');
+
+    await drag(resizeHandleOf(dataHeaders()[0]), 300, 240);
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['140px', '100px']);
+    assert.equal(table.style.width, '240px');
+  });
+
+  it('stops following the pointer after mouseup', async () => {
+    await render({ columns: SIZED_COLUMNS });
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, 230);
+    await act(async () => {
+      dom!.win.dispatchEvent({ type: 'mousemove', clientX: 400 });
+    });
+    assert.equal(dataHeaders()[0].style.width, '150px');
+  });
+
+  it("never drags a column narrower than the column definition's minWidth", async () => {
+    await render({
+      columns: [{ key: 'name', header: 'Name', width: 120, minWidth: 90 }, SIZED_COLUMNS[1]]
+    });
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, 100);
+    assert.equal(dataHeaders()[0].style.width, '90px');
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, 210);
+    assert.equal(dataHeaders()[0].style.width, '100px', 'resizes freely above the minimum');
+  });
+
+  it('without a minWidth, never drags a column narrower than its header text needs', async () => {
+    await render({ columns: SIZED_COLUMNS });
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, -1000);
+    await drag(resizeHandleOf(dataHeaders()[1]), 400, -1000);
+    const [nameFloor, populationFloor] = dataHeaders().map((c) => parseFloat(c.style.width));
+    assert.ok(nameFloor > 0, 'Name keeps a positive width');
+    assert.ok(populationFloor > nameFloor, 'the longer header Population keeps a wider minimum than Name');
+  });
+
+  // Headless, text measures 8px per character, a cell adds 17px (0.5rem padding each side plus the 1px column line),
+  // and a sortable header adds 20px for its sort chevron (1rem icon plus 0.25rem margin).
+  it('double-clicking a resize handle sizes the column to the widest of its header text and its displayed values', async () => {
+    await render({
+      columns: [
+        ...COLUMNS.map((column) => ({ ...column, width: 60 })),
+        { key: 'fid', header: 'Feature identifier', width: 60 }
+      ]
+    });
+    for (const header of dataHeaders()) {
+      await act(async () => {
+        resizeHandleOf(header).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+      });
+    }
+    assert.deepEqual(
+      dataHeaders().map((c) => c.style.width),
+      [
+        `${8 * 'Montréal'.length + 17}px`,
+        `${8 * '1,762,949 people'.length + 17}px`,
+        `${8 * 'Feature identifier'.length + 20 + 17}px`
+      ]
+    );
+  });
+
+  it('auto-sizes a column that cannot be sorted to its header text alone, with no room for a sort chevron', async () => {
+    await render({ columns: [{ key: 'fid', header: 'Feature identifier', width: 60, sortable: false }] });
+    await act(async () => {
+      resizeHandleOf(dataHeaders()[0]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    assert.equal(dataHeaders()[0].style.width, `${8 * 'Feature identifier'.length + 17}px`);
+  });
+
+  it('auto-sizes no narrower than the column minWidth', async () => {
+    await render({ columns: [{ key: 'name', header: 'Name', width: 60, minWidth: 150 }] });
+    await act(async () => {
+      resizeHandleOf(dataHeaders()[0]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    assert.equal(dataHeaders()[0].style.width, '150px');
+  });
+
+  it("never sorts when a sortable column's resize handle is dragged, clicked or double-clicked", async () => {
+    await render({ columns: SIZED_COLUMNS });
+    const handle = resizeHandleOf(dataHeaders()[0]);
+    await drag(handle, 200, 230);
+    await act(async () => {
+      handle.dispatchEvent({ type: 'click', button: 0, bubbles: true });
+      handle.dispatchEvent({ type: 'click', button: 0, bubbles: true, detail: 2 });
+      handle.dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    assert.equal(dataHeaders()[0].getAttribute('aria-sort'), 'none');
+    assert.deepEqual(bodyRows().map((row) => row.getAttribute('data-row-id')), ['10', '20', '30']);
+  });
+
+  it('without a host widths signal, keeps resized widths itself across re-renders', async () => {
+    await render({ columns: SIZED_COLUMNS });
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, 250);
+    await render({ columns: SIZED_COLUMNS, rows: [CITIES[1]] });
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['170px', '100px']);
+  });
+
+  it("reads widths from a host's columnWidths signal over the column definitions, following later changes", async () => {
+    const { signal } = jiti('@preact/signals-react');
+    const columnWidths = signal({ population: 140 });
+    await render({ columns: SIZED_COLUMNS, columnWidths });
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['120px', '140px']);
+
+    await act(async () => {
+      columnWidths.value = { name: 90, population: 140 };
+    });
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['90px', '140px']);
+  });
+
+  it("writes dragged and auto-sized widths to a host's columnWidths signal", async () => {
+    const { signal } = jiti('@preact/signals-react');
+    const columnWidths = signal({ population: 140 });
+    await render({ columns: SIZED_COLUMNS, columnWidths });
+    await drag(resizeHandleOf(dataHeaders()[0]), 200, 230);
+    assert.deepEqual(columnWidths.value, { population: 140, name: 150 });
+
+    await act(async () => {
+      resizeHandleOf(dataHeaders()[1]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    // The header Population and its sort chevron are wider than the raw values (e.g. 1762949).
+    assert.deepEqual(columnWidths.value, { population: 8 * 'Population'.length + 20 + 17, name: 150 });
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['150px', '117px']);
   });
 });
 
