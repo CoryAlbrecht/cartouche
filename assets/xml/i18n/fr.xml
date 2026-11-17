@@ -294,6 +294,8 @@
     <string name="layer_properties_dash_array_remove">Supprimer la ligne</string>
     <string name="layer_properties_dash_array_move_up">Monter</string>
     <string name="layer_properties_dash_array_move_down">Descendre</string>
+    <string name="layer_properties_dash_array_invalid_value">Saisissez un nombre supérieur ou égal à 0.</string>
+    <string name="layer_properties_dash_array_all_zero">Un tableau de tirets doit contenir au moins une valeur supérieure à 0.</string>
     <string name="layer_properties_styling_point_shape">Forme du point</string>
     <string name="layer_properties_styling_point_radius">Taille du point</string>
     <string name="layer_properties_styling_layer_opacity">Opacité de la couche</string>

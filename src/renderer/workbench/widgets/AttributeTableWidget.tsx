@@ -1,17 +1,19 @@
 /**
  * @file AttributeTableWidget.tsx
  * @module renderer/workbench/widgets/AttributeTableWidget
- * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars.
+ * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars. The records are shown through an embedded TableWidget (Spec #322 / Ticket #329) whose column definitions carry the attribute table's type-specific display and editors. Clicking a sortable column header sorts all of the layer's features through the Geospatial Worker's `orderBy` Sort Keys (Ticket #330).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
+ * @see {@link TableWidget}
  * @see {@link SelectionToolbarWidget}
  * @see {@link DigitizingToolbarWidget}
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { signal, useSignal, type Signal } from "@preact/signals-react";
 import { useSignals } from "@preact/signals-react/runtime";
 import WKB from "ol/format/WKB.js";
 import { BasicWidget } from "./BasicWidget";
@@ -27,6 +29,7 @@ import {
   isProjectDirtySignal,
   viewportExtentSignal,
   openDockPanelsSignal,
+  addConsoleLog,
 } from "@renderer/state/gisSignals";
 import { prefsAttributeTableMaxRows } from "@renderer/state/preferencesSignals";
 import { activeLocaleSignal } from "@renderer/state/i18nSignals";
@@ -37,6 +40,7 @@ import {
   type GisFeature,
   type LayerFieldInfo,
   type InferredFieldType,
+  type SortKey,
 } from "@shared/types";
 import type { IDockviewPanelProps } from "dockview-react";
 import type { DockviewPanelApi } from "dockview-core";
@@ -50,6 +54,27 @@ import {
 import { SelectionToolbarWidget } from "./toolbars/SelectionToolbarWidget";
 import { DigitizingToolbarWidget } from "./toolbars/DigitizingToolbarWidget";
 import { useTranslation } from "@renderer/hooks/useTranslation";
+import {
+  parseNumericInput,
+  tableEditorKeyDown,
+  TableNumberEditor,
+  TableTextEditor,
+  useTableEditorFocus,
+} from "./tableEditors";
+import {
+  TableWidget,
+  type TableCellEdit,
+  type TableCellEditorProps,
+  type TableColumn,
+  type TableEditMove,
+  type TableRowId,
+  type TableSelectionChange,
+  type TableSort,
+  type TableSortDirection,
+} from "./TableWidget";
+import { sortTableRows } from "./tableSort";
+
+export { parseNumericInput };
 
 /**
  * Available feature filtering modes for the attribute table.
@@ -331,47 +356,44 @@ export function deserializeQueryExtentFeatures(
 }
 
 /**
- * In-memory session cache of customized column widths keyed by layer ID.
- * @type {Map<string, Record<string, number>>}
+ * @typedef {Object} AttributeTableRow
+ * @description One row of the embedded TableWidget: a feature and its Sequential Row Index.
+ * @property {GisFeature} feature - The feature the row shows.
+ * @property {number} rowIndex - The feature's 1-based Sequential Row Index across pages (`pageStart + index + 1`).
  */
-export const layerColumnWidthsCache = new Map<string, Record<string, number>>();
-
-let cachedCanvas: HTMLCanvasElement | null = null;
+interface AttributeTableRow {
+  feature: GisFeature;
+  rowIndex: number;
+}
 
 /**
- * Measures text width using an offscreen canvas or character-based fallback in headless environments.
- * @function measureTextWidth
- * @description Measures text rendered width in pixels for column auto-sizing and minimum width clamping.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-06
- * @updated 2026-11-07
- * @since 0.1.0-dev
- * @param {string} text - Text string to measure.
- * @param {string} [font='0.8333rem sans-serif'] - CSS font specification.
- * @returns {number} Measured width in pixels.
+ * In-memory session cache of the embedded TableWidget's column widths signals, keyed by layer ID.
+ * @type {Map<string, Signal<Record<string, number>>>}
  */
-export function measureTextWidth(
-  text: string,
-  font = "0.8333rem sans-serif"
-): number {
-  if (typeof document === "undefined")
-    return Math.max(String(text).length * 8, 20);
-  try {
-    if (!cachedCanvas) {
-      cachedCanvas = document.createElement("canvas");
-    }
-    const ctx = cachedCanvas?.getContext?.("2d");
-    if (ctx) {
-      ctx.font = font;
-      const metrics = ctx.measureText(String(text));
-      if (typeof metrics?.width === "number" && metrics.width > 0) {
-        return metrics.width;
-      }
-    }
-  } catch {
-    // Fallback for headless environments
+export const layerColumnWidthsCache = new Map<
+  string,
+  Signal<Record<string, number>>
+>();
+
+/**
+ * @function columnWidthsForLayer
+ * @description Returns a layer's column widths signal from the per-layer session cache, creating an empty one the first time, so widths resized in the attribute table come back when the layer is shown again.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {string} layerId - Layer ID.
+ * @returns {Signal<Record<string, number>>} The layer's column widths in px by column key.
+ */
+export function columnWidthsForLayer(
+  layerId: string
+): Signal<Record<string, number>> {
+  let widths = layerColumnWidthsCache.get(layerId);
+  if (!widths) {
+    widths = signal<Record<string, number>>({});
+    layerColumnWidthsCache.set(layerId, widths);
   }
-  return Math.max(String(text).length * 8, 20);
+  return widths;
 }
 
 /**
@@ -386,18 +408,6 @@ const DEFAULT_SYSTEM_COLUMN_WIDTHS: Record<string, number> = {
  * Default explicit width allocation for attribute data columns.
  */
 const DEFAULT_ATTRIBUTE_COL_WIDTH = 120;
-
-/**
- * Shared base styling applied to all table data cells ensuring clean truncation and column dividers.
- */
-const BASE_DATA_CELL_STYLE: React.CSSProperties = {
-  padding: "4px 8px",
-  borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-  boxSizing: "border-box",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
 
 /**
  * Parses a raw value into a Date object for date-only formatting.
@@ -482,7 +492,7 @@ export function parseDateTimeValue(val: unknown): Date | null {
  * @description Applies Intl.DateTimeFormat, Intl.NumberFormat, boolean localization, and NULL styling to attribute values.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-07
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {unknown} value - Raw feature property value.
  * @param {InferredFieldType | undefined} inferredType - Inferred field data type.
@@ -500,7 +510,7 @@ export function formatAttributeCellValue(
     return (
       <span
         className='cell-null-value'
-        style={{ color: "#94a3b8", fontStyle: "italic", userSelect: "none" }}>
+        style={{ fontStyle: "italic", userSelect: "none" }}>
         NULL
       </span>
     );
@@ -630,51 +640,302 @@ export function getCellTooltipText(
 }
 
 /**
- * Parses numeric string supporting standard and localized formatting (commas, periods, grouping spaces).
- * @function parseNumericInput
- * @description Flexible numeric parser converting localized or standard strings to float or null if invalid.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-06
- * @updated 2026-11-07
- * @since 0.1.0-dev
- * @param {string} text - Raw input text.
- * @returns {number | null} Parsed numeric value or null if invalid non-numeric.
+ * @typedef {'date' | 'time' | 'datetime'} TemporalFieldType
+ * @description The inferred field types edited with a native date, time or date-time input.
  */
-export function parseNumericInput(text: string): number | null {
-  if (typeof text !== "string") return null;
-  const trimmed = text.trim();
-  if (!trimmed) return null;
+type TemporalFieldType = "date" | "time" | "datetime";
 
-  // Strip all non-breaking spaces, thin spaces, and regular spaces used for thousands grouping
-  let cleaned = trimmed.replace(/[\s\u00A0\u202F]/g, "");
+/** Native input type of each temporal field type's editor. */
+const TEMPORAL_INPUT_TYPES: Record<TemporalFieldType, string> = {
+  date: "date",
+  time: "time",
+  datetime: "datetime-local",
+};
 
-  const hasComma = cleaned.includes(",");
-  const hasDot = cleaned.includes(".");
+/**
+ * @function pad2
+ * @description Pads a number to two digits for native date and time input values.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {number} n - Number to pad.
+ * @returns {string} Two-digit text.
+ */
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
 
-  if (hasComma && hasDot) {
-    if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
-      // European format: "1.234,56" -> "1234.56"
-      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-    } else {
-      // Standard format: "1,234.56" -> "1234.56"
-      cleaned = cleaned.replace(/,/g, "");
-    }
-  } else if (hasComma) {
-    // Single comma: e.g. "1250,5" -> "1250.5"
-    cleaned = cleaned.replace(",", ".");
+/**
+ * @function temporalInputText
+ * @description Turns an attribute value into the text a native temporal input expects: `YYYY-MM-DD` for dates, `HH:MM` for times and `YYYY-MM-DDTHH:MM` for date-times, or the value as text when it does not parse.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {unknown} value - The attribute value.
+ * @param {TemporalFieldType} fieldType - The field's temporal type.
+ * @returns {string} The input's initial text.
+ */
+function temporalInputText(value: unknown, fieldType: TemporalFieldType): string {
+  const parsed =
+    fieldType === "date" ? parseDateValue(value)
+    : fieldType === "time" ? parseTimeValue(value)
+    : parseDateTimeValue(value);
+  if (!parsed) return value ? String(value) : "";
+  const date = `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(parsed.getDate())}`;
+  const time = `${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}`;
+  if (fieldType === "date") return date;
+  if (fieldType === "time") return time;
+  return `${date}T${time}`;
+}
+
+/**
+ * @component TemporalEditor
+ * @description Attribute table cell editor for date, time and date-time fields: a native date, time or datetime-local input, focused when it opens, committing its text on Enter, Tab and when focus leaves it.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {Object} props - Component properties: the {@link TableCellEditorProps} plus the field's temporal type.
+ * @returns {React.ReactElement} The input.
+ */
+function TemporalEditor({
+  value,
+  onCommit,
+  onCancel,
+  fieldType,
+}: TableCellEditorProps<AttributeTableRow> & {
+  fieldType: TemporalFieldType;
+}): React.ReactElement {
+  const [text, setText] = useState(() => temporalInputText(value, fieldType));
+  const inputRef = useTableEditorFocus<HTMLInputElement>();
+  /**
+   * @function commit
+   * @description Commits the input's text, then moves to the next or previous editable cell when asked.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {TableEditMove} [move] - Where to move after committing.
+   * @returns {void}
+   */
+  const commit = (move?: TableEditMove): void => onCommit(text, move);
+  return (
+    <input
+      ref={inputRef}
+      type={TEMPORAL_INPUT_TYPES[fieldType]}
+      className={`cell-editor-input table-widget-editor cell-editor-${fieldType}`}
+      value={text}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => commit()}
+      onKeyDown={(event) => tableEditorKeyDown(event, commit, onCancel)}
+    />
+  );
+}
+
+/**
+ * @component DateEditor
+ * @description Attribute table cell editor for date fields (`<input type="date">`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
+ * @returns {React.ReactElement} The editor.
+ */
+function DateEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+  return <TemporalEditor {...props} fieldType='date' />;
+}
+
+/**
+ * @component TimeEditor
+ * @description Attribute table cell editor for time fields (`<input type="time">`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
+ * @returns {React.ReactElement} The editor.
+ */
+function TimeEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+  return <TemporalEditor {...props} fieldType='time' />;
+}
+
+/**
+ * @component DateTimeEditor
+ * @description Attribute table cell editor for date-time fields (`<input type="datetime-local">`).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
+ * @returns {React.ReactElement} The editor.
+ */
+function DateTimeEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+  return <TemporalEditor {...props} fieldType='datetime' />;
+}
+
+/**
+ * @component BooleanEditor
+ * @description Attribute table cell editor for boolean fields: a localized True / False select, focused when it opens, committing a boolean on Enter, Tab and when focus leaves it.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
+ * @returns {React.ReactElement} The select.
+ */
+function BooleanEditor({
+  value,
+  onCommit,
+  onCancel,
+}: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+  const { t } = useTranslation();
+  const [text, setText] = useState(value ? "true" : "false");
+  const selectRef = useTableEditorFocus<HTMLSelectElement>();
+  /**
+   * @function commit
+   * @description Commits the selected option as a boolean, then moves to the next or previous editable cell when asked.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {TableEditMove} [move] - Where to move after committing.
+   * @returns {void}
+   */
+  const commit = (move?: TableEditMove): void => onCommit(text === "true", move);
+  return (
+    <select
+      ref={selectRef}
+      className='cell-editor-input table-widget-editor cell-editor-select cell-editor-boolean'
+      value={text}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => commit()}
+      onKeyDown={(event) => tableEditorKeyDown(event, commit, onCancel)}>
+      <option value='true'>{t("boolean_true")}</option>
+      <option value='false'>{t("boolean_false")}</option>
+    </select>
+  );
+}
+
+/**
+ * @component IntegerEditor
+ * @description Attribute table cell editor for integer fields: the TableWidget number editor, committing the parsed number truncated to an integer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
+ * @returns {React.ReactElement} The editor.
+ */
+function IntegerEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+  const { onCommit } = props;
+  return (
+    <TableNumberEditor
+      {...props}
+      onCommit={(newValue, move) =>
+        onCommit(typeof newValue === "number" ? Math.trunc(newValue) : newValue, move)
+      }
+    />
+  );
+}
+
+/**
+ * @function editorForField
+ * @description Picks the cell editor for an attribute field's inferred type: a select for booleans, native inputs for dates, times and date-times, number editors for integers and reals, and the text editor otherwise.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {InferredFieldType | undefined} fieldType - The field's inferred type.
+ * @returns {React.ComponentType<TableCellEditorProps<AttributeTableRow>>} The editor component.
+ */
+function editorForField(
+  fieldType: InferredFieldType | undefined
+): React.ComponentType<TableCellEditorProps<AttributeTableRow>> {
+  switch (fieldType) {
+    case "boolean":
+      return BooleanEditor;
+    case "integer":
+      return IntegerEditor;
+    case "real":
+      return TableNumberEditor;
+    case "date":
+      return DateEditor;
+    case "time":
+      return TimeEditor;
+    case "datetime":
+      return DateTimeEditor;
+    default:
+      return TableTextEditor;
   }
+}
 
-  const num = Number(cleaned);
-  if (isNaN(num)) return null;
-  return num;
+/**
+ * @function sameIds
+ * @description Whether two sets hold the same row IDs.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {ReadonlySet<TableRowId>} a - First set.
+ * @param {ReadonlySet<TableRowId>} b - Second set.
+ * @returns {boolean} True when both hold the same IDs.
+ */
+function sameIds(a: ReadonlySet<TableRowId>, b: ReadonlySet<TableRowId>): boolean {
+  if (a.size !== b.size) return false;
+  for (const id of a) if (!b.has(id)) return false;
+  return true;
+}
+
+/** Column key of the `#` column when it shows the Persistent FID. */
+const ID_COLUMN_KEY = "__id__";
+
+/** Column key of the `#` column when it shows the Sequential Row Index. */
+const ROW_INDEX_COLUMN_KEY = "__counter__";
+
+/**
+ * @function sortFieldForColumn
+ * @description The layer field a sorted attribute table column orders by: the layer's stored ID column name for the `#` column showing the Persistent FID, nothing for the `#` column showing the Sequential Row Index (bare `FID` is not a valid Sort Key field), and the column's own field otherwise.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {string} columnKey - Key of the sorted column.
+ * @param {string} fidColumnName - The layer's stored ID column name, empty when it has none.
+ * @returns {string | null} The field name, or null when the column cannot be sorted by a field.
+ */
+function sortFieldForColumn(columnKey: string, fidColumnName: string): string | null {
+  if (columnKey === ID_COLUMN_KEY) return fidColumnName || null;
+  if (columnKey === ROW_INDEX_COLUMN_KEY) return null;
+  return columnKey;
+}
+
+/**
+ * @function orderByForSort
+ * @description Turns the embedded table's single-column sort into the Sort Key list of the Geospatial Worker's chunk query (Ticket #330): one `[field, 'ASC' | 'DESC']` key, or an empty list when the table is unsorted.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {TableSort} sort - The embedded table's sort.
+ * @param {string} fidColumnName - The layer's stored ID column name, empty when it has none.
+ * @returns {SortKey[]} The Sort Keys; empty when unsorted.
+ */
+function orderByForSort(sort: TableSort, fidColumnName: string): SortKey[] {
+  if (!sort) return [];
+  const field = sortFieldForColumn(sort.columnKey, fidColumnName);
+  if (!field) return [];
+  return [[field, sort.direction === "ascending" ? "ASC" : "DESC"]];
 }
 
 /**
  * @component AttributeTableWidget
- * @description Renders interactive attribute table for inspecting, editing, and selecting feature records of active GIS layers.
+ * @description Renders the interactive attribute table of the Active Layer: embedded selection and digitizing toolbars, a filter bar, pagination and chunk loading from the Geospatial Worker, and an embedded TableWidget (header bar and Row Number Column hidden) showing the records. Its own `#` column shows the Persistent FID where the layer has one, otherwise the Sequential Row Index across pages. It keeps the feature selection across chunks in `selectedFeatureIdsSignal`, shared with the map, and shows the part of it on the current page. Cells are read-only unless the layer is in Layer Edit Mode; edits are staged to the Main process and mark the layer dirty and the feature edited. Column widths are kept per layer. Clicking a physical attribute column's header (or the `#` column's, when the layer has a stored ID column) sorts every feature of the layer through the chunk query's `orderBy` Sort Keys and reloads from the first chunk; without `queryExtent` the features are sorted in memory before the page is sliced. The sort resets when the Active Layer changes, and is cleared and logged if the worker rejects its Sort Key.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {AttributeTableWidgetProps} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTableWidget element.
@@ -697,13 +958,55 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     null
   );
 
-  // Reset pagination when active layer changes
+  /**
+   * @signal tableSelectedRowIds
+   * @description The embedded TableWidget's Selected Rows: the displayed rows that are in the feature selection.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @type {Signal<Set<TableRowId>>}
+   */
+  const tableSelectedRowIds = useSignal<Set<TableRowId>>(new Set());
+
+  /**
+   * @signal activeRowId
+   * @description The embedded TableWidget's Active Row.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @type {Signal<TableRowId | null>}
+   */
+  const activeRowId = useSignal<TableRowId | null>(null);
+
+  /**
+   * @signal tableSort
+   * @description The embedded TableWidget's sort (Ticket #330). A new, unsorted signal is made whenever the Active Layer changes, so the sort resets with the layer and a new layer is never queried with the previous layer's Sort Key.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @type {Signal<TableSort>}
+   */
+  const tableSort = useMemo(() => signal<TableSort>(null), [activeLayer?.id]);
+  const sort = tableSort.value;
+
+  const hasGuaranteedFid = Boolean(
+    activeLayer?.fidColumn && activeLayer.fidColumn.trim() !== ""
+  );
+  const fidColumnName = hasGuaranteedFid ? activeLayer!.fidColumn!.trim() : "";
+  const orderBy = orderByForSort(sort, fidColumnName);
+  const orderByKey = JSON.stringify(orderBy);
+
+  // Reset pagination and the Active Row when active layer changes
   const prevLayerIdRef = useRef<string | null>(activeLayer?.id ?? null);
   useEffect(() => {
     const currentLayerId = activeLayer?.id ?? null;
     if (currentLayerId !== prevLayerIdRef.current) {
       setPageStart(0);
       setChunkTotalMatched(null);
+      activeRowId.value = null;
       prevLayerIdRef.current = currentLayerId;
     }
   }, [activeLayer?.id]);
@@ -736,6 +1039,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
     let cancelled = false;
     const targetLayerId = activeLayer.id;
+    const querySort = tableSort;
     const fallbackKind = (activeLayer.geometryKind || "Unknown") as GeometryKind;
 
     Promise.resolve(
@@ -753,6 +1057,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
         ...(filterMode === "edited_new"
           ? { featureIds: Array.from(editedFeatureIdsSignal.value) }
           : {}),
+        ...(orderBy.length > 0 ? { orderBy } : {}),
       })
     )
       .then((res: any) => {
@@ -770,12 +1075,23 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
           setChunkTotalMatched(res.totalMatched);
         }
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled || orderBy.length === 0) return;
+        // A rejected Sort Key: clear the sort so the table reloads unsorted instead of staying empty
+        const fields = orderBy.map(([field]) => field).join(", ");
+        addConsoleLog(
+          "error",
+          `Failed to sort the attribute table of ${activeLayer.name} by ${fields}: ${err instanceof Error ? err.message : String(err)}`,
+          "Attribute Table"
+        );
+        querySort.value = null;
+        setPageStart(0);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [activeLayer?.id, pageStart, maxRows, filterMode, viewportKey, filterIdsKey]);
+  }, [activeLayer?.id, pageStart, maxRows, filterMode, viewportKey, filterIdsKey, orderByKey]);
 
   const filteredFeatures = features.filter((feature) => {
     switch (filterMode) {
@@ -793,10 +1109,31 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const hasIpcQueryExtent =
     typeof (globalThis as any).window?.electronAPI?.queryExtent === "function";
+  const sortField = sort ? sortFieldForColumn(sort.columnKey, fidColumnName) : null;
   const displayedFeatures =
     hasIpcQueryExtent
       ? filteredFeatures
-      : filteredFeatures.slice(pageStart, pageStart + maxRows);
+      : (sort && sortField
+          ? sortTableRows(
+              filteredFeatures,
+              (feature) =>
+                sort.columnKey === ID_COLUMN_KEY ? feature.id : feature.properties[sortField],
+              sort.direction
+            )
+          : filteredFeatures
+        ).slice(pageStart, pageStart + maxRows);
+
+  // When a chunk loads or the feature selection changes (e.g. on the map), show the displayed part of the selection
+  useEffect(() => {
+    const displayedSelection = new Set<TableRowId>(
+      displayedFeatures
+        .map((feature) => feature.id)
+        .filter((id) => selectedIds.has(id))
+    );
+    if (!sameIds(displayedSelection, tableSelectedRowIds.peek())) {
+      tableSelectedRowIds.value = displayedSelection;
+    }
+  });
 
   const layerTotalCount = (activeLayer as any)?.featureCount;
   const totalFeatureCount =
@@ -831,10 +1168,11 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     return map;
   }, [schemaFields]);
 
-  const hasGuaranteedFid = Boolean(
-    activeLayer?.fidColumn && activeLayer.fidColumn.trim() !== ""
+  /** Names of the layer's Virtual Fields, whose columns cannot be sorted: a Virtual Field cannot be a Sort Key (Ticket #330). */
+  const virtualFieldNames = useMemo(
+    () => new Set((schemaFields ?? []).filter((f) => f.isVirtual).map((f) => f.name)),
+    [schemaFields]
   );
-  const fidColumnName = hasGuaranteedFid ? activeLayer!.fidColumn!.trim() : "";
 
   const attributeKeys = useMemo(() => {
     let keys: string[] = [];
@@ -861,355 +1199,150 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const isLayerEditable =
     activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
 
-  // In-memory per-layer column widths state
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const identityColKey = hasGuaranteedFid ? ID_COLUMN_KEY : ROW_INDEX_COLUMN_KEY;
+  const identityTitle =
+    hasGuaranteedFid ?
+      fidColumnName.toLowerCase() === "id" ?
+        t("attribute_table_col_id")
+      : fidColumnName
+    : t("attribute_table_col_counter");
 
-  useEffect(() => {
-    if (!activeLayer) {
-      setColumnWidths({});
-      return;
-    }
-    const cached = layerColumnWidthsCache.get(activeLayer.id);
-    if (cached) {
-      setColumnWidths({ ...cached });
-    } else {
-      setColumnWidths({});
-    }
-  }, [activeLayer?.id]);
+  const columns: TableColumn<AttributeTableRow>[] = [
+    {
+      key: identityColKey,
+      header: identityTitle,
+      align: hasGuaranteedFid ? "left" : "center",
+      sortable: hasGuaranteedFid,
+      readOnly: true,
+      width: DEFAULT_SYSTEM_COLUMN_WIDTHS[identityColKey],
+      value: (row) => (hasGuaranteedFid ? row.feature.id : row.rowIndex),
+      display: (value) => (
+        <span
+          className={hasGuaranteedFid ? "cell-id" : "cell-counter"}
+          title={String(value)}>
+          {String(value)}
+        </span>
+      ),
+    },
+    ...attributeKeys.map((key): TableColumn<AttributeTableRow> => {
+      const fieldType = fieldTypesMap[key];
+      const isNumeric = fieldType === "integer" || fieldType === "real";
+      return {
+        key,
+        header: key,
+        align: isNumeric ? "right" : "left",
+        sortable: !virtualFieldNames.has(key),
+        width: DEFAULT_ATTRIBUTE_COL_WIDTH,
+        value: (row) => row.feature.properties[key],
+        display: (value) => (
+          <span
+            className='cell-attribute-data'
+            title={getCellTooltipText(value, fieldType, currentLocale, t)}>
+            {formatAttributeCellValue(value, fieldType, currentLocale, t)}
+          </span>
+        ),
+        editor: editorForField(fieldType),
+      };
+    }),
+  ];
 
-  const getColWidth = (colKey: string, defaultW: number): number => {
-    return columnWidths[colKey] ?? defaultW;
-  };
-
-  const getMinColWidth = (title: string, fallbackMin = 40): number => {
-    const textW = measureTextWidth(title);
-    return Math.max(textW + 24, fallbackMin);
-  };
-
-  const [resizingCol, setResizingCol] = useState<{
-    colKey: string;
-    startX: number;
-    startWidth: number;
-    minWidth: number;
-  } | null>(null);
-
-  const startColumnResize = (
-    e: React.MouseEvent,
-    colKey: string,
-    currentWidth: number,
-    minWidth: number
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizingCol({
-      colKey,
-      startX: e.clientX,
-      startWidth: currentWidth,
-      minWidth,
-    });
-  };
-
-  useEffect(() => {
-    if (!resizingCol) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - resizingCol.startX;
-      const nextWidth = Math.max(
-        resizingCol.minWidth,
-        resizingCol.startWidth + deltaX
-      );
-      setColumnWidths((prev) => {
-        const updated = { ...prev, [resizingCol.colKey]: nextWidth };
-        if (activeLayer) {
-          layerColumnWidthsCache.set(activeLayer.id, updated);
-        }
-        return updated;
-      });
-    };
-
-    const handleMouseUp = () => {
-      setResizingCol(null);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [resizingCol, activeLayer?.id]);
-
-  const autoFitColumn = (
-    e: React.MouseEvent,
-    colKey: string,
-    title: string,
-    getValue: (feature: GisFeature, idx: number) => any,
-    fieldType?: InferredFieldType
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const minW = getMinColWidth(title);
-    let maxContentW = minW;
-
-    for (let i = 0; i < displayedFeatures.length; i++) {
-      const val = getValue(displayedFeatures[i], i);
-      let strVal = "";
-      if (val === null || val === undefined) {
-        strVal = "NULL";
-      } else if (fieldType === "boolean" || typeof val === "boolean") {
-        strVal = Boolean(val)
-          ? t("boolean_true") === "boolean_true"
-            ? "True"
-            : t("boolean_true")
-          : t("boolean_false") === "boolean_false"
-          ? "False"
-          : t("boolean_false");
-      } else if (fieldType === "integer") {
-        const num = typeof val === "number" ? val : Number(val);
-        strVal =
-          !isNaN(num)
-            ? new Intl.NumberFormat(currentLocale, {
-                maximumFractionDigits: 0,
-              }).format(Math.trunc(num))
-            : String(val);
-      } else if (fieldType === "real") {
-        const num = typeof val === "number" ? val : Number(val);
-        strVal =
-          !isNaN(num)
-            ? new Intl.NumberFormat(currentLocale).format(num)
-            : String(val);
-      } else if (fieldType === "date") {
-        const d = parseDateValue(val);
-        strVal =
-          d
-            ? new Intl.DateTimeFormat(currentLocale, {
-                year: "numeric",
-                month: "numeric",
-                day: "numeric",
-              }).format(d)
-            : String(val);
-      } else if (fieldType === "time") {
-        const d = parseTimeValue(val);
-        strVal =
-          d
-            ? new Intl.DateTimeFormat(currentLocale, {
-                hour: "numeric",
-                minute: "numeric",
-                second: "numeric",
-              }).format(d)
-            : String(val);
-      } else if (fieldType === "datetime") {
-        const d = parseDateTimeValue(val);
-        strVal =
-          d
-            ? new Intl.DateTimeFormat(currentLocale, {
-                year: "numeric",
-                month: "numeric",
-                day: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-                second: "numeric",
-              }).format(d)
-            : String(val);
-      } else {
-        strVal = String(val ?? "");
-      }
-      const valW = measureTextWidth(strVal) + 24;
-      if (valW > maxContentW) {
-        maxContentW = valW;
-      }
-    }
-
-    const nextWidth = Math.ceil(maxContentW);
-    setColumnWidths((prev) => {
-      const updated = { ...prev, [colKey]: nextWidth };
-      if (activeLayer) {
-        layerColumnWidthsCache.set(activeLayer.id, updated);
-      }
-      return updated;
-    });
-  };
-
-  // Active inline cell editing state: { featureId, key, fieldType, initialVal } or null
-  const [editingCell, setEditingCell] = useState<{
-    featureId: string | number;
-    key: string;
-    fieldType?: InferredFieldType;
-    initialVal: any;
-  } | null>(null);
-  const [editValue, setEditValue] = useState<string>("");
-
-  const startEditingCell = (
-    featureId: string | number,
-    key: string,
-    initialVal: any,
-    fieldType?: InferredFieldType
-  ) => {
-    if (!isLayerEditable) return;
-    setEditingCell({ featureId, key, fieldType, initialVal });
-
-    if (fieldType === "date") {
-      const d = parseDateValue(initialVal);
-      if (d) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        setEditValue(`${yyyy}-${mm}-${dd}`);
-      } else {
-        setEditValue(initialVal ? String(initialVal) : "");
-      }
-    } else if (fieldType === "time") {
-      const d = parseTimeValue(initialVal);
-      if (d) {
-        const hh = String(d.getHours()).padStart(2, "0");
-        const mm = String(d.getMinutes()).padStart(2, "0");
-        setEditValue(`${hh}:${mm}`);
-      } else {
-        setEditValue(initialVal ? String(initialVal) : "");
-      }
-    } else if (fieldType === "datetime") {
-      const d = parseDateTimeValue(initialVal);
-      if (d) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        const hh = String(d.getHours()).padStart(2, "0");
-        const min = String(d.getMinutes()).padStart(2, "0");
-        setEditValue(`${yyyy}-${mm}-${dd}T${hh}:${min}`);
-      } else {
-        setEditValue(initialVal ? String(initialVal) : "");
-      }
-    } else if (fieldType === "boolean") {
-      setEditValue(Boolean(initialVal) ? "true" : "false");
-    } else {
-      setEditValue(
-        initialVal !== null && initialVal !== undefined
-          ? String(initialVal)
-          : ""
-      );
-    }
-  };
-
-  const commitEditingCell = () => {
-    if (!editingCell) return;
-    const { featureId, key, fieldType, initialVal } = editingCell;
-
-    let committedValue: any;
-
-    if (fieldType === "boolean") {
-      committedValue = editValue === "true";
-    } else if (fieldType === "integer") {
-      const parsed = parseNumericInput(editValue);
-      if (parsed === null) {
-        // Invalid non-numeric input: cancel/revert cleanly without staging
-        setEditingCell(null);
-        return;
-      }
-      committedValue = Math.trunc(parsed);
-    } else if (fieldType === "real") {
-      const parsed = parseNumericInput(editValue);
-      if (parsed === null) {
-        // Invalid non-numeric input: cancel/revert cleanly without staging
-        setEditingCell(null);
-        return;
-      }
-      committedValue = parsed;
-    } else {
-      committedValue = editValue;
-    }
-
-    if (committedValue !== initialVal) {
-      // Update features in featuresSignal
-      featuresSignal.value = featuresSignal.value.map((f) => {
-        if (f.id === featureId) {
-          return {
-            ...f,
-            properties: {
-              ...f.properties,
-              [key]: committedValue,
-            },
-          };
-        }
-        return f;
-      });
-
-      // Forward modification to Main's crash-resilient edit cache
-      const api = (globalThis as any).window?.electronAPI;
-      if (activeLayer && typeof api?.stageFeatureEdit === "function") {
-        api
-          .stageFeatureEdit(activeLayer.id, {
-            id: featureId,
-            properties: { [key]: committedValue },
-          })
-          ?.catch?.(() => {});
-      }
-
-      // Track modified feature ID in editedFeatureIdsSignal and layer in dirtyLayerIdsSignal
-      const nextEdited = new Set(editedFeatureIdsSignal.value);
-      nextEdited.add(featureId);
-      editedFeatureIdsSignal.value = nextEdited;
-      if (activeLayer) {
-        const nextDirtyLayers = new Set(dirtyLayerIdsSignal.value);
-        nextDirtyLayers.add(activeLayer.id);
-        dirtyLayerIdsSignal.value = nextDirtyLayers;
-      }
-
-      // Set Layer Dirty State on project
-      isProjectDirtySignal.value = true;
-    }
-
-    setEditingCell(null);
-  };
-
-  const cancelEditingCell = () => {
-    setEditingCell(null);
-  };
-
-  // Selection range anchor reference (feature ID)
-  const selectionAnchorRef = useRef<string | number | null>(null);
+  const rows: AttributeTableRow[] = displayedFeatures.map((feature, idx) => ({
+    feature,
+    rowIndex: pageStart + idx + 1,
+  }));
 
   /**
-   * Handles primary-click on the leftmost counter (#) cell with multi-selection semantics:
-   * - Ctrl/Cmd-click: toggle feature in/out of current selection set
-   * - Shift-click: select contiguous range between selectionAnchorRef and clicked feature
-   * - Regular click: select single feature
+   * @function handleSelectionChange
+   * @description Updates the feature selection, which spans every chunk, from a selection change in the embedded table, and publishes it to `selectedFeatureIdsSignal` so the map follows: a `replace` drops every other feature, on this page or not; a `toggle` toggles the one feature; a `range` makes the range the selection on this page and keeps the selected features on other pages.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {TableSelectionChange} change - The embedded table's selection change.
+   * @returns {void}
    */
-  const handleCounterCellClick = (
-    e: React.MouseEvent,
-    featureId: string | number,
-    featureIndex: number
-  ) => {
-    e.stopPropagation();
-
-    if (e.ctrlKey || e.metaKey) {
-      const next = new Set(selectedFeatureIdsSignal.value);
-      if (next.has(featureId)) {
-        next.delete(featureId);
-      } else {
-        next.add(featureId);
-      }
-      selectedFeatureIdsSignal.value = next;
-      selectionAnchorRef.current = featureId;
-    } else if (e.shiftKey && selectionAnchorRef.current !== null) {
-      const anchorIdx = displayedFeatures.findIndex(
-        (f) => f.id === selectionAnchorRef.current
-      );
-      if (anchorIdx !== -1) {
-        const start = Math.min(anchorIdx, featureIndex);
-        const end = Math.max(anchorIdx, featureIndex);
-        const rangeIds = new Set<string | number>();
-        for (let i = start; i <= end; i++) {
-          rangeIds.add(displayedFeatures[i].id);
-        }
-        selectedFeatureIdsSignal.value = rangeIds;
-      } else {
-        selectedFeatureIdsSignal.value = new Set([featureId]);
-        selectionAnchorRef.current = featureId;
+  const handleSelectionChange = ({ kind, rowIds }: TableSelectionChange): void => {
+    const current = selectedFeatureIdsSignal.peek();
+    let next: Set<string | number>;
+    if (kind === "replace") {
+      next = new Set(rowIds);
+    } else if (kind === "toggle") {
+      next = new Set(current);
+      for (const id of rowIds) {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
       }
     } else {
-      selectedFeatureIdsSignal.value = new Set([featureId]);
-      selectionAnchorRef.current = featureId;
+      const displayed = new Set<TableRowId>(displayedFeatures.map((f) => f.id));
+      next = new Set([...current].filter((id) => !displayed.has(id)));
+      for (const id of rowIds) next.add(id);
     }
+    selectedFeatureIdsSignal.value = next;
+  };
+
+  /**
+   * @function handleSortChange
+   * @description The embedded table's `sortHandler` (Ticket #330): the table has already stored the new sort in `tableSort`, which changes the chunk query's `orderBy` (one Sort Key, replacing any other column's; none when unsorted); this goes back to the first chunk so the table reloads from the start in the new order.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {string} _columnKey - Key of the sorted column.
+   * @param {TableSortDirection | null} _direction - The column's new direction, or null when unsorted.
+   * @returns {void}
+   */
+  const handleSortChange = (
+    _columnKey: string,
+    _direction: TableSortDirection | null
+  ): void => {
+    setPageStart(0);
+  };
+
+  /**
+   * @function handleCellEdit
+   * @description Accepts a committed cell edit while the Active Layer is in Layer Edit Mode: writes the new value into the feature (so the table shows it), stages it to the Main process's edit cache, and marks the feature edited and the layer and project dirty.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {TableCellEdit} edit - The committed edit.
+   * @returns {boolean} False when the edit is rejected (the layer is not editable).
+   */
+  const handleCellEdit = ({ rowId, columnKey, newValue }: TableCellEdit): boolean => {
+    if (!activeLayer || !isLayerEditable) return false;
+    const layerId = activeLayer.id;
+
+    featuresSignal.value = featuresSignal.value.map((f) =>
+      f.layerId === layerId && f.id === rowId ?
+        {
+          ...f,
+          properties: {
+            ...f.properties,
+            [columnKey]: newValue as string | number | boolean | null,
+          },
+        }
+      : f
+    );
+
+    // Forward modification to Main's crash-resilient edit cache
+    const api = (globalThis as any).window?.electronAPI;
+    if (typeof api?.stageFeatureEdit === "function") {
+      api
+        .stageFeatureEdit(layerId, {
+          id: rowId,
+          properties: { [columnKey]: newValue },
+        })
+        ?.catch?.(() => {});
+    }
+
+    const nextEdited = new Set(editedFeatureIdsSignal.value);
+    nextEdited.add(rowId);
+    editedFeatureIdsSignal.value = nextEdited;
+    const nextDirtyLayers = new Set(dirtyLayerIdsSignal.value);
+    nextDirtyLayers.add(layerId);
+    dirtyLayerIdsSignal.value = nextDirtyLayers;
+    isProjectDirtySignal.value = true;
+    return true;
   };
 
   const isFirstDisabled = pageStart <= 0;
@@ -1244,9 +1377,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
           overflow: "hidden",
         }}>
         {!activeLayer ?
-          <div
-            className='empty-panel-message'
-            style={{ padding: "16px", color: "#64748b", textAlign: "center" }}>
+          <div className='empty-panel-message' style={{ padding: "1rem" }}>
             {t("attribute_table_select_layer_prompt")}
           </div>
         : <>
@@ -1255,8 +1386,6 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
               style={{
                 flexShrink: 0,
                 padding: "2px 4px",
-                backgroundColor: "var(--cartouche-theme-surface-subtle)",
-                borderBottom: "1px solid var(--cartouche-theme-border)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-start",
@@ -1277,359 +1406,47 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
             <div
               className='table-scroll-wrapper'
-              style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              {(() => {
-                const identityColKey = hasGuaranteedFid ? "__id__" : "__counter__";
-                const identityTitle = hasGuaranteedFid
-                  ? fidColumnName.toLowerCase() === "id"
-                    ? t("attribute_table_col_id")
-                    : fidColumnName
-                  : t("attribute_table_col_counter");
-
-                const identityWidth = getColWidth(
-                  identityColKey,
-                  DEFAULT_SYSTEM_COLUMN_WIDTHS[identityColKey]
-                );
-
-                const identityMinWidth = getMinColWidth(
-                  identityTitle,
-                  hasGuaranteedFid ? 40 : 36
-                );
-
-                const totalTableWidth =
-                  identityWidth +
-                  attributeKeys.reduce(
-                    (acc, k) => acc + getColWidth(k, DEFAULT_ATTRIBUTE_COL_WIDTH),
-                    0
-                  );
-
-                return (
-                  <table
-                    className='gis-data-table'
-                    style={{
-                      width: totalTableWidth,
-                      minWidth: "100%",
-                      tableLayout: "fixed",
-                      borderCollapse: "collapse",
-                      fontSize: "0.8333rem",
-                    }}>
-                    <thead>
-                      <tr style={{ backgroundColor: "#f1f5f9", textAlign: "left" }}>
-                        {hasGuaranteedFid ? (
-                          <th
-                            style={{
-                              width: identityWidth,
-                              padding: "4px 8px",
-                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              boxSizing: "border-box",
-                              position: "relative",
-                            }}>
-                            {identityTitle}
-                            <div
-                              className='column-resize-handle'
-                              onMouseDown={(e) =>
-                                startColumnResize(
-                                  e,
-                                  "__id__",
-                                  identityWidth,
-                                  identityMinWidth
-                                )
-                              }
-                              onDoubleClick={(e) =>
-                                autoFitColumn(
-                                  e,
-                                  "__id__",
-                                  identityTitle,
-                                  (f) => f.id
-                                )
-                              }
-                              style={{
-                                position: "absolute",
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: "6px",
-                                cursor: "col-resize",
-                                userSelect: "none",
-                                zIndex: 1,
-                              }}
-                            />
-                          </th>
-                        ) : (
-                          <th
-                            style={{
-                              width: identityWidth,
-                              textAlign: "center",
-                              padding: "4px 8px",
-                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              boxSizing: "border-box",
-                              position: "relative",
-                            }}>
-                            {identityTitle}
-                            <div
-                              className='column-resize-handle'
-                              onMouseDown={(e) =>
-                                startColumnResize(
-                                  e,
-                                  "__counter__",
-                                  identityWidth,
-                                  identityMinWidth
-                                )
-                              }
-                              onDoubleClick={(e) =>
-                                autoFitColumn(
-                                  e,
-                                  "__counter__",
-                                  identityTitle,
-                                  (_, idx) => pageStart + idx + 1
-                                )
-                              }
-                              style={{
-                                position: "absolute",
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: "6px",
-                                cursor: "col-resize",
-                                userSelect: "none",
-                                zIndex: 1,
-                              }}
-                            />
-                          </th>
-                        )}
-
-                        {attributeKeys.map((key) => {
-                          const colW = getColWidth(
-                            key,
-                            DEFAULT_ATTRIBUTE_COL_WIDTH
-                          );
-                          const minW = getMinColWidth(key, 40);
-                          const fieldType = fieldTypesMap[key];
-                          const isNumeric =
-                            fieldType === "integer" || fieldType === "real";
-                          return (
-                            <th
-                              key={key}
-                              style={{
-                                width: colW,
-                                padding: "4px 8px",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                boxSizing: "border-box",
-                                position: "relative",
-                                textAlign: isNumeric ? "right" : "left",
-                              }}>
-                              {key}
-                              <div
-                                className='column-resize-handle'
-                                onMouseDown={(e) =>
-                                  startColumnResize(e, key, colW, minW)
-                                }
-                                onDoubleClick={(e) =>
-                                  autoFitColumn(
-                                    e,
-                                    key,
-                                    key,
-                                    (f) => f.properties[key],
-                                    fieldType
-                                  )
-                                }
-                                style={{
-                                  position: "absolute",
-                                  right: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: "6px",
-                                  cursor: "col-resize",
-                                  userSelect: "none",
-                                  zIndex: 1,
-                                }}
-                              />
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedFeatures.length === 0 ?
-                        <tr>
-                          <td
-                            colSpan={attributeKeys.length + 3}
-                            className='empty-filter-message'
-                            style={{
-                              textAlign: "center",
-                              padding: "16px",
-                              color: "#64748b",
-                            }}>
-                            {t("attribute_table_empty_filtered")}
-                          </td>
-                        </tr>
-                      : displayedFeatures.map((feature, idx) => {
-                          const isSelected = selectedIds.has(feature.id);
-                          return (
-                            <tr
-                              key={feature.id}
-                              className={isSelected ? "selected-row" : ""}
-                              style={{
-                                backgroundColor:
-                                  isSelected ? "#e0f2fe" : "transparent",
-                                color: isSelected ? "#0369a1" : "inherit",
-                                borderBottom: "1px solid #f1f5f9",
-                              }}>
-                              {hasGuaranteedFid ? (
-                                <td
-                                  className='cell-id'
-                                  onClick={(e) =>
-                                    handleCounterCellClick(e, feature.id, idx)
-                                  }
-                                  title={String(feature.id)}
-                                  style={{
-                                    ...BASE_DATA_CELL_STYLE,
-                                    cursor: "pointer",
-                                    userSelect: "none",
-                                  }}>
-                                  {feature.id}
-                                </td>
-                              ) : (
-                                <td
-                                  className='cell-counter'
-                                  onClick={(e) =>
-                                    handleCounterCellClick(e, feature.id, idx)
-                                  }
-                                  title={String(pageStart + idx + 1)}
-                                  style={{
-                                    ...BASE_DATA_CELL_STYLE,
-                                    textAlign: "center",
-                                    cursor: "pointer",
-                                    userSelect: "none",
-                                  }}>
-                                  {pageStart + idx + 1}
-                                </td>
-                              )}
-
-                              {attributeKeys.map((key) => {
-                                const isCellEditing =
-                                  editingCell?.featureId === feature.id &&
-                                  editingCell?.key === key;
-                                const cellVal = feature.properties[key];
-                                const fieldType = fieldTypesMap[key];
-                                const isNumeric =
-                                  fieldType === "integer" || fieldType === "real";
-                                const cellTooltip = isCellEditing
-                                  ? undefined
-                                  : getCellTooltipText(
-                                      cellVal,
-                                      fieldType,
-                                      currentLocale,
-                                      t
-                                    );
-
-                                return (
-                                  <td
-                                    key={key}
-                                    className='cell-attribute-data'
-                                    title={cellTooltip}
-                                    onClick={() => {
-                                      if (isLayerEditable && !isCellEditing) {
-                                        startEditingCell(
-                                          feature.id,
-                                          key,
-                                          cellVal,
-                                          fieldType
-                                        );
-                                      }
-                                    }}
-                                    onDoubleClick={() => {
-                                      if (isLayerEditable && !isCellEditing) {
-                                        startEditingCell(
-                                          feature.id,
-                                          key,
-                                          cellVal,
-                                          fieldType
-                                        );
-                                      }
-                                    }}
-                                    style={{
-                                      ...BASE_DATA_CELL_STYLE,
-                                      cursor: isLayerEditable ? "text" : "default",
-                                      textAlign: isNumeric ? "right" : "left",
-                                    }}>
-                                    {isCellEditing ?
-                                      fieldType === "boolean" ?
-                                        <select
-                                          className='cell-editor-input cell-editor-select cell-editor-boolean'
-                                          autoFocus
-                                          value={editValue}
-                                          onChange={(e) =>
-                                            setEditValue(e.target.value)
-                                          }
-                                          onBlur={commitEditingCell}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                              e.preventDefault();
-                                              commitEditingCell();
-                                            } else if (e.key === "Escape") {
-                                              e.preventDefault();
-                                              cancelEditingCell();
-                                            }
-                                          }}>
-                                          <option value='true'>
-                                            {t("boolean_true")}
-                                          </option>
-                                          <option value='false'>
-                                            {t("boolean_false")}
-                                          </option>
-                                        </select>
-                                      : <input
-                                          type={
-                                            fieldType === "date" ? "date"
-                                            : fieldType === "time" ? "time"
-                                            : fieldType === "datetime" ?
-                                              "datetime-local"
-                                            : "text"
-                                          }
-                                          className={`cell-editor-input cell-editor-${fieldType || "text"}${isNumeric ? " cell-editor-numeric" : ""}`}
-                                          autoFocus
-                                          value={editValue}
-                                          onChange={(e) =>
-                                            setEditValue(e.target.value)
-                                          }
-                                          onBlur={commitEditingCell}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                              e.preventDefault();
-                                              commitEditingCell();
-                                            } else if (e.key === "Escape") {
-                                              e.preventDefault();
-                                              cancelEditingCell();
-                                            }
-                                          }}
-                                        />
-                                    : formatAttributeCellValue(
-                                        cellVal,
-                                        fieldType,
-                                        currentLocale,
-                                        t
-                                      )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })
-                      }
-                    </tbody>
-                  </table>
-                );
-              })()}
+              style={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}>
+              <TableWidget<AttributeTableRow>
+                name='attribute-table-records'
+                displayName={displayName}
+                showHeader={false}
+                rows={rows}
+                getRowId={(row) => row.feature.id}
+                columns={columns}
+                showRowNumberColumn={false}
+                selectedRowIds={tableSelectedRowIds}
+                activeRowId={activeRowId}
+                onSelectionChange={handleSelectionChange}
+                sort={tableSort}
+                sortHandler={handleSortChange}
+                columnWidths={columnWidthsForLayer(activeLayer.id)}
+                readOnly={!isLayerEditable}
+                onCellEdit={handleCellEdit}
+              />
+              {displayedFeatures.length === 0 && (
+                <div
+                  className='empty-filter-message'
+                  style={{
+                    flexShrink: 0,
+                    textAlign: "center",
+                    padding: "1rem",
+                  }}>
+                  {t("attribute_table_empty_filtered")}
+                </div>
+              )}
             </div>
 
             <div
               className='attribute-table-footer'
               style={{
                 flexShrink: 0,
-                padding: "4px 8px",
-                backgroundColor: "#f8fafc",
-                borderTop: "1px solid #e2e8f0",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -1661,7 +1478,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                 }}>
                 <span
                   className='attribute-table-page-range'
-                  style={{ marginRight: "4px", color: "var(--cartouche-theme-fg-muted)" }}>
+                  style={{ marginRight: "4px" }}>
                   {t("attribute_table_page_range", {
                     start: displayedFeatures.length > 0 ? pageStart + 1 : 0,
                     end: pageStart + displayedFeatures.length,
@@ -1675,7 +1492,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_first")}
                   disabled={isFirstDisabled}
                   onClick={() => setPageStart(0)}>
-                  <Icon path={mdiPageFirst} size='1rem' />
+                  <Icon path={mdiPageFirst} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
                 <button
                   type='button'
@@ -1686,7 +1503,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   onClick={() =>
                     setPageStart(Math.max(0, pageStart - maxRows))
                   }>
-                  <Icon path={mdiChevronLeft} size='1rem' />
+                  <Icon path={mdiChevronLeft} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
                 <button
                   type='button'
@@ -1695,7 +1512,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_next")}
                   disabled={isNextDisabled}
                   onClick={() => setPageStart(pageStart + maxRows)}>
-                  <Icon path={mdiChevronRight} size='1rem' />
+                  <Icon path={mdiChevronRight} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
                 <button
                   type='button'
@@ -1704,7 +1521,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_last")}
                   disabled={isLastDisabled}
                   onClick={() => setPageStart(lastPageStart)}>
-                  <Icon path={mdiPageLast} size='1rem' />
+                  <Icon path={mdiPageLast} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
               </div>
             </div>

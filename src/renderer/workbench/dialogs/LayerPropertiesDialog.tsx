@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -13,7 +13,8 @@
  * @see {@link activeLayerPropertiesIdSignal}
  */
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { useSignal } from "@preact/signals-react";
 import { useSignals } from "@preact/signals-react/runtime";
 import Icon from "@renderer/components/common/Icon";
 import {
@@ -76,6 +77,13 @@ import { ModalDialog } from "./ModalDialog";
 import { StyleEditor } from "./StyleEditor";
 import { crsCatalogueSignal, listCrsChooserEntries } from "@renderer/state/crsCatalogueSignals";
 import { formatCrsEntryLabel } from "@shared/types/crs";
+import {
+  TableWidget,
+  TableTextEditor,
+  type TableCellEdit,
+  type TableColumn,
+  type TableRowId,
+} from "@renderer/workbench/widgets/TableWidget";
 
 
 
@@ -212,7 +220,7 @@ export function resolveFieldColumnStringValue(
  * @description Evaluates whether an attribute schema column is editable for the specified field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-03
- * @updated 2026-11-03
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @param {LayerFieldInfo} field - Target layer field info.
  * @param {EditableFieldColumn} column - Target column to evaluate.
@@ -222,11 +230,7 @@ export function isFieldColumnEditable(
   field: LayerFieldInfo,
   column: EditableFieldColumn
 ): boolean {
-  const effectiveType =
-    field.inferredType ??
-    (field.mappedType === "number" ? "real"
-    : field.mappedType === "boolean" ? "boolean"
-    : "string");
+  const effectiveType = effectiveFieldType(field);
 
   switch (column) {
     case "width":
@@ -271,11 +275,315 @@ export function getEditableColumnsForField(
 }
 
 /**
+ * @function unsortable
+ * @description Turns sorting off for every column of a LayerPropertiesDialog fields table: neither table sorts, so headers show no sort chevrons and header clicks do nothing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableColumn<LayerFieldInfo>[]} columns - Column definitions.
+ * @returns {TableColumn<LayerFieldInfo>[]} The columns, each with `sortable: false`.
+ */
+function unsortable(columns: TableColumn<LayerFieldInfo>[]): TableColumn<LayerFieldInfo>[] {
+  return columns.map((column) => ({ ...column, sortable: false }));
+}
+
+/**
+ * @function isEditableFieldColumn
+ * @description Whether a Fields tab table column key names one of the editable schema columns (Length, Precision, Comment).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {string} key - Column key.
+ * @returns {boolean} True for `width`, `precision` and `comment`.
+ */
+export function isEditableFieldColumn(key: string): key is EditableFieldColumn {
+  return key === "width" || key === "precision" || key === "comment";
+}
+
+/**
+ * @function effectiveFieldType
+ * @description Returns a field's canonical data type: its inferred type, else one derived from its mapped type.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Field metadata.
+ * @returns {InferredFieldType} The field's data type.
+ */
+function effectiveFieldType(field: LayerFieldInfo): InferredFieldType {
+  return (
+    field.inferredType ??
+    (field.mappedType === "number" ? "real"
+    : field.mappedType === "boolean" ? "boolean"
+    : "string")
+  );
+}
+
+/**
+ * @callback FieldTypeChangeHandler
+ * @description Changes a field's data type.
+ * @param {string} fieldName - Field name.
+ * @param {InferredFieldType} newType - New data type.
+ * @returns {void}
+ */
+type FieldTypeChangeHandler = (fieldName: string, newType: InferredFieldType) => void;
+
+/**
+ * @function stopTablePropagation
+ * @description Keeps a click or key on a control inside a table cell from reaching the TableWidget, so using the control neither changes the row selection nor moves the Active Row.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {React.SyntheticEvent} event - The control's event.
+ * @returns {void}
+ */
+function stopTablePropagation(event: React.SyntheticEvent): void {
+  event.stopPropagation();
+}
+
+/**
+ * @component FieldTypeControls
+ * @description The Fields tab Data Type cell: the field's data type select (enabled in Layer Edit Mode), the "User" badge on overridden fields, and the Reset Type button (enabled in Layer Edit Mode on an overridden field). Its clicks and keys stay in the cell.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {Object} props - Component properties.
+ * @param {LayerFieldInfo} props.field - The cell's field.
+ * @param {boolean} props.isEditing - Whether the layer is in Layer Edit Mode.
+ * @param {FieldTypeChangeHandler} props.onTypeChange - Changes the field's data type.
+ * @param {(fieldName: string) => void} props.onResetType - Resets the field's data type.
+ * @returns {JSX.Element} The cell content.
+ */
+const FieldTypeControls: React.FC<{
+  field: LayerFieldInfo;
+  isEditing: boolean;
+  onTypeChange: FieldTypeChangeHandler;
+  onResetType: (fieldName: string) => void;
+}> = ({ field, isEditing, onTypeChange, onResetType }) => {
+  const isOverridden = Boolean(
+    field.userOverridden ||
+      (field.originalInferredType && field.inferredType !== field.originalInferredType)
+  );
+  return (
+    <div
+      className='layer-field-type-controls'
+      style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+      <select
+        className={`layer-field-type-select${field.userOverridden ? " is-overridden" : ""}`}
+        aria-label={`Field type for ${field.name}`}
+        disabled={!isEditing}
+        value={effectiveFieldType(field)}
+        onClick={stopTablePropagation}
+        onDoubleClick={stopTablePropagation}
+        onKeyDown={stopTablePropagation}
+        onChange={(e) => onTypeChange(field.name, e.target.value as InferredFieldType)}>
+        {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
+          <option key={typeOption} value={typeOption}>
+            {typeOption}
+          </option>
+        ))}
+      </select>
+      {field.userOverridden && <FieldOverrideBadge />}
+      <button
+        type='button'
+        className='layer-field-reset-type-btn'
+        title={t("layer_properties_fields_reset_type")}
+        aria-label={t("layer_properties_fields_reset_type")}
+        disabled={!(isEditing && isOverridden)}
+        onDoubleClick={stopTablePropagation}
+        onKeyDown={stopTablePropagation}
+        onClick={(e) => {
+          e.stopPropagation();
+          onResetType(field.name);
+        }}>
+        <Icon path={mdiUndo} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+      </button>
+    </div>
+  );
+};
+
+/**
+ * @typedef {Object} FieldsTabColumnOptions
+ * @property {boolean} showNativeType - Whether to show the Native Type column.
+ * @property {boolean} isEditing - Whether the layer is in Layer Edit Mode.
+ * @property {FieldTypeChangeHandler} onTypeChange - Changes a field's data type.
+ * @property {(fieldName: string) => void} onResetType - Resets a field's data type.
+ */
+interface FieldsTabColumnOptions {
+  showNativeType: boolean;
+  isEditing: boolean;
+  onTypeChange: FieldTypeChangeHandler;
+  onResetType: (fieldName: string) => void;
+}
+
+/**
+ * @function fieldsTabColumns
+ * @description Column definitions of the Fields tab table (Ticket #331): Index (the field's stable 0-based slot), Field Name, Data Type (type select, badge and Reset Type button), Native Type when shown, and the editable Length, Precision and Comment columns, which use the text editor so a value can be cleared. No column sorts.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo[]} fields - The layer's fields, for resolving indices.
+ * @param {FieldsTabColumnOptions} options - Column options.
+ * @returns {TableColumn<LayerFieldInfo>[]} The columns.
+ */
+function fieldsTabColumns(
+  fields: LayerFieldInfo[],
+  { showNativeType, isEditing, onTypeChange, onResetType }: FieldsTabColumnOptions
+): TableColumn<LayerFieldInfo>[] {
+  const columns: TableColumn<LayerFieldInfo>[] = [
+    {
+      key: "index",
+      header: t("layer_properties_field_col_index"),
+      align: "right",
+      readOnly: true,
+      value: (field) => resolveFieldIndex(field, fields, fields.indexOf(field)),
+    },
+    { key: "name", header: t("layer_properties_field_col_name"), readOnly: true },
+    {
+      key: "dataType",
+      header: t("layer_properties_fields_col_data_type"),
+      readOnly: true,
+      value: effectiveFieldType,
+      display: (_value, field) => (
+        <FieldTypeControls
+          field={field}
+          isEditing={isEditing}
+          onTypeChange={onTypeChange}
+          onResetType={onResetType}
+        />
+      ),
+    },
+  ];
+  if (showNativeType) {
+    columns.push({
+      key: "nativeType",
+      header: t("layer_properties_field_col_native_type"),
+      readOnly: true,
+    });
+  }
+  columns.push(
+    {
+      key: "width",
+      header: t("layer_properties_field_col_length"),
+      value: (field) => positiveOrUndefined(field.width),
+      editor: TableTextEditor,
+    },
+    {
+      key: "precision",
+      header: t("layer_properties_field_col_precision"),
+      value: (field) => positiveOrUndefined(field.precision),
+      editor: TableTextEditor,
+    },
+    {
+      key: "comment",
+      header: t("layer_properties_fields_col_comment"),
+      value: (field) => field.comment || "",
+      editor: TableTextEditor,
+    }
+  );
+  return unsortable(columns);
+}
+
+/**
+ * @function fieldRowId
+ * @description Returns a field's TableWidget row ID: its name, unique within a layer.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {LayerFieldInfo} field - Field metadata.
+ * @returns {TableRowId} The field's row ID.
+ */
+export function fieldRowId(field: LayerFieldInfo): TableRowId {
+  return field.name;
+}
+
+/**
+ * @function positiveOrUndefined
+ * @description Returns a Length or Precision value when it is set and above zero, otherwise undefined, so the cell shows empty for a missing or zero value.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {number | undefined} value - The field's width or precision.
+ * @returns {number | undefined} The value, or undefined.
+ */
+function positiveOrUndefined(value: number | undefined): number | undefined {
+  return value !== undefined && value > 0 ? value : undefined;
+}
+
+/**
+ * @component FieldOverrideBadge
+ * @description The "User" badge marking a field whose type or schema values the user has overridden.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @returns {JSX.Element} The badge.
+ */
+const FieldOverrideBadge: React.FC = () => (
+  <span
+    className='layer-field-override-badge'
+    title='Field type manually overridden by user'>
+    User
+  </span>
+);
+
+/**
+ * @function informationFieldColumns
+ * @description Column definitions of the Information tab's read-only fields table (Ticket #331): Field Name, Native Type, Inferred Type (with the "User" badge on overridden fields), Length, Precision and Nullable. No column sorts.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @returns {TableColumn<LayerFieldInfo>[]} The columns.
+ */
+function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
+  return unsortable([
+    { key: "name", header: t("layer_properties_field_col_name") },
+    { key: "nativeType", header: t("layer_properties_field_col_native_type") },
+    {
+      key: "inferredType",
+      header: t("layer_properties_field_col_inferred_type"),
+      value: (field) => field.inferredType ?? field.mappedType,
+      display: (value, field) => (
+        <>
+          <span className='layer-field-type-text'>{String(value ?? "")}</span>
+          {field.userOverridden && <FieldOverrideBadge />}
+        </>
+      ),
+    },
+    {
+      key: "width",
+      header: t("layer_properties_field_col_length"),
+      value: (field) => positiveOrUndefined(field.width),
+    },
+    {
+      key: "precision",
+      header: t("layer_properties_field_col_precision"),
+      value: (field) => positiveOrUndefined(field.precision),
+    },
+    {
+      key: "nullable",
+      header: t("layer_properties_field_col_nullable"),
+      value: (field) => Boolean(field.nullable),
+      display: (value) =>
+        value ? t("layer_properties_yes") : t("layer_properties_no"),
+    },
+  ]);
+}
+
+/**
  * @component LayerPropertiesDialog
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -298,29 +606,47 @@ export const LayerPropertiesDialog: React.FC = () => {
     [];
 
   const isEditing = isLayerInEditMode(activeId, editableLayerIdsSignal.value);
-  const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
+  const informationSelectedFieldNames = useSignal<Set<TableRowId>>(new Set());
+  const informationActiveFieldName = useSignal<TableRowId | null>(null);
+  const selectedFieldNames = useSignal<Set<TableRowId>>(new Set());
+  const activeFieldName = useSignal<TableRowId | null>(null);
   const [isNewFieldOpen, setIsNewFieldOpen] = useState(false);
 
+  /**
+   * @function clearFieldSelection
+   * @description Clears the Fields tab table's Selected Rows and Active Row.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const clearFieldSelection = useCallback(() => {
+    selectedFieldNames.value = new Set();
+    activeFieldName.value = null;
+  }, [selectedFieldNames, activeFieldName]);
+
   useEffect(() => {
-    setSelectedFieldName(null);
+    clearFieldSelection();
     setIsNewFieldOpen(false);
-  }, [activeId]);
+  }, [activeId, clearFieldSelection]);
 
   /**
    * @function handleDeleteSelectedField
-   * @description Removes the selected attribute field from the draft layer fields collection and clears row selection.
+   * @description Removes the fields selected in the Fields tab table from the draft layer fields collection and clears the row selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-03
-   * @updated 2026-11-03
+   * @updated 2026-11-16
    * @since 0.1.0-dev
    * @returns {void}
    */
   const handleDeleteSelectedField = useCallback(() => {
-    if (!isEditing || !selectedFieldName || !activeId) return;
-    const updatedFields = layerFields.filter((f) => f.name !== selectedFieldName);
+    const selected = selectedFieldNames.value;
+    if (!isEditing || selected.size === 0 || !activeId) return;
+    const updatedFields = layerFields.filter((f) => !selected.has(f.name));
     updateLayerPropertiesDraft({ fields: updatedFields });
-    setSelectedFieldName(null);
-  }, [isEditing, selectedFieldName, activeId, layerFields]);
+    clearFieldSelection();
+  }, [isEditing, selectedFieldNames, activeId, layerFields, clearFieldSelection]);
 
   /**
    * @function handleFieldTypeChange
@@ -384,19 +710,11 @@ export const LayerPropertiesDialog: React.FC = () => {
     [activeId, layerFields]
   );
 
-  const [editingCell, setEditingCell] = useState<{
-    fieldName: string;
-    column: EditableFieldColumn;
-  } | null>(null);
-  const [cellInputValue, setCellInputValue] = useState<string>("");
-  const isCancellingRef = useRef(false);
-
   useEffect(() => {
-    setEditingCell(null);
     if (!isEditing) {
-      setSelectedFieldName(null);
+      clearFieldSelection();
     }
-  }, [isEditing, activeId]);
+  }, [isEditing, activeId, clearFieldSelection]);
 
   /**
    * @function commitCellEdit
@@ -450,82 +768,48 @@ export const LayerPropertiesDialog: React.FC = () => {
   );
 
   /**
-   * @function handleCellBlur
-   * @description Handles inline input blur events, committing edits unless cancellation was requested.
+   * @function isFieldsTabCellReadOnly
+   * @description Whether a Fields tab table cell is a Read-Only Cell for its field: Length, Precision and Comment are editable where the field's type allows them (see {@link isFieldColumnEditable}); the whole table is also read-only outside Layer Edit Mode.
    * @author Cory Albrecht <cory@albrecht.name>
-   * @date 2026-11-03
-   * @updated 2026-11-03
+   * @date 2026-11-16
+   * @updated 2026-11-16
    * @since 0.1.0-dev
-   * @param {LayerFieldInfo} field - Target field metadata.
-   * @param {EditableFieldColumn} column - Active column.
-   * @param {string} value - Current input value.
-   * @returns {void}
+   * @param {LayerFieldInfo} field - The cell's field.
+   * @param {TableColumn<LayerFieldInfo>} column - The cell's column.
+   * @returns {boolean} True when the cell cannot be edited.
    */
-  const handleCellBlur = useCallback(
-    (field: LayerFieldInfo, column: EditableFieldColumn, value: string) => {
-      if (isCancellingRef.current) {
-        isCancellingRef.current = false;
-        return;
-      }
-      commitCellEdit(field.name, column, value);
-      setEditingCell(null);
-    },
-    [commitCellEdit]
+  const isFieldsTabCellReadOnly = useCallback(
+    (field: LayerFieldInfo, column: TableColumn<LayerFieldInfo>): boolean =>
+      !isEditableFieldColumn(column.key) || !isFieldColumnEditable(field, column.key),
+    []
   );
 
   /**
-   * @function handleCellKeyDown
-   * @description Handles inline editor keyboard navigation, trapping Enter, Escape, Tab, and Shift-Tab.
+   * @function handleFieldCellEdit
+   * @description Stages a Fields tab table edit of a field's Length, Precision or Comment in the draft through {@link commitCellEdit}. An unchanged value is ignored, and a Length or Precision that is not a non-negative whole number is rejected so the old value keeps showing.
    * @author Cory Albrecht <cory@albrecht.name>
-   * @date 2026-11-03
-   * @updated 2026-11-03
+   * @date 2026-11-16
+   * @updated 2026-11-16
    * @since 0.1.0-dev
-   * @param {React.KeyboardEvent<HTMLInputElement>} e - Keyboard event.
-   * @param {LayerFieldInfo} field - Target field metadata.
-   * @param {EditableFieldColumn} column - Active column.
-   * @param {string} currentValue - Current input value.
-   * @returns {void}
+   * @param {TableCellEdit} edit - The committed cell edit.
+   * @returns {boolean | void} False to reject the edit.
    */
-  const handleCellKeyDown = useCallback(
-    (
-      e: React.KeyboardEvent<HTMLInputElement>,
-      field: LayerFieldInfo,
-      column: EditableFieldColumn,
-      currentValue: string
-    ) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        commitCellEdit(field.name, column, currentValue);
-        setEditingCell(null);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        isCancellingRef.current = true;
-        setEditingCell(null);
-      } else if (e.key === "Tab") {
-        e.preventDefault();
-        commitCellEdit(field.name, column, currentValue);
-        const editableCols = getEditableColumnsForField(field);
-        const currentIndex = editableCols.indexOf(column);
-        if (e.shiftKey) {
-          if (currentIndex > 0) {
-            const prevCol = editableCols[currentIndex - 1];
-            setEditingCell({ fieldName: field.name, column: prevCol });
-            setCellInputValue(resolveFieldColumnStringValue(field, prevCol));
-          } else {
-            setEditingCell(null);
-          }
-        } else {
-          if (currentIndex >= 0 && currentIndex < editableCols.length - 1) {
-            const nextCol = editableCols[currentIndex + 1];
-            setEditingCell({ fieldName: field.name, column: nextCol });
-            setCellInputValue(resolveFieldColumnStringValue(field, nextCol));
-          } else {
-            setEditingCell(null);
-          }
-        }
+  const handleFieldCellEdit = useCallback(
+    (edit: TableCellEdit): boolean | void => {
+      const column = edit.columnKey;
+      const field = layerFields.find((f) => f.name === edit.rowId);
+      if (!isEditing || !field || !isEditableFieldColumn(column) || !isFieldColumnEditable(field, column)) {
+        return false;
       }
+      const text = edit.newValue === null || edit.newValue === undefined ? "" : String(edit.newValue);
+      if (text === resolveFieldColumnStringValue(field, column)) return;
+      if (column !== "comment" && text.trim()) {
+        const parsed = parseInt(text.trim(), 10);
+        if (isNaN(parsed) || parsed < 0) return false;
+      }
+      commitCellEdit(field.name, column, text);
     },
-    [commitCellEdit]
+    [isEditing, layerFields, commitCellEdit]
   );
 
   const showNativeType = Boolean(
@@ -629,7 +913,6 @@ export const LayerPropertiesDialog: React.FC = () => {
               className='layer-properties-loading'
               style={{
                 padding: "1rem",
-                color: "#64748b",
                 fontStyle: "italic",
               }}>
               {t("layer_properties_loading")}
@@ -653,13 +936,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_name")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.name || draft.layerName || "—"}
                   </span>
                 </div>
@@ -671,13 +953,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_id")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.layerId || activeId}
                   </span>
                 </div>
@@ -689,7 +970,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_source")}:
                   </span>
@@ -697,7 +977,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     className='layer-properties-value'
                     style={{
                       flex: 1,
-                      color: "#000000",
                       wordBreak: "break-all",
                     }}>
                     {info?.source || "—"}
@@ -718,13 +997,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_driver")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.driverName || "—"}
                   </span>
                 </div>
@@ -736,13 +1014,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_geometry")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.geometryKind || "—"}
                   </span>
                 </div>
@@ -754,13 +1031,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_feature_count")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.featureCount !== undefined ?
                       info.featureCount.toLocaleString()
                     : "—"}
@@ -774,13 +1050,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_crs")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.crsDescription || "—"}
                   </span>
                 </div>
@@ -792,13 +1067,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_extent")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.extent ?
                       `[${info.extent.map((n: number) => Number(n).toFixed(4)).join(", ")}]`
                     : "—"}
@@ -811,191 +1085,22 @@ export const LayerPropertiesDialog: React.FC = () => {
                 <legend className='preference-group-legend'>
                   {t("layer_properties_group_fields")}
                 </legend>
-                <div
-                  className='layer-properties-table-container'
-                  style={{
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "4px",
-                    overflow: "auto",
-                    maxHeight: "18rem",
-                  }}>
-                  <table
-                    className='layer-properties-fields-table'
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "0.8125rem",
-                    }}>
-                    <thead>
-                      <tr
-                        style={{
-                          backgroundColor: "#f1f5f9",
-                          textAlign: "left",
-                        }}>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_name")}
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_native_type")}
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_inferred_type")}
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_length")}
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_precision")}
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_nullable")}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {!layerFields || layerFields.length === 0 ?
-                        <tr>
-                          <td
-                            colSpan={6}
-                            style={{
-                              padding: "12px",
-                              textAlign: "center",
-                              color: "#64748b",
-                              fontStyle: "italic",
-                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            }}>
-                            No attribute fields found for this layer.
-                          </td>
-                        </tr>
-                      : layerFields.map((field) => (
-                          <tr
-                            key={field.name}
-                            style={{ borderBottom: "1px solid #e2e8f0" }}>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                fontWeight: 500,
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              }}>
-                              {field.name}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                color: "#475569",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              }}>
-                              {field.nativeType}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                fontFamily:
-                                  "var(--cartouche-theme-font-family-mono, monospace)",
-                                color: field.userOverridden ? "#047857" : "#0f766e",
-                                fontWeight: field.userOverridden ? 600 : 400,
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              }}>
-                              {field.inferredType ?? field.mappedType}
-                              {field.userOverridden && (
-                                <span
-                                  className='layer-field-override-badge'
-                                  title='Field type manually overridden by user'
-                                  style={{
-                                    marginLeft: "6px",
-                                    fontSize: "0.6875rem",
-                                    padding: "1px 5px",
-                                    borderRadius: "3px",
-                                    backgroundColor: "#dcfce7",
-                                    color: "#15803d",
-                                    fontWeight: 600,
-                                    textTransform: "uppercase",
-                                  }}>
-                                  User
-                                </span>
-                              )}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                color: "#475569",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              }}>
-                              {field.width !== undefined && field.width > 0 ?
-                                field.width
-                              : ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                color: "#475569",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              }}>
-                              {(
-                                field.precision !== undefined
-                                && field.precision > 0
-                              ) ?
-                                field.precision
-                              : ""}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              }}>
-                              {field.nullable ?
-                                t("layer_properties_yes")
-                              : t("layer_properties_no")}
-                            </td>
-                          </tr>
-                        ))
-                      }
-                    </tbody>
-                  </table>
-                </div>
+                <TableWidget<LayerFieldInfo>
+                  name='layer-properties-information-fields'
+                  displayName={t("layer_properties_group_fields")}
+                  className='layer-properties-information-fields-table'
+                  showHeader={false}
+                  padding={0}
+                  minHeight={0}
+                  maxHeight='18rem'
+                  rows={layerFields}
+                  getRowId={fieldRowId}
+                  columns={informationFieldColumns()}
+                  showRowNumberColumn={false}
+                  readOnly
+                  selectedRowIds={informationSelectedFieldNames}
+                  activeRowId={informationActiveFieldName}
+                />
               </fieldset>
             </div>
           )}
@@ -1018,10 +1123,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <label
                     htmlFor='layer-prop-name'
+                    className='layer-prop-label'
                     style={{
                       fontWeight: 500,
                       fontSize: "0.875rem",
-                      color: "#334155",
                     }}>
                     {t("layer_properties_source_layer_name")}
                   </label>
@@ -1046,10 +1151,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <label
                     htmlFor='layer-prop-id'
+                    className='layer-prop-label'
                     style={{
                       fontWeight: 500,
                       fontSize: "0.875rem",
-                      color: "#334155",
                     }}>
                     {t("layer_properties_source_layer_id")}
                   </label>
@@ -1067,8 +1172,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                     <span
                       className='layer-prop-validation-error'
                       style={{
-                        color: "#ef4444",
-                        fontSize: "0.75rem",
+                          fontSize: "0.75rem",
                         fontWeight: 500,
                       }}>
                       {draft.idValidationError}
@@ -1086,10 +1190,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <label
                     htmlFor='layer-prop-crs'
+                    className='layer-prop-label'
                     style={{
                       fontWeight: 500,
                       fontSize: "0.875rem",
-                      color: "#334155",
                     }}>
                     {t("layer_properties_source_crs")}
                   </label>
@@ -1144,7 +1248,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     className='layer-prop-dialect-caption'
                     style={{
                       fontSize: "0.75rem",
-                      color: "#64748b",
                       fontStyle: "italic",
                     }}>
                     {info?.driverDialect === "ogr_sql" ?
@@ -1196,8 +1299,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                   alignItems: "center",
                   gap: "0.375rem",
                   padding: "4px 8px",
-                  backgroundColor: "#f1f5f9",
-                  border: "1px solid #cbd5e1",
                   borderRadius: "4px",
                 }}>
                 <button
@@ -1211,7 +1312,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                       toggleLayerEditingAction(activeId);
                     }
                   }}>
-                  <Icon path={mdiPencilOutline} size='14px' />
+                  <Icon path={mdiPencilOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1224,16 +1325,16 @@ export const LayerPropertiesDialog: React.FC = () => {
                       setIsNewFieldOpen(true);
                     }
                   }}>
-                  <Icon path={mdiTablePlus} size='14px' />
+                  <Icon path={mdiTablePlus} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
                   className='layer-prop-toolbar-btn delete-field'
                   title={t("layer_properties_fields_delete_field")}
                   aria-label={t("layer_properties_fields_delete_field")}
-                  disabled={!isEditing || !selectedFieldName}
+                  disabled={!isEditing || selectedFieldNames.value.size === 0}
                   onClick={handleDeleteSelectedField}>
-                  <Icon path={mdiTrashCanOutline} size='14px' />
+                  <Icon path={mdiTrashCanOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1241,7 +1342,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
                   disabled={!isEditing}>
-                  <Icon path={mdiCalculator} size='14px' />
+                  <Icon path={mdiCalculator} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1249,357 +1350,34 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_show_native_type")}
                   aria-pressed={showNativeType}
                   onClick={handleToggleShowNativeType}>
-                  <Icon path={mdiCodeTags} size='14px' />
+                  <Icon path={mdiCodeTags} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                   <span>{t("layer_properties_fields_show_native_type")}</span>
                 </button>
               </div>
 
               {/* Fields Data Table */}
-              <div
-                style={{
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "4px",
-                  overflow: "hidden",
-                }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: "0.8125rem",
-                  }}>
-                  <thead>
-                    <tr
-                      style={{
-                        backgroundColor: "#f8fafc",
-                        textAlign: "left",
-                        color: "#475569",
-                      }}>
-                      <th
-                        style={{
-                          padding: "6px 10px",
-                          borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          width: "48px",
-                          textAlign: "right",
-                        }}>
-                        {t("layer_properties_field_col_index")}
-                      </th>
-                      <th
-                        style={{
-                          padding: "6px 10px",
-                          borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                        }}>
-                        {t("layer_properties_field_col_name")}
-                      </th>
-                      <th
-                        style={{
-                          padding: "6px 10px",
-                          borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                        }}>
-                        {t("layer_properties_fields_col_data_type")}
-                      </th>
-                      {showNativeType && (
-                        <th
-                          style={{
-                            padding: "6px 10px",
-                            borderBottom: "1px solid #cbd5e1",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          {t("layer_properties_field_col_native_type")}
-                        </th>
-                      )}
-                      <th
-                        style={{
-                          padding: "6px 10px",
-                          borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                        }}>
-                        {t("layer_properties_field_col_length")}
-                      </th>
-                      <th
-                        style={{
-                          padding: "6px 10px",
-                          borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                        }}>
-                        {t("layer_properties_field_col_precision")}
-                      </th>
-                      <th
-                        style={{
-                          padding: "6px 10px",
-                          borderBottom: "1px solid #cbd5e1",
-                          borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                        }}>
-                        {t("layer_properties_fields_col_comment")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!layerFields || layerFields.length === 0 ?
-                      <tr>
-                        <td
-                          colSpan={showNativeType ? 7 : 6}
-                          style={{
-                            padding: "12px",
-                            textAlign: "center",
-                            color: "#64748b",
-                            fontStyle: "italic",
-                            borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                            borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                          }}>
-                          No attribute fields found.
-                        </td>
-                      </tr>
-                    : layerFields.map((field, fieldIndex) => {
-                        const isSelected = selectedFieldName === field.name;
-                        return (
-                          <tr
-                            key={field.name}
-                            className={`layer-properties-field-row ${isSelected ? "selected" : ""}`}
-                            onClick={() => {
-                              setSelectedFieldName((prev) =>
-                                prev === field.name ? null : field.name
-                              );
-                            }}
-                            style={{
-                              borderBottom: "1px solid #e2e8f0",
-                              backgroundColor: isSelected ? "#e0f2fe" : "transparent",
-                              cursor: "pointer",
-                            }}>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                textAlign: "right",
-                                fontFamily:
-                                  "var(--cartouche-theme-font-family-mono, monospace)",
-                                color: "#64748b",
-                              }}>
-                              {resolveFieldIndex(field, layerFields, fieldIndex)}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                fontWeight: 500,
-                              }}>
-                              {field.name}
-                            </td>
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                fontFamily:
-                                  "var(--cartouche-theme-font-family-mono, monospace)",
-                                color: "#0f766e",
-                              }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <select
-                                  className={`layer-field-type-select${field.userOverridden ? " is-overridden" : ""}`}
-                                  aria-label={`Field type for ${field.name}`}
-                                  disabled={!isEditing}
-                                  value={field.inferredType ?? (field.mappedType === 'number' ? 'real' : field.mappedType === 'boolean' ? 'boolean' : 'string')}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) =>
-                                    handleFieldTypeChange(
-                                      field.name,
-                                      e.target.value as InferredFieldType
-                                    )
-                                  }>
-                                  {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
-                                    <option key={typeOption} value={typeOption}>
-                                      {typeOption}
-                                    </option>
-                                  ))}
-                                </select>
-                                {field.userOverridden && (
-                                  <span
-                                    className='layer-field-override-badge'
-                                    title='Field type manually overridden by user'
-                                    style={{
-                                      fontSize: "0.6875rem",
-                                      padding: "1px 5px",
-                                      borderRadius: "3px",
-                                      backgroundColor: "#dcfce7",
-                                      color: "#15803d",
-                                      fontWeight: 600,
-                                      textTransform: "uppercase",
-                                      letterSpacing: "0.025em",
-                                    }}>
-                                    User
-                                  </span>
-                                )}
-                                {(() => {
-                                  const isOverridden = Boolean(
-                                    field.userOverridden ||
-                                      (field.originalInferredType &&
-                                        field.inferredType !== field.originalInferredType)
-                                  );
-                                  const isResetEnabled = isEditing && isOverridden;
-                                  return (
-                                    <button
-                                      type='button'
-                                      className='layer-field-reset-type-btn'
-                                      title={t("layer_properties_fields_reset_type")}
-                                      aria-label={t("layer_properties_fields_reset_type")}
-                                      disabled={!isResetEnabled}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleResetFieldType(field.name);
-                                      }}>
-                                      <Icon path={mdiUndo} size='14px' />
-                                    </button>
-                                  );
-                                })()}
-                              </div>
-                            </td>
-                          {showNativeType && (
-                            <td
-                              style={{
-                                padding: "6px 10px",
-                                borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                                color: "#475569",
-                              }}>
-                              {field.nativeType}
-                            </td>
-                          )}
-                          <td
-                            className={`layer-properties-field-cell-length ${isEditing && isSelected && isFieldColumnEditable(field, "width") ? "editable-cell" : ""}`}
-                            onClick={(e) => {
-                              if (isEditing && isSelected && isFieldColumnEditable(field, "width")) {
-                                e.stopPropagation();
-                                setEditingCell({ fieldName: field.name, column: "width" });
-                                setCellInputValue(resolveFieldColumnStringValue(field, "width"));
-                              }
-                            }}
-                            style={{
-                              padding:
-                                editingCell?.fieldName === field.name && editingCell?.column === "width"
-                                  ? "2px 4px"
-                                  : "6px 10px",
-                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              color: "#475569",
-                              cursor:
-                                isEditing && isSelected && isFieldColumnEditable(field, "width")
-                                  ? "text"
-                                  : "inherit",
-                            }}>
-                            {editingCell?.fieldName === field.name && editingCell?.column === "width" ? (
-                              <input
-                                type='text'
-                                className='layer-field-cell-input layer-field-cell-input-width'
-                                aria-label={`Length for ${field.name}`}
-                                value={cellInputValue}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => setCellInputValue(e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, field, "width", cellInputValue)}
-                                onBlur={() => handleCellBlur(field, "width", cellInputValue)}
-                              />
-                            ) : (
-                              field.width !== undefined && field.width > 0 ?
-                                field.width
-                              : ""
-                            )}
-                          </td>
-                          <td
-                            className={`layer-properties-field-cell-precision ${isEditing && isSelected && isFieldColumnEditable(field, "precision") ? "editable-cell" : ""}`}
-                            onClick={(e) => {
-                              if (isEditing && isSelected && isFieldColumnEditable(field, "precision")) {
-                                e.stopPropagation();
-                                setEditingCell({ fieldName: field.name, column: "precision" });
-                                setCellInputValue(resolveFieldColumnStringValue(field, "precision"));
-                              }
-                            }}
-                            style={{
-                              padding:
-                                editingCell?.fieldName === field.name && editingCell?.column === "precision"
-                                  ? "2px 4px"
-                                  : "6px 10px",
-                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              color: "#475569",
-                              cursor:
-                                isEditing && isSelected && isFieldColumnEditable(field, "precision")
-                                  ? "text"
-                                  : "inherit",
-                            }}>
-                            {editingCell?.fieldName === field.name && editingCell?.column === "precision" ? (
-                              <input
-                                type='text'
-                                className='layer-field-cell-input layer-field-cell-input-precision'
-                                aria-label={`Precision for ${field.name}`}
-                                value={cellInputValue}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => setCellInputValue(e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, field, "precision", cellInputValue)}
-                                onBlur={() => handleCellBlur(field, "precision", cellInputValue)}
-                              />
-                            ) : (
-                              field.precision !== undefined && field.precision > 0 ?
-                                field.precision
-                              : ""
-                            )}
-                          </td>
-                          <td
-                            className={`layer-properties-field-cell-comment ${isEditing && isSelected && isFieldColumnEditable(field, "comment") ? "editable-cell" : ""}`}
-                            onClick={(e) => {
-                              if (isEditing && isSelected && isFieldColumnEditable(field, "comment")) {
-                                e.stopPropagation();
-                                setEditingCell({ fieldName: field.name, column: "comment" });
-                                setCellInputValue(resolveFieldColumnStringValue(field, "comment"));
-                              }
-                            }}
-                            style={{
-                              padding:
-                                editingCell?.fieldName === field.name && editingCell?.column === "comment"
-                                  ? "2px 4px"
-                                  : "6px 10px",
-                              borderLeft: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              borderRight: "1px solid var(--cartouche-menubar-bg, #1b446c)",
-                              color: "#64748b",
-                              cursor:
-                                isEditing && isSelected && isFieldColumnEditable(field, "comment")
-                                  ? "text"
-                                  : "inherit",
-                            }}>
-                            {editingCell?.fieldName === field.name && editingCell?.column === "comment" ? (
-                              <input
-                                type='text'
-                                className='layer-field-cell-input layer-field-cell-input-comment'
-                                aria-label={`Comment for ${field.name}`}
-                                value={cellInputValue}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => setCellInputValue(e.target.value)}
-                                onKeyDown={(e) => handleCellKeyDown(e, field, "comment", cellInputValue)}
-                                onBlur={() => handleCellBlur(field, "comment", cellInputValue)}
-                              />
-                            ) : (
-                              field.comment || ""
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <TableWidget<LayerFieldInfo>
+                name='layer-properties-fields'
+                displayName={t("layer_properties_tab_fields")}
+                className='layer-properties-fields-table'
+                showHeader={false}
+                padding={0}
+                minHeight={0}
+                rows={layerFields}
+                getRowId={fieldRowId}
+                columns={fieldsTabColumns(layerFields, {
+                  showNativeType,
+                  isEditing,
+                  onTypeChange: handleFieldTypeChange,
+                  onResetType: handleResetFieldType,
+                })}
+                showRowNumberColumn={false}
+                readOnly={!isEditing}
+                isCellReadOnly={isFieldsTabCellReadOnly}
+                onCellEdit={handleFieldCellEdit}
+                selectedRowIds={selectedFieldNames}
+                activeRowId={activeFieldName}
+              />
             </div>
           )}
 
@@ -1675,10 +1453,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                         }}>
                         <label
                           htmlFor='layer-prop-time-mode'
+                          className='layer-prop-label'
                           style={{
                             fontWeight: 500,
                             fontSize: "0.875rem",
-                            color: "#334155",
                           }}>
                           {t("layer_properties_time_mode")}
                         </label>
@@ -1719,10 +1497,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                         }}>
                         <label
                           htmlFor='layer-prop-time-start'
+                          className='layer-prop-label'
                           style={{
                             fontWeight: 500,
                             fontSize: "0.875rem",
-                            color: "#334155",
                           }}>
                           {t("layer_properties_time_start_field")}
                         </label>
@@ -1761,7 +1539,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   ? mdiGreaterThan
                                   : mdiGreaterThanOrEqual
                               }
-                              size='1rem'
+                              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
                           </button>
                           <select
@@ -1796,10 +1574,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                         }}>
                         <label
                           htmlFor='layer-prop-time-end'
+                          className='layer-prop-label'
                           style={{
                             fontWeight: 500,
                             fontSize: "0.875rem",
-                            color: "#334155",
                           }}>
                           {t("layer_properties_time_end_field")}
                         </label>
@@ -1838,7 +1616,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   ? mdiLessThan
                                   : mdiLessThanOrEqual
                               }
-                              size='1rem'
+                              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
                           </button>
                           <select
@@ -1881,13 +1659,12 @@ export const LayerPropertiesDialog: React.FC = () => {
       defaultHeight={320}
       footer={
         <div
+          className='new-field-dialog-footer'
           style={{
             display: "flex",
             justifyContent: "flex-end",
             gap: "0.5rem",
             padding: "0.5rem 0.75rem",
-            backgroundColor: "#f8fafc",
-            borderTop: "1px solid #e2e8f0",
           }}>
           <button
             type='button'
@@ -1903,7 +1680,7 @@ export const LayerPropertiesDialog: React.FC = () => {
           </button>
         </div>
       }>
-      <div style={{ padding: "1rem", color: "#64748b", fontSize: "0.875rem" }}>
+      <div className='new-field-dialog-placeholder' style={{ padding: "1rem", fontSize: "0.875rem" }}>
         New field configuration placeholder.
       </div>
     </Dialog>
@@ -1929,8 +1706,7 @@ export const LayerPropertiesDialog: React.FC = () => {
             if (activeId) {
               toggleLayerEditingAction(activeId, { force: true });
             }
-            setEditingCell(null);
-            setSelectedFieldName(null);
+            clearFieldSelection();
             isDiscardFieldChangesModalOpenSignal.value = false;
           },
         },

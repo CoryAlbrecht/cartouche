@@ -90,6 +90,8 @@ export class MockElement {
   }
 
   appendChild(child: any): any {
+    // Like the real DOM, inserting a node that is already in the tree moves it (React reorders keyed children this way).
+    if (child.parentNode) child.parentNode.removeChild(child);
     this.childNodes.push(child);
     child.parentNode = this;
     return child;
@@ -102,6 +104,7 @@ export class MockElement {
   }
 
   insertBefore(newChild: any, refChild: any): any {
+    if (newChild.parentNode) newChild.parentNode.removeChild(newChild);
     const idx = this.childNodes.indexOf(refChild);
     if (idx !== -1) {
       this.childNodes.splice(idx, 0, newChild);
@@ -155,6 +158,18 @@ export class MockElement {
   getContext(): null {
     return null;
   }
+
+  /**
+   * @function attachEvent
+   * @description No-op legacy listener hook. The mock document has no `oninput`, so React falls back to its old input-event polyfill, which watches the focused input with `attachEvent`; key events dispatched on a focused input need it to exist.
+   */
+  attachEvent(): void {}
+
+  /**
+   * @function detachEvent
+   * @description No-op counterpart of {@link MockElement.attachEvent}, called when the polyfill stops watching an input.
+   */
+  detachEvent(): void {}
 
   setPointerCapture(_id: number): void {}
   releasePointerCapture(_id: number): void {}

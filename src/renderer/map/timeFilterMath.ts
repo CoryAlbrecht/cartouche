@@ -4,7 +4,7 @@
  * @description Calendar-aware UTC temporal mathematics, discrete and micro-decimal stepping with leap-year and month clamping, and auto-range feature aggregation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
@@ -475,13 +475,13 @@ export function extractFirstFeatureProperties(result: any): Record<string, unkno
 
 /**
  * Automatically detects the global temporal bounding envelope across active temporal layers.
- * Dispatches sorted queries (ASC for earliest, DESC for latest) over IPC via GeospatialEngine,
+ * Dispatches sorted queries (single-key `orderBy` Sort Keys: ASC for earliest, DESC for latest) over IPC via GeospatialEngine,
  * falling back to in-memory feature attributes if IPC is unavailable.
  * @function autoDetectTemporalRange
  * @description Queries global temporal bounds across active time-enabled layers via IPC or in-memory fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {LayerDescriptor[]} [layers] - Optional layer descriptors array (defaults to projectLayersSignal.value).
  * @param {(layerId: string, options: QueryExtentOptions) => Promise<any>} [queryExtentFn] - Optional queryExtent function for IPC dispatch or mocking.
@@ -517,8 +517,7 @@ export async function autoDetectTemporalRange(
       if (minSortField) {
         try {
           const res = await queryFn(layer.id, {
-            sortBy: minSortField,
-            sortDirection: 'ASC',
+            orderBy: [[minSortField, 'ASC']],
             max: 1,
             includeGeometry: false,
             fields: [minSortField]
@@ -540,8 +539,7 @@ export async function autoDetectTemporalRange(
       if (maxSortField) {
         try {
           const res = await queryFn(layer.id, {
-            sortBy: maxSortField,
-            sortDirection: 'DESC',
+            orderBy: [[maxSortField, 'DESC']],
             max: 1,
             includeGeometry: false,
             fields: [maxSortField]

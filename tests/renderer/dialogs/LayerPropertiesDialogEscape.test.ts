@@ -4,7 +4,7 @@
  * @description Unit tests verifying Escape key cancellation behavior and draft reversion for LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link cancelLayerPropertiesEdits}
@@ -167,6 +167,7 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalMutationObserver: typeof globalThis.MutationObserver;
+  let originalResizeObserver: typeof globalThis.ResizeObserver;
   let mockChildWindow: any;
   let childListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>>;
   let root: Root | null = null;
@@ -180,6 +181,7 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
     originalDocument = globalThis.document;
     originalWindow = (globalThis as any).window;
     originalMutationObserver = globalThis.MutationObserver;
+    originalResizeObserver = globalThis.ResizeObserver;
 
     childListeners = {};
     const childDocElement = new MockElement('html');
@@ -319,6 +321,12 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
       observe() {}
       disconnect() {}
     };
+    // The Information tab's fields table is a TableWidget, whose Widget base observes its size (Ticket #331).
+    (globalThis as any).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
 
     container = new MockElement('div');
     container.ownerDocument = mainDoc;
@@ -349,6 +357,11 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
       delete (globalThis as any).MutationObserver;
     } else {
       globalThis.MutationObserver = originalMutationObserver;
+    }
+    if (originalResizeObserver === undefined) {
+      delete (globalThis as any).ResizeObserver;
+    } else {
+      globalThis.ResizeObserver = originalResizeObserver;
     }
   });
 

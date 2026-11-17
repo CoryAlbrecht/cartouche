@@ -4,13 +4,16 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-14
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { fromAny } from '@total-typescript/shoehorn';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WKB from 'ol/format/WKB.js';
@@ -24,9 +27,11 @@ import {
   parseDateOrDateTimeToEpochMs,
   parseTimeToMidnightMs,
   transformFeatureProperty,
+  buildOrderBySql,
+  quoteSqlIdentifier,
 } from '../../../src/main/worker/GeospatialEngine';
 import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
-import type { BoundingBox, QueryExtentOptions } from '../../../src/shared/types';
+import type { BoundingBox, QueryExtentOptions, SortKey } from '../../../src/shared/types';
 import {
   WKB_PACKET_MAGIC,
   WKB_PACKET_VERSION,
@@ -1463,11 +1468,10 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       engine.closeAll();
     });
 
-    it('queries earliest and latest feature bounds using sortBy and sortDirection options', async () => {
+    it('queries earliest and latest feature bounds using single-key orderBy Sort Keys', async () => {
       // Query earliest bound: ASC limit 1
       const ascResult = await engine.queryExtent('timeline-test', {
-        sortBy: 'start_date',
-        sortDirection: 'ASC',
+        orderBy: [['start_date', 'ASC']],
         max: 1,
         includeGeometry: false,
         fields: ['start_date', 'names']
@@ -1481,8 +1485,7 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
 
       // Query latest bound: DESC limit 1
       const descResult = await engine.queryExtent('timeline-test', {
-        sortBy: 'end_date',
-        sortDirection: 'DESC',
+        orderBy: [['end_date', 'DESC']],
         max: 1,
         includeGeometry: false,
         fields: ['end_date', 'names']
@@ -1495,6 +1498,330 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       assert.ok(descResult.features[0].properties.end_date !== undefined);
     });
   });
+});
+
+/**
+ * @description Attribute rows `[category, priority]` written, in order, into every Sort Key fixture layer, with deliberate ties so the hidden ID tiebreaker decides the order of equal rows.
+ * @type {Array<[string, number]>}
+ */
+const SORT_KEY_ROWS: Array<[string, number]> = [
+  ['B', 1],
+  ['A', 2],
+  ['A', 1],
+  ['B', 1],
+  ['A', 2],
+  ['A', 3],
+];
+
+/**
+ * @function createSortKeyFixture
+ * @description Creates a vector dataset with a `sort_keys` point layer holding {@link SORT_KEY_ROWS} as `category` (string) and `priority` (integer) fields.
+ * @param {string} driver - GDAL vector driver short name (`Memory`, `ESRI Shapefile`, `GPKG`).
+ * @param {string} filePath - Dataset path to create.
+ * @returns {gdal.Dataset} The open, writable dataset.
+ */
+const createSortKeyFixture = (driver: string, filePath: string): gdal.Dataset => {
+  const dataset = gdal.open(filePath, 'w', driver);
+  const layer = dataset.layers.create('sort_keys', gdal.SpatialReference.fromEPSG(4326), gdal.wkbPoint);
+  layer.fields.add(new gdal.FieldDefn('category', gdal.OFTString));
+  layer.fields.add(new gdal.FieldDefn('priority', gdal.OFTInteger));
+  SORT_KEY_ROWS.forEach(([category, priority], index) => {
+    const feature = new gdal.Feature(layer);
+    feature.fields.set('category', category);
+    feature.fields.set('priority', priority);
+    feature.setGeometry(new gdal.Point(index, index));
+    layer.features.add(feature);
+  });
+  return dataset;
+};
+
+/**
+ * @function recordOrderBySql
+ * @description Wraps a session's real `executeSQL` so every ORDER BY statement the engine issues is recorded, then forwarded to GDAL unchanged.
+ * @param {GeospatialEngine} engine - Engine owning the session.
+ * @param {string} layerId - Session layer identifier.
+ * @returns {string[]} Live list of recorded ORDER BY statements.
+ */
+const recordOrderBySql = (engine: GeospatialEngine, layerId: string): string[] => {
+  const session = (engine as any).sessions.get(layerId);
+  const dataset = session.dataset;
+  const original = dataset.executeSQL.bind(dataset);
+  const statements: string[] = [];
+  dataset.executeSQL = (sql: string, ...rest: unknown[]) => {
+    if (sql.includes('ORDER BY')) {
+      statements.push(sql);
+    }
+    return original(sql, ...rest);
+  };
+  return statements;
+};
+
+describe('buildOrderBySql and quoteSqlIdentifier (Ticket #334)', () => {
+  const schema = ['category', 'priority', 'na"me'];
+
+  it('quotes identifiers by doubling embedded double quotes', () => {
+    assert.equal(quoteSqlIdentifier('category'), '"category"');
+    assert.equal(quoteSqlIdentifier('na"me'), '"na""me"');
+  });
+
+  it('returns null for a missing or empty orderBy', () => {
+    assert.equal(buildOrderBySql('t', undefined, schema, 'fid'), null);
+    assert.equal(buildOrderBySql('t', [], schema, 'fid'), null);
+  });
+
+  it('builds a quoted multi-column ORDER BY with the stored ID column tiebreaker', () => {
+    assert.equal(
+      buildOrderBySql('my "layer"', [['category', 'ASC'], ['na"me', 'DESC']], schema, 'fid'),
+      'SELECT * FROM "my ""layer""" ORDER BY "category" ASC, "na""me" DESC, "fid" ASC'
+    );
+  });
+
+  it('uses OGR SQL FID as the tiebreaker when the layer has no stored ID column name', () => {
+    assert.equal(
+      buildOrderBySql('t', [['priority', 'DESC']], schema, ''),
+      'SELECT * FROM "t" ORDER BY "priority" DESC, FID ASC'
+    );
+  });
+
+  it('accepts the stored ID column as a Sort Key and skips the tiebreaker', () => {
+    assert.equal(
+      buildOrderBySql('t', [['category', 'ASC'], ['fid', 'DESC']], schema, 'fid'),
+      'SELECT * FROM "t" ORDER BY "category" ASC, "fid" DESC'
+    );
+  });
+
+  it('rejects unknown, case-mismatched, and Virtual Field names with an error naming the field', () => {
+    assert.throws(() => buildOrderBySql('t', [['nope', 'ASC']], schema, 'fid'), /"nope"/);
+    assert.throws(() => buildOrderBySql('t', [['Category', 'ASC']], schema, 'fid'), /"Category"/);
+    assert.throws(() => buildOrderBySql('t', [['FID', 'ASC']], schema, ''), /"FID"/);
+  });
+
+  it('rejects a repeated field with an error naming the field', () => {
+    assert.throws(
+      () => buildOrderBySql('t', [['category', 'ASC'], ['priority', 'ASC'], ['category', 'DESC']], schema, 'fid'),
+      /repeated.*"category"/i
+    );
+  });
+
+  it('rejects a Sort Key without a valid direction with an error naming the field', () => {
+    assert.throws(() => buildOrderBySql('t', fromAny([['category']]), schema, 'fid'), /"category"/);
+    assert.throws(() => buildOrderBySql('t', fromAny([['category', 'asc']]), schema, 'fid'), /"category"/);
+    assert.throws(() => buildOrderBySql('t', fromAny(['category']), schema, 'fid'), /Sort Key/);
+  });
+
+  it('keeps the OGR SQL FID tiebreaker when a Sort Key names an attribute field called FID and the layer has no stored ID column', () => {
+    assert.equal(
+      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], ''),
+      'SELECT * FROM "t" ORDER BY "FID" DESC, FID ASC'
+    );
+  });
+
+  it('skips the tiebreaker only for the stored ID column, not for an attribute field that shares its name in another case', () => {
+    assert.equal(
+      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], 'fid'),
+      'SELECT * FROM "t" ORDER BY "FID" DESC, "fid" ASC'
+    );
+  });
+});
+
+describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', () => {
+  /**
+   * @description Expected row indexes into {@link SORT_KEY_ROWS} for `category ASC, priority DESC` with an ascending ID tiebreaker.
+   * @type {number[]}
+   */
+  const CATEGORY_ASC_PRIORITY_DESC = [5, 1, 4, 2, 0, 3];
+
+  /**
+   * @description Expected row indexes for `category ASC` alone, ties broken by ascending ID.
+   * @type {number[]}
+   */
+  const CATEGORY_ASC = [1, 2, 4, 5, 0, 3];
+
+  let engine: GeospatialEngine;
+  let tempDir: string;
+
+  beforeEach(() => {
+    engine = new GeospatialEngine();
+    engine.setBackgroundScanEnabled(false);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-sort-keys-'));
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * @description Format cases: how to open each fixture, its first feature ID, and the SQL tiebreaker the worker must append.
+   * @type {Array<{ name: string; firstFid: number; tiebreaker: string; open: (layerId: string) => Promise<void> }>}
+   */
+  const formats: Array<{
+    name: string;
+    firstFid: number;
+    tiebreaker: string;
+    open: (layerId: string) => Promise<void>;
+  }> = [
+    {
+      name: 'GeoPackage',
+      firstFid: 1,
+      tiebreaker: ', "fid" ASC',
+      open: async (layerId) => {
+        const filePath = path.join(tempDir, 'sort_keys.gpkg');
+        createSortKeyFixture('GPKG', filePath).close();
+        await engine.openDataset(layerId, filePath);
+      },
+    },
+    {
+      name: 'Shapefile',
+      firstFid: 0,
+      tiebreaker: ', FID ASC',
+      open: async (layerId) => {
+        const filePath = path.join(tempDir, 'sort_keys.shp');
+        createSortKeyFixture('ESRI Shapefile', filePath).close();
+        await engine.openDataset(layerId, filePath);
+      },
+    },
+    {
+      name: 'Memory',
+      firstFid: 0,
+      tiebreaker: ', FID ASC',
+      open: async (layerId) => {
+        const dataset = createSortKeyFixture('Memory', 'sort_keys');
+        (engine as any).sessions.set(layerId, {
+          dataset,
+          layer: dataset.layers.get(0),
+          filePath: 'sort_keys',
+          fidColumn: '',
+        });
+      },
+    },
+  ];
+
+  for (const format of formats) {
+    describe(format.name, () => {
+      const layerId = `sort-keys-${format.name}`;
+      const ids = (rows: number[]) => rows.map((row) => row + format.firstFid);
+
+      it('orders by several columns, earlier keys first, and pages stably', async () => {
+        await format.open(layerId);
+        const statements = recordOrderBySql(engine, layerId);
+        const orderBy: QueryExtentOptions['orderBy'] = [['category', 'ASC'], ['priority', 'DESC']];
+
+        const full = await engine.queryExtent(layerId, { orderBy, includeGeometry: false });
+        assert.deepEqual(full.features.map((f) => Number(f.id)), ids(CATEGORY_ASC_PRIORITY_DESC));
+        assert.deepEqual(
+          full.features.map((f) => [f.properties?.category, f.properties?.priority]),
+          CATEGORY_ASC_PRIORITY_DESC.map((row) => SORT_KEY_ROWS[row])
+        );
+
+        const paged: number[] = [];
+        for (let start = 0; start < SORT_KEY_ROWS.length; start += 2) {
+          const page = await engine.queryExtent(layerId, { orderBy, start, max: 2, includeGeometry: false });
+          assert.equal(page.totalMatched, SORT_KEY_ROWS.length);
+          paged.push(...page.features.map((f) => Number(f.id)));
+        }
+        assert.deepEqual(paged, ids(CATEGORY_ASC_PRIORITY_DESC));
+
+        assert.ok(statements.length > 0);
+        for (const sql of statements) {
+          assert.ok(
+            sql.endsWith(`ORDER BY "category" ASC, "priority" DESC${format.tiebreaker}`),
+            `unexpected SQL: ${sql}`
+          );
+        }
+      });
+
+      it('appends the hidden ascending ID tiebreaker to break ties', async () => {
+        await format.open(layerId);
+        const statements = recordOrderBySql(engine, layerId);
+
+        const result = await engine.queryExtent(layerId, { orderBy: [['category', 'ASC']], includeGeometry: false });
+        assert.deepEqual(result.features.map((f) => Number(f.id)), ids(CATEGORY_ASC));
+        assert.deepEqual(statements, [`SELECT * FROM "sort_keys" ORDER BY "category" ASC${format.tiebreaker}`]);
+      });
+
+      it('keeps the natural order with no SQL layer for a missing or empty orderBy', async () => {
+        await format.open(layerId);
+        const statements = recordOrderBySql(engine, layerId);
+        const natural = ids(SORT_KEY_ROWS.map((_, row) => row));
+
+        const empty = await engine.queryExtent(layerId, { orderBy: [], includeGeometry: false });
+        assert.deepEqual(empty.features.map((f) => Number(f.id)), natural);
+        const missing = await engine.queryExtent(layerId, { includeGeometry: false });
+        assert.deepEqual(missing.features.map((f) => Number(f.id)), natural);
+        assert.deepEqual(statements, []);
+      });
+
+      it('rejects unknown, case-mismatched, Virtual Field, and repeated Sort Key fields before any SQL', async () => {
+        await format.open(layerId);
+        const statements = recordOrderBySql(engine, layerId);
+
+        await assert.rejects(engine.queryExtent(layerId, { orderBy: [['missing_field', 'ASC']] }), /"missing_field"/);
+        await assert.rejects(engine.queryExtent(layerId, { orderBy: [['Category', 'ASC']] }), /"Category"/);
+        await assert.rejects(engine.queryExtent(layerId, { orderBy: [['virtual_label', 'DESC']] }), /"virtual_label"/);
+        await assert.rejects(
+          engine.queryExtent(layerId, { orderBy: [['priority', 'ASC'], ['priority', 'DESC']] }),
+          /"priority"/
+        );
+        assert.deepEqual(statements, []);
+      });
+    });
+  }
+
+  it('sorts GeoPackage by its stored ID column without a second tiebreaker', async () => {
+    await formats[0].open('sort-keys-gpkg-fid');
+    const statements = recordOrderBySql(engine, 'sort-keys-gpkg-fid');
+
+    const result = await engine.queryExtent('sort-keys-gpkg-fid', {
+      orderBy: [['fid', 'DESC']],
+      includeGeometry: false,
+    });
+    assert.deepEqual(result.features.map((f) => Number(f.id)), [6, 5, 4, 3, 2, 1]);
+    assert.deepEqual(statements, ['SELECT * FROM "sort_keys" ORDER BY "fid" DESC']);
+  });
+
+  for (const driver of ['ESRI Shapefile', 'Memory']) {
+    it(`${driver}: an attribute field named FID shadows OGR SQL FID, and its ties keep the natural order and page stably`, async () => {
+      const layerId = `sort-keys-attribute-fid-${driver}`;
+      const dataset =
+        driver === 'Memory'
+          ? gdal.open('attribute_fid', 'w', 'Memory')
+          : gdal.open(path.join(tempDir, 'attribute_fid.shp'), 'w', driver);
+      const layer = dataset.layers.create('attribute_fid', gdal.SpatialReference.fromEPSG(4326), gdal.wkbPoint);
+      layer.fields.add(new gdal.FieldDefn('FID', gdal.OFTInteger));
+      // Attribute FID values run against the feature IDs 0-4, with ties.
+      [5, 5, 1, 5, 1].forEach((value, index) => {
+        const feature = new gdal.Feature(layer);
+        feature.fields.set('FID', value);
+        feature.setGeometry(new gdal.Point(index, index));
+        layer.features.add(feature);
+      });
+      if (driver === 'Memory') {
+        (engine as any).sessions.set(layerId, { dataset, layer, filePath: 'attribute_fid', fidColumn: '' });
+      } else {
+        dataset.close();
+        await engine.openDataset(layerId, path.join(tempDir, 'attribute_fid.shp'));
+      }
+      const statements = recordOrderBySql(engine, layerId);
+      const orderBy: SortKey[] = [['FID', 'DESC']];
+
+      const full = await engine.queryExtent(layerId, { orderBy, includeGeometry: false });
+      // OGR SQL resolves both "FID" and the bare FID tiebreaker to the attribute field, so the tiebreaker
+      // cannot order the ties by feature ID; OGR's stable sort leaves them in natural (ascending ID) order.
+      assert.deepEqual(full.features.map((f) => Number(f.id)), [0, 1, 3, 2, 4]);
+      assert.deepEqual(full.features.map((f) => f.properties?.FID), [5, 5, 5, 1, 1]);
+
+      const paged: number[] = [];
+      for (let start = 0; start < 5; start += 2) {
+        const page = await engine.queryExtent(layerId, { orderBy, start, max: 2, includeGeometry: false });
+        paged.push(...page.features.map((f) => Number(f.id)));
+      }
+      assert.deepEqual(paged, [0, 1, 3, 2, 4]);
+      for (const sql of statements) {
+        assert.ok(sql.endsWith('ORDER BY "FID" DESC, FID ASC'), `unexpected SQL: ${sql}`);
+      }
+    });
+  }
 });
 
 

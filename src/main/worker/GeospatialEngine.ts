@@ -1,10 +1,10 @@
 /**
  * @file GeospatialEngine.ts
  * @module main/worker/GeospatialEngine
- * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers.
+ * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers, including multi-column Sort Key ordering.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-11
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -25,6 +25,7 @@ import type {
   ProjectCrs,
   QueryExtentFeature,
   QueryExtentOptions,
+  SortKey,
   StagedFeatureEdit,
 } from "../../shared/types";
 import { classifyDriverDialect } from "../../shared/layers/queryDialect";
@@ -599,11 +600,88 @@ interface BackgroundScanState {
 }
 
 /**
+ * @description Quotes an SQL identifier (layer or field name) in double quotes, doubling any embedded double quote, so it is safe in both OGR SQL and the SQLite dialect.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {string} name - Raw identifier.
+ * @returns {string} Double-quoted, escaped identifier.
+ */
+export function quoteSqlIdentifier(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
+}
+
+/**
+ * @description Validates an ordered list of Sort Keys against a layer's physical schema and builds the GDAL SQL statement that orders the layer by them.
+ * Every field must exactly (case-sensitively) match a schema field or the layer's stored ID column, appear only once, and carry an explicit `ASC`/`DESC` direction;
+ * `Virtual Field`s are not physical columns and are rejected. Validation completes before any SQL is built. For stable `start`/`max` pagination a hidden ascending
+ * feature ID tiebreaker is appended: the stored ID column (quoted) when the layer reports one, since GeoPackage's SQLite dialect does not accept a bare `FID`,
+ * otherwise OGR SQL `FID`. The tiebreaker is omitted only when a Sort Key names the stored ID column; a Sort Key on an attribute field that happens to be named
+ * `FID` never suppresses it.
+ *
+ * Limitation: on a layer with no stored ID column (e.g. Shapefile, Memory) and an attribute field named `FID`, OGR SQL resolves both the quoted `"FID"` and the
+ * bare `FID` tiebreaker to that attribute field, so the tiebreaker cannot order equal rows by feature ID (verified with GDAL on Shapefile and Memory layers:
+ * `ORDER BY "FID" ASC, FID ASC` and `ORDER BY "FID" ASC, FID DESC` return the same order). Pagination stays stable there because OGR SQL's sort is stable:
+ * rows that tie on every key keep their natural (ascending feature ID) order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {string} layerName - Name of the layer to select from.
+ * @param {readonly SortKey[] | undefined} orderBy - Ordered Sort Keys; missing or empty means natural order.
+ * @param {readonly string[]} schemaFields - Physical attribute field names of the layer.
+ * @param {string} fidColumn - The layer's stored ID column name, or an empty string when it has none.
+ * @returns {string | null} The `SELECT … ORDER BY …` statement, or null when no ordering was requested.
+ * @throws {Error} If a Sort Key is malformed, names an unknown field, has an invalid direction, or repeats a field; the message names the field.
+ * @see {@link SortKey}
+ */
+export function buildOrderBySql(
+  layerName: string,
+  orderBy: readonly SortKey[] | undefined,
+  schemaFields: readonly string[],
+  fidColumn: string
+): string | null {
+  if (!orderBy || orderBy.length === 0) {
+    return null;
+  }
+
+  const knownFields = new Set(schemaFields);
+  if (fidColumn) {
+    knownFields.add(fidColumn);
+  }
+  const seen = new Set<string>();
+  for (const key of orderBy) {
+    if (!Array.isArray(key) || typeof key[0] !== "string") {
+      throw new Error(`Invalid Sort Key ${JSON.stringify(key)}: expected [field, "ASC" | "DESC"]`);
+    }
+    const [field, direction] = key;
+    if (direction !== "ASC" && direction !== "DESC") {
+      throw new Error(`Invalid sort direction ${JSON.stringify(direction)} for field "${field}": expected "ASC" or "DESC"`);
+    }
+    if (!knownFields.has(field)) {
+      throw new Error(`Cannot sort by field "${field}": it is not a field of layer "${layerName}"`);
+    }
+    if (seen.has(field)) {
+      throw new Error(`Repeated Sort Key field "${field}": each field may appear only once in orderBy`);
+    }
+    seen.add(field);
+  }
+
+  const terms = orderBy.map(([field, direction]) => `${quoteSqlIdentifier(field)} ${direction}`);
+  const tiebreaker = fidColumn ? quoteSqlIdentifier(fidColumn) : "FID";
+  if (!fidColumn || !seen.has(fidColumn)) {
+    terms.push(`${tiebreaker} ASC`);
+  }
+  return `SELECT * FROM ${quoteSqlIdentifier(layerName)} ORDER BY ${terms.join(", ")}`;
+}
+
+/**
  * @class GeospatialEngine
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-07
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  */
 export class GeospatialEngine {
@@ -866,10 +944,31 @@ export class GeospatialEngine {
   }
 
   /**
+   * @description Resolves a session's stored ID column name (e.g. GeoPackage `fid`), preferring the value captured when the dataset was opened and falling back to asking the layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {EngineSession} session - Active layer session.
+   * @returns {string} The stored ID column name, or an empty string when the provider reports none.
+   */
+  private resolveFidColumn(session: EngineSession): string {
+    if (session.fidColumn !== undefined) {
+      return session.fidColumn;
+    }
+    try {
+      const reported = (session.layer as any).fidColumn;
+      return typeof reported === "string" ? reported : "";
+    } catch {
+      return "";
+    }
+  }
+
+  /**
    * @description Retrieves comprehensive read-only layer metadata, schema field definitions, driver properties, and query dialect tier.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-23
-   * @updated 2026-10-23
+   * @updated 2026-11-17
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @returns {Promise<LayerDetailedInfo>} Detailed layer metadata and schema fields.
@@ -947,14 +1046,7 @@ export class GeospatialEngine {
 
     const fields = this.inferLayerFields(dataset, layer, filePath);
 
-    let fidColumn = session.fidColumn;
-    if (fidColumn === undefined) {
-      try {
-        fidColumn = typeof (layer as any).fidColumn === "string" ? (layer as any).fidColumn : "";
-      } catch {
-        fidColumn = "";
-      }
-    }
+    const fidColumn = this.resolveFidColumn(session);
 
     let capabilities = session.capabilities;
     if (!capabilities) {
@@ -1391,16 +1483,16 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters, optional sortBy ordering via GDAL SQL, and start/max pagination, serializing features as a contiguous binary WKB packet buffer.
+   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-10
+   * @updated 2026-11-17
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy extent [minX, minY, maxX, maxY].
    * @param {string} [targetProjection] - CRS authority of query extent (e.g. "EPSG:3857").
    * @returns {Promise<{ layerId: string; buffer: ArrayBuffer; features: QueryExtentFeature[]; totalMatched: number; transferList: ArrayBuffer[] }>} Query results, contiguous binary packet, total matched feature count, and transferable ArrayBuffers.
-   * @throws {Error} If no active session exists for the layer identifier.
+   * @throws {Error} If no active session exists for the layer identifier, or if `orderBy` is invalid (see {@link buildOrderBySql}).
    */
   public async queryExtent(
     layerId: string,
@@ -1450,8 +1542,7 @@ export class GeospatialEngine {
         let startOpt: number | undefined = undefined;
         let maxOpt: number | undefined = undefined;
         let featureIdsOpt: Array<string | number> | undefined = undefined;
-        let sortByOpt: string | undefined = undefined;
-        let sortDirectionOpt: 'ASC' | 'DESC' | undefined = undefined;
+        let orderByOpt: SortKey[] | undefined = undefined;
 
         if (Array.isArray(options)) {
           extentBox = options;
@@ -1465,18 +1556,21 @@ export class GeospatialEngine {
           startOpt = options.start;
           maxOpt = options.max;
           featureIdsOpt = options.featureIds;
-          sortByOpt = options.sortBy;
-          sortDirectionOpt = options.sortDirection;
+          orderByOpt = options.orderBy;
         }
 
         let queryLayer = layer;
-        if (sortByOpt && typeof activeSession.dataset.executeSQL === "function") {
-          const direction = sortDirectionOpt === "DESC" ? "DESC" : "ASC";
-          const cleanLayerName = layer.name.replace(/"/g, '""');
-          const cleanSortBy = sortByOpt.replace(/"/g, '""');
-          const sql = `SELECT * FROM "${cleanLayerName}" ORDER BY "${cleanSortBy}" ${direction}`;
-          queryLayer = activeSession.dataset.executeSQL(sql);
-          isSqlLayer = true;
+        if (orderByOpt && orderByOpt.length > 0) {
+          const sql = buildOrderBySql(
+            layer.name,
+            orderByOpt,
+            layer.fields.getNames(),
+            this.resolveFidColumn(activeSession)
+          );
+          if (sql && typeof activeSession.dataset.executeSQL === "function") {
+            queryLayer = activeSession.dataset.executeSQL(sql);
+            isSqlLayer = true;
+          }
         }
 
         const sliceStart =

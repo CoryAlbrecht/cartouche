@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createRendererJiti } from "../rendererJiti";
+import { cascadedValue } from "../styles/cssRules";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { AttributeTableWidgetProps } from "../../../src/renderer/workbench/widgets/AttributeTableWidget";
@@ -251,6 +252,9 @@ class MockElement {
   }
 }
 
+/** The embedded TableWidget's line between columns, bound to the table theme token by its cell classes in workbench.css. */
+const COLUMN_LINE = "1px solid var(--cartouche-table-column-line)";
+
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
@@ -383,6 +387,17 @@ function findAllNodes(
     }
   }
   return result;
+}
+
+/**
+ * @function titleOf
+ * @description Returns the native title tooltip shown in a table cell: the `title` of the cell or of its content.
+ * @param {MockElement} el - Table cell.
+ * @returns {string | null} The tooltip text, or null when there is none.
+ */
+function titleOf(el: MockElement): string | null {
+  const titled = findAllNodes(el, (n) => n.getAttribute("title") !== null)[0];
+  return titled ? titled.getAttribute("title") : null;
 }
 
 const jiti = createRendererJiti(import.meta.url);
@@ -641,7 +656,7 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
     );
   });
 
-  it("supports single click, Ctrl-click toggle, and Shift-click range selection on the counter column", async () => {
+  it("supports single click, Ctrl-click toggle, and Shift-click range selection on the # column", async () => {
     const mockLayer: GisLayer = {
       id: "layer-parcels",
       name: "Parcels",
@@ -706,6 +721,7 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
       counterCells[1].dispatchEvent({
         type: "click",
         stopPropagation: () => {},
+        button: 0,
         ctrlKey: false,
         metaKey: false,
         shiftKey: false,
@@ -719,6 +735,7 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
       counterCells[3].dispatchEvent({
         type: "click",
         stopPropagation: () => {},
+        button: 0,
         ctrlKey: true,
         metaKey: false,
         shiftKey: false,
@@ -735,6 +752,7 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
       counterCells[1].dispatchEvent({
         type: "click",
         stopPropagation: () => {},
+        button: 0,
         ctrlKey: false,
         metaKey: false,
         shiftKey: true,
@@ -747,18 +765,19 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
       "f-4",
     ]);
 
-    // 4. Verify existing selections render with .selected-row
+    // 4. Verify existing selections render as Selected Rows of the embedded TableWidget
     await act(async () => {
       selectedFeatureIdsSignal.value = new Set(["f-1", "f-3"]);
     });
 
-    const selectedRows = findAllNodes(container, (el) =>
-      el.className.includes("selected-row")
+    const selectedRows = findAllNodes(
+      container,
+      (el) => el.tagName === "TR" && el.getAttribute("aria-selected") === "true"
     );
     assert.strictEqual(
       selectedRows.length,
       2,
-      "Two rows must have selected-row class"
+      "Two rows must be Selected Rows"
     );
   });
 
@@ -803,9 +822,9 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
     );
     assert.ok(dataCells.length >= 2, "Data cells must exist");
 
-    // Click data cell when not in edit mode
+    // Double-click data cell when not in edit mode
     await act(async () => {
-      dataCells[0].dispatchEvent({ type: "click", stopPropagation: () => {} });
+      dataCells[0].dispatchEvent({ type: "dblclick", button: 0, stopPropagation: () => {} });
     });
 
     let inputEls = findAllNodes(container, (el) =>
@@ -822,9 +841,9 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
       editableLayerIdsSignal.value = new Set(["layer-parcels"]);
     });
 
-    // Click data cell when edit mode is ON
+    // Double-click data cell when edit mode is ON
     await act(async () => {
-      dataCells[0].dispatchEvent({ type: "click", stopPropagation: () => {} });
+      dataCells[0].dispatchEvent({ type: "dblclick", button: 0, stopPropagation: () => {} });
     });
 
     inputEls = findAllNodes(container, (el) =>
@@ -1736,7 +1755,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click Next page -> start = 2
       await act(async () => {
-        nextBtn.dispatchEvent({ type: "click", stopPropagation: () => {} });
+        nextBtn.dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
       });
 
       assert.strictEqual(queryCalls.length, 2);
@@ -1755,6 +1774,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         counterCells[0].dispatchEvent({
           type: "click",
           stopPropagation: () => {},
+          button: 0,
           ctrlKey: false,
           metaKey: false,
           shiftKey: false,
@@ -1769,7 +1789,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click Last page -> start = 4 (only 1 feature: 105)
       await act(async () => {
-        lastBtn.dispatchEvent({ type: "click", stopPropagation: () => {} });
+        lastBtn.dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
       });
       assert.strictEqual(queryCalls.length, 3);
       assert.strictEqual(queryCalls[2].options.start, 4);
@@ -1793,7 +1813,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click First page -> start = 0
       await act(async () => {
-        firstBtn.dispatchEvent({ type: "click", stopPropagation: () => {} });
+        firstBtn.dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
       });
       assert.strictEqual(queryCalls.length, 4);
       assert.strictEqual(queryCalls[3].options.start, 0);
@@ -1876,7 +1896,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         el.className.includes("cell-attribute-data")
       )[0];
       await act(async () => {
-        dataCell.dispatchEvent({ type: "click", stopPropagation: () => {} });
+        dataCell.dispatchEvent({ type: "dblclick", button: 0, stopPropagation: () => {} });
       });
 
       const inputEl = findAllNodes(container, (el) =>
@@ -1968,7 +1988,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click "Don't Save Changes"
       await act(async () => {
-        buttons[1].dispatchEvent({ type: "click", stopPropagation: () => {} });
+        buttons[1].dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
       });
       assert.strictEqual(await choicePromise, "discard");
       assert.strictEqual(unsavedChangesModalSignal.value, null);
@@ -2080,10 +2100,21 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         el.className.includes("table-scroll-wrapper")
       )[0];
       assert.ok(scrollWrapperEl, "table-scroll-wrapper must be rendered");
-      assert.strictEqual(scrollWrapperEl.style.overflow, "auto");
+      assert.strictEqual(scrollWrapperEl.style.overflow, "hidden");
       assert.ok(
         scrollWrapperEl.style.minHeight === "0px"
           || scrollWrapperEl.style.minHeight === "0"
+      );
+
+      // 5b. The embedded TableWidget's frame scrolls the records
+      const tableFrameEl = findAllNodes(scrollWrapperEl, (el) =>
+        el.className.includes("table-widget-frame")
+      )[0];
+      assert.ok(tableFrameEl, "embedded TableWidget frame must be rendered");
+      assert.strictEqual(tableFrameEl.style.overflow, "auto");
+      assert.ok(
+        tableFrameEl.style.minHeight === "0px"
+          || tableFrameEl.style.minHeight === "0"
       );
 
       // 6. Footer flex-shrink and controls presence
@@ -2229,7 +2260,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
   });
 
   describe("AttributeTableWidget Vertical Column Dividers and Fixed Layout (Ticket #188)", () => {
-    it("renders table with table-layout fixed, explicit initial column widths, and vertical border dividers on all header and body cells", async () => {
+    it("renders table with table-layout fixed, explicit initial column widths, and the theme's column lines on all header and body cells", async () => {
       const mockLayer: GisLayer = {
         id: "layer-grid-test",
         name: "Grid Layer",
@@ -2297,20 +2328,15 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           "fixed",
           "table must use table-layout: fixed"
         );
-        assert.strictEqual(
-          tableEl.style.borderCollapse,
-          "collapse",
-          "table must have border-collapse: collapse"
-        );
 
-        const scrollWrapperEl = findAllNodes(container, (el) =>
-          el.className.includes("table-scroll-wrapper")
+        const frameEl = findAllNodes(container, (el) =>
+          el.className.includes("table-widget-frame")
         )[0];
-        assert.ok(scrollWrapperEl, "table scroll wrapper must be present");
+        assert.ok(frameEl, "embedded TableWidget frame must be present");
         assert.strictEqual(
-          scrollWrapperEl.style.overflow,
+          frameEl.style.overflow,
           "auto",
-          "scroll wrapper must enable overflow auto for horizontal scrolling"
+          "TableWidget frame must enable overflow auto for horizontal scrolling"
         );
 
         // Check header cells
@@ -2323,9 +2349,9 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         for (const th of thNodes) {
           assert.strictEqual(
-            th.style.borderRight,
-            "1px solid var(--cartouche-menubar-bg, #1b446c)",
-            "all th cells must have 1px solid var(--cartouche-menubar-bg, #1b446c) border-right"
+            cascadedValue(th, "border-right"),
+            COLUMN_LINE,
+            "all th cells must draw the table column line on their right edge"
           );
           assert.ok(
             th.style.width,
@@ -2352,9 +2378,9 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         for (const td of tdNodesRow1) {
           assert.strictEqual(
-            td.style.borderRight,
-            "1px solid var(--cartouche-menubar-bg, #1b446c)",
-            "all td cells must have 1px solid var(--cartouche-menubar-bg, #1b446c) border-right"
+            cascadedValue(td, "border-right"),
+            COLUMN_LINE,
+            "all td cells must draw the table column line on their right edge"
           );
         }
 
@@ -2364,18 +2390,18 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         });
         const selectedRow = findAllNodes(
           tableEl,
-          (el) => el.tagName === "TR" && el.className?.includes("selected-row")
+          (el) => el.tagName === "TR" && el.getAttribute("aria-selected") === "true"
         )[0];
-        assert.ok(selectedRow, "selected row must have selected-row class");
+        assert.ok(selectedRow, "selected row must be a Selected Row");
         const selectedTds = findAllNodes(
           selectedRow,
           (el) => el.tagName === "TD"
         );
         for (const td of selectedTds) {
           assert.strictEqual(
-            td.style.borderRight,
-            "1px solid var(--cartouche-menubar-bg, #1b446c)",
-            "selected row cells must retain 1px solid var(--cartouche-menubar-bg, #1b446c) border-right"
+            cascadedValue(td, "border-right"),
+            COLUMN_LINE,
+            "selected row cells must retain the table column line"
           );
         }
       } finally {
@@ -2430,7 +2456,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         });
 
         const handles = findAllNodes(container, (el) =>
-          el.className.includes("column-resize-handle")
+          el.className.includes("table-widget-resize-handle")
         );
         // 1 system column (#) + 1 attribute column = 2 handles
         assert.strictEqual(
@@ -2511,10 +2537,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const colATh = thNodes[1]; // col_a header
         const longColTh = thNodes[2]; // very_long_column_name_header
         const handleColA = findAllNodes(colATh, (el) =>
-          el.className.includes("column-resize-handle")
+          el.className.includes("table-widget-resize-handle")
         )[0];
         const handleLongCol = findAllNodes(longColTh, (el) =>
-          el.className.includes("column-resize-handle")
+          el.className.includes("table-widget-resize-handle")
         )[0];
         assert.ok(handleColA, "col_a header must have column resize separator");
         assert.ok(
@@ -2531,6 +2557,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             clientX: 100,
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -2560,13 +2587,14 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           "column width should expand by 80px"
         );
 
-        // 2. Drag shrink col_a: minimum width is 5 chars * 8 = 40 + 24 = 64px
+        // 2. Drag shrink col_a: minimum width is its header text, 5 chars * 8 = 40, plus its 20px sort chevron (sortable since Ticket #330), plus 17px cell padding and line = 77px
         await act(async () => {
           handleColA.dispatchEvent({
             type: "mousedown",
             clientX: 180,
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -2587,17 +2615,18 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const clampedWidthColA = parseInt(colATh.style.width, 10);
         assert.strictEqual(
           clampedWidthColA,
-          64,
-          "col_a must clamp to its calculated minimum width (64px)"
+          77,
+          "col_a must clamp to its calculated minimum width (77px)"
         );
 
-        // 3. Test long column header clamping: 28 chars * 8 = 224 + 24 = 248px
+        // 3. Test long column header clamping: 28 chars * 8 = 224 + 17 = 241px
         await act(async () => {
           handleLongCol.dispatchEvent({
             type: "mousedown",
             clientX: 200,
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -2685,7 +2714,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
         const attrTh = thNodes[1];
         const handle = findAllNodes(attrTh, (el) =>
-          el.className.includes("column-resize-handle")
+          el.className.includes("table-widget-resize-handle")
         )[0];
 
         await act(async () => {
@@ -2693,6 +2722,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -2777,7 +2807,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         )[0];
         let thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
         let handle = findAllNodes(thNodes[1], (el) =>
-          el.className.includes("column-resize-handle")
+          el.className.includes("table-widget-resize-handle")
         )[0];
 
         await act(async () => {
@@ -2786,6 +2816,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             clientX: 100,
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
         const moveListeners = windowListeners["mousemove"] || [];
@@ -3154,6 +3185,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3219,6 +3251,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3263,6 +3296,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3307,6 +3341,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3342,6 +3377,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3372,6 +3408,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3404,6 +3441,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3433,6 +3471,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3601,31 +3640,31 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         // 2. Verify native title tooltips on rendered cells
         // System counter cell
         assert.strictEqual(
-          tdCells[0].getAttribute("title"),
+          titleOf(tdCells[0]),
           "1",
           "counter cell must have native title matching row number"
         );
         // Long string attribute cell: full unclipped text
         assert.strictEqual(
-          tdCells[1].getAttribute("title"),
+          titleOf(tdCells[1]),
           "123 Very Long Street Avenue, Building 4A, Suite 500, Metro City, ST 99999",
           "long string cell must have native title with full unclipped text"
         );
         // Formatted integer cell
         assert.strictEqual(
-          tdCells[2].getAttribute("title"),
+          titleOf(tdCells[2]),
           "1,250",
           "integer cell must have native title with formatted number"
         );
         // Localized boolean cell
         assert.strictEqual(
-          tdCells[3].getAttribute("title"),
+          titleOf(tdCells[3]),
           "True",
           "boolean cell must have native title True"
         );
         // Null attribute cell
         assert.strictEqual(
-          tdCells[4].getAttribute("title"),
+          titleOf(tdCells[4]),
           "NULL",
           "null cell must have native title NULL"
         );
@@ -3637,6 +3676,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3709,6 +3749,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
 
@@ -3967,6 +4008,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
         const inputs = findAllNodes(container, (el) => el.tagName === "INPUT");
@@ -3978,6 +4020,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "click",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
         assert.ok(selectedFeatureIdsSignal.value.has("501"), "clicking FID cell must select row");
@@ -4056,6 +4099,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "dblclick",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
         const inputs = findAllNodes(container, (el) => el.tagName === "INPUT");
@@ -4067,6 +4111,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             type: "click",
             preventDefault: () => {},
             stopPropagation: () => {},
+            button: 0,
           });
         });
         assert.ok(selectedFeatureIdsSignal.value.has("v-99"), "clicking counter cell must select row");
@@ -4075,5 +4120,284 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         delete (globalThis as any).window.electronAPI.queryExtent;
       }
     });
+  });
+});
+
+/**
+ * @function nativeClick
+ * @description Builds a bubbling primary-button click for the mock DOM, with modifier keys.
+ * @param {Record<string, unknown>} [fields] - Extra event fields, e.g. `ctrlKey` or `shiftKey`.
+ * @returns {Record<string, unknown>} The event.
+ */
+function nativeClick(fields: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    type: "click",
+    bubbles: true,
+    button: 0,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+    preventDefault: () => {},
+    ...fields,
+  };
+}
+
+/**
+ * @function clickEl
+ * @description Clicks an element with the primary button inside `act`.
+ * @param {MockElement} el - Element to click.
+ * @param {Record<string, unknown>} [fields] - Modifier keys.
+ */
+async function clickEl(el: MockElement, fields: Record<string, unknown> = {}): Promise<void> {
+  await act(async () => {
+    el.dispatchEvent(nativeClick(fields));
+  });
+}
+
+/**
+ * @function dblclickEl
+ * @description Double-clicks an element inside `act`.
+ * @param {MockElement} el - Element to double-click.
+ */
+async function dblclickEl(el: MockElement): Promise<void> {
+  await act(async () => {
+    el.dispatchEvent({ type: "dblclick", bubbles: true, button: 0, preventDefault: () => {} });
+  });
+}
+
+/**
+ * @function dataRows
+ * @description Returns the embedded table's rendered body rows.
+ * @returns {MockElement[]} Body rows.
+ */
+function dataRows(): MockElement[] {
+  return findAllNodes(container, (el) => el.className.includes("table-widget-row") && el.tagName === "TR");
+}
+
+/**
+ * @function rowById
+ * @description Returns the rendered body row of a feature ID.
+ * @param {string | number} id - Feature ID.
+ * @returns {MockElement} Body row.
+ */
+function rowById(id: string | number): MockElement {
+  const found = dataRows().find((r) => r.getAttribute("data-row-id") === String(id));
+  assert.ok(found, `row ${id} rendered`);
+  return found;
+}
+
+/**
+ * @function cellOf
+ * @description Returns a body cell of a feature's row by column index (0 is the `#` column).
+ * @param {string | number} id - Feature ID.
+ * @param {number} index - Column index.
+ * @returns {MockElement} The cell.
+ */
+function cellOf(id: string | number, index: number): MockElement {
+  return findAllNodes(rowById(id), (el) => el.tagName === "TD")[index];
+}
+
+/**
+ * @function pageButton
+ * @description Returns a pagination button by its suffix (first, prev, next, last).
+ * @param {string} which - Button suffix.
+ * @returns {MockElement} The button.
+ */
+function pageButton(which: string): MockElement {
+  return findAllNodes(container, (el) => el.className.includes(`attribute-table-page-${which}`))[0];
+}
+
+/**
+ * @function inputs
+ * @description Returns every rendered input element (open cell editors).
+ * @returns {MockElement[]} Inputs.
+ */
+function inputs(): MockElement[] {
+  return findAllNodes(container, (el) => el.tagName === "INPUT");
+}
+
+const { dirtyLayerIdsSignal } = jiti("../../../src/renderer/state/gisSignals.ts") as {
+  dirtyLayerIdsSignal: { value: Set<string> };
+};
+
+describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
+  /** Five point features served two per chunk by the mock Geospatial Worker. */
+  const DATASET = [101, 102, 103, 104, 105].map((id) => ({
+    id,
+    properties: { title: `Row ${id - 100}` },
+    geometryType: "Point",
+    coordinates: [id, id],
+  }));
+
+  const PAGED_LAYER: GisLayer = {
+    id: "layer-329",
+    name: "Paged Layer",
+    kind: "vector",
+    geometryKind: "Point",
+    visible: true,
+    opacity: 1,
+    color: "#2563eb",
+    featureCount: 5,
+    fields: [{ name: "title", nativeType: "String", inferredType: "string", nullable: false }],
+  };
+
+  let prefs: { prefsAttributeTableMaxRows: { value: number } };
+
+  beforeEach(async () => {
+    setupDom();
+    activeLayerIdSignal.value = null;
+    layersSignal.value = [];
+    featuresSignal.value = [];
+    editableLayerIdsSignal.value = new Set();
+    selectedFeatureIdsSignal.value = new Set();
+    editedFeatureIdsSignal.value = new Set();
+    dirtyLayerIdsSignal.value = new Set();
+    isProjectDirtySignal.value = false;
+    viewportExtentSignal.value = [-180, -90, 180, 90];
+    openDockPanelsSignal.value = { attributes: true, layers: true };
+    dictionarySignal.value = {};
+    prefs = (await import("../../../src/renderer/state/preferencesSignals")) as any;
+    prefs.prefsAttributeTableMaxRows.value = 2;
+    (globalThis as any).window.electronAPI = {
+      queryExtent: async (layerId: string, options: any) => ({
+        layerId,
+        features: DATASET.slice(options.start, options.start + options.max),
+        totalMatched: DATASET.length,
+      }),
+    };
+    layersSignal.value = [PAGED_LAYER];
+    activeLayerIdSignal.value = PAGED_LAYER.id;
+    await act(async () => {
+      root!.render(React.createElement(AttributeTableWidget));
+    });
+  });
+
+  afterEach(async () => {
+    tearDownDom();
+    prefs.prefsAttributeTableMaxRows.value = 5000;
+    delete (globalThis as any).window.electronAPI;
+  });
+
+  it("shows its records through a TableWidget with the header bar and Row Number Column hidden", () => {
+    const tableWidget = findAllNodes(container, (el) => /(^| )table-widget( |$)/.test(el.className))[0];
+    assert.ok(tableWidget, "an embedded TableWidget is rendered");
+    assert.equal(
+      findAllNodes(tableWidget, (el) => el.className.includes("basic-widget-header")).length,
+      0,
+      "the embedded TableWidget's header bar is hidden"
+    );
+    assert.equal(
+      findAllNodes(container, (el) => el.className.includes("table-widget-row-number")).length,
+      0,
+      "the Row Number Column is hidden"
+    );
+    assert.deepEqual(dataRows().map((r) => r.getAttribute("data-row-id")), ["101", "102"]);
+  });
+
+  it("numbers its own # column with the Sequential Row Index across pages", async () => {
+    const numbers = () => dataRows().map((r) => findAllNodes(r, (el) => el.tagName === "TD")[0].textContent);
+    assert.deepEqual(numbers(), ["1", "2"]);
+    await clickEl(pageButton("next"));
+    assert.deepEqual(numbers(), ["3", "4"]);
+  });
+
+  it("makes its attribute columns sortable and its # column unsortable without a stored ID column (Ticket #330)", () => {
+    const headers = findAllNodes(container, (el) => el.tagName === "TH");
+    assert.ok(headers.length >= 2);
+    assert.equal(headers[0].getAttribute("aria-sort"), null, "the Sequential Row Index column is not sortable");
+    assert.equal(headers[1].getAttribute("aria-sort"), "none", "the title column is sortable");
+  });
+
+  it("selects a row by a click anywhere in it and publishes it to selectedFeatureIdsSignal", async () => {
+    await clickEl(cellOf(102, 1));
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [102]);
+    assert.equal(rowById(102).getAttribute("aria-selected"), "true");
+    assert.equal(rowById(101).getAttribute("aria-selected"), "false");
+  });
+
+  it("keeps its selection across chunks: Ctrl+click adds, Shift+click keeps off-page rows, a plain click replaces everything", async () => {
+    await clickEl(rowById(101));
+    await clickEl(pageButton("next"));
+    assert.equal(rowById(103).getAttribute("aria-selected"), "false");
+
+    await clickEl(rowById(103), { ctrlKey: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [101, 103]);
+
+    await clickEl(rowById(104), { shiftKey: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [101, 103, 104]);
+
+    await clickEl(pageButton("prev"));
+    assert.equal(rowById(101).getAttribute("aria-selected"), "true", "page 1 row still selected after the chunk reloads");
+    assert.equal(rowById(102).getAttribute("aria-selected"), "false");
+
+    await clickEl(rowById(102));
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [102], "a plain click drops the rows on other pages");
+  });
+
+  it("Ctrl+click toggles a row out of the selection without touching rows on other pages", async () => {
+    await act(async () => {
+      selectedFeatureIdsSignal.value = new Set([101, 104]);
+    });
+    await clickEl(rowById(101), { ctrlKey: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [104]);
+  });
+
+  it("shows a selection made on the map", async () => {
+    await act(async () => {
+      selectedFeatureIdsSignal.value = new Set([102, 105]);
+    });
+    assert.equal(rowById(102).getAttribute("aria-selected"), "true");
+    assert.equal(rowById(101).getAttribute("aria-selected"), "false");
+  });
+
+  it("is read-only unless the Active Layer is in Layer Edit Mode", async () => {
+    assert.equal(cellOf(101, 1).getAttribute("aria-readonly"), "true");
+    await dblclickEl(cellOf(101, 1));
+    assert.equal(inputs().length, 0);
+
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set([PAGED_LAYER.id]);
+    });
+    assert.equal(cellOf(101, 1).getAttribute("aria-readonly"), null);
+    assert.equal(cellOf(101, 0).getAttribute("aria-readonly"), "true", "the # column stays read-only");
+    await dblclickEl(cellOf(101, 1));
+    assert.equal(inputs().length, 1);
+  });
+
+  it("does not start editing on a single click", async () => {
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set([PAGED_LAYER.id]);
+    });
+    await clickEl(cellOf(101, 1));
+    assert.equal(inputs().length, 0);
+  });
+
+  it("an edit updates the feature, marks the layer dirty and the feature edited", async () => {
+    await act(async () => {
+      editableLayerIdsSignal.value = new Set([PAGED_LAYER.id]);
+    });
+    await dblclickEl(cellOf(102, 1));
+    const input = inputs()[0];
+    const propKey = Object.keys(input).find((k) => k.startsWith("__reactProps"))!;
+    await act(async () => {
+      (input as any)[propKey].onChange({ target: { value: "Renamed" } });
+    });
+    await act(async () => {
+      (input as any)[propKey].onKeyDown({ key: "Enter", preventDefault: () => {} });
+    });
+    assert.equal(featuresSignal.value.find((f) => f.id === 102)?.properties.title, "Renamed");
+    assert.ok(editedFeatureIdsSignal.value.has(102));
+    assert.ok(dirtyLayerIdsSignal.value.has(PAGED_LAYER.id));
+    assert.equal(isProjectDirtySignal.value, true);
+    assert.equal(cellOf(102, 1).textContent, "Renamed");
+  });
+
+  it("uses no hard-coded colours", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx"),
+      "utf-8"
+    );
+    assert.equal(source.match(/["'`]#[0-9a-fA-F]{3,8}["'`]|,\s*#[0-9a-fA-F]{3,8}\)/), null, "no hex colour literals");
   });
 });

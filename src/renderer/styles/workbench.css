@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  */
 
@@ -1234,10 +1234,13 @@
   font-size: 0.9167rem;
 }
 
+/* Holds the AttributeTableWidget's embedded TableWidget, whose frame scrolls the records (Ticket #329). */
 .table-scroll-wrapper {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .attribute-table-footer {
@@ -1250,45 +1253,15 @@
   border-top: 1px solid var(--cartouche-theme-border);
 }
 
-.gis-data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9167rem;
+/* Attribute table muted text: the "no matching features" message under the
+   table and the page range in the footer. */
+.empty-filter-message,
+.attribute-table-page-range {
+  color: var(--cartouche-theme-fg-muted);
 }
 
-.gis-data-table th {
-  position: sticky;
-  top: 0;
-  background-color: var(--cartouche-theme-surface-subtle);
-  color: var(--cartouche-theme-fg-primary);
-  text-align: left;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--cartouche-theme-border-strong);
-  border-right: 1px solid var(--cartouche-menubar-bg);
-  font-weight: 600;
-}
-
-.gis-data-table td {
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--cartouche-theme-border-subtle);
-  border-right: 1px solid var(--cartouche-menubar-bg);
-  color: var(--cartouche-theme-fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gis-data-table tr:hover {
-  background-color: var(--cartouche-theme-surface-subtle);
-}
-
-.gis-data-table tr.selected-row {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
-}
-
-/* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget
-   and AttributeTableWidget, focused or not, instead of Chromium's grey / blue list-box selection.
+/* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget,
+   focused or not, instead of Chromium's grey / blue list-box selection.
    Chromium paints its own selection over a plain background-colour and its own text colour in a
    focused list, so the gradient and -webkit-text-fill-color are both needed. */
 .project-prop-crs-recent option:checked,
@@ -1300,9 +1273,9 @@
   -webkit-text-fill-color: var(--cartouche-theme-info);
 }
 
+/* Persistent FID values in the attribute table's # column; the colours are the table's. */
 .cell-id {
   font-family: var(--cartouche-theme-font-family-mono);
-  color: var(--cartouche-theme-primary);
 }
 
 .geometry-badge {
@@ -2399,16 +2372,96 @@
   text-align: right;
 }
 
-/* Layer Properties field-table cell editors (Length, Precision, Comment). */
-.layer-field-cell-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.125rem 0.25rem;
-  font-size: 0.8125rem;
-  border: 0.0625rem solid var(--cartouche-cell-editor-border);
-  border-radius: 0.125rem;
-  background-color: var(--cartouche-cell-editor-bg);
-  color: var(--cartouche-cell-editor-fg);
+/* TableWidget (Spec #322) colours. TableWidget sets no colour inline: its frame,
+   header cells, Row Number Column and data cells take their colours here, from
+   the --cartouche-table-* tokens. */
+.table-widget-frame {
+  border: 1px solid var(--cartouche-table-border);
+  background-color: var(--cartouche-table-bg);
+}
+
+/* Lines between columns and between rows, drawn on each cell's right and bottom edges. */
+.table-widget-header-cell,
+.table-widget-row-number,
+.table-widget-cell {
+  border-right: 1px solid var(--cartouche-table-column-line);
+  border-bottom: 1px solid var(--cartouche-table-row-line);
+}
+
+/* The header row and the Row Number Column, including on Selected Rows and the Active Row. */
+.table-widget-header-cell,
+.table-widget-row-number {
+  background-color: var(--cartouche-table-header-bg);
+  color: var(--cartouche-table-header-fg);
+}
+
+/* Data cell colours, lowest to highest priority: the plain or alternating row
+   colour, the host's cell background, the Selected Row colour, the Active Row
+   colour. A host background from cellStyle (Ticket #328) arrives as the
+   --table-widget-cell-bg custom property on the cell and replaces only the row
+   colour; the selection rules below ignore it. An Active Row is also a Selected
+   Row, so the active rules come after the selected ones at the same specificity
+   and win. Read-Only Cells (Ticket #327) have their own text colour, their own
+   selected colours, and the normal table text colour on the Active Row. */
+.table-widget-cell {
+  background-color: var(--table-widget-cell-bg, var(--cartouche-table-bg));
+  color: var(--cartouche-table-fg);
+}
+
+.table-widget-row--alternate > .table-widget-cell {
+  background-color: var(--table-widget-cell-bg, var(--cartouche-table-row-alt-bg));
+}
+
+.table-widget-cell.table-widget-cell--readonly {
+  color: var(--cartouche-table-readonly-fg);
+}
+
+.table-widget-row--selected > .table-widget-cell {
+  background-color: var(--cartouche-table-row-selected-bg);
+  color: var(--cartouche-table-fg);
+}
+
+.table-widget-row--selected > .table-widget-cell--readonly {
+  background-color: var(--cartouche-table-readonly-selected-bg);
+  color: var(--cartouche-table-readonly-selected-fg);
+}
+
+.table-widget-row--active > .table-widget-cell {
+  background-color: var(--cartouche-table-row-active-bg);
+  color: var(--cartouche-table-row-active-fg);
+}
+
+.table-widget-row--active > .table-widget-cell--readonly {
+  color: var(--cartouche-table-fg);
+}
+
+/* A host cell border (Ticket #328): the overlay inside the cell, in the colour
+   the host passes as the --table-widget-cell-border custom property. */
+.table-widget-cell-border {
+  border: 1px solid var(--table-widget-cell-border);
+}
+
+/* TableWidget default cell editors (Ticket #327): the cell editor look at the table's 1rem text size. */
+.cell-editor-input.table-widget-editor {
+  font-size: 1rem;
+}
+
+/* Layer Properties fields tables (Ticket #331): the inferred type text and the
+   "User" badge on a field the user has overridden. */
+.layer-field-type-text {
+  font-family: var(--cartouche-theme-font-family-mono, monospace);
+}
+
+.layer-field-override-badge {
+  margin-left: 0.375rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.1875rem;
+  background-color: var(--cartouche-theme-success-subtle);
+  color: var(--cartouche-theme-success);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.025rem;
+  text-transform: uppercase;
 }
 
 /* Add Layers dialog buttons: shared base plus primary / secondary / browse variants. */
@@ -2580,20 +2633,34 @@ select.styling-editor-field {
   text-align: right;
 }
 
-/* Line / Gap cells of the custom dash-array table. */
-.styling-editor-dash-cell {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.125rem 0.25rem;
-  border: 0.0625rem solid var(--cartouche-input-border);
-  border-radius: 0.125rem;
-  background-color: var(--cartouche-input-bg);
-  color: var(--cartouche-input-fg);
-  font-size: 0.8125rem;
+/* Dash Array Composite Control (Ticket #332): the embedded TableWidget of line / gap pairs, 12rem wide,
+   beside its 2×2 cluster of Add / Remove / Move Up / Move Down buttons (two rows of two). */
+.dash-array-control {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
 }
 
-.styling-editor-dash-cell:disabled {
-  background-color: var(--cartouche-control-disabled-bg);
+.dash-array-table-frame {
+  width: 12rem;
+}
+
+.dash-array-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dash-array-actions-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* A Dash Array cell whose last edit was rejected: invalid text, and an invalid outline drawn inside the cell
+   so it shows on selected and active rows too. */
+.dash-array-table .dash-array-cell--invalid {
+  color: var(--cartouche-invalid-fg);
+  box-shadow: inset 0 0 0 1px var(--cartouche-invalid-border);
 }
 
 /* Icon buttons of the component stack and dash-array toolbars. */
@@ -2746,6 +2813,40 @@ select.styling-editor-field {
 .layer-properties-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Layer Properties Dialog text colours: Information tab labels and values,
+   form field labels, the loading message and captions, and the Layer ID
+   validation message. */
+.layer-properties-label,
+.layer-prop-label {
+  color: var(--cartouche-layer-properties-label-fg);
+}
+
+.layer-properties-value {
+  color: var(--cartouche-layer-properties-value-fg);
+}
+
+.layer-properties-loading,
+.layer-prop-dialect-caption,
+.new-field-dialog-placeholder {
+  color: var(--cartouche-layer-properties-caption-fg);
+}
+
+.layer-prop-validation-error {
+  color: var(--cartouche-layer-properties-error-fg);
+}
+
+/* Layer Properties Fields tab toolbar strip. */
+.layer-properties-fields-toolbar {
+  border: 1px solid var(--cartouche-layer-properties-toolbar-border);
+  background-color: var(--cartouche-layer-properties-toolbar-bg);
+}
+
+/* New Field dialog footer bar. */
+.new-field-dialog-footer {
+  border-top: 1px solid var(--cartouche-layer-properties-footer-border);
+  background-color: var(--cartouche-layer-properties-footer-bg);
 }
 
 /* New Field dialog footer buttons: compact size. */
@@ -3238,9 +3339,11 @@ select.picker-field:disabled {
 }
 
 /* Scrolling containers, and Dockview tabs inside their overflow: auto strip:
-   an inset ring, so overflow does not clip it. */
+   an inset ring, so overflow does not clip it. The TableWidget table takes
+   keyboard focus inside its overflow: auto frame. */
 .layer-tree-container:focus-visible,
 .table-scroll-wrapper:focus-visible,
+.table-widget-table:focus-visible,
 .dv-tab:focus-visible {
   outline-offset: calc(var(--cartouche-focus-width) * -1);
 }

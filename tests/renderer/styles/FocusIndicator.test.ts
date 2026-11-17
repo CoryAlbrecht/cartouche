@@ -305,7 +305,6 @@ const MIGRATED_CONTROL_TOKENS = [
 /** The workbench.css classes that style the focusable controls migrated off inline styles (Ticket #318). */
 const MIGRATED_CONTROL_CLASSES = [
   // Table cell editors, Add Layers Dialog, Time Filter controls, TimestampSpinner, LayerTreeWidget.
-  'layer-field-cell-input',
   'cell-editor-input',
   'add-layers-btn',
   'add-layers-btn-primary',
@@ -323,7 +322,6 @@ const MIGRATED_CONTROL_CLASSES = [
   'styling-editor-field',
   'styling-editor-number',
   'styling-editor-angle',
-  'styling-editor-dash-cell',
   'styling-editor-icon-btn',
   'styling-editor-format-select',
   'styling-editor-secondary-btn',

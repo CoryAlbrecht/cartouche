@@ -319,6 +319,8 @@
     <string name="layer_properties_dash_array_remove">Remove Row</string>
     <string name="layer_properties_dash_array_move_up">Move Up</string>
     <string name="layer_properties_dash_array_move_down">Move Down</string>
+    <string name="layer_properties_dash_array_invalid_value">Enter a number of 0 or more.</string>
+    <string name="layer_properties_dash_array_all_zero">A dash array needs at least one value above 0.</string>
     <string name="layer_properties_styling_point_shape">Point Shape</string>
     <string name="layer_properties_styling_point_radius">Point Size</string>
     <string name="layer_properties_styling_layer_opacity">Layer Opacity</string>

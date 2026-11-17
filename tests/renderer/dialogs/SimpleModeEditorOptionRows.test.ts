@@ -152,26 +152,29 @@ describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
     includesRow(html, labelledRow('layer-prop-dash-pattern', 'Dash Pattern', '<div style="position:relative;display:inline-block;width:20rem">'));
   });
 
-  it('renders the Dash Array row top-aligned, its padded label naming the first dash input', () => {
+  it('renders the Dash Array row top-aligned, its padded label naming the Dash Array table (#332)', () => {
     dictionarySignal.value = { layer_properties_styling_dash_array: 'Dash Array' };
     const html = render({ ...LINE, dashPattern: 'custom', dashArray: [5, 2, 1, 3] }, 'LineString');
     includesRow(
       html,
       '<div style="display:flex;align-items:flex-start;gap:1rem">' +
-      `<label for="layer-prop-dash-array-line-0" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</label>` +
-      '<div style="display:flex;gap:0.5rem;align-items:flex-start">'
+      `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>` +
+      '<div class="dash-array-control">'
     );
-    assert.match(html, /<input class="styling-editor-dash-cell" id="layer-prop-dash-array-line-0" type="number"[^>]* aria-label="layer_properties_dash_array_col_line 1"/);
-    assert.match(html, /<input class="styling-editor-dash-cell" id="layer-prop-dash-array-line-1" type="number"[^>]* aria-label="layer_properties_dash_array_col_line 2"/);
+    assert.match(html, /<table class="table-widget-table" id="layer-prop-dash-array-table" aria-labelledby="layer-prop-dash-array-label" tabindex="0"/);
+    const cells = [...html.matchAll(/<td class="table-widget-cell"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+    assert.deepEqual(cells, ['5', '2', '1', '3']);
   });
 
-  it('renders the Dash Array label as a span when there are no dashes to name (#315)', () => {
+  it('renders only the Dash Array header row when there are no dashes (#332)', () => {
     dictionarySignal.value = { layer_properties_styling_dash_array: 'Dash Array' };
+    const html = render(LINE, 'LineString');
     includesRow(
-      render(LINE, 'LineString'),
+      html,
       '<div style="display:flex;align-items:flex-start;gap:1rem">' +
-      `<span style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
+      `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
     );
+    assert.match(html, /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/);
   });
 
   it('keeps the disabled state of a locked component', () => {

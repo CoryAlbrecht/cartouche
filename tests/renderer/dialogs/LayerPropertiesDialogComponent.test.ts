@@ -1,10 +1,10 @@
 /**
  * @file LayerPropertiesDialogComponent.test.ts
  * @module tests/renderer/dialogs/LayerPropertiesDialogComponent.test
- * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, 6-column fields table formatting, tab switching, and localization parity.
+ * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, the Information and Fields tab fields tables embedded as TableWidgets, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -425,7 +425,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert(!html.includes('>Native Type<'), 'Should hide Native Type column when Show Native Type is inactive');
     assert(html.includes('Comment'), 'Should render Comment column header');
     assert(html.includes('scalerank'), 'Should render field rows in table');
-    assert(html.includes('color:#0f766e'), 'Should render mappedType with monospace teal styling');
+    assert(html.includes('table-widget-table'), 'Should render the fields through an embedded TableWidget');
   });
 
   it('toggles Native Type column visibility and updates persistent preference on Fields tab', async () => {
@@ -464,7 +464,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     assert.equal(updatedPrefVal, false);
   });
 
-  it('renders correct colSpan on empty fields table state when Native Type is shown vs hidden', async () => {
+  it('renders only the header row of the empty fields table, with or without Native Type (Ticket #331)', async () => {
     (globalThis as any).window.electronAPI.getLayerInfo = async (id: string) => ({
       layerId: id,
       name: 'Empty Layer',
@@ -486,8 +486,11 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     await openLayerPropertiesDialog('layer-empty');
     activeLayerPropertiesTabSignal.value = 'fields';
 
+    const headerCells = (markup: string) => (markup.match(/class="table-widget-header-cell"/g) ?? []).length;
     let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    assert(html.includes('colSpan="6"') || html.includes('colspan="6"'), 'Empty state should span 6 columns when Native Type is hidden');
+    assert.equal(headerCells(html), 6, 'Empty table shows 6 column headers when Native Type is hidden');
+    assert(!html.includes('table-widget-row'), 'Empty table shows no rows');
+    assert(!html.includes('No attribute fields found'), 'Empty table shows no message');
 
     preferencesMapSignal.value = {
       'ui.layerProperties.fields.showNativeType': {
@@ -499,7 +502,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       }
     };
     html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    assert(html.includes('colSpan="7"') || html.includes('colspan="7"'), 'Empty state should span 7 columns when Native Type is shown');
+    assert.equal(headerCells(html), 7, 'Empty table shows 7 column headers when Native Type is shown');
   });
 
   it('renders dynamic temporal control master checkbox and redesigned mode selectors on Time Filter tab (Ticket #231)', async () => {
@@ -2607,8 +2610,8 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
 
       // Header must contain Index before Field Name
-      const indexHeaderIdx = html.indexOf('Index</th>');
-      const nameHeaderIdx = html.indexOf('Field Name</th>');
+      const indexHeaderIdx = html.indexOf('>Index<');
+      const nameHeaderIdx = html.indexOf('>Field Name<');
       assert.ok(indexHeaderIdx >= 0, 'Must render Index column header');
       assert.ok(nameHeaderIdx >= 0, 'Must render Field Name column header');
       assert.ok(indexHeaderIdx < nameHeaderIdx, 'Index column header must appear before Field Name column header');
@@ -2720,101 +2723,38 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('>3</td>'), 'Virtual field 2 must have sequential index 3');
     });
 
-    it('renders vertical grid lines with border-left and border-right across all cells', async () => {
-      projectLayersSignal.value = [
-        {
-          id: testLayerId,
-          name: 'Grid Lines Layer',
-          type: 'vector',
-          source: '/data/gridlines.shp',
-          fields: [
-            {
-              index: 0,
-              name: 'code',
-              nativeType: 'String',
-              inferredType: 'string' as const,
-            },
-          ],
-        },
-      ];
+    for (const tab of ['fields', 'information']) {
+      it(`draws the ${tab} tab fields table lines through TableWidget's token-bound classes, not inline or hard-coded colours (Ticket #331)`, async () => {
+        projectLayersSignal.value = [
+          {
+            id: testLayerId,
+            name: 'Grid Lines Layer',
+            type: 'vector',
+            source: '/data/gridlines.shp',
+            fields: [
+              {
+                index: 0,
+                name: 'code',
+                nativeType: 'String',
+                inferredType: 'string' as const,
+              },
+            ],
+          },
+        ];
 
-      await openLayerPropertiesDialog(testLayerId);
-      activeLayerPropertiesTabSignal.value = 'fields';
+        await openLayerPropertiesDialog(testLayerId);
+        activeLayerPropertiesTabSignal.value = tab;
 
-      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+        const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+        const table = html.slice(html.indexOf('<table'), html.indexOf('</table>'));
 
-      // Header cells must have border-left and border-right with menubar background color
-      assert.ok(
-        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'th elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
-      );
-      assert.ok(
-        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'th elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
-      );
-
-      // Body cells must have border-left and border-right with menubar background color
-      assert.ok(
-        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'td elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
-      );
-      assert.ok(
-        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'td elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
-      );
-    });
-
-    it('renders vertical grid lines with border-left and border-right across all cells in Information tab fields table', async () => {
-      projectLayersSignal.value = [
-        {
-          id: testLayerId,
-          name: 'Grid Lines Layer',
-          type: 'vector',
-          source: '/data/gridlines.shp',
-          fields: [
-            {
-              index: 0,
-              name: 'code',
-              nativeType: 'String',
-              inferredType: 'string' as const,
-            },
-          ],
-        },
-      ];
-
-      await openLayerPropertiesDialog(testLayerId);
-      activeLayerPropertiesTabSignal.value = 'information';
-
-      const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-
-      // Header cells in Information tab fields table must have border-left and border-right
-      assert.ok(
-        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'Information tab th elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
-      );
-      assert.ok(
-        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'Information tab th elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
-      );
-
-      // Body cells in Information tab fields table must have border-left and border-right
-      assert.ok(
-        html.includes('border-left:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderLeft:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'Information tab td elements must have border-left var(--cartouche-menubar-bg, #1b446c)'
-      );
-      assert.ok(
-        html.includes('border-right:1px solid var(--cartouche-menubar-bg, #1b446c)') ||
-          html.includes('borderRight:1px solid var(--cartouche-menubar-bg, #1b446c)'),
-        'Information tab td elements must have border-right var(--cartouche-menubar-bg, #1b446c)'
-      );
-    });
+        assert.ok(table.includes('class="table-widget-header-cell'), 'Header cells take the TableWidget header class');
+        assert.ok(/class="table-widget-cell[ "]/.test(table), 'Body cells take the TableWidget cell class, whose rule draws the table-token lines');
+        assert.ok(!/var\(--cartouche-(?!ui-)/.test(table), 'No theme colour tokens inline in the table');
+        assert.ok(!table.includes('--cartouche-menubar-bg'), 'No menubar colour borders');
+        assert.ok(!/#[0-9a-fA-F]{3,6}\b/.test(table), 'No hard-coded hex colours in the table');
+      });
+    }
 
     it('renders empty string without em-dashes for missing, null, undefined, or zero Length, Precision, and Comment', async () => {
       projectLayersSignal.value = [
@@ -3138,17 +3078,16 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(deleteBtn[0].includes('disabled'), 'Delete button must be disabled by default');
     });
 
-    it('renders field rows with layer-properties-field-row class and unselected by default', async () => {
+    it('renders field rows unselected by default', async () => {
       await openLayerPropertiesDialog(testLayerId);
       activeLayerPropertiesTabSignal.value = 'fields';
 
       const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
 
-      const rows = [...html.matchAll(/<tr[^>]*class="[^"]*layer-properties-field-row[^"]*"[^>]*>/g)];
-      assert.equal(rows.length, 3, 'Must render 3 field rows with layer-properties-field-row class');
+      const rows = [...html.matchAll(/<tr[^>]*class="table-widget-row"[^>]*>/g)];
+      assert.equal(rows.length, 3, 'Must render 3 TableWidget field rows');
       for (const row of rows) {
-        assert.ok(!row[0].includes('selected'), 'Row must not have selected class by default');
-        assert.ok(!row[0].includes('#e0f2fe'), 'Row must not have #e0f2fe background by default');
+        assert.ok(row[0].includes('aria-selected="false"'), 'Row must not be selected by default');
       }
     });
 
@@ -3434,7 +3373,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       assert.ok(html.includes('>Measurement</td>'), 'Comment must be rendered');
 
       // No inline input controls when edit mode is off
-      assert.ok(!html.includes('layer-field-cell-input'), 'No cell inputs rendered when edit mode is off');
+      assert.ok(!html.includes('table-widget-editor'), 'No cell editors rendered when edit mode is off');
       assert.ok(!html.includes('editable-cell'), 'No editable-cell class when edit mode is off');
     });
 
@@ -3961,9 +3900,8 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       // Dash Array Composite Control
       assert.ok(html.includes('id="layer-prop-dash-array-table"'), 'Must render dash array table');
-      assert.ok(html.includes('value="10"'), 'Dash array must render Line: 10');
-      assert.ok(html.includes('value="4"'), 'Dash array must render Gap: 4');
-      assert.ok(html.includes('value="2"'), 'Dash array must render Line: 2');
+      const dashCells = [...html.matchAll(/<td class="table-widget-cell[^"]*"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+      assert.deepEqual(dashCells, ['10', '4', '2', '4'], 'Dash array table must render each line and gap');
       assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Must render add button');
       assert.ok(html.includes('id="layer-prop-dash-array-remove"'), 'Must render remove button');
       assert.ok(html.includes('id="layer-prop-dash-array-move-up"'), 'Must render move-up button');
@@ -3993,14 +3931,16 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
 
-      // Dash Array table inputs must be disabled
-      assert.ok(html.includes('disabled=""') || html.includes('disabled'), 'Table inputs must be disabled');
-      // Action buttons must be disabled
-      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Add button rendered');
-      assert.ok(html.includes('id="layer-prop-dash-array-add"[^>]*disabled') || html.includes('disabled'), 'Buttons disabled for preset');
+      // Dash Array cells are Read-Only Cells showing the preset's pairs
+      const readOnlyCells = [...html.matchAll(/<td class="table-widget-cell table-widget-cell--readonly" aria-readonly="true"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+      assert.ok(readOnlyCells.length >= 2, 'Preset pairs are shown in Read-Only Cells');
+      // Every action button is disabled
+      for (const id of ['add', 'remove', 'move-up', 'move-down']) {
+        assert.match(html, new RegExp(`id="layer-prop-dash-array-${id}"[^>]*disabled=""`), `${id} button disabled for preset`);
+      }
     });
 
-    it('renders empty dash array placeholder when solid or no-line pattern is active', () => {
+    it('renders only the dash array header row when solid or no-line pattern is active', () => {
       const htmlSolid = renderToStaticMarkup(
         React.createElement(SimpleModeEditor, {
           styleContent: JSON.stringify({
@@ -4022,7 +3962,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           onChange: () => {},
         })
       );
-      assert.ok(htmlSolid.includes('—'), 'Solid line must render empty placeholder');
+      assert.match(htmlSolid, /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/, 'Solid line shows only the header row');
 
       const htmlNoLine = renderToStaticMarkup(
         React.createElement(SimpleModeEditor, {
@@ -4045,7 +3985,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           onChange: () => {},
         })
       );
-      assert.ok(htmlNoLine.includes('—'), 'No-line must render empty placeholder');
+      assert.match(htmlNoLine, /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/, 'No-line shows only the header row');
     });
 
     it('enables dash array table and action buttons when custom pattern is active', () => {
@@ -4071,9 +4011,9 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
 
-      assert.ok(html.includes('value="8.5"'), 'Must display custom line length');
-      assert.ok(html.includes('value="3.5"'), 'Must display custom gap length');
-      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Add button must be present');
+      const cells = [...html.matchAll(/<td class="table-widget-cell"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+      assert.deepEqual(cells, ['8.5', '3.5'], 'Custom pairs are shown in editable cells');
+      assert.doesNotMatch(html, /id="layer-prop-dash-array-add"[^>]*disabled/, 'Add button enabled');
     });
 
     it('updates StylePreviewCanvas without throwing when advanced line styling is applied', () => {
