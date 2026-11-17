@@ -2633,20 +2633,34 @@ select.styling-editor-field {
   text-align: right;
 }
 
-/* Line / Gap cells of the custom dash-array table. */
-.styling-editor-dash-cell {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.125rem 0.25rem;
-  border: 0.0625rem solid var(--cartouche-input-border);
-  border-radius: 0.125rem;
-  background-color: var(--cartouche-input-bg);
-  color: var(--cartouche-input-fg);
-  font-size: 0.8125rem;
+/* Dash Array Composite Control (Ticket #332): the embedded TableWidget of line / gap pairs, 12rem wide,
+   beside its 2×2 cluster of Add / Remove / Move Up / Move Down buttons (two rows of two). */
+.dash-array-control {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
 }
 
-.styling-editor-dash-cell:disabled {
-  background-color: var(--cartouche-control-disabled-bg);
+.dash-array-table-frame {
+  width: 12rem;
+}
+
+.dash-array-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dash-array-actions-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* A Dash Array cell whose last edit was rejected: invalid text, and an invalid outline drawn inside the cell
+   so it shows on selected and active rows too. */
+.dash-array-table .dash-array-cell--invalid {
+  color: var(--cartouche-invalid-fg);
+  box-shadow: inset 0 0 0 1px var(--cartouche-invalid-border);
 }
 
 /* Icon buttons of the component stack and dash-array toolbars. */

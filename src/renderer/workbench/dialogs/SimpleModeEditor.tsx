@@ -4,7 +4,7 @@
  * @description Visual component stack manager and dynamic Style Options panel for Simple Cartouche Symbology mode in LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
@@ -15,6 +15,7 @@
  * @see {@link DASH_PATTERN_PRESETS}
  * @see {@link matchDashPattern}
  * @see {@link DashPatternSelect}
+ * @see {@link DashArrayControl}
  */
 
 import React, { useState, useMemo, useCallback } from "react";
@@ -30,6 +31,7 @@ import {
 } from "@renderer/components/common/ColourButton";
 import { GradientButton } from "@renderer/components/common/GradientButton";
 import { DashPatternSelect } from "./DashPatternSelect";
+import { DashArrayControl, DASH_ARRAY_TABLE_ID } from "./DashArrayControl";
 import {
   mdiPlus,
   mdiMinus,
@@ -68,30 +70,31 @@ export interface SimpleModeEditorProps {
  * @description Layout options of a labelled option row rendered by SimpleModeEditor's `renderOptionRow`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @property {string} [rowId] - Element identifier (and class) of the row. Omitted, the row has neither.
  * @property {string} [htmlFor] - Id of the control the label names. Given, the label is a `<label htmlFor>`; omitted, a `<span>`.
  * @property {boolean} [alignTop] - Aligns the row to the top and pads the label down to the control's first line, for tall controls such as the Dash Array table.
+ * @property {string} [labelId] - Element id of the label, for a control that names itself through `aria-labelledby`, such as the Dash Array table (Ticket #332).
+ * @property {() => void} [onLabelClick] - Called when the label is clicked, e.g. to focus a control that is not labelable, such as the Dash Array table (Ticket #332).
  */
 interface OptionRowOptions {
   rowId?: string;
   htmlFor?: string;
   alignTop?: boolean;
+  labelId?: string;
+  onLabelClick?: () => void;
 }
 
 /**
- * @description Builds the element id of a Dash Array table's line-length input, which the Dash Array row's label names for the first pair.
+ * @constant {string} DASH_ARRAY_LABEL_ID
+ * @description Element id of the Dash Array row's label, which names the Dash Array table through `aria-labelledby` (Ticket #332).
  * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-16
- * @updated 2026-11-16
+ * @date 2026-11-17
+ * @updated 2026-11-17
  * @since 0.1.0-dev
- * @param {number} index - Zero-based index of the dash/gap pair.
- * @returns {string} Element id of that pair's line-length input.
  */
-function dashLineInputId(index: number): string {
-  return `layer-prop-dash-array-line-${index}`;
-}
+const DASH_ARRAY_LABEL_ID = "layer-prop-dash-array-label";
 
 /**
  * Maximum allowed components in a Simple Cartouche Symbology stack.
@@ -143,10 +146,10 @@ export function parseCartoucheStyleSafe(
  * Visual component stack list and dynamic style options editor for Cartouche Symbology.
  *
  * @component SimpleModeEditor
- * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog, and gradient stops with a GradientButton that opens a GradientPickerDialog.
+ * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog, gradient stops with a GradientButton that opens a GradientPickerDialog, and a custom dash array with the DashArrayControl's embedded TableWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {SimpleModeEditorProps} props - Component properties.
  * @returns {JSX.Element}
@@ -166,7 +169,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   const components = cartoucheStyle.components;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedDashRow, setSelectedDashRow] = useState<number | null>(null);
 
   // Active component resolution
   const activeComponent = useMemo(() => {
@@ -469,20 +471,20 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   };
 
   /**
-   * @description Renders a labelled option row: a flex row with a 1rem gap, a 9rem label column and then the given control. The label is a `<label htmlFor>` when `htmlFor` is given and a `<span>` otherwise.
+   * @description Renders a labelled option row: a flex row with a 1rem gap, a 9rem label column and then the given control. The label is a `<label htmlFor>` when `htmlFor` is given and a `<span>` otherwise, with `labelId` as its id and `onLabelClick` as its click handler when given.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-16
-   * @updated 2026-11-16
+   * @updated 2026-11-17
    * @since 0.1.0-dev
    * @param {string} label - Localized field label.
    * @param {React.ReactNode} control - The row's control, which may be several elements (e.g. an input and its unit).
-   * @param {OptionRowOptions} [options] - The row's element identifier, label target and alignment.
+   * @param {OptionRowOptions} [options] - The row's element identifier, label target, label id and click handler, and alignment.
    * @returns {React.ReactElement} Rendered option row.
    */
   const renderOptionRow = (
     label: string,
     control: React.ReactNode,
-    { rowId, htmlFor, alignTop = false }: OptionRowOptions = {}
+    { rowId, htmlFor, alignTop = false, labelId, onLabelClick }: OptionRowOptions = {}
   ) => {
     const labelStyle: React.CSSProperties = {
       width: "9rem",
@@ -500,10 +502,17 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
           gap: "1rem",
         }}>
         {htmlFor ?
-          <label htmlFor={htmlFor} style={labelStyle}>
+          <label
+            id={labelId}
+            htmlFor={htmlFor}
+            onClick={onLabelClick}
+            style={labelStyle}>
             {label}:
           </label>
-        : <span style={labelStyle}>{label}:</span>}
+        : <span id={labelId} onClick={onLabelClick} style={labelStyle}>
+            {label}:
+          </span>
+        }
         {control}
       </div>
     );
@@ -900,38 +909,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 DASH_PATTERN_PRESETS[currentPattern]
               : (lineComp.dashArray ?? []);
 
-            const pairs: Array<{ line: number; gap: number }> = [];
-            for (let i = 0; i < displayArray.length; i += 2) {
-              pairs.push({
-                line: displayArray[i] ?? 0,
-                gap: displayArray[i + 1] ?? 0,
-              });
-            }
-
-            const activeRowIndex =
-              (
-                selectedDashRow !== null
-                && selectedDashRow >= 0
-                && selectedDashRow < pairs.length
-              ) ?
-                selectedDashRow
-              : pairs.length > 0 ? 0
-              : null;
-
-            const canAddDash = isCustom && !activeComponent.locked;
-            const canRemoveDash =
-              isCustom && !activeComponent.locked && activeRowIndex !== null;
-            const canMoveUpDash =
-              isCustom
-              && !activeComponent.locked
-              && activeRowIndex !== null
-              && activeRowIndex > 0;
-            const canMoveDownDash =
-              isCustom
-              && !activeComponent.locked
-              && activeRowIndex !== null
-              && activeRowIndex < pairs.length - 1;
-
             return (
               <div
                 id='layer-prop-line-options-container'
@@ -1123,259 +1100,24 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
 
                   {renderOptionRow(
                     t("layer_properties_styling_dash_array"),
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        alignItems: "flex-start",
-                      }}>
-                      <div
-                        id='layer-prop-dash-array-container'
-                        style={{
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "0.25rem",
-                          overflow: "hidden",
-                          width: "12rem",
-                          backgroundColor: isReadOnly ? "#f8fafc" : "#ffffff",
-                        }}>
-                        <table
-                          id='layer-prop-dash-array-table'
-                          style={{
-                            width: "100%",
-                            borderCollapse: "collapse",
-                            fontSize: "0.8125rem",
-                          }}>
-                          <thead>
-                            <tr
-                              style={{
-                                backgroundColor: "#f1f5f9",
-                                borderBottom: "1px solid #cbd5e1",
-                              }}>
-                              <th
-                                style={{
-                                  padding: "0.25rem 0.5rem",
-                                  textAlign: "left",
-                                  width: "50%",
-                                  fontWeight: 600,
-                                }}>
-                                {t("layer_properties_dash_array_col_line")}
-                              </th>
-                              <th
-                                style={{
-                                  padding: "0.25rem 0.5rem",
-                                  textAlign: "left",
-                                  width: "50%",
-                                  fontWeight: 600,
-                                }}>
-                                {t("layer_properties_dash_array_col_gap")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pairs.length === 0 ?
-                              <tr>
-                                <td
-                                  colSpan={2}
-                                  style={{
-                                    padding: "0.5rem",
-                                    textAlign: "center",
-                                    color: "#94a3b8",
-                                    fontStyle: "italic",
-                                    fontSize: "0.75rem",
-                                  }}>
-                                  —
-                                </td>
-                              </tr>
-                            : pairs.map((pair, idx) => (
-                                <tr
-                                  key={idx}
-                                  onClick={() => setSelectedDashRow(idx)}
-                                  style={{
-                                    backgroundColor:
-                                      activeRowIndex === idx ? "#e2e8f0" : (
-                                        "transparent"
-                                      ),
-                                    cursor: isCustom ? "pointer" : "default",
-                                  }}>
-                                  <td style={{ padding: "0.125rem 0.25rem" }}>
-                                    <input
-                                      className='styling-editor-dash-cell'
-                                      id={dashLineInputId(idx)}
-                                      type='number'
-                                      min='0'
-                                      step='0.1'
-                                      aria-label={`${t("layer_properties_dash_array_col_line")} ${idx + 1}`}
-                                      disabled={isReadOnly}
-                                      value={pair.line}
-                                      onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        const num =
-                                          isNaN(val) ? 0 : Math.max(0, val);
-                                        const newPairs = pairs.map((p, pIdx) =>
-                                          pIdx === idx ? { ...p, line: num } : p
-                                        );
-                                        updateActiveComponent({
-                                          dashPattern: "custom",
-                                          dashArray: newPairs.flatMap((p) => [
-                                            p.line,
-                                            p.gap,
-                                          ]),
-                                        });
-                                      }}
-                                      onFocus={() => setSelectedDashRow(idx)}
-                                    />
-                                  </td>
-                                  <td style={{ padding: "0.125rem 0.25rem" }}>
-                                    <input
-                                      className='styling-editor-dash-cell'
-                                      type='number'
-                                      min='0'
-                                      step='0.1'
-                                      aria-label={`${t("layer_properties_dash_array_col_gap")} ${idx + 1}`}
-                                      disabled={isReadOnly}
-                                      value={pair.gap}
-                                      onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        const num =
-                                          isNaN(val) ? 0 : Math.max(0, val);
-                                        const newPairs = pairs.map((p, pIdx) =>
-                                          pIdx === idx ? { ...p, gap: num } : p
-                                        );
-                                        updateActiveComponent({
-                                          dashPattern: "custom",
-                                          dashArray: newPairs.flatMap((p) => [
-                                            p.line,
-                                            p.gap,
-                                          ]),
-                                        });
-                                      }}
-                                      onFocus={() => setSelectedDashRow(idx)}
-                                    />
-                                  </td>
-                                </tr>
-                              ))
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div
-                        id='layer-prop-dash-array-actions'
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(2, auto)",
-                          gap: "0.25rem",
-                        }}>
-                        <button
-                          className='styling-editor-icon-btn'
-                          type='button'
-                          id='layer-prop-dash-array-add'
-                          title={t("layer_properties_dash_array_add")}
-                          aria-label={t("layer_properties_dash_array_add")}
-                          disabled={!canAddDash}
-                          onClick={() => {
-                            if (!canAddDash) return;
-                            const newPairs = [
-                              ...pairs,
-                              { line: 5.0, gap: 2.0 },
-                            ];
-                            setSelectedDashRow(newPairs.length - 1);
-                            updateActiveComponent({
-                              dashPattern: "custom",
-                              dashArray: newPairs.flatMap((p) => [
-                                p.line,
-                                p.gap,
-                              ]),
-                            });
-                          }}>
-                          <Icon path={mdiPlus} />
-                        </button>
-                        <button
-                          className='styling-editor-icon-btn'
-                          type='button'
-                          id='layer-prop-dash-array-remove'
-                          title={t("layer_properties_dash_array_remove")}
-                          aria-label={t("layer_properties_dash_array_remove")}
-                          disabled={!canRemoveDash}
-                          onClick={() => {
-                            if (!canRemoveDash || activeRowIndex === null)
-                              return;
-                            const newPairs = pairs.filter(
-                              (_, idx) => idx !== activeRowIndex
-                            );
-                            const nextIndex =
-                              newPairs.length > 0 ?
-                                Math.min(activeRowIndex, newPairs.length - 1)
-                              : null;
-                            setSelectedDashRow(nextIndex);
-                            updateActiveComponent({
-                              dashPattern: "custom",
-                              dashArray: newPairs.flatMap((p) => [
-                                p.line,
-                                p.gap,
-                              ]),
-                            });
-                          }}>
-                          <Icon path={mdiMinus} />
-                        </button>
-                        <button
-                          className='styling-editor-icon-btn'
-                          type='button'
-                          id='layer-prop-dash-array-move-up'
-                          title={t("layer_properties_dash_array_move_up")}
-                          aria-label={t("layer_properties_dash_array_move_up")}
-                          disabled={!canMoveUpDash}
-                          onClick={() => {
-                            if (!canMoveUpDash || activeRowIndex === null)
-                              return;
-                            const newPairs = [...pairs];
-                            const temp = newPairs[activeRowIndex];
-                            newPairs[activeRowIndex] =
-                              newPairs[activeRowIndex - 1];
-                            newPairs[activeRowIndex - 1] = temp;
-                            setSelectedDashRow(activeRowIndex - 1);
-                            updateActiveComponent({
-                              dashPattern: "custom",
-                              dashArray: newPairs.flatMap((p) => [
-                                p.line,
-                                p.gap,
-                              ]),
-                            });
-                          }}>
-                          <Icon path={mdiArrowUp} />
-                        </button>
-                        <button
-                          className='styling-editor-icon-btn'
-                          type='button'
-                          id='layer-prop-dash-array-move-down'
-                          title={t("layer_properties_dash_array_move_down")}
-                          aria-label={t(
-                            "layer_properties_dash_array_move_down"
-                          )}
-                          disabled={!canMoveDownDash}
-                          onClick={() => {
-                            if (!canMoveDownDash || activeRowIndex === null)
-                              return;
-                            const newPairs = [...pairs];
-                            const temp = newPairs[activeRowIndex];
-                            newPairs[activeRowIndex] =
-                              newPairs[activeRowIndex + 1];
-                            newPairs[activeRowIndex + 1] = temp;
-                            setSelectedDashRow(activeRowIndex + 1);
-                            updateActiveComponent({
-                              dashPattern: "custom",
-                              dashArray: newPairs.flatMap((p) => [
-                                p.line,
-                                p.gap,
-                              ]),
-                            });
-                          }}>
-                          <Icon path={mdiArrowDown} />
-                        </button>
-                      </div>
-                    </div>,
+                    <DashArrayControl
+                      key={activeComponent.id}
+                      dashArray={displayArray}
+                      readOnly={isReadOnly}
+                      t={t}
+                      tableId={DASH_ARRAY_TABLE_ID}
+                      labelledBy={DASH_ARRAY_LABEL_ID}
+                      onChange={(dashArray) =>
+                        updateActiveComponent({
+                          dashPattern: "custom",
+                          dashArray,
+                        })
+                      }
+                    />,
                     {
-                      htmlFor: pairs.length > 0 ? dashLineInputId(0) : undefined,
+                      labelId: DASH_ARRAY_LABEL_ID,
+                      onLabelClick: () =>
+                        document.getElementById(DASH_ARRAY_TABLE_ID)?.focus(),
                       alignTop: true,
                     }
                   )}

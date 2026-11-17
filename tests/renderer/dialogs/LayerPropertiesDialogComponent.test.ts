@@ -3900,9 +3900,8 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
 
       // Dash Array Composite Control
       assert.ok(html.includes('id="layer-prop-dash-array-table"'), 'Must render dash array table');
-      assert.ok(html.includes('value="10"'), 'Dash array must render Line: 10');
-      assert.ok(html.includes('value="4"'), 'Dash array must render Gap: 4');
-      assert.ok(html.includes('value="2"'), 'Dash array must render Line: 2');
+      const dashCells = [...html.matchAll(/<td class="table-widget-cell[^"]*"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+      assert.deepEqual(dashCells, ['10', '4', '2', '4'], 'Dash array table must render each line and gap');
       assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Must render add button');
       assert.ok(html.includes('id="layer-prop-dash-array-remove"'), 'Must render remove button');
       assert.ok(html.includes('id="layer-prop-dash-array-move-up"'), 'Must render move-up button');
@@ -3932,14 +3931,16 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
 
-      // Dash Array table inputs must be disabled
-      assert.ok(html.includes('disabled=""') || html.includes('disabled'), 'Table inputs must be disabled');
-      // Action buttons must be disabled
-      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Add button rendered');
-      assert.ok(html.includes('id="layer-prop-dash-array-add"[^>]*disabled') || html.includes('disabled'), 'Buttons disabled for preset');
+      // Dash Array cells are Read-Only Cells showing the preset's pairs
+      const readOnlyCells = [...html.matchAll(/<td class="table-widget-cell table-widget-cell--readonly" aria-readonly="true"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+      assert.ok(readOnlyCells.length >= 2, 'Preset pairs are shown in Read-Only Cells');
+      // Every action button is disabled
+      for (const id of ['add', 'remove', 'move-up', 'move-down']) {
+        assert.match(html, new RegExp(`id="layer-prop-dash-array-${id}"[^>]*disabled=""`), `${id} button disabled for preset`);
+      }
     });
 
-    it('renders empty dash array placeholder when solid or no-line pattern is active', () => {
+    it('renders only the dash array header row when solid or no-line pattern is active', () => {
       const htmlSolid = renderToStaticMarkup(
         React.createElement(SimpleModeEditor, {
           styleContent: JSON.stringify({
@@ -3961,7 +3962,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           onChange: () => {},
         })
       );
-      assert.ok(htmlSolid.includes('—'), 'Solid line must render empty placeholder');
+      assert.match(htmlSolid, /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/, 'Solid line shows only the header row');
 
       const htmlNoLine = renderToStaticMarkup(
         React.createElement(SimpleModeEditor, {
@@ -3984,7 +3985,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
           onChange: () => {},
         })
       );
-      assert.ok(htmlNoLine.includes('—'), 'No-line must render empty placeholder');
+      assert.match(htmlNoLine, /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/, 'No-line shows only the header row');
     });
 
     it('enables dash array table and action buttons when custom pattern is active', () => {
@@ -4010,9 +4011,9 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         })
       );
 
-      assert.ok(html.includes('value="8.5"'), 'Must display custom line length');
-      assert.ok(html.includes('value="3.5"'), 'Must display custom gap length');
-      assert.ok(html.includes('id="layer-prop-dash-array-add"'), 'Add button must be present');
+      const cells = [...html.matchAll(/<td class="table-widget-cell"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+      assert.deepEqual(cells, ['8.5', '3.5'], 'Custom pairs are shown in editable cells');
+      assert.doesNotMatch(html, /id="layer-prop-dash-array-add"[^>]*disabled/, 'Add button enabled');
     });
 
     it('updates StylePreviewCanvas without throwing when advanced line styling is applied', () => {

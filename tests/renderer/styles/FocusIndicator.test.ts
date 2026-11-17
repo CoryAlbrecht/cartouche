@@ -322,7 +322,6 @@ const MIGRATED_CONTROL_CLASSES = [
   'styling-editor-field',
   'styling-editor-number',
   'styling-editor-angle',
-  'styling-editor-dash-cell',
   'styling-editor-icon-btn',
   'styling-editor-format-select',
   'styling-editor-secondary-btn',

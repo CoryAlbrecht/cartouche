@@ -158,6 +158,7 @@ const STYLING_EDITOR_SOURCES = [
   'workbench/dialogs/SimpleModeEditor.tsx',
   'workbench/dialogs/StyleEditor.tsx',
   'workbench/dialogs/DashPatternSelect.tsx',
+  'workbench/dialogs/DashArrayControl.tsx',
 ];
 
 /** The classes that style the styling editors' focusable controls. */
@@ -165,7 +166,6 @@ const STYLING_EDITOR_CLASSES = [
   'styling-editor-field',
   'styling-editor-number',
   'styling-editor-angle',
-  'styling-editor-dash-cell',
   'styling-editor-icon-btn',
   'styling-editor-format-select',
   'styling-editor-secondary-btn',
