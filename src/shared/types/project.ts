@@ -1,10 +1,10 @@
 /**
  * @file project.ts
  * @module shared/types/project
- * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, and styles.
+ * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, styles, and feature query options including multi-column Sort Keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  */
 
@@ -722,6 +722,22 @@ export const WKB_FLAG_HAS_GEOMETRY = 0x01;
 export const WKB_FLAG_HAS_PROPERTIES = 0x02;
 
 /**
+ * One attribute field paired with a required sort direction. An ordered list of Sort Keys defines
+ * the result order of a feature query: earlier keys take precedence and later keys break ties.
+ * The field must exactly (case-sensitively) name a physical column of the layer's schema, or the
+ * layer's stored ID column (e.g. GeoPackage `fid`); `Virtual Field`s are not columns and are rejected.
+ * @typedef {[field: string, direction: ('ASC' | 'DESC')]} SortKey
+ * @property {string} 0 - Exact, case-sensitive name of the field to order by.
+ * @property {'ASC' | 'DESC'} 1 - Required sort direction; there is no implicit ascending default.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @see {@link QueryExtentOptions}
+ */
+export type SortKey = [field: string, direction: 'ASC' | 'DESC'];
+
+/**
  * @typedef {Object} QueryExtentOptions
  * @property {BoundingBox} [extent] - Geographic or projected spatial extent filter.
  * @property {string} [targetProjection] - Target coordinate reference system (e.g. "EPSG:3857").
@@ -730,12 +746,12 @@ export const WKB_FLAG_HAS_PROPERTIES = 0x02;
  * @property {number} [start] - Zero-based feature offset for stateless chunk pagination.
  * @property {number} [max] - Maximum number of matching features to return in a single chunk.
  * @property {Array<string | number>} [featureIds] - Optional whitelist of feature identifiers to filter by.
- * @property {string} [sortBy] - Attribute column name by which to order query results using GDAL SQL.
- * @property {'ASC' | 'DESC'} [sortDirection] - Sort direction for ORDER BY clause ('ASC' | 'DESC').
+ * @property {SortKey[]} [orderBy] - Ordered list of Sort Keys for a multi-column GDAL SQL `ORDER BY`, earlier keys taking precedence. Missing or empty keeps the layer's natural order with no SQL layer. Each field must exactly match a physical schema column (or the stored ID column) and appear once, otherwise the query is rejected with an error naming the field. The worker appends a hidden ascending feature ID tiebreaker so `start`/`max` pages are stable. NULLs go wherever each file format puts them (first in ascending order on every format tested). Sorting uses the values saved on disk, not staged edits.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-11-10
+ * @updated 2026-11-17
  * @since 0.1.0-dev
+ * @see {@link SortKey}
  */
 export interface QueryExtentOptions {
   extent?: BoundingBox;
@@ -745,8 +761,7 @@ export interface QueryExtentOptions {
   start?: number;
   max?: number;
   featureIds?: Array<string | number>;
-  sortBy?: string;
-  sortDirection?: 'ASC' | 'DESC';
+  orderBy?: SortKey[];
 }
 
 /**

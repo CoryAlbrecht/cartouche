@@ -4,7 +4,7 @@
  * @description Unit tests for pure calendar-aware UTC temporal mathematics, stepping, range calculation, and auto-detection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-14
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
@@ -348,7 +348,7 @@ describe('timeFilterMath: autoDetectTemporalRange & IPC Sorted Queries (Ticket #
     const dispatchedQueries: Array<{ layerId: string; options: any }> = [];
     const mockQueryExtent = async (layerId: string, options: any) => {
       dispatchedQueries.push({ layerId, options });
-      if (options.sortDirection === 'ASC') {
+      if (options.orderBy?.[0]?.[1] === 'ASC') {
         return {
           features: [{ properties: { start_date: '0500-06-06' } }],
         };
@@ -366,8 +366,7 @@ describe('timeFilterMath: autoDetectTemporalRange & IPC Sorted Queries (Ticket #
     assert.deepEqual(dispatchedQueries[0], {
       layerId: 'timeline-layer-1',
       options: {
-        sortBy: 'start_date',
-        sortDirection: 'ASC',
+        orderBy: [['start_date', 'ASC']],
         max: 1,
         includeGeometry: false,
         fields: ['start_date'],
@@ -376,8 +375,7 @@ describe('timeFilterMath: autoDetectTemporalRange & IPC Sorted Queries (Ticket #
     assert.deepEqual(dispatchedQueries[1], {
       layerId: 'timeline-layer-1',
       options: {
-        sortBy: 'end_date',
-        sortDirection: 'DESC',
+        orderBy: [['end_date', 'DESC']],
         max: 1,
         includeGeometry: false,
         fields: ['end_date'],

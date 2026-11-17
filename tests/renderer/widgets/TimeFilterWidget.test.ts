@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -1316,13 +1316,13 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
 
       const mockQueryExtent = async (layerId: string, options: any) => {
         if (layerId === 'layer-historical') {
-          if (options.sortDirection === 'ASC') {
+          if (options.orderBy?.[0]?.[1] === 'ASC') {
             return { features: [{ properties: { began: '0500-06-06' } }] };
           }
           return { features: [{ properties: { ended: '0600-01-01' } }] };
         }
         if (layerId === 'layer-future') {
-          if (options.sortDirection === 'ASC') {
+          if (options.orderBy?.[0]?.[1] === 'ASC') {
             return { features: [{ properties: { commenced: '2020-01-01' } }] };
           }
           return { features: [{ properties: { concluded: '2099-12-31' } }] };
@@ -1372,7 +1372,7 @@ describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
       (globalThis as any).window = (globalThis as any).window || {};
       (globalThis as any).window.electronAPI = (globalThis as any).window.electronAPI || {};
       (globalThis as any).window.electronAPI.queryExtent = async (_id: string, opts: any) => {
-        if (opts.sortDirection === 'ASC') {
+        if (opts.orderBy?.[0]?.[1] === 'ASC') {
           return { features: [{ properties: { founded: '1000-01-01' } }] };
         }
         return { features: [{ properties: { abandoned: '1500-12-31' } }] };
