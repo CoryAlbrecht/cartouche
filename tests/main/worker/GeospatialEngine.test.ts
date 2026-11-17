@@ -11,6 +11,7 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { fromAny } from '@total-typescript/shoehorn';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -1555,14 +1556,6 @@ const recordOrderBySql = (engine: GeospatialEngine, layerId: string): string[] =
   return statements;
 };
 
-/**
- * @function untypedSortKeys
- * @description Parses JSON into an untyped `orderBy` value, the way a malformed Sort Key list arrives over IPC, so tests can pass malformed Sort Keys without type casts.
- * @param {string} json - JSON text of the malformed Sort Key list.
- * @returns {SortKey[]} The parsed value, typed only by the parameter it is passed to.
- */
-const untypedSortKeys = (json: string): SortKey[] => JSON.parse(json);
-
 describe('buildOrderBySql and quoteSqlIdentifier (Ticket #334)', () => {
   const schema = ['category', 'priority', 'na"me'];
 
@@ -1611,9 +1604,9 @@ describe('buildOrderBySql and quoteSqlIdentifier (Ticket #334)', () => {
   });
 
   it('rejects a Sort Key without a valid direction with an error naming the field', () => {
-    assert.throws(() => buildOrderBySql('t', untypedSortKeys('[["category"]]'), schema, 'fid'), /"category"/);
-    assert.throws(() => buildOrderBySql('t', untypedSortKeys('[["category", "asc"]]'), schema, 'fid'), /"category"/);
-    assert.throws(() => buildOrderBySql('t', untypedSortKeys('["category"]'), schema, 'fid'), /Sort Key/);
+    assert.throws(() => buildOrderBySql('t', fromAny([['category']]), schema, 'fid'), /"category"/);
+    assert.throws(() => buildOrderBySql('t', fromAny([['category', 'asc']]), schema, 'fid'), /"category"/);
+    assert.throws(() => buildOrderBySql('t', fromAny(['category']), schema, 'fid'), /Sort Key/);
   });
 
   it('keeps the OGR SQL FID tiebreaker when a Sort Key names an attribute field called FID and the layer has no stored ID column', () => {
