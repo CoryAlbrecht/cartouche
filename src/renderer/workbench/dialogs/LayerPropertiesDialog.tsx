@@ -275,6 +275,20 @@ export function getEditableColumnsForField(
 }
 
 /**
+ * @function unsortable
+ * @description Turns sorting off for every column of a LayerPropertiesDialog fields table: neither table sorts, so headers show no sort chevrons and header clicks do nothing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableColumn<LayerFieldInfo>[]} columns - Column definitions.
+ * @returns {TableColumn<LayerFieldInfo>[]} The columns, each with `sortable: false`.
+ */
+function unsortable(columns: TableColumn<LayerFieldInfo>[]): TableColumn<LayerFieldInfo>[] {
+  return columns.map((column) => ({ ...column, sortable: false }));
+}
+
+/**
  * @function isEditableFieldColumn
  * @description Whether a Fields tab table column key names one of the editable schema columns (Length, Precision, Comment).
  * @author Cory Albrecht <cory@albrecht.name>
@@ -408,7 +422,7 @@ interface FieldsTabColumnOptions {
 
 /**
  * @function fieldsTabColumns
- * @description Column definitions of the Fields tab table (Ticket #331): Index (the field's stable 0-based slot), Field Name, Data Type (type select, badge and Reset Type button), Native Type when shown, and the editable Length, Precision and Comment columns, which use the text editor so a value can be cleared.
+ * @description Column definitions of the Fields tab table (Ticket #331): Index (the field's stable 0-based slot), Field Name, Data Type (type select, badge and Reset Type button), Native Type when shown, and the editable Length, Precision and Comment columns, which use the text editor so a value can be cleared. No column sorts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -472,7 +486,7 @@ function fieldsTabColumns(
       editor: TableTextEditor,
     }
   );
-  return columns;
+  return unsortable(columns);
 }
 
 /**
@@ -522,7 +536,7 @@ const FieldOverrideBadge: React.FC = () => (
 
 /**
  * @function informationFieldColumns
- * @description Column definitions of the Information tab's read-only fields table (Ticket #331): Field Name, Native Type, Inferred Type (with the "User" badge on overridden fields), Length, Precision and Nullable.
+ * @description Column definitions of the Information tab's read-only fields table (Ticket #331): Field Name, Native Type, Inferred Type (with the "User" badge on overridden fields), Length, Precision and Nullable. No column sorts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -530,7 +544,7 @@ const FieldOverrideBadge: React.FC = () => (
  * @returns {TableColumn<LayerFieldInfo>[]} The columns.
  */
 function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
-  return [
+  return unsortable([
     { key: "name", header: t("layer_properties_field_col_name") },
     { key: "nativeType", header: t("layer_properties_field_col_native_type") },
     {
@@ -561,7 +575,7 @@ function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
       display: (value) =>
         value ? t("layer_properties_yes") : t("layer_properties_no"),
     },
-  ];
+  ]);
 }
 
 /**

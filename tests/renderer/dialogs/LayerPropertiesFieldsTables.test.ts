@@ -1,7 +1,7 @@
 /**
  * @file LayerPropertiesFieldsTables.test.ts
  * @module tests/renderer/dialogs/LayerPropertiesFieldsTables.test
- * @description Headless tests of the LayerPropertiesDialog fields tables as embedded TableWidgets (Spec #322 / Ticket #331): the Information tab's read-only fields table and the Fields tab's table, with their columns and values, header bars hidden, sorting, row selection driving Delete Selected Field, Layer Edit Mode gating the Length, Precision and Comment edits, edits reaching the draft, and the per-field type select and reset button not changing the row selection.
+ * @description Headless tests of the LayerPropertiesDialog fields tables as embedded TableWidgets (Spec #322 / Ticket #331): the Information tab's read-only fields table and the Fields tab's table, with their columns and values, header bars hidden, sorting turned off, row selection driving Delete Selected Field, Layer Edit Mode gating the Length, Precision and Comment edits, edits reaching the draft, and the per-field type select and reset button not changing the row selection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -340,17 +340,31 @@ describe('LayerPropertiesDialog Fields tab table (Ticket #331)', () => {
       ['String', 'Integer', 'Real']
     );
   });
+});
 
-  it('sorts by a column header click', async () => {
-    await renderTab('fields');
+describe('LayerPropertiesDialog fields tables do not sort (Ticket #331)', () => {
+  for (const tab of ['information', 'fields']) {
+    it(`the ${tab} tab table shows no sort chevrons and header clicks leave the row order unchanged`, async () => {
+      await renderTab(tab);
+      const headerCells = findElementsByClass(tables()[0], 'table-widget-header-cell');
+      const nameColumn = tab === 'fields' ? 1 : 0;
 
-    await fire(findElementsByClass(tables()[0], 'table-widget-header-cell')[1], 'click');
-    assert.deepEqual(
-      rowCells().map((cells) => cells[1]),
-      ['area', 'city', 'pop'],
-      'sorted by Field Name'
-    );
-  });
+      assert.equal(findElementsByClass(tables()[0], 'table-widget-sort-icon').length, 0, 'no sort chevrons');
+      for (const th of headerCells) {
+        assert.equal(th.getAttribute('aria-sort'), undefined, 'no sort state');
+      }
+      for (const th of headerCells) {
+        await fire(th, 'click');
+        await fire(th, 'click');
+      }
+      assert.deepEqual(
+        rowCells().map((cells) => cells[nameColumn]),
+        ['city', 'pop', 'area'],
+        'rows stay in field order'
+      );
+      assert.equal(findElementsByClass(tables()[0], 'table-widget-sort-icon').length, 0, 'still no sort chevrons');
+    });
+  }
 });
 
 describe('LayerPropertiesDialog Fields tab selection and Delete Selected Field (Ticket #331)', () => {
