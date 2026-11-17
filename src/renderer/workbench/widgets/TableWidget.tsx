@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. A host `cellStyle` function can give individual cells a 1px border colour, drawn over the shared row and column lines and shown on selected rows too, and a background that sits above the row colours and below the selection colours. Cells can be edited in place (double-click, or F2 / Enter in the focused column) with the default text and number editors or a column's own editor, unless they are Read-Only Cells through the table, their column, their row or themselves; each committed change goes to the host's `onCellEdit`, which can reject it.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens through the `.table-widget-*` classes and state modifier classes in workbench.css (it sets no colour inline), a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. A host `cellStyle` function can give individual cells a 1px border colour, drawn over the shared row and column lines and shown on selected rows too, and a background that sits above the row colours and below the selection colours. Cells can be edited in place (double-click, or F2 / Enter in the focused column) with the default text and number editors or a column's own editor, unless they are Read-Only Cells through the table, their column, their row or themselves; each committed change goes to the host's `onCellEdit`, which can reject it.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-17
@@ -219,39 +219,30 @@ const ROW_NUMBER_COLUMN_WIDTH = '3rem';
  */
 const Z_INDEX = { rowNumber: 1, header: 2, corner: 3 } as const;
 
-/** One table line between columns: drawn on each cell's right edge. */
-const COLUMN_LINE = '1px solid var(--cartouche-table-column-line)';
-
-/** One table line between rows: drawn on each cell's bottom edge. */
-const ROW_LINE = '1px solid var(--cartouche-table-row-line)';
-
-/** Cell box shared by header and body cells. */
+/**
+ * Cell box shared by header and body cells. The colours and the lines between columns and rows (each cell's right and
+ * bottom borders) come from the `.table-widget-header-cell`, `.table-widget-row-number` and `.table-widget-cell` classes.
+ */
 const CELL_STYLE: React.CSSProperties = {
   padding: '0.25rem 0.5rem',
-  borderRight: COLUMN_LINE,
-  borderBottom: ROW_LINE,
   boxSizing: 'border-box',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 };
 
-/** Header row cell: bold header text on the header background. */
+/** Header row cell: bold header text, stuck to the top (its colours come from `.table-widget-header-cell`). */
 const HEADER_CELL_STYLE: React.CSSProperties = {
   ...CELL_STYLE,
-  backgroundColor: 'var(--cartouche-table-header-bg)',
-  color: 'var(--cartouche-table-header-fg)',
   fontWeight: 'bold',
   position: 'sticky',
   top: 0,
   zIndex: Z_INDEX.header,
 };
 
-/** Row Number Column body cell: header colours, stuck to the left edge. */
+/** Row Number Column body cell: stuck to the left edge (its header colours come from `.table-widget-row-number`). */
 const ROW_NUMBER_CELL_STYLE: React.CSSProperties = {
   ...CELL_STYLE,
-  backgroundColor: 'var(--cartouche-table-header-bg)',
-  color: 'var(--cartouche-table-header-fg)',
   textAlign: 'right',
   position: 'sticky',
   left: 0,
@@ -282,25 +273,51 @@ const BORDERED_CELL_STYLE: React.CSSProperties = {
 
 /**
  * @function cellBorderStyle
- * @description Styles the overlay that draws a host cell border (Ticket #328): a real 1px border on all four sides, positioned 1px past the cell's padding box so it lies over the row line above, the column line to the left and the cell's own right and bottom lines, without changing the layout. Being positioned, it paints over every cell background, including the selected and active colours. In the first displayed row and the first column the top or left side stays inside the cell instead, since the line it would cover belongs to the sticky header row or Row Number Column (which paint over it) or is the frame's edge (which clips it).
+ * @description Positions the overlay that draws a host cell border (Ticket #328): a real 1px border on all four sides, positioned 1px past the cell's padding box so it lies over the row line above, the column line to the left and the cell's own right and bottom lines, without changing the layout. Being positioned, it paints over every cell background, including the selected and active colours. In the first displayed row and the first column the top or left side stays inside the cell instead, since the line it would cover belongs to the sticky header row or Row Number Column (which paint over it) or is the frame's edge (which clips it). The border itself, in the host's colour, comes from the `.table-widget-cell-border` class, which reads the `--table-widget-cell-border` custom property set on the cell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
- * @param {string} borderColour - The host's border colour.
  * @param {boolean} firstRow - Whether the cell is in the first displayed row.
  * @param {boolean} firstColumn - Whether the cell is in the first column.
- * @returns {React.CSSProperties} The overlay's style.
+ * @returns {React.CSSProperties} The overlay's position.
  */
-function cellBorderStyle(borderColour: string, firstRow: boolean, firstColumn: boolean): React.CSSProperties {
+function cellBorderStyle(firstRow: boolean, firstColumn: boolean): React.CSSProperties {
   return {
     position: 'absolute',
     top: firstRow ? '0px' : '-1px',
     right: '-1px',
     bottom: '-1px',
     left: firstColumn ? '0px' : '-1px',
-    border: `1px solid ${borderColour}`,
     pointerEvents: 'none',
+  };
+}
+
+/**
+ * @typedef {Object} HostCellColours
+ * @description The custom properties through which a cell passes the host's `cellStyle` colours (Ticket #328) to the `.table-widget-cell` and `.table-widget-cell-border` rules in workbench.css, so no colour property is set inline. Each is left out when the host gives no such colour.
+ * @property {string} [--table-widget-cell-bg] - The host's cell background, used in place of the plain or alternating row colour.
+ * @property {string} [--table-widget-cell-border] - The host's border colour, read by the border overlay.
+ */
+interface HostCellColours extends React.CSSProperties {
+  '--table-widget-cell-bg'?: string;
+  '--table-widget-cell-border'?: string;
+}
+
+/**
+ * @function hostCellColours
+ * @description Turns a host's cell style (Ticket #328) into the custom properties set on the cell, leaving out the ones the host does not give.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {TableCellStyle} cellStyle - The host's style for the cell.
+ * @returns {HostCellColours} The cell's colour custom properties.
+ */
+function hostCellColours({ background, borderColour }: TableCellStyle): HostCellColours {
+  return {
+    ...(background ? { '--table-widget-cell-bg': background } : undefined),
+    ...(borderColour ? { '--table-widget-cell-border': borderColour } : undefined),
   };
 }
 
@@ -361,7 +378,19 @@ const FALLBACK_CHARACTER_WIDTH = 8;
 /** Cell padding plus column line in px assumed where a cell's computed style is unavailable: 0.5rem each side at 16px, plus 1px. */
 const FALLBACK_CELL_EXTRAS = 17;
 
-/** Sort chevron width in px assumed where a cell's computed style is unavailable: the 1rem icon plus its 0.25rem margin at 16px. */
+/** The sort chevron's size as a factor of the `ui.icon.size` preference: 16px at the default 24px, the 1rem of the table text. */
+const SORT_ICON_SCALE = 0.67;
+
+/** The sort chevron's CSS size: {@link SORT_ICON_SCALE} times the `ui.icon.size` preference. */
+const SORT_ICON_SIZE = `calc(var(--cartouche-ui-icon-size, 24px) * ${SORT_ICON_SCALE})`;
+
+/** The sort chevron's left margin, in rem of the header text. */
+const SORT_ICON_MARGIN_REM = 0.25;
+
+/** The `ui.icon.size` in px assumed where the header's computed style does not give it: the preference's default. */
+const DEFAULT_ICON_SIZE = 24;
+
+/** Sort chevron width in px assumed where a cell's computed style is unavailable: the 0.67 × 24px icon plus its 0.25rem margin at 16px, rounded. */
 const FALLBACK_SORT_CHEVRON_WIDTH = 20;
 
 /** Offscreen canvas reused for text measurement. */
@@ -398,7 +427,7 @@ function measureText(text: string, font: string): number {
  * @property {string} headerFont - CSS font of the header text.
  * @property {string} bodyFont - CSS font of the column's cell text: the header font at normal weight.
  * @property {number} extras - Horizontal padding plus column line, in px, around a cell's text.
- * @property {number} sortChevron - Width in px of a sortable header's sort chevron: the 1rem icon plus its 0.25rem margin.
+ * @property {number} sortChevron - Width in px of a sortable header's sort chevron: the icon ({@link SORT_ICON_SCALE} times the `ui.icon.size`) plus its 0.25rem margin.
  */
 interface CellMetrics {
   headerFont: string;
@@ -409,7 +438,7 @@ interface CellMetrics {
 
 /**
  * @function cellMetrics
- * @description Reads a header cell's fonts and horizontal padding from its computed style, falling back to the 1rem table font and the default cell padding.
+ * @description Reads a header cell's fonts, horizontal padding and sort chevron width from its computed style, falling back to the 1rem table font, the default cell padding and the default chevron width. The chevron width follows the `--cartouche-ui-icon-size` custom property the header inherits (the `ui.icon.size` preference, in px), or its 24px default when the header has none.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-17
@@ -438,11 +467,12 @@ function cellMetrics(header: HTMLElement | null): CellMetrics {
    * @returns {number} The length in px, or 0.
    */
   const px = (value: string): number => parseFloat(value) || 0;
+  const iconSize = px(style.getPropertyValue?.('--cartouche-ui-icon-size') ?? '') || DEFAULT_ICON_SIZE;
   return {
     headerFont: `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
     bodyFont: `${style.fontStyle} normal ${style.fontSize} ${style.fontFamily}`,
     extras: px(style.paddingLeft) + px(style.paddingRight) + px(style.borderRightWidth),
-    sortChevron: 1.25 * px(style.fontSize),
+    sortChevron: SORT_ICON_SCALE * iconSize + SORT_ICON_MARGIN_REM * px(style.fontSize),
   };
 }
 
@@ -656,43 +686,41 @@ function sortChevron(direction: TableSortDirection | null): string {
 }
 
 /**
- * @function rowColours
- * @description Picks a data cell's background and text colour: the Active Row colour, else the Selected Row colour, else the cell's own host background (Ticket #328), else the alternating colour for odd rows (1st, 3rd, …) when `alternatingRows` is on, else the plain row colour. Selection is painted over the row colour (Ticket #326); Row Number Column cells keep the header colours and do not use this. A Read-Only Cell (Ticket #327) uses the read-only text colour on unselected rows and the read-only selected colours on Selected Rows; on the Active Row it keeps the active background with the normal table text colour.
+ * @function rowClassName
+ * @description Builds a body row's classes, which select its cells' colours in workbench.css: `table-widget-row`, plus `table-widget-row--alternate` on odd rows (1st, 3rd, …) when `alternatingRows` is on, `table-widget-row--selected` on Selected Rows and `table-widget-row--active` on the Active Row (Ticket #326). The rules there paint, from lowest to highest priority, the plain or alternating row colour, the cell's own host background (Ticket #328), the Selected Row colour and the Active Row colour; Row Number Column cells keep the header colours.
  * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-16
- * @updated 2026-11-16
+ * @date 2026-11-17
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {number} index - The row's display index (0-based).
  * @param {boolean} alternatingRows - Whether alternating row colours are on.
  * @param {boolean} selected - Whether the row is a Selected Row.
  * @param {boolean} active - Whether the row is the Active Row.
- * @param {string} [cellBackground] - The cell's own background from the host's `cellStyle`, if any (Ticket #328).
- * @param {boolean} [readOnly=false] - Whether the cell is a Read-Only Cell.
- * @returns {Pick<React.CSSProperties, 'backgroundColor' | 'color'>} The cell's background and text colour.
+ * @returns {string} The row's classes.
  */
-function rowColours(
-  index: number,
-  alternatingRows: boolean,
-  selected: boolean,
-  active: boolean,
-  cellBackground?: string,
-  readOnly = false
-): Pick<React.CSSProperties, 'backgroundColor' | 'color'> {
-  if (active) {
-    const color = readOnly ? 'var(--cartouche-table-fg)' : 'var(--cartouche-table-row-active-fg)';
-    return { backgroundColor: 'var(--cartouche-table-row-active-bg)', color };
-  }
-  if (selected && readOnly) {
-    return {
-      backgroundColor: 'var(--cartouche-table-readonly-selected-bg)',
-      color: 'var(--cartouche-table-readonly-selected-fg)',
-    };
-  }
-  if (selected) return { backgroundColor: 'var(--cartouche-table-row-selected-bg)', color: 'var(--cartouche-table-fg)' };
-  const background =
-    cellBackground ??
-    (alternatingRows && index % 2 === 0 ? 'var(--cartouche-table-row-alt-bg)' : 'var(--cartouche-table-bg)');
-  return { backgroundColor: background, color: readOnly ? 'var(--cartouche-table-readonly-fg)' : 'var(--cartouche-table-fg)' };
+function rowClassName(index: number, alternatingRows: boolean, selected: boolean, active: boolean): string {
+  return [
+    'table-widget-row',
+    alternatingRows && index % 2 === 0 && 'table-widget-row--alternate',
+    selected && 'table-widget-row--selected',
+    active && 'table-widget-row--active',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+/**
+ * @function cellClassName
+ * @description Builds a data cell's classes: `table-widget-cell`, plus `table-widget-cell--readonly` on a Read-Only Cell (Ticket #327), which workbench.css gives the read-only text colour on unselected rows, the read-only selected colours on Selected Rows, and the active background with the normal table text colour on the Active Row.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {boolean} readOnly - Whether the cell is a Read-Only Cell.
+ * @returns {string} The cell's classes.
+ */
+function cellClassName(readOnly: boolean): string {
+  return readOnly ? 'table-widget-cell table-widget-cell--readonly' : 'table-widget-cell';
 }
 
 /**
@@ -1109,10 +1137,10 @@ function stopPropagation(event: React.SyntheticEvent): void {
 
 /**
  * @component TableWidget
- * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`, and edits cells in place, reporting committed changes through `onCellEdit`.
+ * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`, and edits cells in place, reporting committed changes through `onCellEdit`. Colours come only from the `.table-widget-*` classes and the row and cell state modifier classes; a host's `cellStyle` colours reach them as custom properties on the cell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @template R
  * @param {TableWidgetProps<R>} props - Component properties.
@@ -1242,8 +1270,6 @@ export function TableWidget<R>({
           flex: 1,
           minHeight: 0,
           overflow: 'auto',
-          border: '1px solid var(--cartouche-table-border)',
-          backgroundColor: 'var(--cartouche-table-bg)',
         }}>
         <table
           className='table-widget-table'
@@ -1292,8 +1318,8 @@ export function TableWidget<R>({
                       <Icon
                         className='table-widget-sort-icon'
                         path={sortChevron(direction)}
-                        size='1rem'
-                        style={{ verticalAlign: 'middle', marginLeft: '0.25rem' }}
+                        size={SORT_ICON_SIZE}
+                        style={{ verticalAlign: 'middle', marginLeft: `${SORT_ICON_MARGIN_REM}rem` }}
                       />
                     )}
                     <div
@@ -1316,7 +1342,7 @@ export function TableWidget<R>({
               return (
                 <tr
                   key={rowId}
-                  className='table-widget-row'
+                  className={rowClassName(index, alternatingRows, selected, active)}
                   data-row-id={rowId}
                   aria-selected={selected}
                   onClick={(event) => onRowClick(event, rowId)}>
@@ -1326,7 +1352,8 @@ export function TableWidget<R>({
                     </td>
                   )}
                   {columns.map((column, columnIndex) => {
-                    const { borderColour, background } = cellStyle?.(row, column) ?? {};
+                    const hostStyle = cellStyle?.(row, column) ?? {};
+                    const { borderColour } = hostStyle;
                     const readOnlyCell = isReadOnly(row, column);
                     const cell = editing?.rowId === rowId && editing.columnKey === column.key ? editing : null;
                     const value = cell ? cellValue(row, column) : undefined;
@@ -1335,14 +1362,14 @@ export function TableWidget<R>({
                     return (
                       <td
                         key={column.key}
-                        className='table-widget-cell'
+                        className={cellClassName(readOnlyCell)}
                         aria-readonly={readOnlyCell || undefined}
                         onClick={cell ? stopPropagation : () => focusColumn(column.key)}
                         onDoubleClick={cell ? stopPropagation : () => startEdit(row, column)}
                         onKeyDown={cell ? stopPropagation : undefined}
                         style={{
                           ...CELL_STYLE,
-                          ...rowColours(index, alternatingRows, selected, active, background, readOnlyCell),
+                          ...hostCellColours(hostStyle),
                           ...(borderColour ? BORDERED_CELL_STYLE : undefined),
                           textAlign: column.align ?? 'left',
                         }}>
@@ -1360,7 +1387,7 @@ export function TableWidget<R>({
                         {borderColour && (
                           <span
                             className='table-widget-cell-border'
-                            style={cellBorderStyle(borderColour, index === 0, columnIndex === 0)}
+                            style={cellBorderStyle(index === 0, columnIndex === 0)}
                           />
                         )}
                       </td>

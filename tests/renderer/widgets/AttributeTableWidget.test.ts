@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { createRendererJiti } from "../rendererJiti";
+import { cascadedValue } from "../styles/cssRules";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { AttributeTableWidgetProps } from "../../../src/renderer/workbench/widgets/AttributeTableWidget";
@@ -251,7 +252,7 @@ class MockElement {
   }
 }
 
-/** The embedded TableWidget's line between columns, bound to the table theme token. */
+/** The embedded TableWidget's line between columns, bound to the table theme token by its cell classes in workbench.css. */
 const COLUMN_LINE = "1px solid var(--cartouche-table-column-line)";
 
 let doc: any;
@@ -2348,7 +2349,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         for (const th of thNodes) {
           assert.strictEqual(
-            th.style.borderRight,
+            cascadedValue(th, "border-right"),
             COLUMN_LINE,
             "all th cells must draw the table column line on their right edge"
           );
@@ -2377,7 +2378,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         for (const td of tdNodesRow1) {
           assert.strictEqual(
-            td.style.borderRight,
+            cascadedValue(td, "border-right"),
             COLUMN_LINE,
             "all td cells must draw the table column line on their right edge"
           );
@@ -2398,7 +2399,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         );
         for (const td of selectedTds) {
           assert.strictEqual(
-            td.style.borderRight,
+            cascadedValue(td, "border-right"),
             COLUMN_LINE,
             "selected row cells must retain the table column line"
           );

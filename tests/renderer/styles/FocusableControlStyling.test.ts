@@ -1,10 +1,10 @@
 /**
  * @file FocusableControlStyling.test.ts
  * @module tests/renderer/styles/FocusableControlStyling.test
- * @description Guardrail tests for the renderer TSX side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #318 / #319): no renderer TSX sets an inline outline, no focusable control carries an inline colour (colour literal or inline theme token), invalid state is never coloured inline and is expressed only through `aria-invalid` / `.cartouche-focus-invalid`, and the migrated controls carry the classes that the workbench.css guardrails in FocusIndicator.test.ts bind to Tier 2 Component Tokens.
+ * @description Guardrail tests for the renderer TSX side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #318 / #319): no renderer TSX sets an inline outline, no focusable control carries an inline colour (colour literal or inline theme token), invalid state is never coloured inline and is expressed only through `aria-invalid` / `.cartouche-focus-invalid`, and the migrated controls carry the classes that the workbench.css guardrails in FocusIndicator.test.ts bind to Tier 2 Component Tokens. Also (Spec #322) the TableWidget, its cell editors, AttributeTableWidget and the Layer Properties Dialog set no colour inline on any element, focusable or not, and size every icon from the `ui.icon.size` preference.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see FocusIndicator.test.ts
  */
@@ -238,6 +238,63 @@ describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
       if (/type=['"]checkbox['"]/.test(tag)) continue;
       assert.match(tag, /\bclassName=/, `${head(tag)} has no class`);
     }
+  });
+});
+
+/** The Spec #322 sources: TableWidget, its cell editors, and the TableWidget hosts AttributeTableWidget and LayerPropertiesDialog. */
+const TABLE_SPEC_SOURCES = [
+  'workbench/widgets/TableWidget.tsx',
+  'workbench/widgets/tableEditors.tsx',
+  'workbench/widgets/AttributeTableWidget.tsx',
+  LAYER_PROPERTIES_DIALOG,
+];
+
+/**
+ * @function iconSize
+ * @description Returns the `size` an `<Icon>` opening tag passes, with a `size={CONSTANT}` resolved to the constant's initialiser in the source.
+ * @param {string} tag - `<Icon>` opening tag text.
+ * @param {string} text - Whole TSX source, for resolving constants.
+ * @returns {string | undefined} The size expression, or undefined when the tag passes none.
+ */
+function iconSize(tag: string, text: string): string | undefined {
+  const literal = tag.match(/\bsize=(['"])(.*?)\1/);
+  if (literal) return literal[2];
+  const constant = tag.match(/\bsize=\{\s*([A-Z][A-Z0-9_]*)\s*\}/);
+  if (constant) return text.match(new RegExp(`const ${constant[1]}\\b[^=]*=\\s*([^;]+);`))?.[1];
+  const expression = tag.indexOf('size={');
+  return expression < 0 ? undefined : balancedFrom(tag, expression + 5);
+}
+
+describe('Inline colours and icon sizes in the TableWidget sources (Spec #322)', () => {
+  it('sets no colour inline on any element, focusable or not', () => {
+    const offenders: string[] = [];
+    for (const rel of TABLE_SPEC_SOURCES) {
+      const text = source(rel);
+      for (const tag of openingTags(text)) {
+        const style = inlineStyle(tag, text);
+        if (COLOUR_PROPERTY.test(style) || COLOUR_LITERAL.test(style) || INLINE_THEME_TOKEN.test(style)) {
+          offenders.push(`${rel}: ${head(tag)}`);
+        }
+      }
+    }
+    assert.deepEqual(offenders, []);
+  });
+
+  it('sizes every icon as a factor of the ui.icon.size preference', () => {
+    const offenders: string[] = [];
+    let icons = 0;
+    for (const rel of TABLE_SPEC_SOURCES) {
+      const text = source(rel);
+      for (const tag of openingTags(text).filter((t) => /^<Icon\b/.test(t))) {
+        icons++;
+        const size = iconSize(tag, text);
+        if (size !== undefined && !/^[`'"]?calc\(var\(--cartouche-ui-icon-size, 24px\) \* (?:\d*\.?\d+|\$\{[A-Z_]+\})\)[`'"]?$/.test(size)) {
+          offenders.push(`${rel}: ${head(tag)} size=${size}`);
+        }
+      }
+    }
+    assert.ok(icons >= 12, `expected the spec's icons, found ${icons}`);
+    assert.deepEqual(offenders, []);
   });
 });
 

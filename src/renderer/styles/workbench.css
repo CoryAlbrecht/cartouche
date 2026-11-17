@@ -1253,6 +1253,13 @@
   border-top: 1px solid var(--cartouche-theme-border);
 }
 
+/* Attribute table muted text: the "no matching features" message under the
+   table and the page range in the footer. */
+.empty-filter-message,
+.attribute-table-page-range {
+  color: var(--cartouche-theme-fg-muted);
+}
+
 /* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget,
    focused or not, instead of Chromium's grey / blue list-box selection.
    Chromium paints its own selection over a plain background-colour and its own text colour in a
@@ -2365,6 +2372,75 @@
   text-align: right;
 }
 
+/* TableWidget (Spec #322) colours. TableWidget sets no colour inline: its frame,
+   header cells, Row Number Column and data cells take their colours here, from
+   the --cartouche-table-* tokens. */
+.table-widget-frame {
+  border: 1px solid var(--cartouche-table-border);
+  background-color: var(--cartouche-table-bg);
+}
+
+/* Lines between columns and between rows, drawn on each cell's right and bottom edges. */
+.table-widget-header-cell,
+.table-widget-row-number,
+.table-widget-cell {
+  border-right: 1px solid var(--cartouche-table-column-line);
+  border-bottom: 1px solid var(--cartouche-table-row-line);
+}
+
+/* The header row and the Row Number Column, including on Selected Rows and the Active Row. */
+.table-widget-header-cell,
+.table-widget-row-number {
+  background-color: var(--cartouche-table-header-bg);
+  color: var(--cartouche-table-header-fg);
+}
+
+/* Data cell colours, lowest to highest priority: the plain or alternating row
+   colour, the host's cell background, the Selected Row colour, the Active Row
+   colour. A host background from cellStyle (Ticket #328) arrives as the
+   --table-widget-cell-bg custom property on the cell and replaces only the row
+   colour; the selection rules below ignore it. An Active Row is also a Selected
+   Row, so the active rules come after the selected ones at the same specificity
+   and win. Read-Only Cells (Ticket #327) have their own text colour, their own
+   selected colours, and the normal table text colour on the Active Row. */
+.table-widget-cell {
+  background-color: var(--table-widget-cell-bg, var(--cartouche-table-bg));
+  color: var(--cartouche-table-fg);
+}
+
+.table-widget-row--alternate > .table-widget-cell {
+  background-color: var(--table-widget-cell-bg, var(--cartouche-table-row-alt-bg));
+}
+
+.table-widget-cell.table-widget-cell--readonly {
+  color: var(--cartouche-table-readonly-fg);
+}
+
+.table-widget-row--selected > .table-widget-cell {
+  background-color: var(--cartouche-table-row-selected-bg);
+  color: var(--cartouche-table-fg);
+}
+
+.table-widget-row--selected > .table-widget-cell--readonly {
+  background-color: var(--cartouche-table-readonly-selected-bg);
+  color: var(--cartouche-table-readonly-selected-fg);
+}
+
+.table-widget-row--active > .table-widget-cell {
+  background-color: var(--cartouche-table-row-active-bg);
+  color: var(--cartouche-table-row-active-fg);
+}
+
+.table-widget-row--active > .table-widget-cell--readonly {
+  color: var(--cartouche-table-fg);
+}
+
+/* A host cell border (Ticket #328): the overlay inside the cell, in the colour
+   the host passes as the --table-widget-cell-border custom property. */
+.table-widget-cell-border {
+  border: 1px solid var(--table-widget-cell-border);
+}
+
 /* TableWidget default cell editors (Ticket #327): the cell editor look at the table's 1rem text size. */
 .cell-editor-input.table-widget-editor {
   font-size: 1rem;
@@ -2723,6 +2799,40 @@ select.styling-editor-field {
 .layer-properties-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Layer Properties Dialog text colours: Information tab labels and values,
+   form field labels, the loading message and captions, and the Layer ID
+   validation message. */
+.layer-properties-label,
+.layer-prop-label {
+  color: var(--cartouche-layer-properties-label-fg);
+}
+
+.layer-properties-value {
+  color: var(--cartouche-layer-properties-value-fg);
+}
+
+.layer-properties-loading,
+.layer-prop-dialect-caption,
+.new-field-dialog-placeholder {
+  color: var(--cartouche-layer-properties-caption-fg);
+}
+
+.layer-prop-validation-error {
+  color: var(--cartouche-layer-properties-error-fg);
+}
+
+/* Layer Properties Fields tab toolbar strip. */
+.layer-properties-fields-toolbar {
+  border: 1px solid var(--cartouche-layer-properties-toolbar-border);
+  background-color: var(--cartouche-layer-properties-toolbar-bg);
+}
+
+/* New Field dialog footer bar. */
+.new-field-dialog-footer {
+  border-top: 1px solid var(--cartouche-layer-properties-footer-border);
+  background-color: var(--cartouche-layer-properties-footer-bg);
 }
 
 /* New Field dialog footer buttons: compact size. */

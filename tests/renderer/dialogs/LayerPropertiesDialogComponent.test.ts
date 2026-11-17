@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, the Information and Fields tab fields tables embedded as TableWidgets, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -2724,7 +2724,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
     });
 
     for (const tab of ['fields', 'information']) {
-      it(`draws the ${tab} tab fields table lines with TableWidget table tokens, not hard-coded colours (Ticket #331)`, async () => {
+      it(`draws the ${tab} tab fields table lines through TableWidget's token-bound classes, not inline or hard-coded colours (Ticket #331)`, async () => {
         projectLayersSignal.value = [
           {
             id: testLayerId,
@@ -2748,8 +2748,9 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
         const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
         const table = html.slice(html.indexOf('<table'), html.indexOf('</table>'));
 
-        assert.ok(table.includes('var(--cartouche-table-column-line)'), 'Column lines use the table token');
-        assert.ok(table.includes('var(--cartouche-table-row-line)'), 'Row lines use the table token');
+        assert.ok(table.includes('class="table-widget-header-cell'), 'Header cells take the TableWidget header class');
+        assert.ok(/class="table-widget-cell[ "]/.test(table), 'Body cells take the TableWidget cell class, whose rule draws the table-token lines');
+        assert.ok(!/var\(--cartouche-(?!ui-)/.test(table), 'No theme colour tokens inline in the table');
         assert.ok(!table.includes('--cartouche-menubar-bg'), 'No menubar colour borders');
         assert.ok(!/#[0-9a-fA-F]{3,6}\b/.test(table), 'No hard-coded hex colours in the table');
       });

@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  */
 
@@ -127,6 +127,8 @@
   --cartouche-theme-fg-secondary: #475569;
   --cartouche-theme-fg-inverted: #ffffff;
   --cartouche-theme-fg-primary: #0f172a;
+  /* Strong secondary text, between fg-primary and fg-secondary: form field labels */
+  --cartouche-theme-fg-strong: #334155;
 
   /* Accent & Interaction States */
   --cartouche-theme-accent: #1b446c;
@@ -139,6 +141,8 @@
   --cartouche-theme-danger-hover: #b91c1c;
   --cartouche-theme-danger-subtle: #fef2f2;
   --cartouche-theme-danger-focus: rgba(220, 38, 38, 0.25);
+  /* Brighter danger text: inline validation messages */
+  --cartouche-theme-danger-bright: #ef4444;
   --cartouche-theme-warning: #f59e0b;
   --cartouche-theme-warning-subtle: #fffbeb;
   --cartouche-theme-success: #16a34a;
@@ -277,6 +281,18 @@
   --cartouche-table-readonly-fg: var(--cartouche-theme-fg-muted);
   --cartouche-table-readonly-selected-bg: var(--cartouche-theme-surface-alt);
   --cartouche-table-readonly-selected-fg: var(--cartouche-theme-fg-secondary);
+
+  /* Layer Properties Dialog: form field labels and read-only values, captions and
+     the loading message, the Layer ID validation message, the Fields tab toolbar
+     and the New Field dialog footer */
+  --cartouche-layer-properties-label-fg: var(--cartouche-theme-fg-strong);
+  --cartouche-layer-properties-value-fg: var(--cartouche-theme-fg);
+  --cartouche-layer-properties-caption-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-properties-error-fg: var(--cartouche-theme-danger-bright);
+  --cartouche-layer-properties-toolbar-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-layer-properties-toolbar-border: var(--cartouche-theme-border-strong);
+  --cartouche-layer-properties-footer-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-layer-properties-footer-border: var(--cartouche-theme-border);
 
   /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);

@@ -4,7 +4,7 @@
  * @description Headless component tests for TableWidget editing and Read-Only Cells as a host uses them (Spec #322 / Ticket #327): read-only at table, column, row and cell level, read-only tables still selecting and sorting, the Read-Only Cell colours, starting an edit by double-click, F2 or Enter in the focused column, committing by Enter or leaving the cell, cancelling by Escape, Tab/Shift+Tab moving between editable cells, the default text and number editors, custom column editors, onCellEdit reports, and host rejection by returning false or throwing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  */
@@ -21,6 +21,7 @@ import {
   type MockDom,
   type MockElement
 } from '../mockDom';
+import { cascadedValue } from '../styles/cssRules';
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -344,8 +345,8 @@ describe('TableWidget Read-Only Cell colours (Ticket #327)', () => {
    * @returns {string[]} Background and text colour.
    */
   function colours(rowId: number, columnIndex: number): string[] {
-    const { backgroundColor, color } = cell(rowId, columnIndex).style;
-    return [backgroundColor, color];
+    const target = cell(rowId, columnIndex);
+    return [cascadedValue(target, 'background-color') ?? '', cascadedValue(target, 'color') ?? ''];
   }
 
   const READ_ONLY_COLUMN = { columns: [COLUMNS[0], { ...COLUMNS[1], readOnly: true }] };
@@ -628,19 +629,18 @@ describe('TableWidget host rejection of an edit (Ticket #327)', () => {
   ] as const) {
     it(`when the host ${how}, the old value shows again, edit mode ends and no error styling is added`, async () => {
       await render({ onCellEdit });
-      const before = { ...cell(10, 0).style };
+      const before = cascadedValue(cell(10, 0), 'border');
       await doubleClick(cell(10, 0));
       await type(editor(), 'Bytown');
       await press(editor(), 'Enter');
       assert.equal(edits.length, 1, 'host was asked');
       assert.equal(editors().length, 0);
       assert.equal(textOf(cell(10, 0)), 'Ottawa');
-      const { backgroundColor, color, border } = cell(10, 0).style;
-      assert.deepEqual([backgroundColor, color, border], [
-        'var(--cartouche-table-row-active-bg)',
-        'var(--cartouche-table-row-active-fg)',
-        before.border
-      ]);
+      const target = cell(10, 0);
+      assert.deepEqual(
+        ['background-color', 'color', 'border'].map((property) => cascadedValue(target, property)),
+        ['var(--cartouche-table-row-active-bg)', 'var(--cartouche-table-row-active-fg)', before]
+      );
     });
   }
 });

@@ -1386,8 +1386,6 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
               style={{
                 flexShrink: 0,
                 padding: "2px 4px",
-                backgroundColor: "var(--cartouche-theme-surface-subtle)",
-                borderBottom: "1px solid var(--cartouche-theme-border)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-start",
@@ -1439,7 +1437,6 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                     flexShrink: 0,
                     textAlign: "center",
                     padding: "1rem",
-                    color: "var(--cartouche-theme-fg-muted)",
                   }}>
                   {t("attribute_table_empty_filtered")}
                 </div>
@@ -1481,7 +1478,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                 }}>
                 <span
                   className='attribute-table-page-range'
-                  style={{ marginRight: "4px", color: "var(--cartouche-theme-fg-muted)" }}>
+                  style={{ marginRight: "4px" }}>
                   {t("attribute_table_page_range", {
                     start: displayedFeatures.length > 0 ? pageStart + 1 : 0,
                     end: pageStart + displayedFeatures.length,
@@ -1495,7 +1492,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_first")}
                   disabled={isFirstDisabled}
                   onClick={() => setPageStart(0)}>
-                  <Icon path={mdiPageFirst} size='1rem' />
+                  <Icon path={mdiPageFirst} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
                 <button
                   type='button'
@@ -1506,7 +1503,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   onClick={() =>
                     setPageStart(Math.max(0, pageStart - maxRows))
                   }>
-                  <Icon path={mdiChevronLeft} size='1rem' />
+                  <Icon path={mdiChevronLeft} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
                 <button
                   type='button'
@@ -1515,7 +1512,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_next")}
                   disabled={isNextDisabled}
                   onClick={() => setPageStart(pageStart + maxRows)}>
-                  <Icon path={mdiChevronRight} size='1rem' />
+                  <Icon path={mdiChevronRight} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
                 <button
                   type='button'
@@ -1524,7 +1521,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_last")}
                   disabled={isLastDisabled}
                   onClick={() => setPageStart(lastPageStart)}>
-                  <Icon path={mdiPageLast} size='1rem' />
+                  <Icon path={mdiPageLast} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
                 </button>
               </div>
             </div>

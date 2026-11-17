@@ -400,7 +400,7 @@ const FieldTypeControls: React.FC<{
           e.stopPropagation();
           onResetType(field.name);
         }}>
-        <Icon path={mdiUndo} size='1rem' />
+        <Icon path={mdiUndo} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
       </button>
     </div>
   );
@@ -583,7 +583,7 @@ function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -913,7 +913,6 @@ export const LayerPropertiesDialog: React.FC = () => {
               className='layer-properties-loading'
               style={{
                 padding: "1rem",
-                color: "#64748b",
                 fontStyle: "italic",
               }}>
               {t("layer_properties_loading")}
@@ -937,13 +936,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_name")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.name || draft.layerName || "—"}
                   </span>
                 </div>
@@ -955,13 +953,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_id")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.layerId || activeId}
                   </span>
                 </div>
@@ -973,7 +970,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_source")}:
                   </span>
@@ -981,7 +977,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     className='layer-properties-value'
                     style={{
                       flex: 1,
-                      color: "#000000",
                       wordBreak: "break-all",
                     }}>
                     {info?.source || "—"}
@@ -1002,13 +997,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_driver")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.driverName || "—"}
                   </span>
                 </div>
@@ -1020,13 +1014,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_geometry")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.geometryKind || "—"}
                   </span>
                 </div>
@@ -1038,13 +1031,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_feature_count")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.featureCount !== undefined ?
                       info.featureCount.toLocaleString()
                     : "—"}
@@ -1058,13 +1050,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_crs")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.crsDescription || "—"}
                   </span>
                 </div>
@@ -1076,13 +1067,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                     style={{
                       width: "12rem",
                       fontWeight: 500,
-                      color: "#334155",
                     }}>
                     {t("layer_properties_label_extent")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{ flex: 1, color: "#000000" }}>
+                    style={{ flex: 1 }}>
                     {info?.extent ?
                       `[${info.extent.map((n: number) => Number(n).toFixed(4)).join(", ")}]`
                     : "—"}
@@ -1133,10 +1123,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <label
                     htmlFor='layer-prop-name'
+                    className='layer-prop-label'
                     style={{
                       fontWeight: 500,
                       fontSize: "0.875rem",
-                      color: "#334155",
                     }}>
                     {t("layer_properties_source_layer_name")}
                   </label>
@@ -1161,10 +1151,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <label
                     htmlFor='layer-prop-id'
+                    className='layer-prop-label'
                     style={{
                       fontWeight: 500,
                       fontSize: "0.875rem",
-                      color: "#334155",
                     }}>
                     {t("layer_properties_source_layer_id")}
                   </label>
@@ -1182,8 +1172,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                     <span
                       className='layer-prop-validation-error'
                       style={{
-                        color: "#ef4444",
-                        fontSize: "0.75rem",
+                          fontSize: "0.75rem",
                         fontWeight: 500,
                       }}>
                       {draft.idValidationError}
@@ -1201,10 +1190,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   }}>
                   <label
                     htmlFor='layer-prop-crs'
+                    className='layer-prop-label'
                     style={{
                       fontWeight: 500,
                       fontSize: "0.875rem",
-                      color: "#334155",
                     }}>
                     {t("layer_properties_source_crs")}
                   </label>
@@ -1259,7 +1248,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                     className='layer-prop-dialect-caption'
                     style={{
                       fontSize: "0.75rem",
-                      color: "#64748b",
                       fontStyle: "italic",
                     }}>
                     {info?.driverDialect === "ogr_sql" ?
@@ -1311,8 +1299,6 @@ export const LayerPropertiesDialog: React.FC = () => {
                   alignItems: "center",
                   gap: "0.375rem",
                   padding: "4px 8px",
-                  backgroundColor: "#f1f5f9",
-                  border: "1px solid #cbd5e1",
                   borderRadius: "4px",
                 }}>
                 <button
@@ -1326,7 +1312,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                       toggleLayerEditingAction(activeId);
                     }
                   }}>
-                  <Icon path={mdiPencilOutline} size='14px' />
+                  <Icon path={mdiPencilOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1339,7 +1325,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                       setIsNewFieldOpen(true);
                     }
                   }}>
-                  <Icon path={mdiTablePlus} size='14px' />
+                  <Icon path={mdiTablePlus} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1348,7 +1334,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   aria-label={t("layer_properties_fields_delete_field")}
                   disabled={!isEditing || selectedFieldNames.value.size === 0}
                   onClick={handleDeleteSelectedField}>
-                  <Icon path={mdiTrashCanOutline} size='14px' />
+                  <Icon path={mdiTrashCanOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1356,7 +1342,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
                   disabled={!isEditing}>
-                  <Icon path={mdiCalculator} size='14px' />
+                  <Icon path={mdiCalculator} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                 </button>
                 <button
                   type='button'
@@ -1364,7 +1350,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_show_native_type")}
                   aria-pressed={showNativeType}
                   onClick={handleToggleShowNativeType}>
-                  <Icon path={mdiCodeTags} size='14px' />
+                  <Icon path={mdiCodeTags} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
                   <span>{t("layer_properties_fields_show_native_type")}</span>
                 </button>
               </div>
@@ -1467,10 +1453,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                         }}>
                         <label
                           htmlFor='layer-prop-time-mode'
+                          className='layer-prop-label'
                           style={{
                             fontWeight: 500,
                             fontSize: "0.875rem",
-                            color: "#334155",
                           }}>
                           {t("layer_properties_time_mode")}
                         </label>
@@ -1511,10 +1497,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                         }}>
                         <label
                           htmlFor='layer-prop-time-start'
+                          className='layer-prop-label'
                           style={{
                             fontWeight: 500,
                             fontSize: "0.875rem",
-                            color: "#334155",
                           }}>
                           {t("layer_properties_time_start_field")}
                         </label>
@@ -1553,7 +1539,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   ? mdiGreaterThan
                                   : mdiGreaterThanOrEqual
                               }
-                              size='1rem'
+                              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
                           </button>
                           <select
@@ -1588,10 +1574,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                         }}>
                         <label
                           htmlFor='layer-prop-time-end'
+                          className='layer-prop-label'
                           style={{
                             fontWeight: 500,
                             fontSize: "0.875rem",
-                            color: "#334155",
                           }}>
                           {t("layer_properties_time_end_field")}
                         </label>
@@ -1630,7 +1616,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                                   ? mdiLessThan
                                   : mdiLessThanOrEqual
                               }
-                              size='1rem'
+                              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
                           </button>
                           <select
@@ -1673,13 +1659,12 @@ export const LayerPropertiesDialog: React.FC = () => {
       defaultHeight={320}
       footer={
         <div
+          className='new-field-dialog-footer'
           style={{
             display: "flex",
             justifyContent: "flex-end",
             gap: "0.5rem",
             padding: "0.5rem 0.75rem",
-            backgroundColor: "#f8fafc",
-            borderTop: "1px solid #e2e8f0",
           }}>
           <button
             type='button'
@@ -1695,7 +1680,7 @@ export const LayerPropertiesDialog: React.FC = () => {
           </button>
         </div>
       }>
-      <div style={{ padding: "1rem", color: "#64748b", fontSize: "0.875rem" }}>
+      <div className='new-field-dialog-placeholder' style={{ padding: "1rem", fontSize: "0.875rem" }}>
         New field configuration placeholder.
       </div>
     </Dialog>

@@ -4,7 +4,7 @@
  * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324); and (Ticket #328) host cellStyle borders over the shared lines and on selected rows, and cell backgrounds ordered above plain and alternating rows and below the Selected Row and Active Row colours.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  */
@@ -24,6 +24,7 @@ import {
   type MockDom,
   type MockElement
 } from '../mockDom';
+import { cascadedValue, parseRules, WORKBENCH_CSS } from '../styles/cssRules';
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -125,6 +126,56 @@ function cellsOf(row: MockElement): MockElement[] {
   return findElementsByClass(row, 'table-widget-cell');
 }
 
+/**
+ * @typedef {Object} Paint
+ * @description The colours and lines an element is painted with, worked out from its classes and the workbench.css rules (TableWidget sets no colour inline).
+ * @property {string | undefined} backgroundColor - Background colour.
+ * @property {string | undefined} color - Text colour.
+ * @property {string | undefined} border - Border on all four sides.
+ * @property {string | undefined} borderRight - Right border (the column line).
+ * @property {string | undefined} borderBottom - Bottom border (the row line).
+ */
+interface Paint {
+  backgroundColor: string | undefined;
+  color: string | undefined;
+  border: string | undefined;
+  borderRight: string | undefined;
+  borderBottom: string | undefined;
+}
+
+/**
+ * @function paint
+ * @description Returns the colours and lines an element is painted with, through {@link cascadedValue}.
+ * @param {MockElement} element - Rendered element.
+ * @returns {Paint} Its cascaded colours and lines.
+ */
+function paint(element: MockElement): Paint {
+  return {
+    backgroundColor: cascadedValue(element, 'background-color'),
+    color: cascadedValue(element, 'color'),
+    border: cascadedValue(element, 'border'),
+    borderRight: cascadedValue(element, 'border-right'),
+    borderBottom: cascadedValue(element, 'border-bottom')
+  };
+}
+
+/** Inline style properties that paint colour; TableWidget sets none of them. */
+const INLINE_COLOUR_PROPERTIES = [
+  'color',
+  'background',
+  'backgroundColor',
+  'border',
+  'borderTop',
+  'borderRight',
+  'borderBottom',
+  'borderLeft',
+  'borderColor',
+  'outline',
+  'outlineColor',
+  'fill',
+  'stroke'
+];
+
 describe('TableWidget rows and columns (Ticket #323)', () => {
   beforeEach(() => {
     installHost();
@@ -188,22 +239,22 @@ describe('TableWidget theme tokens and typography (Ticket #323)', () => {
   it('draws a dark outer border around the table from --cartouche-table-border', async () => {
     await render();
     const [frame] = findElementsByClass(dom!.container, 'table-widget-frame');
-    assert.equal(frame.style.border, '1px solid var(--cartouche-table-border)');
+    assert.equal(paint(frame).border, '1px solid var(--cartouche-table-border)');
   });
 
   it('draws column lines from --cartouche-table-column-line and row lines from --cartouche-table-row-line', async () => {
     await render();
     for (const cell of [...headerCells(), ...bodyRows().flatMap(cellsOf)]) {
-      assert.equal(cell.style.borderRight, '1px solid var(--cartouche-table-column-line)');
-      assert.equal(cell.style.borderBottom, '1px solid var(--cartouche-table-row-line)');
+      assert.equal(paint(cell).borderRight, '1px solid var(--cartouche-table-column-line)');
+      assert.equal(paint(cell).borderBottom, '1px solid var(--cartouche-table-row-line)');
     }
   });
 
   it('paints the header row with --cartouche-table-header-bg and bold --cartouche-table-header-fg text', async () => {
     await render();
     for (const cell of headerCells()) {
-      assert.equal(cell.style.backgroundColor, 'var(--cartouche-table-header-bg)');
-      assert.equal(cell.style.color, 'var(--cartouche-table-header-fg)');
+      assert.equal(paint(cell).backgroundColor, 'var(--cartouche-table-header-bg)');
+      assert.equal(paint(cell).color, 'var(--cartouche-table-header-fg)');
       assert.equal(cell.style.fontWeight, 'bold');
     }
   });
@@ -211,15 +262,15 @@ describe('TableWidget theme tokens and typography (Ticket #323)', () => {
   it('paints rows with --cartouche-table-bg and --cartouche-table-fg text when alternatingRows is off', async () => {
     await render();
     for (const cell of bodyRows().flatMap(cellsOf)) {
-      assert.equal(cell.style.backgroundColor, 'var(--cartouche-table-bg)');
-      assert.equal(cell.style.color, 'var(--cartouche-table-fg)');
+      assert.equal(paint(cell).backgroundColor, 'var(--cartouche-table-bg)');
+      assert.equal(paint(cell).color, 'var(--cartouche-table-fg)');
       assert.notEqual(cell.style.fontWeight, 'bold');
     }
   });
 
   it('paints odd rows (1st, 3rd, …) with --cartouche-table-row-alt-bg when the host turns alternatingRows on', async () => {
     await render({ alternatingRows: true });
-    const backgrounds = bodyRows().map((row) => cellsOf(row)[0].style.backgroundColor);
+    const backgrounds = bodyRows().map((row) => paint(cellsOf(row)[0]).backgroundColor);
     assert.deepEqual(backgrounds, [
       'var(--cartouche-table-row-alt-bg)',
       'var(--cartouche-table-bg)',
@@ -233,14 +284,51 @@ describe('TableWidget theme tokens and typography (Ticket #323)', () => {
     assert.equal(table.style.fontSize, '1rem');
   });
 
-  it('uses only --cartouche-table-* tokens: no colour literals and no direct --cartouche-theme-* references', () => {
+  it('sets no colour in its source: no colour literals and no theme token other than the UI icon size', () => {
     const code = TABLE_WIDGET_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '');
     assert.doesNotMatch(code, /#[0-9a-fA-F]{3,8}\b|rgba?\(/, 'no colour literals');
-    assert.doesNotMatch(code, /--cartouche-theme-/, 'no direct base theme tokens');
     const tokens = [...code.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]);
+    assert.deepEqual([...new Set(tokens)], ['--cartouche-ui-icon-size'], 'only the icon size token');
+  });
+
+  it('paints nothing inline: the frame, header cells, row numbers, data cells and host cell borders take their colours from classes', async () => {
+    await render({
+      alternatingRows: true,
+      columns: [COLUMNS[0], { ...COLUMNS[1], readOnly: true }],
+      cellStyle: () => ({ borderColour: 'red', background: 'pink' })
+    });
+    await act(async () => {
+      selectedRowIds.value = new Set([10, 20]);
+      activeRowId.value = 20;
+    });
+    const elements = [
+      ...findElementsByClass(dom!.container, 'table-widget-frame'),
+      ...headerCells(),
+      ...findElementsByClass(dom!.container, 'table-widget-sort-icon'),
+      ...findElementsByClass(dom!.container, 'table-widget-row-number'),
+      ...bodyRows(),
+      ...bodyRows().flatMap(cellsOf),
+      ...findElementsByClass(dom!.container, 'table-widget-cell-border')
+    ];
+    for (const element of elements) {
+      for (const property of INLINE_COLOUR_PROPERTIES) {
+        assert.equal(element.style[property] ?? '', '', `${element.className} sets ${property} inline`);
+      }
+    }
+  });
+
+  it('colours its classes in workbench.css with --cartouche-table-* tokens only', () => {
+    const rules = parseRules(WORKBENCH_CSS).filter((rule) =>
+      rule.selectors.some((selector) => /\.table-widget-(?:frame|header-cell|row|cell)/.test(selector))
+    );
+    assert.ok(rules.length > 0, 'workbench.css styles the TableWidget');
+    const tokens = rules.flatMap((rule) => [...rule.body.matchAll(/var\((--cartouche-[a-z0-9-]+)/g)].map((m) => m[1]));
     assert.ok(tokens.length > 0);
     for (const token of tokens) {
       assert.match(token, /^--cartouche-table-/, `${token} is a table token`);
+    }
+    for (const rule of rules) {
+      assert.doesNotMatch(rule.body, /#[0-9a-fA-F]{3,8}\b|rgba?\(/, `${rule.selectors.join(', ')} has no colour literal`);
     }
   });
 });
@@ -280,10 +368,10 @@ describe('TableWidget Row Number Column, sticky headers, widths and empty table 
   it('colours the Row Number Column like the header row, including on alternating rows', async () => {
     await render({ alternatingRows: true });
     for (const cell of rowNumberCells()) {
-      assert.equal(cell.style.backgroundColor, 'var(--cartouche-table-header-bg)');
-      assert.equal(cell.style.color, 'var(--cartouche-table-header-fg)');
-      assert.equal(cell.style.borderRight, '1px solid var(--cartouche-table-column-line)');
-      assert.equal(cell.style.borderBottom, '1px solid var(--cartouche-table-row-line)');
+      assert.equal(paint(cell).backgroundColor, 'var(--cartouche-table-header-bg)');
+      assert.equal(paint(cell).color, 'var(--cartouche-table-header-fg)');
+      assert.equal(paint(cell).borderRight, '1px solid var(--cartouche-table-column-line)');
+      assert.equal(paint(cell).borderBottom, '1px solid var(--cartouche-table-row-line)');
     }
   });
 
@@ -664,12 +752,12 @@ describe('TableWidget Selected Row and Active Row colours (Ticket #326)', () => 
 
   /**
    * @function coloursOf
-   * @description Returns the background and text colour of each data cell of a row.
+   * @description Returns the background and text colour each data cell of a row is painted with (empty when none).
    * @param {number} rowId - Host row ID.
    * @returns {string[][]} `[background, color]` per data cell.
    */
   function coloursOf(rowId: number): string[][] {
-    return cellsOf(row(rowId)).map((cell) => [cell.style.backgroundColor, cell.style.color]);
+    return cellsOf(row(rowId)).map((cell) => [paint(cell).backgroundColor ?? '', paint(cell).color ?? '']);
   }
 
   const SELECTED = ['var(--cartouche-table-row-selected-bg)', 'var(--cartouche-table-fg)'];
@@ -715,8 +803,8 @@ describe('TableWidget Selected Row and Active Row colours (Ticket #326)', () => 
     });
     for (const rowId of [10, 20]) {
       const [numberCell] = findElementsByClass(row(rowId), 'table-widget-row-number');
-      assert.equal(numberCell.style.backgroundColor, 'var(--cartouche-table-header-bg)');
-      assert.equal(numberCell.style.color, 'var(--cartouche-table-header-fg)');
+      assert.equal(paint(numberCell).backgroundColor, 'var(--cartouche-table-header-bg)');
+      assert.equal(paint(numberCell).color, 'var(--cartouche-table-header-fg)');
     }
   });
 });
@@ -830,7 +918,7 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
   });
 
   // Headless, text measures 8px per character, a cell adds 17px (0.5rem padding each side plus the 1px column line),
-  // and a sortable header adds 20px for its sort chevron (1rem icon plus 0.25rem margin).
+  // and a sortable header adds 20px for its sort chevron (0.67 × the 24px default ui.icon.size plus 0.25rem margin).
   it('double-clicking a resize handle sizes the column to the widest of its header text and its displayed values', async () => {
     await render({
       columns: [
@@ -859,6 +947,33 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
       resizeHandleOf(dataHeaders()[0]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
     });
     assert.equal(dataHeaders()[0].style.width, `${8 * 'Feature identifier'.length + 17}px`);
+  });
+
+  it('sizes the sort chevron from the ui.icon.size preference', async () => {
+    await render();
+    for (const icon of findElementsByClass(dom!.container, 'table-widget-sort-icon')) {
+      assert.equal(icon.style.width, 'calc(var(--cartouche-ui-icon-size, 24px) * 0.67)');
+      assert.equal(icon.style.height, 'calc(var(--cartouche-ui-icon-size, 24px) * 0.67)');
+    }
+  });
+
+  it("auto-sizes a sortable column with room for the sort chevron at the header's current ui.icon.size", async () => {
+    await render({ columns: [{ key: 'fid', header: 'Feature identifier', width: 60 }] });
+    dom!.win.getComputedStyle = () => ({
+      fontStyle: 'normal',
+      fontWeight: '700',
+      fontSize: '16px',
+      fontFamily: 'sans-serif',
+      paddingLeft: '8px',
+      paddingRight: '8px',
+      borderRightWidth: '1px',
+      getPropertyValue: (name: string) => (name === '--cartouche-ui-icon-size' ? ' 30px' : '')
+    });
+    await act(async () => {
+      resizeHandleOf(dataHeaders()[0]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    // 0.67 × 30px icon plus the 0.25rem (4px) margin.
+    assert.equal(dataHeaders()[0].style.width, `${Math.ceil(8 * 'Feature identifier'.length + 0.67 * 30 + 4 + 17)}px`);
   });
 
   it('auto-sizes no narrower than the column minWidth', async () => {
@@ -964,7 +1079,7 @@ describe('TableWidget per-cell styling (Ticket #328)', () => {
     const cell = cellOf(20, 1);
     const border = cellBorderOf(cell);
     assert.ok(border, 'the styled cell has a border');
-    assert.equal(border.style.border, '1px solid red');
+    assert.equal(paint(border).border, '1px solid red');
     assert.equal(border.style.position, 'absolute');
     assert.equal(cell.style.position, 'relative');
     assert.deepEqual(
@@ -1002,15 +1117,15 @@ describe('TableWidget per-cell styling (Ticket #328)', () => {
 
   it("paints a styled cell's background over the plain row colour, leaving its text colour and other cells alone", async () => {
     await render({ cellStyle: markMontrealPopulation });
-    assert.equal(cellOf(20, 1).style.backgroundColor, 'pink');
-    assert.equal(cellOf(20, 1).style.color, 'var(--cartouche-table-fg)');
-    assert.equal(cellOf(20, 0).style.backgroundColor, 'var(--cartouche-table-bg)');
+    assert.equal(paint(cellOf(20, 1)).backgroundColor, 'pink');
+    assert.equal(paint(cellOf(20, 1)).color, 'var(--cartouche-table-fg)');
+    assert.equal(paint(cellOf(20, 0)).backgroundColor, 'var(--cartouche-table-bg)');
   });
 
   it("paints a styled cell's background over the alternating row colour", async () => {
     await render({ alternatingRows: true, cellStyle: () => ({ background: 'pink' }) });
-    assert.equal(cellOf(10, 0).style.backgroundColor, 'pink');
-    assert.equal(cellOf(20, 0).style.backgroundColor, 'pink');
+    assert.equal(paint(cellOf(10, 0)).backgroundColor, 'pink');
+    assert.equal(paint(cellOf(20, 0)).backgroundColor, 'pink');
     assert.equal(cellBorderOf(cellOf(10, 0)), undefined, 'a background alone draws no border');
   });
 
@@ -1020,9 +1135,9 @@ describe('TableWidget per-cell styling (Ticket #328)', () => {
       selectedRowIds.value = new Set([10, 20]);
       activeRowId.value = 20;
     });
-    assert.equal(cellOf(10, 0).style.backgroundColor, 'var(--cartouche-table-row-selected-bg)');
-    assert.equal(cellOf(20, 0).style.backgroundColor, 'var(--cartouche-table-row-active-bg)');
-    assert.equal(cellOf(30, 0).style.backgroundColor, 'pink');
+    assert.equal(paint(cellOf(10, 0)).backgroundColor, 'var(--cartouche-table-row-selected-bg)');
+    assert.equal(paint(cellOf(20, 0)).backgroundColor, 'var(--cartouche-table-row-active-bg)');
+    assert.equal(paint(cellOf(30, 0)).backgroundColor, 'pink');
   });
 
   it('keeps showing the border of a styled cell on Selected Rows and the Active Row', async () => {
@@ -1032,13 +1147,13 @@ describe('TableWidget per-cell styling (Ticket #328)', () => {
       activeRowId.value = 20;
     });
     for (const rowId of [10, 20]) {
-      assert.equal(cellBorderOf(cellOf(rowId, 1))!.style.border, '1px solid red');
+      assert.equal(paint(cellBorderOf(cellOf(rowId, 1))!).border, '1px solid red');
     }
   });
 
   it('leaves cells unstyled when cellStyle returns nothing, or when the host passes none', async () => {
     await render({ cellStyle: () => null });
-    assert.equal(cellOf(10, 0).style.backgroundColor, 'var(--cartouche-table-bg)');
+    assert.equal(paint(cellOf(10, 0)).backgroundColor, 'var(--cartouche-table-bg)');
     assert.equal(cellOf(10, 0).style.position ?? '', '');
     assert.equal(cellOf(10, 0).style.overflow, 'hidden');
     assert.equal(cellBorderOf(cellOf(10, 0)), undefined);
