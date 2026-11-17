@@ -3238,9 +3238,11 @@ select.picker-field:disabled {
 }
 
 /* Scrolling containers, and Dockview tabs inside their overflow: auto strip:
-   an inset ring, so overflow does not clip it. */
+   an inset ring, so overflow does not clip it. The TableWidget table takes
+   keyboard focus inside its overflow: auto frame. */
 .layer-tree-container:focus-visible,
 .table-scroll-wrapper:focus-visible,
+.table-widget-table:focus-visible,
 .dv-tab:focus-visible {
   outline-offset: calc(var(--cartouche-focus-width) * -1);
 }

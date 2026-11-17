@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -10,7 +10,8 @@
  * @see {@link AttributeTableWidget}
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
+import type { Signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
 
@@ -75,6 +76,28 @@ export interface TableColumn<R> {
 }
 
 /**
+ * @typedef {'replace' | 'toggle' | 'range'} TableSelectionChangeKind
+ * @description What kind of selection change a user made (Ticket #326), so a host whose selection extends beyond the displayed rows can update it correctly:
+ * - `replace`: `rowIds` is the whole new selection; the host drops every other selected row, displayed or not (primary-click, ↑/↓).
+ * - `toggle`: `rowIds` is the one row toggled in or out of the selection (Ctrl+primary-click).
+ * - `range`: `rowIds` is the range of displayed rows that is now the displayed selection; the host keeps or drops its rows that are not displayed as it sees fit (Shift+primary-click, Shift+↑/↓, Ctrl+A).
+ */
+export type TableSelectionChangeKind = 'replace' | 'toggle' | 'range';
+
+/**
+ * @typedef {Object} TableSelectionChange
+ * @description A selection change TableWidget reports to its host through `onSelectionChange`, after writing the host's selection signals.
+ * @property {TableSelectionChangeKind} kind - What kind of change the user made.
+ * @property {TableRowId[]} rowIds - The rows the change covers, in display order (see {@link TableSelectionChangeKind}).
+ * @property {TableRowId | null} activeRowId - The Active Row after the change.
+ */
+export interface TableSelectionChange {
+  kind: TableSelectionChangeKind;
+  rowIds: TableRowId[];
+  activeRowId: TableRowId | null;
+}
+
+/**
  * @typedef {Object} TableWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
  * @template R
@@ -83,6 +106,9 @@ export interface TableColumn<R> {
  * @property {readonly TableColumn<R>[]} columns - Column definitions, in display order.
  * @property {boolean} [alternatingRows=false] - Whether odd rows (the 1st, 3rd, …) use the alternate row colour.
  * @property {boolean} [showRowNumberColumn=true] - Whether to show the Row Number Column: headed `#`, coloured like the header row, numbering rows 1, 2, 3… by displayed position.
+ * @property {Signal<Set<TableRowId>>} selectedRowIds - The host-owned set of Selected Rows; TableWidget writes it on every selection change.
+ * @property {Signal<TableRowId | null>} activeRowId - The host-owned Active Row, always also a Selected Row; TableWidget writes it on every selection change.
+ * @property {(change: TableSelectionChange) => void} [onSelectionChange] - Called after every selection change, with its kind.
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -90,6 +116,9 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   columns: readonly TableColumn<R>[];
   alternatingRows?: boolean;
   showRowNumberColumn?: boolean;
+  selectedRowIds: Signal<Set<TableRowId>>;
+  activeRowId: Signal<TableRowId | null>;
+  onSelectionChange?: (change: TableSelectionChange) => void;
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
@@ -193,8 +222,158 @@ function displayCell<R>(row: R, column: TableColumn<R>): React.ReactNode {
 }
 
 /**
+ * @function rowColours
+ * @description Picks a data row's cell background and text colour: the Active Row colour, else the Selected Row colour, else the alternating colour for odd rows (1st, 3rd, …) when `alternatingRows` is on, else the plain row colour. Selection is painted over the row colour (Ticket #326); Row Number Column cells keep the header colours and do not use this.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {number} index - The row's display index (0-based).
+ * @param {boolean} alternatingRows - Whether alternating row colours are on.
+ * @param {boolean} selected - Whether the row is a Selected Row.
+ * @param {boolean} active - Whether the row is the Active Row.
+ * @returns {Pick<React.CSSProperties, 'backgroundColor' | 'color'>} The cells' background and text colour.
+ */
+function rowColours(
+  index: number,
+  alternatingRows: boolean,
+  selected: boolean,
+  active: boolean
+): Pick<React.CSSProperties, 'backgroundColor' | 'color'> {
+  if (active) {
+    return { backgroundColor: 'var(--cartouche-table-row-active-bg)', color: 'var(--cartouche-table-row-active-fg)' };
+  }
+  if (selected) return { backgroundColor: 'var(--cartouche-table-row-selected-bg)', color: 'var(--cartouche-table-fg)' };
+  const background =
+    alternatingRows && index % 2 === 0 ? 'var(--cartouche-table-row-alt-bg)' : 'var(--cartouche-table-bg)';
+  return { backgroundColor: background, color: 'var(--cartouche-table-fg)' };
+}
+
+/**
+ * @typedef {Object} RowSelection
+ * @description Event handlers {@link useRowSelection} returns for the table.
+ * @property {(event: React.MouseEvent, rowId: TableRowId) => void} onRowClick - Handles a click anywhere in a row, including its `#` cell.
+ * @property {(event: React.KeyboardEvent) => void} onKeyDown - Handles selection keys pressed on the table.
+ */
+interface RowSelection {
+  onRowClick: (event: React.MouseEvent, rowId: TableRowId) => void;
+  onKeyDown: (event: React.KeyboardEvent) => void;
+}
+
+/**
+ * @function useRowSelection
+ * @description Row selection over the displayed rows (Ticket #326): primary-click selects one row, Ctrl+primary-click toggles a row, Shift+primary-click selects the range from the last-clicked row; ↑/↓ move the Active Row, Shift+↑/↓ extend the selection, Ctrl+A selects every displayed row. Each change writes the host's `selectedRowIds` and `activeRowId` signals, then reports itself through `onSelectionChange`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {readonly TableRowId[]} displayedRowIds - Row IDs of the displayed rows, in display order.
+ * @param {Signal<Set<TableRowId>>} selectedRowIds - Host-owned Selected Rows.
+ * @param {Signal<TableRowId | null>} activeRowId - Host-owned Active Row.
+ * @param {(change: TableSelectionChange) => void} [onSelectionChange] - Host's selection change callback.
+ * @returns {RowSelection} Row click and key handlers.
+ */
+function useRowSelection(
+  displayedRowIds: readonly TableRowId[],
+  selectedRowIds: Signal<Set<TableRowId>>,
+  activeRowId: Signal<TableRowId | null>,
+  onSelectionChange?: (change: TableSelectionChange) => void
+): RowSelection {
+  /** Most recently clicked (or plainly navigated-to) row: where Shift ranges start. */
+  const anchorRef = useRef<TableRowId | null>(null);
+
+  /**
+   * Writes the host's signals and reports the change.
+   * @param {TableSelectionChangeKind} kind - Kind of change.
+   * @param {TableRowId[]} rowIds - Rows the change covers.
+   * @param {Set<TableRowId>} selection - The new selection.
+   * @param {TableRowId | null} active - The new Active Row.
+   */
+  const commit = (
+    kind: TableSelectionChangeKind,
+    rowIds: TableRowId[],
+    selection: Set<TableRowId>,
+    active: TableRowId | null
+  ): void => {
+    selectedRowIds.value = selection;
+    activeRowId.value = active;
+    onSelectionChange?.({ kind, rowIds, activeRowId: active });
+  };
+
+  /**
+   * Selects only one row and makes it the Active Row and the range anchor.
+   * @param {TableRowId} rowId - The row.
+   */
+  const selectOnly = (rowId: TableRowId): void => {
+    anchorRef.current = rowId;
+    commit('replace', [rowId], new Set([rowId]), rowId);
+  };
+
+  /**
+   * Selects exactly the displayed rows from the anchor to `rowId`, making `rowId` the Active Row.
+   * @param {number} anchorIndex - Display index of the range anchor.
+   * @param {number} index - Display index of the row the range runs to.
+   */
+  const selectRange = (anchorIndex: number, index: number): void => {
+    const rowIds = displayedRowIds.slice(Math.min(anchorIndex, index), Math.max(anchorIndex, index) + 1);
+    commit('range', rowIds, new Set(rowIds), displayedRowIds[index]);
+  };
+
+  const onRowClick = (event: React.MouseEvent, rowId: TableRowId): void => {
+    if (event.button !== 0) return;
+    if (event.ctrlKey || event.metaKey) {
+      anchorRef.current = rowId;
+      const selection = new Set(selectedRowIds.value);
+      if (selection.has(rowId)) {
+        selection.delete(rowId);
+        commit('toggle', [rowId], selection, activeRowId.value === rowId ? null : activeRowId.value);
+      } else {
+        selection.add(rowId);
+        commit('toggle', [rowId], selection, rowId);
+      }
+      return;
+    }
+    const anchorIndex = anchorRef.current === null ? -1 : displayedRowIds.indexOf(anchorRef.current);
+    if (event.shiftKey && anchorIndex !== -1) {
+      selectRange(anchorIndex, displayedRowIds.indexOf(rowId));
+      return;
+    }
+    selectOnly(rowId);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent): void => {
+    if (displayedRowIds.length === 0) return;
+    const last = displayedRowIds.length - 1;
+    const activeIndex = activeRowId.value === null ? -1 : displayedRowIds.indexOf(activeRowId.value);
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+      event.preventDefault();
+      const rowIds = [...displayedRowIds];
+      commit('range', rowIds, new Set(rowIds), activeIndex === -1 ? rowIds[0] : rowIds[activeIndex]);
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    const target =
+      activeIndex === -1 ? (step === 1 ? 0 : last) : Math.min(last, Math.max(0, activeIndex + step));
+    if (!event.shiftKey) {
+      selectOnly(displayedRowIds[target]);
+      return;
+    }
+    const anchorIndex = anchorRef.current === null ? -1 : displayedRowIds.indexOf(anchorRef.current);
+    const rangeStart = anchorIndex !== -1 ? anchorIndex : activeIndex !== -1 ? activeIndex : target;
+    anchorRef.current = displayedRowIds[rangeStart];
+    selectRange(rangeStart, target);
+  };
+
+  return { onRowClick, onKeyDown };
+}
+
+/**
  * @component TableWidget
- * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table.
+ * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -209,12 +388,17 @@ export function TableWidget<R>({
   columns,
   alternatingRows = false,
   showRowNumberColumn = true,
+  selectedRowIds,
+  activeRowId,
+  onSelectionChange,
   name = 'table-widget',
   displayName = 'Table',
   className = '',
   ...basicWidgetProps
 }: TableWidgetProps<R>): React.ReactElement {
   useSignals();
+  const displayedRowIds = rows.map(getRowId);
+  const { onRowClick, onKeyDown } = useRowSelection(displayedRowIds, selectedRowIds, activeRowId, onSelectionChange);
 
   return (
     <BasicWidget
@@ -233,6 +417,8 @@ export function TableWidget<R>({
         }}>
         <table
           className='table-widget-table'
+          tabIndex={0}
+          onKeyDown={onKeyDown}
           style={{
             width: tableWidth(columns, showRowNumberColumn),
             tableLayout: 'fixed',
@@ -268,12 +454,15 @@ export function TableWidget<R>({
           <tbody>
             {rows.map((row, index) => {
               const rowId = getRowId(row);
-              const background =
-                alternatingRows && index % 2 === 0
-                  ? 'var(--cartouche-table-row-alt-bg)'
-                  : 'var(--cartouche-table-bg)';
+              const selected = selectedRowIds.value.has(rowId);
+              const colours = rowColours(index, alternatingRows, selected, selected && activeRowId.value === rowId);
               return (
-                <tr key={rowId} className='table-widget-row' data-row-id={rowId}>
+                <tr
+                  key={rowId}
+                  className='table-widget-row'
+                  data-row-id={rowId}
+                  aria-selected={selected}
+                  onClick={(event) => onRowClick(event, rowId)}>
                   {showRowNumberColumn && (
                     <td className='table-widget-row-number' style={ROW_NUMBER_CELL_STYLE}>
                       {index + 1}
@@ -285,8 +474,7 @@ export function TableWidget<R>({
                       className='table-widget-cell'
                       style={{
                         ...CELL_STYLE,
-                        backgroundColor: background,
-                        color: 'var(--cartouche-table-fg)',
+                        ...colours,
                         textAlign: column.align ?? 'left',
                       }}>
                       {displayCell(row, column)}
