@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. A host `cellStyle` function can give individual cells a 1px border colour, drawn over the shared row and column lines and shown on selected rows too, and a background that sits above the row colours and below the selection colours.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -110,6 +110,27 @@ export interface TableSelectionChange {
  */
 export type TableSortHandler = (columnKey: string, direction: TableSortDirection | null) => void;
 
+/**
+ * @typedef {Object} TableCellStyle
+ * @description How a host marks one cell (Ticket #328), e.g. a cell with an invalid value. Colours are any CSS colour string the host chooses.
+ * @property {string} [borderColour] - Colour of a 1px border on all four sides of the cell, drawn over the shared row and column lines and shown on selected and active rows too.
+ * @property {string} [background] - The cell's background: over the plain and alternating row colours, under the selected and active colours.
+ */
+export interface TableCellStyle {
+  borderColour?: string;
+  background?: string;
+}
+
+/**
+ * @callback TableCellStyler
+ * @description Returns a cell's style, or nothing for an unstyled cell (Ticket #328).
+ * @template R
+ * @param {R} row - The cell's row.
+ * @param {TableColumn<R>} column - The cell's column.
+ * @returns {TableCellStyle | null | undefined} The cell's style, or nothing.
+ */
+export type TableCellStyler<R> = (row: R, column: TableColumn<R>) => TableCellStyle | null | undefined;
+
 export type { TableSort, TableSortDirection, TableSortState } from './tableSort';
 
 /**
@@ -127,6 +148,7 @@ export type { TableSort, TableSortDirection, TableSortState } from './tableSort'
  * @property {Signal<TableSort>} [sort] - Host-owned sort state, read and written by TableWidget; without it TableWidget keeps the sort itself (Ticket #325).
  * @property {TableSortHandler} [sortHandler] - Host sorting: when given, TableWidget only updates the sort state and chevrons and calls it, and the host supplies `rows` in sorted order; without it TableWidget sorts `rows` in memory (Ticket #325).
  * @property {Signal<Record<string, number>>} [columnWidths] - Host-owned column widths in px by column key (Ticket #324). TableWidget reads widths from it over the column definitions' `width`, and writes resized and auto-sized widths back to it; without it, TableWidget keeps the widths itself.
+ * @property {TableCellStyler<R>} [cellStyle] - Gives individual cells a border colour and a background, e.g. to mark errors (Ticket #328).
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -140,6 +162,7 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   sort?: Signal<TableSort>;
   sortHandler?: TableSortHandler;
   columnWidths?: Signal<Record<string, number>>;
+  cellStyle?: TableCellStyler<R>;
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
@@ -200,6 +223,41 @@ const RESIZE_HANDLE_STYLE: React.CSSProperties = {
   cursor: 'col-resize',
   userSelect: 'none',
 };
+
+/**
+ * A data cell with a host border (Ticket #328): positioned so its border overlay can sit over it, and clipped with
+ * `overflow: clip` and a 1px clip margin rather than `overflow: hidden`, so the overlay's 1px reach past the cell's
+ * padding box onto the shared lines is not clipped away while the text still ends in an ellipsis.
+ */
+const BORDERED_CELL_STYLE: React.CSSProperties = {
+  position: 'relative',
+  overflow: 'clip',
+  overflowClipMargin: '1px',
+};
+
+/**
+ * @function cellBorderStyle
+ * @description Styles the overlay that draws a host cell border (Ticket #328): a real 1px border on all four sides, positioned 1px past the cell's padding box so it lies over the row line above, the column line to the left and the cell's own right and bottom lines, without changing the layout. Being positioned, it paints over every cell background, including the selected and active colours. In the first displayed row and the first column the top or left side stays inside the cell instead, since the line it would cover belongs to the sticky header row or Row Number Column (which paint over it) or is the frame's edge (which clips it).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {string} borderColour - The host's border colour.
+ * @param {boolean} firstRow - Whether the cell is in the first displayed row.
+ * @param {boolean} firstColumn - Whether the cell is in the first column.
+ * @returns {React.CSSProperties} The overlay's style.
+ */
+function cellBorderStyle(borderColour: string, firstRow: boolean, firstColumn: boolean): React.CSSProperties {
+  return {
+    position: 'absolute',
+    top: firstRow ? '0px' : '-1px',
+    right: '-1px',
+    bottom: '-1px',
+    left: firstColumn ? '0px' : '-1px',
+    border: `1px solid ${borderColour}`,
+    pointerEvents: 'none',
+  };
+}
 
 /**
  * @function tableWidth
@@ -482,7 +540,7 @@ function sortChevron(direction: TableSortDirection | null): string {
 
 /**
  * @function rowColours
- * @description Picks a data row's cell background and text colour: the Active Row colour, else the Selected Row colour, else the alternating colour for odd rows (1st, 3rd, …) when `alternatingRows` is on, else the plain row colour. Selection is painted over the row colour (Ticket #326); Row Number Column cells keep the header colours and do not use this.
+ * @description Picks a data cell's background and text colour: the Active Row colour, else the Selected Row colour, else the cell's own host background (Ticket #328), else the alternating colour for odd rows (1st, 3rd, …) when `alternatingRows` is on, else the plain row colour. Selection is painted over the row colour (Ticket #326); Row Number Column cells keep the header colours and do not use this.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -491,20 +549,23 @@ function sortChevron(direction: TableSortDirection | null): string {
  * @param {boolean} alternatingRows - Whether alternating row colours are on.
  * @param {boolean} selected - Whether the row is a Selected Row.
  * @param {boolean} active - Whether the row is the Active Row.
- * @returns {Pick<React.CSSProperties, 'backgroundColor' | 'color'>} The cells' background and text colour.
+ * @param {string} [cellBackground] - The cell's own background from the host's `cellStyle`, if any (Ticket #328).
+ * @returns {Pick<React.CSSProperties, 'backgroundColor' | 'color'>} The cell's background and text colour.
  */
 function rowColours(
   index: number,
   alternatingRows: boolean,
   selected: boolean,
-  active: boolean
+  active: boolean,
+  cellBackground?: string
 ): Pick<React.CSSProperties, 'backgroundColor' | 'color'> {
   if (active) {
     return { backgroundColor: 'var(--cartouche-table-row-active-bg)', color: 'var(--cartouche-table-row-active-fg)' };
   }
   if (selected) return { backgroundColor: 'var(--cartouche-table-row-selected-bg)', color: 'var(--cartouche-table-fg)' };
   const background =
-    alternatingRows && index % 2 === 0 ? 'var(--cartouche-table-row-alt-bg)' : 'var(--cartouche-table-bg)';
+    cellBackground ??
+    (alternatingRows && index % 2 === 0 ? 'var(--cartouche-table-row-alt-bg)' : 'var(--cartouche-table-bg)');
   return { backgroundColor: background, color: 'var(--cartouche-table-fg)' };
 }
 
@@ -653,7 +714,8 @@ export function TableWidget<R>({
   sort: hostSortSignal,
   sortHandler,
   columnWidths,
-  name = 'table-widget',
+  cellStyle,
+  name ='table-widget',
   displayName = 'Table',
   className = '',
   ...basicWidgetProps
@@ -783,7 +845,7 @@ export function TableWidget<R>({
             {displayedRows.map((row, index) => {
               const rowId = getRowId(row);
               const selected = selectedRowIds.value.has(rowId);
-              const colours = rowColours(index, alternatingRows, selected, selected && activeRowId.value === rowId);
+              const active = selected && activeRowId.value === rowId;
               return (
                 <tr
                   key={rowId}
@@ -796,18 +858,28 @@ export function TableWidget<R>({
                       {index + 1}
                     </td>
                   )}
-                  {columns.map((column) => (
-                    <td
-                      key={column.key}
-                      className='table-widget-cell'
-                      style={{
-                        ...CELL_STYLE,
-                        ...colours,
-                        textAlign: column.align ?? 'left',
-                      }}>
-                      {displayCell(row, column)}
-                    </td>
-                  ))}
+                  {columns.map((column, columnIndex) => {
+                    const { borderColour, background } = cellStyle?.(row, column) ?? {};
+                    return (
+                      <td
+                        key={column.key}
+                        className='table-widget-cell'
+                        style={{
+                          ...CELL_STYLE,
+                          ...rowColours(index, alternatingRows, selected, active, background),
+                          ...(borderColour ? BORDERED_CELL_STYLE : undefined),
+                          textAlign: column.align ?? 'left',
+                        }}>
+                        {displayCell(row, column)}
+                        {borderColour && (
+                          <span
+                            className='table-widget-cell-border'
+                            style={cellBorderStyle(borderColour, index === 0, columnIndex === 0)}
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
