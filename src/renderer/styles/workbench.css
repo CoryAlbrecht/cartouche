@@ -1234,10 +1234,13 @@
   font-size: 0.9167rem;
 }
 
+/* Holds the AttributeTableWidget's embedded TableWidget, whose frame scrolls the records (Ticket #329). */
 .table-scroll-wrapper {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .attribute-table-footer {
@@ -1250,45 +1253,8 @@
   border-top: 1px solid var(--cartouche-theme-border);
 }
 
-.gis-data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9167rem;
-}
-
-.gis-data-table th {
-  position: sticky;
-  top: 0;
-  background-color: var(--cartouche-theme-surface-subtle);
-  color: var(--cartouche-theme-fg-primary);
-  text-align: left;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--cartouche-theme-border-strong);
-  border-right: 1px solid var(--cartouche-menubar-bg);
-  font-weight: 600;
-}
-
-.gis-data-table td {
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--cartouche-theme-border-subtle);
-  border-right: 1px solid var(--cartouche-menubar-bg);
-  color: var(--cartouche-theme-fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gis-data-table tr:hover {
-  background-color: var(--cartouche-theme-surface-subtle);
-}
-
-.gis-data-table tr.selected-row {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
-}
-
-/* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget
-   and AttributeTableWidget, focused or not, instead of Chromium's grey / blue list-box selection.
+/* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget,
+   focused or not, instead of Chromium's grey / blue list-box selection.
    Chromium paints its own selection over a plain background-colour and its own text colour in a
    focused list, so the gradient and -webkit-text-fill-color are both needed. */
 .project-prop-crs-recent option:checked,
@@ -1300,9 +1266,9 @@
   -webkit-text-fill-color: var(--cartouche-theme-info);
 }
 
+/* Persistent FID values in the attribute table's # column; the colours are the table's. */
 .cell-id {
   font-family: var(--cartouche-theme-font-family-mono);
-  color: var(--cartouche-theme-primary);
 }
 
 .geometry-badge {
