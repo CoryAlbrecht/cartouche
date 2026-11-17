@@ -1,10 +1,10 @@
 /**
  * @file SnappingOptionsDialog.tsx
  * @module renderer/workbench/dialogs/SnappingOptionsDialog
- * @description Modeless Dialog window providing advanced per-layer snapping matrix configuration (layers, vertices, segments, and pixel tolerances).
+ * @description Modeless Dialog window providing advanced per-layer snapping configuration (layers, vertices, segments, and pixel tolerances) as a Control Matrix: a hand-built per-layer table of independent settings, not a TableWidget. Colours, spacing and text sizes come from the `.snapping-options-*` classes in workbench.css, bound to the `--cartouche-snapping-options-*` Component Tokens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isSnappingOptionsOpenSignal}
@@ -45,10 +45,10 @@ export interface LayerSnappingConfig {
 
 /**
  * @component SnappingOptionsDialog
- * @description Modeless Dialog rendering a per-layer snapping matrix table with discrete vertex, segment, and tolerance controls.
+ * @description Modeless Dialog rendering the per-layer snapping Control Matrix: one row per layer with independent enable, vertex, segment, and tolerance controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Snapping Options dialog window element or null if closed.
  */
@@ -122,13 +122,7 @@ export const SnappingOptionsDialog: React.FC = () => {
       defaultWidth={600}
       defaultHeight={450}
       footer={
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            width: "100%",
-            gap: "0.5rem",
-          }}>
+        <div className='snapping-options-footer'>
           <button
             type='button'
             className='btn btn-secondary dialog-btn dialog-btn-wide dialog-btn-secondary'
@@ -138,53 +132,29 @@ export const SnappingOptionsDialog: React.FC = () => {
           </button>
         </div>
       }>
-      <div
-        className='snapping-options-dialog-body'
-        style={{ padding: "1rem", backgroundColor: "#ffffff", color: "#000000" }}>
-        <p style={{ margin: "0 0 1rem 0", fontSize: "0.9rem" }}>
+      <div className='snapping-options-dialog-body'>
+        <p className='snapping-options-intro'>
           Configure layer-specific snapping tolerance and geometry targets:
         </p>
 
         {layers.length === 0 ? (
-          <div
-            className='snapping-options-empty'
-            style={{
-              padding: "1.5rem",
-              textAlign: "center",
-              color: "#64748b",
-              backgroundColor: "#f8fafc",
-              border: "1px dashed #cbd5e1",
-              borderRadius: "0.25rem",
-            }}>
-            No layers in project.
-          </div>
+          <div className='snapping-options-empty'>No layers in project.</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table
-              className='snapping-options-table'
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.875rem",
-                textAlign: "left",
-              }}>
+          <div className='snapping-options-table-scroll'>
+            <table className='snapping-options-table'>
               <thead>
-                <tr
-                  style={{
-                    borderBottom: "2px solid #e2e8f0",
-                    backgroundColor: "#f8fafc",
-                  }}>
-                  <th style={{ padding: "0.5rem 0.75rem" }}>Layer</th>
-                  <th style={{ padding: "0.5rem 0.75rem", textAlign: "center" }}>
+                <tr className='snapping-options-header-row'>
+                  <th className='snapping-options-cell'>Layer</th>
+                  <th className='snapping-options-cell snapping-options-cell--center'>
                     Snapping
                   </th>
-                  <th style={{ padding: "0.5rem 0.75rem", textAlign: "center" }}>
+                  <th className='snapping-options-cell snapping-options-cell--center'>
                     Vertices
                   </th>
-                  <th style={{ padding: "0.5rem 0.75rem", textAlign: "center" }}>
+                  <th className='snapping-options-cell snapping-options-cell--center'>
                     Segments
                   </th>
-                  <th style={{ padding: "0.5rem 0.75rem", textAlign: "right" }}>
+                  <th className='snapping-options-cell snapping-options-cell--right'>
                     Tolerance (px)
                   </th>
                 </tr>
@@ -193,21 +163,11 @@ export const SnappingOptionsDialog: React.FC = () => {
                 {layers.map((layer) => {
                   const cfg = getLayerConfig(layer.id);
                   return (
-                    <tr
-                      key={layer.id}
-                      style={{ borderBottom: "1px solid #e2e8f0" }}>
-                      <td
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          fontWeight: 500,
-                        }}>
+                    <tr key={layer.id} className='snapping-options-row'>
+                      <td className='snapping-options-cell snapping-options-cell--layer'>
                         {layer.name || layer.id}
                       </td>
-                      <td
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          textAlign: "center",
-                        }}>
+                      <td className='snapping-options-cell snapping-options-cell--center'>
                         <input
                           type='checkbox'
                           id={`snap-layer-enabled-${layer.id}`}
@@ -220,11 +180,7 @@ export const SnappingOptionsDialog: React.FC = () => {
                           }
                         />
                       </td>
-                      <td
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          textAlign: "center",
-                        }}>
+                      <td className='snapping-options-cell snapping-options-cell--center'>
                         <input
                           type='checkbox'
                           id={`snap-layer-vertices-${layer.id}`}
@@ -238,11 +194,7 @@ export const SnappingOptionsDialog: React.FC = () => {
                           }
                         />
                       </td>
-                      <td
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          textAlign: "center",
-                        }}>
+                      <td className='snapping-options-cell snapping-options-cell--center'>
                         <input
                           type='checkbox'
                           id={`snap-layer-segments-${layer.id}`}
@@ -256,11 +208,7 @@ export const SnappingOptionsDialog: React.FC = () => {
                           }
                         />
                       </td>
-                      <td
-                        style={{
-                          padding: "0.5rem 0.75rem",
-                          textAlign: "right",
-                        }}>
+                      <td className='snapping-options-cell snapping-options-cell--right'>
                         <input
                           type='number'
                           id={`snap-layer-tolerance-${layer.id}`}

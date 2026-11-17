@@ -1,7 +1,7 @@
 /**
  * @file cssRules.ts
  * @module tests/renderer/styles/cssRules
- * @description Shared CSS-rule helpers for the stylesheet guardrail tests: loads theme-default.css and workbench.css, splits a flat stylesheet into rules, splits selector lists, and reads declarations and custom property values; and works out the value an element gets for a property from its inline style and the class-based workbench.css rules, so component tests can check the colours of class-styled elements.
+ * @description Shared CSS-rule helpers for the stylesheet guardrail tests: loads theme-default.css and workbench.css, splits a flat stylesheet into rules, splits selector lists, and reads declarations and custom property values; and works out the value an element gets for a property from its inline style and the class-based workbench.css rules, so component tests can check the colours of class-styled elements; and resolves token-bound declarations back to the literal colours they render.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-17
@@ -104,6 +104,35 @@ export function rulesFor(selector: string): CssRule[] {
 export function tokenValue(token: string): string | undefined {
   const match = THEME_CSS.match(new RegExp(`${token}\\s*:\\s*([^;]+);`));
   return match ? match[1].trim() : undefined;
+}
+
+/**
+ * @function resolveThemeTokens
+ * @description Resolves every `var(--token)` in a CSS value through theme-default.css, repeatedly, until only literal values remain, so a test can compare a token-bound declaration with the colour it renders.
+ * @param {string} value - CSS value.
+ * @returns {string} The value with all theme tokens substituted; an undefined token becomes `<undefined --name>`.
+ */
+export function resolveThemeTokens(value: string): string {
+  let out = value;
+  for (let i = 0; i < 10 && /var\(--/.test(out); i++) {
+    out = out.replace(/var\((--[a-z0-9-]+)\)/g, (_m, token: string) => tokenValue(token) ?? `<undefined ${token}>`);
+  }
+  return out;
+}
+
+/**
+ * @function classDeclaration
+ * @description Reads one declaration from the workbench.css rules whose selector list holds the single class selector.
+ * @param {string} cls - Class name without the dot.
+ * @param {string} property - Kebab-case property.
+ * @returns {string | undefined} The first declared value, or undefined.
+ */
+export function classDeclaration(cls: string, property: string): string | undefined {
+  for (const rule of rulesFor(`.${cls}`)) {
+    const value = declaration(rule.body, property);
+    if (value !== undefined) return value;
+  }
+  return undefined;
 }
 
 /**

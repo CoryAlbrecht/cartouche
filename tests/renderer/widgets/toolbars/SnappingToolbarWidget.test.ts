@@ -1,10 +1,10 @@
 /**
  * @file SnappingToolbarWidget.test.ts
  * @module tests/renderer/widgets/toolbars/SnappingToolbarWidget.test
- * @description Unit and component tests for SnappingToolbarWidget verifying master toggle cascade, split-button scope switching, discrete vertex/midpoint/segment toggles, distance spinner mutations, and non-modal SnappingOptionsDialog lifecycle.
+ * @description Unit and component tests for SnappingToolbarWidget verifying master toggle cascade, split-button scope switching, discrete vertex/midpoint/segment toggles, distance spinner mutations, non-modal SnappingOptionsDialog lifecycle, and (Ticket #336) the dialog's Control Matrix taking its colours and text sizes from workbench.css classes bound to snapping-options Component Tokens instead of inline styles.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link SnappingToolbarWidget}
  * @see {@link SnappingOptionsDialog}
@@ -14,7 +14,10 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createRendererJiti } from '../../rendererJiti';
+import { classDeclaration, resolveThemeTokens } from '../../styles/cssRules';
 import {
   mdiMagnet,
   mdiLayersOutline,
@@ -480,6 +483,119 @@ describe('SnappingOptionsDialog Modeless Dialog Window Lifecycle and Markup', ()
         (globalThis as any).window = originalWindow;
       }
     }
+  });
+});
+
+/**
+ * @function renderSnappingOptions
+ * @description Renders the open SnappingOptionsDialog to static markup with a minimal document, window and inline portal, restoring the globals afterwards.
+ * @param {LayerDescriptor[]} layers - Project layers to show in the Control Matrix.
+ * @returns {string} Rendered markup.
+ */
+function renderSnappingOptions(layers: LayerDescriptor[]): string {
+  const React = jiti('react');
+  const ReactDOM = jiti('react-dom');
+  const { renderToStaticMarkup } = jiti('react-dom/server');
+  const originalDocument = globalThis.document;
+  const originalWindow = (globalThis as any).window;
+  const originalCreatePortal = ReactDOM.createPortal;
+  try {
+    (globalThis as any).document = { createElement: () => ({ style: {} }) };
+    (globalThis as any).window = { electronAPI: { getPreferenceValue: async () => ({}) } };
+    ReactDOM.createPortal = (children: unknown) => children;
+    isSnappingOptionsOpenSignal.value = true;
+    projectLayersSignal.value = layers;
+    layersSignal.value = [];
+    return renderToStaticMarkup(React.createElement(SnappingOptionsDialog));
+  } finally {
+    ReactDOM.createPortal = originalCreatePortal;
+    if (originalDocument === undefined) delete (globalThis as any).document;
+    else globalThis.document = originalDocument;
+    if (originalWindow === undefined) delete (globalThis as any).window;
+    else (globalThis as any).window = originalWindow;
+  }
+}
+
+describe('SnappingOptionsDialog stylesheet classes (Ticket #336)', () => {
+  const testLayers = [
+    { id: 'layer-roads', name: 'Road Network', geometryKind: 'LineString', visible: true } as LayerDescriptor,
+  ];
+
+  it('sets no inline colour, hex literal or theme token anywhere in its source', () => {
+    const src = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/renderer/workbench/dialogs/SnappingOptionsDialog.tsx'),
+      'utf8'
+    );
+    assert.doesNotMatch(src, /#[0-9a-f]{3,8}\b/i, 'No hex colour literals');
+    assert.doesNotMatch(src, /\b(?:rgba?|hsla?)\(/, 'No rgb()/hsl() colours');
+    assert.doesNotMatch(src, /var\(--cartouche-(?!ui-)/, 'No inline theme tokens');
+    assert.doesNotMatch(src, /\bstyle=\{/, 'No inline styles at all');
+    assert.doesNotMatch(
+      src,
+      /\b(?:color|background(?:Color)?|border(?:Top|Right|Bottom|Left)?(?:Color)?|boxShadow|outline(?:Color)?|fill|stroke)\s*:/,
+      'No inline colour properties'
+    );
+  });
+
+  it('renders the Control Matrix with class-styled parts and no inline style on them', () => {
+    const html = renderSnappingOptions(testLayers);
+    const body = html.slice(html.indexOf('class="snapping-options-dialog-body"'));
+    assert.ok(body.length > 0, 'Dialog body class');
+    for (const cls of [
+      'snapping-options-intro',
+      'snapping-options-table-scroll',
+      'snapping-options-table',
+      'snapping-options-header-row',
+      'snapping-options-row',
+      'snapping-options-cell snapping-options-cell--layer',
+      'snapping-options-cell snapping-options-cell--center',
+      'snapping-options-cell snapping-options-cell--right',
+    ]) {
+      assert.ok(body.includes(`class="${cls}"`), `Expected class="${cls}"`);
+    }
+    assert.ok(html.includes('class="snapping-options-footer"'), 'Footer class');
+    const matrix = body.slice(0, body.indexOf('</table>'));
+    assert.doesNotMatch(matrix, /style="/, 'No inline styles from the dialog body through the Control Matrix');
+    assert.match(html, /<div class="snapping-options-footer"><button/, 'Footer wrapper has no inline style');
+  });
+
+  it('keeps the checkboxes, tolerance input and their states per layer row', () => {
+    const html = renderSnappingOptions(testLayers);
+    const row = html.slice(html.indexOf('<tr class="snapping-options-row"'), html.indexOf('</tr>', html.indexOf('<tr class="snapping-options-row"')));
+    assert.match(row, /<input type="checkbox" id="snap-layer-enabled-layer-roads"[^>]*checked=""/);
+    assert.match(row, /<input type="checkbox" id="snap-layer-vertices-layer-roads"[^>]*checked=""/);
+    assert.match(row, /<input type="checkbox" id="snap-layer-segments-layer-roads"/);
+    assert.doesNotMatch(row, /id="snap-layer-segments-layer-roads"[^>]*checked=""/);
+    assert.match(row, /id="snap-layer-tolerance-layer-roads"[^>]*class="snap-layer-tolerance-input"[^>]*value="10"/);
+  });
+
+  it('styles the empty-state notice through a class with no inline style', () => {
+    const html = renderSnappingOptions([]);
+    assert.match(html, /<div class="snapping-options-empty">No layers in project\.<\/div>/);
+  });
+
+  it('paints the former colours through snapping-options Component Tokens', () => {
+    const expected: Array<[string, string, string]> = [
+      ['snapping-options-dialog-body', 'background-color', '#ffffff'],
+      ['snapping-options-dialog-body', 'color', '#000000'],
+      ['snapping-options-empty', 'color', '#64748b'],
+      ['snapping-options-empty', 'background-color', '#f8fafc'],
+      ['snapping-options-empty', 'border', '0.0625rem dashed #cbd5e1'],
+      ['snapping-options-header-row', 'background-color', '#f8fafc'],
+      ['snapping-options-header-row', 'border-bottom', '0.125rem solid #e2e8f0'],
+      ['snapping-options-row', 'border-bottom', '0.0625rem solid #e2e8f0'],
+    ];
+    for (const [cls, property, colour] of expected) {
+      const value = classDeclaration(cls, property);
+      assert.ok(value, `.${cls} declares ${property}`);
+      assert.match(value, /var\(--cartouche-snapping-options-[a-z-]+\)/, `.${cls} ${property} reads a snapping-options token`);
+      assert.equal(resolveThemeTokens(value), colour, `.${cls} ${property} renders as before`);
+    }
+  });
+
+  it('sizes its text in rem', () => {
+    assert.equal(classDeclaration('snapping-options-intro', 'font-size'), '0.9rem');
+    assert.equal(classDeclaration('snapping-options-table', 'font-size'), '0.875rem');
   });
 });
 

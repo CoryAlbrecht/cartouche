@@ -3124,6 +3124,77 @@ select.styling-editor-field {
   background-color: var(--cartouche-control-disabled-bg);
 }
 
+/* === Snapping Options Dialog (Ticket #336) ===
+   A Control Matrix: a hand-built per-layer table of independent settings,
+   not a TableWidget. */
+
+/* Footer: the Close button, right-aligned. */
+.snapping-options-footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.snapping-options-dialog-body {
+  padding: 1rem;
+  background-color: var(--cartouche-snapping-options-bg);
+  color: var(--cartouche-snapping-options-fg);
+}
+
+.snapping-options-intro {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+/* Notice shown when the project has no layers. */
+.snapping-options-empty {
+  padding: 1.5rem;
+  border: 0.0625rem dashed var(--cartouche-snapping-options-empty-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-snapping-options-empty-bg);
+  color: var(--cartouche-snapping-options-empty-fg);
+  text-align: center;
+}
+
+.snapping-options-table-scroll {
+  overflow-x: auto;
+}
+
+.snapping-options-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.snapping-options-header-row {
+  border-bottom: 0.125rem solid var(--cartouche-snapping-options-header-line);
+  background-color: var(--cartouche-snapping-options-header-bg);
+}
+
+.snapping-options-row {
+  border-bottom: 0.0625rem solid var(--cartouche-snapping-options-row-line);
+}
+
+/* Header and body cells; modifiers align the checkbox and tolerance columns
+   and weight the layer name. */
+.snapping-options-cell {
+  padding: 0.5rem 0.75rem;
+}
+
+.snapping-options-cell--center {
+  text-align: center;
+}
+
+.snapping-options-cell--right {
+  text-align: right;
+}
+
+.snapping-options-cell--layer {
+  font-weight: 500;
+}
+
 /* Snapping Options per-layer tolerance input. */
 .snap-layer-tolerance-input {
   width: 4rem;

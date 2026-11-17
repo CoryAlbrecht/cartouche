@@ -294,6 +294,17 @@
   --cartouche-layer-properties-footer-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-layer-properties-footer-border: var(--cartouche-theme-border);
 
+  /* Snapping Options Dialog: the dialog body, the empty-project notice, and the
+     per-layer Control Matrix header and row lines */
+  --cartouche-snapping-options-bg: var(--cartouche-theme-bg);
+  --cartouche-snapping-options-fg: var(--cartouche-theme-fg);
+  --cartouche-snapping-options-empty-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-snapping-options-empty-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-snapping-options-empty-border: var(--cartouche-theme-border-strong);
+  --cartouche-snapping-options-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-snapping-options-header-line: var(--cartouche-theme-border);
+  --cartouche-snapping-options-row-line: var(--cartouche-theme-border);
+
   /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
   --cartouche-input-fg: var(--cartouche-theme-fg);
