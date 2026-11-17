@@ -617,7 +617,13 @@ export function quoteSqlIdentifier(name: string): string {
  * Every field must exactly (case-sensitively) match a schema field or the layer's stored ID column, appear only once, and carry an explicit `ASC`/`DESC` direction;
  * `Virtual Field`s are not physical columns and are rejected. Validation completes before any SQL is built. For stable `start`/`max` pagination a hidden ascending
  * feature ID tiebreaker is appended: the stored ID column (quoted) when the layer reports one, since GeoPackage's SQLite dialect does not accept a bare `FID`,
- * otherwise OGR SQL `FID`. The tiebreaker is omitted when a Sort Key already names that column.
+ * otherwise OGR SQL `FID`. The tiebreaker is omitted only when a Sort Key names the stored ID column; a Sort Key on an attribute field that happens to be named
+ * `FID` never suppresses it.
+ *
+ * Limitation: on a layer with no stored ID column (e.g. Shapefile, Memory) and an attribute field named `FID`, OGR SQL resolves both the quoted `"FID"` and the
+ * bare `FID` tiebreaker to that attribute field, so the tiebreaker cannot order equal rows by feature ID (verified with GDAL on Shapefile and Memory layers:
+ * `ORDER BY "FID" ASC, FID ASC` and `ORDER BY "FID" ASC, FID DESC` return the same order). Pagination stays stable there because OGR SQL's sort is stable:
+ * rows that tie on every key keep their natural (ascending feature ID) order.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
  * @updated 2026-11-17
@@ -663,9 +669,9 @@ export function buildOrderBySql(
   }
 
   const terms = orderBy.map(([field, direction]) => `${quoteSqlIdentifier(field)} ${direction}`);
-  const tiebreakerColumn = fidColumn || "FID";
-  if (!seen.has(tiebreakerColumn)) {
-    terms.push(`${fidColumn ? quoteSqlIdentifier(fidColumn) : "FID"} ASC`);
+  const tiebreaker = fidColumn ? quoteSqlIdentifier(fidColumn) : "FID";
+  if (!fidColumn || !seen.has(fidColumn)) {
+    terms.push(`${tiebreaker} ASC`);
   }
   return `SELECT * FROM ${quoteSqlIdentifier(layerName)} ORDER BY ${terms.join(", ")}`;
 }
