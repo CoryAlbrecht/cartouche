@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.test.ts
  * @module tests/renderer/widgets/TableWidget.test
- * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; column resize handles, dragging and its minimum width, double-click auto-size, and host-owned and internal column widths (Ticket #324).
+ * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -421,7 +421,8 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
     assert.ok(populationFloor > nameFloor, 'the longer header Population keeps a wider minimum than Name');
   });
 
-  // Headless, text measures 8px per character, and a cell adds 17px (0.5rem padding each side plus the 1px column line).
+  // Headless, text measures 8px per character, a cell adds 17px (0.5rem padding each side plus the 1px column line),
+  // and a sortable header adds 20px for its sort chevron (1rem icon plus 0.25rem margin).
   it('double-clicking a resize handle sizes the column to the widest of its header text and its displayed values', async () => {
     await render({
       columns: [
@@ -439,9 +440,17 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
       [
         `${8 * 'Montréal'.length + 17}px`,
         `${8 * '1,762,949 people'.length + 17}px`,
-        `${8 * 'Feature identifier'.length + 17}px`
+        `${8 * 'Feature identifier'.length + 20 + 17}px`
       ]
     );
+  });
+
+  it('auto-sizes a column that cannot be sorted to its header text alone, with no room for a sort chevron', async () => {
+    await render({ columns: [{ key: 'fid', header: 'Feature identifier', width: 60, sortable: false }] });
+    await act(async () => {
+      resizeHandleOf(dataHeaders()[0]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    assert.equal(dataHeaders()[0].style.width, `${8 * 'Feature identifier'.length + 17}px`);
   });
 
   it('auto-sizes no narrower than the column minWidth', async () => {
@@ -450,6 +459,19 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
       resizeHandleOf(dataHeaders()[0]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
     });
     assert.equal(dataHeaders()[0].style.width, '150px');
+  });
+
+  it("never sorts when a sortable column's resize handle is dragged, clicked or double-clicked", async () => {
+    await render({ columns: SIZED_COLUMNS });
+    const handle = resizeHandleOf(dataHeaders()[0]);
+    await drag(handle, 200, 230);
+    await act(async () => {
+      handle.dispatchEvent({ type: 'click', button: 0, bubbles: true });
+      handle.dispatchEvent({ type: 'click', button: 0, bubbles: true, detail: 2 });
+      handle.dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
+    });
+    assert.equal(dataHeaders()[0].getAttribute('aria-sort'), 'none');
+    assert.deepEqual(bodyRows().map((row) => row.getAttribute('data-row-id')), ['10', '20', '30']);
   });
 
   it('without a host widths signal, keeps resized widths itself across re-renders', async () => {
@@ -481,9 +503,9 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
     await act(async () => {
       resizeHandleOf(dataHeaders()[1]).dispatchEvent({ type: 'dblclick', button: 0, bubbles: true });
     });
-    // The header Population is wider than the raw values (e.g. 1762949).
-    assert.deepEqual(columnWidths.value, { population: 8 * 'Population'.length + 17, name: 150 });
-    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['150px', '97px']);
+    // The header Population and its sort chevron are wider than the raw values (e.g. 1762949).
+    assert.deepEqual(columnWidths.value, { population: 8 * 'Population'.length + 20 + 17, name: 150 });
+    assert.deepEqual(dataHeaders().map((c) => c.style.width), ['150px', '117px']);
   });
 });
 

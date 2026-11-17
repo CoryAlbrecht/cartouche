@@ -1,19 +1,23 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
+ * @see {@link sortTableRows}
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { Signal } from '@preact/signals-react';
+import { useSignal, type Signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from '@mdi/js';
+import Icon from '@renderer/components/common/Icon';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
+import { nextTableSort, sortTableRows, type TableSort, type TableSortDirection } from './tableSort';
 
 /**
  * @typedef {string | number} TableRowId
@@ -59,7 +63,7 @@ export interface TableCellEditorProps<R> {
  * @property {boolean} [readOnly=false] - Whether every cell of the column is a Read-Only Cell (Ticket #327).
  * @property {React.ComponentType<TableCellEditorProps<R>>} [editor] - Cell editor component (Ticket #327).
  * @property {number} [width] - Initial width in px; the column shares the remaining width when absent.
- * @property {number} [minWidth] - Minimum width in px the column can be resized or auto-sized to (Ticket #324); defaults to the width its header text needs.
+ * @property {number} [minWidth] - Minimum width in px the column can be resized or auto-sized to (Ticket #324); defaults to the width its header text and any sort chevron need.
  */
 export interface TableColumn<R> {
   key: string;
@@ -76,6 +80,17 @@ export interface TableColumn<R> {
 }
 
 /**
+ * @callback TableSortHandler
+ * @description Called when a header click changes the sort, for a host that sorts the rows itself (e.g. with a query's `ORDER BY`) (Ticket #325).
+ * @param {string} columnKey - Key of the clicked column.
+ * @param {TableSortDirection | null} direction - The column's new sort direction, or null when the table is no longer sorted.
+ * @returns {void}
+ */
+export type TableSortHandler = (columnKey: string, direction: TableSortDirection | null) => void;
+
+export type { TableSort, TableSortDirection, TableSortState } from './tableSort';
+
+/**
  * @typedef {Object} TableWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
  * @template R
@@ -84,6 +99,8 @@ export interface TableColumn<R> {
  * @property {readonly TableColumn<R>[]} columns - Column definitions, in display order.
  * @property {boolean} [alternatingRows=false] - Whether odd rows (the 1st, 3rd, …) use the alternate row colour.
  * @property {boolean} [showRowNumberColumn=true] - Whether to show the Row Number Column: headed `#`, coloured like the header row, numbering rows 1, 2, 3… by displayed position.
+ * @property {Signal<TableSort>} [sort] - Host-owned sort state, read and written by TableWidget; without it TableWidget keeps the sort itself (Ticket #325).
+ * @property {TableSortHandler} [sortHandler] - Host sorting: when given, TableWidget only updates the sort state and chevrons and calls it, and the host supplies `rows` in sorted order; without it TableWidget sorts `rows` in memory (Ticket #325).
  * @property {Signal<Record<string, number>>} [columnWidths] - Host-owned column widths in px by column key (Ticket #324). TableWidget reads widths from it over the column definitions' `width`, and writes resized and auto-sized widths back to it; without it, TableWidget keeps the widths itself.
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
@@ -92,6 +109,8 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   columns: readonly TableColumn<R>[];
   alternatingRows?: boolean;
   showRowNumberColumn?: boolean;
+  sort?: Signal<TableSort>;
+  sortHandler?: TableSortHandler;
   columnWidths?: Signal<Record<string, number>>;
 }
 
@@ -211,6 +230,9 @@ const FALLBACK_CHARACTER_WIDTH = 8;
 /** Cell padding plus column line in px assumed where a cell's computed style is unavailable: 0.5rem each side at 16px, plus 1px. */
 const FALLBACK_CELL_EXTRAS = 17;
 
+/** Sort chevron width in px assumed where a cell's computed style is unavailable: the 1rem icon plus its 0.25rem margin at 16px. */
+const FALLBACK_SORT_CHEVRON_WIDTH = 20;
+
 /** Offscreen canvas reused for text measurement. */
 let measuringCanvas: HTMLCanvasElement | null = null;
 
@@ -245,11 +267,13 @@ function measureText(text: string, font: string): number {
  * @property {string} headerFont - CSS font of the header text.
  * @property {string} bodyFont - CSS font of the column's cell text: the header font at normal weight.
  * @property {number} extras - Horizontal padding plus column line, in px, around a cell's text.
+ * @property {number} sortChevron - Width in px of a sortable header's sort chevron: the 1rem icon plus its 0.25rem margin.
  */
 interface CellMetrics {
   headerFont: string;
   bodyFont: string;
   extras: number;
+  sortChevron: number;
 }
 
 /**
@@ -265,19 +289,42 @@ interface CellMetrics {
 function cellMetrics(header: HTMLElement | null): CellMetrics {
   const style = header && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(header) : null;
   if (!style?.fontSize) {
-    return { headerFont: 'bold 1rem sans-serif', bodyFont: '1rem sans-serif', extras: FALLBACK_CELL_EXTRAS };
+    return {
+      headerFont: 'bold 1rem sans-serif',
+      bodyFont: '1rem sans-serif',
+      extras: FALLBACK_CELL_EXTRAS,
+      sortChevron: FALLBACK_SORT_CHEVRON_WIDTH,
+    };
   }
   const px = (value: string): number => parseFloat(value) || 0;
   return {
     headerFont: `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
     bodyFont: `${style.fontStyle} normal ${style.fontSize} ${style.fontFamily}`,
     extras: px(style.paddingLeft) + px(style.paddingRight) + px(style.borderRightWidth),
+    sortChevron: 1.25 * px(style.fontSize),
   };
 }
 
 /**
+ * @function headerWidth
+ * @description The width in px a column's header content needs: its header text, plus the sort chevron when the column is sortable (Ticket #325), plus cell padding.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @template R
+ * @param {TableColumn<R>} column - The column.
+ * @param {CellMetrics} metrics - The column header's fonts and padding.
+ * @returns {number} Header width in px.
+ */
+function headerWidth<R>(column: TableColumn<R>, metrics: CellMetrics): number {
+  const chevron = column.sortable === false ? 0 : metrics.sortChevron;
+  return measureText(column.header, metrics.headerFont) + chevron + metrics.extras;
+}
+
+/**
  * @function minWidthOf
- * @description A column's minimum width in px: the column definition's `minWidth`, or else the width its header text needs.
+ * @description A column's minimum width in px: the column definition's `minWidth`, or else the width its header (text and any sort chevron) needs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -288,7 +335,7 @@ function cellMetrics(header: HTMLElement | null): CellMetrics {
  * @returns {number} Minimum width in px.
  */
 function minWidthOf<R>(column: TableColumn<R>, metrics: CellMetrics): number {
-  return column.minWidth ?? Math.ceil(measureText(column.header, metrics.headerFont) + metrics.extras);
+  return column.minWidth ?? Math.ceil(headerWidth(column, metrics));
 }
 
 /**
@@ -314,7 +361,7 @@ function nodeText(node: React.ReactNode): string {
  * @template R
  * @property {(column: TableColumn<R>) => number | undefined} widthOf - A column's current width in px; undefined while it has none and shares the remaining width.
  * @property {(event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void} startResize - Starts dragging a column's resize handle.
- * @property {(event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void} autoSize - Sizes a column to the widest of its header text and its displayed values.
+ * @property {(event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void} autoSize - Sizes a column to the widest of its header (text and any sort chevron) and its displayed values.
  */
 interface ColumnResizing<R> {
   widthOf: (column: TableColumn<R>) => number | undefined;
@@ -379,10 +426,10 @@ function useColumnResizing<R>(
     event.stopPropagation();
     const metrics = cellMetrics(event.currentTarget.parentNode as HTMLElement | null);
     const widest = rows.reduce(
-      (max, row) => Math.max(max, measureText(nodeText(displayCell(row, column)), metrics.bodyFont)),
-      measureText(column.header, metrics.headerFont)
+      (max, row) => Math.max(max, measureText(nodeText(displayCell(row, column)), metrics.bodyFont) + metrics.extras),
+      headerWidth(column, metrics)
     );
-    const width = Math.max(column.minWidth ?? 0, Math.ceil(widest + metrics.extras));
+    const width = Math.max(column.minWidth ?? 0, Math.ceil(widest));
     setWidth(column.key, width);
   };
 
@@ -390,8 +437,24 @@ function useColumnResizing<R>(
 }
 
 /**
+ * @function sortChevron
+ * @description Picks a sortable column header's chevron: a dual chevron when the column is not sorted, an up chevron when sorted ascending, a down chevron when sorted descending (Ticket #325).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableSortDirection | null} direction - The column's sort direction, or null when it is not the sorted column.
+ * @returns {string} MDI path data of the chevron.
+ */
+function sortChevron(direction: TableSortDirection | null): string {
+  if (direction === 'ascending') return mdiChevronUp;
+  if (direction === 'descending') return mdiChevronDown;
+  return mdiUnfoldMoreHorizontal;
+}
+
+/**
  * @component TableWidget
- * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table.
+ * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -406,6 +469,8 @@ export function TableWidget<R>({
   columns,
   alternatingRows = false,
   showRowNumberColumn = true,
+  sort: hostSortSignal,
+  sortHandler,
   columnWidths,
   name = 'table-widget',
   displayName = 'Table',
@@ -414,6 +479,41 @@ export function TableWidget<R>({
 }: TableWidgetProps<R>): React.ReactElement {
   useSignals();
   const { widthOf, startResize, autoSize } = useColumnResizing(rows, columnWidths);
+
+  /**
+   * @signal internalSortSignal
+   * @description The sort state TableWidget keeps itself when the host passes no `sort` signal (Ticket #325).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @type {Signal<TableSort>}
+   */
+  const internalSortSignal = useSignal<TableSort>(null);
+  const sortSignal: Signal<TableSort> = hostSortSignal ?? internalSortSignal;
+  const sort = sortSignal.value;
+  const sortColumn = sort ? columns.find((column) => column.key === sort.columnKey) : undefined;
+  const displayedRows =
+    !sortHandler && sort && sortColumn
+      ? sortTableRows(rows, (row) => cellValue(row, sortColumn), sort.direction, sortColumn.compare)
+      : rows;
+
+  /**
+   * @function handleHeaderClick
+   * @description Advances the sort when a sortable column's header is clicked, then hands the new direction to the host's `sortHandler`, if any (Ticket #325).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {TableColumn<R>} column - The clicked column.
+   * @returns {void}
+   */
+  const handleHeaderClick = (column: TableColumn<R>): void => {
+    if (column.sortable === false) return;
+    const next = nextTableSort(sortSignal.peek(), column.key);
+    sortSignal.value = next;
+    sortHandler?.(column.key, next?.direction ?? null);
+  };
 
   return (
     <BasicWidget
@@ -454,25 +554,44 @@ export function TableWidget<R>({
                   #
                 </th>
               )}
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className='table-widget-header-cell'
-                  style={{ ...HEADER_CELL_STYLE, width: widthOf(column), textAlign: column.align ?? 'left' }}>
-                  {column.header}
-                  <div
-                    className='table-widget-resize-handle'
-                    style={RESIZE_HANDLE_STYLE}
-                    onMouseDown={(event) => startResize(event, column)}
-                    onDoubleClick={(event) => autoSize(event, column)}
-                    onClick={(event) => event.stopPropagation()}
-                  />
-                </th>
-              ))}
+              {columns.map((column) => {
+                const sortable = column.sortable !== false;
+                const direction = sort?.columnKey === column.key ? sort.direction : null;
+                return (
+                  <th
+                    key={column.key}
+                    className='table-widget-header-cell'
+                    aria-sort={sortable ? (direction ?? 'none') : undefined}
+                    onClick={() => handleHeaderClick(column)}
+                    style={{
+                      ...HEADER_CELL_STYLE,
+                      width: widthOf(column),
+                      textAlign: column.align ?? 'left',
+                      cursor: sortable ? 'pointer' : undefined,
+                    }}>
+                    {column.header}
+                    {sortable && (
+                      <Icon
+                        className='table-widget-sort-icon'
+                        path={sortChevron(direction)}
+                        size='1rem'
+                        style={{ verticalAlign: 'middle', marginLeft: '0.25rem' }}
+                      />
+                    )}
+                    <div
+                      className='table-widget-resize-handle'
+                      style={RESIZE_HANDLE_STYLE}
+                      onMouseDown={(event) => startResize(event, column)}
+                      onDoubleClick={(event) => autoSize(event, column)}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => {
+            {displayedRows.map((row, index) => {
               const rowId = getRowId(row);
               const background =
                 alternatingRows && index % 2 === 0
