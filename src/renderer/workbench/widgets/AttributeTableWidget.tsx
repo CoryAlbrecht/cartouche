@@ -1,10 +1,10 @@
 /**
  * @file AttributeTableWidget.tsx
  * @module renderer/workbench/widgets/AttributeTableWidget
- * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars. The records are shown through an embedded TableWidget (Spec #322 / Ticket #329) whose column definitions carry the attribute table's type-specific display and editors.
+ * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars. The records are shown through an embedded TableWidget (Spec #322 / Ticket #329) whose column definitions carry the attribute table's type-specific display and editors. Clicking a sortable column header sorts all of the layer's features through the Geospatial Worker's `orderBy` Sort Keys (Ticket #330).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TableWidget}
@@ -29,6 +29,7 @@ import {
   isProjectDirtySignal,
   viewportExtentSignal,
   openDockPanelsSignal,
+  addConsoleLog,
 } from "@renderer/state/gisSignals";
 import { prefsAttributeTableMaxRows } from "@renderer/state/preferencesSignals";
 import { activeLocaleSignal } from "@renderer/state/i18nSignals";
@@ -39,6 +40,7 @@ import {
   type GisFeature,
   type LayerFieldInfo,
   type InferredFieldType,
+  type SortKey,
 } from "@shared/types";
 import type { IDockviewPanelProps } from "dockview-react";
 import type { DockviewPanelApi } from "dockview-core";
@@ -65,7 +67,10 @@ import {
   type TableEditMove,
   type TableRowId,
   type TableSelectionChange,
+  type TableSort,
+  type TableSortDirection,
 } from "./TableWidget";
+import { sortTableRows } from "./tableSort";
 
 export { parseNumericInput };
 
@@ -897,12 +902,53 @@ function sameIds(a: ReadonlySet<TableRowId>, b: ReadonlySet<TableRowId>): boolea
   return true;
 }
 
+/** Column key of the `#` column when it shows the Persistent FID. */
+const ID_COLUMN_KEY = "__id__";
+
+/** Column key of the `#` column when it shows the Sequential Row Index. */
+const COUNTER_COLUMN_KEY = "__counter__";
+
+/**
+ * @function sortFieldForColumn
+ * @description The layer field a sorted attribute table column orders by: the layer's stored ID column name for the `#` column showing the Persistent FID, nothing for the `#` column showing the Sequential Row Index (bare `FID` is not a valid Sort Key field), and the column's own field otherwise.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {string} columnKey - Key of the sorted column.
+ * @param {string} fidColumnName - The layer's stored ID column name, empty when it has none.
+ * @returns {string | null} The field name, or null when the column cannot be sorted by a field.
+ */
+function sortFieldForColumn(columnKey: string, fidColumnName: string): string | null {
+  if (columnKey === ID_COLUMN_KEY) return fidColumnName || null;
+  if (columnKey === COUNTER_COLUMN_KEY) return null;
+  return columnKey;
+}
+
+/**
+ * @function orderByForSort
+ * @description Turns the embedded table's single-column sort into the Sort Key list of the Geospatial Worker's chunk query (Ticket #330): one `[field, 'ASC' | 'DESC']` key, or an empty list when the table is unsorted.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {TableSort} sort - The embedded table's sort.
+ * @param {string} fidColumnName - The layer's stored ID column name, empty when it has none.
+ * @returns {SortKey[]} The Sort Keys; empty when unsorted.
+ */
+function orderByForSort(sort: TableSort, fidColumnName: string): SortKey[] {
+  if (!sort) return [];
+  const field = sortFieldForColumn(sort.columnKey, fidColumnName);
+  if (!field) return [];
+  return [[field, sort.direction === "ascending" ? "ASC" : "DESC"]];
+}
+
 /**
  * @component AttributeTableWidget
- * @description Renders the interactive attribute table of the Active Layer: embedded selection and digitizing toolbars, a filter bar, pagination and chunk loading from the Geospatial Worker, and an embedded TableWidget (header bar and Row Number Column hidden) showing the records. Its own `#` column shows the Persistent FID where the layer has one, otherwise the Sequential Row Index across pages. It keeps the feature selection across chunks in `selectedFeatureIdsSignal`, shared with the map, and shows the part of it on the current page. Cells are read-only unless the layer is in Layer Edit Mode; edits are staged to the Main process and mark the layer dirty and the feature edited. Column widths are kept per layer.
+ * @description Renders the interactive attribute table of the Active Layer: embedded selection and digitizing toolbars, a filter bar, pagination and chunk loading from the Geospatial Worker, and an embedded TableWidget (header bar and Row Number Column hidden) showing the records. Its own `#` column shows the Persistent FID where the layer has one, otherwise the Sequential Row Index across pages. It keeps the feature selection across chunks in `selectedFeatureIdsSignal`, shared with the map, and shows the part of it on the current page. Cells are read-only unless the layer is in Layer Edit Mode; edits are staged to the Main process and mark the layer dirty and the feature edited. Column widths are kept per layer. Clicking a physical attribute column's header (or the `#` column's, when the layer has a stored ID column) sorts every feature of the layer through the chunk query's `orderBy` Sort Keys and reloads from the first chunk; without `queryExtent` the features are sorted in memory before the page is sliced. The sort resets when the Active Layer changes, and is cleared and logged if the worker rejects its Sort Key.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {AttributeTableWidgetProps} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTableWidget element.
@@ -947,6 +993,25 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
    */
   const activeRowId = useSignal<TableRowId | null>(null);
 
+  /**
+   * @signal tableSort
+   * @description The embedded TableWidget's sort (Ticket #330). A new, unsorted signal is made whenever the Active Layer changes, so the sort resets with the layer and a new layer is never queried with the previous layer's Sort Key.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @type {Signal<TableSort>}
+   */
+  const tableSort = useMemo(() => signal<TableSort>(null), [activeLayer?.id]);
+  const sort = tableSort.value;
+
+  const hasGuaranteedFid = Boolean(
+    activeLayer?.fidColumn && activeLayer.fidColumn.trim() !== ""
+  );
+  const fidColumnName = hasGuaranteedFid ? activeLayer!.fidColumn!.trim() : "";
+  const orderBy = orderByForSort(sort, fidColumnName);
+  const orderByKey = JSON.stringify(orderBy);
+
   // Reset pagination and the Active Row when active layer changes
   const prevLayerIdRef = useRef<string | null>(activeLayer?.id ?? null);
   useEffect(() => {
@@ -987,6 +1052,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
     let cancelled = false;
     const targetLayerId = activeLayer.id;
+    const querySort = tableSort;
     const fallbackKind = (activeLayer.geometryKind || "Unknown") as GeometryKind;
 
     Promise.resolve(
@@ -1004,6 +1070,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
         ...(filterMode === "edited_new"
           ? { featureIds: Array.from(editedFeatureIdsSignal.value) }
           : {}),
+        ...(orderBy.length > 0 ? { orderBy } : {}),
       })
     )
       .then((res: any) => {
@@ -1021,12 +1088,23 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
           setChunkTotalMatched(res.totalMatched);
         }
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (cancelled || orderBy.length === 0) return;
+        // A rejected Sort Key: clear the sort so the table reloads unsorted instead of staying empty
+        const fields = orderBy.map(([field]) => field).join(", ");
+        addConsoleLog(
+          "error",
+          `Failed to sort the attribute table of ${activeLayer.name} by ${fields}: ${err instanceof Error ? err.message : String(err)}`,
+          "Attribute Table"
+        );
+        querySort.value = null;
+        setPageStart(0);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [activeLayer?.id, pageStart, maxRows, filterMode, viewportKey, filterIdsKey]);
+  }, [activeLayer?.id, pageStart, maxRows, filterMode, viewportKey, filterIdsKey, orderByKey]);
 
   const filteredFeatures = features.filter((feature) => {
     switch (filterMode) {
@@ -1044,10 +1122,19 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const hasIpcQueryExtent =
     typeof (globalThis as any).window?.electronAPI?.queryExtent === "function";
+  const sortField = sort ? sortFieldForColumn(sort.columnKey, fidColumnName) : null;
   const displayedFeatures =
     hasIpcQueryExtent
       ? filteredFeatures
-      : filteredFeatures.slice(pageStart, pageStart + maxRows);
+      : (sort && sortField
+          ? sortTableRows(
+              filteredFeatures,
+              (feature) =>
+                sort.columnKey === ID_COLUMN_KEY ? feature.id : feature.properties[sortField],
+              sort.direction
+            )
+          : filteredFeatures
+        ).slice(pageStart, pageStart + maxRows);
 
   // When a chunk loads or the feature selection changes (e.g. on the map), show the displayed part of the selection
   useEffect(() => {
@@ -1094,10 +1181,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     return map;
   }, [schemaFields]);
 
-  const hasGuaranteedFid = Boolean(
-    activeLayer?.fidColumn && activeLayer.fidColumn.trim() !== ""
+  const virtualFieldNames = useMemo(
+    () => new Set((schemaFields ?? []).filter((f) => f.isVirtual).map((f) => f.name)),
+    [schemaFields]
   );
-  const fidColumnName = hasGuaranteedFid ? activeLayer!.fidColumn!.trim() : "";
 
   const attributeKeys = useMemo(() => {
     let keys: string[] = [];
@@ -1124,7 +1211,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const isLayerEditable =
     activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
 
-  const identityColKey = hasGuaranteedFid ? "__id__" : "__counter__";
+  const identityColKey = hasGuaranteedFid ? ID_COLUMN_KEY : COUNTER_COLUMN_KEY;
   const identityTitle =
     hasGuaranteedFid ?
       fidColumnName.toLowerCase() === "id" ?
@@ -1137,7 +1224,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
       key: identityColKey,
       header: identityTitle,
       align: hasGuaranteedFid ? "left" : "center",
-      sortable: false,
+      sortable: hasGuaranteedFid,
       readOnly: true,
       width: DEFAULT_SYSTEM_COLUMN_WIDTHS[identityColKey],
       value: (row) => (hasGuaranteedFid ? row.feature.id : row.rowIndex),
@@ -1156,7 +1243,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
         key,
         header: key,
         align: isNumeric ? "right" : "left",
-        sortable: false,
+        sortable: !virtualFieldNames.has(key),
         width: DEFAULT_ATTRIBUTE_COL_WIDTH,
         value: (row) => row.feature.properties[key],
         display: (value) => (
@@ -1203,6 +1290,24 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
       for (const id of rowIds) next.add(id);
     }
     selectedFeatureIdsSignal.value = next;
+  };
+
+  /**
+   * @function handleSortChange
+   * @description The embedded table's `sortHandler` (Ticket #330): the table has already stored the new sort in `tableSort`, which changes the chunk query's `orderBy` (one Sort Key, replacing any other column's; none when unsorted); this goes back to the first chunk so the table reloads from the start in the new order.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {string} _columnKey - Key of the sorted column.
+   * @param {TableSortDirection | null} _direction - The column's new direction, or null when unsorted.
+   * @returns {void}
+   */
+  const handleSortChange = (
+    _columnKey: string,
+    _direction: TableSortDirection | null
+  ): void => {
+    setPageStart(0);
   };
 
   /**
@@ -1333,6 +1438,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                 selectedRowIds={tableSelectedRowIds}
                 activeRowId={activeRowId}
                 onSelectionChange={handleSelectionChange}
+                sort={tableSort}
+                sortHandler={handleSortChange}
                 columnWidths={columnWidthsForLayer(activeLayer.id)}
                 readOnly={!isLayerEditable}
                 onCellEdit={handleCellEdit}

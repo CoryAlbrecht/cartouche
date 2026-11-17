@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -2586,7 +2586,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           "column width should expand by 80px"
         );
 
-        // 2. Drag shrink col_a: minimum width is its header text, 5 chars * 8 = 40, plus 17px cell padding and line = 57px
+        // 2. Drag shrink col_a: minimum width is its header text, 5 chars * 8 = 40, plus its 20px sort chevron (sortable since Ticket #330), plus 17px cell padding and line = 77px
         await act(async () => {
           handleColA.dispatchEvent({
             type: "mousedown",
@@ -2614,8 +2614,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const clampedWidthColA = parseInt(colATh.style.width, 10);
         assert.strictEqual(
           clampedWidthColA,
-          57,
-          "col_a must clamp to its calculated minimum width (57px)"
+          77,
+          "col_a must clamp to its calculated minimum width (77px)"
         );
 
         // 3. Test long column header clamping: 28 chars * 8 = 224 + 17 = 241px
@@ -4301,14 +4301,11 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
     assert.deepEqual(numbers(), ["3", "4"]);
   });
 
-  it("makes every column unsortable", async () => {
+  it("makes its attribute columns sortable and its # column unsortable without a stored ID column (Ticket #330)", () => {
     const headers = findAllNodes(container, (el) => el.tagName === "TH");
     assert.ok(headers.length >= 2);
-    for (const th of headers) {
-      assert.equal(th.getAttribute("aria-sort"), null, `${th.textContent} is not sortable`);
-    }
-    await clickEl(headers[1]);
-    assert.deepEqual(dataRows().map((r) => r.getAttribute("data-row-id")), ["101", "102"]);
+    assert.equal(headers[0].getAttribute("aria-sort"), null, "the Sequential Row Index column is not sortable");
+    assert.equal(headers[1].getAttribute("aria-sort"), "none", "the title column is sortable");
   });
 
   it("selects a row by a click anywhere in it and publishes it to selectedFeatureIdsSignal", async () => {
