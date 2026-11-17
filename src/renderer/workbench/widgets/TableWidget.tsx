@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resize handle that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. Cells can be edited in place (double-click, or F2 / Enter in the focused column) with the default text and number editors or a column's own editor, unless they are Read-Only Cells through the table, their column, their row or themselves; each committed change goes to the host's `onCellEdit`, which can reject it.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -9,6 +9,7 @@
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
  * @see {@link sortTableRows}
+ * @see {@link TableTextEditor}
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -18,6 +19,9 @@ import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from '@mdi/js';
 import Icon from '@renderer/components/common/Icon';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
 import { nextTableSort, sortTableRows, type TableSort, type TableSortDirection } from './tableSort';
+import { TableNumberEditor, TableTextEditor } from './tableEditors';
+
+export { TableNumberEditor, TableTextEditor, parseNumericInput } from './tableEditors';
 
 /**
  * @typedef {string | number} TableRowId
@@ -32,22 +36,51 @@ export type TableRowId = string | number;
 export type TableColumnAlign = 'left' | 'center' | 'right';
 
 /**
+ * @typedef {'next' | 'previous'} TableEditMove
+ * @description Where editing moves after a commit (Ticket #327): to the next editable cell (Tab) or the previous one (Shift+Tab), in display order, row by row.
+ */
+export type TableEditMove = 'next' | 'previous';
+
+/**
  * @typedef {Object} TableCellEditorProps
- * @description Props a column's cell editor receives while one of its cells is being edited.
+ * @description Props a column's cell editor receives while one of its cells is being edited (Ticket #327). An editor takes focus when it opens, calls `onCommit` on Enter and when focus leaves it, `onCommit(value, 'next' | 'previous')` on Tab / Shift+Tab, and `onCancel` on Escape; see {@link TableTextEditor} and {@link TableNumberEditor}. Keys pressed inside an editor never reach the table's own key handling.
  * @template R
  * @property {R} row - The row whose cell is being edited.
  * @property {TableColumn<R>} column - The column whose cell is being edited.
  * @property {unknown} value - The cell's current value.
- * @property {(newValue: unknown) => void} onCommit - Commits a new value.
+ * @property {(newValue: unknown, move?: TableEditMove) => void} onCommit - Commits a new value and ends the edit, then moves to the next or previous editable cell when `move` is given.
  * @property {() => void} onCancel - Abandons the edit, keeping the old value.
  */
 export interface TableCellEditorProps<R> {
   row: R;
   column: TableColumn<R>;
   value: unknown;
-  onCommit: (newValue: unknown) => void;
+  onCommit: (newValue: unknown, move?: TableEditMove) => void;
   onCancel: () => void;
 }
+
+/**
+ * @typedef {Object} TableCellEdit
+ * @description A committed cell edit TableWidget reports to its host through `onCellEdit` (Ticket #327).
+ * @property {TableRowId} rowId - Row ID of the edited row.
+ * @property {string} columnKey - Key of the edited column.
+ * @property {unknown} oldValue - The cell's value when editing started.
+ * @property {unknown} newValue - The value the user committed.
+ */
+export interface TableCellEdit {
+  rowId: TableRowId;
+  columnKey: string;
+  oldValue: unknown;
+  newValue: unknown;
+}
+
+/**
+ * @callback TableCellEditHandler
+ * @description Called when the user commits a changed cell value (Ticket #327). The host validates and saves it, updating `rows`; it rejects the edit by returning `false` or throwing, and the cell then keeps showing the row's old value. TableWidget adds no error styling of its own.
+ * @param {TableCellEdit} edit - The committed edit.
+ * @returns {boolean | void} `false` to reject the edit.
+ */
+export type TableCellEditHandler = (edit: TableCellEdit) => boolean | void;
 
 /**
  * @typedef {Object} TableColumn
@@ -61,7 +94,7 @@ export interface TableCellEditorProps<R> {
  * @property {(a: unknown, b: unknown) => number} [compare] - Orders two cell values for in-memory sorting (Ticket #325).
  * @property {boolean} [sortable=true] - Whether clicking the header sorts by this column (Ticket #325).
  * @property {boolean} [readOnly=false] - Whether every cell of the column is a Read-Only Cell (Ticket #327).
- * @property {React.ComponentType<TableCellEditorProps<R>>} [editor] - Cell editor component (Ticket #327).
+ * @property {React.ComponentType<TableCellEditorProps<R>>} [editor] - Cell editor component (Ticket #327); defaults to {@link TableNumberEditor} for a cell whose value is a number, else {@link TableTextEditor}.
  * @property {number} [width] - Initial width in px; the column shares the remaining width when absent.
  * @property {number} [minWidth] - Minimum width in px the column can be resized or auto-sized to (Ticket #324); defaults to the width its header text and any sort chevron need.
  */
@@ -127,6 +160,10 @@ export type { TableSort, TableSortDirection, TableSortState } from './tableSort'
  * @property {Signal<TableSort>} [sort] - Host-owned sort state, read and written by TableWidget; without it TableWidget keeps the sort itself (Ticket #325).
  * @property {TableSortHandler} [sortHandler] - Host sorting: when given, TableWidget only updates the sort state and chevrons and calls it, and the host supplies `rows` in sorted order; without it TableWidget sorts `rows` in memory (Ticket #325).
  * @property {Signal<Record<string, number>>} [columnWidths] - Host-owned column widths in px by column key (Ticket #324). TableWidget reads widths from it over the column definitions' `width`, and writes resized and auto-sized widths back to it; without it, TableWidget keeps the widths itself.
+ * @property {boolean} [readOnly=false] - Whether every cell is a Read-Only Cell (Ticket #327). Read-only tables still select and sort.
+ * @property {(row: R) => boolean} [isRowReadOnly] - Whether every cell of a row is a Read-Only Cell (Ticket #327).
+ * @property {(row: R, column: TableColumn<R>) => boolean} [isCellReadOnly] - Whether one cell is a Read-Only Cell (Ticket #327). A cell is read-only when any of the table, its column, its row or the cell itself is.
+ * @property {TableCellEditHandler} [onCellEdit] - Called when the user commits a changed cell value; the host saves it by updating `rows`, or rejects it (Ticket #327).
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -140,6 +177,10 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   sort?: Signal<TableSort>;
   sortHandler?: TableSortHandler;
   columnWidths?: Signal<Record<string, number>>;
+  readOnly?: boolean;
+  isRowReadOnly?: (row: R) => boolean;
+  isCellReadOnly?: (row: R, column: TableColumn<R>) => boolean;
+  onCellEdit?: TableCellEditHandler;
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
@@ -482,7 +523,7 @@ function sortChevron(direction: TableSortDirection | null): string {
 
 /**
  * @function rowColours
- * @description Picks a data row's cell background and text colour: the Active Row colour, else the Selected Row colour, else the alternating colour for odd rows (1st, 3rd, …) when `alternatingRows` is on, else the plain row colour. Selection is painted over the row colour (Ticket #326); Row Number Column cells keep the header colours and do not use this.
+ * @description Picks a data cell's background and text colour: the Active Row colour, else the Selected Row colour, else the alternating colour for odd rows (1st, 3rd, …) when `alternatingRows` is on, else the plain row colour. Selection is painted over the row colour (Ticket #326); Row Number Column cells keep the header colours and do not use this. A Read-Only Cell (Ticket #327) uses the read-only text colour on unselected rows and the read-only selected colours on Selected Rows; on the Active Row it keeps the active background with the normal table text colour.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -491,21 +532,30 @@ function sortChevron(direction: TableSortDirection | null): string {
  * @param {boolean} alternatingRows - Whether alternating row colours are on.
  * @param {boolean} selected - Whether the row is a Selected Row.
  * @param {boolean} active - Whether the row is the Active Row.
- * @returns {Pick<React.CSSProperties, 'backgroundColor' | 'color'>} The cells' background and text colour.
+ * @param {boolean} [readOnly=false] - Whether the cell is a Read-Only Cell.
+ * @returns {Pick<React.CSSProperties, 'backgroundColor' | 'color'>} The cell's background and text colour.
  */
 function rowColours(
   index: number,
   alternatingRows: boolean,
   selected: boolean,
-  active: boolean
+  active: boolean,
+  readOnly = false
 ): Pick<React.CSSProperties, 'backgroundColor' | 'color'> {
   if (active) {
-    return { backgroundColor: 'var(--cartouche-table-row-active-bg)', color: 'var(--cartouche-table-row-active-fg)' };
+    const color = readOnly ? 'var(--cartouche-table-fg)' : 'var(--cartouche-table-row-active-fg)';
+    return { backgroundColor: 'var(--cartouche-table-row-active-bg)', color };
+  }
+  if (selected && readOnly) {
+    return {
+      backgroundColor: 'var(--cartouche-table-readonly-selected-bg)',
+      color: 'var(--cartouche-table-readonly-selected-fg)',
+    };
   }
   if (selected) return { backgroundColor: 'var(--cartouche-table-row-selected-bg)', color: 'var(--cartouche-table-fg)' };
   const background =
     alternatingRows && index % 2 === 0 ? 'var(--cartouche-table-row-alt-bg)' : 'var(--cartouche-table-bg)';
-  return { backgroundColor: background, color: 'var(--cartouche-table-fg)' };
+  return { backgroundColor: background, color: readOnly ? 'var(--cartouche-table-readonly-fg)' : 'var(--cartouche-table-fg)' };
 }
 
 /**
@@ -513,9 +563,11 @@ function rowColours(
  * @description Event handlers {@link useRowSelection} returns for the table.
  * @property {(event: React.MouseEvent, rowId: TableRowId) => void} onRowClick - Handles a click anywhere in a row, including its `#` cell.
  * @property {(event: React.KeyboardEvent) => void} onKeyDown - Handles selection keys pressed on the table.
+ * @property {(rowId: TableRowId) => void} selectOnly - Selects only one row, making it the Active Row (a `replace` change), e.g. when editing moves to another row.
  */
 interface RowSelection {
   onRowClick: (event: React.MouseEvent, rowId: TableRowId) => void;
+  selectOnly: (rowId: TableRowId) => void;
   onKeyDown: (event: React.KeyboardEvent) => void;
 }
 
@@ -627,12 +679,197 @@ function useRowSelection(
     selectRange(rangeStart, target);
   };
 
-  return { onRowClick, onKeyDown };
+  return { onRowClick, onKeyDown, selectOnly };
+}
+
+/**
+ * @typedef {Object} EditingCell
+ * @description The cell being edited, by row ID and column key. Each edit gets a new object, so a late commit or cancel from an editor that has already finished is recognised and ignored.
+ * @property {TableRowId} rowId - Row ID of the edited row.
+ * @property {string} columnKey - Key of the edited column.
+ */
+interface EditingCell {
+  rowId: TableRowId;
+  columnKey: string;
+}
+
+/**
+ * @typedef {Object} CellEditingOptions
+ * @description What {@link useCellEditing} needs from TableWidget.
+ * @template R
+ * @property {readonly R[]} displayedRows - The displayed rows, in display order.
+ * @property {readonly TableColumn<R>[]} columns - The columns, in display order.
+ * @property {(row: R) => TableRowId} getRowId - Returns a row's stable row ID.
+ * @property {(row: R, column: TableColumn<R>) => boolean} isReadOnly - Whether a cell is a Read-Only Cell.
+ * @property {Signal<TableRowId | null>} activeRowId - Host-owned Active Row, where F2 and Enter edit.
+ * @property {(rowId: TableRowId) => void} selectOnly - Selects only one row, when editing moves to another row.
+ * @property {TableCellEditHandler} [onCellEdit] - Host's edit callback.
+ * @property {React.RefObject<HTMLTableElement | null>} tableRef - The table element, refocused when an edit ends with focus nowhere.
+ */
+interface CellEditingOptions<R> {
+  displayedRows: readonly R[];
+  columns: readonly TableColumn<R>[];
+  getRowId: (row: R) => TableRowId;
+  isReadOnly: (row: R, column: TableColumn<R>) => boolean;
+  activeRowId: Signal<TableRowId | null>;
+  selectOnly: (rowId: TableRowId) => void;
+  onCellEdit?: TableCellEditHandler;
+  tableRef: React.RefObject<HTMLTableElement | null>;
+}
+
+/**
+ * @typedef {Object} CellEditing
+ * @description What {@link useCellEditing} gives TableWidget to edit cells.
+ * @template R
+ * @property {EditingCell | null} editing - The cell being edited, or null.
+ * @property {(columnKey: string) => void} focusColumn - Makes a column the focused column, where F2 and Enter edit (set by clicking one of its cells).
+ * @property {(row: R, column: TableColumn<R>) => void} startEdit - Starts editing a cell, unless it is a Read-Only Cell.
+ * @property {() => void} startEditInActiveRow - Starts editing the Active Row's cell in the focused column (F2 / Enter), or, when no column has been focused, its first editable cell.
+ * @property {(cell: EditingCell, newValue: unknown, move?: TableEditMove) => void} commit - Ends an edit with a new value, reporting it to the host when changed, then moves to the next or previous editable cell when asked.
+ * @property {(cell: EditingCell) => void} cancel - Ends an edit, keeping the old value.
+ */
+interface CellEditing<R> {
+  editing: EditingCell | null;
+  focusColumn: (columnKey: string) => void;
+  startEdit: (row: R, column: TableColumn<R>) => void;
+  startEditInActiveRow: () => void;
+  commit: (cell: EditingCell, newValue: unknown, move?: TableEditMove) => void;
+  cancel: (cell: EditingCell) => void;
+}
+
+/**
+ * @function useCellEditing
+ * @description Inline cell editing (Ticket #327): one cell at a time, never a Read-Only Cell. Remembers the focused column, the column of the most recently clicked or edited cell, so F2 and Enter can edit the Active Row's cell in it. A commit reports a changed value through `onCellEdit` (an unchanged value is not reported); the host saves it by updating its rows, and a host that returns `false` or throws leaves the row's old value showing. Tab/Shift+Tab commits and moves on to the next/previous editable cell in display order, selecting its row when it is another row. When an edit ends with nothing focused (its editor was removed), the table takes focus back for keyboard use.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @template R
+ * @param {CellEditingOptions<R>} options - Rows, columns, read-only test, selection and host callback.
+ * @returns {CellEditing<R>} Editing state and handlers.
+ */
+function useCellEditing<R>({
+  displayedRows,
+  columns,
+  getRowId,
+  isReadOnly,
+  activeRowId,
+  selectOnly,
+  onCellEdit,
+  tableRef,
+}: CellEditingOptions<R>): CellEditing<R> {
+  const [editing, setEditing] = useState<EditingCell | null>(null);
+  /** The current edit, updated synchronously so a second commit (e.g. blur after Enter) is ignored. */
+  const editingRef = useRef<EditingCell | null>(null);
+  /** The focused column's key, where F2 and Enter edit. */
+  const focusedColumnRef = useRef<string | null>(null);
+  /** Whether an edit was open at the last render, to refocus the table when it closes. */
+  const wasEditingRef = useRef(false);
+
+  useEffect(() => {
+    if (editing) {
+      wasEditingRef.current = true;
+      return;
+    }
+    if (!wasEditingRef.current) return;
+    wasEditingRef.current = false;
+    const focused = typeof document === 'undefined' ? null : document.activeElement;
+    if (!focused || focused === document.body) tableRef.current?.focus?.();
+  }, [editing, tableRef]);
+
+  /**
+   * Opens (or closes, with null) an edit.
+   * @param {EditingCell | null} cell - The cell to edit, or null.
+   */
+  const open = (cell: EditingCell | null): void => {
+    editingRef.current = cell;
+    setEditing(cell);
+    if (cell) focusedColumnRef.current = cell.columnKey;
+  };
+
+  const focusColumn = (columnKey: string): void => {
+    focusedColumnRef.current = columnKey;
+  };
+
+  const startEdit = (row: R, column: TableColumn<R>): void => {
+    focusedColumnRef.current = column.key;
+    if (isReadOnly(row, column)) return;
+    open({ rowId: getRowId(row), columnKey: column.key });
+  };
+
+  const startEditInActiveRow = (): void => {
+    const active = activeRowId.peek();
+    const row = displayedRows.find((candidate) => getRowId(candidate) === active);
+    if (row === undefined) return;
+    const focused = columns.find((column) => column.key === focusedColumnRef.current);
+    const column = focused ?? columns.find((candidate) => !isReadOnly(row, candidate));
+    if (column) startEdit(row, column);
+  };
+
+  /**
+   * Finds the next or previous editable cell from a cell, in display order, row by row.
+   * @param {EditingCell} from - The cell to move from.
+   * @param {TableEditMove} move - Direction.
+   * @returns {EditingCell | null} The cell, or null when there is none.
+   */
+  const neighbour = (from: EditingCell, move: TableEditMove): EditingCell | null => {
+    const cells = displayedRows.flatMap((row) => columns.map((column) => ({ row, column })));
+    const start = cells.findIndex(({ row, column }) => getRowId(row) === from.rowId && column.key === from.columnKey);
+    if (start === -1) return null;
+    const step = move === 'next' ? 1 : -1;
+    for (let i = start + step; i >= 0 && i < cells.length; i += step) {
+      const { row, column } = cells[i];
+      if (!isReadOnly(row, column)) return { rowId: getRowId(row), columnKey: column.key };
+    }
+    return null;
+  };
+
+  const commit = (cell: EditingCell, newValue: unknown, move?: TableEditMove): void => {
+    if (editingRef.current !== cell) return;
+    editingRef.current = null;
+    const row = displayedRows.find((candidate) => getRowId(candidate) === cell.rowId);
+    const column = columns.find((candidate) => candidate.key === cell.columnKey);
+    if (row !== undefined && column) {
+      const oldValue = cellValue(row, column);
+      if (!Object.is(oldValue, newValue)) {
+        try {
+          // A `false` result rejects the edit: the host leaves its row unchanged, so the old value keeps showing.
+          onCellEdit?.({ rowId: cell.rowId, columnKey: cell.columnKey, oldValue, newValue });
+        } catch {
+          // A throwing host rejects the edit the same way.
+        }
+      }
+    }
+    const next = move ? neighbour(cell, move) : null;
+    if (next && next.rowId !== cell.rowId) selectOnly(next.rowId);
+    open(next);
+  };
+
+  const cancel = (cell: EditingCell): void => {
+    if (editingRef.current !== cell) return;
+    open(null);
+  };
+
+  return { editing, focusColumn, startEdit, startEditInActiveRow, commit, cancel };
+}
+
+/**
+ * @function stopPropagation
+ * @description Keeps an event inside the cell being edited, so clicks and keys in its editor never reach row selection or the table's key handling.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {React.SyntheticEvent} event - The event.
+ * @returns {void}
+ */
+function stopPropagation(event: React.SyntheticEvent): void {
+  event.stopPropagation();
 }
 
 /**
  * @component TableWidget
- * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`.
+ * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`, and edits cells in place, reporting committed changes through `onCellEdit`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -653,6 +890,10 @@ export function TableWidget<R>({
   sort: hostSortSignal,
   sortHandler,
   columnWidths,
+  readOnly = false,
+  isRowReadOnly,
+  isCellReadOnly,
+  onCellEdit,
   name = 'table-widget',
   displayName = 'Table',
   className = '',
@@ -678,12 +919,58 @@ export function TableWidget<R>({
     !sortHandler && sort && sortColumn
       ? sortTableRows(rows, (row) => cellValue(row, sortColumn), sort.direction, sortColumn.compare)
       : rows;
-  const { onRowClick, onKeyDown } = useRowSelection(
+  const { onRowClick, onKeyDown, selectOnly } = useRowSelection(
     displayedRows.map(getRowId),
     selectedRowIds,
     activeRowId,
     onSelectionChange
   );
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  /**
+   * @function isReadOnly
+   * @description Whether a cell is a Read-Only Cell: the table, its column, its row or the cell itself is marked read-only (Ticket #327).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {R} row - The cell's row.
+   * @param {TableColumn<R>} column - The cell's column.
+   * @returns {boolean} True when the cell is read-only.
+   */
+  const isReadOnly = (row: R, column: TableColumn<R>): boolean =>
+    readOnly || column.readOnly === true || isRowReadOnly?.(row) === true || isCellReadOnly?.(row, column) === true;
+
+  const { editing, focusColumn, startEdit, startEditInActiveRow, commit, cancel } = useCellEditing({
+    displayedRows,
+    columns,
+    getRowId,
+    isReadOnly,
+    activeRowId,
+    selectOnly,
+    onCellEdit,
+    tableRef,
+  });
+
+  /**
+   * @function handleTableKeyDown
+   * @description Handles keys pressed on the table: F2 or Enter (no modifiers) edits the Active Row's cell in the focused column (Ticket #327); every other key goes to row selection.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {React.KeyboardEvent} event - The key event.
+   * @returns {void}
+   */
+  const handleTableKeyDown = (event: React.KeyboardEvent): void => {
+    const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+    if (plain && (event.key === 'F2' || event.key === 'Enter')) {
+      event.preventDefault();
+      startEditInActiveRow();
+      return;
+    }
+    onKeyDown(event);
+  };
 
   /**
    * @function handleHeaderClick
@@ -719,8 +1006,9 @@ export function TableWidget<R>({
         }}>
         <table
           className='table-widget-table'
+          ref={tableRef}
           tabIndex={0}
-          onKeyDown={onKeyDown}
+          onKeyDown={handleTableKeyDown}
           style={{
             width: tableWidth(columns.map(widthOf), showRowNumberColumn),
             tableLayout: 'fixed',
@@ -783,7 +1071,7 @@ export function TableWidget<R>({
             {displayedRows.map((row, index) => {
               const rowId = getRowId(row);
               const selected = selectedRowIds.value.has(rowId);
-              const colours = rowColours(index, alternatingRows, selected, selected && activeRowId.value === rowId);
+              const active = selected && activeRowId.value === rowId;
               return (
                 <tr
                   key={rowId}
@@ -796,18 +1084,39 @@ export function TableWidget<R>({
                       {index + 1}
                     </td>
                   )}
-                  {columns.map((column) => (
-                    <td
-                      key={column.key}
-                      className='table-widget-cell'
-                      style={{
-                        ...CELL_STYLE,
-                        ...colours,
-                        textAlign: column.align ?? 'left',
-                      }}>
-                      {displayCell(row, column)}
-                    </td>
-                  ))}
+                  {columns.map((column) => {
+                    const readOnlyCell = isReadOnly(row, column);
+                    const cell = editing?.rowId === rowId && editing.columnKey === column.key ? editing : null;
+                    const value = cell ? cellValue(row, column) : undefined;
+                    const Editor =
+                      column.editor ?? (typeof value === 'number' ? TableNumberEditor : TableTextEditor);
+                    return (
+                      <td
+                        key={column.key}
+                        className='table-widget-cell'
+                        aria-readonly={readOnlyCell || undefined}
+                        onClick={cell ? stopPropagation : () => focusColumn(column.key)}
+                        onDoubleClick={cell ? stopPropagation : () => startEdit(row, column)}
+                        onKeyDown={cell ? stopPropagation : undefined}
+                        style={{
+                          ...CELL_STYLE,
+                          ...rowColours(index, alternatingRows, selected, active, readOnlyCell),
+                          textAlign: column.align ?? 'left',
+                        }}>
+                        {cell ? (
+                          <Editor
+                            row={row}
+                            column={column}
+                            value={value}
+                            onCommit={(newValue, move) => commit(cell, newValue, move)}
+                            onCancel={() => cancel(cell)}
+                          />
+                        ) : (
+                          displayCell(row, column)
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}

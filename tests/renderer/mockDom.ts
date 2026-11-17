@@ -159,6 +159,18 @@ export class MockElement {
     return null;
   }
 
+  /**
+   * @function attachEvent
+   * @description No-op legacy listener hook. The mock document has no `oninput`, so React falls back to its old input-event polyfill, which watches the focused input with `attachEvent`; key events dispatched on a focused input need it to exist.
+   */
+  attachEvent(): void {}
+
+  /**
+   * @function detachEvent
+   * @description No-op counterpart of {@link MockElement.attachEvent}, called when the polyfill stops watching an input.
+   */
+  detachEvent(): void {}
+
   setPointerCapture(_id: number): void {}
   releasePointerCapture(_id: number): void {}
 

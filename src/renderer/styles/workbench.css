@@ -2399,6 +2399,11 @@
   text-align: right;
 }
 
+/* TableWidget default cell editors (Ticket #327): the cell editor look at the table's 1rem text size. */
+.cell-editor-input.table-widget-editor {
+  font-size: 1rem;
+}
+
 /* Layer Properties field-table cell editors (Length, Precision, Comment). */
 .layer-field-cell-input {
   width: 100%;

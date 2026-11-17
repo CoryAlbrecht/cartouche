@@ -50,6 +50,9 @@ import {
 import { SelectionToolbarWidget } from "./toolbars/SelectionToolbarWidget";
 import { DigitizingToolbarWidget } from "./toolbars/DigitizingToolbarWidget";
 import { useTranslation } from "@renderer/hooks/useTranslation";
+import { parseNumericInput } from "./tableEditors";
+
+export { parseNumericInput };
 
 /**
  * Available feature filtering modes for the attribute table.
@@ -627,46 +630,6 @@ export function getCellTooltipText(
     return formatted;
   }
   return String(value);
-}
-
-/**
- * Parses numeric string supporting standard and localized formatting (commas, periods, grouping spaces).
- * @function parseNumericInput
- * @description Flexible numeric parser converting localized or standard strings to float or null if invalid.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-06
- * @updated 2026-11-07
- * @since 0.1.0-dev
- * @param {string} text - Raw input text.
- * @returns {number | null} Parsed numeric value or null if invalid non-numeric.
- */
-export function parseNumericInput(text: string): number | null {
-  if (typeof text !== "string") return null;
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-
-  // Strip all non-breaking spaces, thin spaces, and regular spaces used for thousands grouping
-  let cleaned = trimmed.replace(/[\s\u00A0\u202F]/g, "");
-
-  const hasComma = cleaned.includes(",");
-  const hasDot = cleaned.includes(".");
-
-  if (hasComma && hasDot) {
-    if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
-      // European format: "1.234,56" -> "1234.56"
-      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-    } else {
-      // Standard format: "1,234.56" -> "1234.56"
-      cleaned = cleaned.replace(/,/g, "");
-    }
-  } else if (hasComma) {
-    // Single comma: e.g. "1250,5" -> "1250.5"
-    cleaned = cleaned.replace(",", ".");
-  }
-
-  const num = Number(cleaned);
-  if (isNaN(num)) return null;
-  return num;
 }
 
 /**
