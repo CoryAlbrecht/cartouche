@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.test.ts
  * @module tests/renderer/widgets/TableWidget.test
- * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324).
+ * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324); and (Ticket #328) host cellStyle borders over the shared lines and on selected rows, and cell backgrounds ordered above plain and alternating rows and below the Selected Row and Active Row colours.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -914,6 +914,154 @@ describe('TableWidget column resizing and auto-size (Ticket #324)', () => {
     // The header Population and its sort chevron are wider than the raw values (e.g. 1762949).
     assert.deepEqual(columnWidths.value, { population: 8 * 'Population'.length + 20 + 17, name: 150 });
     assert.deepEqual(dataHeaders().map((c) => c.style.width), ['150px', '117px']);
+  });
+});
+
+/**
+ * @function cellOf
+ * @description Returns a row's data cell in a column.
+ * @param {number} rowId - Host row ID.
+ * @param {number} columnIndex - Column index (0 = Name, 1 = Population).
+ * @returns {MockElement} The data cell.
+ */
+function cellOf(rowId: number, columnIndex: number): MockElement {
+  return cellsOf(row(rowId))[columnIndex];
+}
+
+/**
+ * @function cellBorderOf
+ * @description Returns the cell border drawn inside a data cell, if any.
+ * @param {MockElement} cell - Data cell.
+ * @returns {MockElement | undefined} The cell border element, or undefined when the cell has none.
+ */
+function cellBorderOf(cell: MockElement): MockElement | undefined {
+  return findElementsByClass(cell, 'table-widget-cell-border')[0];
+}
+
+/**
+ * @function markMontrealPopulation
+ * @description A host `cellStyle` that marks Montréal's population cell with a red border and a pink background, and leaves every other cell alone.
+ * @param {CityRow} cityRow - Host row.
+ * @param {{ key: string }} column - Column definition.
+ * @returns {{ borderColour: string, background: string } | undefined} The cell style, or nothing.
+ */
+function markMontrealPopulation(cityRow: CityRow, column: { key: string }) {
+  return cityRow.fid === 20 && column.key === 'population' ? { borderColour: 'red', background: 'pink' } : undefined;
+}
+
+describe('TableWidget per-cell styling (Ticket #328)', () => {
+  beforeEach(() => {
+    installHost();
+  });
+
+  afterEach(() => {
+    teardownMockDom(dom);
+    dom = null;
+  });
+
+  it("draws a real 1px border in the host's colour on all four sides of a styled cell, over the shared row and column lines", async () => {
+    await render({ cellStyle: markMontrealPopulation });
+    const cell = cellOf(20, 1);
+    const border = cellBorderOf(cell);
+    assert.ok(border, 'the styled cell has a border');
+    assert.equal(border.style.border, '1px solid red');
+    assert.equal(border.style.position, 'absolute');
+    assert.equal(cell.style.position, 'relative');
+    assert.deepEqual(
+      [border.style.top, border.style.right, border.style.bottom, border.style.left],
+      ['-1px', '-1px', '-1px', '-1px'],
+      "the border covers the line above, the line to the left and the cell's own right and bottom lines"
+    );
+    assert.equal(cell.style.overflow, 'clip');
+    assert.equal(cell.style.overflowClipMargin, '1px', 'the cell does not clip its border away');
+    assert.equal(border.style.pointerEvents, 'none');
+    assert.equal(border.style.boxShadow ?? '', '');
+    assert.equal(cell.style.boxShadow ?? '', '');
+    assert.equal(cellBorderOf(cellOf(20, 0)), undefined);
+    assert.equal(cellBorderOf(cellOf(10, 1)), undefined);
+  });
+
+  it('keeps the top border of a first-row cell and the left border of a first-column cell inside the cell, clear of the sticky header row and Row Number Column', async () => {
+    await render({ cellStyle: () => ({ borderColour: 'red' }) });
+    const sides = (cell: MockElement) => {
+      const { top, right, bottom, left } = cellBorderOf(cell)!.style;
+      return [top, right, bottom, left];
+    };
+    assert.deepEqual(sides(cellOf(10, 0)), ['0px', '-1px', '-1px', '0px']);
+    assert.deepEqual(sides(cellOf(10, 1)), ['0px', '-1px', '-1px', '-1px']);
+    assert.deepEqual(sides(cellOf(20, 0)), ['-1px', '-1px', '-1px', '0px']);
+    assert.deepEqual(sides(cellOf(30, 1)), ['-1px', '-1px', '-1px', '-1px']);
+  });
+
+  it('treats the first displayed row as the first row when the table is sorted', async () => {
+    await render({ cellStyle: () => ({ borderColour: 'red' }), sort: signal({ columnKey: 'name', direction: 'ascending' }) });
+    assert.equal(textOf(cellsOf(bodyRows()[0])[0]), 'Halifax');
+    assert.equal(cellBorderOf(cellOf(30, 1))!.style.top, '0px');
+    assert.equal(cellBorderOf(cellOf(10, 1))!.style.top, '-1px');
+  });
+
+  it("paints a styled cell's background over the plain row colour, leaving its text colour and other cells alone", async () => {
+    await render({ cellStyle: markMontrealPopulation });
+    assert.equal(cellOf(20, 1).style.backgroundColor, 'pink');
+    assert.equal(cellOf(20, 1).style.color, 'var(--cartouche-table-fg)');
+    assert.equal(cellOf(20, 0).style.backgroundColor, 'var(--cartouche-table-bg)');
+  });
+
+  it("paints a styled cell's background over the alternating row colour", async () => {
+    await render({ alternatingRows: true, cellStyle: () => ({ background: 'pink' }) });
+    assert.equal(cellOf(10, 0).style.backgroundColor, 'pink');
+    assert.equal(cellOf(20, 0).style.backgroundColor, 'pink');
+    assert.equal(cellBorderOf(cellOf(10, 0)), undefined, 'a background alone draws no border');
+  });
+
+  it("paints the selected and active colours over a styled cell's background", async () => {
+    await render({ cellStyle: () => ({ background: 'pink' }) });
+    await act(async () => {
+      selectedRowIds.value = new Set([10, 20]);
+      activeRowId.value = 20;
+    });
+    assert.equal(cellOf(10, 0).style.backgroundColor, 'var(--cartouche-table-row-selected-bg)');
+    assert.equal(cellOf(20, 0).style.backgroundColor, 'var(--cartouche-table-row-active-bg)');
+    assert.equal(cellOf(30, 0).style.backgroundColor, 'pink');
+  });
+
+  it('keeps showing the border of a styled cell on Selected Rows and the Active Row', async () => {
+    await render({ cellStyle: () => ({ borderColour: 'red', background: 'pink' }) });
+    await act(async () => {
+      selectedRowIds.value = new Set([10, 20]);
+      activeRowId.value = 20;
+    });
+    for (const rowId of [10, 20]) {
+      assert.equal(cellBorderOf(cellOf(rowId, 1))!.style.border, '1px solid red');
+    }
+  });
+
+  it('leaves cells unstyled when cellStyle returns nothing, or when the host passes none', async () => {
+    await render({ cellStyle: () => null });
+    assert.equal(cellOf(10, 0).style.backgroundColor, 'var(--cartouche-table-bg)');
+    assert.equal(cellOf(10, 0).style.position ?? '', '');
+    assert.equal(cellOf(10, 0).style.overflow, 'hidden');
+    assert.equal(cellBorderOf(cellOf(10, 0)), undefined);
+    await render();
+    assert.equal(cellBorderOf(cellOf(10, 0)), undefined);
+  });
+
+  it("passes cellStyle each displayed row and the column's definition", async () => {
+    const calls: string[] = [];
+    await render({
+      cellStyle: (cityRow: CityRow, column: { key: string; header: string }) => {
+        calls.push(`${cityRow.name}/${column.key}/${column.header}`);
+        return undefined;
+      }
+    });
+    assert.deepEqual(calls, [
+      'Ottawa/name/Name',
+      'Ottawa/population/Population',
+      'Montréal/name/Name',
+      'Montréal/population/Population',
+      'Halifax/name/Name',
+      'Halifax/population/Population'
+    ]);
   });
 });
 

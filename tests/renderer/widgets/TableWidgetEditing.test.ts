@@ -374,6 +374,20 @@ describe('TableWidget Read-Only Cell colours (Ticket #327)', () => {
     );
   });
 
+  it("keeps a host cell background under read-only text, and the read-only selected colours over it", async () => {
+    await render({ ...READ_ONLY_COLUMN, cellStyle: () => ({ background: 'pink' }) });
+    assert.deepEqual(colours(10, 1), ['pink', 'var(--cartouche-table-readonly-fg)']);
+    await act(async () => {
+      selectedRowIds.value = new Set([10, 20]);
+      activeRowId.value = 20;
+    });
+    assert.deepEqual(colours(10, 1), [
+      'var(--cartouche-table-readonly-selected-bg)',
+      'var(--cartouche-table-readonly-selected-fg)'
+    ]);
+    assert.deepEqual(colours(20, 1), ['var(--cartouche-table-row-active-bg)', 'var(--cartouche-table-fg)']);
+  });
+
   it('paints read-only cells of the Active Row with the active colour and --cartouche-table-fg text', async () => {
     await render(READ_ONLY_COLUMN);
     await act(async () => {
