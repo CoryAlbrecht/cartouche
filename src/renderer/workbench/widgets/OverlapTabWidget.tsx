@@ -10,10 +10,18 @@
  * @see docs/adr/0025-flex-proportional-docking-and-overlap-tab-widgets.md (ADR 0025)
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
 import { logging } from "../../../shared/logging";
-import { resolveWidgetDropZone, type WidgetDropZone } from "./widgetDropTarget";
+import {
+  resolveWidgetDropZone,
+  isWidgetDrag,
+  readDraggedWidgetId,
+  WIDGET_DRAG_MIME,
+  TAB_EXTRACT_DRAG_MIME,
+  type WidgetDropZone,
+} from "./widgetDropTarget";
+import { useResetOnDragEnd } from "../../hooks/useResetOnDragEnd";
 import {
   appendTabToOverlapContainer,
   dissolveOverlapContainer,
@@ -208,21 +216,21 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
   };
 
   const [activeDropZone, setActiveDropZone] = useState<WidgetDropZone>("none");
+  const clearDropZone = useCallback(() => setActiveDropZone("none"), []);
+
+  // Clear the drop cue when any drag ends, even if a descendant (e.g. a LayerTreeWidget
+  // Tree Node Row) handled and stopped the drop (#321).
+  useResetOnDragEnd(activeDropZone !== "none", clearDropZone);
 
   const handleContainerDragOver = (e: React.DragEvent) => {
-    const isWidgetDrag =
-      e.dataTransfer.types.includes("application/x-cartouche-widget") ||
-      e.dataTransfer.types.includes("application/x-cartouche-tab-extract") ||
-      e.dataTransfer.types.includes("text/plain");
-
-    if (!isWidgetDrag) return;
+    if (!isWidgetDrag(e.dataTransfer.types)) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     let draggedOverlappable = false;
     let draggedWidgetId: string | undefined;
 
     try {
-      const raw = e.dataTransfer.getData("application/x-cartouche-widget");
+      const raw = e.dataTransfer.getData(WIDGET_DRAG_MIME);
       if (raw) {
         const parsed = JSON.parse(raw);
         draggedOverlappable = !!parsed.overlappable;
@@ -262,20 +270,8 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
     const zone = activeDropZone;
     setActiveDropZone("none");
 
-    let draggedId = "";
-    try {
-      const widgetData = e.dataTransfer.getData("application/x-cartouche-widget");
-      if (widgetData) {
-        const parsed = JSON.parse(widgetData);
-        draggedId = parsed.widgetId || parsed.panelId;
-      }
-    } catch {
-      // fallback
-    }
-
-    if (!draggedId) {
-      draggedId = e.dataTransfer.getData("text/plain");
-    }
+    if (!isWidgetDrag(e.dataTransfer.types)) return;
+    const draggedId = readDraggedWidgetId(e.dataTransfer);
 
     if (!draggedId || draggedId === name || tabs.some((t) => t.id === draggedId)) return;
 
@@ -315,7 +311,7 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", tabId);
       e.dataTransfer.setData(
-        "application/x-cartouche-tab-extract",
+        TAB_EXTRACT_DRAG_MIME,
         JSON.stringify({
           containerId: name,
           tabId,

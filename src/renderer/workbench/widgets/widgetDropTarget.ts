@@ -1,13 +1,83 @@
 /**
  * @file widgetDropTarget.ts
  * @module renderer/workbench/widgets/widgetDropTarget
- * @description Pure hit-zone and drop target resolution helpers for BasicWidget and OverlapTabWidget drag-and-drop interactions.
+ * @description Pure helpers for BasicWidget and OverlapTabWidget drag-and-drop: the widget drag payload MIME contract (widget and tab-extract types), classification of a drag as a widget drag, reading the dragged widget id at drop time, and hit-zone resolution of the drop target.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-05
+ * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link resolveWidgetDropZone}
+ * @see {@link isWidgetDrag}
+ * @see {@link readDraggedWidgetId}
  */
+
+/**
+ * @constant {string} WIDGET_DRAG_MIME
+ * @description Drag payload MIME type set by a BasicWidget header drag. Its JSON value carries `widgetId`, `panelId` and `overlappable`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ */
+export const WIDGET_DRAG_MIME = 'application/x-cartouche-widget';
+
+/**
+ * @constant {string} TAB_EXTRACT_DRAG_MIME
+ * @description Drag payload MIME type set by an OverlapTabWidget tab drag. Its JSON value carries `containerId` and `tabId`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ */
+export const TAB_EXTRACT_DRAG_MIME = 'application/x-cartouche-tab-extract';
+
+/**
+ * Decides whether a drag is a widget drag that widget drop targets should react to.
+ * Only Cartouche's own widget and tab-extract payload types count: other drags that merely
+ * carry `text/plain` (LayerTreeWidget Tree Node Row drags, toolbar drags) are foreign to widget drop targets.
+ * @function isWidgetDrag
+ * @description Classifies a drag as a widget drag by its payload MIME types.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {ArrayLike<string>} types - The drag's `DataTransfer.types` (readable during dragover).
+ * @returns {boolean} True when the drag carries a widget or tab-extract payload.
+ */
+export function isWidgetDrag(types: ArrayLike<string>): boolean {
+  const list = Array.from(types);
+  return list.includes(WIDGET_DRAG_MIME) || list.includes(TAB_EXTRACT_DRAG_MIME);
+}
+
+/**
+ * Reads the dragged widget id at drop time: the widget payload's `widgetId` (or `panelId`),
+ * else the tab-extract payload's `tabId`. Never falls back to `text/plain`, which other drag
+ * sources use for ids that are not widgets.
+ * @function readDraggedWidgetId
+ * @description Extracts the dragged widget id from a drop's widget or tab-extract payload.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {Pick<DataTransfer, 'getData'>} dataTransfer - The drop event's data transfer.
+ * @returns {string} The dragged widget id, or '' when the drag carries no readable widget payload.
+ */
+export function readDraggedWidgetId(dataTransfer: Pick<DataTransfer, 'getData'>): string {
+  try {
+    const widgetData = dataTransfer.getData(WIDGET_DRAG_MIME);
+    if (widgetData) {
+      const parsed = JSON.parse(widgetData);
+      return String(parsed.widgetId || parsed.panelId || '');
+    }
+    const tabData = dataTransfer.getData(TAB_EXTRACT_DRAG_MIME);
+    if (tabData) {
+      return String(JSON.parse(tabData).tabId || '');
+    }
+  } catch {
+    // Malformed payload: not a usable widget drag.
+  }
+  return '';
+}
 
 /**
  * @typedef {'edge-top' | 'edge-bottom' | 'edge-left' | 'edge-right' | 'center-overlap' | 'none'} WidgetDropZone
