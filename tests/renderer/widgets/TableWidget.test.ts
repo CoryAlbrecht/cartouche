@@ -627,6 +627,19 @@ describe('TableWidget row selection by keyboard (Ticket #326)', () => {
     assert.deepEqual(selectionChanges, [{ kind: 'range', rowIds: [30, 10, 20], activeRowId: 30 }]);
   });
 
+  it('ranges and moves over the rows in their sorted display order', async () => {
+    const sort = signal({ columnKey: 'population', direction: 'ascending' });
+    await render({ sort });
+    assert.deepEqual(bodyRows().map((r) => r.getAttribute('data-row-id')), ['30', '10', '20']);
+    await click(cellsOf(row(30))[0]);
+    await click(cellsOf(row(10))[0], { shiftKey: true });
+    assert.deepEqual(selection(), [10, 30]);
+    assert.deepEqual(selectionChanges[1], { kind: 'range', rowIds: [30, 10], activeRowId: 10 });
+    await press('ArrowDown');
+    assert.equal(activeRowId.value, 20);
+    assert.deepEqual(selection(), [20]);
+  });
+
   it('leaves other keys, and every key on an empty table, alone', async () => {
     await render();
     assert.equal(await press('x'), true);

@@ -1,19 +1,23 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
+ * @see {@link sortTableRows}
  */
 
 import React, { useRef } from 'react';
-import type { Signal } from '@preact/signals-react';
+import { useSignal, type Signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from '@mdi/js';
+import Icon from '@renderer/components/common/Icon';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
+import { nextTableSort, sortTableRows, type TableSort, type TableSortDirection } from './tableSort';
 
 /**
  * @typedef {string | number} TableRowId
@@ -98,6 +102,17 @@ export interface TableSelectionChange {
 }
 
 /**
+ * @callback TableSortHandler
+ * @description Called when a header click changes the sort, for a host that sorts the rows itself (e.g. with a query's `ORDER BY`) (Ticket #325).
+ * @param {string} columnKey - Key of the clicked column.
+ * @param {TableSortDirection | null} direction - The column's new sort direction, or null when the table is no longer sorted.
+ * @returns {void}
+ */
+export type TableSortHandler = (columnKey: string, direction: TableSortDirection | null) => void;
+
+export type { TableSort, TableSortDirection, TableSortState } from './tableSort';
+
+/**
  * @typedef {Object} TableWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
  * @template R
@@ -109,6 +124,8 @@ export interface TableSelectionChange {
  * @property {Signal<Set<TableRowId>>} selectedRowIds - The host-owned set of Selected Rows; TableWidget writes it on every selection change.
  * @property {Signal<TableRowId | null>} activeRowId - The host-owned Active Row, always also a Selected Row; TableWidget writes it on every selection change.
  * @property {(change: TableSelectionChange) => void} [onSelectionChange] - Called after every selection change, with its kind.
+ * @property {Signal<TableSort>} [sort] - Host-owned sort state, read and written by TableWidget; without it TableWidget keeps the sort itself (Ticket #325).
+ * @property {TableSortHandler} [sortHandler] - Host sorting: when given, TableWidget only updates the sort state and chevrons and calls it, and the host supplies `rows` in sorted order; without it TableWidget sorts `rows` in memory (Ticket #325).
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -119,6 +136,8 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   selectedRowIds: Signal<Set<TableRowId>>;
   activeRowId: Signal<TableRowId | null>;
   onSelectionChange?: (change: TableSelectionChange) => void;
+  sort?: Signal<TableSort>;
+  sortHandler?: TableSortHandler;
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
@@ -219,6 +238,22 @@ function displayCell<R>(row: R, column: TableColumn<R>): React.ReactNode {
   const value = cellValue(row, column);
   if (column.display) return column.display(value, row);
   return value === null || value === undefined ? '' : String(value);
+}
+
+/**
+ * @function sortChevron
+ * @description Picks a sortable column header's chevron: a dual chevron when the column is not sorted, an up chevron when sorted ascending, a down chevron when sorted descending (Ticket #325).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableSortDirection | null} direction - The column's sort direction, or null when it is not the sorted column.
+ * @returns {string} MDI path data of the chevron.
+ */
+function sortChevron(direction: TableSortDirection | null): string {
+  if (direction === 'ascending') return mdiChevronUp;
+  if (direction === 'descending') return mdiChevronDown;
+  return mdiUnfoldMoreHorizontal;
 }
 
 /**
@@ -373,7 +408,7 @@ function useRowSelection(
 
 /**
  * @component TableWidget
- * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`.
+ * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header, and lets users select rows into the host's `selectedRowIds` / `activeRowId` signals, reporting each change through `onSelectionChange`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -391,14 +426,55 @@ export function TableWidget<R>({
   selectedRowIds,
   activeRowId,
   onSelectionChange,
+  sort: hostSortSignal,
+  sortHandler,
   name = 'table-widget',
   displayName = 'Table',
   className = '',
   ...basicWidgetProps
 }: TableWidgetProps<R>): React.ReactElement {
   useSignals();
-  const displayedRowIds = rows.map(getRowId);
-  const { onRowClick, onKeyDown } = useRowSelection(displayedRowIds, selectedRowIds, activeRowId, onSelectionChange);
+
+  /**
+   * @signal internalSortSignal
+   * @description The sort state TableWidget keeps itself when the host passes no `sort` signal (Ticket #325).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @type {Signal<TableSort>}
+   */
+  const internalSortSignal = useSignal<TableSort>(null);
+  const sortSignal: Signal<TableSort> = hostSortSignal ?? internalSortSignal;
+  const sort = sortSignal.value;
+  const sortColumn = sort ? columns.find((column) => column.key === sort.columnKey) : undefined;
+  const displayedRows =
+    !sortHandler && sort && sortColumn
+      ? sortTableRows(rows, (row) => cellValue(row, sortColumn), sort.direction, sortColumn.compare)
+      : rows;
+  const { onRowClick, onKeyDown } = useRowSelection(
+    displayedRows.map(getRowId),
+    selectedRowIds,
+    activeRowId,
+    onSelectionChange
+  );
+
+  /**
+   * @function handleHeaderClick
+   * @description Advances the sort when a sortable column's header is clicked, then hands the new direction to the host's `sortHandler`, if any (Ticket #325).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {TableColumn<R>} column - The clicked column.
+   * @returns {void}
+   */
+  const handleHeaderClick = (column: TableColumn<R>): void => {
+    if (column.sortable === false) return;
+    const next = nextTableSort(sortSignal.peek(), column.key);
+    sortSignal.value = next;
+    sortHandler?.(column.key, next?.direction ?? null);
+  };
 
   return (
     <BasicWidget
@@ -441,18 +517,37 @@ export function TableWidget<R>({
                   #
                 </th>
               )}
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className='table-widget-header-cell'
-                  style={{ ...HEADER_CELL_STYLE, width: column.width, textAlign: column.align ?? 'left' }}>
-                  {column.header}
-                </th>
-              ))}
+              {columns.map((column) => {
+                const sortable = column.sortable !== false;
+                const direction = sort?.columnKey === column.key ? sort.direction : null;
+                return (
+                  <th
+                    key={column.key}
+                    className='table-widget-header-cell'
+                    aria-sort={sortable ? (direction ?? 'none') : undefined}
+                    onClick={() => handleHeaderClick(column)}
+                    style={{
+                      ...HEADER_CELL_STYLE,
+                      width: column.width,
+                      textAlign: column.align ?? 'left',
+                      cursor: sortable ? 'pointer' : undefined,
+                    }}>
+                    {column.header}
+                    {sortable && (
+                      <Icon
+                        className='table-widget-sort-icon'
+                        path={sortChevron(direction)}
+                        size='1rem'
+                        style={{ verticalAlign: 'middle', marginLeft: '0.25rem' }}
+                      />
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => {
+            {displayedRows.map((row, index) => {
               const rowId = getRowId(row);
               const selected = selectedRowIds.value.has(rowId);
               const colours = rowColours(index, alternatingRows, selected, selected && activeRowId.value === rowId);
