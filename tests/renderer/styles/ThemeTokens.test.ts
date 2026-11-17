@@ -65,6 +65,7 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-theme-fg',
       '--cartouche-theme-fg-muted',
       '--cartouche-theme-fg-subtle',
+      '--cartouche-theme-fg-secondary',
       '--cartouche-theme-fg-inverted',
       '--cartouche-theme-fg-primary',
       // Accents & Interaction
@@ -183,6 +184,13 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       '--cartouche-table-row-hover-bg',
       '--cartouche-table-row-selected-bg',
       '--cartouche-table-row-alt-bg',
+      '--cartouche-table-column-line',
+      '--cartouche-table-row-line',
+      '--cartouche-table-row-active-bg',
+      '--cartouche-table-row-active-fg',
+      '--cartouche-table-readonly-fg',
+      '--cartouche-table-readonly-selected-bg',
+      '--cartouche-table-readonly-selected-fg',
       // Inputs
       '--cartouche-input-bg',
       '--cartouche-input-fg',
@@ -212,6 +220,35 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         content.includes(`${token}:`),
         `theme-default.css must define Tier 2 component token: ${token}`
       );
+    }
+  });
+
+  it('defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)', () => {
+    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+    assert.match(content, /--cartouche-theme-fg-secondary:\s*#475569;/);
+  });
+
+  it('maps every TableWidget token to the base token the spec assigns it (Spec #322 / Ticket #323)', () => {
+    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+    const expected: Record<string, string> = {
+      '--cartouche-table-border': '--cartouche-theme-border-dark',
+      '--cartouche-table-column-line': '--cartouche-theme-border-strong',
+      '--cartouche-table-row-line': '--cartouche-theme-border',
+      '--cartouche-table-header-bg': '--cartouche-theme-surface-widget',
+      '--cartouche-table-header-fg': '--cartouche-theme-fg',
+      '--cartouche-table-bg': '--cartouche-theme-surface',
+      '--cartouche-table-fg': '--cartouche-theme-fg',
+      '--cartouche-table-row-alt-bg': '--cartouche-theme-surface-subtle',
+      '--cartouche-table-row-selected-bg': '--cartouche-theme-info-subtle',
+      '--cartouche-table-row-active-bg': '--cartouche-theme-info',
+      '--cartouche-table-row-active-fg': '--cartouche-theme-fg',
+      '--cartouche-table-readonly-fg': '--cartouche-theme-fg-muted',
+      '--cartouche-table-readonly-selected-bg': '--cartouche-theme-surface-alt',
+      '--cartouche-table-readonly-selected-fg': '--cartouche-theme-fg-secondary',
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`));
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
     }
   });
 

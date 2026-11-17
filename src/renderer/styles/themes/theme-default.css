@@ -123,6 +123,8 @@
   --cartouche-theme-fg: #000000;
   --cartouche-theme-fg-muted: #64748b;
   --cartouche-theme-fg-subtle: #94a3b8;
+  /* Secondary text that must meet WCAG AA on surface-alt (6.9:1), where fg-muted (4.33:1) does not */
+  --cartouche-theme-fg-secondary: #475569;
   --cartouche-theme-fg-inverted: #ffffff;
   --cartouche-theme-fg-primary: #0f172a;
 
@@ -259,15 +261,22 @@
   --cartouche-dialog-header-border: var(--cartouche-theme-border);
   --cartouche-dialog-backdrop: rgba(0, 0, 0, 0.4);
 
-  /* Tables */
+  /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Selected Row and Active Row backgrounds, and Read-Only Cell text */
   --cartouche-table-bg: var(--cartouche-theme-surface);
   --cartouche-table-fg: var(--cartouche-theme-fg);
-  --cartouche-table-header-bg: var(--cartouche-theme-surface-subtle);
-  --cartouche-table-header-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-table-border: var(--cartouche-theme-border);
+  --cartouche-table-header-bg: var(--cartouche-theme-surface-widget);
+  --cartouche-table-header-fg: var(--cartouche-theme-fg);
+  --cartouche-table-border: var(--cartouche-theme-border-dark);
+  --cartouche-table-column-line: var(--cartouche-theme-border-strong);
+  --cartouche-table-row-line: var(--cartouche-theme-border);
   --cartouche-table-row-hover-bg: var(--cartouche-theme-surface-hover);
-  --cartouche-table-row-selected-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-table-row-alt-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-table-row-selected-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-table-row-active-bg: var(--cartouche-theme-info);
+  --cartouche-table-row-active-fg: var(--cartouche-theme-fg);
+  --cartouche-table-readonly-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-table-readonly-selected-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-table-readonly-selected-fg: var(--cartouche-theme-fg-secondary);
 
   /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
