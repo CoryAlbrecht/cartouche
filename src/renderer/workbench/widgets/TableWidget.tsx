@@ -1,18 +1,23 @@
 /**
  * @file TableWidget.tsx
  * @module renderer/workbench/widgets/TableWidget
- * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference.
+ * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable row ID, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens, a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
+ * @see {@link sortTableRows}
  */
 
 import React from 'react';
+import { useSignal, type Signal } from '@preact/signals-react';
 import { useSignals } from '@preact/signals-react/runtime';
+import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from '@mdi/js';
+import Icon from '@renderer/components/common/Icon';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
+import { nextTableSort, sortTableRows, type TableSort, type TableSortDirection } from './tableSort';
 
 /**
  * @typedef {string | number} TableRowId
@@ -75,6 +80,17 @@ export interface TableColumn<R> {
 }
 
 /**
+ * @callback TableSortHandler
+ * @description Called when a header click changes the sort, for a host that sorts the rows itself (e.g. with a query's `ORDER BY`) (Ticket #325).
+ * @param {string} columnKey - Key of the clicked column.
+ * @param {TableSortDirection | null} direction - The column's new sort direction, or null when the table is no longer sorted.
+ * @returns {void}
+ */
+export type TableSortHandler = (columnKey: string, direction: TableSortDirection | null) => void;
+
+export type { TableSort, TableSortDirection, TableSortState } from './tableSort';
+
+/**
  * @typedef {Object} TableWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
  * @template R
@@ -83,6 +99,8 @@ export interface TableColumn<R> {
  * @property {readonly TableColumn<R>[]} columns - Column definitions, in display order.
  * @property {boolean} [alternatingRows=false] - Whether odd rows (the 1st, 3rd, …) use the alternate row colour.
  * @property {boolean} [showRowNumberColumn=true] - Whether to show the Row Number Column: headed `#`, coloured like the header row, numbering rows 1, 2, 3… by displayed position.
+ * @property {Signal<TableSort>} [sort] - Host-owned sort state, read and written by TableWidget; without it TableWidget keeps the sort itself (Ticket #325).
+ * @property {TableSortHandler} [sortHandler] - Host sorting: when given, TableWidget only updates the sort state and chevrons and calls it, and the host supplies `rows` in sorted order; without it TableWidget sorts `rows` in memory (Ticket #325).
  */
 export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
   rows: readonly R[];
@@ -90,6 +108,8 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
   columns: readonly TableColumn<R>[];
   alternatingRows?: boolean;
   showRowNumberColumn?: boolean;
+  sort?: Signal<TableSort>;
+  sortHandler?: TableSortHandler;
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
@@ -193,8 +213,24 @@ function displayCell<R>(row: R, column: TableColumn<R>): React.ReactNode {
 }
 
 /**
+ * @function sortChevron
+ * @description Picks a sortable column header's chevron: a dual chevron when the column is not sorted, an up chevron when sorted ascending, a down chevron when sorted descending (Ticket #325).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-16
+ * @updated 2026-11-16
+ * @since 0.1.0-dev
+ * @param {TableSortDirection | null} direction - The column's sort direction, or null when it is not the sorted column.
+ * @returns {string} MDI path data of the chevron.
+ */
+function sortChevron(direction: TableSortDirection | null): string {
+  if (direction === 'ascending') return mdiChevronUp;
+  if (direction === 'descending') return mdiChevronDown;
+  return mdiUnfoldMoreHorizontal;
+}
+
+/**
  * @component TableWidget
- * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table.
+ * @description Canonical table Widget subclassing BasicWidget. Shows the host's rows and columns as a themed table, sortable by one column at a time through its header.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-16
@@ -209,12 +245,49 @@ export function TableWidget<R>({
   columns,
   alternatingRows = false,
   showRowNumberColumn = true,
+  sort: hostSortSignal,
+  sortHandler,
   name = 'table-widget',
   displayName = 'Table',
   className = '',
   ...basicWidgetProps
 }: TableWidgetProps<R>): React.ReactElement {
   useSignals();
+
+  /**
+   * @signal internalSortSignal
+   * @description The sort state TableWidget keeps itself when the host passes no `sort` signal (Ticket #325).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @type {Signal<TableSort>}
+   */
+  const internalSortSignal = useSignal<TableSort>(null);
+  const sortSignal: Signal<TableSort> = hostSortSignal ?? internalSortSignal;
+  const sort = sortSignal.value;
+  const sortColumn = sort ? columns.find((column) => column.key === sort.columnKey) : undefined;
+  const displayedRows =
+    !sortHandler && sort && sortColumn
+      ? sortTableRows(rows, (row) => cellValue(row, sortColumn), sort.direction, sortColumn.compare)
+      : rows;
+
+  /**
+   * @function handleHeaderClick
+   * @description Advances the sort when a sortable column's header is clicked, then hands the new direction to the host's `sortHandler`, if any (Ticket #325).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-16
+   * @updated 2026-11-16
+   * @since 0.1.0-dev
+   * @param {TableColumn<R>} column - The clicked column.
+   * @returns {void}
+   */
+  const handleHeaderClick = (column: TableColumn<R>): void => {
+    if (column.sortable === false) return;
+    const next = nextTableSort(sortSignal.peek(), column.key);
+    sortSignal.value = next;
+    sortHandler?.(column.key, next?.direction ?? null);
+  };
 
   return (
     <BasicWidget
@@ -255,18 +328,37 @@ export function TableWidget<R>({
                   #
                 </th>
               )}
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className='table-widget-header-cell'
-                  style={{ ...HEADER_CELL_STYLE, width: column.width, textAlign: column.align ?? 'left' }}>
-                  {column.header}
-                </th>
-              ))}
+              {columns.map((column) => {
+                const sortable = column.sortable !== false;
+                const direction = sort?.columnKey === column.key ? sort.direction : null;
+                return (
+                  <th
+                    key={column.key}
+                    className='table-widget-header-cell'
+                    aria-sort={sortable ? (direction ?? 'none') : undefined}
+                    onClick={() => handleHeaderClick(column)}
+                    style={{
+                      ...HEADER_CELL_STYLE,
+                      width: column.width,
+                      textAlign: column.align ?? 'left',
+                      cursor: sortable ? 'pointer' : undefined,
+                    }}>
+                    {column.header}
+                    {sortable && (
+                      <Icon
+                        className='table-widget-sort-icon'
+                        path={sortChevron(direction)}
+                        size='1rem'
+                        style={{ verticalAlign: 'middle', marginLeft: '0.25rem' }}
+                      />
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => {
+            {displayedRows.map((row, index) => {
               const rowId = getRowId(row);
               const background =
                 alternatingRows && index % 2 === 0
