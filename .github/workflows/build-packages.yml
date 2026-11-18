@@ -131,6 +131,10 @@ jobs:
           npm run build
           npm run package:linux
 
+      # Loads gdal-async from inside app.asar, which no earlier gate does (#343).
+      - name: Smoke-test the packaged app
+        run: npm run smoke:packaged
+
       - name: Upload Linux Installers
         uses: actions/upload-artifact@v7
         with:
@@ -263,6 +267,10 @@ jobs:
         run: |
           npm run build
           npm run package:win -- --publish never
+
+      # Loads gdal-async from inside app.asar, which no earlier gate does (#343).
+      - name: Smoke-test the packaged app
+        run: npm run smoke:packaged
 
       - name: Upload Windows Installers
         uses: actions/upload-artifact@v7

@@ -15,6 +15,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { selectRows, withReadOnlySqlite } from '../gdal/readOnlySqlite';
 import { quoteSqlString } from '../gdal/sqlQuote';
+import { bundledGdalDataDirs } from '../gdal/bundledGdalData';
 import type { CrsCatalogueEntry, CrsCatalogueType } from '../../shared/types/crs';
 
 /**
@@ -29,13 +30,14 @@ export const CRS_CATALOGUE_CACHE_FILE = 'crs-catalogue.json';
 
 /**
  * @constant {number} CRS_CATALOGUE_CACHE_FORMAT
- * @description Cache file format revision; bumping it invalidates every cache.
+ * @description Cache file format revision; bumping it invalidates every cache. Revision 2 discards the one-entry catalogues (only `OGC:CRS84`) that packaged
+ * builds cached while PROJ could not find `proj.db` inside `app.asar` (#343).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  */
-export const CRS_CATALOGUE_CACHE_FORMAT = 1;
+export const CRS_CATALOGUE_CACHE_FORMAT = 2;
 
 /**
  * @constant {readonly CrsCatalogueType[]} CRS_CATALOGUE_TYPES
@@ -302,14 +304,13 @@ export async function loadOrBuildCrsCatalogue(options: CrsCatalogueLoadOptions):
  * @description Locates the PROJ database bundled with gdal-async (`deps/libproj/proj/data/proj.db`), mapping packaged `app.asar` paths to `app.asar.unpacked` because SQLite cannot open files inside an archive.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {string} gdalModuleEntry - Resolved path of gdal-async's main module (`lib/gdal.js`).
  * @returns {string} Absolute path of `proj.db`.
  */
 export function resolveBundledProjDbPath(gdalModuleEntry: string): string {
-  const projDb = path.resolve(path.dirname(gdalModuleEntry), '..', 'deps', 'libproj', 'proj', 'data', 'proj.db');
-  return projDb.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+  return path.join(bundledGdalDataDirs(gdalModuleEntry).projData, 'proj.db');
 }
 
 /**

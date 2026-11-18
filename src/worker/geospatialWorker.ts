@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link logging}
@@ -13,6 +13,7 @@
 import { GeospatialEngine } from "../main/worker/GeospatialEngine";
 import type { WorkerRequest, WorkerResponse } from "../main/worker/types";
 import { logging } from "../shared/logging";
+import { configureBundledGdalData } from "../main/gdal/bundledGdalData";
 
 /**
  * @function postResponse
@@ -301,6 +302,9 @@ export function initGeospatialWorker(
 
   return messageHandler;
 }
+
+// Before anything uses PROJ: in a packaged build, point it and GDAL at their data files outside app.asar (#343).
+logging.debug("Bundled GDAL data paths", { applied: configureBundledGdalData(), scope: "worker" });
 
 // Auto-initialize when running inside an Electron UtilityProcess where process.parentPort is available
 if ((process as any).parentPort) {
