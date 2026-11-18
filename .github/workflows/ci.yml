@@ -17,6 +17,8 @@ jobs:
   quality:
     name: Lint, Typecheck & Test
     runs-on: ubuntu-24.04
+    # A deadlocked test blocks its event loop, so only a wall-clock limit stops it (#342, #348).
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -37,11 +39,14 @@ jobs:
         run: npm ci
 
       - name: Run Typecheck
+        timeout-minutes: 10
         run: npm run typecheck
 
       - name: Run Lint
+        timeout-minutes: 10
         run: npm run lint
 
       - name: Run Test Suite
+        timeout-minutes: 15
         run: npm test
 
