@@ -11,7 +11,7 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromAny } from '@total-typescript/shoehorn';
+import { fromAny, fromPartial } from '@total-typescript/shoehorn';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -32,7 +32,7 @@ import {
   supportsSqlWindow,
 } from '../../../src/main/worker/GeospatialEngine';
 import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
-import type { BoundingBox, QueryExtentOptions, SortKey } from '../../../src/shared/types';
+import type { BoundingBox, LayerFieldInfo, QueryExtentOptions, SortKey } from '../../../src/shared/types';
 import {
   WKB_PACKET_MAGIC,
   WKB_PACKET_VERSION,
@@ -695,32 +695,22 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         },
       };
 
-      const mockDataset: any = {
-        executeSQL: (sql: string) => {
-          if (sql.includes('PRAGMA table_info')) {
-            return {
-              features: [
-                { fields: { toObject: () => ({ name: 'col_pragma_bool', type: 'BOOLEAN', dflt_value: null }) } },
-                { fields: { toObject: () => ({ name: 'col_pragma_date', type: 'DATE', dflt_value: null }) } },
-                { fields: { toObject: () => ({ name: 'col_pragma_time', type: 'TIME', dflt_value: null }) } },
-                { fields: { toObject: () => ({ name: 'col_pragma_datetime', type: 'DATETIME', dflt_value: null }) } },
-                { fields: { toObject: () => ({ name: 'col_pragma_uuid', type: 'UUID', dflt_value: null }) } },
-                { fields: { toObject: () => ({ name: 'col_pragma_json', type: 'JSON', dflt_value: null }) } },
-              ],
-            };
-          }
-          if (sql.includes('gpkg_data_columns')) {
-            return {
-              features: [
-                { fields: { toObject: () => ({ column_name: 'col_gpkg_date', data_type: 'date', mime_type: null }) } },
-                { fields: { toObject: () => ({ column_name: 'col_gpkg_uuid', data_type: 'string', mime_type: 'application/x-uuid' }) } },
-                { fields: { toObject: () => ({ column_name: 'col_gpkg_json', data_type: 'string', mime_type: 'application/json' }) } },
-              ],
-            };
-          }
-          return null;
-        },
-      };
+      fromAny<{ readSqliteColumnRows: GeospatialEngine['readSqliteColumnRows'] }, GeospatialEngine>(engine).readSqliteColumnRows = () => ({
+        pragmaRows: [
+          { name: 'col_pragma_bool', type: 'BOOLEAN', dflt_value: null },
+          { name: 'col_pragma_date', type: 'DATE', dflt_value: null },
+          { name: 'col_pragma_time', type: 'TIME', dflt_value: null },
+          { name: 'col_pragma_datetime', type: 'DATETIME', dflt_value: null },
+          { name: 'col_pragma_uuid', type: 'UUID', dflt_value: null },
+          { name: 'col_pragma_json', type: 'JSON', dflt_value: null },
+        ],
+        dataColumnRows: [
+          { column_name: 'col_gpkg_date', data_type: 'date', mime_type: null },
+          { column_name: 'col_gpkg_uuid', data_type: 'string', mime_type: 'application/x-uuid' },
+          { column_name: 'col_gpkg_json', data_type: 'string', mime_type: 'application/json' },
+        ],
+      });
+      const mockDataset = fromPartial<gdal.Dataset>({ driver: fromPartial<gdal.Driver>({ description: 'GPKG' }) });
 
       const inferred = engine.inferLayerFields(mockDataset, mockLayer, '/data/test.gpkg');
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
@@ -1537,6 +1527,23 @@ const createSortKeyFixture = (driver: string, filePath: string): gdal.Dataset =>
 };
 
 /**
+ * @typedef {Object} TestSessionView
+ * @property {gdal.Dataset} dataset - The session's long-lived dataset.
+ * @property {LayerFieldInfo[] | undefined} fields - Cached inferred fields; clearing them makes the next query re-run field introspection.
+ */
+type TestSessionView = { dataset: gdal.Dataset; fields?: LayerFieldInfo[] };
+
+/**
+ * @function sessionOf
+ * @description Returns the engine's private layer session for a layer, as the parts the tests read and reset.
+ * @param {GeospatialEngine} engine - Engine owning the session.
+ * @param {string} layerId - Session layer identifier.
+ * @returns {TestSessionView} The session.
+ */
+const sessionOf = (engine: GeospatialEngine, layerId: string): TestSessionView =>
+  fromAny<{ sessions: Map<string, TestSessionView> }, GeospatialEngine>(engine).sessions.get(layerId)!;
+
+/**
  * @function recordSessionSql
  * @description Wraps the engine's `executeSessionSql` so every SQL statement it runs for the given session is recorded, then forwarded unchanged. The engine runs query SQL on short-lived dataset handles, so the session dataset's own `executeSQL` is no longer the seam.
  * @param {GeospatialEngine} engine - Engine owning the session.
@@ -2028,9 +2035,11 @@ describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
     assert.ok(statements.length > 0 && statements.every((sql) => / LIMIT 9 OFFSET \d+$/.test(sql)));
   });
 
-  it('does not deadlock when many SQL queries interleave with plain reads on the same dataset (Ticket #342)', async () => {
+  it('does not deadlock when many SQL queries and field introspections interleave with plain reads on the same dataset (Ticket #342)', async () => {
     const orderBy: SortKey[] = [['start_date', 'DESC']];
+    const session = sessionOf(engine, layerId);
     for (let round = 0; round < 25; round++) {
+      session.fields = undefined; // re-runs PRAGMA table_info / gpkg_data_columns introspection on the next query
       for (let k = 0; k < 5; k++) {
         await engine.queryExtent(layerId, { orderBy, start: k, max: 50 });
       }
@@ -2168,28 +2177,13 @@ describe('Layer and field names containing quotes (Ticket #340)', () => {
   };
 
   it('finds the field in PRAGMA table_info and gpkg_data_columns on a GeoPackage', () => {
-    const dataset = gdal.open(createQuotedGpkg());
+    const filePath = createQuotedGpkg();
+    const dataset = gdal.open(filePath);
     try {
-      let pragmaRows: Array<Record<string, unknown>> = [];
-      let dataColumnRows: Array<Record<string, unknown>> = [];
-      const recording = {
-        executeSQL: (sql: string) => {
-          const result = dataset.executeSQL(sql);
-          const objects = result.features.map((feature) => feature.fields.toObject());
-          if (sql.startsWith('PRAGMA table_info')) {
-            pragmaRows = objects;
-          } else if (sql.includes('gpkg_data_columns')) {
-            dataColumnRows = objects;
-          }
-          return { features: objects.map((object) => ({ fields: { toObject: () => object } })) };
-        },
-      };
-      const layer = dataset.layers.get(0);
-      assert.equal(layer.name, LAYER);
-
-      const fields = engine.inferLayerFields(fromAny(recording), layer, 'quoted.gpkg');
+      const { pragmaRows, dataColumnRows } = engine.readSqliteColumnRows(dataset, filePath, LAYER);
       assert.ok(pragmaRows.some((row) => row.name === FIELD), 'PRAGMA table_info lists the field');
       assert.deepEqual(dataColumnRows.map((row) => row.column_name), [FIELD]);
+      const fields = engine.inferLayerFields(dataset, dataset.layers.get(0), filePath);
       assert.equal(fields.find((field) => field.name === FIELD)?.inferredType, 'json');
     } finally {
       dataset.close();
@@ -2225,5 +2219,23 @@ describe('Layer and field names containing quotes (Ticket #340)', () => {
 
     const result = await engine.queryExtent('quoted-memory', { orderBy: [[FIELD, 'ASC']], includeGeometry: false });
     assert.deepEqual(result.features.map((f) => f.properties?.[FIELD]), ['a', 'b', 'c']);
+  });
+
+  it('runs no SQL on the long-lived session dataset, introspection included (Ticket #342)', async () => {
+    await engine.openDataset('quoted-gpkg', createQuotedGpkg());
+    const session = sessionOf(engine, 'quoted-gpkg');
+    const onSession: string[] = [];
+    session.dataset.executeSQL = fromAny<gdal.Dataset['executeSQL'], (sql: string) => never>((sql: string) => {
+      onSession.push(sql);
+      throw new Error('executeSQL on the session dataset');
+    });
+
+    session.fields = undefined;
+    const sorted = await engine.queryExtent('quoted-gpkg', { orderBy: [[FIELD, 'DESC']], start: 0, max: 2, includeGeometry: false });
+    assert.deepEqual(sorted.features.map((f) => f.properties?.[FIELD]), ['c', 'b']);
+    const inferred = sessionOf(engine, 'quoted-gpkg').fields; // re-read: the reset above narrowed session.fields to undefined
+    assert.equal(inferred?.find((field) => field.name === FIELD)?.inferredType, 'json');
+    await engine.getLayerInfo('quoted-gpkg');
+    assert.deepEqual(onSession, []);
   });
 });

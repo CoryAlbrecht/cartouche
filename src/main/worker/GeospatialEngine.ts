@@ -30,6 +30,7 @@ import type {
 } from "../../shared/types";
 import { classifyDriverDialect } from "../../shared/layers/queryDialect";
 import { quoteSqlIdentifier, quoteSqlString, sqlDialectForDriver, type SqlDialect } from "../gdal/sqlQuote";
+import { selectRows, type SqliteRow } from "../gdal/readOnlySqlite";
 import {
   WKB_PACKET_MAGIC,
   WKB_PACKET_VERSION,
@@ -1015,10 +1016,35 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Runs a SQL statement for a session on a short-lived read-only handle to the session's file and hands the result layer to `consume`, then closes the handle.
+   * @description Runs `use` with a dataset handle that is safe for `executeSQL`: a short-lived read-only handle to `filePath`, closed as soon as `use` returns or throws.
    * gdal-async releases an `executeSQL` result layer only when the GC collects it, and that release waits on the parent dataset's lock; if the GC fires during a synchronous call on
-   * the same dataset, the worker deadlocks (Ticket #342). Closing the short-lived handle releases the result layer at once, so nothing is left for the GC. A Memory-driver dataset
-   * has no file to reopen, so its SQL runs on the session dataset itself.
+   * the same dataset, the worker deadlocks (Ticket #342). Closing the short-lived handle releases its result layers at once, so nothing is left for the GC. A Memory-driver dataset
+   * has no file to reopen, so `use` gets that dataset itself.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @template T
+   * @param {gdal.Dataset} dataset - Long-lived dataset the SQL is about; it is never given to `use` unless it is a Memory dataset.
+   * @param {string} filePath - Absolute path of the dataset's file.
+   * @param {(handle: gdal.Dataset) => T} use - Runs the SQL synchronously; neither the handle nor any result layer may be used after it returns.
+   * @returns {T} Whatever `use` returns.
+   * @throws {Error} If the handle cannot be opened, or whatever `use` throws.
+   */
+  private withSqlHandle<T>(dataset: gdal.Dataset, filePath: string, use: (handle: gdal.Dataset) => T): T {
+    if (dataset.driver?.description === "Memory") {
+      return use(dataset);
+    }
+    const handle = gdal.open(filePath, "r");
+    try {
+      return use(handle);
+    } finally {
+      handle.close();
+    }
+  }
+
+  /**
+   * @description Runs a SQL statement for a session on a short-lived handle (see `withSqlHandle`) and hands the result layer to `consume`.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-17
    * @updated 2026-11-17
@@ -1037,17 +1063,50 @@ export class GeospatialEngine {
     spatialFilter: gdal.Geometry | null,
     consume: (resultLayer: gdal.Layer) => T
   ): T {
-    const run = (dataset: gdal.Dataset): T =>
-      consume(spatialFilter ? dataset.executeSQL(sql, spatialFilter) : dataset.executeSQL(sql));
+    return this.withSqlHandle(session.dataset, session.filePath, (handle) =>
+      consume(spatialFilter ? handle.executeSQL(sql, spatialFilter) : handle.executeSQL(sql))
+    );
+  }
 
-    if (session.dataset.driver?.description === "Memory") {
-      return run(session.dataset);
+  /**
+   * @description Reads a SQLite-dialect layer's column introspection rows, `PRAGMA table_info` and the GeoPackage `gpkg_data_columns` entries, on a short-lived handle (see
+   * `withSqlHandle`). Drivers whose `executeSQL` runs OGR SQL support neither, so they get no rows and no handle is opened. Each query fails on its own (no such table, no
+   * such pragma) without affecting the other, and a handle that cannot be opened yields no rows (logged at debug level).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {gdal.Dataset} dataset - Long-lived dataset holding the layer.
+   * @param {string} filePath - Absolute path of the dataset's file.
+   * @param {string} layerName - Layer (table) name.
+   * @returns {{ pragmaRows: SqliteRow[]; dataColumnRows: SqliteRow[] }} `PRAGMA table_info` rows and the layer's `gpkg_data_columns` rows; empty when unavailable.
+   */
+  public readSqliteColumnRows(
+    dataset: gdal.Dataset,
+    filePath: string,
+    layerName: string
+  ): { pragmaRows: SqliteRow[]; dataColumnRows: SqliteRow[] } {
+    const empty = { pragmaRows: [], dataColumnRows: [] };
+    if (layerName.length === 0 || sqlDialectForDriver(dataset.driver?.description ?? "") !== "SQLITE") {
+      return empty;
     }
-    const handle = gdal.open(session.filePath, "r");
+    const tryRows = (handle: gdal.Dataset, sql: string): SqliteRow[] => {
+      try {
+        return selectRows(handle, sql);
+      } catch {
+        return [];
+      }
+    };
     try {
-      return run(handle);
-    } finally {
-      handle.close();
+      return this.withSqlHandle(dataset, filePath, (handle) => ({
+        pragmaRows: tryRows(handle, `PRAGMA table_info(${quoteSqlIdentifier(layerName, "SQLITE")})`),
+        // SELECT * because the standard table has no data_type column (only mime_type); naming it made the query fail on every real GeoPackage.
+        // data_type is still read when a non-standard table carries it; on a standard table it is empty and only mime_type counts.
+        dataColumnRows: tryRows(handle, `SELECT * FROM gpkg_data_columns WHERE table_name = ${quoteSqlString(layerName)}`),
+      }));
+    } catch (err) {
+      logging.debug("Field introspection skipped: could not open a SQL handle", { scope: "GeospatialEngine", filePath, error: String(err) });
+      return empty;
     }
   }
 
@@ -1174,7 +1233,7 @@ export class GeospatialEngine {
    * @date 2026-11-02
    * @updated 2026-11-17
    * @since 0.1.0-dev
-   * @param {gdal.Dataset} dataset - Active GDAL dataset instance.
+   * @param {gdal.Dataset} dataset - Active GDAL dataset instance; its driver decides whether SQLite introspection runs, and that SQL runs on a short-lived handle.
    * @param {gdal.Layer} layer - Target vector layer handle.
    * @param {string} filePath - Absolute path to underlying dataset file.
    * @returns {LayerFieldInfo[]} Inferred field schema definitions.
@@ -1187,7 +1246,7 @@ export class GeospatialEngine {
     const layerName = layer.name?.trim() || "";
     const ext = path.extname(filePath).toLowerCase();
 
-    // Tier 1 prep: introspect SQLite PRAGMA table_info and GeoPackage gpkg_data_columns
+    // Tier 1 prep: SQLite PRAGMA table_info and GeoPackage gpkg_data_columns, read on a short-lived handle (Ticket #342)
     const pragmaColumns = new Map<
       string,
       { type: string; dflt_value: string | null; notnull: boolean }
@@ -1197,59 +1256,23 @@ export class GeospatialEngine {
       { data_type: string; mime_type: string | null }
     >();
 
-    try {
-      if (typeof dataset.executeSQL === "function" && layerName.length > 0) {
-        // Query PRAGMA table_info
-        try {
-          const pragmaRes = dataset.executeSQL(
-            `PRAGMA table_info(${quoteSqlIdentifier(layerName, "SQLITE")})`
-          );
-          if (pragmaRes && pragmaRes.features) {
-            for (const feat of pragmaRes.features) {
-              const obj = feat.fields.toObject();
-              if (obj.name) {
-                pragmaColumns.set(String(obj.name).toLowerCase(), {
-                  type: String(obj.type || "").toUpperCase(),
-                  dflt_value:
-                    obj.dflt_value !== undefined && obj.dflt_value !== null ?
-                      String(obj.dflt_value)
-                    : null,
-                  notnull: obj.notnull === 1 || obj.notnull === true,
-                });
-              }
-            }
-          }
-        } catch {
-          // Driver does not support SQLite PRAGMA table_info
-        }
-
-        // Query GeoPackage gpkg_data_columns. SELECT * because the standard table has no data_type column
-        // (only mime_type); naming it made the query fail on every real GeoPackage. data_type is still read
-        // when a non-standard table carries it; on a standard table it is empty and only mime_type counts.
-        try {
-          const gpkgRes = dataset.executeSQL(
-            `SELECT * FROM gpkg_data_columns WHERE table_name = ${quoteSqlString(layerName)}`
-          );
-          if (gpkgRes && gpkgRes.features) {
-            for (const feat of gpkgRes.features) {
-              const obj = feat.fields.toObject();
-              if (obj.column_name) {
-                gpkgDataColumns.set(String(obj.column_name).toLowerCase(), {
-                  data_type: String(obj.data_type || "").toLowerCase(),
-                  mime_type:
-                    obj.mime_type !== undefined && obj.mime_type !== null ?
-                      String(obj.mime_type).toLowerCase()
-                    : null,
-                });
-              }
-            }
-          }
-        } catch {
-          // Not a GeoPackage or gpkg_data_columns table does not exist
-        }
+    const { pragmaRows, dataColumnRows } = this.readSqliteColumnRows(dataset, filePath, layerName);
+    for (const row of pragmaRows) {
+      if (row.name) {
+        pragmaColumns.set(String(row.name).toLowerCase(), {
+          type: String(row.type || "").toUpperCase(),
+          dflt_value: row.dflt_value !== undefined && row.dflt_value !== null ? String(row.dflt_value) : null,
+          notnull: row.notnull === 1 || row.notnull === true,
+        });
       }
-    } catch {
-      // Suppress general executeSQL introspection errors
+    }
+    for (const row of dataColumnRows) {
+      if (row.column_name) {
+        gpkgDataColumns.set(String(row.column_name).toLowerCase(), {
+          data_type: String(row.data_type || "").toLowerCase(),
+          mime_type: row.mime_type !== undefined && row.mime_type !== null ? String(row.mime_type).toLowerCase() : null,
+        });
+      }
     }
 
     const fields: LayerFieldInfo[] = [];

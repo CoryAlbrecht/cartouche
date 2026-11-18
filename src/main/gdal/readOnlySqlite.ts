@@ -50,7 +50,7 @@ export function withReadOnlySqlite<T>(filePath: string, use: (dataset: gdal.Data
  * @date 2026-11-17
  * @updated 2026-11-17
  * @since 0.1.0-dev
- * @param {gdal.Dataset} dataset - Handle from {@link withReadOnlySqlite}.
+ * @param {gdal.Dataset} dataset - Short-lived handle whose `executeSQL` runs the SQLite dialect, such as one from {@link withReadOnlySqlite}.
  * @param {string} sql - Complete statement; quote interpolated values with `sqlQuote.ts`.
  * @returns {SqliteRow[]} Rows in result order.
  * @throws {Error} When GDAL rejects the statement.
