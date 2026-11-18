@@ -30,7 +30,6 @@ import {
   buildOrderBySql,
   buildPagedSelectSql,
   supportsSqlWindow,
-  quoteSqlIdentifier,
 } from '../../../src/main/worker/GeospatialEngine';
 import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
 import type { BoundingBox, QueryExtentOptions, SortKey } from '../../../src/shared/types';
@@ -1575,69 +1574,71 @@ const recordOrderBySql = (engine: GeospatialEngine, layerId: string): string[] =
     sql.includes('ORDER BY') ? sql.replace(/ LIMIT -?\d+ OFFSET \d+$/, '') : null
   );
 
-describe('buildOrderBySql and quoteSqlIdentifier (Ticket #334)', () => {
+describe('buildOrderBySql (Ticket #334)', () => {
   const schema = ['category', 'priority', 'na"me'];
 
-  it('quotes identifiers by doubling embedded double quotes', () => {
-    assert.equal(quoteSqlIdentifier('category'), '"category"');
-    assert.equal(quoteSqlIdentifier('na"me'), '"na""me"');
-  });
-
   it('returns null for a missing or empty orderBy', () => {
-    assert.equal(buildOrderBySql('t', undefined, schema, 'fid'), null);
-    assert.equal(buildOrderBySql('t', [], schema, 'fid'), null);
+    assert.equal(buildOrderBySql('t', undefined, schema, 'fid', 'SQLITE'), null);
+    assert.equal(buildOrderBySql('t', [], schema, 'fid', 'SQLITE'), null);
   });
 
   it('builds a quoted multi-column ORDER BY with the stored ID column tiebreaker', () => {
     assert.equal(
-      buildOrderBySql('my "layer"', [['category', 'ASC'], ['na"me', 'DESC']], schema, 'fid'),
+      buildOrderBySql('my "layer"', [['category', 'ASC'], ['na"me', 'DESC']], schema, 'fid', 'SQLITE'),
       'SELECT * FROM "my ""layer""" ORDER BY "category" ASC, "na""me" DESC, "fid" ASC'
+    );
+  });
+
+  it('escapes identifiers for OGR SQL with backslashes instead of doubled quotes (Ticket #340)', () => {
+    assert.equal(
+      buildOrderBySql('my "layer"', [['na"me', 'DESC']], schema, '', 'OGRSQL'),
+      'SELECT * FROM "my \\"layer\\"" ORDER BY "na\\"me" DESC, FID ASC'
     );
   });
 
   it('uses OGR SQL FID as the tiebreaker when the layer has no stored ID column name', () => {
     assert.equal(
-      buildOrderBySql('t', [['priority', 'DESC']], schema, ''),
+      buildOrderBySql('t', [['priority', 'DESC']], schema, '', 'OGRSQL'),
       'SELECT * FROM "t" ORDER BY "priority" DESC, FID ASC'
     );
   });
 
   it('accepts the stored ID column as a Sort Key and skips the tiebreaker', () => {
     assert.equal(
-      buildOrderBySql('t', [['category', 'ASC'], ['fid', 'DESC']], schema, 'fid'),
+      buildOrderBySql('t', [['category', 'ASC'], ['fid', 'DESC']], schema, 'fid', 'SQLITE'),
       'SELECT * FROM "t" ORDER BY "category" ASC, "fid" DESC'
     );
   });
 
   it('rejects unknown, case-mismatched, and Virtual Field names with an error naming the field', () => {
-    assert.throws(() => buildOrderBySql('t', [['nope', 'ASC']], schema, 'fid'), /"nope"/);
-    assert.throws(() => buildOrderBySql('t', [['Category', 'ASC']], schema, 'fid'), /"Category"/);
-    assert.throws(() => buildOrderBySql('t', [['FID', 'ASC']], schema, ''), /"FID"/);
+    assert.throws(() => buildOrderBySql('t', [['nope', 'ASC']], schema, 'fid', 'SQLITE'), /"nope"/);
+    assert.throws(() => buildOrderBySql('t', [['Category', 'ASC']], schema, 'fid', 'SQLITE'), /"Category"/);
+    assert.throws(() => buildOrderBySql('t', [['FID', 'ASC']], schema, '', 'OGRSQL'), /"FID"/);
   });
 
   it('rejects a repeated field with an error naming the field', () => {
     assert.throws(
-      () => buildOrderBySql('t', [['category', 'ASC'], ['priority', 'ASC'], ['category', 'DESC']], schema, 'fid'),
+      () => buildOrderBySql('t', [['category', 'ASC'], ['priority', 'ASC'], ['category', 'DESC']], schema, 'fid', 'SQLITE'),
       /repeated.*"category"/i
     );
   });
 
   it('rejects a Sort Key without a valid direction with an error naming the field', () => {
-    assert.throws(() => buildOrderBySql('t', fromAny([['category']]), schema, 'fid'), /"category"/);
-    assert.throws(() => buildOrderBySql('t', fromAny([['category', 'asc']]), schema, 'fid'), /"category"/);
-    assert.throws(() => buildOrderBySql('t', fromAny(['category']), schema, 'fid'), /Sort Key/);
+    assert.throws(() => buildOrderBySql('t', fromAny([['category']]), schema, 'fid', 'SQLITE'), /"category"/);
+    assert.throws(() => buildOrderBySql('t', fromAny([['category', 'asc']]), schema, 'fid', 'SQLITE'), /"category"/);
+    assert.throws(() => buildOrderBySql('t', fromAny(['category']), schema, 'fid', 'SQLITE'), /Sort Key/);
   });
 
   it('keeps the OGR SQL FID tiebreaker when a Sort Key names an attribute field called FID and the layer has no stored ID column', () => {
     assert.equal(
-      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], ''),
+      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], '', 'OGRSQL'),
       'SELECT * FROM "t" ORDER BY "FID" DESC, FID ASC'
     );
   });
 
   it('skips the tiebreaker only for the stored ID column, not for an attribute field that shares its name in another case', () => {
     assert.equal(
-      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], 'fid'),
+      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], 'fid', 'SQLITE'),
       'SELECT * FROM "t" ORDER BY "FID" DESC, "fid" ASC'
     );
   });
@@ -2085,4 +2086,144 @@ describe('Extent-filtered paging on SQLite-dialect layers without an R-tree (Tic
       }
     });
   }
+});
+
+describe('Layer and field names containing quotes (Ticket #340)', () => {
+  /**
+   * @description Layer name with both quote characters.
+   * @type {string}
+   */
+  const LAYER = `it's "q"`;
+
+  /**
+   * @description Field name with both quote characters and a backslash.
+   * @type {string}
+   */
+  const FIELD = `o'brien "x" \\`;
+
+  let engine: GeospatialEngine;
+  let tempDir: string;
+
+  beforeEach(() => {
+    engine = new GeospatialEngine();
+    engine.setBackgroundScanEnabled(false);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-sql-quote-'));
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * @function runStatement
+   * @description Runs a statement that returns no rows; gdal-async throws an empty error for those even though the statement ran.
+   * @param {gdal.Dataset} dataset - Dataset to run on.
+   * @param {string} sql - Statement text.
+   */
+  const runStatement = (dataset: gdal.Dataset, sql: string): void => {
+    try {
+      dataset.executeSQL(sql);
+    } catch {
+      // No result set.
+    }
+  };
+
+  /**
+   * @function addQuotedLayer
+   * @description Adds the {@link LAYER} layer with a {@link FIELD} string field holding `b`, `a`, `c` to a dataset.
+   * @param {gdal.Dataset} dataset - Dataset to add the layer to.
+   */
+  const addQuotedLayer = (dataset: gdal.Dataset): void => {
+    const layer = dataset.layers.create(LAYER, gdal.SpatialReference.fromEPSG(4326), gdal.wkbPoint);
+    layer.fields.add(new gdal.FieldDefn(FIELD, gdal.OFTString));
+    for (const value of ['b', 'a', 'c']) {
+      const feature = new gdal.Feature(layer);
+      feature.fields.set(FIELD, value);
+      feature.setGeometry(new gdal.Point(1, 2));
+      layer.features.add(feature);
+    }
+  };
+
+  /**
+   * @function createQuotedGpkg
+   * @description Writes a GeoPackage holding the quoted layer, with a standard `gpkg_data_columns` row giving the field a JSON MIME type.
+   * @returns {string} Path of the GeoPackage.
+   */
+  const createQuotedGpkg = (): string => {
+    const filePath = path.join(tempDir, 'quoted.gpkg');
+    const dataset = gdal.open(filePath, 'w', 'GPKG');
+    addQuotedLayer(dataset);
+    runStatement(
+      dataset,
+      'CREATE TABLE gpkg_data_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, name TEXT, title TEXT, '
+        + 'description TEXT, mime_type TEXT, constraint_name TEXT)'
+    );
+    runStatement(
+      dataset,
+      `INSERT INTO gpkg_data_columns (table_name, column_name, mime_type) VALUES ('it''s "q"', 'o''brien "x" \\', 'application/json')`
+    );
+    dataset.close();
+    return filePath;
+  };
+
+  it('finds the field in PRAGMA table_info and gpkg_data_columns on a GeoPackage', () => {
+    const dataset = gdal.open(createQuotedGpkg());
+    try {
+      let pragmaRows: Array<Record<string, unknown>> = [];
+      let dataColumnRows: Array<Record<string, unknown>> = [];
+      const recording = {
+        executeSQL: (sql: string) => {
+          const result = dataset.executeSQL(sql);
+          const objects = result.features.map((feature) => feature.fields.toObject());
+          if (sql.startsWith('PRAGMA table_info')) {
+            pragmaRows = objects;
+          } else if (sql.includes('gpkg_data_columns')) {
+            dataColumnRows = objects;
+          }
+          return { features: objects.map((object) => ({ fields: { toObject: () => object } })) };
+        },
+      };
+      const layer = dataset.layers.get(0);
+      assert.equal(layer.name, LAYER);
+
+      const fields = engine.inferLayerFields(fromAny(recording), layer, 'quoted.gpkg');
+      assert.ok(pragmaRows.some((row) => row.name === FIELD), 'PRAGMA table_info lists the field');
+      assert.deepEqual(dataColumnRows.map((row) => row.column_name), [FIELD]);
+      assert.equal(fields.find((field) => field.name === FIELD)?.inferredType, 'json');
+    } finally {
+      dataset.close();
+    }
+  });
+
+  it('infers the field type from gpkg_data_columns when opening the GeoPackage', async () => {
+    const metadata = await engine.openDataset('quoted-gpkg', createQuotedGpkg());
+    assert.equal(metadata.fields?.find((field) => field.name === FIELD)?.inferredType, 'json');
+  });
+
+  it('orders and pages a GeoPackage layer by the field in SQL', async () => {
+    await engine.openDataset('quoted-gpkg', createQuotedGpkg());
+    const statements = recordSessionSql(engine, 'quoted-gpkg');
+    const orderBy: QueryExtentOptions['orderBy'] = [[FIELD, 'DESC']];
+
+    const full = await engine.queryExtent('quoted-gpkg', { orderBy, includeGeometry: false });
+    assert.deepEqual(full.features.map((f) => f.properties?.[FIELD]), ['c', 'b', 'a']);
+    const page = await engine.queryExtent('quoted-gpkg', { orderBy, start: 1, max: 1, includeGeometry: false });
+    assert.deepEqual(page.features.map((f) => f.properties?.[FIELD]), ['b']);
+    assert.ok(statements.some((sql) => sql.includes('"o\'brien ""x"" \\" DESC')), `unexpected SQL: ${statements.join(' | ')}`);
+  });
+
+  it('orders a Memory layer by the field in OGR SQL', async () => {
+    const dataset = gdal.open('quoted_memory', 'w', 'Memory');
+    addQuotedLayer(dataset);
+    fromAny<{ sessions: Map<string, unknown> }, GeospatialEngine>(engine).sessions.set('quoted-memory', {
+      dataset,
+      layer: dataset.layers.get(0),
+      filePath: 'quoted_memory',
+      fidColumn: '',
+    });
+
+    const result = await engine.queryExtent('quoted-memory', { orderBy: [[FIELD, 'ASC']], includeGeometry: false });
+    assert.deepEqual(result.features.map((f) => f.properties?.[FIELD]), ['a', 'b', 'c']);
+  });
 });

@@ -29,6 +29,7 @@ import type {
   StagedFeatureEdit,
 } from "../../shared/types";
 import { classifyDriverDialect } from "../../shared/layers/queryDialect";
+import { quoteSqlIdentifier, quoteSqlString, sqlDialectForDriver, type SqlDialect } from "../gdal/sqlQuote";
 import {
   WKB_PACKET_MAGIC,
   WKB_PACKET_VERSION,
@@ -600,19 +601,6 @@ interface BackgroundScanState {
 }
 
 /**
- * @description Quotes an SQL identifier (layer or field name) in double quotes, doubling any embedded double quote, so it is safe in both OGR SQL and the SQLite dialect.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-17
- * @updated 2026-11-17
- * @since 0.1.0-dev
- * @param {string} name - Raw identifier.
- * @returns {string} Double-quoted, escaped identifier.
- */
-export function quoteSqlIdentifier(name: string): string {
-  return `"${name.replace(/"/g, '""')}"`;
-}
-
-/**
  * @description Validates an ordered list of Sort Keys against a layer's physical schema and builds the GDAL SQL statement that orders the layer by them.
  * Every field must exactly (case-sensitively) match a schema field or the layer's stored ID column, appear only once, and carry an explicit `ASC`/`DESC` direction;
  * `Virtual Field`s are not physical columns and are rejected. Validation completes before any SQL is built. For stable `start`/`max` pagination a hidden ascending
@@ -632,6 +620,7 @@ export function quoteSqlIdentifier(name: string): string {
  * @param {readonly SortKey[] | undefined} orderBy - Ordered Sort Keys; missing or empty means natural order.
  * @param {readonly string[]} schemaFields - Physical attribute field names of the layer.
  * @param {string} fidColumn - The layer's stored ID column name, or an empty string when it has none.
+ * @param {SqlDialect} dialect - Dialect the statement runs in, which decides how identifiers are escaped; see {@link sqlDialectForDriver}.
  * @returns {string | null} The `SELECT … ORDER BY …` statement, or null when no ordering was requested.
  * @throws {Error} If a Sort Key is malformed, names an unknown field, has an invalid direction, or repeats a field; the message names the field.
  * @see {@link SortKey}
@@ -640,7 +629,8 @@ export function buildOrderBySql(
   layerName: string,
   orderBy: readonly SortKey[] | undefined,
   schemaFields: readonly string[],
-  fidColumn: string
+  fidColumn: string,
+  dialect: SqlDialect
 ): string | null {
   if (!orderBy || orderBy.length === 0) {
     return null;
@@ -668,23 +658,13 @@ export function buildOrderBySql(
     seen.add(field);
   }
 
-  const terms = orderBy.map(([field, direction]) => `${quoteSqlIdentifier(field)} ${direction}`);
-  const tiebreaker = fidColumn ? quoteSqlIdentifier(fidColumn) : "FID";
+  const terms = orderBy.map(([field, direction]) => `${quoteSqlIdentifier(field, dialect)} ${direction}`);
+  const tiebreaker = fidColumn ? quoteSqlIdentifier(fidColumn, dialect) : "FID";
   if (!fidColumn || !seen.has(fidColumn)) {
     terms.push(`${tiebreaker} ASC`);
   }
-  return `SELECT * FROM ${quoteSqlIdentifier(layerName)} ORDER BY ${terms.join(", ")}`;
+  return `SELECT * FROM ${quoteSqlIdentifier(layerName, dialect)} ORDER BY ${terms.join(", ")}`;
 }
-
-/**
- * @description GDAL driver short names whose `executeSQL` runs SQLite's own dialect, which accepts `LIMIT`/`OFFSET`.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-17
- * @updated 2026-11-17
- * @since 0.1.0-dev
- * @type {ReadonlySet<string>}
- */
-const SQLITE_DIALECT_DRIVERS: ReadonlySet<string> = new Set(["GPKG", "SQLite"]);
 
 /**
  * @description Reports whether a layer's `start`/`max` window can be pushed into SQL `LIMIT`/`OFFSET`: the driver must speak the SQLite dialect and the layer must have a
@@ -700,7 +680,7 @@ const SQLITE_DIALECT_DRIVERS: ReadonlySet<string> = new Set(["GPKG", "SQLite"]);
  * @returns {boolean} True when {@link buildPagedSelectSql} may be used for the layer.
  */
 export function supportsSqlWindow(driverName: string | undefined, fidColumn: string, hasSpatialFilter: boolean): boolean {
-  if (typeof driverName !== "string" || !SQLITE_DIALECT_DRIVERS.has(driverName) || fidColumn.length === 0) {
+  if (sqlDialectForDriver(driverName) !== "SQLITE" || fidColumn.length === 0) {
     return false;
   }
   return !hasSpatialFilter || driverName === "GPKG";
@@ -741,8 +721,8 @@ export function buildPagedSelectSql(
     throw new Error(`Invalid window max ${max}: expected a non-negative integer`);
   }
   const ordered =
-    buildOrderBySql(layerName, orderBy, schemaFields, fidColumn)
-    ?? `SELECT * FROM ${quoteSqlIdentifier(layerName)} ORDER BY ${quoteSqlIdentifier(fidColumn)} ASC`;
+    buildOrderBySql(layerName, orderBy, schemaFields, fidColumn, "SQLITE")
+    ?? `SELECT * FROM ${quoteSqlIdentifier(layerName, "SQLITE")} ORDER BY ${quoteSqlIdentifier(fidColumn, "SQLITE")} ASC`;
   return `${ordered} LIMIT ${max ?? -1} OFFSET ${start}`;
 }
 
@@ -1192,7 +1172,7 @@ export class GeospatialEngine {
    * @description Executes the 6-tier descending confidence field type inference cascade across a layer's attribute columns.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-02
-   * @updated 2026-11-02
+   * @updated 2026-11-17
    * @since 0.1.0-dev
    * @param {gdal.Dataset} dataset - Active GDAL dataset instance.
    * @param {gdal.Layer} layer - Target vector layer handle.
@@ -1222,7 +1202,7 @@ export class GeospatialEngine {
         // Query PRAGMA table_info
         try {
           const pragmaRes = dataset.executeSQL(
-            `PRAGMA table_info("${layerName.replace(/"/g, '""')}")`
+            `PRAGMA table_info(${quoteSqlIdentifier(layerName, "SQLITE")})`
           );
           if (pragmaRes && pragmaRes.features) {
             for (const feat of pragmaRes.features) {
@@ -1243,10 +1223,12 @@ export class GeospatialEngine {
           // Driver does not support SQLite PRAGMA table_info
         }
 
-        // Query GeoPackage gpkg_data_columns
+        // Query GeoPackage gpkg_data_columns. SELECT * because the standard table has no data_type column
+        // (only mime_type); naming it made the query fail on every real GeoPackage. data_type is still read
+        // when a non-standard table carries it; on a standard table it is empty and only mime_type counts.
         try {
           const gpkgRes = dataset.executeSQL(
-            `SELECT column_name, data_type, mime_type FROM gpkg_data_columns WHERE table_name = '${layerName.replace(/'/g, "''")}'`
+            `SELECT * FROM gpkg_data_columns WHERE table_name = ${quoteSqlString(layerName)}`
           );
           if (gpkgRes && gpkgRes.features) {
             for (const feat of gpkgRes.features) {
@@ -1741,7 +1723,13 @@ export class GeospatialEngine {
             sliceEnd === Infinity ? undefined : sliceEnd - sliceStart
           );
         } else if (orderByOpt && orderByOpt.length > 0) {
-          const orderSql = buildOrderBySql(layer.name, orderByOpt, schemaFields, fidColumn);
+          const orderSql = buildOrderBySql(
+            layer.name,
+            orderByOpt,
+            schemaFields,
+            fidColumn,
+            sqlDialectForDriver(activeSession.dataset.driver?.description)
+          );
           sql = canRunSql ? orderSql : null;
         }
         const sqlSpatialFilter =
