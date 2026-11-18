@@ -4,7 +4,7 @@
  * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link parseCssColor}
@@ -17,6 +17,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSignals } from '@preact/signals-react/runtime';
 import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
 import Icon from '@renderer/components/common/Icon';
+import { Select } from '@renderer/components/common/Select';
 import { mdiEyedropper } from '@mdi/js';
 import {
   prefsUiIconSize,
@@ -80,7 +81,7 @@ export interface ColourPickerWidgetProps extends Omit<BasicWidgetProps, 'childre
  * @description Custom color picker widget subclassing BasicWidget, embeddable across Dockview panels, dialogs, and parent widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {ColourPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ColourPickerWidget React component.
@@ -282,8 +283,17 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
   };
 
   // Channel & Text Box Input Management
-  const handleFormatChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newFormat = e.target.value as ColorFormat;
+  /**
+   * @function handleFormatChange
+   * @description Switches the displayed colour format and reports the current colour formatted in it.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {ColorFormat} newFormat - Format chosen in the format Select.
+   * @returns {void}
+   */
+  const handleFormatChange = (newFormat: ColorFormat) => {
     setActiveFormat(newFormat);
     if (onChange) {
       const formatted = formatCssColor(currentSrgb, newFormat);
@@ -666,18 +676,13 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               <Icon path={mdiEyedropper} size={iconSize} />
             </button>
 
-            <select
-              className='picker-field colour-picker-format-select'
+            <Select<ColorFormat>
+              className='colour-picker-format-select'
               value={activeFormat}
               disabled={disabled}
+              options={COLOR_FORMATS.map((fmt) => ({ value: fmt, label: fmt }))}
               onChange={handleFormatChange}
-            >
-              {COLOR_FORMATS.map((fmt) => (
-                <option key={fmt} value={fmt}>
-                  {fmt}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Row 2: Channel Inputs or Single HEX Input */}

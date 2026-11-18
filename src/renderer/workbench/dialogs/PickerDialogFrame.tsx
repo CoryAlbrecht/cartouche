@@ -4,7 +4,7 @@
  * @description Shared modal frame for the picker dialogs (ColourPickerDialog, GradientPickerDialog): a backdrop portaled into a target container, a titled header with a close button, a scrolling body for the hosted picker widget, and localized Cancel / Apply footer buttons. Escape on the container's window and clicks on the backdrop cancel.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link GradientPickerDialog}
@@ -13,6 +13,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '@renderer/hooks/useTranslation';
+import { isWithinOpenSelect } from '@renderer/components/common/Select';
 
 /**
  * @typedef {Object} PickerDialogFrameProps
@@ -52,7 +53,7 @@ function resolveWindowContext(targetContainer?: HTMLElement | null): Window | nu
  * @description Centered in-window modal frame hosting a picker widget, with a title, localized Cancel and Apply buttons (`dialog_cancel`, `dialog_apply`), Escape and backdrop-click cancellation, and ownerDocument container targeting. Render it only while the dialog is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {PickerDialogFrameProps} props - Component properties.
  * @returns {React.ReactElement} Rendered portal (or inline content when no container is available).
@@ -75,7 +76,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
   useEffect(() => {
     if (!targetWindow) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
+      if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
       if (e.key === 'Escape') {
         e.preventDefault?.();
         e.stopPropagation?.();

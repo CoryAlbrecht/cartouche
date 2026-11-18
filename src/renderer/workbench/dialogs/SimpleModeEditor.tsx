@@ -31,6 +31,7 @@ import {
 } from "@renderer/components/common/ColourButton";
 import { GradientButton } from "@renderer/components/common/GradientButton";
 import { DashPatternSelect } from "./DashPatternSelect";
+import { Select } from "@renderer/components/common/Select";
 import { DashArrayControl, DASH_ARRAY_TABLE_ID } from "./DashArrayControl";
 import {
   mdiPlus,
@@ -748,24 +749,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             }}>
             {t("layer_properties_component_type")}:
           </label>
-          <select
-            className='styling-editor-field'
+          <Select<StyleComponent["type"]>
             id='layer-prop-component-type-select'
             value={activeComponent?.type || typeToAdd}
             disabled={activeComponent?.locked}
-            onChange={(e) => {
-              const val = e.target.value as StyleComponent["type"];
+            options={availableTypes}
+            onChange={(val) => {
               setTypeToAdd(val);
               if (activeComponent && activeComponent.type !== val) {
                 handleMorphType(val);
               }
-            }}>
-            {availableTypes.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            }}
+          />
         </div>
       </fieldset>
 
@@ -985,51 +980,33 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
 
                   {renderOptionRow(
                     t("layer_properties_styling_line_cap"),
-                    <select
-                      className='styling-editor-field'
+                    <Select<"butt" | "round" | "square">
                       id='layer-prop-line-cap'
                       disabled={activeComponent.locked}
                       value={lineComp.cap ?? "round"}
-                      onChange={(e) =>
-                        updateActiveComponent({
-                          cap: e.target.value as "butt" | "round" | "square",
-                        })
-                      }>
-                      <option value='butt'>
-                        {t("layer_properties_line_cap_butt")}
-                      </option>
-                      <option value='round'>
-                        {t("layer_properties_line_cap_round")}
-                      </option>
-                      <option value='square'>
-                        {t("layer_properties_line_cap_square")}
-                      </option>
-                    </select>,
+                      options={[
+                        { value: "butt", label: t("layer_properties_line_cap_butt") },
+                        { value: "round", label: t("layer_properties_line_cap_round") },
+                        { value: "square", label: t("layer_properties_line_cap_square") },
+                      ]}
+                      onChange={(cap) => updateActiveComponent({ cap })}
+                    />,
                     { htmlFor: "layer-prop-line-cap" }
                   )}
 
                   {renderOptionRow(
                     t("layer_properties_styling_line_join"),
-                    <select
-                      className='styling-editor-field'
+                    <Select<"bevel" | "miter" | "round">
                       id='layer-prop-line-join'
                       disabled={activeComponent.locked}
                       value={lineComp.join ?? "round"}
-                      onChange={(e) =>
-                        updateActiveComponent({
-                          join: e.target.value as "bevel" | "miter" | "round",
-                        })
-                      }>
-                      <option value='bevel'>
-                        {t("layer_properties_line_join_bevel")}
-                      </option>
-                      <option value='miter'>
-                        {t("layer_properties_line_join_miter")}
-                      </option>
-                      <option value='round'>
-                        {t("layer_properties_line_join_round")}
-                      </option>
-                    </select>,
+                      options={[
+                        { value: "bevel", label: t("layer_properties_line_join_bevel") },
+                        { value: "miter", label: t("layer_properties_line_join_miter") },
+                        { value: "round", label: t("layer_properties_line_join_round") },
+                      ]}
+                      onChange={(join) => updateActiveComponent({ join })}
+                    />,
                     { htmlFor: "layer-prop-line-join" }
                   )}
 
@@ -1140,20 +1117,13 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                 }}>
                 {renderOptionRow(
                   t("layer_properties_styling_point_shape"),
-                  <select
-                    className='styling-editor-field'
+                  <Select<"circle">
                     id='layer-prop-point-shape'
                     disabled={activeComponent.locked}
                     value={markerShape}
-                    onChange={(e) =>
-                      updateActiveComponent({
-                        shape: e.target.value as "circle",
-                      })
-                    }>
-                    <option value='circle'>
-                      {t("layer_properties_shape_circle")}
-                    </option>
-                  </select>,
+                    options={[{ value: "circle", label: t("layer_properties_shape_circle") }]}
+                    onChange={(nextShape) => updateActiveComponent({ shape: nextShape })}
+                  />,
                   { htmlFor: "layer-prop-point-shape" }
                 )}
 

@@ -4,7 +4,7 @@
  * @description Tests for the renderer CRS Catalogue signals and the Layer Properties CRS dropdown: the hidden `crs.hideDeprecated` preference defaulting to true, the current CRS always listed, and the catalogue-building placeholder state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-14
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link listCrsChooserEntries}
  */
@@ -117,7 +117,7 @@ describe('Layer Properties CRS dropdown uses the CRS Catalogue (Ticket #277)', (
   it('shows the catalogue-building placeholder while the catalogue builds and still lists the current CRS', () => {
     setCrsCatalogueState({ status: 'building', entries: [] });
     const html = crsSelectHtml();
-    assert.ok(html.includes('class="crs-catalogue-building"') && html.includes('CATALOGUE_BUILDING_PLACEHOLDER'));
+    assert.match(html, /<option value="" disabled=""><span class="cartouche-select-option-label">CATALOGUE_BUILDING_PLACEHOLDER<\/span><\/option>/, 'disabled catalogue-building placeholder');
     assert.ok(html.includes('value="EPSG:3785"'), 'current CRS stays visible');
   });
 });

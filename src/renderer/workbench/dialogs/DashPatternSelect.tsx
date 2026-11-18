@@ -1,19 +1,19 @@
 /**
  * @file DashPatternSelect.tsx
  * @module renderer/workbench/dialogs/DashPatternSelect
- * @description Custom accessible dropdown selector for Simple Line dash patterns rendering localized text labels on the left and 128px horizontal stroke samples on the right.
+ * @description Dash pattern dropdown for Simple Line styles, built on the shared Select: localized text labels on the left and 128px horizontal stroke samples on the right, in both the trigger and the drop-down list.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link DashPatternSelect}
  * @see {@link DashPatternSample}
+ * @see {@link Select}
  * @see {@link DASH_PATTERN_PRESETS}
  */
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import Icon from "@renderer/components/common/Icon";
-import { mdiMenuDown } from "@mdi/js";
+import React from "react";
+import { Select, type SelectOption } from "@renderer/components/common/Select";
 import {
   DASH_PATTERN_PRESETS,
   type DashPatternPreset,
@@ -137,7 +137,6 @@ export const DashPatternSample: React.FC<DashPatternSampleProps> = ({
  * @property {string} value - Currently selected dash pattern preset identifier.
  * @property {number[]} [dashArray] - Active alternating line/gap lengths for custom patterns.
  * @property {boolean} [disabled=false] - Whether the dropdown is disabled against user interaction.
- * @property {boolean} [initialOpen=false] - Whether the dropdown starts open (primarily for testing).
  * @property {(pattern: DashPatternPreset) => void} onChange - Callback invoked when a pattern is chosen.
  * @property {(key: string) => string} t - Translation helper function.
  */
@@ -146,19 +145,18 @@ export interface DashPatternSelectProps {
   value: string;
   dashArray?: number[];
   disabled?: boolean;
-  initialOpen?: boolean;
   onChange: (pattern: DashPatternPreset) => void;
   t: (key: string) => string;
 }
 
 /**
- * Custom accessible dropdown selector for Dash Patterns featuring labels and 128px stroke samples.
+ * Dash pattern dropdown: the shared {@link Select} with a stroke sample after each label.
  *
  * @component DashPatternSelect
- * @description Provides a custom select dropdown where the closed trigger button and every item in the dropdown display localized text labels on the left and 128px stroke samples on the right.
+ * @description Renders the shared {@link Select} dropdown for Simple Line dash patterns. Each option, and the trigger that mirrors the selected one, shows its localized label on the left and a 128px stroke sample on the right, so the control looks, focuses and behaves exactly like every other dropdown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {DashPatternSelectProps} props - Component properties.
  * @returns {JSX.Element}
@@ -168,194 +166,22 @@ export const DashPatternSelect: React.FC<DashPatternSelectProps> = ({
   value,
   dashArray,
   disabled = false,
-  initialOpen = false,
   onChange,
   t,
 }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(initialOpen);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-
-  const selectedIndex = PATTERN_OPTIONS.findIndex((opt) => opt.value === value);
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(
-    selectedIndex >= 0 ? selectedIndex : 0
-  );
-
-  // Sync highlighted index when value changes
-  useEffect(() => {
-    if (selectedIndex >= 0) {
-      setHighlightedIndex(selectedIndex);
-    }
-  }, [selectedIndex]);
-
-  // Click outside listener
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
-
-  const handleSelect = useCallback(
-    (pattern: DashPatternPreset) => {
-      onChange(pattern);
-      setIsOpen(false);
-      triggerRef.current?.focus();
-    },
-    [onChange]
-  );
-
-  /**
-   * Keyboard event handler enabling arrow navigation, selection, and dismissal.
-   *
-   * @param {React.KeyboardEvent<HTMLButtonElement>} e - Keyboard event.
-   */
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (disabled) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (!isOpen) {
-        setIsOpen(true);
-      } else {
-        setHighlightedIndex((prev) =>
-          prev < PATTERN_OPTIONS.length - 1 ? prev + 1 : 0
-        );
-      }
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (!isOpen) {
-        setIsOpen(true);
-      } else {
-        setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : PATTERN_OPTIONS.length - 1
-        );
-      }
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (!isOpen) {
-        setIsOpen(true);
-      } else {
-        const target = PATTERN_OPTIONS[highlightedIndex];
-        if (target) {
-          handleSelect(target.value);
-        }
-      }
-    } else if (e.key === "Escape") {
-      if (isOpen) {
-        e.preventDefault();
-        setIsOpen(false);
-      }
-    } else if (e.key === "Tab") {
-      if (isOpen) {
-        setIsOpen(false);
-      }
-    }
-  };
-
-  /**
-   * Resolves the localized display name for a given pattern token.
-   *
-   * @param {string} pat - Pattern preset token.
-   * @returns {string} Localized pattern label.
-   */
-  const getPatternLabel = (pat: string): string => {
-    const opt = PATTERN_OPTIONS.find((o) => o.value === pat);
-    if (opt) {
-      return t(opt.labelKey);
-    }
-    return pat;
-  };
-
+  const options: SelectOption<DashPatternPreset>[] = PATTERN_OPTIONS.map((opt) => ({
+    value: opt.value,
+    label: t(opt.labelKey),
+    adornment: <DashPatternSample pattern={opt.value} dashArray={dashArray} />,
+  }));
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "relative",
-        display: "inline-block",
-        width: "20rem",
-      }}>
-      <button
-        type='button'
-        id={id}
-        data-value={value}
-        ref={triggerRef}
-        disabled={disabled}
-        aria-haspopup='listbox'
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? `${id}-listbox` : undefined}
-        aria-activedescendant={
-          isOpen ? `${id}-option-${highlightedIndex}` : undefined
-        }
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen((prev) => !prev);
-          }
-        }}
-        onKeyDown={handleKeyDown}
-        className='dash-pattern-select-trigger'>
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
-          {getPatternLabel(value)}
-        </span>
-        <DashPatternSample pattern={value} dashArray={dashArray} />
-        <span className='dash-pattern-select-caret'>
-          <Icon path={mdiMenuDown} size='1rem' />
-        </span>
-      </button>
-
-      {isOpen && (
-        <ul
-          role='listbox'
-          id={`${id}-listbox`}
-          className='dash-pattern-select-listbox'>
-          {PATTERN_OPTIONS.map((opt, idx) => {
-            const isSelected = opt.value === value;
-            const isHighlighted = idx === highlightedIndex;
-            return (
-              <li
-                key={opt.value}
-                id={`${id}-option-${idx}`}
-                role='option'
-                aria-selected={isSelected}
-                onClick={() => handleSelect(opt.value)}
-                onMouseEnter={() => setHighlightedIndex(idx)}
-                className={
-                  isHighlighted ?
-                    "dash-pattern-select-option is-highlighted"
-                  : "dash-pattern-select-option"
-                }>
-                <span
-                  style={{
-                    flex: 1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}>
-                  {t(opt.labelKey)}
-                </span>
-                <DashPatternSample pattern={opt.value} dashArray={dashArray} />
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+    <Select<DashPatternPreset>
+      id={id}
+      className='dash-pattern-select'
+      value={value as DashPatternPreset}
+      options={options}
+      disabled={disabled}
+      onChange={onChange}
+    />
   );
 };

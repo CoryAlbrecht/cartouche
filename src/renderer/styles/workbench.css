@@ -2038,7 +2038,6 @@
   cursor: pointer;
 }
 
-.preference-select,
 .preference-input-number,
 .preference-input-text {
   padding: 6px 10px;
@@ -2052,6 +2051,12 @@
     box-shadow 0.12s ease;
   width: 100%;
   max-width: 200px;
+}
+
+/* Preferences dropdowns: the Select's layout in the control column. */
+.preference-select {
+  width: 100%;
+  max-width: 12.5rem;
 }
 
 .preference-number-wrapper {
@@ -2446,6 +2451,11 @@
   font-size: 1rem;
 }
 
+/* Attribute Table boolean cell editor: a compact Select filling its cell. */
+.cell-editor-boolean {
+  width: 100%;
+}
+
 /* Layer Properties fields tables (Ticket #331): the inferred type text and the
    "User" badge on a field the user has overridden. */
 .layer-field-type-text {
@@ -2533,9 +2543,9 @@
   font-size: 0.875rem;
 }
 
-/* Time Filter Step input, its 1.00 arrows and the Unit dropdown. */
-.time-filter-step-input,
-.time-filter-unit-select {
+/* Time Filter Step input and its 1.00 arrows. The Unit dropdown beside it is
+   a compact Select, whose height matches the Step input's. */
+.time-filter-step-input {
   box-sizing: border-box;
   height: 1.5rem;
   border: 0.0625rem solid var(--cartouche-input-border);
@@ -2543,16 +2553,8 @@
   background-color: var(--cartouche-input-bg);
   color: var(--cartouche-input-fg);
   font-size: 0.8333rem;
-}
-
-.time-filter-step-input {
   width: 5.625rem;
   padding: 0.125rem 1.125rem 0.125rem 0.375rem;
-}
-
-.time-filter-unit-select {
-  padding: 0.125rem 0.375rem;
-  cursor: pointer;
 }
 
 .time-filter-step-arrow {
@@ -2613,10 +2615,6 @@
   background-color: var(--cartouche-input-bg);
   color: var(--cartouche-input-fg);
   font-size: 0.8125rem;
-}
-
-select.styling-editor-field {
-  cursor: pointer;
 }
 
 .styling-editor-field:disabled {
@@ -2683,16 +2681,7 @@ select.styling-editor-field {
   cursor: not-allowed;
 }
 
-/* StyleEditor header: style format select and Load / Export / Reset buttons. */
-.styling-editor-format-select {
-  padding: 0.3125rem 0.625rem;
-  border: 0.0625rem solid var(--cartouche-input-border);
-  border-radius: 0.25rem;
-  background-color: var(--cartouche-input-bg);
-  color: var(--cartouche-input-fg);
-  font-size: 0.875rem;
-}
-
+/* StyleEditor header: Load / Export / Reset buttons. */
 .styling-editor-secondary-btn {
   padding: 0.3125rem 0.75rem;
   border-radius: 0.25rem;
@@ -2721,77 +2710,167 @@ select.styling-editor-field {
   resize: vertical;
 }
 
-/* DashPatternSelect: trigger button, listbox popup and its options. */
-.dash-pattern-select-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
+/* === Select: the shared single-choice dropdown (Ticket #344) ===
+   Every dropdown renders through the Select component: a native <select> in
+   customizable-select mode, so both the trigger and the drop-down list
+   (::picker(select)) are page content drawn from Component Tokens. Sites add
+   only layout (width, flex) and documented semantic state modifiers; sizes come
+   from the density variant. The trigger and the keyboard-active option take the
+   global Focus Indicator rules at the end of this stylesheet. */
+.cartouche-select,
+.cartouche-select::picker(select) {
+  appearance: base-select;
+}
+
+.cartouche-select {
   box-sizing: border-box;
-  padding: 0.25rem 0.5rem;
+  min-width: 0;
+  padding: 0.375rem 0.625rem;
   border: 0.0625rem solid var(--cartouche-input-border);
   border-radius: 0.25rem;
   background-color: var(--cartouche-input-bg);
   color: var(--cartouche-input-fg);
-  font-size: 0.8125rem;
-  text-align: left;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25;
   cursor: pointer;
 }
 
-.dash-pattern-select-caret {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.25rem;
-  color: var(--cartouche-input-icon-fg);
-  user-select: none;
+/* Compact density: tables, footers and dense toolbars. */
+.cartouche-select.is-compact {
+  padding: 0.125rem 0.375rem;
+  font-size: 0.8125rem;
 }
 
-.dash-pattern-select-trigger:disabled {
+.cartouche-select:disabled {
+  border-color: var(--cartouche-control-disabled-border);
   background-color: var(--cartouche-control-disabled-bg);
+  color: var(--cartouche-control-disabled-fg);
   cursor: not-allowed;
 }
 
-.dash-pattern-select-listbox {
-  position: absolute;
-  top: calc(100% + 0.125rem);
-  left: 0;
-  z-index: 50;
-  box-sizing: border-box;
+/* The caret is an MDI icon inside the trigger, not the browser's picker icon. */
+.cartouche-select::picker-icon {
+  display: none;
+}
+
+.cartouche-select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: inherit;
+}
+
+/* The selected value sits above the invisible, zero-height sizer, which
+   holds every option, so the trigger prefers the width of the widest option,
+   as a native select does, and keeps that width as the value changes. The
+   sizer's labels may wrap, so it adds nothing to the minimum width and a
+   narrower layout can still shrink the trigger. */
+.cartouche-select-face {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cartouche-select-value,
+.cartouche-select-sizer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cartouche-select-value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.cartouche-select-sizer {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.cartouche-select-caret {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--cartouche-input-icon-fg);
+}
+
+.cartouche-select:disabled .cartouche-select-caret {
+  color: var(--cartouche-control-disabled-fg);
+}
+
+/* The drop-down list: a complete border on all four sides, at least as wide
+   as the trigger. */
+.cartouche-select::picker(select) {
+  box-sizing: border-box;
+  min-width: anchor-size(width);
   max-height: 16rem;
-  margin: 0;
+  margin-block: 0.125rem;
   padding: 0.25rem 0;
-  overflow-y: auto;
   border: 0.0625rem solid var(--cartouche-input-border);
   border-radius: 0.25rem;
   background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
   box-shadow:
     0 0.25rem 0.375rem -0.0625rem var(--cartouche-listbox-shadow),
     0 0.125rem 0.25rem -0.0625rem var(--cartouche-listbox-shadow-subtle);
-  list-style: none;
 }
 
-.dash-pattern-select-option {
+.cartouche-select option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.375rem 0.5rem;
-  background-color: transparent;
-  color: var(--cartouche-input-fg);
-  font-size: 0.8125rem;
+  padding: 0.375rem 0.625rem;
   font-weight: 400;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.dash-pattern-select-option[aria-selected="true"] {
+.cartouche-select.is-compact option {
+  padding: 0.25rem 0.375rem;
+}
+
+/* The selection is shown by the selected-option background, not a checkmark glyph. */
+.cartouche-select option::checkmark {
+  display: none;
+}
+
+.cartouche-select option:hover {
+  background-color: var(--cartouche-listbox-option-hover-bg);
+}
+
+.cartouche-select option:checked {
   background-color: var(--cartouche-listbox-option-selected-bg);
   font-weight: 600;
 }
 
-.dash-pattern-select-option.is-highlighted {
-  background-color: var(--cartouche-listbox-option-hover-bg);
+.cartouche-select option:disabled {
+  color: var(--cartouche-control-disabled-fg);
+  cursor: default;
+}
+
+.cartouche-select-option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* DashPatternSelect: layout width of its Select, wide enough for the 128px stroke samples. */
+.dash-pattern-select {
+  width: 20rem;
 }
 
 /* === Layer Properties Dialog controls (Spec #316 / #318) === */
@@ -2888,15 +2967,9 @@ select.styling-editor-field {
   resize: vertical;
 }
 
-/* Time tab start / end field selects. */
+/* Time tab start / end field selects: fill the row beside the operator toggle. */
 .layer-prop-time-field-select {
   flex: 1;
-  cursor: default;
-}
-
-.layer-prop-time-field-select:disabled {
-  background-color: var(--cartouche-control-disabled-bg);
-  cursor: not-allowed;
 }
 
 /* Time tab comparison operator toggles (colours from .layer-prop-btn-secondary). */
@@ -2959,26 +3032,13 @@ select.styling-editor-field {
   background-color: var(--cartouche-toolbar-item-active-bg);
 }
 
-/* Fields tab per-field type select: inferred, disabled (Layer Edit Mode off)
-   and user-overridden; the override wins over the disabled colours. */
+/* Fields tab per-field type Select: semantic state modifiers only. The type
+   name shows in the Monospace Font Stack and the field-type colour; disabled (Layer Edit
+   Mode off) takes the shared Select disabled colours; a user-overridden type
+   is marked, and the override wins over the disabled colours. */
 .layer-field-type-select {
-  padding: 0.125rem 0.375rem;
-  border: 0.0625rem solid var(--cartouche-input-border);
-  border-radius: 0.1875rem;
-  background-color: var(--cartouche-input-bg);
   color: var(--cartouche-field-type-fg);
   font-family: var(--cartouche-code-input-font-family);
-  font-size: 0.8125rem;
-  font-weight: 400;
-  cursor: pointer;
-}
-
-.layer-field-type-select:disabled {
-  border-color: var(--cartouche-control-disabled-border);
-  background-color: var(--cartouche-control-disabled-bg);
-  color: var(--cartouche-control-disabled-fg);
-  opacity: 0.8;
-  cursor: not-allowed;
 }
 
 .layer-field-type-select.is-overridden {
@@ -3083,6 +3143,10 @@ select.styling-editor-field {
 }
 
 /* Project Properties text inputs and Measurements dropdowns. */
+.project-prop-select {
+  flex: 1;
+}
+
 .project-prop-input {
   flex: 1;
   min-width: 0;
@@ -3221,17 +3285,7 @@ select.styling-editor-field {
   text-align: center;
 }
 
-/* Attribute Table footer: the filter dropdown and the pagination buttons. */
-.attribute-table-filter-select {
-  padding: 0.125rem 0.375rem;
-  border: 0.0625rem solid var(--cartouche-input-border);
-  border-radius: 0.1875rem;
-  background-color: var(--cartouche-input-bg);
-  color: var(--cartouche-input-fg);
-  font-size: 0.8333rem;
-  cursor: pointer;
-}
-
+/* Attribute Table footer: the pagination buttons. */
 .attribute-table-page-btn {
   display: inline-flex;
   align-items: center;
@@ -3323,13 +3377,10 @@ select.styling-editor-field {
   font-size: 1rem;
 }
 
-select.picker-field {
+/* Picker widget dropdowns (colour format, gradient stop): fill their row. */
+.colour-picker-format-select,
+.gradient-picker-stop-select {
   flex: 1;
-  cursor: pointer;
-}
-
-select.picker-field:disabled {
-  cursor: not-allowed;
 }
 
 .colour-picker-hex-input {
@@ -3401,19 +3452,36 @@ select.picker-field:disabled {
   outline-offset: var(--cartouche-focus-offset);
 }
 
-/* Text-entry controls: a focus-colour border plus a halo. The transparent
-   outline replaces Chromium's ring and still shows in forced-colours mode. */
-:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea):focus-visible {
+/* Text-entry and dropdown controls: a focus-colour border plus a halo. The
+   rule follows the control's semantic role, not its element: a custom dropdown
+   trigger (aria-haspopup="listbox" or role="combobox") takes it like a native
+   select. The transparent outline replaces Chromium's ring and still shows in
+   forced-colours mode. A dropdown keeps the indicator however it was focused
+   and while its list is open, as a text field does: Chromium matches
+   :focus-visible on a text field after a click, but not on a customizable
+   select, whose focus also moves into its list while the list is open. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea, [aria-haspopup="listbox"], [role="combobox"]):focus-visible,
+:is(select, [aria-haspopup="listbox"], [role="combobox"]):is(:focus, :open, [aria-expanded="true"]) {
   border-color: var(--cartouche-focus-color);
   box-shadow: 0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-ring);
   outline: var(--cartouche-focus-width) solid transparent;
 }
 
-/* Scrolling containers, and Dockview tabs inside their overflow: auto strip:
+/* An open dropdown's list is part of the focused control (focus moves into
+   it), so it takes the same focus-colour border and halo as the trigger, in
+   place of its resting drop shadow. */
+select:open::picker(select) {
+  border-color: var(--cartouche-focus-color);
+  box-shadow: 0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-ring);
+}
+
+/* Scrolling containers, the keyboard-active option inside a dropdown's
+   scrolling list, and Dockview tabs inside their overflow: auto strip:
    an inset ring, so overflow does not clip it. The TableWidget table takes
    keyboard focus inside its overflow: auto frame. */
 .layer-tree-container:focus-visible,
 .table-scroll-wrapper:focus-visible,
+option:focus-visible,
 .table-widget-table:focus-visible,
 .dv-tab:focus-visible {
   outline-offset: calc(var(--cartouche-focus-width) * -1);
@@ -3449,7 +3517,7 @@ select.picker-field:disabled {
   color: var(--cartouche-invalid-fg);
 }
 
-:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea)[aria-invalid="true"] {
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea, [aria-haspopup="listbox"], [role="combobox"])[aria-invalid="true"] {
   border-color: var(--cartouche-invalid-border);
 }
 
@@ -3459,8 +3527,14 @@ select.picker-field:disabled {
   outline: var(--cartouche-focus-width) solid var(--cartouche-focus-invalid-color);
 }
 
-:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea)[aria-invalid="true"]:focus-visible {
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="image"]), select, textarea, [aria-haspopup="listbox"], [role="combobox"])[aria-invalid="true"]:focus-visible,
+:is(select, [aria-haspopup="listbox"], [role="combobox"])[aria-invalid="true"]:is(:focus, :open, [aria-expanded="true"]) {
   border-color: var(--cartouche-focus-invalid-color);
   box-shadow: 0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-invalid-ring);
   outline: var(--cartouche-focus-width) solid transparent;
+}
+
+select[aria-invalid="true"]:open::picker(select) {
+  border-color: var(--cartouche-focus-invalid-color);
+  box-shadow: 0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-invalid-ring);
 }

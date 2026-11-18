@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, and UI preference scaling. The stop parsing and serialization helper tests live in tests/shared/colors/gradientStops.test.ts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -32,12 +32,16 @@ function cssRule(selector: string): string {
 }
 
 /**
- * @function pickerFieldRule
- * @description Returns the declaration block of the `.picker-field` rule in workbench.css, which sizes the picker dropdowns and text fields.
- * @returns {string} The rule's declarations.
+ * @function optionText
+ * @description Collects the rendered text of a mock element and its descendants, whether React wrote it as `textContent` or as child nodes.
+ * @param {any} el - Mock element or text node.
+ * @returns {string} Concatenated text.
  */
-function pickerFieldRule(): string {
-  return cssRule('.picker-field');
+function optionText(el: any): string {
+  if (el.nodeType === 3) return String(el.nodeValue ?? el.textContent ?? '');
+  const children = el.childNodes ?? [];
+  if (children.length === 0) return typeof el.textContent === 'string' ? el.textContent : '';
+  return children.map(optionText).join('');
 }
 
 // Set React act environment flag
@@ -1349,11 +1353,11 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     const options = selectEl.options;
     assert.equal(options.length, 3, "Must render 3 options");
     assert.equal(options[0].value, "stop-0");
-    assert.equal(options[0].textContent, "0% — #000000ff");
+    assert.equal(optionText(options[0]), "0% — #000000ff");
     assert.equal(options[1].value, "stop-50");
-    assert.equal(options[1].textContent, "50% — #ff0000ff");
+    assert.equal(optionText(options[1]), "50% — #ff0000ff");
     assert.equal(options[2].value, "stop-100");
-    assert.equal(options[2].textContent, "100% — #00ff00ff");
+    assert.equal(optionText(options[2]), "100% — #00ff00ff");
     assert.equal(selectEl.value, "stop-0", "0% stop must be selected initially");
   });
 
@@ -1467,7 +1471,7 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     });
 
     assert.equal(
-      selectEl.options[1].textContent,
+      optionText(selectEl.options[1]),
       "75% — #ff0000ff",
       "Dropdown option label must update dynamically during drag"
     );
@@ -1592,8 +1596,8 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
 
     const selectEl = findElementsByClass(actionsRow, "gradient-picker-stop-select")[0];
     assert.ok(selectEl, "Stop selector select must be present");
-    assert.ok(selectEl.className.split(" ").includes("picker-field"), "Select takes the picker-field class");
-    assert.match(cssRule("select.picker-field"), /flex:\s*1;/, "Select must fill space between spacer and delete button");
+    assert.ok(selectEl.className.split(" ").includes("cartouche-select"), "Stop selector is the shared Select (Ticket #344)");
+    assert.match(cssRule(".gradient-picker-stop-select"), /flex:\s*1;/, "Select must fill space between spacer and delete button");
 
     const deleteBtn = findElementsByClass(actionsRow, "gradient-picker-delete-btn")[0];
     assert.ok(deleteBtn, "Delete button must be present");
@@ -1651,7 +1655,7 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
     assert.equal(boundaryBtns[1].style.height, "16px");
   });
 
-  it("sets stops dropdown font size to 1rem and reacts dynamically to prefsUiBaseFontSize updates", async () => {
+  it("sizes the stops dropdown from the shared Select's rem font size, which follows prefsUiBaseFontSize updates", async () => {
     await act(async () => {
       root?.render(
         React.createElement(GradientPickerWidget, {
@@ -1661,15 +1665,15 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
     });
 
     const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
-    assert.ok(selectEl.className.split(" ").includes("picker-field"), "Select takes the 1rem picker-field class");
-    assert.match(pickerFieldRule(), /font-size:\s*1rem/, ".picker-field font size must be 1rem");
+    assert.ok(selectEl.className.split(" ").includes("cartouche-select"), "Stop selector is the shared Select (Ticket #344)");
+    assert.match(cssRule(".cartouche-select"), /font-size:\s*[\d.]+rem;/, ".cartouche-select font size must be in rem");
 
     // Changing prefsUiBaseFontSize signal triggers reactive re-render
     await act(async () => {
       prefsUiBaseFontSize.value = 16;
     });
 
-    assert.ok(!selectEl.style.fontSize, "Select sets no inline font size over the 1rem class");
+    assert.ok(!selectEl.style.fontSize, "Select sets no inline font size over the shared class");
   });
 
   it("scales delete button and trash can icon dynamically with prefsUiIconSize", async () => {

@@ -2291,7 +2291,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       const typeSelects = [...fieldsHtml.matchAll(/<select[^>]*class="([^"]*layer-field-type-select[^"]*)"[^>]*>/g)].map((m) => m[1]);
       assert.deepEqual(
         typeSelects,
-        ['layer-field-type-select', 'layer-field-type-select is-overridden'],
+        ['cartouche-select is-compact layer-field-type-select', 'cartouche-select is-compact layer-field-type-select is-overridden'],
         'Only the overridden field\'s type select carries the is-overridden (green override) class'
       );
     });
@@ -2345,7 +2345,7 @@ describe('LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)',
       for (const canonicalType of CANONICAL_INFERRED_FIELD_TYPES) {
         assert.ok(
           fieldsHtml.includes(`value="${canonicalType}"`) &&
-          fieldsHtml.includes(`>${canonicalType}</option>`),
+          fieldsHtml.includes(`>${canonicalType}</span></option>`),
           `Select dropdown must include option for ${canonicalType}`
         );
       }

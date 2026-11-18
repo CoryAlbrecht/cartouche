@@ -4,7 +4,7 @@
  * @description Unit and rendering tests for DashPatternSelect and DashPatternSample components verifying 128px stroke sample rendering, preset dash arrays, blank space for no-line, custom dash arrays, and trigger button state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-14
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link DashPatternSelect}
  * @see {@link DashPatternSample}
@@ -98,7 +98,7 @@ describe('DashPatternSelect Component (Ticket #159)', () => {
     return dict[key] ?? key;
   };
 
-  it('renders closed trigger button with label on left and 128px stroke sample on right', () => {
+  it('renders the selected pattern with its label and its 128px stroke sample', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashPatternSelect, {
         id: 'layer-prop-dash-pattern',
@@ -110,12 +110,13 @@ describe('DashPatternSelect Component (Ticket #159)', () => {
     );
 
     assert.ok(html.includes('id="layer-prop-dash-pattern"'), 'Must render trigger with id');
+    assert.ok(html.includes('<option value="dash-dot" selected="">'), 'The value is the selected option, which the trigger mirrors');
     assert.ok(html.includes('Dash Dot'), 'Must display selected pattern label');
     assert.ok(html.includes('width="128"'), 'Must display 128px sample in trigger');
     assert.ok(html.includes('stroke-dasharray="10 4 2 4"'), 'Sample must reflect dash-dot pattern');
   });
 
-  it('disables trigger button when disabled prop is true', () => {
+  it('disables the Select when disabled prop is true', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashPatternSelect, {
         id: 'layer-prop-dash-pattern',
@@ -129,19 +130,24 @@ describe('DashPatternSelect Component (Ticket #159)', () => {
     assert.ok(html.includes('disabled=""') || html.includes('disabled'), 'Trigger button must be disabled');
   });
 
-  it('renders dropdown list items with label on left and 128px sample on right when initially open', () => {
+  it('renders every pattern as an option of the shared Select, label on the left and 128px sample on the right (Ticket #344)', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashPatternSelect, {
         id: 'layer-prop-dash-pattern',
         value: 'solid',
         disabled: false,
-        initialOpen: true,
         onChange: () => {},
         t: dummyT,
       })
     );
 
-    assert.ok(html.includes('role="listbox"'), 'Must render listbox role');
+    assert.match(html, /^<select class="cartouche-select dash-pattern-select" id="layer-prop-dash-pattern"/, 'Must be the shared Select');
+    assert.ok(html.includes('<selectedcontent'), 'Trigger mirrors the selected option, sample included');
+    assert.equal(html.match(/<option /g)?.length, 10, 'One option per dash pattern');
+    assert.ok(
+      html.includes('<option value="dash-dot"><span class="cartouche-select-option-label">Dash Dot</span><svg'),
+      'Each option shows its label, then its stroke sample'
+    );
     assert.ok(html.includes('Solid Line'), 'Must include Solid Line option');
     assert.ok(html.includes('No Line'), 'Must include No Line option');
     assert.ok(html.includes('Dash Dot Dot'), 'Must include Dash Dot Dot option');

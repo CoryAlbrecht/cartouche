@@ -4,7 +4,7 @@
  * @description Modeless Project Properties dialog built on the shared TabbedDialogShell. Every tab edits the transactional project properties draft (ADR 0024); Apply and OK commit it to the Project Store and set the Project Dirty State, Cancel throws it away. The Measurements tab chooses Units for Distance, Units for Area and the Scale Calculation method. The Time Filter tab edits Enabled / From / To / Step / Unit through the shared TimeFilterControls (no playhead); edits reach the TimeFilterWidget and the map only on Apply / OK. The General tab shows the Project File (read-only, with a Save As button that applies the draft first), edits the Project Home (with a directory picker) and Save Path Mode, edits the Project Title, and picks the Selection Colour (transparency allowed) and the opaque Map Background Colour with ColourButtons that open a ColourPickerDialog and change the draft only on Apply.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link TabbedDialogShell}
@@ -51,6 +51,7 @@ import {
   type ProjectAreaUnit,
   type ScaleCalculationMethod,
 } from "@shared/types";
+import { Select } from "@renderer/components/common/Select";
 import { Dialog } from "./Dialog";
 import { TabbedDialogShell } from "./TabbedDialogShell";
 
@@ -120,7 +121,7 @@ const LABEL_STYLE: React.CSSProperties = {
  * @description Renders the modeless Project Properties dialog with its sidebar tabs, the General tab and the Cancel / Apply / OK footer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Project Properties dialog window element or null if closed.
  */
@@ -409,21 +410,16 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   <label htmlFor='project-prop-distance-unit' style={LABEL_STYLE}>
                     {t("project_properties_label_distance_unit")}:
                   </label>
-                  <select
+                  <Select<ProjectDistanceUnit>
                     id='project-prop-distance-unit'
-                    className='project-prop-input project-prop-distance-unit'
+                    className='project-prop-select'
                     value={draft.distanceUnit}
-                    onChange={(e) =>
-                      updateProjectPropertiesDraft({
-                        distanceUnit: e.target.value as ProjectDistanceUnit,
-                      })
-                    }>
-                    {PROJECT_DISTANCE_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {t(`project_properties_distance_unit_${unit.replace(/-/g, "_")}`)}
-                      </option>
-                    ))}
-                  </select>
+                    options={PROJECT_DISTANCE_UNITS.map((unit) => ({
+                      value: unit,
+                      label: t(`project_properties_distance_unit_${unit.replace(/-/g, "_")}`),
+                    }))}
+                    onChange={(distanceUnit) => updateProjectPropertiesDraft({ distanceUnit })}
+                  />
                 </div>
 
                 {/* Units for Area */}
@@ -433,21 +429,16 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   <label htmlFor='project-prop-area-unit' style={LABEL_STYLE}>
                     {t("project_properties_label_area_unit")}:
                   </label>
-                  <select
+                  <Select<ProjectAreaUnit>
                     id='project-prop-area-unit'
-                    className='project-prop-input project-prop-area-unit'
+                    className='project-prop-select'
                     value={draft.areaUnit}
-                    onChange={(e) =>
-                      updateProjectPropertiesDraft({
-                        areaUnit: e.target.value as ProjectAreaUnit,
-                      })
-                    }>
-                    {PROJECT_AREA_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {t(`project_properties_area_unit_${unit.replace(/-/g, "_")}`)}
-                      </option>
-                    ))}
-                  </select>
+                    options={PROJECT_AREA_UNITS.map((unit) => ({
+                      value: unit,
+                      label: t(`project_properties_area_unit_${unit.replace(/-/g, "_")}`),
+                    }))}
+                    onChange={(areaUnit) => updateProjectPropertiesDraft({ areaUnit })}
+                  />
                 </div>
 
                 {/* Scale Calculation */}
@@ -457,21 +448,16 @@ export const ProjectPropertiesDialog: React.FC = () => {
                   <label htmlFor='project-prop-scale-method' style={LABEL_STYLE}>
                     {t("project_properties_label_scale_method")}:
                   </label>
-                  <select
+                  <Select<ScaleCalculationMethod>
                     id='project-prop-scale-method'
-                    className='project-prop-input project-prop-scale-method'
+                    className='project-prop-select'
                     value={draft.scaleMethod}
-                    onChange={(e) =>
-                      updateProjectPropertiesDraft({
-                        scaleMethod: e.target.value as ScaleCalculationMethod,
-                      })
-                    }>
-                    {SCALE_CALCULATION_METHODS.map((method) => (
-                      <option key={method} value={method}>
-                        {t(`project_properties_scale_method_${method}`)}
-                      </option>
-                    ))}
-                  </select>
+                    options={SCALE_CALCULATION_METHODS.map((method) => ({
+                      value: method,
+                      label: t(`project_properties_scale_method_${method}`),
+                    }))}
+                    onChange={(scaleMethod) => updateProjectPropertiesDraft({ scaleMethod })}
+                  />
                 </div>
               </div>
             </fieldset>

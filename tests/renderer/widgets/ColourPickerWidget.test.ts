@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, bottom channel inputs, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link ColourPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -720,7 +720,7 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
     prefsUiBaseFontSize.value = undefined;
   });
 
-  it('sets format dropdown and HEX input font sizes to 1rem and reacts dynamically to prefsUiBaseFontSize', async () => {
+  it('sizes the format dropdown as the shared Select and the HEX input at 1rem, both following prefsUiBaseFontSize', async () => {
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
@@ -734,7 +734,7 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
 
     assert.ok(formatSelect, 'Must render format selector dropdown');
     assert.ok(hexInput, 'Must render HEX input');
-    assert.ok(formatSelect.className.split(' ').includes('picker-field'), 'Format dropdown takes the picker-field class');
+    assert.ok(formatSelect.className.split(' ').includes('cartouche-select'), 'Format dropdown is the shared Select (Ticket #344)');
     assert.ok(hexInput.className.split(' ').includes('picker-field'), 'HEX input takes the picker-field class');
     assert.match(pickerFieldRule(), /font-size:\s*1rem/, '.picker-field font size must be 1rem');
 
@@ -743,7 +743,7 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
       prefsUiBaseFontSize.value = 16;
     });
 
-    assert.ok(!formatSelect.style.fontSize, 'Format dropdown sets no inline font size over the 1rem class');
+    assert.ok(!formatSelect.style.fontSize, 'Format dropdown sets no inline font size over the shared class');
     assert.ok(!hexInput.style.fontSize, 'HEX input sets no inline font size over the 1rem class');
   });
 

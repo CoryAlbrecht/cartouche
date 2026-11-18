@@ -4,7 +4,7 @@
  * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -407,7 +407,7 @@ describe('PreferencesDialog Component & Reactive Architecture (Ticket #52)', () 
     assert.ok(html.includes('class="preference-range-wrapper"'), 'renders range');
     assert.ok(html.includes('class="preference-number-wrapper"'), 'renders spinner');
     assert.ok(html.includes('class="preference-slider-discrete-wrapper"'), 'renders slider');
-    assert.ok(html.includes('class="preference-select"'), 'renders dropdown');
+    assert.ok(html.includes('class="cartouche-select preference-select"'), 'renders dropdown');
     assert.ok(html.includes('class="preference-image-picker-btn"'), 'renders image');
     assert.ok(html.includes('class="preference-radio-group"'), 'renders radio-button');
     assert.ok(html.includes('class="preference-button-group"'), 'renders button-group');

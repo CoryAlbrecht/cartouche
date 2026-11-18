@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -153,11 +153,11 @@ export function matchesKeyCombination(
 
 /**
  * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
- * Bypasses dispatching when focused on text inputs, active inline rename editors, modal dialogs, or active PopupMenu instances.
+ * Bypasses dispatching when focused on text inputs, dropdowns or the options of an open dropdown list, active inline rename editors, modal dialogs, or active PopupMenu instances.
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
@@ -180,7 +180,7 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
       || tagName === 'TEXTAREA'
       || tagName === 'SELECT'
       || target.isContentEditable
-      || (typeof target.closest === 'function' && target.closest('.modal-backdrop, .modal-dialog, [role="dialog"], .popup-backdrop, .popup-menu'))
+      || (typeof target.closest === 'function' && target.closest('select, .modal-backdrop, .modal-dialog, [role="dialog"], .popup-backdrop, .popup-menu'))
     ) {
       return;
     }

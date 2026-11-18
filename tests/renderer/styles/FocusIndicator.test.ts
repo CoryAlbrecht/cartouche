@@ -4,7 +4,7 @@
  * @description Guardrail tests for the stylesheet side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #317 / #318 / #319): the Tier 1 / Tier 2 focus, invalid-state and control-accent tokens in theme-default.css; the single global :focus-visible / aria-invalid rule set in workbench.css that replaces the scattered per-component focus styling; the map-canvas-only outline suppression; the invalid-state rules reading only the invalid tokens; and the workbench.css classes of the migrated focusable controls reading only Tier 2 Component Tokens, in rem.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see FocusableControlStyling.test.ts
  */
@@ -39,8 +39,17 @@ function suppressesOutline(body: string): boolean {
 /** Non-text `<input>` types that take the outline ring rather than the border-and-halo indicator. */
 const NON_TEXT_INPUT_TYPES = ['checkbox', 'radio', 'range', 'color', 'button', 'submit', 'reset', 'file', 'image'];
 
-/** The text-entry selector list used by the global rules. */
-const TEXT_ENTRY = `:is(input:not(${NON_TEXT_INPUT_TYPES.map((t) => `[type="${t}"]`).join(', ')}), select, textarea)`;
+/** Custom dropdown triggers, matched by semantic role rather than element (ADR 0027 Focus Indicator addendum §2, Ticket #344). */
+const DROPDOWN_ROLES = ['[aria-haspopup="listbox"]', '[role="combobox"]'];
+
+/** Dropdowns, native or custom, while focused by any means or open (Ticket #344): their text-entry indicator does not wait for :focus-visible. */
+const DROPDOWN_FOCUSED = `:is(select, ${DROPDOWN_ROLES.join(', ')}):is(:focus, :open, [aria-expanded="true"])`;
+
+/** The invalid variant of {@link DROPDOWN_FOCUSED}. */
+const DROPDOWN_FOCUSED_INVALID = `:is(select, ${DROPDOWN_ROLES.join(', ')})[aria-invalid="true"]:is(:focus, :open, [aria-expanded="true"])`;
+
+/** The text-entry and dropdown selector list used by the global rules. */
+const TEXT_ENTRY = `:is(input:not(${NON_TEXT_INPUT_TYPES.map((t) => `[type="${t}"]`).join(', ')}), select, textarea, ${DROPDOWN_ROLES.join(', ')})`;
 
 /** Selectors allowed to suppress the Focus Indicator: the map canvas only. */
 const MAP_CANVAS_OPT_OUT = ['.ol-viewport:focus-visible', '.ol-viewport canvas:focus-visible'];
@@ -117,8 +126,37 @@ describe('Global Focus Indicator rules in workbench.css (Ticket #317)', () => {
     assert.equal(declaration(rules[0].body, 'outline'), 'none');
   });
 
-  it('draws an inset ring on the LayerTreeWidget container, the AttributeTableWidget body and Dockview tabs', () => {
-    for (const selector of ['.layer-tree-container:focus-visible', '.table-scroll-wrapper:focus-visible', '.dv-tab:focus-visible']) {
+  it('shows the dropdown Focus Indicator on mouse focus and while the list is open, in the same rule as text entry (Ticket #344)', () => {
+    const [rule] = rulesFor(DROPDOWN_FOCUSED);
+    assert.ok(rule, 'dropdown focused/open rule exists');
+    assert.ok(rule.selectors.includes(`${TEXT_ENTRY}:focus-visible`), 'it shares the text-entry rule, so the two cannot drift apart');
+    const [invalid] = rulesFor(DROPDOWN_FOCUSED_INVALID);
+    assert.ok(invalid, 'invalid dropdown focused/open rule exists');
+    assert.ok(invalid.selectors.includes(`${TEXT_ENTRY}[aria-invalid="true"]:focus-visible`), 'it shares the invalid text-entry rule');
+  });
+
+  it('gives an open dropdown list the same Focus Indicator as its trigger, from the focus tokens only (Ticket #344)', () => {
+    const [rule] = rulesFor('select:open::picker(select)');
+    assert.ok(rule, 'open list rule exists');
+    assert.equal(declaration(rule.body, 'border-color'), 'var(--cartouche-focus-color)');
+    assert.equal(declaration(rule.body, 'box-shadow'), '0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-ring)');
+    const [invalid] = rulesFor('select[aria-invalid="true"]:open::picker(select)');
+    assert.ok(invalid, 'invalid open list rule exists');
+    assert.equal(declaration(invalid.body, 'border-color'), 'var(--cartouche-focus-invalid-color)');
+    assert.equal(declaration(invalid.body, 'box-shadow'), '0 0 0 var(--cartouche-focus-width) var(--cartouche-focus-invalid-ring)');
+  });
+
+  it('gives custom dropdown triggers the text-entry Focus Indicator by role, so no custom dropdown falls back to the outline ring (Ticket #344)', () => {
+    for (const role of DROPDOWN_ROLES) {
+      assert.ok(TEXT_ENTRY.includes(role), `${role} is in the text-entry list`);
+    }
+    for (const suffix of [':focus-visible', '[aria-invalid="true"]', '[aria-invalid="true"]:focus-visible']) {
+      assert.ok(rulesFor(`${TEXT_ENTRY}${suffix}`).length > 0, `text-entry ${suffix} rule covers the dropdown roles`);
+    }
+  });
+
+  it('draws an inset ring on the LayerTreeWidget container, the AttributeTableWidget body, dropdown options and Dockview tabs', () => {
+    for (const selector of ['.layer-tree-container:focus-visible', '.table-scroll-wrapper:focus-visible', 'option:focus-visible', '.dv-tab:focus-visible']) {
       const [rule] = rulesFor(selector);
       assert.ok(rule, `${selector} rule exists`);
       assert.equal(declaration(rule.body, 'outline-offset'), 'calc(var(--cartouche-focus-width) * -1)');
@@ -147,6 +185,8 @@ describe('Global Focus Indicator rules in workbench.css (Ticket #317)', () => {
       // Selection colouring of a focused list box is not a focus indicator (Spec #316, Out of Scope).
       if (focusSelectors.every((s) => s.endsWith(':focus option:checked'))) continue;
       for (const s of focusSelectors) {
+        // A dropdown shows the indicator on any focus and while open, as a text field does (Ticket #344).
+        if (s === DROPDOWN_FOCUSED || s === DROPDOWN_FOCUSED_INVALID) continue;
         assert.match(s, /:focus-visible/, `${s} uses :focus-visible`);
       }
       assert.doesNotMatch(r.body, /#[0-9a-f]{3,8}\b|rgba?\(/i, `${r.selectors.join(', ')} has a colour literal`);
@@ -315,7 +355,12 @@ const MIGRATED_CONTROL_CLASSES = [
   'add-layers-path-input',
   'time-filter-step-input',
   'time-filter-step-arrow',
-  'time-filter-unit-select',
+  // The shared Select (Ticket #344).
+  'cartouche-select',
+  'cartouche-select-trigger',
+  'cartouche-select-value',
+  'cartouche-select-caret',
+  'cartouche-select-option-label',
   'timestamp-spinner-segment',
   'layer-tree-container',
   // Styling editors: SimpleModeEditor, StyleEditor, DashPatternSelect.
@@ -323,14 +368,10 @@ const MIGRATED_CONTROL_CLASSES = [
   'styling-editor-number',
   'styling-editor-angle',
   'styling-editor-icon-btn',
-  'styling-editor-format-select',
   'styling-editor-secondary-btn',
   'layer-prop-layer-opacity',
   'layer-prop-styling-raw-style',
-  'dash-pattern-select-trigger',
-  'dash-pattern-select-listbox',
-  'dash-pattern-select-option',
-  'dash-pattern-select-caret',
+  'dash-pattern-select',
   // Layer Properties Dialog and its New Field dialog.
   'layer-properties-btn',
   'new-field-dialog-btn',

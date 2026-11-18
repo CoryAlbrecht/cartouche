@@ -18,6 +18,7 @@ import { useSignals } from "@preact/signals-react/runtime";
 import WKB from "ol/format/WKB.js";
 import { BasicWidget } from "./BasicWidget";
 import Icon from "@renderer/components/common/Icon";
+import { Select } from "@renderer/components/common/Select";
 import {
   activeLayerSignal,
   activeLayerFeaturesSignal,
@@ -792,7 +793,7 @@ function BooleanEditor({
   onCancel,
 }: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
   const { t } = useTranslation();
-  const [text, setText] = useState(value ? "true" : "false");
+  const [text, setText] = useState<"true" | "false">(value ? "true" : "false");
   const selectRef = useTableEditorFocus<HTMLSelectElement>();
   /**
    * @function commit
@@ -806,16 +807,19 @@ function BooleanEditor({
    */
   const commit = (move?: TableEditMove): void => onCommit(text === "true", move);
   return (
-    <select
+    <Select<"true" | "false">
       ref={selectRef}
-      className='cell-editor-input table-widget-editor cell-editor-select cell-editor-boolean'
+      density='compact'
+      className='table-widget-editor cell-editor-boolean'
       value={text}
-      onChange={(event) => setText(event.target.value)}
+      options={[
+        { value: "true", label: t("boolean_true") },
+        { value: "false", label: t("boolean_false") },
+      ]}
+      onChange={setText}
       onBlur={() => commit()}
-      onKeyDown={(event) => tableEditorKeyDown(event, commit, onCancel)}>
-      <option value='true'>{t("boolean_true")}</option>
-      <option value='false'>{t("boolean_false")}</option>
-    </select>
+      onKeyDown={(event) => tableEditorKeyDown(event, commit, onCancel)}
+    />
   );
 }
 
@@ -1452,21 +1456,22 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                 justifyContent: "space-between",
                 gap: "8px",
               }}>
-              <select
+              <Select<AttributeTableFilterMode>
+                density='compact'
                 className='attribute-table-filter-select'
                 value={filterMode}
-                onChange={(e) => {
-                  setFilterMode(e.target.value as AttributeTableFilterMode);
+                options={[
+                  { value: "all", label: t("filter_show_all") },
+                  { value: "selected", label: t("filter_show_selected") },
+                  { value: "visible", label: t("filter_show_visible") },
+                  { value: "edited_new", label: t("filter_show_edited_new") },
+                ]}
+                onChange={(mode) => {
+                  setFilterMode(mode);
                   setPageStart(0);
                 }}
-                aria-label={t("filter_dropdown_label")}>
-                <option value='all'>{t("filter_show_all")}</option>
-                <option value='selected'>{t("filter_show_selected")}</option>
-                <option value='visible'>{t("filter_show_visible")}</option>
-                <option value='edited_new'>
-                  {t("filter_show_edited_new")}
-                </option>
-              </select>
+                aria-label={t("filter_dropdown_label")}
+              />
 
               <div
                 className='attribute-table-pagination'

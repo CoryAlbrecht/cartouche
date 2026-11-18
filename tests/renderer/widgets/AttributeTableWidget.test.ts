@@ -3760,10 +3760,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             && el.className.includes("cell-editor-boolean")
         )[0];
         assert.ok(boolSelect, "boolean select must be active in cell editor");
-        // Sized by the same .cell-editor-input class verified above (Ticket #318)
+        // The boolean editor is the compact shared Select (Ticket #344)
         assert.ok(
-          boolSelect.className.includes("cell-editor-input"),
-          "editor select must carry the cell-editor-input class"
+          boolSelect.className.includes("cartouche-select") && boolSelect.className.includes("is-compact"),
+          "editor select must be the compact shared Select"
         );
 
         await act(async () => {

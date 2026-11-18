@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -242,10 +242,10 @@ describe('ProjectPropertiesDialog component (Ticket #271)', () => {
     assert.ok(html.includes('project-properties-tab-pane measurements'));
     assert.ok(html.includes('Units for Distance') && html.includes('Units for Area') && html.includes('Scale Calculation'));
     assert.ok(html.includes('id="project-prop-distance-unit"') && html.includes('id="project-prop-area-unit"') && html.includes('id="project-prop-scale-method"'));
-    assert.ok(html.includes('<option value="metres">Metres</option>'), 'Canadian spelling Metres');
-    assert.ok(html.includes('<option value="kilometres" selected="">Kilometres</option>'), 'draft distance unit selected, Canadian spelling');
-    assert.ok(html.includes('<option value="square-kilometres" selected="">Square Kilometres</option>'));
-    assert.ok(html.includes('<option value="average" selected="">Average of Top, Middle, and Bottom Scales</option>'));
+    assert.ok(html.includes('<option value="metres"><span class="cartouche-select-option-label">Metres</span></option>'), 'Canadian spelling Metres');
+    assert.ok(html.includes('<option value="kilometres" selected=""><span class="cartouche-select-option-label">Kilometres</span></option>'), 'draft distance unit selected, Canadian spelling');
+    assert.ok(html.includes('<option value="square-kilometres" selected=""><span class="cartouche-select-option-label">Square Kilometres</span></option>'));
+    assert.ok(html.includes('<option value="average" selected=""><span class="cartouche-select-option-label">Average of Top, Middle, and Bottom Scales</span></option>'));
     assert.equal((html.match(/<option value="/g) || []).length, 10 + 12 + 5, 'ten distance units, twelve area units, five scale methods');
     activeProjectPropertiesTabSignal.value = 'general';
   });

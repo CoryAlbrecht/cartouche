@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -38,6 +38,7 @@ import {
   cancelPreferencesEdits,
 } from "@renderer/state/preferencesSignals";
 import { t } from "@renderer/state/i18nSignals";
+import { Select } from "@renderer/components/common/Select";
 import { Dialog } from "./Dialog";
 import type { PreferenceItem, PreferenceControlType } from "@shared/types";
 import { logging } from "../../../shared/logging";
@@ -172,7 +173,7 @@ function resolveDescription(key: string, item: PreferenceItem): string {
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -516,7 +517,7 @@ export const PreferencesDialog: React.FC = () => {
    * @description Renders a specific control variant for a given preference row with keyboard accessibility and ARIA semantics.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-21
-   * @updated 2026-11-16
+   * @updated 2026-11-17
    * @since 0.1.0-dev
    * @param {PreferenceControlType} ctrlType - Canonical control type.
    * @param {string} key - Preference descriptor key.
@@ -789,19 +790,17 @@ export const PreferencesDialog: React.FC = () => {
       }
       case "dropdown": {
         return (
-          <select
+          <Select
             key={`${key}-dropdown`}
-            tabIndex={0}
             aria-label={displayName}
             value={String(currentValue)}
-            onChange={(e) => handleFieldChange(key, e.target.value)}
-            className='preference-select'>
-            {(item.options || []).map((opt) => (
-              <option key={String(opt.value)} value={String(opt.value)}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={(item.options || []).map((opt) => ({
+              value: String(opt.value),
+              label: opt.label,
+            }))}
+            onChange={(value) => handleFieldChange(key, value)}
+            className='preference-select'
+          />
         );
       }
       case "image": {

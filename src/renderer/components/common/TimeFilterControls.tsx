@@ -4,7 +4,7 @@
  * @description Shared, controlled Time Filter settings controls used by TimeFilterWidget and the Project Properties Time Filter tab: the Enabled toggle button, the From / To range spinners, the Step numeric input with discrete 1.00 arrows and the Unit dropdown. The controls receive their values as props and report edits through callbacks; they never touch the time filter signals and carry no playhead (current frame) control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link TimestampSpinner}
@@ -25,6 +25,7 @@ import {
   mdiChevronDown,
 } from "@mdi/js";
 import { TimestampSpinner } from "./TimestampSpinner";
+import { Select } from "./Select";
 import { MIN_TIME_FILTER_STEP } from "../../map/timeFilterMath";
 import type { TimeFilterUnit } from "../../../shared/types";
 
@@ -129,7 +130,7 @@ export interface TimeFilterRangeStepControlsProps {
  * @description Inline row of From / To timestamp spinners, a separator, and the Step numeric input (with Step Up / Step Down 1.00 arrows and blur normalisation to {@link MIN_TIME_FILTER_STEP}) followed by the Unit dropdown. Renders as a fragment so the owner's flex row lays the groups out.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {TimeFilterRangeStepControlsProps} props - Component properties.
  * @returns {React.ReactElement} The range and step control groups.
@@ -210,14 +211,6 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
     onStepChange(next);
     setStepText(String(next));
   }, [step, onStepChange]);
-
-  // Unit dropdown change
-  const handleUnitChange = useCallback(
-    (e: ChangeEvent<HTMLSelectElement>) => {
-      onUnitChange(e.target.value as TimeFilterUnit);
-    },
-    [onUnitChange]
-  );
 
   return (
     <>
@@ -345,18 +338,15 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
         </div>
 
         {/* Unit Dropdown */}
-        <select
+        <Select<TimeFilterUnit>
+          density='compact'
           className='time-filter-unit-select'
           aria-label='Temporal Step Unit'
           value={unit}
           disabled={disabled}
-          onChange={handleUnitChange}>
-          {TIME_FILTER_UNIT_OPTIONS.map((u) => (
-            <option key={u} value={u}>
-              {u}
-            </option>
-          ))}
-        </select>
+          options={TIME_FILTER_UNIT_OPTIONS.map((u) => ({ value: u, label: u }))}
+          onChange={onUnitChange}
+        />
       </div>
     </>
   );

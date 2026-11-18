@@ -4,7 +4,7 @@
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link ColourPickerWidget}
@@ -23,6 +23,7 @@ import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
 import { ColourPickerWidget } from "./ColourPickerWidget";
 import Icon from "@renderer/components/common/Icon";
+import { Select } from "@renderer/components/common/Select";
 import { mdiTrashCanOutline } from "@mdi/js";
 import {
   prefsUiIconSize,
@@ -99,7 +100,7 @@ function areStopsEqual(a?: string[], b?: string[] | null): boolean {
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {GradientPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} GradientPickerWidget React component.
@@ -680,22 +681,20 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
           }}
         />
 
-        <select
-          className='picker-field gradient-picker-stop-select'
+        <Select
+          className='gradient-picker-stop-select'
           aria-label='Select gradient stop'
           value={activeStop.id}
           disabled={disabled}
-          onChange={(e) => {
-            const targetId = e.target.value;
+          options={sortedStops.map((stop) => ({
+            value: stop.id,
+            label: `${Math.round(stop.offset * 10) / 10}% — ${stop.color}`,
+          }))}
+          onChange={(targetId) => {
             setActiveStopId(targetId);
             activeStopIdRef.current = targetId;
-          }}>
-          {sortedStops.map((stop) => (
-            <option key={stop.id} value={stop.id}>
-              {`${Math.round(stop.offset * 10) / 10}% — ${stop.color}`}
-            </option>
-          ))}
-        </select>
+          }}
+        />
 
         <button
           type='button'

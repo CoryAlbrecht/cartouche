@@ -264,8 +264,9 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
 
     // Count rendered SVG icons:
     // Header (1: clock), Toggle [A] (1), Auto-Range [B] (1), Transport [C, D, E, F] (4),
-    // Embedded TimestampSpinners (2 spinners * 2 chevrons = 4), Step Up/Down (2) = 13 total icons
-    const EXPECTED_SVG_ICON_COUNT = 13;
+    // Embedded TimestampSpinners (2 spinners * 2 chevrons = 4), Step Up/Down (2),
+    // Unit Select caret (1, Ticket #344) = 14 total icons
+    const EXPECTED_SVG_ICON_COUNT = 14;
     const svgCount = (markup.match(/<svg/g) || []).length;
     assert.strictEqual(
       svgCount,
@@ -355,8 +356,8 @@ describe('TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)',
       'Unit select dropdown must exist'
     );
     assert.ok(
-      !/class="time-filter-unit-select"[^>]*style=/.test(markup),
-      'Unit select must take its border from the token-bound .time-filter-unit-select class, not an inline style (Ticket #318)'
+      !/class="[^"]*time-filter-unit-select"[^>]*style=/.test(markup),
+      'Unit select must take its border from the token-bound shared Select class, not an inline style (Tickets #318, #344)'
     );
 
     // 4. Step input border and box-sizing
@@ -375,7 +376,7 @@ describe('TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)', () => 
 
     // 1. Verify class assignment
     assert.ok(
-      markup.includes('class="time-filter-unit-select"'),
+      markup.includes('class="cartouche-select is-compact time-filter-unit-select"'),
       'Unit select element must have time-filter-unit-select class'
     );
     assert.ok(

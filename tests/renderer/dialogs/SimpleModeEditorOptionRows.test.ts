@@ -4,7 +4,7 @@
  * @description Characterisation tests pinning the markup of the labelled option rows in SimpleModeEditor: the Fill Colour, Stroke Colour and Gradient Stops picker rows (element id and class, `<span>` label); the Simple Line rows Stroke Width, Line Offset, Line Cap, Line Join, Dash Pattern, Dash Offset and Dash Array; and the Simple Marker rows Point Shape, Radius, Fill Colour, Stroke Colour and Stroke Width (`<label htmlFor>` paired with the row's control). Every row is a flex row with a 1rem gap and a 9rem label column; the Dash Array row aligns to the top and pads its label, which names the first dash input when there is one.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  */
@@ -142,14 +142,14 @@ describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
       layer_properties_styling_line_join: 'Line Join'
     };
     const html = render(LINE, 'LineString');
-    includesRow(html, labelledRow('layer-prop-line-cap', 'Line Cap', '<select class="styling-editor-field" id="layer-prop-line-cap">'));
-    includesRow(html, labelledRow('layer-prop-line-join', 'Line Join', '<select class="styling-editor-field" id="layer-prop-line-join">'));
+    includesRow(html, labelledRow('layer-prop-line-cap', 'Line Cap', '<select class="cartouche-select" id="layer-prop-line-cap">'));
+    includesRow(html, labelledRow('layer-prop-line-join', 'Line Join', '<select class="cartouche-select" id="layer-prop-line-join">'));
   });
 
   it('renders the Dash Pattern row labelling its pattern select', () => {
     dictionarySignal.value = { layer_properties_styling_dash_pattern: 'Dash Pattern' };
     const html = render(LINE, 'LineString');
-    includesRow(html, labelledRow('layer-prop-dash-pattern', 'Dash Pattern', '<div style="position:relative;display:inline-block;width:20rem">'));
+    includesRow(html, labelledRow('layer-prop-dash-pattern', 'Dash Pattern', '<select class="cartouche-select dash-pattern-select" id="layer-prop-dash-pattern">'));
   });
 
   it('renders the Dash Array row top-aligned, its padded label naming the Dash Array table (#332)', () => {
@@ -197,7 +197,7 @@ describe('SimpleModeEditor Simple Marker option rows (Ticket #315)', () => {
       labelledRow(
         'layer-prop-point-shape',
         'Point Shape',
-        '<select class="styling-editor-field" id="layer-prop-point-shape">'
+        '<select class="cartouche-select" id="layer-prop-point-shape">'
       )
     );
   });

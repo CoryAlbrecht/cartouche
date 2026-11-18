@@ -4,7 +4,7 @@
  * @description Standardized React portal-based modal dialog to block interaction with parent window, plus the sequential UnsavedChangesModal confirmation component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @component ModalDialog
  * @see {@link UnsavedChangesModal}
@@ -14,6 +14,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useSignals } from '@preact/signals-react/runtime';
 import { useTranslation } from '@renderer/hooks/useTranslation';
+import { isWithinOpenSelect } from '@renderer/components/common/Select';
 import {
   unsavedChangesModalSignal,
   resolveUnsavedChangesModal
@@ -42,7 +43,7 @@ export interface ModalDialogProps {
  * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {ModalDialogProps} props - Component properties.
  * @returns {React.ReactPortal | null} Rendered portal or null when closed.
@@ -58,7 +59,7 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
+      if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();

@@ -64,6 +64,7 @@ import {
 import { t } from "@renderer/state/i18nSignals";
 import {
   preferencesMapSignal,
+  prefsUiBaseFontSize,
   updatePreference,
 } from "@renderer/state/preferencesSignals";
 import {
@@ -71,6 +72,7 @@ import {
   toggleLayerEditingAction,
   isLayerInEditMode,
 } from "@renderer/state/gisSignals";
+import { Select, type SelectOption } from "@renderer/components/common/Select";
 import { Dialog } from "./Dialog";
 import { TabbedDialogShell, type TabbedDialogTabDef } from "./TabbedDialogShell";
 import { ModalDialog } from "./ModalDialog";
@@ -345,6 +347,18 @@ function stopTablePropagation(event: React.SyntheticEvent): void {
 }
 
 /**
+ * @description The Fields tab Data Type choices: every canonical inferred field type, labelled with its own name.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @type {SelectOption<InferredFieldType>[]}
+ */
+const FIELD_TYPE_OPTIONS: SelectOption<InferredFieldType>[] = CANONICAL_INFERRED_FIELD_TYPES.map(
+  (typeOption) => ({ value: typeOption, label: typeOption })
+);
+
+/**
  * @component FieldTypeControls
  * @description The Fields tab Data Type cell: the field's data type select (enabled in Layer Edit Mode), the "User" badge on overridden fields, and the Reset Type button (enabled in Layer Edit Mode on an overridden field). Its clicks and keys stay in the cell.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -372,21 +386,18 @@ const FieldTypeControls: React.FC<{
     <div
       className='layer-field-type-controls'
       style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-      <select
+      <Select<InferredFieldType>
+        density='compact'
         className={`layer-field-type-select${field.userOverridden ? " is-overridden" : ""}`}
         aria-label={`Field type for ${field.name}`}
         disabled={!isEditing}
         value={effectiveFieldType(field)}
+        options={FIELD_TYPE_OPTIONS}
         onClick={stopTablePropagation}
         onDoubleClick={stopTablePropagation}
         onKeyDown={stopTablePropagation}
-        onChange={(e) => onTypeChange(field.name, e.target.value as InferredFieldType)}>
-        {CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => (
-          <option key={typeOption} value={typeOption}>
-            {typeOption}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => onTypeChange(field.name, value)}
+      />
       {field.userOverridden && <FieldOverrideBadge />}
       <button
         type='button'
@@ -421,11 +432,21 @@ interface FieldsTabColumnOptions {
 }
 
 /**
+ * @description Minimum width of the Fields tab Data Type column in rem: the widest type in the compact type Select, the "User" badge and the Reset Type button with their gaps, plus the cell padding, so the cell never clips the Select's border.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @type {number}
+ */
+const FIELD_TYPE_COLUMN_MIN_WIDTH_REM = 13.5;
+
+/**
  * @function fieldsTabColumns
- * @description Column definitions of the Fields tab table (Ticket #331): Index (the field's stable 0-based slot), Field Name, Data Type (type select, badge and Reset Type button), Native Type when shown, and the editable Length, Precision and Comment columns, which use the text editor so a value can be cleared. No column sorts.
+ * @description Column definitions of the Fields tab table (Ticket #331): Index (the field's stable 0-based slot), Field Name, Data Type (type select, badge and Reset Type button, starting at and never narrower than {@link FIELD_TYPE_COLUMN_MIN_WIDTH_REM} at the current UI base font size), Native Type when shown, and the editable Length, Precision and Comment columns, which use the text editor so a value can be cleared. No column sorts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {LayerFieldInfo[]} fields - The layer's fields, for resolving indices.
  * @param {FieldsTabColumnOptions} options - Column options.
@@ -435,6 +456,9 @@ function fieldsTabColumns(
   fields: LayerFieldInfo[],
   { showNativeType, isEditing, onTypeChange, onResetType }: FieldsTabColumnOptions
 ): TableColumn<LayerFieldInfo>[] {
+  const fieldTypeColumnWidth = Math.ceil(
+    FIELD_TYPE_COLUMN_MIN_WIDTH_REM * (((prefsUiBaseFontSize.value ?? 12) * 4) / 3)
+  );
   const columns: TableColumn<LayerFieldInfo>[] = [
     {
       key: "index",
@@ -448,6 +472,8 @@ function fieldsTabColumns(
       key: "dataType",
       header: t("layer_properties_fields_col_data_type"),
       readOnly: true,
+      width: fieldTypeColumnWidth,
+      minWidth: fieldTypeColumnWidth,
       value: effectiveFieldType,
       display: (_value, field) => (
         <FieldTypeControls
@@ -1197,24 +1223,20 @@ export const LayerPropertiesDialog: React.FC = () => {
                     }}>
                     {t("layer_properties_source_crs")}
                   </label>
-                  <select
+                  <Select
                     id='layer-prop-crs'
-                    className='layer-prop-input'
                     value={draft.crsAuthId}
-                    onChange={(e) =>
-                      updateLayerPropertiesDraft({ crsAuthId: e.target.value })
-                    }>
-                    {listCrsChooserEntries(draft.crsAuthId ? [draft.crsAuthId] : [], POPULAR_CRS_NAMES).map((crs) => (
-                      <option key={crs.authId} value={crs.authId}>
-                        {formatCrsEntryLabel(crs)}
-                      </option>
-                    ))}
-                    {crsCatalogueSignal.value.status === "building" && (
-                      <option value='' disabled className='crs-catalogue-building'>
-                        {t("crs_catalogue_building")}
-                      </option>
-                    )}
-                  </select>
+                    options={[
+                      ...listCrsChooserEntries(draft.crsAuthId ? [draft.crsAuthId] : [], POPULAR_CRS_NAMES).map((crs) => ({
+                        value: crs.authId,
+                        label: formatCrsEntryLabel(crs),
+                      })),
+                      ...(crsCatalogueSignal.value.status === "building"
+                        ? [{ value: "", label: t("crs_catalogue_building"), disabled: true }]
+                        : []),
+                    ]}
+                    onChange={(crsAuthId) => updateLayerPropertiesDraft({ crsAuthId })}
+                  />
                 </div>
               </fieldset>
 
@@ -1410,6 +1432,13 @@ export const LayerPropertiesDialog: React.FC = () => {
                       || f.inferredType === "time"
                       || f.inferredType === "datetime"
                   );
+                  const temporalFieldOptions: SelectOption[] = [
+                    { value: "", label: "—" },
+                    ...temporalFields.map((f) => ({
+                      value: f.name,
+                      label: `${f.name} (${f.inferredType})`,
+                    })),
+                  ];
 
                   return (
                     <div
@@ -1460,32 +1489,26 @@ export const LayerPropertiesDialog: React.FC = () => {
                           }}>
                           {t("layer_properties_time_mode")}
                         </label>
-                        <select
+                        <Select<"start" | "end" | "start_end">
                           id='layer-prop-time-mode'
-                          className='layer-prop-input'
                           value={temporalConfig.mode || "start_end"}
-                          onChange={(e) => {
-                            const nextMode = e.target.value as
-                              | "start"
-                              | "end"
-                              | "start_end";
+                          options={[
+                            { value: "start", label: t("layer_properties_time_mode_start") || "Start Field" },
+                            { value: "end", label: t("layer_properties_time_mode_end") || "End Field" },
+                            {
+                              value: "start_end",
+                              label: t("layer_properties_time_mode_start_end") || "Start and End Fields",
+                            },
+                          ]}
+                          onChange={(nextMode) => {
                             updateLayerPropertiesDraft({
                               temporal: {
                                 ...temporalConfig,
                                 mode: nextMode,
                               },
                             });
-                          }}>
-                          <option value='start'>
-                            {t("layer_properties_time_mode_start") || "Start Field"}
-                          </option>
-                          <option value='end'>
-                            {t("layer_properties_time_mode_end") || "End Field"}
-                          </option>
-                          <option value='start_end'>
-                            {t("layer_properties_time_mode_start_end") || "Start and End Fields"}
-                          </option>
-                        </select>
+                          }}
+                        />
                       </div>
 
                       <div
@@ -1542,26 +1565,21 @@ export const LayerPropertiesDialog: React.FC = () => {
                               size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
                           </button>
-                          <select
+                          <Select
                             id='layer-prop-time-start'
-                            className='layer-prop-input layer-prop-time-field-select'
+                            className='layer-prop-time-field-select'
                             disabled={isStartDisabled}
                             value={temporalConfig.startField ?? ""}
-                            onChange={(e) => {
+                            options={temporalFieldOptions}
+                            onChange={(value) => {
                               updateLayerPropertiesDraft({
                                 temporal: {
                                   ...temporalConfig,
-                                  startField: e.target.value || undefined,
+                                  startField: value || undefined,
                                 },
                               });
-                            }}>
-                            <option value=''>—</option>
-                            {temporalFields.map((f) => (
-                              <option key={f.name} value={f.name}>
-                                {f.name} ({f.inferredType})
-                              </option>
-                            ))}
-                          </select>
+                            }}
+                          />
                         </div>
                       </div>
 
@@ -1619,26 +1637,21 @@ export const LayerPropertiesDialog: React.FC = () => {
                               size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
                           </button>
-                          <select
+                          <Select
                             id='layer-prop-time-end'
-                            className='layer-prop-input layer-prop-time-field-select'
+                            className='layer-prop-time-field-select'
                             disabled={isEndDisabled}
                             value={temporalConfig.endField ?? ""}
-                            onChange={(e) => {
+                            options={temporalFieldOptions}
+                            onChange={(value) => {
                               updateLayerPropertiesDraft({
                                 temporal: {
                                   ...temporalConfig,
-                                  endField: e.target.value || undefined,
+                                  endField: value || undefined,
                                 },
                               });
-                            }}>
-                            <option value=''>—</option>
-                            {temporalFields.map((f) => (
-                              <option key={f.name} value={f.name}>
-                                {f.name} ({f.inferredType})
-                              </option>
-                            ))}
-                          </select>
+                            }}
+                          />
                         </div>
                       </div>
                     </div>

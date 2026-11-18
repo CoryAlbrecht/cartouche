@@ -4,7 +4,7 @@
  * @description Tests for the shared TimeFilterControls module: controlled rendering of Enabled / From / To / Step / Unit from props, callbacks for every edit, step floor enforcement, and the absence of any playhead control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-14
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link TimeFilterControls}
  * @see {@link TimeFilterRangeStepControls}
@@ -62,7 +62,7 @@ describe('TimeFilterControls (Ticket #270)', () => {
     assert.ok(html.includes('From:') && html.includes('To:') && html.includes('Step:'));
     assert.ok(html.includes('class="time-filter-step-input"'));
     assert.ok(html.includes('value="2.5"'));
-    assert.ok(html.includes('class="time-filter-unit-select"'));
+    assert.ok(html.includes('class="cartouche-select is-compact time-filter-unit-select"'), 'the Unit dropdown is the compact shared Select');
     assert.ok(html.includes('<option value="Hours" selected=""'), 'unit dropdown reflects the prop');
     assert.ok(!html.includes('Frame:'), 'no current-frame label');
     assert.ok(!html.includes('time-filter-slider'), 'no scrubber');
@@ -93,7 +93,7 @@ describe('TimeFilterControls (Ticket #270)', () => {
       React.createElement(TimeFilterRangeStepControls, { ...baseProps(), disabled: true })
     );
     assert.ok(/class="time-filter-step-input"[^>]*disabled=""/.test(html));
-    assert.ok(/class="time-filter-unit-select"[^>]*disabled=""/.test(html));
+    assert.ok(/class="cartouche-select is-compact time-filter-unit-select"[^>]*disabled=""/.test(html));
     assert.ok(/aria-label="Step Up by 1.00"[^>]*disabled=""/.test(html));
   });
 });

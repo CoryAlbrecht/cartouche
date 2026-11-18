@@ -4,7 +4,7 @@
  * @description Reusable style editor shared by the Layer Properties Styling Tab and the Project Properties Default Styles tab: the style format dropdown, Load / Export / Reset actions, the Cartouche Symbology component editor or the raw text editor (with validation banner and undo/redo history), and the live preview canvas. The editor is controlled: it receives a StyleEditorValue and a geometry kind and reports every change as a value patch through `onChange`, with no dependency on any dialog draft store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link SimpleModeEditor}
@@ -24,6 +24,7 @@ import {
 } from "@shared/styles/styleFormatSwitch";
 import { StylePreviewCanvas } from "./StylePreviewCanvas";
 import { SimpleModeEditor } from "./SimpleModeEditor";
+import { Select } from "@renderer/components/common/Select";
 
 export type { StyleEditorValue } from "@shared/styles/styleFormatSwitch";
 
@@ -391,7 +392,7 @@ export interface StyleEditorProps {
  * @description Controlled editor for one style value: format selection with per-format text cache, file load/export/reset, Cartouche Symbology component editing or raw text editing with live validation, and a 120×120 preview.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {StyleEditorProps} props - Component properties.
  * @returns {JSX.Element} The editor controls.
@@ -458,9 +459,19 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
 
   const selectedFormatOption = styleFormatOptionKey(value.styleFormat, value.sldVersion);
 
+  /**
+   * @function handleFormatOptionChange
+   * @description Switches the style to the chosen format option, converting its content, and resets the raw-text undo history to the converted text. Does nothing when the switch yields no patch.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @param {string} formatOption - Format option key chosen in the Style Format Select (e.g. `cartouche`, `sld-1.1.0`).
+   * @returns {Promise<void>}
+   */
   const handleFormatOptionChange = useCallback(
-    async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const patch = await computeStyleFormatSwitch(value, e.target.value, geometryKind);
+    async (formatOption: string) => {
+      const patch = await computeStyleFormatSwitch(value, formatOption, geometryKind);
       if (!patch) return;
       onChangeRef.current(patch);
       resetRawStyleHistory(patch.styleContent ?? "");
@@ -559,24 +570,17 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
             }}>
             {t("layer_properties_styling_format")}:
           </label>
-          <select
+          <Select
             id={`${idPrefix}-styling-format`}
             value={selectedFormatOption}
-            className='styling-editor-format-select'
-            onChange={handleFormatOptionChange}>
-            <option value='cartouche'>
-              {t("layer_properties_format_simple")}
-            </option>
-            <option value='openlayers'>
-              {t("layer_properties_format_openlayers")}
-            </option>
-            <option value='sld-1.0.0'>
-              {t("layer_properties_format_sld_100")}
-            </option>
-            <option value='sld-1.1.0'>
-              {t("layer_properties_format_sld_110")}
-            </option>
-          </select>
+            options={[
+              { value: "cartouche", label: t("layer_properties_format_simple") },
+              { value: "openlayers", label: t("layer_properties_format_openlayers") },
+              { value: "sld-1.0.0", label: t("layer_properties_format_sld_100") },
+              { value: "sld-1.1.0", label: t("layer_properties_format_sld_110") },
+            ]}
+            onChange={(formatOption) => void handleFormatOptionChange(formatOption)}
+          />
         </div>
 
         {/* File and Reset Buttons */}

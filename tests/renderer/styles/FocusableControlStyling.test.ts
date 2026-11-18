@@ -91,12 +91,12 @@ function openingTags(text: string): string[] {
 
 /**
  * @function isFocusableTag
- * @description Decides whether a JSX opening tag renders a focusable control: a native form control or button, an element with a `tabIndex`, or an element with an interactive ARIA role.
+ * @description Decides whether a JSX opening tag renders a focusable control: a native form control or button, the shared `Select` dropdown, an element with a `tabIndex`, or an element with an interactive ARIA role.
  * @param {string} tag - Opening tag text.
  * @returns {boolean} True when the element is focusable.
  */
 function isFocusableTag(tag: string): boolean {
-  return /^<(input|select|textarea|button)\b/.test(tag) || /\btabIndex=/.test(tag) || INTERACTIVE_ROLE.test(tag);
+  return /^<(input|select|textarea|button|Select)\b/.test(tag) || /\btabIndex=/.test(tag) || INTERACTIVE_ROLE.test(tag);
 }
 
 /**
@@ -157,7 +157,6 @@ function head(tag: string): string {
 const STYLING_EDITOR_SOURCES = [
   'workbench/dialogs/SimpleModeEditor.tsx',
   'workbench/dialogs/StyleEditor.tsx',
-  'workbench/dialogs/DashPatternSelect.tsx',
   'workbench/dialogs/DashArrayControl.tsx',
 ];
 
@@ -167,17 +166,15 @@ const STYLING_EDITOR_CLASSES = [
   'styling-editor-number',
   'styling-editor-angle',
   'styling-editor-icon-btn',
-  'styling-editor-format-select',
   'styling-editor-secondary-btn',
   'layer-prop-layer-opacity',
   'layer-prop-styling-raw-style',
-  'dash-pattern-select-trigger',
-  'dash-pattern-select-listbox',
-  'dash-pattern-select-option',
-  'dash-pattern-select-caret',
 ];
 
 const LAYER_PROPERTIES_DIALOG = 'workbench/dialogs/LayerPropertiesDialog.tsx';
+
+/** An opening tag of the shared Select dropdown, which supplies its own `cartouche-select` class (Ticket #344). */
+const SHARED_SELECT = /^<Select\b/;
 
 describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
   it('sets no inline outline anywhere in renderer TSX', () => {
@@ -223,6 +220,7 @@ describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
   it('applies a styling editor class to every focusable control in the styling editors', () => {
     for (const rel of STYLING_EDITOR_SOURCES) {
       for (const tag of focusableTags(rel)) {
+        if (SHARED_SELECT.test(tag)) continue;
         assert.ok(
           STYLING_EDITOR_CLASSES.some((cls) => new RegExp(`${cls}(?![\\w-])`).test(tag)),
           `${rel}: ${head(tag)} carries none of the styling editor classes`
@@ -235,7 +233,7 @@ describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
     const tags = focusableTags(LAYER_PROPERTIES_DIALOG);
     assert.ok(tags.length >= 20, `expected the dialog's buttons, inputs and selects, found ${tags.length}`);
     for (const tag of tags) {
-      if (/type=['"]checkbox['"]/.test(tag)) continue;
+      if (/type=['"]checkbox['"]/.test(tag) || SHARED_SELECT.test(tag)) continue;
       assert.match(tag, /\bclassName=/, `${head(tag)} has no class`);
     }
   });
