@@ -28,6 +28,8 @@ import {
   parseTimeToMidnightMs,
   transformFeatureProperty,
   buildOrderBySql,
+  buildPagedSelectSql,
+  supportsSqlWindow,
   quoteSqlIdentifier,
 } from '../../../src/main/worker/GeospatialEngine';
 import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
@@ -1536,25 +1538,42 @@ const createSortKeyFixture = (driver: string, filePath: string): gdal.Dataset =>
 };
 
 /**
- * @function recordOrderBySql
- * @description Wraps a session's real `executeSQL` so every ORDER BY statement the engine issues is recorded, then forwarded to GDAL unchanged.
+ * @function recordSessionSql
+ * @description Wraps the engine's `executeSessionSql` so every SQL statement it runs for the given session is recorded, then forwarded unchanged. The engine runs query SQL on short-lived dataset handles, so the session dataset's own `executeSQL` is no longer the seam.
  * @param {GeospatialEngine} engine - Engine owning the session.
  * @param {string} layerId - Session layer identifier.
- * @returns {string[]} Live list of recorded ORDER BY statements.
+ * @param {(sql: string) => string | null} [select] - Chooses and rewrites what is recorded for each statement; returning null skips the statement. Defaults to recording every statement unchanged.
+ * @returns {string[]} Live list of recorded statements.
  */
-const recordOrderBySql = (engine: GeospatialEngine, layerId: string): string[] => {
+const recordSessionSql = (
+  engine: GeospatialEngine,
+  layerId: string,
+  select: (sql: string) => string | null = (sql) => sql
+): string[] => {
   const session = (engine as any).sessions.get(layerId);
-  const dataset = session.dataset;
-  const original = dataset.executeSQL.bind(dataset);
+  const original = (engine as any).executeSessionSql.bind(engine);
   const statements: string[] = [];
-  dataset.executeSQL = (sql: string, ...rest: unknown[]) => {
-    if (sql.includes('ORDER BY')) {
-      statements.push(sql);
+  (engine as any).executeSessionSql = (target: unknown, sql: string, ...rest: unknown[]) => {
+    const recorded = target === session ? select(sql) : null;
+    if (recorded !== null) {
+      statements.push(recorded);
     }
-    return original(sql, ...rest);
+    return original(target, sql, ...rest);
   };
   return statements;
 };
+
+/**
+ * @function recordOrderBySql
+ * @description Records every ORDER BY statement the engine runs for a session, with any trailing SQLite `LIMIT … OFFSET …` window stripped so assertions can compare the ordering clause alone.
+ * @param {GeospatialEngine} engine - Engine owning the session.
+ * @param {string} layerId - Session layer identifier.
+ * @returns {string[]} Live list of recorded ORDER BY statements (window stripped).
+ */
+const recordOrderBySql = (engine: GeospatialEngine, layerId: string): string[] =>
+  recordSessionSql(engine, layerId, (sql) =>
+    sql.includes('ORDER BY') ? sql.replace(/ LIMIT -?\d+ OFFSET \d+$/, '') : null
+  );
 
 describe('buildOrderBySql and quoteSqlIdentifier (Ticket #334)', () => {
   const schema = ['category', 'priority', 'na"me'];
@@ -1824,5 +1843,246 @@ describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', ()
   }
 });
 
+describe('buildPagedSelectSql and supportsSqlWindow (Ticket #339)', () => {
+  const schema = ['category', 'priority'];
 
+  it('orders by the Persistent FID column and appends LIMIT/OFFSET when no Sort Keys are given', () => {
+    assert.equal(
+      buildPagedSelectSql('sort_keys', undefined, schema, 'fid', 20, 10),
+      'SELECT * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 10 OFFSET 20'
+    );
+    assert.equal(
+      buildPagedSelectSql('sort_keys', [], schema, 'fid', 0, 5),
+      'SELECT * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 5 OFFSET 0'
+    );
+  });
 
+  it('keeps the Sort Keys and ID tiebreaker and windows them', () => {
+    assert.equal(
+      buildPagedSelectSql('sort_keys', [['category', 'ASC']], schema, 'fid', 4, 2),
+      'SELECT * FROM "sort_keys" ORDER BY "category" ASC, "fid" ASC LIMIT 2 OFFSET 4'
+    );
+  });
+
+  it('uses LIMIT -1 (no limit) when only start is given, and LIMIT 0 for an empty window', () => {
+    assert.equal(
+      buildPagedSelectSql('t', undefined, schema, 'fid', 7, undefined),
+      'SELECT * FROM "t" ORDER BY "fid" ASC LIMIT -1 OFFSET 7'
+    );
+    assert.equal(
+      buildPagedSelectSql('t', undefined, schema, 'fid', 0, 0),
+      'SELECT * FROM "t" ORDER BY "fid" ASC LIMIT 0 OFFSET 0'
+    );
+  });
+
+  it('rejects a layer without a Persistent FID and non-integer or negative window bounds', () => {
+    assert.throws(() => buildPagedSelectSql('t', undefined, schema, '', 0, 5), /Persistent FID/);
+    assert.throws(() => buildPagedSelectSql('t', undefined, schema, 'fid', -1, 5), /start/);
+    assert.throws(() => buildPagedSelectSql('t', undefined, schema, 'fid', 1.5, 5), /start/);
+    assert.throws(() => buildPagedSelectSql('t', undefined, schema, 'fid', 0, -2), /max/);
+  });
+
+  it('validates Sort Keys exactly like buildOrderBySql', () => {
+    assert.throws(() => buildPagedSelectSql('t', [['missing', 'ASC']], schema, 'fid', 0, 5), /"missing"/);
+  });
+
+  it('only allows SQLite-dialect drivers with a Persistent FID', () => {
+    assert.equal(supportsSqlWindow('GPKG', 'fid', false), true);
+    assert.equal(supportsSqlWindow('SQLite', 'ogc_fid', false), true);
+    assert.equal(supportsSqlWindow('GPKG', '', false), false);
+    assert.equal(supportsSqlWindow('ESRI Shapefile', '', false), false);
+    assert.equal(supportsSqlWindow('PostgreSQL', 'ogc_fid', false), false);
+    assert.equal(supportsSqlWindow(undefined, 'fid', false), false);
+  });
+
+  it('allows a spatial filter only for GeoPackage, whose driver filters before the window', () => {
+    assert.equal(supportsSqlWindow('GPKG', 'fid', true), true);
+    assert.equal(supportsSqlWindow('SQLite', 'ogc_fid', true), false);
+  });
+});
+
+describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
+  const layerId = 'timeline-paging';
+  /** Left half of the timeline layer's extent, which matches a strict subset of its 252 features. */
+  const westExtent: BoundingBox = [-179.11901, -43.65057, 0.44, 83.11652];
+  let engine: GeospatialEngine;
+
+  beforeEach(async () => {
+    engine = new GeospatialEngine();
+    engine.setBackgroundScanEnabled(false);
+    await engine.openDataset(layerId, timelineGpkgPath);
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+  });
+
+  /**
+   * @function allIds
+   * @description Reads every feature ID matching the options without paging, in ascending ID order.
+   * @param {QueryExtentOptions} options - Query options without start/max.
+   * @returns {Promise<number[]>} Sorted feature IDs.
+   */
+  const allIds = async (options: QueryExtentOptions = {}): Promise<number[]> => {
+    const res = await engine.queryExtent(layerId, { ...options, includeGeometry: false, fields: [] });
+    return res.features.map((f) => Number(f.id)).sort((a, b) => a - b);
+  };
+
+  it('windows unsorted pages in SQL and returns the same rows as slicing the full ID-ordered set', async () => {
+    const statements = recordSessionSql(engine, layerId);
+    const full = await allIds();
+    assert.equal(full.length, 252);
+
+    const cases: Array<{ start?: number; max?: number }> = [
+      { start: 0, max: 10 },
+      { start: 120, max: 25 },
+      { start: 245, max: 10 },
+      { max: 3 },
+      { start: 250 },
+    ];
+    for (const { start, max } of cases) {
+      const page = await engine.queryExtent(layerId, { start, max, includeGeometry: false, fields: [] });
+      const from = start ?? 0;
+      const to = max === undefined ? undefined : from + max;
+      assert.deepEqual(page.features.map((f) => Number(f.id)), full.slice(from, to), `start=${start} max=${max}`);
+      assert.equal(page.totalMatched, 252);
+      assert.equal(new DataView(page.buffer).getUint32(8, true), page.features.length);
+    }
+
+    assert.deepEqual(statements, [
+      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 10 OFFSET 0',
+      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 25 OFFSET 120',
+      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 10 OFFSET 245',
+      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 3 OFFSET 0',
+      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT -1 OFFSET 250',
+    ]);
+  });
+
+  it('applies the extent filter before the window and reports the filtered total', async () => {
+    const filtered = await allIds({ extent: westExtent });
+    assert.ok(filtered.length > 20 && filtered.length < 252, `fixture extent matched ${filtered.length}`);
+
+    const page = await engine.queryExtent(layerId, { extent: westExtent, start: 5, max: 7, includeGeometry: false, fields: [] });
+    assert.deepEqual(page.features.map((f) => Number(f.id)), filtered.slice(5, 12));
+    assert.equal(page.totalMatched, filtered.length);
+  });
+
+  it('pages sorted queries in SQL with the same rows and order as the full sorted query', async () => {
+    const orderBy: SortKey[] = [['start_date', 'ASC']];
+    const full = await engine.queryExtent(layerId, { orderBy, includeGeometry: false, fields: [] });
+    const fullIds = full.features.map((f) => Number(f.id));
+    const statements = recordSessionSql(engine, layerId);
+
+    const paged: number[] = [];
+    for (let start = 0; start < 252; start += 50) {
+      const page = await engine.queryExtent(layerId, { orderBy, start, max: 50, includeGeometry: false, fields: [] });
+      assert.equal(page.totalMatched, 252);
+      paged.push(...page.features.map((f) => Number(f.id)));
+    }
+    assert.deepEqual(paged, fullIds);
+    assert.ok(statements.every((sql) => /ORDER BY "start_date" ASC, "fid" ASC LIMIT 50 OFFSET \d+$/.test(sql)));
+  });
+
+  it('keeps JS slicing for a featureIds filter and applies the window once', async () => {
+    const statements = recordSessionSql(engine, layerId);
+    const ids = [3, 9, 27, 81, 200];
+    const page = await engine.queryExtent(layerId, { featureIds: ids, start: 1, max: 3, includeGeometry: false, fields: [] });
+    assert.deepEqual(page.features.map((f) => Number(f.id)), [9, 27, 81]);
+    assert.equal(page.totalMatched, 5);
+    assert.deepEqual(statements, []);
+  });
+
+  it('appends staged new features after the windowed rows and counts them in totalMatched', async () => {
+    engine.stageFeatureEdit(layerId, { id: 999999, isNew: true, properties: { names: 'Added' } });
+    engine.stageFeatureEdit(layerId, { id: 2, properties: { names: 'Edited' } });
+
+    const first = await engine.queryExtent(layerId, { start: 0, max: 3, includeGeometry: false });
+    assert.equal(first.totalMatched, 253);
+    assert.deepEqual(first.features.map((f) => Number(f.id)), [1, 2, 3]);
+    assert.equal(first.features[1].properties?.names, 'Edited');
+
+    const last = await engine.queryExtent(layerId, { start: 250, max: 10, includeGeometry: false });
+    assert.equal(last.totalMatched, 253);
+    assert.deepEqual(last.features.map((f) => Number(f.id)), [251, 252, 999999]);
+
+    const onlyAdded = await engine.queryExtent(layerId, { start: 252, max: 10, includeGeometry: false });
+    assert.deepEqual(onlyAdded.features.map((f) => Number(f.id)), [999999]);
+  });
+
+  it('combines the extent filter, Sort Keys, staged edits and the window in one query', async () => {
+    const orderBy: SortKey[] = [['start_date', 'DESC']];
+    engine.stageFeatureEdit(layerId, { id: 999999, isNew: true, properties: { names: 'Added' } });
+    const full = await engine.queryExtent(layerId, { extent: westExtent, orderBy, includeGeometry: false, fields: [] });
+    const fullIds = full.features.map((f) => Number(f.id));
+    assert.equal(fullIds[fullIds.length - 1], 999999);
+
+    const statements = recordSessionSql(engine, layerId);
+    const paged: number[] = [];
+    for (let start = 0; start < full.totalMatched; start += 9) {
+      const page = await engine.queryExtent(layerId, { extent: westExtent, orderBy, start, max: 9, includeGeometry: false, fields: [] });
+      assert.equal(page.totalMatched, full.totalMatched);
+      paged.push(...page.features.map((f) => Number(f.id)));
+    }
+    assert.deepEqual(paged, fullIds);
+    assert.ok(statements.length > 0 && statements.every((sql) => / LIMIT 9 OFFSET \d+$/.test(sql)));
+  });
+
+  it('does not deadlock when many SQL queries interleave with plain reads on the same dataset (Ticket #342)', async () => {
+    const orderBy: SortKey[] = [['start_date', 'DESC']];
+    for (let round = 0; round < 25; round++) {
+      for (let k = 0; k < 5; k++) {
+        await engine.queryExtent(layerId, { orderBy, start: k, max: 50 });
+      }
+      const plain = await engine.queryExtent(layerId, {});
+      assert.equal(plain.features.length, 252);
+    }
+  });
+});
+
+describe('Extent-filtered paging on SQLite-dialect layers without an R-tree (Ticket #339)', () => {
+  let engine: GeospatialEngine;
+  let tempDir: string;
+  /** Left half of the timeline layer's extent. */
+  const westExtent: BoundingBox = [-179.11901, -43.65057, 0.44, 83.11652];
+
+  beforeEach(() => {
+    engine = new GeospatialEngine();
+    engine.setBackgroundScanEnabled(false);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-paging-'));
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  const cases: Array<{ name: string; file: string; options: string[]; pagesInSql: boolean }> = [
+    { name: 'GeoPackage without a spatial index', file: 'no_rtree.gpkg', options: ['-f', 'GPKG', '-lco', 'SPATIAL_INDEX=NO'], pagesInSql: true },
+    { name: 'plain SQLite', file: 'plain.sqlite', options: ['-f', 'SQLite'], pagesInSql: false },
+  ];
+
+  for (const { name, file, options, pagesInSql } of cases) {
+    it(`${name}: returns the filtered window and total (${pagesInSql ? 'in SQL' : 'JS slicing'})`, async () => {
+      const filePath = path.join(tempDir, file);
+      const source = gdal.open(timelineGpkgPath);
+      gdal.vectorTranslate(filePath, source, options).close();
+      source.close();
+      await engine.openDataset(name, filePath);
+
+      const all = await engine.queryExtent(name, { extent: westExtent, includeGeometry: false, fields: [] });
+      const filtered = all.features.map((f) => Number(f.id)).sort((a, b) => a - b);
+      assert.ok(filtered.length > 20 && filtered.length < 252);
+
+      const statements = recordSessionSql(engine, name);
+      const page = await engine.queryExtent(name, { extent: westExtent, start: 5, max: 7, includeGeometry: false, fields: [] });
+      assert.equal(page.totalMatched, filtered.length);
+      assert.equal(page.features.length, 7);
+      if (pagesInSql) {
+        assert.deepEqual(page.features.map((f) => Number(f.id)), filtered.slice(5, 12));
+        assert.equal(statements.length, 1);
+      } else {
+        assert.deepEqual(statements, []);
+      }
+    });
+  }
+});

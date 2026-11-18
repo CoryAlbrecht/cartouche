@@ -677,6 +677,76 @@ export function buildOrderBySql(
 }
 
 /**
+ * @description GDAL driver short names whose `executeSQL` runs SQLite's own dialect, which accepts `LIMIT`/`OFFSET`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @type {ReadonlySet<string>}
+ */
+const SQLITE_DIALECT_DRIVERS: ReadonlySet<string> = new Set(["GPKG", "SQLite"]);
+
+/**
+ * @description Reports whether a layer's `start`/`max` window can be pushed into SQL `LIMIT`/`OFFSET`: the driver must speak the SQLite dialect and the layer must have a
+ * Persistent FID column to order unsorted pages by. With a spatial filter only GeoPackage qualifies: its driver rewrites the filter into the statement's `WHERE` clause (with or
+ * without an R-tree), so it applies before the window, whereas the plain SQLite driver filters the result layer after `LIMIT`/`OFFSET` and would return short or empty pages.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {string | undefined} driverName - GDAL driver short name (`dataset.driver.description`).
+ * @param {string} fidColumn - The layer's Persistent FID column name, or an empty string when it has none.
+ * @param {boolean} hasSpatialFilter - Whether the query applies a spatial filter.
+ * @returns {boolean} True when {@link buildPagedSelectSql} may be used for the layer.
+ */
+export function supportsSqlWindow(driverName: string | undefined, fidColumn: string, hasSpatialFilter: boolean): boolean {
+  if (typeof driverName !== "string" || !SQLITE_DIALECT_DRIVERS.has(driverName) || fidColumn.length === 0) {
+    return false;
+  }
+  return !hasSpatialFilter || driverName === "GPKG";
+}
+
+/**
+ * @description Builds a SQLite-dialect statement that returns one `start`/`max` window of a layer. With Sort Keys it is {@link buildOrderBySql}'s statement (same validation, same ID tiebreaker);
+ * without them rows are ordered by the Persistent FID column, which is a GeoPackage table's natural order. `LIMIT -1` means no limit, for a window with a start but no maximum.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-17
+ * @updated 2026-11-17
+ * @since 0.1.0-dev
+ * @param {string} layerName - Name of the layer to select from.
+ * @param {readonly SortKey[] | undefined} orderBy - Ordered Sort Keys; missing or empty means ID order.
+ * @param {readonly string[]} schemaFields - Physical attribute field names of the layer.
+ * @param {string} fidColumn - The layer's Persistent FID column name; required.
+ * @param {number} start - Zero-based index of the first row, a non-negative integer.
+ * @param {number | undefined} max - Maximum number of rows, a non-negative integer, or undefined for no limit.
+ * @returns {string} The `SELECT … ORDER BY … LIMIT … OFFSET …` statement.
+ * @throws {Error} If the layer has no Persistent FID, a window bound is not a non-negative integer, or a Sort Key is invalid (see {@link buildOrderBySql}).
+ * @see {@link supportsSqlWindow}
+ */
+export function buildPagedSelectSql(
+  layerName: string,
+  orderBy: readonly SortKey[] | undefined,
+  schemaFields: readonly string[],
+  fidColumn: string,
+  start: number,
+  max: number | undefined
+): string {
+  if (!fidColumn) {
+    throw new Error(`Cannot page layer "${layerName}" in SQL: it has no Persistent FID column`);
+  }
+  if (!Number.isInteger(start) || start < 0) {
+    throw new Error(`Invalid window start ${start}: expected a non-negative integer`);
+  }
+  if (max !== undefined && (!Number.isInteger(max) || max < 0)) {
+    throw new Error(`Invalid window max ${max}: expected a non-negative integer`);
+  }
+  const ordered =
+    buildOrderBySql(layerName, orderBy, schemaFields, fidColumn)
+    ?? `SELECT * FROM ${quoteSqlIdentifier(layerName)} ORDER BY ${quoteSqlIdentifier(fidColumn)} ASC`;
+  return `${ordered} LIMIT ${max ?? -1} OFFSET ${start}`;
+}
+
+/**
  * @class GeospatialEngine
  * @description Encapsulates native GDAL dataset operations, serializes per-layer spatial filters, and extracts OGC WKB buffers.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -961,6 +1031,43 @@ export class GeospatialEngine {
       return typeof reported === "string" ? reported : "";
     } catch {
       return "";
+    }
+  }
+
+  /**
+   * @description Runs a SQL statement for a session on a short-lived read-only handle to the session's file and hands the result layer to `consume`, then closes the handle.
+   * gdal-async releases an `executeSQL` result layer only when the GC collects it, and that release waits on the parent dataset's lock; if the GC fires during a synchronous call on
+   * the same dataset, the worker deadlocks (Ticket #342). Closing the short-lived handle releases the result layer at once, so nothing is left for the GC. A Memory-driver dataset
+   * has no file to reopen, so its SQL runs on the session dataset itself.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-17
+   * @updated 2026-11-17
+   * @since 0.1.0-dev
+   * @template T
+   * @param {EngineSession} session - Active layer session.
+   * @param {string} sql - Statement to run in the driver's SQL dialect.
+   * @param {gdal.Geometry | null} spatialFilter - Spatial filter GDAL applies to the result layer (for SQLite dialects, before any `LIMIT`/`OFFSET`), or null for none.
+   * @param {(resultLayer: gdal.Layer) => T} consume - Reads the result layer synchronously; the layer must not be used after it returns.
+   * @returns {T} Whatever `consume` returns.
+   * @throws {Error} If the handle cannot be opened or GDAL rejects the statement.
+   */
+  private executeSessionSql<T>(
+    session: EngineSession,
+    sql: string,
+    spatialFilter: gdal.Geometry | null,
+    consume: (resultLayer: gdal.Layer) => T
+  ): T {
+    const run = (dataset: gdal.Dataset): T =>
+      consume(spatialFilter ? dataset.executeSQL(sql, spatialFilter) : dataset.executeSQL(sql));
+
+    if (session.dataset.driver?.description === "Memory") {
+      return run(session.dataset);
+    }
+    const handle = gdal.open(session.filePath, "r");
+    try {
+      return run(handle);
+    } finally {
+      handle.close();
     }
   }
 
@@ -1483,7 +1590,7 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer.
+   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer. On SQLite-dialect layers (GeoPackage, SQLite) without a `featureIds` filter the start/max window is pushed into SQL `LIMIT`/`OFFSET` (see {@link buildPagedSelectSql}), so unsorted pages come back in stored ID order and `totalMatched` is counted from the filtered session layer; all SQL runs on a short-lived handle (see `executeSessionSql`).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
    * @updated 2026-11-17
@@ -1533,7 +1640,6 @@ export class GeospatialEngine {
       }
 
       const { layer } = activeSession;
-      let isSqlLayer = false;
       try {
         let extentBox: BoundingBox | undefined;
         let proj: string | undefined = targetProjection;
@@ -1557,20 +1663,6 @@ export class GeospatialEngine {
           maxOpt = options.max;
           featureIdsOpt = options.featureIds;
           orderByOpt = options.orderBy;
-        }
-
-        let queryLayer = layer;
-        if (orderByOpt && orderByOpt.length > 0) {
-          const sql = buildOrderBySql(
-            layer.name,
-            orderByOpt,
-            layer.fields.getNames(),
-            this.resolveFidColumn(activeSession)
-          );
-          if (sql && typeof activeSession.dataset.executeSQL === "function") {
-            queryLayer = activeSession.dataset.executeSQL(sql);
-            isSqlLayer = true;
-          }
         }
 
         const sliceStart =
@@ -1602,7 +1694,7 @@ export class GeospatialEngine {
             shouldFilter = true;
             filterExtent = [minX, minY, maxX, maxY];
 
-            const refSrs = queryLayer.srs ?? layer.srs;
+            const refSrs = layer.srs;
             if (proj && refSrs) {
               const layerAuth = getSrsAuthority(refSrs);
               if (!layerAuth || proj.toUpperCase() !== layerAuth) {
@@ -1617,15 +1709,54 @@ export class GeospatialEngine {
         }
 
         if (shouldFilter) {
-          queryLayer.setSpatialFilter(
+          layer.setSpatialFilter(
             filterExtent[0],
             filterExtent[1],
             filterExtent[2],
             filterExtent[3]
           );
         } else {
-          queryLayer.setSpatialFilter(null);
+          layer.setSpatialFilter(null);
         }
+
+        // Choose how the base rows are read. A SQLite-dialect layer pages in SQL (Ticket #339) unless a
+        // featureIds whitelist must be applied before the window; other sorted queries use a SQL result
+        // layer without a window; everything else iterates the session layer directly.
+        const fidColumn = this.resolveFidColumn(activeSession);
+        const canRunSql = typeof activeSession.dataset.executeSQL === "function";
+        const windowed =
+          canRunSql
+          && allowedIdSet === null
+          && (sliceStart > 0 || sliceEnd !== Infinity)
+          && supportsSqlWindow(activeSession.dataset.driver?.description, fidColumn, shouldFilter);
+        const schemaFields = layer.fields.getNames();
+        let sql: string | null = null;
+        if (windowed) {
+          sql = buildPagedSelectSql(
+            layer.name,
+            orderByOpt,
+            schemaFields,
+            fidColumn,
+            sliceStart,
+            sliceEnd === Infinity ? undefined : sliceEnd - sliceStart
+          );
+        } else if (orderByOpt && orderByOpt.length > 0) {
+          const orderSql = buildOrderBySql(layer.name, orderByOpt, schemaFields, fidColumn);
+          sql = canRunSql ? orderSql : null;
+        }
+        const sqlSpatialFilter =
+          sql !== null && shouldFilter
+            ? new gdal.Envelope({
+                minX: filterExtent[0],
+                minY: filterExtent[1],
+                maxX: filterExtent[2],
+                maxY: filterExtent[3],
+              }).toPolygon()
+            : null;
+        // The window skips the rows before it, so the total comes from counting the filtered session layer.
+        const windowedBaseCount = windowed ? layer.features.count(true) : 0;
+        // Index of the first base row read, so a windowed read's rows keep their position in the full result.
+        const rowOffset = windowed ? sliceStart : 0;
 
         interface ExtractedRecord {
           fid: bigint;
@@ -1639,7 +1770,7 @@ export class GeospatialEngine {
         const features: QueryExtentFeature[] = [];
         let totalMatched = 0;
 
-        queryLayer.features.forEach((feature) => {
+        const collectBaseFeature = (feature: gdal.Feature): void => {
           try {
             const rawFid = feature.fid;
             const fidKey = String(rawFid);
@@ -1648,7 +1779,7 @@ export class GeospatialEngine {
               return;
             }
 
-            const matchedIndex = totalMatched;
+            const matchedIndex = rowOffset + totalMatched;
             totalMatched++;
 
             if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
@@ -1742,7 +1873,18 @@ export class GeospatialEngine {
               scope: "GeospatialEngine",
             });
           }
-        });
+        };
+
+        if (sql !== null) {
+          this.executeSessionSql(activeSession, sql, sqlSpatialFilter, (resultLayer) => {
+            resultLayer.features.forEach(collectBaseFeature);
+          });
+        } else {
+          layer.features.forEach(collectBaseFeature);
+        }
+        if (windowed) {
+          totalMatched = windowedBaseCount;
+        }
 
         // Append staged newly added features to the end of the stream
         if (layerEditEntry && layerEditEntry.addedFeatures.length > 0) {
@@ -1888,9 +2030,7 @@ export class GeospatialEngine {
         };
       } finally {
         try {
-          if (!isSqlLayer) {
-            layer.setSpatialFilter(null);
-          }
+          layer.setSpatialFilter(null);
         } catch {
           // Suppress filter cleanup error
         }
