@@ -4,7 +4,7 @@
  * @description Unit tests verifying that Widget and BasicWidget omit hardcoded inline background and border styles by default, bind to theme CSS tokens, correctly accept custom prop overrides, and synchronize detached window body styles (ADR 0027 / Ticket #197).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-14
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link BasicWidget}
@@ -419,12 +419,12 @@ describe('Widget Theme Binding & Inline Style Decoupling (Ticket #197)', () => {
     const content = fs.readFileSync(portalPath, 'utf-8');
 
     assert.ok(
-      content.includes('childWindow.document.body.style.background = "var(--cartouche-theme-bg, #ffffff)";'),
+      /childWindow\.document\.body\.style\.background\s*=\s*"var\(--cartouche-theme-bg, #ffffff\)";/.test(content),
       'DetachedWindowPortal must set childWindow body background to var(--cartouche-theme-bg, #ffffff)'
     );
 
     assert.ok(
-      content.includes('childWindow.document.body.style.color = "var(--cartouche-theme-fg, #000000)";'),
+      /childWindow\.document\.body\.style\.color\s*=\s*"var\(--cartouche-theme-fg, #000000\)";/.test(content),
       'DetachedWindowPortal must set childWindow body color to var(--cartouche-theme-fg, #000000)'
     );
   });
