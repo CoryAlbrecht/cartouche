@@ -15,9 +15,8 @@ import type {
   ProjectCrs,
   QueryExtentFeature,
   QueryExtentOptions,
-  StagedFeatureEdit
-} from '@shared/types';
-
+  StagedFeatureEdit,
+} from "@shared/types";
 
 /**
  * @typedef {Object} GeospatialLayerMetadata
@@ -44,7 +43,7 @@ export interface GeospatialLayerMetadata {
   geometryKind: GeometryKind;
   fields?: LayerFieldInfo[];
   fidColumn?: string;
-  capabilities?: import('../../shared/types/layers').LayerCapabilities;
+  capabilities?: import("../../shared/types/layers").LayerCapabilities;
 }
 
 /**
@@ -96,7 +95,7 @@ export interface RehydrateResult {
  */
 export interface OpenDatasetRequest {
   id: string;
-  type: 'openDataset';
+  type: "openDataset";
   layerId: string;
   filePath: string;
 }
@@ -116,7 +115,7 @@ export interface OpenDatasetRequest {
  */
 export interface QueryExtentRequest {
   id: string;
-  type: 'queryExtent';
+  type: "queryExtent";
   layerId: string;
   options?: QueryExtentOptions | BoundingBox;
   extent?: BoundingBox;
@@ -131,7 +130,7 @@ export interface QueryExtentRequest {
  */
 export interface CloseDatasetRequest {
   id: string;
-  type: 'closeDataset';
+  type: "closeDataset";
   layerId: string;
 }
 
@@ -142,7 +141,7 @@ export interface CloseDatasetRequest {
  */
 export interface CloseAllRequest {
   id: string;
-  type: 'closeAll';
+  type: "closeAll";
 }
 
 /**
@@ -153,7 +152,7 @@ export interface CloseAllRequest {
  */
 export interface RehydrateRequest {
   id: string;
-  type: 'rehydrate';
+  type: "rehydrate";
   layers: RehydrateLayerSpec[];
 }
 
@@ -169,7 +168,7 @@ export interface RehydrateRequest {
  */
 export interface GetLayerInfoRequest {
   id: string;
-  type: 'getLayerInfo';
+  type: "getLayerInfo";
   layerId: string;
 }
 
@@ -186,7 +185,7 @@ export interface GetLayerInfoRequest {
  */
 export interface RekeySessionRequest {
   id: string;
-  type: 'rekeySession';
+  type: "rekeySession";
   oldLayerId: string;
   newLayerId: string;
 }
@@ -198,7 +197,7 @@ export interface RekeySessionRequest {
  */
 export interface PingRequest {
   id: string;
-  type: 'ping';
+  type: "ping";
 }
 
 /**
@@ -213,7 +212,7 @@ export interface PingRequest {
  */
 export interface SetBackgroundScanEnabledRequest {
   id: string;
-  type: 'setBackgroundScanEnabled';
+  type: "setBackgroundScanEnabled";
   enabled: boolean;
 }
 
@@ -230,7 +229,7 @@ export interface SetBackgroundScanEnabledRequest {
  */
 export interface StageFeatureEditRequest {
   id: string;
-  type: 'stageFeatureEdit';
+  type: "stageFeatureEdit";
   layerId: string;
   edit: StagedFeatureEdit;
 }
@@ -247,7 +246,7 @@ export interface StageFeatureEditRequest {
  */
 export interface ClearLayerEditsRequest {
   id: string;
-  type: 'clearLayerEdits';
+  type: "clearLayerEdits";
   layerId: string;
 }
 
@@ -268,7 +267,7 @@ export interface ClearLayerEditsRequest {
  */
 export interface BuildCrsCatalogueRequest {
   id: string;
-  type: 'buildCrsCatalogue';
+  type: "buildCrsCatalogue";
   cacheDir: string;
 }
 
@@ -289,12 +288,13 @@ export type WorkerRequest =
 /**
  * Distributive omit helper creating request payload types without correlation identifier.
  */
-export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+export type DistributiveOmit<T, K extends keyof any> =
+  T extends any ? Omit<T, K> : never;
 
 /**
  * Request payload union before correlation identifier assignment.
  */
-export type WorkerRequestPayload = DistributiveOmit<WorkerRequest, 'id'>;
+export type WorkerRequestPayload = DistributiveOmit<WorkerRequest, "id">;
 
 /**
  * @typedef {Object} WorkerResponse
@@ -310,4 +310,3 @@ export interface WorkerResponse<T = unknown> {
   result?: T;
   error?: string;
 }
-

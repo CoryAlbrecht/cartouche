@@ -16,7 +16,8 @@
  * @updated 2026-10-08
  * @since 0.1.0-dev
  */
-export type FileCategory = 'vector' | 'raster' | 'project' | 'style' | 'tabular';
+export type FileCategory =
+  "vector" | "raster" | "project" | "style" | "tabular";
 
 /**
  * @typedef {Object} MagicNumberSignature

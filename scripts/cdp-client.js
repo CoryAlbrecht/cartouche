@@ -33,7 +33,7 @@
  * @returns {string} CDP port.
  */
 export function cdpPort() {
-  return process.env.CARTOUCHE_CDP_PORT || '9222';
+  return process.env.CARTOUCHE_CDP_PORT || "9222";
 }
 
 /**
@@ -47,9 +47,12 @@ export function cdpPort() {
  * @returns {{ target: string | undefined, rest: string[] }} The target title substring, if given, and the remaining arguments.
  */
 export function takeTargetArg(argv) {
-  const index = argv.indexOf('--target');
+  const index = argv.indexOf("--target");
   if (index < 0) return { target: undefined, rest: argv };
-  return { target: argv[index + 1], rest: [...argv.slice(0, index), ...argv.slice(index + 2)] };
+  return {
+    target: argv[index + 1],
+    rest: [...argv.slice(0, index), ...argv.slice(index + 2)],
+  };
 }
 
 /**
@@ -68,41 +71,60 @@ export async function connectRenderer(target) {
   try {
     targets = await (await fetch(endpoint)).json();
   } catch (err) {
-    throw new Error(`No CDP endpoint at ${endpoint}; is the app running via \`npm run dev\`? (${err.message})`);
+    throw new Error(
+      `No CDP endpoint at ${endpoint}; is the app running via \`npm run dev\`? (${err.message})`
+    );
   }
-  const pages = targets.filter((t) => t.type === 'page' && !t.url.startsWith('devtools://'));
-  const page = target
-    ? pages.find((t) => t.title.toLowerCase().includes(target.toLowerCase()))
-    : pages.find((t) => t.url.startsWith('http://localhost')) ?? pages[0];
+  const pages = targets.filter(
+    (t) => t.type === "page" && !t.url.startsWith("devtools://")
+  );
+  const page =
+    target ?
+      pages.find((t) => t.title.toLowerCase().includes(target.toLowerCase()))
+    : (pages.find((t) => t.url.startsWith("http://localhost")) ?? pages[0]);
   if (!page) {
-    const titles = pages.map((t) => `"${t.title}"`).join(', ') || 'none';
-    throw new Error(`No renderer page${target ? ` titled like "${target}"` : ''} among CDP targets at ${endpoint}; open pages: ${titles}`);
+    const titles = pages.map((t) => `"${t.title}"`).join(", ") || "none";
+    throw new Error(
+      `No renderer page${target ? ` titled like "${target}"` : ""} among CDP targets at ${endpoint}; open pages: ${titles}`
+    );
   }
 
   const ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
-    ws.addEventListener('open', resolve, { once: true });
-    ws.addEventListener('error', () => reject(new Error(`WebSocket connection to ${page.url} failed`)), { once: true });
+    ws.addEventListener("open", resolve, { once: true });
+    ws.addEventListener(
+      "error",
+      () => reject(new Error(`WebSocket connection to ${page.url} failed`)),
+      { once: true }
+    );
   });
 
   let nextId = 0;
   const pending = new Map();
   const problems = [];
-  ws.addEventListener('message', (event) => {
+  ws.addEventListener("message", (event) => {
     const msg = JSON.parse(event.data);
     if (msg.id !== undefined && pending.has(msg.id)) {
       const { resolve, reject } = pending.get(msg.id);
       pending.delete(msg.id);
-      if (msg.error) reject(new Error(`${msg.error.message} (${msg.error.code})`));
+      if (msg.error)
+        reject(new Error(`${msg.error.message} (${msg.error.code})`));
       else resolve(msg.result);
       return;
     }
-    if (msg.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(msg.params.type)) {
-      const text = msg.params.args.map((a) => a.value ?? a.description ?? '').join(' ');
+    if (
+      msg.method === "Runtime.consoleAPICalled"
+      && ["error", "warning"].includes(msg.params.type)
+    ) {
+      const text = msg.params.args
+        .map((a) => a.value ?? a.description ?? "")
+        .join(" ");
       problems.push(`[console.${msg.params.type}] ${text}`);
-    } else if (msg.method === 'Runtime.exceptionThrown') {
+    } else if (msg.method === "Runtime.exceptionThrown") {
       const details = msg.params.exceptionDetails;
-      problems.push(`[exception] ${details.exception?.description ?? details.text}`);
+      problems.push(
+        `[exception] ${details.exception?.description ?? details.text}`
+      );
     }
   });
 

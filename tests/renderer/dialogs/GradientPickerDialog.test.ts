@@ -10,18 +10,27 @@
  * @see {@link PickerDialogFrame}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRendererJiti } from '../rendererJiti';
-import { installMockDom, teardownMockDom, findElementsByClass, textOf, type MockDom, type MockElement } from '../mockDom';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRendererJiti } from "../rendererJiti";
+import {
+  installMockDom,
+  teardownMockDom,
+  findElementsByClass,
+  textOf,
+  type MockDom,
+  type MockElement,
+} from "../mockDom";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { GradientPickerDialog } = jiti('@renderer/workbench/dialogs/GradientPickerDialog.tsx');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
+const { GradientPickerDialog } = jiti(
+  "@renderer/workbench/dialogs/GradientPickerDialog.tsx"
+);
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals.ts");
 
-const STOPS = ['#ff0000ff 0%', '#0000ffff 100%'];
+const STOPS = ["#ff0000ff 0%", "#0000ffff 100%"];
 
 /**
  * @function click
@@ -30,7 +39,11 @@ const STOPS = ['#ff0000ff 0%', '#0000ffff 100%'];
  */
 async function click(el: MockElement): Promise<void> {
   await act(async () => {
-    el.dispatchEvent({ type: 'click', bubbles: true, preventDefault: () => {} });
+    el.dispatchEvent({
+      type: "click",
+      bubbles: true,
+      preventDefault: () => {},
+    });
   });
 }
 
@@ -41,15 +54,15 @@ async function click(el: MockElement): Promise<void> {
  * @param {string} hex - Colour to enter.
  */
 async function typeHex(dom: MockDom, hex: string): Promise<void> {
-  const input = findElementsByClass(dom.doc.body, 'colour-picker-hex-input')[0];
-  assert.ok(input, 'The selected stop is edited in HEX');
+  const input = findElementsByClass(dom.doc.body, "colour-picker-hex-input")[0];
+  assert.ok(input, "The selected stop is edited in HEX");
   input.value = hex;
   await act(async () => {
-    input.dispatchEvent({ type: 'input', bubbles: true, target: input });
+    input.dispatchEvent({ type: "input", bubbles: true, target: input });
   });
 }
 
-describe('GradientPickerDialog (Ticket #306)', () => {
+describe("GradientPickerDialog (Ticket #306)", () => {
   let dom: MockDom | null = null;
 
   beforeEach(() => {
@@ -68,7 +81,9 @@ describe('GradientPickerDialog (Ticket #306)', () => {
    * @param {Record<string, unknown>} props - Extra props.
    * @returns {Promise<{ applied: string[][]; cancels: number }>} Live call record.
    */
-  async function render(props: Record<string, unknown> = {}): Promise<{ applied: string[][]; cancels: number }> {
+  async function render(
+    props: Record<string, unknown> = {}
+  ): Promise<{ applied: string[][]; cancels: number }> {
     const calls = { applied: [] as string[][], cancels: 0 };
     await act(async () => {
       dom!.root.render(
@@ -77,88 +92,111 @@ describe('GradientPickerDialog (Ticket #306)', () => {
           initialStops: STOPS,
           onApply: (stops: string[]) => calls.applied.push(stops),
           onCancel: () => calls.cancels++,
-          ...props
+          ...props,
         })
       );
     });
     return calls;
   }
 
-  const backdrops = (): MockElement[] => findElementsByClass(dom!.doc.body, 'gradient-picker-dialog-backdrop');
-  const button = (part: string): MockElement => findElementsByClass(dom!.doc.body, `gradient-picker-dialog-${part}`)[0];
-  const title = (): string => textOf(button('header').childNodes[0]);
+  const backdrops = (): MockElement[] =>
+    findElementsByClass(dom!.doc.body, "gradient-picker-dialog-backdrop");
+  const button = (part: string): MockElement =>
+    findElementsByClass(dom!.doc.body, `gradient-picker-dialog-${part}`)[0];
+  const title = (): string => textOf(button("header").childNodes[0]);
 
-  it('renders nothing when closed', async () => {
+  it("renders nothing when closed", async () => {
     await render({ isOpen: false });
     assert.equal(backdrops().length, 0);
   });
 
-  it('hosts a GradientPickerWidget and shows an explicit title', async () => {
-    await render({ title: 'Gradient Stops' });
+  it("hosts a GradientPickerWidget and shows an explicit title", async () => {
+    await render({ title: "Gradient Stops" });
     assert.equal(backdrops().length, 1);
-    assert.equal(findElementsByClass(dom!.doc.body, 'gradient-picker-widget').length, 1, 'Hosted widget');
-    assert.equal(title(), 'Gradient Stops');
+    assert.equal(
+      findElementsByClass(dom!.doc.body, "gradient-picker-widget").length,
+      1,
+      "Hosted widget"
+    );
+    assert.equal(title(), "Gradient Stops");
   });
 
   it('uses the localized "Pick Gradient" title when no title is given', async () => {
-    dictionarySignal.value = { gradient_picker_dialog_title: 'Pick Gradient' };
+    dictionarySignal.value = { gradient_picker_dialog_title: "Pick Gradient" };
     await render();
-    assert.equal(title(), 'Pick Gradient');
+    assert.equal(title(), "Pick Gradient");
   });
 
-  it('localizes the Apply and Cancel buttons and the close-button tooltip (Ticket #309)', async () => {
-    dictionarySignal.value = { dialog_apply: 'Appliquer', dialog_cancel: 'Annuler' };
+  it("localizes the Apply and Cancel buttons and the close-button tooltip (Ticket #309)", async () => {
+    dictionarySignal.value = {
+      dialog_apply: "Appliquer",
+      dialog_cancel: "Annuler",
+    };
     await render();
-    assert.equal(textOf(button('apply-btn')), 'Appliquer');
-    assert.equal(textOf(button('cancel-btn')), 'Annuler');
-    assert.equal(button('close-btn').getAttribute('title'), 'Annuler');
+    assert.equal(textOf(button("apply-btn")), "Appliquer");
+    assert.equal(textOf(button("cancel-btn")), "Annuler");
+    assert.equal(button("close-btn").getAttribute("title"), "Annuler");
   });
 
-  it('applies the edited stops once, and only on Apply', async () => {
+  it("applies the edited stops once, and only on Apply", async () => {
     const calls = await render();
-    await typeHex(dom!, '#00ff00ff');
-    assert.equal(calls.applied.length, 0, 'Editing does not reach the caller');
-    await click(button('apply-btn'));
-    assert.deepEqual(calls.applied, [['#00ff00ff 0%', '#0000ffff 100%']]);
+    await typeHex(dom!, "#00ff00ff");
+    assert.equal(calls.applied.length, 0, "Editing does not reach the caller");
+    await click(button("apply-btn"));
+    assert.deepEqual(calls.applied, [["#00ff00ff 0%", "#0000ffff 100%"]]);
     assert.equal(calls.cancels, 0);
   });
 
-  it('an untouched Apply returns the starting stops', async () => {
+  it("an untouched Apply returns the starting stops", async () => {
     const calls = await render();
-    await click(button('apply-btn'));
+    await click(button("apply-btn"));
     assert.deepEqual(calls.applied, [STOPS]);
   });
 
-  it('with no starting stops, Apply returns the widget default stops', async () => {
+  it("with no starting stops, Apply returns the widget default stops", async () => {
     const calls = await render({ initialStops: undefined });
-    await click(button('apply-btn'));
-    assert.deepEqual(calls.applied, [['#000000ff 0%', '#00ff00ff 100%']]);
+    await click(button("apply-btn"));
+    assert.deepEqual(calls.applied, [["#000000ff 0%", "#00ff00ff 100%"]]);
   });
 
-  it('Cancel, the close button, Escape and a backdrop click cancel without applying', async () => {
+  it("Cancel, the close button, Escape and a backdrop click cancel without applying", async () => {
     const calls = await render();
-    await typeHex(dom!, '#00ff00ff');
-    await click(button('cancel-btn'));
-    await click(button('close-btn'));
+    await typeHex(dom!, "#00ff00ff");
+    await click(button("cancel-btn"));
+    await click(button("close-btn"));
     await act(async () => {
-      dom!.win.dispatchEvent({ type: 'keydown', key: 'Escape', defaultPrevented: false, preventDefault: () => {} });
+      dom!.win.dispatchEvent({
+        type: "keydown",
+        key: "Escape",
+        defaultPrevented: false,
+        preventDefault: () => {},
+      });
     });
     await click(backdrops()[0]);
     assert.equal(calls.cancels, 4);
     assert.equal(calls.applied.length, 0);
   });
 
-  it('a click inside the dialog box does not cancel', async () => {
+  it("a click inside the dialog box does not cancel", async () => {
     const calls = await render();
-    await click(button('box'));
+    await click(button("box"));
     assert.equal(calls.cancels, 0);
   });
 
-  it('portals into the given container', async () => {
-    const host = dom!.doc.createElement('div') as MockElement;
+  it("portals into the given container", async () => {
+    const host = dom!.doc.createElement("div") as MockElement;
     dom!.doc.body.appendChild(host);
     await render({ container: host });
-    assert.equal(findElementsByClass(host, 'gradient-picker-dialog-backdrop').length, 1, 'Inside the container');
-    assert.equal(findElementsByClass(dom!.container, 'gradient-picker-dialog-backdrop').length, 0, 'Not in the render root');
+    assert.equal(
+      findElementsByClass(host, "gradient-picker-dialog-backdrop").length,
+      1,
+      "Inside the container"
+    );
+    assert.equal(
+      findElementsByClass(dom!.container, "gradient-picker-dialog-backdrop")
+        .length,
+      0,
+      "Not in the render root"
+    );
   });
 });

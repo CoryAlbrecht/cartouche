@@ -14,13 +14,13 @@
  * @see {@link DATASETS}
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import gdal from 'gdal-async';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import gdal from "gdal-async";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '..');
+const projectRoot = path.resolve(__dirname, "..");
 
 /**
  * @typedef {Object} DatasetSpec
@@ -34,27 +34,43 @@ const projectRoot = path.resolve(__dirname, '..');
  * @type {DatasetSpec[]}
  */
 export const DATASETS = [
-  { file: 'ne_10m_lakes.shp', driver: 'ESRI Shapefile', tolerance: 0.01 },
-  { file: 'ne_10m_lakes_north_america.shp', driver: 'ESRI Shapefile', tolerance: 0.01 },
-  { file: 'ne_10m_lakes_north_america.geojson', driver: 'GeoJSON', tolerance: 0.01 },
-  { file: 'ne_10m_rivers_lake_centerline_scale_rank.geojson', driver: 'GeoJSON', tolerance: 0.01 },
-  { file: 'ne_10m_coastline.shp', driver: 'ESRI Shapefile', tolerance: 0.05 },
-  { file: 'timeline_level_0_borders.shp', driver: 'ESRI Shapefile', tolerance: 0.05 },
-  { file: 'timeline_level_0.gpkg', driver: 'GPKG', tolerance: 0.05 },
-  { file: 'timeline_level_0-3.gpkg', driver: 'GPKG', tolerance: 0.05 },
+  { file: "ne_10m_lakes.shp", driver: "ESRI Shapefile", tolerance: 0.01 },
+  {
+    file: "ne_10m_lakes_north_america.shp",
+    driver: "ESRI Shapefile",
+    tolerance: 0.01,
+  },
+  {
+    file: "ne_10m_lakes_north_america.geojson",
+    driver: "GeoJSON",
+    tolerance: 0.01,
+  },
+  {
+    file: "ne_10m_rivers_lake_centerline_scale_rank.geojson",
+    driver: "GeoJSON",
+    tolerance: 0.01,
+  },
+  { file: "ne_10m_coastline.shp", driver: "ESRI Shapefile", tolerance: 0.05 },
+  {
+    file: "timeline_level_0_borders.shp",
+    driver: "ESRI Shapefile",
+    tolerance: 0.05,
+  },
+  { file: "timeline_level_0.gpkg", driver: "GPKG", tolerance: 0.05 },
+  { file: "timeline_level_0-3.gpkg", driver: "GPKG", tolerance: 0.05 },
 ];
 
 /**
  * @description Coordinate resolution (degrees) that output geometries are rounded to via `ogr2ogr -xyRes`.
  * @type {string}
  */
-const XY_RESOLUTION = '0.00001';
+const XY_RESOLUTION = "0.00001";
 
 /**
  * @description Shapefile sidecar extensions written by GDAL alongside the `.shp`.
  * @type {string[]}
  */
-const SHAPEFILE_SIDECARS = ['.shp', '.shx', '.dbf', '.prj', '.cpg'];
+const SHAPEFILE_SIDECARS = [".shp", ".shx", ".dbf", ".prj", ".cpg"];
 
 /**
  * @description Lists the files that make up a dataset: the shapefile sidecar set for `.shp`, otherwise the single file. Datasets sharing a stem (e.g. `x.shp` and `x.geojson`) are kept apart.
@@ -66,8 +82,9 @@ const SHAPEFILE_SIDECARS = ['.shp', '.shx', '.dbf', '.prj', '.cpg'];
  * @returns {string[]} Absolute paths of the dataset's files that exist on disk.
  */
 function datasetFiles(outPath) {
-  const files = outPath.endsWith('.shp')
-    ? SHAPEFILE_SIDECARS.map((ext) => outPath.replace(/\.shp$/, ext))
+  const files =
+    outPath.endsWith(".shp") ?
+      SHAPEFILE_SIDECARS.map((ext) => outPath.replace(/\.shp$/, ext))
     : [outPath];
   return files.filter((f) => fs.existsSync(f));
 }
@@ -86,19 +103,30 @@ function datasetFiles(outPath) {
  */
 function copyDataset(spec, sourceDir, outDir) {
   const srcPath = path.join(sourceDir, spec.file);
-  if (!fs.existsSync(srcPath)) throw new Error(`Missing source dataset: ${srcPath}`);
+  if (!fs.existsSync(srcPath))
+    throw new Error(`Missing source dataset: ${srcPath}`);
   const outPath = path.join(outDir, spec.file);
   for (const f of datasetFiles(outPath)) fs.rmSync(f);
   const src = gdal.open(srcPath);
-  const args = ['-f', spec.driver, '-simplify', String(spec.tolerance), '-xyRes', XY_RESOLUTION];
-  if (spec.driver === 'GPKG') args.push('-preserve_fid');
-  if (spec.driver === 'ESRI Shapefile') args.push('-lco', 'ENCODING=UTF-8');
+  const args = [
+    "-f",
+    spec.driver,
+    "-simplify",
+    String(spec.tolerance),
+    "-xyRes",
+    XY_RESOLUTION,
+  ];
+  if (spec.driver === "GPKG") args.push("-preserve_fid");
+  if (spec.driver === "ESRI Shapefile") args.push("-lco", "ENCODING=UTF-8");
   gdal.vectorTranslate(outPath, src, args).close();
   src.close();
   const written = gdal.open(outPath);
   const features = written.layers.get(0).features.count();
   written.close();
-  const bytes = datasetFiles(outPath).reduce((sum, f) => sum + fs.statSync(f).size, 0);
+  const bytes = datasetFiles(outPath).reduce(
+    (sum, f) => sum + fs.statSync(f).size,
+    0
+  );
   return { file: spec.file, features, bytes };
 }
 
@@ -114,12 +142,16 @@ function copyDataset(spec, sourceDir, outDir) {
  * @throws {Error} When the workspace project file is missing.
  */
 function copyProject(sourceDir, outDir) {
-  const projectPath = path.resolve(sourceDir, '../projects/project-1/project-4.cproj');
-  if (!fs.existsSync(projectPath)) throw new Error(`Missing source project: ${projectPath}`);
+  const projectPath = path.resolve(
+    sourceDir,
+    "../projects/project-1/project-4.cproj"
+  );
+  if (!fs.existsSync(projectPath))
+    throw new Error(`Missing source project: ${projectPath}`);
   const xml = fs
-    .readFileSync(projectPath, 'utf8')
-    .replace(/<source>[^<]*[\\/]([^\\/<]+)<\/source>/g, '<source>$1</source>');
-  fs.writeFileSync(path.join(outDir, 'project-4.cproj'), xml);
+    .readFileSync(projectPath, "utf8")
+    .replace(/<source>[^<]*[\\/]([^\\/<]+)<\/source>/g, "<source>$1</source>");
+  fs.writeFileSync(path.join(outDir, "project-4.cproj"), xml);
 }
 
 /**
@@ -131,17 +163,24 @@ function copyProject(sourceDir, outDir) {
  * @returns {void}
  */
 function main() {
-  const sourceDir = path.resolve(process.argv[2] ?? path.join(projectRoot, '../test/files'));
-  const outDir = path.join(projectRoot, 'tests/data');
+  const sourceDir = path.resolve(
+    process.argv[2] ?? path.join(projectRoot, "../test/files")
+  );
+  const outDir = path.join(projectRoot, "tests/data");
   fs.mkdirSync(outDir, { recursive: true });
   for (const spec of DATASETS) {
     const r = copyDataset(spec, sourceDir, outDir);
-    console.log(`[generate-test-data] ${r.file}: ${r.features} features, ${(r.bytes / 1024).toFixed(0)} KiB`);
+    console.log(
+      `[generate-test-data] ${r.file}: ${r.features} features, ${(r.bytes / 1024).toFixed(0)} KiB`
+    );
   }
   copyProject(sourceDir, outDir);
-  console.log('[generate-test-data] project-4.cproj');
+  console.log("[generate-test-data] project-4.cproj");
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   main();
 }

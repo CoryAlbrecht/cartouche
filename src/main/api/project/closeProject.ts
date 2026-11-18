@@ -9,9 +9,9 @@
  * @see {@link ProjectStore}
  */
 
-import { BrowserWindow } from 'electron';
-import { projectStore } from '../../project/ProjectStore';
-import { logging } from '../../../shared/logging';
+import { BrowserWindow } from "electron";
+import { projectStore } from "../../project/ProjectStore";
+import { logging } from "../../../shared/logging";
 
 /**
  * @description Closes the active project document, disposes all in-memory layers via Symbol.dispose, and broadcasts project:closed to renderer windows.
@@ -24,13 +24,17 @@ import { logging } from '../../../shared/logging';
 export default function closeProject(): void {
   projectStore.closeProject();
 
-  if (typeof BrowserWindow !== 'undefined' && BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+  if (
+    typeof BrowserWindow !== "undefined"
+    && BrowserWindow
+    && typeof BrowserWindow.getAllWindows === "function"
+  ) {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
-        win.webContents.send('project:closed');
+        win.webContents.send("project:closed");
       }
     }
   }
 
-  logging.info('Project closed successfully', { scope: 'closeProject' });
+  logging.info("Project closed successfully", { scope: "closeProject" });
 }

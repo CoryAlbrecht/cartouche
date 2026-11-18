@@ -10,125 +10,215 @@
  * @see {@link CssColorsDatalist}
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRendererJiti } from '../../rendererJiti';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { createRendererJiti } from "../../rendererJiti";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const React = jiti('react') as typeof import('react');
-const { renderToStaticMarkup } = jiti('react-dom/server') as typeof import('react-dom/server');
-const { ColorInput, CssColorsDatalist } = jiti('@renderer/components/common/ColorInput') as typeof import('@renderer/components/common/ColorInput');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
+const React = jiti("react") as typeof import("react");
+const { renderToStaticMarkup } = jiti(
+  "react-dom/server"
+) as typeof import("react-dom/server");
+const { ColorInput, CssColorsDatalist } = jiti(
+  "@renderer/components/common/ColorInput"
+) as typeof import("@renderer/components/common/ColorInput");
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals.ts");
 
-describe('ColorInput Component (Ticket #133)', () => {
-  it('renders text input and swatch button with matching hex background by default', () => {
+describe("ColorInput Component (Ticket #133)", () => {
+  it("renders text input and swatch button with matching hex background by default", () => {
     const html = renderToStaticMarkup(
       React.createElement(ColorInput, {
-        id: 'test-color-input',
-        value: '#3388ff',
-        ariaLabel: 'Fill Color',
+        id: "test-color-input",
+        value: "#3388ff",
+        ariaLabel: "Fill Color",
         onChange: () => {},
       })
     );
 
-    assert.ok(html.includes('id="test-color-input"'), 'Must render input with provided id');
-    assert.ok(html.includes('type="text"'), 'Must render text input');
-    assert.ok(html.includes('value="#3388ff"'), 'Must populate text input with color value');
-    assert.ok(html.includes('aria-label="Fill Color"'), 'Must set accessible aria-label');
-    assert.ok(html.includes('list="css-colors-datalist"'), 'Must attach css-colors-datalist to text input');
-    assert.ok(html.includes('class="picker-button colour-button"'), 'Must render ColourButton');
-    assert.ok(html.includes('style="background-color:#3388ff"'), 'Swatch must render with matching hex color');
-    assert.ok(!html.includes('preference-color-chevron'), 'Must NOT render dropdown chevron icon');
+    assert.ok(
+      html.includes('id="test-color-input"'),
+      "Must render input with provided id"
+    );
+    assert.ok(html.includes('type="text"'), "Must render text input");
+    assert.ok(
+      html.includes('value="#3388ff"'),
+      "Must populate text input with color value"
+    );
+    assert.ok(
+      html.includes('aria-label="Fill Color"'),
+      "Must set accessible aria-label"
+    );
+    assert.ok(
+      html.includes('list="css-colors-datalist"'),
+      "Must attach css-colors-datalist to text input"
+    );
+    assert.ok(
+      html.includes('class="picker-button colour-button"'),
+      "Must render ColourButton"
+    );
+    assert.ok(
+      html.includes('style="background-color:#3388ff"'),
+      "Swatch must render with matching hex color"
+    );
+    assert.ok(
+      !html.includes("preference-color-chevron"),
+      "Must NOT render dropdown chevron icon"
+    );
   });
 
-  it('resolves named CSS colors to their normalized hex background on the swatch button', () => {
+  it("resolves named CSS colors to their normalized hex background on the swatch button", () => {
     const html = renderToStaticMarkup(
       React.createElement(ColorInput, {
-        value: 'navy',
-        ariaLabel: 'Stroke Color',
+        value: "navy",
+        ariaLabel: "Stroke Color",
         onChange: () => {},
       })
     );
 
-    assert.ok(html.includes('value="navy"'), 'Text input must preserve user-entered named CSS color');
-    assert.ok(html.includes('style="background-color:#000080"'), 'Swatch must resolve "navy" to "#000080"');
+    assert.ok(
+      html.includes('value="navy"'),
+      "Text input must preserve user-entered named CSS color"
+    );
+    assert.ok(
+      html.includes('style="background-color:#000080"'),
+      'Swatch must resolve "navy" to "#000080"'
+    );
   });
 
-  it('renders only the swatch button when showTextInput is false', () => {
+  it("renders only the swatch button when showTextInput is false", () => {
     const html = renderToStaticMarkup(
       React.createElement(ColorInput, {
-        value: '#ff0000',
+        value: "#ff0000",
         showTextInput: false,
-        ariaLabel: 'Compact Color',
+        ariaLabel: "Compact Color",
         onChange: () => {},
       })
     );
 
-    assert.ok(!html.includes('type="text"'), 'Must not render text input');
-    assert.ok(html.includes('class="picker-button colour-button"'), 'Must render ColourButton');
-    assert.ok(html.includes('style="background-color:#ff0000"'), 'Swatch must display hex color');
+    assert.ok(!html.includes('type="text"'), "Must not render text input");
+    assert.ok(
+      html.includes('class="picker-button colour-button"'),
+      "Must render ColourButton"
+    );
+    assert.ok(
+      html.includes('style="background-color:#ff0000"'),
+      "Swatch must display hex color"
+    );
   });
 
-  it('displays inline error indicator and invalid styling when value is an invalid color', () => {
+  it("displays inline error indicator and invalid styling when value is an invalid color", () => {
     const html = renderToStaticMarkup(
       React.createElement(ColorInput, {
-        value: 'invalid-color-123',
-        fallbackColor: '#336699',
-        ariaLabel: 'Border Color',
+        value: "invalid-color-123",
+        fallbackColor: "#336699",
+        ariaLabel: "Border Color",
         onChange: () => {},
       })
     );
 
-    assert.ok(!html.includes('preference-input-invalid'), 'Must not apply the retired invalid input class (Ticket #318)');
-    assert.ok(html.includes('aria-invalid="true"'), 'Must flag aria-invalid="true"');
-    assert.ok(html.includes('class="preference-input-error-icon cartouche-focus-invalid"'), 'Must render error icon container opted into the Invalid Focus Indicator');
-    assert.ok(html.includes('title="Invalid CSS color name or hex format"'), 'Must set error tooltip');
-    assert.ok(html.includes('style="background-color:#336699"'), 'Swatch must preserve fallback/last valid color');
+    assert.ok(
+      !html.includes("preference-input-invalid"),
+      "Must not apply the retired invalid input class (Ticket #318)"
+    );
+    assert.ok(
+      html.includes('aria-invalid="true"'),
+      'Must flag aria-invalid="true"'
+    );
+    assert.ok(
+      html.includes(
+        'class="preference-input-error-icon cartouche-focus-invalid"'
+      ),
+      "Must render error icon container opted into the Invalid Focus Indicator"
+    );
+    assert.ok(
+      html.includes('title="Invalid CSS color name or hex format"'),
+      "Must set error tooltip"
+    );
+    assert.ok(
+      html.includes('style="background-color:#336699"'),
+      "Swatch must preserve fallback/last valid color"
+    );
   });
 
-  it('disables text input and swatch button when disabled prop is true', () => {
+  it("disables text input and swatch button when disabled prop is true", () => {
     const html = renderToStaticMarkup(
       React.createElement(ColorInput, {
-        id: 'disabled-color',
-        value: '#10b981',
+        id: "disabled-color",
+        value: "#10b981",
         disabled: true,
-        ariaLabel: 'Locked Color',
+        ariaLabel: "Locked Color",
         onChange: () => {},
       })
     );
 
-    assert.ok(/id="disabled-color"[^>]*disabled=""/.test(html), 'Text input must have disabled attribute');
-    assert.ok(/class="picker-button colour-button"[^>]*disabled=""/.test(html), 'ColourButton must have disabled attribute');
-    assert.ok(!html.includes('type="color"'), 'Native type="color" input must be replaced by ColourPickerDialog');
+    assert.ok(
+      /id="disabled-color"[^>]*disabled=""/.test(html),
+      "Text input must have disabled attribute"
+    );
+    assert.ok(
+      /class="picker-button colour-button"[^>]*disabled=""/.test(html),
+      "ColourButton must have disabled attribute"
+    );
+    assert.ok(
+      !html.includes('type="color"'),
+      'Native type="color" input must be replaced by ColourPickerDialog'
+    );
   });
 
   it('names the ColourButton "Pick colour for <label>" so it differs from the text input (Ticket #302)', () => {
-    dictionarySignal.value = { colour_button_pick_for: 'Pick colour for {label}' };
+    dictionarySignal.value = {
+      colour_button_pick_for: "Pick colour for {label}",
+    };
     try {
       const html = renderToStaticMarkup(
-        React.createElement(ColorInput, { value: '#3388ff', ariaLabel: 'Fill Color', onChange: () => {} })
+        React.createElement(ColorInput, {
+          value: "#3388ff",
+          ariaLabel: "Fill Color",
+          onChange: () => {},
+        })
       );
-      assert.ok(/<button[^>]*aria-label="Pick colour for Fill Color"/.test(html), 'Button has its own accessible name');
-      assert.ok(/<button[^>]*title="Fill Color"/.test(html), 'Dialog title (button tooltip) is the field label');
+      assert.ok(
+        /<button[^>]*aria-label="Pick colour for Fill Color"/.test(html),
+        "Button has its own accessible name"
+      );
+      assert.ok(
+        /<button[^>]*title="Fill Color"/.test(html),
+        "Dialog title (button tooltip) is the field label"
+      );
     } finally {
       dictionarySignal.value = {};
     }
   });
 
-  it('passes buttonWidth and buttonHeight to its ColourButton', () => {
+  it("passes buttonWidth and buttonHeight to its ColourButton", () => {
     const html = renderToStaticMarkup(
-      React.createElement(ColorInput, { value: '#3388ff', buttonWidth: '4rem', buttonHeight: '2rem', onChange: () => {} })
+      React.createElement(ColorInput, {
+        value: "#3388ff",
+        buttonWidth: "4rem",
+        buttonHeight: "2rem",
+        onChange: () => {},
+      })
     );
-    assert.ok(html.includes('class="picker-button colour-button" style="width:4rem;height:2rem"'));
+    assert.ok(
+      html.includes(
+        'class="picker-button colour-button" style="width:4rem;height:2rem"'
+      )
+    );
   });
 
-  it('renders CssColorsDatalist containing all 148 standard W3C CSS named colors', () => {
+  it("renders CssColorsDatalist containing all 148 standard W3C CSS named colors", () => {
     const html = renderToStaticMarkup(React.createElement(CssColorsDatalist));
 
-    assert.ok(html.includes('<datalist id="css-colors-datalist">'), 'Must render datalist element');
-    assert.ok(html.includes('value="cornflowerblue"'), 'Must contain cornflowerblue');
-    assert.ok(html.includes('value="aliceblue"'), 'Must contain aliceblue');
-    assert.ok(html.includes('value="yellowgreen"'), 'Must contain yellowgreen');
+    assert.ok(
+      html.includes('<datalist id="css-colors-datalist">'),
+      "Must render datalist element"
+    );
+    assert.ok(
+      html.includes('value="cornflowerblue"'),
+      "Must contain cornflowerblue"
+    );
+    assert.ok(html.includes('value="aliceblue"'), "Must contain aliceblue");
+    assert.ok(html.includes('value="yellowgreen"'), "Must contain yellowgreen");
   });
 });

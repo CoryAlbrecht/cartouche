@@ -293,7 +293,8 @@ describe("defaultLayerStyles", () => {
       const unknownRules = createDefaultVectorLayerStyle("Unknown");
       assert.equal(unknownRules.length, 3);
 
-      const geomCollectionRules = createDefaultVectorLayerStyle("GeometryCollection");
+      const geomCollectionRules =
+        createDefaultVectorLayerStyle("GeometryCollection");
       assert.equal(geomCollectionRules.length, 3);
 
       const defaultRules = createDefaultVectorLayerStyle();
@@ -303,15 +304,25 @@ describe("defaultLayerStyles", () => {
     it("createDefaultVectorLayerStyle automatically assigns random contrast palette color when color omitted", () => {
       const polyRules = createDefaultVectorLayerStyle("Polygon");
       assert.equal(polyRules.length, 1);
-      assert.ok(CONTRAST_FILTERED_CSS_COLORS.includes(polyRules[0].style["fill-color"]));
+      assert.ok(
+        CONTRAST_FILTERED_CSS_COLORS.includes(polyRules[0].style["fill-color"])
+      );
 
       const lineRules = createDefaultVectorLayerStyle("LineString");
       assert.equal(lineRules.length, 1);
-      assert.ok(CONTRAST_FILTERED_CSS_COLORS.includes(lineRules[0].style["stroke-color"]));
+      assert.ok(
+        CONTRAST_FILTERED_CSS_COLORS.includes(
+          lineRules[0].style["stroke-color"]
+        )
+      );
 
       const pointRules = createDefaultVectorLayerStyle("Point");
       assert.equal(pointRules.length, 1);
-      assert.ok(CONTRAST_FILTERED_CSS_COLORS.includes(pointRules[0].style["circle-fill-color"]));
+      assert.ok(
+        CONTRAST_FILTERED_CSS_COLORS.includes(
+          pointRules[0].style["circle-fill-color"]
+        )
+      );
     });
 
     it("generateDefaultVectorStyleJson generates geometry-specific JSON matching layer geometry type", () => {
@@ -320,13 +331,17 @@ describe("defaultLayerStyles", () => {
       assert.equal(parsedPoly.length, 1);
       assert.equal(parsedPoly[0].style["fill-color"], "crimson");
 
-      const lineJson = generateDefaultVectorStyleJson("LineString", ["dodgerblue"]);
+      const lineJson = generateDefaultVectorStyleJson("LineString", [
+        "dodgerblue",
+      ]);
       const parsedLine = JSON.parse(lineJson);
       assert.equal(parsedLine.length, 1);
       assert.equal(parsedLine[0].style["stroke-color"], "dodgerblue");
       assert.equal(parsedLine[0].style["stroke-width"], 2);
 
-      const pointJson = generateDefaultVectorStyleJson("Point", ["forestgreen"]);
+      const pointJson = generateDefaultVectorStyleJson("Point", [
+        "forestgreen",
+      ]);
       const parsedPoint = JSON.parse(pointJson);
       assert.equal(parsedPoint.length, 1);
       assert.equal(parsedPoint[0].style["circle-fill-color"], "forestgreen");
@@ -396,7 +411,10 @@ describe("defaultLayerStyles", () => {
     });
 
     it("generates valid JSON string via createDefaultCartoucheLayerStyleJson", () => {
-      const jsonStr = createDefaultCartoucheLayerStyleJson("Polygon", "#123456");
+      const jsonStr = createDefaultCartoucheLayerStyleJson(
+        "Polygon",
+        "#123456"
+      );
       const parsed = JSON.parse(jsonStr);
       assert.equal(parsed.format, "simple");
       assert.equal(parsed.version, 1);
@@ -407,18 +425,11 @@ describe("defaultLayerStyles", () => {
   describe("isCartoucheLayerStyle", () => {
     it("returns true for valid CartoucheLayerStyle objects", () => {
       assert.equal(
-        isCartoucheLayerStyle({
-          format: "simple",
-          version: 1,
-          components: [],
-        }),
+        isCartoucheLayerStyle({ format: "simple", version: 1, components: [] }),
         true
       );
       assert.equal(
-        isCartoucheLayerStyle({
-          format: "categorized",
-          version: 1,
-        }),
+        isCartoucheLayerStyle({ format: "categorized", version: 1 }),
         true
       );
     });
@@ -428,9 +439,22 @@ describe("defaultLayerStyles", () => {
       assert.equal(isCartoucheLayerStyle(undefined), false);
       assert.equal(isCartoucheLayerStyle("string"), false);
       assert.equal(isCartoucheLayerStyle([]), false);
-      assert.equal(isCartoucheLayerStyle({ format: "simple", version: 2 }), false);
-      assert.equal(isCartoucheLayerStyle({ format: "other", version: 1 }), false);
-      assert.equal(isCartoucheLayerStyle({ format: "simple", version: 1, components: "not-array" }), false);
+      assert.equal(
+        isCartoucheLayerStyle({ format: "simple", version: 2 }),
+        false
+      );
+      assert.equal(
+        isCartoucheLayerStyle({ format: "other", version: 1 }),
+        false
+      );
+      assert.equal(
+        isCartoucheLayerStyle({
+          format: "simple",
+          version: 1,
+          components: "not-array",
+        }),
+        false
+      );
     });
   });
 
@@ -503,7 +527,12 @@ describe("defaultLayerStyles", () => {
         format: "simple",
         version: 1,
         components: [
-          { id: "fill-1", type: "simple-fill", enabled: true, color: "#123456" },
+          {
+            id: "fill-1",
+            type: "simple-fill",
+            enabled: true,
+            color: "#123456",
+          },
         ],
       };
       const jsonStr = JSON.stringify(cartoucheStyle);
@@ -580,19 +609,14 @@ describe("defaultLayerStyles", () => {
     it("returns true for valid ProjectLayerStyleItem containers with href", () => {
       assert.equal(isProjectLayerStyleWrapper({ href: "#shared-style" }), true);
       assert.equal(
-        isProjectLayerStyleWrapper({
-          href: "styles/layer.sld",
-          format: "sld",
-        }),
+        isProjectLayerStyleWrapper({ href: "styles/layer.sld", format: "sld" }),
         true
       );
     });
 
     it("returns true for valid ProjectLayerStyleItem containers with content string", () => {
       assert.equal(
-        isProjectLayerStyleWrapper({
-          content: '{"fill-color": "red"}',
-        }),
+        isProjectLayerStyleWrapper({ content: '{"fill-color": "red"}' }),
         true
       );
       assert.equal(

@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import { LayerTreeNode } from './LayerTreeNode';
+import { LayerTreeNode } from "./LayerTreeNode";
 
 /**
  * @class LayerGroup
@@ -70,10 +70,14 @@ export class LayerGroup extends LayerTreeNode {
     if (child.parent) {
       child.parent.removeChild(child);
     }
-    
+
     child.parent = this;
 
-    if (position !== undefined && position >= 0 && position <= this._children.length) {
+    if (
+      position !== undefined
+      && position >= 0
+      && position <= this._children.length
+    ) {
       this._children.splice(position, 0, child);
     } else {
       this._children.push(child);
@@ -97,7 +101,10 @@ export class LayerGroup extends LayerTreeNode {
    */
   [Symbol.dispose](): void {
     for (const child of this._children) {
-      if (Symbol.dispose in child && typeof (child as any)[Symbol.dispose] === 'function') {
+      if (
+        Symbol.dispose in child
+        && typeof (child as any)[Symbol.dispose] === "function"
+      ) {
         (child as any)[Symbol.dispose]();
       }
     }

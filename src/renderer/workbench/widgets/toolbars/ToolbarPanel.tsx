@@ -126,7 +126,9 @@ export const ToolbarPanel: React.FC<ToolbarPanelProps> = ({ zone }) => {
             }}>
             {toolbarsInRow.map((toolbarId) => {
               const Component = toolbarComponentMap[toolbarId];
-              return Component ? <Component key={toolbarId} zone={zone} /> : null;
+              return Component ?
+                  <Component key={toolbarId} zone={zone} />
+                : null;
             })}
           </div>
         );

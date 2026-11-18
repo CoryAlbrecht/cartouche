@@ -8,5 +8,4 @@
  * @since 0.1.0-dev
  */
 
-export * from './dialogRegistry';
-
+export * from "./dialogRegistry";

@@ -9,9 +9,9 @@
  * @see scripts/git-hooks/check-protected-branch.sh
  */
 
-import { execFileSync } from 'node:child_process';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { execFileSync } from "node:child_process";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * @description Repository-relative hooks directory written to `core.hooksPath`.
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const HOOKS_PATH = 'scripts/git-hooks';
+export const HOOKS_PATH = "scripts/git-hooks";
 
 /**
  * @description Sets `core.hooksPath` to {@link HOOKS_PATH} in the git repository at `cwd`. Returns `false` instead of throwing when `cwd` is not inside a git work tree or git is unavailable.
@@ -34,15 +34,23 @@ export const HOOKS_PATH = 'scripts/git-hooks';
  */
 export function installGitHooks(cwd = process.cwd()) {
   try {
-    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd, stdio: 'ignore' });
-    execFileSync('git', ['config', 'core.hooksPath', HOOKS_PATH], { cwd, stdio: 'ignore' });
+    execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd,
+      stdio: "ignore",
+    });
+    execFileSync("git", ["config", "core.hooksPath", HOOKS_PATH], {
+      cwd,
+      stdio: "ignore",
+    });
     return true;
   } catch {
     return false;
   }
 }
 
-const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const isDirectExecution =
+  process.argv[1]
+  && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isDirectExecution) {
   if (installGitHooks()) {
     console.log(`git hooks: core.hooksPath -> ${HOOKS_PATH}`);

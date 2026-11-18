@@ -20,12 +20,15 @@
  * @param {string | null | undefined} filePath - Project file path.
  * @returns {string | null} Directory path without a trailing separator (a bare root keeps its separator).
  */
-export function projectFileDirectory(filePath: string | null | undefined): string | null {
+export function projectFileDirectory(
+  filePath: string | null | undefined
+): string | null {
   if (!filePath) return null;
-  const idx = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+  const idx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
   if (idx < 0) return null;
   if (idx === 0) return filePath.slice(0, 1);
-  if (/^[A-Za-z]:$/.test(filePath.slice(0, idx))) return filePath.slice(0, idx + 1);
+  if (/^[A-Za-z]:$/.test(filePath.slice(0, idx)))
+    return filePath.slice(0, idx + 1);
   return filePath.slice(0, idx);
 }
 
@@ -44,7 +47,7 @@ export function resolveEffectiveProjectHome(
   explicitHome: string | null | undefined,
   filePath: string | null | undefined
 ): string | null {
-  const home = (explicitHome ?? '').trim();
+  const home = (explicitHome ?? "").trim();
   if (home) return home;
   return projectFileDirectory(filePath);
 }
@@ -60,8 +63,12 @@ export function resolveEffectiveProjectHome(
  * @returns {string} Normalised path, or an empty string.
  */
 export function normalizeDirectoryPath(dir: string | null | undefined): string {
-  const value = (dir ?? '').trim();
-  if (value.length > 1 && /[\\/]$/.test(value) && !/^[A-Za-z]:[\\/]$/.test(value)) {
+  const value = (dir ?? "").trim();
+  if (
+    value.length > 1
+    && /[\\/]$/.test(value)
+    && !/^[A-Za-z]:[\\/]$/.test(value)
+  ) {
     return value.slice(0, -1);
   }
   return value;

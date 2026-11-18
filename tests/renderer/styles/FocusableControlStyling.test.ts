@@ -9,19 +9,25 @@
  * @see FocusIndicator.test.ts
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { createRendererJiti } from "../rendererJiti";
 
 const jiti = createRendererJiti(import.meta.url);
-const React = jiti('react') as typeof import('react');
-const { renderToStaticMarkup } = jiti('react-dom/server') as typeof import('react-dom/server');
-const { ColorInput } = jiti('@renderer/components/common/ColorInput') as typeof import('@renderer/components/common/ColorInput');
-const { TimestampSpinner } = jiti('@renderer/components/common/TimestampSpinner') as typeof import('@renderer/components/common/TimestampSpinner');
+const React = jiti("react") as typeof import("react");
+const { renderToStaticMarkup } = jiti(
+  "react-dom/server"
+) as typeof import("react-dom/server");
+const { ColorInput } = jiti(
+  "@renderer/components/common/ColorInput"
+) as typeof import("@renderer/components/common/ColorInput");
+const { TimestampSpinner } = jiti(
+  "@renderer/components/common/TimestampSpinner"
+) as typeof import("@renderer/components/common/TimestampSpinner");
 
-const RENDERER_DIR = path.resolve(process.cwd(), 'src/renderer');
+const RENDERER_DIR = path.resolve(process.cwd(), "src/renderer");
 
 /** A colour literal: hex, rgb()/rgba() or hsl()/hsla(). */
 const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i;
@@ -30,13 +36,16 @@ const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i;
 const INLINE_THEME_TOKEN = /var\(--(?:cartouche-(?!ui-)|dockview-)/;
 
 /** A token that carries invalid-state colour: the danger primitives and the invalid Component Tokens. */
-const INVALID_COLOUR_TOKEN = /--cartouche-(?:theme-danger|invalid-|focus-invalid-)/;
+const INVALID_COLOUR_TOKEN =
+  /--cartouche-(?:theme-danger|invalid-|focus-invalid-)/;
 
 /** An inline style property that paints colour. */
-const COLOUR_PROPERTY = /\b(?:color|background(?:Color)?|border(?:Top|Right|Bottom|Left)?(?:Color)?|boxShadow|outline(?:Color)?|fill|stroke)\s*:/;
+const COLOUR_PROPERTY =
+  /\b(?:color|background(?:Color)?|border(?:Top|Right|Bottom|Left)?(?:Color)?|boxShadow|outline(?:Color)?|fill|stroke)\s*:/;
 
 /** ARIA roles that make an element an interactive, focusable control. */
-const INTERACTIVE_ROLE = /\brole=["'{]\s*["']?(?:button|tab|menuitem|menuitemcheckbox|menuitemradio|option|checkbox|radio|switch|slider|link|treeitem|gridcell|spinbutton|combobox|textbox|searchbox|listbox)["']/;
+const INTERACTIVE_ROLE =
+  /\brole=["'{]\s*["']?(?:button|tab|menuitem|menuitemcheckbox|menuitemradio|option|checkbox|radio|switch|slider|link|treeitem|gridcell|spinbutton|combobox|textbox|searchbox|listbox)["']/;
 
 /**
  * @function listTsx
@@ -48,12 +57,17 @@ function listTsx(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return listTsx(full);
-    return entry.name.endsWith('.tsx') ? [full] : [];
+    return entry.name.endsWith(".tsx") ? [full] : [];
   });
 }
 
 /** Every renderer TSX source, keyed by its path relative to `src/renderer`. */
-const SOURCES = new Map(listTsx(RENDERER_DIR).map((file) => [path.relative(RENDERER_DIR, file), fs.readFileSync(file, 'utf8')]));
+const SOURCES = new Map(
+  listTsx(RENDERER_DIR).map((file) => [
+    path.relative(RENDERER_DIR, file),
+    fs.readFileSync(file, "utf8"),
+  ])
+);
 
 /**
  * @function source
@@ -80,9 +94,9 @@ function openingTags(text: string): string[] {
     let end = match.index + 1;
     for (; end < text.length; end++) {
       const ch = text[end];
-      if (ch === '{') depth++;
-      else if (ch === '}') depth--;
-      else if (ch === '>' && depth === 0 && text[end - 1] !== '=') break;
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+      else if (ch === ">" && depth === 0 && text[end - 1] !== "=") break;
     }
     tags.push(text.slice(match.index, end + 1));
   }
@@ -96,7 +110,11 @@ function openingTags(text: string): string[] {
  * @returns {boolean} True when the element is focusable.
  */
 function isFocusableTag(tag: string): boolean {
-  return /^<(input|select|textarea|button|Select)\b/.test(tag) || /\btabIndex=/.test(tag) || INTERACTIVE_ROLE.test(tag);
+  return (
+    /^<(input|select|textarea|button|Select)\b/.test(tag)
+    || /\btabIndex=/.test(tag)
+    || INTERACTIVE_ROLE.test(tag)
+  );
 }
 
 /**
@@ -119,8 +137,8 @@ function focusableTags(rel: string): string[] {
 function balancedFrom(text: string, open: number): string {
   let depth = 0;
   for (let i = open; i < text.length; i++) {
-    if (text[i] === '{') depth++;
-    else if (text[i] === '}' && --depth === 0) return text.slice(open, i + 1);
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}" && --depth === 0) return text.slice(open, i + 1);
   }
   return text.slice(open);
 }
@@ -133,14 +151,18 @@ function balancedFrom(text: string, open: number): string {
  * @returns {string} The inline style text, or an empty string.
  */
 function inlineStyle(tag: string, text: string): string {
-  const start = tag.indexOf('style={');
-  if (start < 0) return '';
+  const start = tag.indexOf("style={");
+  if (start < 0) return "";
   const style = balancedFrom(tag, start + 6);
-  const resolved = [...style.matchAll(/(?:^\{|\.\.\.)\s*([A-Z][A-Z0-9_]*)\b/g)].map(([, name]) => {
+  const resolved = [
+    ...style.matchAll(/(?:^\{|\.\.\.)\s*([A-Z][A-Z0-9_]*)\b/g),
+  ].map(([, name]) => {
     const decl = text.search(new RegExp(`const ${name}\\b[^=]*=\\s*\\{`));
-    return decl < 0 ? '' : balancedFrom(text, text.indexOf('{', text.indexOf('=', decl)));
+    return decl < 0 ? "" : (
+        balancedFrom(text, text.indexOf("{", text.indexOf("=", decl)))
+      );
   });
-  return [style, ...resolved].join('\n');
+  return [style, ...resolved].join("\n");
 }
 
 /**
@@ -150,45 +172,51 @@ function inlineStyle(tag: string, text: string): string {
  * @returns {string} First line of the tag plus its class, if any.
  */
 function head(tag: string): string {
-  return `${tag.split('\n')[0].trim()} ${tag.match(/className=\S+/)?.[0] ?? ''}`.trim();
+  return `${tag.split("\n")[0].trim()} ${tag.match(/className=\S+/)?.[0] ?? ""}`.trim();
 }
 
 /** The styling editor sources: their focusable controls carry no inline style at all and one of {@link STYLING_EDITOR_CLASSES}. */
 const STYLING_EDITOR_SOURCES = [
-  'workbench/dialogs/SimpleModeEditor.tsx',
-  'workbench/dialogs/StyleEditor.tsx',
-  'workbench/dialogs/DashArrayControl.tsx',
+  "workbench/dialogs/SimpleModeEditor.tsx",
+  "workbench/dialogs/StyleEditor.tsx",
+  "workbench/dialogs/DashArrayControl.tsx",
 ];
 
 /** The classes that style the styling editors' focusable controls. */
 const STYLING_EDITOR_CLASSES = [
-  'styling-editor-field',
-  'styling-editor-number',
-  'styling-editor-angle',
-  'styling-editor-icon-btn',
-  'styling-editor-secondary-btn',
-  'layer-prop-layer-opacity',
-  'layer-prop-styling-raw-style',
+  "styling-editor-field",
+  "styling-editor-number",
+  "styling-editor-angle",
+  "styling-editor-icon-btn",
+  "styling-editor-secondary-btn",
+  "layer-prop-layer-opacity",
+  "layer-prop-styling-raw-style",
 ];
 
-const LAYER_PROPERTIES_DIALOG = 'workbench/dialogs/LayerPropertiesDialog.tsx';
+const LAYER_PROPERTIES_DIALOG = "workbench/dialogs/LayerPropertiesDialog.tsx";
 
 /** An opening tag of the shared Select dropdown, which supplies its own `cartouche-select` class (Ticket #344). */
 const SHARED_SELECT = /^<Select\b/;
 
-describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
-  it('sets no inline outline anywhere in renderer TSX', () => {
+describe("Inline focus and colour styling in renderer TSX (Spec #316)", () => {
+  it("sets no inline outline anywhere in renderer TSX", () => {
     const offenders = [...SOURCES]
-      .filter(([, text]) => /\boutline(?:Color|Style|Width|Offset)?\s*:/.test(text))
+      .filter(([, text]) =>
+        /\boutline(?:Color|Style|Width|Offset)?\s*:/.test(text)
+      )
       .map(([rel]) => rel);
     assert.deepEqual(offenders, []);
   });
 
-  it('paints no primary-coloured surface inline, so its Focus Indicator re-scope lives in workbench.css', () => {
+  it("paints no primary-coloured surface inline, so its Focus Indicator re-scope lives in workbench.css", () => {
     const offenders: string[] = [];
     for (const [rel, text] of SOURCES) {
       for (const tag of openingTags(text)) {
-        if (/\bbackground(?:Color)?\s*:\s*['"]var\(--cartouche-(?:menubar-bg|theme-status-bar-bg)\b/.test(inlineStyle(tag, text))) {
+        if (
+          /\bbackground(?:Color)?\s*:\s*['"]var\(--cartouche-(?:menubar-bg|theme-status-bar-bg)\b/.test(
+            inlineStyle(tag, text)
+          )
+        ) {
           offenders.push(`${rel}: ${head(tag)}`);
         }
       }
@@ -196,44 +224,55 @@ describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
     assert.deepEqual(offenders, []);
   });
 
-  it('gives every focusable control no inline colour literal or inline theme token', () => {
+  it("gives every focusable control no inline colour literal or inline theme token", () => {
     const offenders: string[] = [];
     for (const [rel, text] of SOURCES) {
       for (const tag of openingTags(text).filter(isFocusableTag)) {
         const style = inlineStyle(tag, text);
-        if (COLOUR_LITERAL.test(style) || INLINE_THEME_TOKEN.test(style)) offenders.push(`${rel}: ${head(tag)}`);
+        if (COLOUR_LITERAL.test(style) || INLINE_THEME_TOKEN.test(style))
+          offenders.push(`${rel}: ${head(tag)}`);
       }
     }
     assert.deepEqual(offenders, []);
   });
 
-  it('gives the styling editors\' and the Layer Properties Dialog\'s focusable controls no inline style at all', () => {
+  it("gives the styling editors' and the Layer Properties Dialog's focusable controls no inline style at all", () => {
     for (const rel of [...STYLING_EDITOR_SOURCES, LAYER_PROPERTIES_DIALOG]) {
       const tags = focusableTags(rel);
       assert.ok(tags.length > 0, `${rel} has focusable controls in scope`);
       for (const tag of tags) {
-        assert.doesNotMatch(tag, /\bstyle=\{/, `${rel}: ${head(tag)} still has an inline style`);
+        assert.doesNotMatch(
+          tag,
+          /\bstyle=\{/,
+          `${rel}: ${head(tag)} still has an inline style`
+        );
       }
     }
   });
 
-  it('applies a styling editor class to every focusable control in the styling editors', () => {
+  it("applies a styling editor class to every focusable control in the styling editors", () => {
     for (const rel of STYLING_EDITOR_SOURCES) {
       for (const tag of focusableTags(rel)) {
         if (SHARED_SELECT.test(tag)) continue;
         assert.ok(
-          STYLING_EDITOR_CLASSES.some((cls) => new RegExp(`${cls}(?![\\w-])`).test(tag)),
+          STYLING_EDITOR_CLASSES.some((cls) =>
+            new RegExp(`${cls}(?![\\w-])`).test(tag)
+          ),
           `${rel}: ${head(tag)} carries none of the styling editor classes`
         );
       }
     }
   });
 
-  it('gives every non-checkbox focusable control in the Layer Properties Dialog a class', () => {
+  it("gives every non-checkbox focusable control in the Layer Properties Dialog a class", () => {
     const tags = focusableTags(LAYER_PROPERTIES_DIALOG);
-    assert.ok(tags.length >= 20, `expected the dialog's buttons, inputs and selects, found ${tags.length}`);
+    assert.ok(
+      tags.length >= 20,
+      `expected the dialog's buttons, inputs and selects, found ${tags.length}`
+    );
     for (const tag of tags) {
-      if (/type=['"]checkbox['"]/.test(tag) || SHARED_SELECT.test(tag)) continue;
+      if (/type=['"]checkbox['"]/.test(tag) || SHARED_SELECT.test(tag))
+        continue;
       assert.match(tag, /\bclassName=/, `${head(tag)} has no class`);
     }
   });
@@ -241,9 +280,9 @@ describe('Inline focus and colour styling in renderer TSX (Spec #316)', () => {
 
 /** The Spec #322 sources: TableWidget, its cell editors, and the TableWidget hosts AttributeTableWidget and LayerPropertiesDialog. */
 const TABLE_SPEC_SOURCES = [
-  'workbench/widgets/TableWidget.tsx',
-  'workbench/widgets/tableEditors.tsx',
-  'workbench/widgets/AttributeTableWidget.tsx',
+  "workbench/widgets/TableWidget.tsx",
+  "workbench/widgets/tableEditors.tsx",
+  "workbench/widgets/AttributeTableWidget.tsx",
   LAYER_PROPERTIES_DIALOG,
 ];
 
@@ -258,19 +297,26 @@ function iconSize(tag: string, text: string): string | undefined {
   const literal = tag.match(/\bsize=(['"])(.*?)\1/);
   if (literal) return literal[2];
   const constant = tag.match(/\bsize=\{\s*([A-Z][A-Z0-9_]*)\s*\}/);
-  if (constant) return text.match(new RegExp(`const ${constant[1]}\\b[^=]*=\\s*([^;]+);`))?.[1];
-  const expression = tag.indexOf('size={');
+  if (constant)
+    return text.match(
+      new RegExp(`const ${constant[1]}\\b[^=]*=\\s*([^;]+);`)
+    )?.[1];
+  const expression = tag.indexOf("size={");
   return expression < 0 ? undefined : balancedFrom(tag, expression + 5);
 }
 
-describe('Inline colours and icon sizes in the TableWidget sources (Spec #322)', () => {
-  it('sets no colour inline on any element, focusable or not', () => {
+describe("Inline colours and icon sizes in the TableWidget sources (Spec #322)", () => {
+  it("sets no colour inline on any element, focusable or not", () => {
     const offenders: string[] = [];
     for (const rel of TABLE_SPEC_SOURCES) {
       const text = source(rel);
       for (const tag of openingTags(text)) {
         const style = inlineStyle(tag, text);
-        if (COLOUR_PROPERTY.test(style) || COLOUR_LITERAL.test(style) || INLINE_THEME_TOKEN.test(style)) {
+        if (
+          COLOUR_PROPERTY.test(style)
+          || COLOUR_LITERAL.test(style)
+          || INLINE_THEME_TOKEN.test(style)
+        ) {
           offenders.push(`${rel}: ${head(tag)}`);
         }
       }
@@ -278,7 +324,7 @@ describe('Inline colours and icon sizes in the TableWidget sources (Spec #322)',
     assert.deepEqual(offenders, []);
   });
 
-  it('sizes every icon as a factor of the ui.icon.size preference', () => {
+  it("sizes every icon as a factor of the ui.icon.size preference", () => {
     const offenders: string[] = [];
     let icons = 0;
     for (const rel of TABLE_SPEC_SOURCES) {
@@ -286,7 +332,12 @@ describe('Inline colours and icon sizes in the TableWidget sources (Spec #322)',
       for (const tag of openingTags(text).filter((t) => /^<Icon\b/.test(t))) {
         icons++;
         const size = iconSize(tag, text);
-        if (size !== undefined && !/^[`'"]?calc\(var\(--cartouche-ui-icon-size, 24px\) \* (?:\d*\.?\d+|\$\{[A-Z_]+\})\)[`'"]?$/.test(size)) {
+        if (
+          size !== undefined
+          && !/^[`'"]?calc\(var\(--cartouche-ui-icon-size, 24px\) \* (?:\d*\.?\d+|\$\{[A-Z_]+\})\)[`'"]?$/.test(
+            size
+          )
+        ) {
           offenders.push(`${rel}: ${head(tag)} size=${size}`);
         }
       }
@@ -296,18 +347,19 @@ describe('Inline colours and icon sizes in the TableWidget sources (Spec #322)',
   });
 });
 
-describe('Invalid state in renderer TSX (Spec #316)', () => {
-  it('colours invalid state inline nowhere: no inline style reads a danger or invalid token, and no inline colour depends on validity', () => {
+describe("Invalid state in renderer TSX (Spec #316)", () => {
+  it("colours invalid state inline nowhere: no inline style reads a danger or invalid token, and no inline colour depends on validity", () => {
     const offenders: string[] = [];
     for (const [rel, text] of SOURCES) {
       for (const tag of openingTags(text)) {
         const style = inlineStyle(tag, text);
         if (!style) continue;
-        const colours = COLOUR_LITERAL.test(style) || INLINE_THEME_TOKEN.test(style);
+        const colours =
+          COLOUR_LITERAL.test(style) || INLINE_THEME_TOKEN.test(style);
         if (
-          INVALID_COLOUR_TOKEN.test(style) ||
-          (colours && /invalid|isValid|\bvalid\b|error/i.test(style)) ||
-          (/\baria-invalid=/.test(tag) && COLOUR_PROPERTY.test(style))
+          INVALID_COLOUR_TOKEN.test(style)
+          || (colours && /invalid|isValid|\bvalid\b|error/i.test(style))
+          || (/\baria-invalid=/.test(tag) && COLOUR_PROPERTY.test(style))
         ) {
           offenders.push(`${rel}: ${head(tag)}`);
         }
@@ -316,56 +368,86 @@ describe('Invalid state in renderer TSX (Spec #316)', () => {
     assert.deepEqual(offenders, []);
   });
 
-  it('marks invalid state with no class of its own beyond .cartouche-focus-invalid', () => {
+  it("marks invalid state with no class of its own beyond .cartouche-focus-invalid", () => {
     const offenders: string[] = [];
     for (const [rel, text] of SOURCES) {
-      if (text.includes('preference-input-invalid')) offenders.push(`${rel}: retired .preference-input-invalid`);
+      if (text.includes("preference-input-invalid"))
+        offenders.push(`${rel}: retired .preference-input-invalid`);
       for (const tag of openingTags(text)) {
-        const start = tag.indexOf('className=');
+        const start = tag.indexOf("className=");
         if (start < 0) continue;
         const value =
-          tag[start + 10] === '{' ? balancedFrom(tag, start + 10) : tag.slice(start + 10).match(/^(['"]).*?\1/)?.[0] ?? '';
+          tag[start + 10] === "{" ?
+            balancedFrom(tag, start + 10)
+          : (tag.slice(start + 10).match(/^(['"]).*?\1/)?.[0] ?? "");
         for (const [cls] of value.matchAll(/[\w-]*invalid[\w-]*/gi)) {
-          if (cls !== 'cartouche-focus-invalid' && /-/.test(cls)) offenders.push(`${rel}: .${cls}`);
+          if (cls !== "cartouche-focus-invalid" && /-/.test(cls))
+            offenders.push(`${rel}: .${cls}`);
         }
       }
     }
     assert.deepEqual(offenders, []);
   });
 
-  it('flags an invalid ColorInput with aria-invalid alone: no invalid class, no inline danger colour', () => {
+  it("flags an invalid ColorInput with aria-invalid alone: no invalid class, no inline danger colour", () => {
     const html = renderToStaticMarkup(
-      React.createElement(ColorInput, { value: 'not-a-colour', ariaLabel: 'Line Colour', onChange: () => {} })
+      React.createElement(ColorInput, {
+        value: "not-a-colour",
+        ariaLabel: "Line Colour",
+        onChange: () => {},
+      })
     );
     assert.match(html, /aria-invalid="true"/);
     assert.doesNotMatch(html, /preference-input-invalid/);
     assert.doesNotMatch(html, /color:var\(--cartouche-theme-danger\)/);
   });
 
-  it('opts the ColorInput error icon into the Invalid Focus Indicator', () => {
+  it("opts the ColorInput error icon into the Invalid Focus Indicator", () => {
     const html = renderToStaticMarkup(
-      React.createElement(ColorInput, { value: 'not-a-colour', ariaLabel: 'Line Colour', onChange: () => {} })
+      React.createElement(ColorInput, {
+        value: "not-a-colour",
+        ariaLabel: "Line Colour",
+        onChange: () => {},
+      })
     );
-    assert.match(html, /class="preference-input-error-icon cartouche-focus-invalid"/);
+    assert.match(
+      html,
+      /class="preference-input-error-icon cartouche-focus-invalid"/
+    );
   });
 
-  it('flags an invalid Layer ID through aria-invalid rather than an inline danger border', () => {
-    const idInput = openingTags(source(LAYER_PROPERTIES_DIALOG)).find((tag) => /id=['"]layer-prop-id['"]/.test(tag));
-    assert.ok(idInput, 'Layer ID input exists');
+  it("flags an invalid Layer ID through aria-invalid rather than an inline danger border", () => {
+    const idInput = openingTags(source(LAYER_PROPERTIES_DIALOG)).find((tag) =>
+      /id=['"]layer-prop-id['"]/.test(tag)
+    );
+    assert.ok(idInput, "Layer ID input exists");
     assert.match(idInput, /aria-invalid=\{/);
   });
 });
 
-describe('TimestampSpinner segment classes (Ticket #318)', () => {
-  it('renders each segment input with the segment class and the year segment with its wide modifier', () => {
+describe("TimestampSpinner segment classes (Ticket #318)", () => {
+  it("renders each segment input with the segment class and the year segment with its wide modifier", () => {
     const html = renderToStaticMarkup(
-      React.createElement(TimestampSpinner, { value: Date.UTC(2024, 0, 2, 3, 4, 5), onChange: () => {} })
+      React.createElement(TimestampSpinner, {
+        value: Date.UTC(2024, 0, 2, 3, 4, 5),
+        onChange: () => {},
+      })
     );
-    const segments = [...html.matchAll(/<input[^>]*data-segment="(\w+)"[^>]*>/g)];
+    const segments = [
+      ...html.matchAll(/<input[^>]*data-segment="(\w+)"[^>]*>/g),
+    ];
     assert.equal(segments.length, 6);
     for (const [tag, seg] of segments) {
-      assert.match(tag, /class="timestamp-spinner-segment[ "]/, `${seg} segment class`);
-      assert.equal(/timestamp-spinner-segment-year/.test(tag), seg === 'year', `${seg} year modifier`);
+      assert.match(
+        tag,
+        /class="timestamp-spinner-segment[ "]/,
+        `${seg} segment class`
+      );
+      assert.equal(
+        /timestamp-spinner-segment-year/.test(tag),
+        seg === "year",
+        `${seg} year modifier`
+      );
     }
   });
 });

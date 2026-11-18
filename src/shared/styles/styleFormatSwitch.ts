@@ -10,13 +10,13 @@
  * @see {@link switchLayerPropertiesStyleFormat}
  */
 
-import type { ProjectStyleFormat, SldStyleVersion } from '../types';
-import { convertStyleFormat, validateStyleContent } from './flatStyleConverter';
+import type { ProjectStyleFormat, SldStyleVersion } from "../types";
+import { convertStyleFormat, validateStyleContent } from "./flatStyleConverter";
 import {
   generateDefaultVectorStyleJson,
   createDefaultCartoucheLayerStyleJson,
-} from './defaultLayerStyles';
-import { logging } from '../logging';
+} from "./defaultLayerStyles";
+import { logging } from "../logging";
 
 /**
  * @typedef {'cartouche' | 'openlayers' | 'sld-1.0.0' | 'sld-1.1.0'} StyleFormatOptionKey
@@ -26,7 +26,8 @@ import { logging } from '../logging';
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export type StyleFormatOptionKey = 'cartouche' | 'openlayers' | 'sld-1.0.0' | 'sld-1.1.0';
+export type StyleFormatOptionKey =
+  "cartouche" | "openlayers" | "sld-1.0.0" | "sld-1.1.0";
 
 /**
  * @typedef {Object} StyleEditorValue
@@ -64,9 +65,9 @@ export function styleFormatOptionKey(
   format: ProjectStyleFormat,
   version?: SldStyleVersion
 ): StyleFormatOptionKey {
-  if (format === 'cartouche') return 'cartouche';
-  if (format === 'sld') return version === '1.1.0' ? 'sld-1.1.0' : 'sld-1.0.0';
-  return 'openlayers';
+  if (format === "cartouche") return "cartouche";
+  if (format === "sld") return version === "1.1.0" ? "sld-1.1.0" : "sld-1.0.0";
+  return "openlayers";
 }
 
 /**
@@ -87,14 +88,15 @@ export async function computeStyleFormatSwitch(
   geometryKind?: string
 ): Promise<Partial<StyleEditorValue> | null> {
   const currentKey = styleFormatOptionKey(value.styleFormat, value.sldVersion);
-  const targetKey = targetOption === 'simple' ? 'cartouche' : targetOption;
+  const targetKey = targetOption === "simple" ? "cartouche" : targetOption;
   if (targetKey === currentKey) return null;
 
   const targetFormat: ProjectStyleFormat =
-    targetKey === 'cartouche' ? 'cartouche'
-    : targetKey.startsWith('sld') ? 'sld'
-    : 'openlayers';
-  const targetVersion: SldStyleVersion = targetKey === 'sld-1.1.0' ? '1.1.0' : '1.0.0';
+    targetKey === "cartouche" ? "cartouche"
+    : targetKey.startsWith("sld") ? "sld"
+    : "openlayers";
+  const targetVersion: SldStyleVersion =
+    targetKey === "sld-1.1.0" ? "1.1.0" : "1.0.0";
 
   const updatedCache: Record<string, string> = {
     ...value.formatCache,
@@ -113,43 +115,52 @@ export async function computeStyleFormatSwitch(
           geometryKind,
         });
       } catch (err) {
-        logging.warn('Style conversion failed; falling back to default style template', err, {
-          fromFormat: value.styleFormat,
-          toFormat: targetFormat,
-          scope: 'styleFormatSwitch',
-        });
+        logging.warn(
+          "Style conversion failed; falling back to default style template",
+          err,
+          {
+            fromFormat: value.styleFormat,
+            toFormat: targetFormat,
+            scope: "styleFormatSwitch",
+          }
+        );
       }
     }
 
     if (!newContent) {
-      if (targetFormat === 'cartouche') {
+      if (targetFormat === "cartouche") {
         newContent = createDefaultCartoucheLayerStyleJson(geometryKind);
-      } else if (targetFormat === 'openlayers') {
+      } else if (targetFormat === "openlayers") {
         newContent = generateDefaultVectorStyleJson();
-      } else if (targetFormat === 'sld') {
+      } else if (targetFormat === "sld") {
         const def = generateDefaultVectorStyleJson();
         try {
           newContent = await convertStyleFormat(def, {
-            fromFormat: 'openlayers',
-            toFormat: 'sld',
+            fromFormat: "openlayers",
+            toFormat: "sld",
             toVersion: targetVersion,
             geometryKind,
           });
         } catch {
-          newContent = '';
+          newContent = "";
         }
       }
     }
-    updatedCache[targetKey] = newContent || '';
+    updatedCache[targetKey] = newContent || "";
   }
 
-  const validation = await validateStyleContent(newContent || '', targetFormat, targetVersion);
+  const validation = await validateStyleContent(
+    newContent || "",
+    targetFormat,
+    targetVersion
+  );
 
   return {
     styleFormat: targetFormat,
     sldVersion: targetVersion,
-    styleContent: newContent || '',
-    styleValidationError: validation.isValid ? null : validation.error || 'Validation error',
+    styleContent: newContent || "",
+    styleValidationError:
+      validation.isValid ? null : validation.error || "Validation error",
     formatCache: updatedCache,
   };
 }
@@ -169,17 +180,17 @@ export async function computeDefaultStyleReset(
   value: StyleEditorValue,
   geometryKind?: string
 ): Promise<Partial<StyleEditorValue>> {
-  let contentToSet = '';
-  if (value.styleFormat === 'cartouche') {
+  let contentToSet = "";
+  if (value.styleFormat === "cartouche") {
     contentToSet = createDefaultCartoucheLayerStyleJson(geometryKind);
-  } else if (value.styleFormat === 'openlayers') {
+  } else if (value.styleFormat === "openlayers") {
     contentToSet = generateDefaultVectorStyleJson();
   } else {
     const defaultJson = generateDefaultVectorStyleJson();
     try {
       contentToSet = await convertStyleFormat(defaultJson, {
-        fromFormat: 'openlayers',
-        toFormat: 'sld',
+        fromFormat: "openlayers",
+        toFormat: "sld",
         toVersion: value.sldVersion,
       });
     } catch (err: any) {
@@ -193,9 +204,6 @@ export async function computeDefaultStyleReset(
   return {
     styleContent: contentToSet,
     styleValidationError: null,
-    formatCache: {
-      ...value.formatCache,
-      [currentKey]: contentToSet,
-    },
+    formatCache: { ...value.formatCache, [currentKey]: contentToSet },
   };
 }

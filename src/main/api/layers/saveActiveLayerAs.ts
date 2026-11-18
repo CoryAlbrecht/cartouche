@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @description Prompts for a target location and exports active layer to a new datasource.
@@ -19,6 +19,7 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function saveActiveLayerAs(): void {
-  logging.debug('Save active layer as action executed', { scope: 'saveActiveLayerAs' });
+  logging.debug("Save active layer as action executed", {
+    scope: "saveActiveLayerAs",
+  });
 }
-

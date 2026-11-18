@@ -8,8 +8,8 @@
  * @since 0.1.0-dev
  */
 
-import { randomUUID } from 'node:crypto';
-import type { LayerGroup } from './LayerGroup';
+import { randomUUID } from "node:crypto";
+import type { LayerGroup } from "./LayerGroup";
 
 /**
  * @class LayerTreeNode

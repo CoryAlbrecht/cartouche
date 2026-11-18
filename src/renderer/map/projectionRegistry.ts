@@ -78,7 +78,11 @@ let noCrsRegistered = false;
 export function ensureNoCrsProjection(): OlCrsDefinition {
   const existing = getProjection(NO_CRS_CODE);
   if (existing && noCrsRegistered) return existing as OlCrsDefinition;
-  const noCrsDefinition = new OlCrsDefinition({ code: NO_CRS_CODE, units: "m", global: false });
+  const noCrsDefinition = new OlCrsDefinition({
+    code: NO_CRS_CODE,
+    units: "m",
+    global: false,
+  });
   addProjection(noCrsDefinition);
   noCrsRegistered = true;
   return noCrsDefinition;
@@ -94,11 +98,17 @@ export function ensureNoCrsProjection(): OlCrsDefinition {
  * @param {ProjectCrs | null | undefined} projectCrs - Project CRS.
  * @returns {DisplayCrs} Display CRS.
  */
-export function resolveDisplayCrs(projectCrs: ProjectCrs | null | undefined): DisplayCrs {
+export function resolveDisplayCrs(
+  projectCrs: ProjectCrs | null | undefined
+): DisplayCrs {
   if (projectCrs?.none) return { code: NO_CRS_CODE, none: true };
   const authId = projectCrs?.authId?.trim();
   if (authId) {
-    return { code: authId.toUpperCase(), none: false, ...(projectCrs?.proj4 ? { proj4: projectCrs.proj4 } : {}) };
+    return {
+      code: authId.toUpperCase(),
+      none: false,
+      ...(projectCrs?.proj4 ? { proj4: projectCrs.proj4 } : {}),
+    };
   }
   return { code: DEFAULT_DISPLAY_CRS, none: false };
 }
@@ -113,7 +123,9 @@ export function resolveDisplayCrs(projectCrs: ProjectCrs | null | undefined): Di
  * @param {ProjectCrs | null | undefined} layerCrs - Layer CRS.
  * @returns {string} CRS code.
  */
-export function resolveLayerDataCrs(layerCrs: ProjectCrs | null | undefined): string {
+export function resolveLayerDataCrs(
+  layerCrs: ProjectCrs | null | undefined
+): string {
   const authId = layerCrs?.authId?.trim();
   return authId ? authId.toUpperCase() : UNKNOWN_LAYER_CRS;
 }
@@ -147,13 +159,19 @@ export function isProjectionRegistered(code: string): boolean {
  * @param {string} definition - proj4 definition.
  * @returns {boolean} True when the CRS is now registered.
  */
-export function registerProjectionDefinition(code: string, definition: string): boolean {
+export function registerProjectionDefinition(
+  code: string,
+  definition: string
+): boolean {
   try {
     proj4.defs(code, definition);
     register(proj4);
     return Boolean(getProjection(code));
   } catch (err) {
-    logging.warn("Failed to register CRS definition", err, { scope: "projectionRegistry", code });
+    logging.warn("Failed to register CRS definition", err, {
+      scope: "projectionRegistry",
+      code,
+    });
     return false;
   }
 }
@@ -169,16 +187,24 @@ export function registerProjectionDefinition(code: string, definition: string): 
  * @param {string} [proj4Definition] - Known proj4 definition.
  * @returns {Promise<boolean>} True when the CRS is usable.
  */
-export async function ensureProjectionRegistered(code: string, proj4Definition?: string): Promise<boolean> {
+export async function ensureProjectionRegistered(
+  code: string,
+  proj4Definition?: string
+): Promise<boolean> {
   if (isProjectionRegistered(code)) return true;
-  if (proj4Definition && registerProjectionDefinition(code, proj4Definition)) return true;
-  const api = typeof window !== "undefined" ? (window as any).electronAPI : undefined;
+  if (proj4Definition && registerProjectionDefinition(code, proj4Definition))
+    return true;
+  const api =
+    typeof window !== "undefined" ? (window as any).electronAPI : undefined;
   if (typeof api?.getCrsDefinition !== "function") return false;
   try {
     const def = await api.getCrsDefinition(code);
     if (def?.proj4) return registerProjectionDefinition(code, def.proj4);
   } catch (err) {
-    logging.warn("Failed to fetch CRS definition", err, { scope: "projectionRegistry", code });
+    logging.warn("Failed to fetch CRS definition", err, {
+      scope: "projectionRegistry",
+      code,
+    });
   }
   return false;
 }

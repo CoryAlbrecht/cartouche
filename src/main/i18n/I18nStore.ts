@@ -9,14 +9,14 @@
  * @see {@link decodeXmlEntities}
  */
 
-import { app, BrowserWindow } from 'electron';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { XMLParser } from 'fast-xml-parser';
-import type { I18nDictionary, I18nState } from '@shared/types';
-import { logging } from '../../shared/logging';
-import { decodeXmlEntities } from './xmlEntityDecoder';
+import { app, BrowserWindow } from "electron";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { XMLParser } from "fast-xml-parser";
+import type { I18nDictionary, I18nState } from "@shared/types";
+import { logging } from "../../shared/logging";
+import { decodeXmlEntities } from "./xmlEntityDecoder";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +30,7 @@ const __dirname = path.dirname(__filename);
  * @since 0.1.0-dev
  */
 export class I18nStore {
-  private activeLocale: string = 'en';
+  private activeLocale: string = "en";
   private dictionary: I18nDictionary = {};
 
   /**
@@ -42,20 +42,24 @@ export class I18nStore {
    * @returns {string} Absolute path to the i18n directory.
    */
   private getI18nDir(): string {
-    const electronApp = typeof app !== 'undefined' ? app : undefined;
-    const appPath = electronApp?.getAppPath ? electronApp.getAppPath() : process.cwd();
-    const resourcesPath = typeof process !== 'undefined' && process.resourcesPath ? process.resourcesPath : '';
+    const electronApp = typeof app !== "undefined" ? app : undefined;
+    const appPath =
+      electronApp?.getAppPath ? electronApp.getAppPath() : process.cwd();
+    const resourcesPath =
+      typeof process !== "undefined" && process.resourcesPath ?
+        process.resourcesPath
+      : "";
 
     const candidates = [
-      path.join(__dirname, '../../../assets/xml/i18n'), // dev
-      path.join(__dirname, '../../assets/xml/i18n'), // dev alternative
-      path.join(appPath, 'assets/xml/i18n'), // prod
-      path.join(resourcesPath, 'assets/xml/i18n') // prod unpackaged
+      path.join(__dirname, "../../../assets/xml/i18n"), // dev
+      path.join(__dirname, "../../assets/xml/i18n"), // dev alternative
+      path.join(appPath, "assets/xml/i18n"), // prod
+      path.join(resourcesPath, "assets/xml/i18n"), // prod unpackaged
     ];
     for (const p of candidates) {
       if (fs.existsSync(p)) return p;
     }
-    return path.join(appPath, 'assets/xml/i18n'); // fallback
+    return path.join(appPath, "assets/xml/i18n"); // fallback
   }
 
   /**
@@ -71,35 +75,39 @@ export class I18nStore {
    */
   public parseLocalizationXml(
     xmlContent: string,
-    fallbackLocale: string = 'en'
+    fallbackLocale: string = "en"
   ): { locale: string; dictionary: I18nDictionary } {
     const parser = new XMLParser({
       ignoreAttributes: false,
-      attributeNamePrefix: '@_',
-      textNodeName: '#text',
+      attributeNamePrefix: "@_",
+      textNodeName: "#text",
       processEntities: false,
-      stopNodes: ['*.string', 'ci18n:localization.string']
+      stopNodes: ["*.string", "ci18n:localization.string"],
     });
 
     const parsed = parser.parse(xmlContent);
-    const rootKey = parsed['ci18n:localization'] ? 'ci18n:localization' : 'localization';
+    const rootKey =
+      parsed["ci18n:localization"] ? "ci18n:localization" : "localization";
     const root = parsed[rootKey];
     if (!root) {
-      throw new Error('Invalid i18n XML root element.');
+      throw new Error("Invalid i18n XML root element.");
     }
 
-    const locale = root['@_locale'] || fallbackLocale;
-    const strings = Array.isArray(root.string) ? root.string : root.string ? [root.string] : [];
+    const locale = root["@_locale"] || fallbackLocale;
+    const strings =
+      Array.isArray(root.string) ? root.string
+      : root.string ? [root.string]
+      : [];
     const dictionary: I18nDictionary = {};
 
     for (const strObj of strings) {
-      if (!strObj || !strObj['@_name']) continue;
-      const name = strObj['@_name'];
-      let val = '';
-      if (typeof strObj === 'string') {
+      if (!strObj || !strObj["@_name"]) continue;
+      const name = strObj["@_name"];
+      let val = "";
+      if (typeof strObj === "string") {
         val = strObj;
-      } else if (strObj['#text'] !== undefined) {
-        val = strObj['#text'];
+      } else if (strObj["#text"] !== undefined) {
+        val = strObj["#text"];
       }
       dictionary[name] = decodeXmlEntities(val);
     }
@@ -116,20 +124,20 @@ export class I18nStore {
    * @returns {void}
    */
   public loadSystemLocale(): void {
-    const electronApp = typeof app !== 'undefined' ? app : undefined;
-    const sysLocale = electronApp?.getLocale ? electronApp.getLocale() : 'en'; // e.g. "en-US", "fr-CA"
-    const langOnly = sysLocale.split('-')[0]; // "en", "fr"
+    const electronApp = typeof app !== "undefined" ? app : undefined;
+    const sysLocale = electronApp?.getLocale ? electronApp.getLocale() : "en"; // e.g. "en-US", "fr-CA"
+    const langOnly = sysLocale.split("-")[0]; // "en", "fr"
 
     // We expect the XML file to define string elements. Fast XML parser will return an array or object.
     const i18nDir = this.getI18nDir();
 
     // Try to find the best match
     const candidates = [
-      `${sysLocale.replace('-', '_')}.UTF8.xml`,
-      `${sysLocale.replace('-', '_')}.xml`,
+      `${sysLocale.replace("-", "_")}.UTF8.xml`,
+      `${sysLocale.replace("-", "_")}.xml`,
       `${sysLocale}.xml`,
       `${langOnly}.xml`,
-      'en.xml'
+      "en.xml",
     ];
 
     let matchedFile: string | null = null;
@@ -142,30 +150,40 @@ export class I18nStore {
     }
 
     if (!matchedFile) {
-      logging.warn('No localization file found, using empty dictionary', { scope: 'I18nStore' });
-      this.activeLocale = 'en';
+      logging.warn("No localization file found, using empty dictionary", {
+        scope: "I18nStore",
+      });
+      this.activeLocale = "en";
       this.dictionary = {};
       return;
     }
 
     try {
-      const xmlContent = fs.readFileSync(matchedFile, 'utf-8');
-      const { locale, dictionary } = this.parseLocalizationXml(xmlContent, langOnly);
+      const xmlContent = fs.readFileSync(matchedFile, "utf-8");
+      const { locale, dictionary } = this.parseLocalizationXml(
+        xmlContent,
+        langOnly
+      );
 
       this.activeLocale = locale;
       this.dictionary = dictionary;
 
-      logging.info('Loaded locale dictionary', {
+      logging.info("Loaded locale dictionary", {
         locale: this.activeLocale,
         file: path.basename(matchedFile),
         keyCount: Object.keys(dictionary).length,
-        scope: 'I18nStore'
+        scope: "I18nStore",
       });
       this.broadcastState();
     } catch (err) {
-      logging.warn('Failed to load locale file', err, { file: matchedFile, scope: 'I18nStore' });
-      if (matchedFile !== path.join(i18nDir, 'en.xml')) {
-        logging.warn('Falling back to default English locale (en.xml)', { scope: 'I18nStore' });
+      logging.warn("Failed to load locale file", err, {
+        file: matchedFile,
+        scope: "I18nStore",
+      });
+      if (matchedFile !== path.join(i18nDir, "en.xml")) {
+        logging.warn("Falling back to default English locale (en.xml)", {
+          scope: "I18nStore",
+        });
       }
     }
   }
@@ -179,10 +197,7 @@ export class I18nStore {
    * @returns {I18nState}
    */
   public getState(): I18nState {
-    return {
-      locale: this.activeLocale,
-      dictionary: this.dictionary
-    };
+    return { locale: this.activeLocale, dictionary: this.dictionary };
   }
 
   /**
@@ -194,10 +209,14 @@ export class I18nStore {
    * @returns {void}
    */
   private broadcastState(): void {
-    const electronBrowserWindow = typeof BrowserWindow !== 'undefined' ? BrowserWindow : undefined;
-    const windows = electronBrowserWindow?.getAllWindows ? electronBrowserWindow.getAllWindows() : [];
+    const electronBrowserWindow =
+      typeof BrowserWindow !== "undefined" ? BrowserWindow : undefined;
+    const windows =
+      electronBrowserWindow?.getAllWindows ?
+        electronBrowserWindow.getAllWindows()
+      : [];
     for (const win of windows) {
-      win.webContents?.send('i18n:state-changed', this.getState());
+      win.webContents?.send("i18n:state-changed", this.getState());
     }
   }
 }

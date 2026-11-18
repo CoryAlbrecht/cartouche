@@ -9,10 +9,10 @@
  * @see {@link PopupMenuItem}
  */
 
-import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
-import Icon from './Icon';
-import type { PopupMenuItem } from '@renderer/state/projectSignals';
+import React, { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+import Icon from "./Icon";
+import type { PopupMenuItem } from "@renderer/state/projectSignals";
 
 /**
  * @typedef {Object} PopupMenuProps
@@ -45,10 +45,13 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
   position,
   items,
   onClose,
-  className = ''
+  className = "",
 }) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [adjustedPos, setAdjustedPos] = useState<{ x: number; y: number } | null>(position);
+  const [adjustedPos, setAdjustedPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(position);
 
   // Measure and clamp within viewport boundaries
   useLayoutEffect(() => {
@@ -101,29 +104,35 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
           evt.stopPropagation();
         };
 
-        window.addEventListener('click', swallow, { capture: true, once: true });
-        window.addEventListener('mouseup', swallow, { capture: true, once: true });
+        window.addEventListener("click", swallow, {
+          capture: true,
+          once: true,
+        });
+        window.addEventListener("mouseup", swallow, {
+          capture: true,
+          once: true,
+        });
         setTimeout(() => {
-          window.removeEventListener('click', swallow, { capture: true });
-          window.removeEventListener('mouseup', swallow, { capture: true });
+          window.removeEventListener("click", swallow, { capture: true });
+          window.removeEventListener("mouseup", swallow, { capture: true });
         }, 300);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         onClose();
       }
     };
 
-    window.addEventListener('mousedown', handleOutsidePointer, true);
-    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener("mousedown", handleOutsidePointer, true);
+    window.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      window.removeEventListener('mousedown', handleOutsidePointer, true);
-      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener("mousedown", handleOutsidePointer, true);
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [isOpen, onClose]);
 
@@ -139,16 +148,16 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
       <div
         className='popup-backdrop'
         style={{
-          position: 'fixed',
+          position: "fixed",
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          width: '100vw',
-          height: '100vh',
+          width: "100vw",
+          height: "100vh",
           zIndex: 9999,
-          backgroundColor: 'transparent',
-          cursor: 'default',
+          backgroundColor: "transparent",
+          cursor: "default",
         }}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -179,57 +188,55 @@ export const PopupMenu: React.FC<PopupMenuProps> = ({
         ref={menuRef}
         className={`menu-dropdown popup-menu ${className}`}
         style={{
-          position: 'fixed',
+          position: "fixed",
           left: `${currentPos.x}px`,
           top: `${currentPos.y}px`,
           zIndex: 10000,
-          visibility: adjustedPos ? 'visible' : 'hidden',
+          visibility: adjustedPos ? "visible" : "hidden",
         }}
         onClick={(e) => e.stopPropagation()}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-      {items.map(item => {
-        if (item.separator) {
-          return <div key={item.id} className='menu-dropdown-separator' />;
-        }
+        onContextMenu={(e) => e.preventDefault()}>
+        {items.map((item) => {
+          if (item.separator) {
+            return <div key={item.id} className='menu-dropdown-separator' />;
+          }
 
-        const isDisabled = Boolean(item.disabled);
+          const isDisabled = Boolean(item.disabled);
 
-        return (
-          <div
-            key={item.id}
-            className={`menu-dropdown-item ${isDisabled ? 'disabled' : ''}`}
-            onClick={e => {
-              e.stopPropagation();
-              if (isDisabled) return;
-              if (item.onClick) {
-                item.onClick();
-              }
-              onClose();
-            }}
-          >
-            {item.checked !== undefined ? (
-              <span className='menu-item-check-slot'>
-                {item.checked ? '✓' : ''}
-              </span>
-            ) : item.icon ? (
-              <span className='menu-item-icon-slot'>
-                <Icon path={item.icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
-              </span>
-            ) : (
-              <span className='menu-item-icon-slot' />
-            )}
+          return (
+            <div
+              key={item.id}
+              className={`menu-dropdown-item ${isDisabled ? "disabled" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isDisabled) return;
+                if (item.onClick) {
+                  item.onClick();
+                }
+                onClose();
+              }}>
+              {item.checked !== undefined ?
+                <span className='menu-item-check-slot'>
+                  {item.checked ? "✓" : ""}
+                </span>
+              : item.icon ?
+                <span className='menu-item-icon-slot'>
+                  <Icon
+                    path={item.icon}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  />
+                </span>
+              : <span className='menu-item-icon-slot' />}
 
-            <span className='menu-item-label'>{item.label}</span>
-            {item.formattedKey ? (
-              <span className='menu-key-slot'>{item.formattedKey}</span>
-            ) : null}
-          </div>
-        );
-      })}
+              <span className='menu-item-label'>{item.label}</span>
+              {item.formattedKey ?
+                <span className='menu-key-slot'>{item.formattedKey}</span>
+              : null}
+            </div>
+          );
+        })}
       </div>
     </>,
     document.body
   );
 };
-

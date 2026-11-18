@@ -859,19 +859,35 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       // Feature inside window [1000, 2000]
       const matchingFeature = new Feature({
-        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 0],
+          ],
+        ]),
         start_date: 1000,
         end_date: 2000,
       });
       const matchingStyles = styleFunction(matchingFeature, 1);
       assert.ok(
-        matchingStyles !== null && Array.isArray(matchingStyles) && matchingStyles.length > 0,
+        matchingStyles !== null
+          && Array.isArray(matchingStyles)
+          && matchingStyles.length > 0,
         "Feature inside window must return visible styles"
       );
 
       // Feature outside window [2001, 3000]
       const nonMatchingFeature = new Feature({
-        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 0],
+          ],
+        ]),
         start_date: 2001,
         end_date: 3000,
       });
@@ -884,11 +900,20 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       // Undated Feature (no temporal fields) stays visible while filtering (Ticket #263)
       const undatedFeature = new Feature({
-        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 0],
+          ],
+        ]),
       });
       const undatedStyles = styleFunction(undatedFeature, 1);
       assert.ok(
-        undatedStyles !== null && Array.isArray(undatedStyles) && undatedStyles.length > 0,
+        undatedStyles !== null
+          && Array.isArray(undatedStyles)
+          && undatedStyles.length > 0,
         "Undated Feature must return visible styles"
       );
 
@@ -905,7 +930,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       const styleFunction = result.compiledStyle;
       const nonMatchingFeature = new Feature({
-        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 0],
+          ],
+        ]),
         start_date: 99999999,
         end_date: 99999999,
       });
@@ -927,7 +959,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       const styleFunction = result.compiledStyle;
       const nonMatchingFeature = new Feature({
-        geometry: new Polygon([[[0, 0], [10, 0], [10, 10], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 0],
+          ],
+        ]),
         start_date: 99999999,
         end_date: 99999999,
       });
@@ -965,8 +1004,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
         temporal: temporalConfig,
       });
 
-      assert.ok(result.requiredFields.has("valid_start"), "Must include valid_start");
-      assert.ok(result.requiredFields.has("valid_end"), "Must include valid_end");
+      assert.ok(
+        result.requiredFields.has("valid_start"),
+        "Must include valid_start"
+      );
+      assert.ok(
+        result.requiredFields.has("valid_end"),
+        "Must include valid_end"
+      );
     });
 
     it("wraps style with wrapStyleWithTemporalFilter and filters features based on active frame bounds", () => {
@@ -983,16 +1028,32 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       // 1. Feature [1200, 1500] inside frame window [1000, 2000] -> visible
       const featureIn = new Feature({
-        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 0],
+          ],
+        ]),
         valid_start: 1200,
         valid_end: 1500,
       });
       const stylesIn = styleFn(featureIn, 1);
-      assert.ok(stylesIn !== null && Array.isArray(stylesIn) && stylesIn.length > 0);
+      assert.ok(
+        stylesIn !== null && Array.isArray(stylesIn) && stylesIn.length > 0
+      );
 
       // 2. Feature [500, 900] ending before frame window [1000, 2000] -> hidden
       const featureBefore = new Feature({
-        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 0],
+          ],
+        ]),
         valid_start: 500,
         valid_end: 900,
       });
@@ -1001,7 +1062,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       // 3. Feature [2100, 3000] starting after frame window [1000, 2000] -> hidden
       const featureAfter = new Feature({
-        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 0],
+          ],
+        ]),
         valid_start: 2100,
         valid_end: 3000,
       });
@@ -1010,12 +1078,23 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
 
       // 4. Feature [500, 2500] spanning across the frame window -> visible
       const featureSpanning = new Feature({
-        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 0],
+          ],
+        ]),
         valid_start: 500,
         valid_end: 2500,
       });
       const stylesSpanning = styleFn(featureSpanning, 1);
-      assert.ok(stylesSpanning !== null && Array.isArray(stylesSpanning) && stylesSpanning.length > 0);
+      assert.ok(
+        stylesSpanning !== null
+          && Array.isArray(stylesSpanning)
+          && stylesSpanning.length > 0
+      );
 
       // Clean up global state
       resetTimeFilterState();
@@ -1030,7 +1109,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
         temporal: temporalConfig,
       });
       const featureOutside = new Feature({
-        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 0],
+          ],
+        ]),
         valid_start: 5000,
         valid_end: 6000,
       });
@@ -1041,7 +1127,11 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
         temporal: { ...temporalConfig, enabled: false },
       });
       const stylesDisabled = resultDisabled.compiledStyle(featureOutside, 1);
-      assert.ok(stylesDisabled !== null && Array.isArray(stylesDisabled) && stylesDisabled.length > 0);
+      assert.ok(
+        stylesDisabled !== null
+          && Array.isArray(stylesDisabled)
+          && stylesDisabled.length > 0
+      );
 
       resetTimeFilterState();
     });
@@ -1057,7 +1147,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
       endOp: "<=",
     };
     const ruleArrayStyle = [
-      { filter: true, style: { "fill-color": "#ff0000", "stroke-color": "#000000", "stroke-width": 1 } },
+      {
+        filter: true,
+        style: {
+          "fill-color": "#ff0000",
+          "stroke-color": "#000000",
+          "stroke-width": 1,
+        },
+      },
     ];
 
     /**
@@ -1069,7 +1166,14 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
      */
     const polygonFeature = (start: number, end: number): Feature =>
       new Feature({
-        geometry: new Polygon([[[0, 0], [1, 0], [1, 1], [0, 0]]]),
+        geometry: new Polygon([
+          [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 0],
+          ],
+        ]),
         start_date: start,
         end_date: end,
       });
@@ -1080,36 +1184,70 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
      * @param {unknown} result - StyleFunction return value.
      * @param {string} message - Assertion context.
      */
-    function assertRendersStyles(result: unknown, message: string): asserts result is Style[] {
-      assert.ok(Array.isArray(result) && result.length > 0, `${message}: expected a non-empty Style array, got ${JSON.stringify(result)}`);
+    function assertRendersStyles(
+      result: unknown,
+      message: string
+    ): asserts result is Style[] {
+      assert.ok(
+        Array.isArray(result) && result.length > 0,
+        `${message}: expected a non-empty Style array, got ${JSON.stringify(result)}`
+      );
       for (const style of result) {
-        assert.ok(style instanceof Style, `${message}: every entry must be an ol/style/Style instance`);
+        assert.ok(
+          style instanceof Style,
+          `${message}: every entry must be an ol/style/Style instance`
+        );
       }
     }
 
     it("returns Style instances for a Flat Style rule array while the time filter is inactive", () => {
       resetTimeFilterState();
-      const result = compileFlatLayerStyleSync(ruleArrayStyle, { temporal: temporalConfig });
+      const result = compileFlatLayerStyleSync(ruleArrayStyle, {
+        temporal: temporalConfig,
+      });
       assert.equal(typeof result.compiledStyle, "function");
-      assertRendersStyles(result.compiledStyle(polygonFeature(1000, 2000), 1), "rule array, filter inactive");
+      assertRendersStyles(
+        result.compiledStyle(polygonFeature(1000, 2000), 1),
+        "rule array, filter inactive"
+      );
     });
 
     it("returns Style instances for a flat style dictionary while the time filter is inactive", () => {
       resetTimeFilterState();
       const result = compileFlatLayerStyleSync(
-        { "fill-color": "#00ff00", "stroke-color": "#000000", "stroke-width": 2 },
+        {
+          "fill-color": "#00ff00",
+          "stroke-color": "#000000",
+          "stroke-width": 2,
+        },
         { temporal: temporalConfig }
       );
-      assertRendersStyles(result.compiledStyle(polygonFeature(1000, 2000), 1), "flat dictionary, filter inactive");
+      assertRendersStyles(
+        result.compiledStyle(polygonFeature(1000, 2000), 1),
+        "flat dictionary, filter inactive"
+      );
     });
 
     it("styles features with the layer's own Flat Style colours while the time filter is inactive", () => {
       resetTimeFilterState();
-      const result = compileFlatLayerStyleSync(ruleArrayStyle, { temporal: temporalConfig });
-      const styles: unknown = result.compiledStyle(polygonFeature(1000, 2000), 1);
+      const result = compileFlatLayerStyleSync(ruleArrayStyle, {
+        temporal: temporalConfig,
+      });
+      const styles: unknown = result.compiledStyle(
+        polygonFeature(1000, 2000),
+        1
+      );
       assertRendersStyles(styles, "rule array, filter inactive");
-      assert.deepEqual(styles[0].getFill()?.getColor(), [255, 0, 0, 1], "fill-color #ff0000");
-      assert.deepEqual(styles[0].getStroke()?.getColor(), [0, 0, 0, 1], "stroke-color #000000");
+      assert.deepEqual(
+        styles[0].getFill()?.getColor(),
+        [255, 0, 0, 1],
+        "fill-color #ff0000"
+      );
+      assert.deepEqual(
+        styles[0].getStroke()?.getColor(),
+        [0, 0, 0, 1],
+        "stroke-color #000000"
+      );
       assert.equal(styles[0].getStroke()?.getWidth(), 1);
     });
 
@@ -1121,10 +1259,23 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
           ["rule array", ruleArrayStyle],
           ["flat dictionary", { "fill-color": "#00ff00" }],
         ] as const) {
-          const result = compileFlatLayerStyleSync(flatStyle, { temporal: temporalConfig });
-          assertRendersStyles(result.compiledStyle(polygonFeature(1200, 1500), 1), `${label}, inside frame`);
-          assert.equal(result.compiledStyle(polygonFeature(500, 900), 1), null, `${label}: ended before frame must be hidden`);
-          assert.equal(result.compiledStyle(polygonFeature(2100, 3000), 1), null, `${label}: starts after frame must be hidden`);
+          const result = compileFlatLayerStyleSync(flatStyle, {
+            temporal: temporalConfig,
+          });
+          assertRendersStyles(
+            result.compiledStyle(polygonFeature(1200, 1500), 1),
+            `${label}, inside frame`
+          );
+          assert.equal(
+            result.compiledStyle(polygonFeature(500, 900), 1),
+            null,
+            `${label}: ended before frame must be hidden`
+          );
+          assert.equal(
+            result.compiledStyle(polygonFeature(2100, 3000), 1),
+            null,
+            `${label}: starts after frame must be hidden`
+          );
         }
       } finally {
         resetTimeFilterState();
@@ -1132,4 +1283,3 @@ describe("styleCompiler: Cartouche Symbology Compiler & StyleFunction Caching (T
     });
   });
 });
-

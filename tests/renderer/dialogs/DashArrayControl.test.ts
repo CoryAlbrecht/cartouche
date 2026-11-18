@@ -9,52 +9,79 @@
  * @see {@link DashArrayControl}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act, useState } from 'react';
-import { createRendererJiti } from '../rendererJiti';
-import { installMockDom, teardownMockDom, findElementsByClass, findById, textOf, type MockDom, type MockElement } from '../mockDom';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act, useState } from "react";
+import { createRendererJiti } from "../rendererJiti";
+import {
+  installMockDom,
+  teardownMockDom,
+  findElementsByClass,
+  findById,
+  textOf,
+  type MockDom,
+  type MockElement,
+} from "../mockDom";
 
 const jiti = createRendererJiti(import.meta.url);
 
 const { DashArrayControl, dashPairs, flattenDashPairs, checkDashEdit } = jiti(
-  '@renderer/workbench/dialogs/DashArrayControl.tsx'
+  "@renderer/workbench/dialogs/DashArrayControl.tsx"
 );
 
-describe('Dash array pairs and edit validation (Ticket #332)', () => {
-  it('splits a dash array into positioned pairs and joins them back', () => {
+describe("Dash array pairs and edit validation (Ticket #332)", () => {
+  it("splits a dash array into positioned pairs and joins them back", () => {
     assert.deepEqual(dashPairs([5, 2, 1, 3]), [
       { index: 0, line: 5, gap: 2 },
-      { index: 1, line: 1, gap: 3 }
+      { index: 1, line: 1, gap: 3 },
     ]);
-    assert.deepEqual(dashPairs([4]), [{ index: 0, line: 4, gap: 0 }], 'a missing last gap reads as 0');
+    assert.deepEqual(
+      dashPairs([4]),
+      [{ index: 0, line: 4, gap: 0 }],
+      "a missing last gap reads as 0"
+    );
     assert.deepEqual(flattenDashPairs(dashPairs([5, 2, 1, 3])), [5, 2, 1, 3]);
   });
 
-  it('accepts finite numbers of 0 or more, as numbers or text', () => {
+  it("accepts finite numbers of 0 or more, as numbers or text", () => {
     const pairs = dashPairs([5, 2, 1, 3]);
-    assert.deepEqual(checkDashEdit(pairs, 1, 'gap', 0), { dashArray: [5, 2, 1, 0] });
-    assert.deepEqual(checkDashEdit(pairs, 0, 'line', '2,5'), { dashArray: [2.5, 2, 1, 3] });
-    assert.deepEqual(checkDashEdit(pairs, 0, 'line', '0'), { dashArray: [0, 2, 1, 3] }, 'a 0 line draws dots');
+    assert.deepEqual(checkDashEdit(pairs, 1, "gap", 0), {
+      dashArray: [5, 2, 1, 0],
+    });
+    assert.deepEqual(checkDashEdit(pairs, 0, "line", "2,5"), {
+      dashArray: [2.5, 2, 1, 3],
+    });
+    assert.deepEqual(
+      checkDashEdit(pairs, 0, "line", "0"),
+      { dashArray: [0, 2, 1, 3] },
+      "a 0 line draws dots"
+    );
   });
 
-  it('rejects negative, non-numeric, empty and non-finite values', () => {
+  it("rejects negative, non-numeric, empty and non-finite values", () => {
     const pairs = dashPairs([5, 2]);
-    for (const value of [-1, '-0.5', 'abc', '', Infinity, NaN]) {
-      assert.deepEqual(checkDashEdit(pairs, 0, 'line', value), { problem: 'invalid-value' }, String(value));
+    for (const value of [-1, "-0.5", "abc", "", Infinity, NaN]) {
+      assert.deepEqual(
+        checkDashEdit(pairs, 0, "line", value),
+        { problem: "invalid-value" },
+        String(value)
+      );
     }
   });
 
-  it('rejects an edit that would make every value 0', () => {
-    assert.deepEqual(checkDashEdit(dashPairs([0, 2]), 0, 'gap', 0), { problem: 'all-zero' });
+  it("rejects an edit that would make every value 0", () => {
+    assert.deepEqual(checkDashEdit(dashPairs([0, 2]), 0, "gap", 0), {
+      problem: "all-zero",
+    });
   });
 });
 
 /** Dictionary used by the control: each key maps to itself, except the problem tooltips. */
 const t = (key: string): string =>
   ({
-    layer_properties_dash_array_invalid_value: 'Enter a number of 0 or more.',
-    layer_properties_dash_array_all_zero: 'A dash array needs at least one value above 0.'
+    layer_properties_dash_array_invalid_value: "Enter a number of 0 or more.",
+    layer_properties_dash_array_all_zero:
+      "A dash array needs at least one value above 0.",
   })[key] ?? key;
 
 let dom: MockDom | null = null;
@@ -67,17 +94,23 @@ let changes: number[][];
  * @param {Object} props - The initial dash array and read-only flag.
  * @returns {React.ReactElement} The control.
  */
-function Host({ initial, readOnly = false }: { initial: number[]; readOnly?: boolean }): React.ReactElement {
+function Host({
+  initial,
+  readOnly = false,
+}: {
+  initial: number[];
+  readOnly?: boolean;
+}): React.ReactElement {
   const [dashArray, setDashArray] = useState(initial);
   return React.createElement(DashArrayControl, {
     dashArray,
     readOnly,
     t,
-    labelledBy: 'dash-label',
+    labelledBy: "dash-label",
     onChange: (next: number[]) => {
       changes.push(next);
       setDashArray(next);
-    }
+    },
   });
 }
 
@@ -100,7 +133,11 @@ async function render(initial: number[], readOnly = false): Promise<void> {
  * @param {string} type - Event type.
  * @param {Record<string, unknown>} [fields] - Event fields.
  */
-async function fire(el: MockElement, type: string, fields: Record<string, unknown> = {}): Promise<void> {
+async function fire(
+  el: MockElement,
+  type: string,
+  fields: Record<string, unknown> = {}
+): Promise<void> {
   const event: Record<string, unknown> = {
     type,
     bubbles: true,
@@ -110,7 +147,7 @@ async function fire(el: MockElement, type: string, fields: Record<string, unknow
     shiftKey: false,
     metaKey: false,
     altKey: false,
-    ...fields
+    ...fields,
   };
   event.preventDefault = () => {
     event.defaultPrevented = true;
@@ -126,8 +163,8 @@ async function fire(el: MockElement, type: string, fields: Record<string, unknow
  * @returns {string[][]} Line and gap text of each row.
  */
 function cellTexts(): string[][] {
-  return findElementsByClass(dom!.container, 'table-widget-row').map((row) =>
-    findElementsByClass(row, 'table-widget-cell').map((c) => textOf(c))
+  return findElementsByClass(dom!.container, "table-widget-row").map((row) =>
+    findElementsByClass(row, "table-widget-cell").map((c) => textOf(c))
   );
 }
 
@@ -139,11 +176,11 @@ function cellTexts(): string[][] {
  * @returns {MockElement} Data cell.
  */
 function cell(index: number, columnIndex: number): MockElement {
-  const row = findElementsByClass(dom!.container, 'table-widget-row').find(
-    (r) => r.getAttribute('data-row-id') === String(index)
+  const row = findElementsByClass(dom!.container, "table-widget-row").find(
+    (r) => r.getAttribute("data-row-id") === String(index)
   );
   assert.ok(row, `row ${index} rendered`);
-  return findElementsByClass(row, 'table-widget-cell')[columnIndex];
+  return findElementsByClass(row, "table-widget-cell")[columnIndex];
 }
 
 /**
@@ -152,7 +189,9 @@ function cell(index: number, columnIndex: number): MockElement {
  * @returns {number[]} Selected pair positions.
  */
 function selectedRows(): number[] {
-  return findElementsByClass(dom!.container, 'table-widget-row--selected').map((r) => Number(r.getAttribute('data-row-id')));
+  return findElementsByClass(dom!.container, "table-widget-row--selected").map(
+    (r) => Number(r.getAttribute("data-row-id"))
+  );
 }
 
 /**
@@ -173,7 +212,7 @@ function button(name: string): MockElement {
  * @returns {MockElement[]} Editor inputs.
  */
 function editors(): MockElement[] {
-  return findElementsByClass(dom!.container, 'table-widget-editor');
+  return findElementsByClass(dom!.container, "table-widget-editor");
 }
 
 /**
@@ -183,21 +222,27 @@ function editors(): MockElement[] {
  * @param {number} columnIndex - 0 for Line, 1 for Gap.
  * @param {string} text - Text to type.
  */
-async function editCellTo(index: number, columnIndex: number, text: string): Promise<void> {
-  await fire(cell(index, columnIndex), 'click');
-  await fire(cell(index, columnIndex), 'dblclick');
+async function editCellTo(
+  index: number,
+  columnIndex: number,
+  text: string
+): Promise<void> {
+  await fire(cell(index, columnIndex), "click");
+  await fire(cell(index, columnIndex), "dblclick");
   const [input] = editors();
-  assert.ok(input, 'editor open');
-  const propsKey = Object.keys(input).find((k) => k.startsWith('__reactProps'))!;
+  assert.ok(input, "editor open");
+  const propsKey = Object.keys(input).find((k) =>
+    k.startsWith("__reactProps")
+  )!;
   await act(async () => {
     input.value = text;
     (input as any)[propsKey].onChange({ target: input, currentTarget: input });
   });
-  await fire(input, 'focusin');
-  await fire(input, 'keydown', { key: 'Enter' });
+  await fire(input, "focusin");
+  await fire(input, "keydown", { key: "Enter" });
 }
 
-describe('DashArrayControl (Ticket #332)', () => {
+describe("DashArrayControl (Ticket #332)", () => {
   beforeEach(() => {
     dom = installMockDom();
     changes = [];
@@ -208,102 +253,153 @@ describe('DashArrayControl (Ticket #332)', () => {
     dom = null;
   });
 
-  it('shows the pairs in a single-selection table without a Row Number Column, named by the label, first pair selected', async () => {
+  it("shows the pairs in a single-selection table without a Row Number Column, named by the label, first pair selected", async () => {
     await render([5, 2, 1, 3]);
-    assert.deepEqual(cellTexts(), [['5', '2'], ['1', '3']]);
-    assert.equal(findElementsByClass(dom!.container, 'table-widget-row-number').length, 0);
-    assert.equal(findElementsByClass(dom!.container, 'table-widget-resize-handle').length, 0);
-    const table = findElementsByClass(dom!.container, 'table-widget-table')[0];
-    assert.equal(table.getAttribute('id'), 'layer-prop-dash-array-table');
-    assert.equal(table.getAttribute('aria-labelledby'), 'dash-label');
+    assert.deepEqual(cellTexts(), [
+      ["5", "2"],
+      ["1", "3"],
+    ]);
+    assert.equal(
+      findElementsByClass(dom!.container, "table-widget-row-number").length,
+      0
+    );
+    assert.equal(
+      findElementsByClass(dom!.container, "table-widget-resize-handle").length,
+      0
+    );
+    const table = findElementsByClass(dom!.container, "table-widget-table")[0];
+    assert.equal(table.getAttribute("id"), "layer-prop-dash-array-table");
+    assert.equal(table.getAttribute("aria-labelledby"), "dash-label");
     assert.deepEqual(selectedRows(), [0]);
-    await fire(cell(1, 0), 'click', { ctrlKey: true });
-    assert.deepEqual(selectedRows(), [1], 'Ctrl+click still selects one pair');
+    await fire(cell(1, 0), "click", { ctrlKey: true });
+    assert.deepEqual(selectedRows(), [1], "Ctrl+click still selects one pair");
   });
 
-  it('saves a valid edit as a custom dash array', async () => {
+  it("saves a valid edit as a custom dash array", async () => {
     await render([5, 2, 1, 3]);
-    await editCellTo(1, 1, '4.5');
+    await editCellTo(1, 1, "4.5");
     assert.deepEqual(changes, [[5, 2, 1, 4.5]]);
-    assert.deepEqual(cellTexts(), [['5', '2'], ['1', '4.5']]);
+    assert.deepEqual(cellTexts(), [
+      ["5", "2"],
+      ["1", "4.5"],
+    ]);
   });
 
-  it('rejects an invalid value, keeping the old one and marking the cell with a tooltip until the next accepted edit', async () => {
+  it("rejects an invalid value, keeping the old one and marking the cell with a tooltip until the next accepted edit", async () => {
     await render([5, 2, 1, 3]);
-    await editCellTo(0, 0, '-1');
+    await editCellTo(0, 0, "-1");
     assert.deepEqual(changes, []);
-    assert.equal(textOf(cell(0, 0)), '5');
-    assert.ok(cell(0, 0).getAttribute('class')!.split(' ').includes('dash-array-cell--invalid'));
-    const [tip] = findElementsByClass(dom!.container, 'dash-array-cell--invalid');
-    assert.match(JSON.stringify(tip.childNodes.map((n: any) => n.getAttribute?.('title'))), /Enter a number of 0 or more\./);
-    await editCellTo(1, 0, '2');
+    assert.equal(textOf(cell(0, 0)), "5");
+    assert.ok(
+      cell(0, 0)
+        .getAttribute("class")!
+        .split(" ")
+        .includes("dash-array-cell--invalid")
+    );
+    const [tip] = findElementsByClass(
+      dom!.container,
+      "dash-array-cell--invalid"
+    );
+    assert.match(
+      JSON.stringify(tip.childNodes.map((n: any) => n.getAttribute?.("title"))),
+      /Enter a number of 0 or more\./
+    );
+    await editCellTo(1, 0, "2");
     assert.deepEqual(changes, [[5, 2, 2, 3]]);
-    assert.equal(findElementsByClass(dom!.container, 'dash-array-cell--invalid').length, 0);
+    assert.equal(
+      findElementsByClass(dom!.container, "dash-array-cell--invalid").length,
+      0
+    );
   });
 
-  it('rejects an edit that would make every value 0', async () => {
+  it("rejects an edit that would make every value 0", async () => {
     await render([0, 2]);
-    await editCellTo(0, 1, '0');
+    await editCellTo(0, 1, "0");
     assert.deepEqual(changes, []);
-    const [marked] = findElementsByClass(dom!.container, 'dash-array-cell--invalid');
-    assert.ok(marked, 'gap cell marked');
-    assert.match(JSON.stringify(marked.childNodes.map((n: any) => n.getAttribute?.('title'))), /at least one value above 0/);
+    const [marked] = findElementsByClass(
+      dom!.container,
+      "dash-array-cell--invalid"
+    );
+    assert.ok(marked, "gap cell marked");
+    assert.match(
+      JSON.stringify(
+        marked.childNodes.map((n: any) => n.getAttribute?.("title"))
+      ),
+      /at least one value above 0/
+    );
   });
 
-  it('Add appends a 5 / 2 pair, selects it and opens its Line cell for editing', async () => {
+  it("Add appends a 5 / 2 pair, selects it and opens its Line cell for editing", async () => {
     await render([5, 2]);
-    await fire(button('add'), 'click');
+    await fire(button("add"), "click");
     assert.deepEqual(changes, [[5, 2, 5, 2]]);
     assert.deepEqual(selectedRows(), [1]);
     const open = editors();
-    assert.equal(open.length, 1, 'one editor open');
-    assert.equal(open[0].value, '5');
-    assert.ok(findElementsByClass(cell(1, 0), 'table-widget-editor').length === 1, 'in the new Line cell');
+    assert.equal(open.length, 1, "one editor open");
+    assert.equal(open[0].value, "5");
+    assert.ok(
+      findElementsByClass(cell(1, 0), "table-widget-editor").length === 1,
+      "in the new Line cell"
+    );
   });
 
-  it('Move Up and Move Down move the selected pair and keep it selected', async () => {
+  it("Move Up and Move Down move the selected pair and keep it selected", async () => {
     await render([1, 1, 2, 2, 3, 3]);
-    await fire(cell(2, 0), 'click');
-    await fire(button('move-up'), 'click');
+    await fire(cell(2, 0), "click");
+    await fire(button("move-up"), "click");
     assert.deepEqual(changes.at(-1), [1, 1, 3, 3, 2, 2]);
     assert.deepEqual(selectedRows(), [1]);
-    await fire(button('move-up'), 'click');
+    await fire(button("move-up"), "click");
     assert.deepEqual(changes.at(-1), [3, 3, 1, 1, 2, 2]);
     assert.deepEqual(selectedRows(), [0]);
-    assert.equal(button('move-up').getAttribute('disabled'), '', 'Move Up disabled on the first pair');
-    await fire(button('move-down'), 'click');
+    assert.equal(
+      button("move-up").getAttribute("disabled"),
+      "",
+      "Move Up disabled on the first pair"
+    );
+    await fire(button("move-down"), "click");
     assert.deepEqual(changes.at(-1), [1, 1, 3, 3, 2, 2]);
     assert.deepEqual(selectedRows(), [1]);
   });
 
-  it('Remove deletes the selected pair and selects the next one, or the new last one', async () => {
+  it("Remove deletes the selected pair and selects the next one, or the new last one", async () => {
     await render([1, 1, 2, 2, 3, 3]);
-    await fire(cell(1, 0), 'click');
-    await fire(button('remove'), 'click');
+    await fire(cell(1, 0), "click");
+    await fire(button("remove"), "click");
     assert.deepEqual(changes.at(-1), [1, 1, 3, 3]);
     assert.deepEqual(selectedRows(), [1]);
-    await fire(button('remove'), 'click');
+    await fire(button("remove"), "click");
     assert.deepEqual(changes.at(-1), [1, 1]);
     assert.deepEqual(selectedRows(), [0]);
-    await fire(button('remove'), 'click');
+    await fire(button("remove"), "click");
     assert.deepEqual(changes.at(-1), []);
     assert.deepEqual(cellTexts(), []);
-    assert.notEqual(button('remove').getAttribute('disabled'), null, 'Remove disabled with no pairs');
+    assert.notEqual(
+      button("remove").getAttribute("disabled"),
+      null,
+      "Remove disabled with no pairs"
+    );
   });
 
-  it('a read-only control shows its pairs in Read-Only Cells and disables every button', async () => {
+  it("a read-only control shows its pairs in Read-Only Cells and disables every button", async () => {
     await render([10, 5], true);
-    assert.deepEqual(cellTexts(), [['10', '5']]);
-    assert.ok(cell(0, 0).getAttribute('class')!.includes('table-widget-cell--readonly'));
-    await fire(cell(0, 0), 'dblclick');
+    assert.deepEqual(cellTexts(), [["10", "5"]]);
+    assert.ok(
+      cell(0, 0).getAttribute("class")!.includes("table-widget-cell--readonly")
+    );
+    await fire(cell(0, 0), "dblclick");
     assert.equal(editors().length, 0);
-    for (const name of ['add', 'remove', 'move-up', 'move-down']) {
-      assert.notEqual(button(name).getAttribute('disabled'), null, `${name} disabled`);
+    for (const name of ["add", "remove", "move-up", "move-down"]) {
+      assert.notEqual(
+        button(name).getAttribute("disabled"),
+        null,
+        `${name} disabled`
+      );
     }
   });
 });
 
-describe('DashArrayControl review follow-ups (Ticket #332)', () => {
+describe("DashArrayControl review follow-ups (Ticket #332)", () => {
   beforeEach(() => {
     dom = installMockDom();
     changes = [];
@@ -314,37 +410,62 @@ describe('DashArrayControl review follow-ups (Ticket #332)', () => {
     dom = null;
   });
 
-  it('ignores a commit that leaves the value unchanged, keeping an earlier rejection mark', async () => {
+  it("ignores a commit that leaves the value unchanged, keeping an earlier rejection mark", async () => {
     await render([5, 2, 1, 3]);
-    await editCellTo(0, 0, '-1');
-    await editCellTo(1, 1, '3');
-    assert.deepEqual(changes, [], 'nothing reported for an unchanged value');
-    assert.equal(findElementsByClass(dom!.container, 'dash-array-cell--invalid').length, 1, 'mark kept');
+    await editCellTo(0, 0, "-1");
+    await editCellTo(1, 1, "3");
+    assert.deepEqual(changes, [], "nothing reported for an unchanged value");
+    assert.equal(
+      findElementsByClass(dom!.container, "dash-array-cell--invalid").length,
+      1,
+      "mark kept"
+    );
   });
 
-  it('disables Remove when the remaining pairs would all be 0', async () => {
+  it("disables Remove when the remaining pairs would all be 0", async () => {
     await render([0, 0, 5, 0]);
-    await fire(cell(1, 0), 'click');
-    assert.notEqual(button('remove').getAttribute('disabled'), null, 'removing 5 / 0 would leave only zeros');
-    await fire(cell(0, 0), 'click');
-    assert.equal(button('remove').getAttribute('disabled'), null, 'removing 0 / 0 is allowed');
+    await fire(cell(1, 0), "click");
+    assert.notEqual(
+      button("remove").getAttribute("disabled"),
+      null,
+      "removing 5 / 0 would leave only zeros"
+    );
+    await fire(cell(0, 0), "click");
+    assert.equal(
+      button("remove").getAttribute("disabled"),
+      null,
+      "removing 0 / 0 is allowed"
+    );
   });
 
-  it('drops the rejection mark when the control becomes read-only', async () => {
+  it("drops the rejection mark when the control becomes read-only", async () => {
     await render([5, 2]);
-    await editCellTo(0, 0, 'x');
-    assert.equal(findElementsByClass(dom!.container, 'dash-array-cell--invalid').length, 1);
+    await editCellTo(0, 0, "x");
+    assert.equal(
+      findElementsByClass(dom!.container, "dash-array-cell--invalid").length,
+      1
+    );
     await act(async () => {
       dom!.root.render(
-        React.createElement(DashArrayControl, { dashArray: [5, 2], readOnly: true, t, onChange: () => {} })
+        React.createElement(DashArrayControl, {
+          dashArray: [5, 2],
+          readOnly: true,
+          t,
+          onChange: () => {},
+        })
       );
     });
-    assert.equal(findElementsByClass(dom!.container, 'dash-array-cell--invalid').length, 0);
+    assert.equal(
+      findElementsByClass(dom!.container, "dash-array-cell--invalid").length,
+      0
+    );
   });
 });
 
-describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
-  const { SimpleModeEditor } = jiti('@renderer/workbench/dialogs/SimpleModeEditor.tsx');
+describe("SimpleModeEditor Dash Array wiring (Ticket #332)", () => {
+  const { SimpleModeEditor } = jiti(
+    "@renderer/workbench/dialogs/SimpleModeEditor.tsx"
+  );
   let saved: string[];
 
   /**
@@ -356,9 +477,18 @@ describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
    */
   const line = (id: string, fields: Record<string, unknown>): string =>
     JSON.stringify({
-      format: 'simple',
+      format: "simple",
       version: 1,
-      components: [{ id, type: 'simple-line', enabled: true, color: '#000000', width: 1, ...fields }]
+      components: [
+        {
+          id,
+          type: "simple-line",
+          enabled: true,
+          color: "#000000",
+          width: 1,
+          ...fields,
+        },
+      ],
     });
 
   /**
@@ -371,8 +501,8 @@ describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
       dom!.root.render(
         React.createElement(SimpleModeEditor, {
           styleContent,
-          geometryKind: 'LineString',
-          onChange: (content: string) => saved.push(content)
+          geometryKind: "LineString",
+          onChange: (content: string) => saved.push(content),
         })
       );
     });
@@ -388,30 +518,43 @@ describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
     dom = null;
   });
 
-  it('saves an edited value as a custom dash pattern', async () => {
-    await renderEditor(line('a', { dashPattern: 'custom', dashArray: [5, 2] }));
-    await editCellTo(0, 1, '3');
+  it("saves an edited value as a custom dash pattern", async () => {
+    await renderEditor(line("a", { dashPattern: "custom", dashArray: [5, 2] }));
+    await editCellTo(0, 1, "3");
     assert.equal(saved.length, 1);
     const [component] = JSON.parse(saved[0]).components;
-    assert.equal(component.dashPattern, 'custom');
+    assert.equal(component.dashPattern, "custom");
     assert.deepEqual(component.dashArray, [5, 3]);
   });
 
-  it('focuses the Dash Array table when its label is clicked', async () => {
-    await renderEditor(line('a', { dashPattern: 'custom', dashArray: [5, 2] }));
-    const table = findById(dom!.container, 'layer-prop-dash-array-table')!;
-    await fire(findById(dom!.container, 'layer-prop-dash-array-label')!, 'click');
+  it("focuses the Dash Array table when its label is clicked", async () => {
+    await renderEditor(line("a", { dashPattern: "custom", dashArray: [5, 2] }));
+    const table = findById(dom!.container, "layer-prop-dash-array-table")!;
+    await fire(
+      findById(dom!.container, "layer-prop-dash-array-label")!,
+      "click"
+    );
     assert.equal(dom!.doc.activeElement, table);
   });
 
-  it('starts afresh for another component: first pair selected, no rejection mark', async () => {
-    await renderEditor(line('a', { dashPattern: 'custom', dashArray: [1, 1, 2, 2] }));
-    await fire(cell(1, 0), 'click');
-    await editCellTo(1, 0, '-3');
+  it("starts afresh for another component: first pair selected, no rejection mark", async () => {
+    await renderEditor(
+      line("a", { dashPattern: "custom", dashArray: [1, 1, 2, 2] })
+    );
+    await fire(cell(1, 0), "click");
+    await editCellTo(1, 0, "-3");
     assert.deepEqual(selectedRows(), [1]);
-    assert.equal(findElementsByClass(dom!.container, 'dash-array-cell--invalid').length, 1);
-    await renderEditor(line('b', { dashPattern: 'custom', dashArray: [1, 1, 2, 2] }));
+    assert.equal(
+      findElementsByClass(dom!.container, "dash-array-cell--invalid").length,
+      1
+    );
+    await renderEditor(
+      line("b", { dashPattern: "custom", dashArray: [1, 1, 2, 2] })
+    );
     assert.deepEqual(selectedRows(), [0]);
-    assert.equal(findElementsByClass(dom!.container, 'dash-array-cell--invalid').length, 0);
+    assert.equal(
+      findElementsByClass(dom!.container, "dash-array-cell--invalid").length,
+      0
+    );
   });
 });

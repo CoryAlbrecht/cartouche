@@ -14,7 +14,7 @@
  * @see {@link cancelTopDialog}
  */
 
-import { setProjectCrsFromLayerAction } from '../state/projectPropertiesSignals';
+import { setProjectCrsFromLayerAction } from "../state/projectPropertiesSignals";
 import {
   hasProjectSignal,
   isProjectDirtySignal,
@@ -57,14 +57,17 @@ import {
   snapToSegmentSignal,
   openSnappingOptionsDialog,
   openCreateLayerDialog,
-  requestAppExitAction
-} from '../state/gisSignals';
-import { openLayerPropertiesDialog } from '../state/layerPropertiesSignals';
-import { openPreferencesDialog } from '../state/preferencesSignals';
-import { editingNodeIdSignal, requestRenameSelectedNode } from '../state/projectSignals';
-import { registeredActionsSignal } from '../state/actionSignals';
-import { cancelTopDialog } from '../state/dialogSignals';
-import type { KeyCombination } from '@shared/types';
+  requestAppExitAction,
+} from "../state/gisSignals";
+import { openLayerPropertiesDialog } from "../state/layerPropertiesSignals";
+import { openPreferencesDialog } from "../state/preferencesSignals";
+import {
+  editingNodeIdSignal,
+  requestRenameSelectedNode,
+} from "../state/projectSignals";
+import { registeredActionsSignal } from "../state/actionSignals";
+import { cancelTopDialog } from "../state/dialogSignals";
+import type { KeyCombination } from "@shared/types";
 
 /**
  * @description Mapping of W3C KeyboardEvent physical code values to corresponding base character symbols.
@@ -75,17 +78,17 @@ import type { KeyCombination } from '@shared/types';
  * @type {Record<string, string>}
  */
 const CODE_TO_PUNCTUATION_KEY: Record<string, string> = {
-  comma: ',',
-  period: '.',
-  slash: '/',
-  semicolon: ';',
+  comma: ",",
+  period: ".",
+  slash: "/",
+  semicolon: ";",
   quote: "'",
-  bracketleft: '[',
-  bracketright: ']',
-  backslash: '\\',
-  minus: '-',
-  equal: '=',
-  backquote: '`'
+  bracketleft: "[",
+  bracketright: "]",
+  backslash: "\\",
+  minus: "-",
+  equal: "=",
+  backquote: "`",
 };
 
 /**
@@ -97,17 +100,17 @@ const CODE_TO_PUNCTUATION_KEY: Record<string, string> = {
  * @type {Record<string, string>}
  */
 const SHIFT_TO_UNSHIFTED_KEY: Record<string, string> = {
-  '<': ',',
-  '>': '.',
-  '?': '/',
-  ':': ';',
+  "<": ",",
+  ">": ".",
+  "?": "/",
+  ":": ";",
   '"': "'",
-  '{': '[',
-  '}': ']',
-  '|': '\\',
-  '_': '-',
-  '+': '=',
-  '~': '`'
+  "{": "[",
+  "}": "]",
+  "|": "\\",
+  "_": "-",
+  "+": "=",
+  "~": "`",
 };
 
 /**
@@ -176,18 +179,21 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
   if (target) {
     const tagName = target.tagName;
     if (
-      tagName === 'INPUT'
-      || tagName === 'TEXTAREA'
-      || tagName === 'SELECT'
+      tagName === "INPUT"
+      || tagName === "TEXTAREA"
+      || tagName === "SELECT"
       || target.isContentEditable
-      || (typeof target.closest === 'function' && target.closest('select, .modal-backdrop, .modal-dialog, [role="dialog"], .popup-backdrop, .popup-menu'))
+      || (typeof target.closest === "function"
+        && target.closest(
+          'select, .modal-backdrop, .modal-dialog, [role="dialog"], .popup-backdrop, .popup-menu'
+        ))
     ) {
       return;
     }
   }
 
-  const key = (e.key || '').toLowerCase();
-  const code = e.code || '';
+  const key = (e.key || "").toLowerCase();
+  const code = e.code || "";
   const ctrl = e.ctrlKey;
   const alt = e.altKey;
   const shift = e.shiftKey;
@@ -195,10 +201,10 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
 
   // Bypass global cancel_action dispatching when Escape is pressed while a localized PopupMenu is open
   if (
-    key === 'escape'
-    && typeof document !== 'undefined'
-    && typeof document.querySelector === 'function'
-    && document.querySelector('.popup-backdrop, .popup-menu') !== null
+    key === "escape"
+    && typeof document !== "undefined"
+    && typeof document.querySelector === "function"
+    && document.querySelector(".popup-backdrop, .popup-menu") !== null
   ) {
     return;
   }
@@ -236,138 +242,141 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
 export function executeWorkbenchAction(actionName: string): void {
   // Trigger corresponding Renderer signal updates or execute Main action
   switch (actionName) {
-    case 'new_project':
+    case "new_project":
       newProjectAction();
       break;
-    case 'open_project':
+    case "open_project":
       openProjectAction();
       break;
-    case 'close_project':
+    case "close_project":
       if (hasProjectSignal.value) closeProjectAction();
       break;
-    case 'quit':
-    case 'quit_app':
+    case "quit":
+    case "quit_app":
       void requestAppExitAction();
       break;
-    case 'save_project':
-      if (hasProjectSignal.value && (!projectFilePathSignal.value || isProjectDirtySignal.value)) {
+    case "save_project":
+      if (
+        hasProjectSignal.value
+        && (!projectFilePathSignal.value || isProjectDirtySignal.value)
+      ) {
         saveProjectAction();
       }
       break;
-    case 'save_as_project':
+    case "save_as_project":
       if (hasProjectSignal.value) saveAsProjectAction();
       break;
-    case 'project_properties':
+    case "project_properties":
       if (hasProjectSignal.value) openProjectPropertiesDialog();
       break;
-    case 'save_active_layer':
+    case "save_active_layer":
       if (activeLayerIdSignal.value) saveActiveLayerAction();
       break;
-    case 'save_active_layer_as':
+    case "save_active_layer_as":
       if (activeLayerIdSignal.value) saveActiveLayerAsAction();
       break;
-    case 'undo_action':
+    case "undo_action":
       if (undoStackSignal.value.length > 0) undoAction();
       break;
-    case 'redo_action':
+    case "redo_action":
       if (redoStackSignal.value.length > 0) redoAction();
       break;
-    case 'open_preferences':
+    case "open_preferences":
       openPreferencesDialog();
       break;
-    case 'create_layer':
+    case "create_layer":
       openCreateLayerDialog();
       break;
-    case 'add_layers':
+    case "add_layers":
       openAddLayersDialog();
       break;
-    case 'layer_properties':
+    case "layer_properties":
       if (activeLayerIdSignal.value) {
         openLayerPropertiesDialog(activeLayerIdSignal.value);
       }
       break;
-    case 'set_project_crs_from_layer':
+    case "set_project_crs_from_layer":
       void setProjectCrsFromLayerAction(activeLayerIdSignal.value);
       break;
-    case 'toggle_layers_widget':
+    case "toggle_layers_widget":
       toggleLayersWidgetAction();
       break;
-    case 'rename_layer_tree_node':
+    case "rename_layer_tree_node":
       requestRenameSelectedNode();
       break;
-    case 'zoom_in':
+    case "zoom_in":
       zoomInAction();
       break;
-    case 'zoom_out':
+    case "zoom_out":
       zoomOutAction();
       break;
-    case 'zoom_to_selection':
+    case "zoom_to_selection":
       zoomToSelectionAction();
       break;
-    case 'zoom_to_layer':
+    case "zoom_to_layer":
       zoomToLayerAction();
       break;
-    case 'select_feature':
-      activeSelectionModeSignal.value = 'select_feature';
-      activeToolSignal.value = 'select';
+    case "select_feature":
+      activeSelectionModeSignal.value = "select_feature";
+      activeToolSignal.value = "select";
       break;
-    case 'select_features_by_drag':
-      activeSelectionModeSignal.value = 'select_features_by_drag';
-      activeToolSignal.value = 'select_drag';
+    case "select_features_by_drag":
+      activeSelectionModeSignal.value = "select_features_by_drag";
+      activeToolSignal.value = "select_drag";
       break;
-    case 'select_features_by_freehand':
-      activeSelectionModeSignal.value = 'select_features_by_freehand';
-      activeToolSignal.value = 'select_freehand';
+    case "select_features_by_freehand":
+      activeSelectionModeSignal.value = "select_features_by_freehand";
+      activeToolSignal.value = "select_freehand";
       break;
-    case 'select_features_by_value':
+    case "select_features_by_value":
       openSelectByValueDialog();
       break;
-    case 'select_all_features':
+    case "select_all_features":
       selectAllFeaturesAction();
       break;
-    case 'deselect_all_features':
+    case "deselect_all_features":
       deselectAllFeaturesAction();
       break;
-    case 'delete_selected_features':
+    case "delete_selected_features":
       deleteSelectedFeaturesAction();
       break;
-    case 'copy_selected_features':
+    case "copy_selected_features":
       copySelectedFeaturesAction();
       break;
-    case 'cut_selected_features':
+    case "cut_selected_features":
       cutSelectedFeaturesAction();
       break;
-    case 'paste_features':
+    case "paste_features":
       pasteFeaturesAction();
       break;
-    case 'toggle_layer_editing':
+    case "toggle_layer_editing":
       toggleLayerEditingAction();
       break;
-    case 'vertex_editor':
+    case "vertex_editor":
       vertexEditorAction();
       break;
-    case 'snapping':
+    case "snapping":
       snappingEnabledSignal.value = !snappingEnabledSignal.value;
       break;
-    case 'snap_to_vertices':
+    case "snap_to_vertices":
       snapToVerticesSignal.value = !snapToVerticesSignal.value;
       break;
-    case 'snap_to_midpoint':
+    case "snap_to_midpoint":
       snapToMidpointSignal.value = !snapToMidpointSignal.value;
       break;
-    case 'snap_to_segment':
+    case "snap_to_segment":
       snapToSegmentSignal.value = !snapToSegmentSignal.value;
       break;
-    case 'snap_to_active':
-      snappingScopeSignal.value = 'snap_to_active';
+    case "snap_to_active":
+      snappingScopeSignal.value = "snap_to_active";
       break;
-    case 'snap_to_all':
-      snappingScopeSignal.value = 'snap_to_all';
+    case "snap_to_all":
+      snappingScopeSignal.value = "snap_to_all";
       break;
-    case 'snap_to_advanced':
+    case "snap_to_advanced":
       openSnappingOptionsDialog();
       break;
-    case 'cancel_action':
+    case "cancel_action":
       if (cancelTopDialog()) {
         break;
       }

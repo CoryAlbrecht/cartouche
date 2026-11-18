@@ -9,10 +9,10 @@
  * @see {@link View}
  */
 
-import type View from 'ol/View.js';
-import type { Size } from 'ol/size.js';
-import { getPointResolution, transform } from 'ol/proj.js';
-import type { ScaleCalculationMethod } from '@shared/types';
+import type View from "ol/View.js";
+import type { Size } from "ol/size.js";
+import { getPointResolution, transform } from "ol/proj.js";
+import type { ScaleCalculationMethod } from "@shared/types";
 
 /**
  * Standard CSS baseline dots per inch.
@@ -56,18 +56,18 @@ export function resolveScaleSampleCoordinates(
   size?: Size
 ): number[][] {
   const center = view.getCenter() || [0, 0];
-  if (method === 'equator') {
-    const equator = transform([0, 0], 'EPSG:4326', view.getProjection());
+  if (method === "equator") {
+    const equator = transform([0, 0], "EPSG:4326", view.getProjection());
     return [[center[0], equator[1]]];
   }
-  if (method === 'middle' || !size || size[0] <= 0 || size[1] <= 0) {
+  if (method === "middle" || !size || size[0] <= 0 || size[1] <= 0) {
     return [center];
   }
   const extent = view.calculateExtent(size);
   const top = [center[0], extent[3]];
   const bottom = [center[0], extent[1]];
-  if (method === 'top') return [top];
-  if (method === 'bottom') return [bottom];
+  if (method === "top") return [top];
+  if (method === "bottom") return [bottom];
   return [top, center, bottom];
 }
 
@@ -86,11 +86,15 @@ export function computeScaleDenominator(
   pointResolutionMetersPerPx: number,
   dpi: number = STANDARD_CSS_DPI
 ): number {
-  if (!isFinite(pointResolutionMetersPerPx) || pointResolutionMetersPerPx <= 0) {
+  if (
+    !isFinite(pointResolutionMetersPerPx)
+    || pointResolutionMetersPerPx <= 0
+  ) {
     return 1;
   }
   const effectiveDpi = isFinite(dpi) && dpi > 0 ? dpi : STANDARD_CSS_DPI;
-  const denominator = (pointResolutionMetersPerPx * effectiveDpi) / METERS_PER_INCH;
+  const denominator =
+    (pointResolutionMetersPerPx * effectiveDpi) / METERS_PER_INCH;
   return Math.round(denominator);
 }
 
@@ -112,17 +116,25 @@ export function getScale(view: View, options?: GetScaleOptions): number {
   }
 
   const viewCrs = view.getProjection();
-  const method: ScaleCalculationMethod = options?.method ?? 'middle';
+  const method: ScaleCalculationMethod = options?.method ?? "middle";
   const samples = resolveScaleSampleCoordinates(view, method, options?.size);
 
-  const dpr = typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1;
-  const dpi = options?.dpi ?? (STANDARD_CSS_DPI * dpr);
+  const dpr =
+    typeof window !== "undefined" && window.devicePixelRatio ?
+      window.devicePixelRatio
+    : 1;
+  const dpi = options?.dpi ?? STANDARD_CSS_DPI * dpr;
 
   const denominators = samples.map((coordinate) =>
-    computeScaleDenominator(getPointResolution(viewCrs, resolution, coordinate, 'm'), dpi)
+    computeScaleDenominator(
+      getPointResolution(viewCrs, resolution, coordinate, "m"),
+      dpi
+    )
   );
   if (denominators.length === 1) {
     return denominators[0];
   }
-  return Math.round(denominators.reduce((sum, d) => sum + d, 0) / denominators.length);
+  return Math.round(
+    denominators.reduce((sum, d) => sum + d, 0) / denominators.length
+  );
 }

@@ -172,7 +172,9 @@ export const Widget: React.FC<WidgetProps> = ({
   }, []);
 
   const defaultMenu: WidgetContextMenuItem[] = [
-    ...(onClose ? [{ id: "widget-close", label: "Close", action: () => onClose() }] : []),
+    ...(onClose ?
+      [{ id: "widget-close", label: "Close", action: () => onClose() }]
+    : []),
     ...(onUndock ?
       [
         {
@@ -228,7 +230,8 @@ export const Widget: React.FC<WidgetProps> = ({
     inlineStyles.backgroundColor = background;
   }
   if (border !== undefined) {
-    inlineStyles.borderWidth = typeof border === "number" ? `${border}px` : border;
+    inlineStyles.borderWidth =
+      typeof border === "number" ? `${border}px` : border;
     inlineStyles.borderStyle = border ? "solid" : "none";
   }
   if (borderColor !== undefined) {

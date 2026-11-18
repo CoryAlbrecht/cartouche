@@ -92,8 +92,8 @@ function evaluateSimpleMath(expr: string): number | null {
   function parseMulDiv(): number {
     let left = parsePrimary();
     while (
-      pos < tokens!.length &&
-      (tokens![pos] === "*" || tokens![pos] === "/")
+      pos < tokens!.length
+      && (tokens![pos] === "*" || tokens![pos] === "/")
     ) {
       const op = tokens![pos++];
       const right = parsePrimary();
@@ -105,8 +105,8 @@ function evaluateSimpleMath(expr: string): number | null {
   function parseAddSub(): number {
     let left = parseMulDiv();
     while (
-      pos < tokens!.length &&
-      (tokens![pos] === "+" || tokens![pos] === "-")
+      pos < tokens!.length
+      && (tokens![pos] === "+" || tokens![pos] === "-")
     ) {
       const op = tokens![pos++];
       const right = parseMulDiv();
@@ -434,18 +434,22 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
     iconSize
   );
   const effectiveMinHeight =
-    requestedMinHeight +
-    (typeof minHeight === "string" && minHeight.includes("calc(") ?
+    requestedMinHeight
+    + (typeof minHeight === "string" && minHeight.includes("calc(") ?
       borderHeightPx
     : 0);
 
   const resolvedDock =
-    propLocation ||
-    (effectivePanelApi ? getWidgetDockItem(effectivePanelApi.id)?.dock : undefined) ||
-    (name ? getWidgetDockItem(name.replace(/-widget$/, ""))?.dock : undefined) ||
-    (effectivePanelApi as any)?.location?.position ||
-    (effectivePanelApi as any)?.location?.type ||
-    "left";
+    propLocation
+    || (effectivePanelApi ?
+      getWidgetDockItem(effectivePanelApi.id)?.dock
+    : undefined)
+    || (name ?
+      getWidgetDockItem(name.replace(/-widget$/, ""))?.dock
+    : undefined)
+    || (effectivePanelApi as any)?.location?.position
+    || (effectivePanelApi as any)?.location?.type
+    || "left";
 
   useEffect(() => {
     if (!effectivePanelApi) return;
@@ -473,16 +477,15 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       const allPanels: any[] = [...panelsInGroup];
 
       if (
-        (dock === "top" ||
-          dock === "bottom" ||
-          dock === "left" ||
-          dock === "right") &&
-        effectiveContainerApi
+        (dock === "top"
+          || dock === "bottom"
+          || dock === "left"
+          || dock === "right")
+        && effectiveContainerApi
       ) {
         const dockItems =
-          widgetDocksSignal.value[
-            dock as "top" | "bottom" | "left" | "right"
-          ] || [];
+          widgetDocksSignal.value[dock as "top" | "bottom" | "left" | "right"]
+          || [];
         for (const item of dockItems) {
           const p = effectiveContainerApi.getPanel(item.id) as any;
           if (p) {
@@ -713,14 +716,12 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
                   flexShrink: 0,
                   marginRight: "6px",
                 }}>
-                {typeof icon === "string" ? (
+                {typeof icon === "string" ?
                   <Icon
                     path={icon}
                     size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
                   />
-                ) : (
-                  icon
-                )}
+                : icon}
               </span>
             )}
             <span

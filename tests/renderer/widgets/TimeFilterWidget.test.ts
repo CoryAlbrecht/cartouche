@@ -20,43 +20,47 @@
  * @see {@link Icon}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { createRendererJiti } from "../rendererJiti";
 
 // Mock .svg and .css imports for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
-nodeRequire.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+nodeRequire.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
-nodeRequire.extensions['.css'] = (mod: any) => {
-  mod.exports = '';
+nodeRequire.extensions[".css"] = (mod: any) => {
+  mod.exports = "";
 };
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const React = jiti('react') as typeof import('react');
+const React = jiti("react") as typeof import("react");
 const { act } = React;
-const { createRoot } = jiti('react-dom/client') as typeof import('react-dom/client');
-import type { Root } from 'react-dom/client';
-const { renderToStaticMarkup } = jiti('react-dom/server') as typeof import('react-dom/server');
+const { createRoot } = jiti(
+  "react-dom/client"
+) as typeof import("react-dom/client");
+import type { Root } from "react-dom/client";
+const { renderToStaticMarkup } = jiti(
+  "react-dom/server"
+) as typeof import("react-dom/server");
 
 const { isProjectDirtySignal } = jiti(
-  '@renderer/state/projectSignals'
-) as typeof import('@renderer/state/projectSignals');
+  "@renderer/state/projectSignals"
+) as typeof import("@renderer/state/projectSignals");
 
 const { widgetComponents } = jiti(
-  '@renderer/workbench/widgetRegistry'
-) as typeof import('@renderer/workbench/widgetRegistry');
+  "@renderer/workbench/widgetRegistry"
+) as typeof import("@renderer/workbench/widgetRegistry");
 
 const { DEFAULT_WORKBENCH_WIDGET_DOCKS } = jiti(
-  '@shared/types'
-) as typeof import('@shared/types');
+  "@shared/types"
+) as typeof import("@shared/types");
 
 const {
   isTimeFilterActiveSignal,
@@ -72,8 +76,8 @@ const {
   setTimeFilterStep,
   resetTimeFilterState,
 } = jiti(
-  '@renderer/state/timeFilterSignals'
-) as typeof import('@renderer/state/timeFilterSignals');
+  "@renderer/state/timeFilterSignals"
+) as typeof import("@renderer/state/timeFilterSignals");
 
 const {
   stepTemporalTimestamp,
@@ -83,48 +87,48 @@ const {
   autoDetectTemporalRange,
   MIN_TIME_FILTER_STEP,
 } = jiti(
-  '@renderer/map/timeFilterMath'
-) as typeof import('@renderer/map/timeFilterMath');
+  "@renderer/map/timeFilterMath"
+) as typeof import("@renderer/map/timeFilterMath");
 
 const { formatUtcTimestamp } = jiti(
-  '@renderer/components/common/TimestampSpinner'
-) as typeof import('@renderer/components/common/TimestampSpinner');
+  "@renderer/components/common/TimestampSpinner"
+) as typeof import("@renderer/components/common/TimestampSpinner");
 
 const {
   TimeFilterWidget,
   computeTimeFilterWidgetMinHeight,
   TIME_FILTER_SCRUB_DEBOUNCE_MS,
 } = jiti(
-  '@renderer/workbench/widgets/TimeFilterWidget'
-) as typeof import('@renderer/workbench/widgets/TimeFilterWidget');
+  "@renderer/workbench/widgets/TimeFilterWidget"
+) as typeof import("@renderer/workbench/widgets/TimeFilterWidget");
 
-import type { LayerDescriptor } from '../../../src/shared/types';
+import type { LayerDescriptor } from "../../../src/shared/types";
 
-describe('TimeFilterWidget: Registration & Default Docking (Ticket #235)', () => {
-  it('registers time-filter component in widgetRegistry.tsx', () => {
+describe("TimeFilterWidget: Registration & Default Docking (Ticket #235)", () => {
+  it("registers time-filter component in widgetRegistry.tsx", () => {
     assert.ok(
-      typeof widgetComponents['time-filter'] === 'function',
-      'time-filter must be registered in widgetRegistry'
+      typeof widgetComponents["time-filter"] === "function",
+      "time-filter must be registered in widgetRegistry"
     );
   });
 
-  it('allocates time-filter to top dock by default in DEFAULT_WORKBENCH_WIDGET_DOCKS', () => {
+  it("allocates time-filter to top dock by default in DEFAULT_WORKBENCH_WIDGET_DOCKS", () => {
     const topDocks = DEFAULT_WORKBENCH_WIDGET_DOCKS.top;
-    assert.ok(topDocks.length > 0, 'Top dock must contain items by default');
-    const tf = topDocks.find((item) => item.id === 'time-filter');
-    assert.ok(tf, 'time-filter dock item must exist in top dock');
-    assert.strictEqual(tf.dock, 'top');
+    assert.ok(topDocks.length > 0, "Top dock must contain items by default");
+    const tf = topDocks.find((item) => item.id === "time-filter");
+    assert.ok(tf, "time-filter dock item must exist in top dock");
+    assert.strictEqual(tf.dock, "top");
     assert.strictEqual(tf.visible, true);
     assert.strictEqual(tf.dimensions.height, 74);
   });
 });
 
-describe('TimeFilterWidget: Reactive Transport Controls & State (Ticket #235)', () => {
+describe("TimeFilterWidget: Reactive Transport Controls & State (Ticket #235)", () => {
   beforeEach(() => {
     resetTimeFilterState();
   });
 
-  it('toggles time filtering active state via setTimeFilterActive', () => {
+  it("toggles time filtering active state via setTimeFilterActive", () => {
     assert.strictEqual(isTimeFilterActiveSignal.value, false);
     setTimeFilterActive(true);
     assert.strictEqual(isTimeFilterActiveSignal.value, true);
@@ -132,7 +136,7 @@ describe('TimeFilterWidget: Reactive Transport Controls & State (Ticket #235)', 
     assert.strictEqual(isTimeFilterActiveSignal.value, false);
   });
 
-  it('sets range and frames within boundary clamping', () => {
+  it("sets range and frames within boundary clamping", () => {
     setTimeFilterRange(1000, 5000);
     assert.strictEqual(timeFilterRangeStartSignal.value, 1000);
     assert.strictEqual(timeFilterRangeEndSignal.value, 5000);
@@ -142,20 +146,20 @@ describe('TimeFilterWidget: Reactive Transport Controls & State (Ticket #235)', 
     assert.strictEqual(timeFilterFrameEndSignal.value, 2500);
   });
 
-  it('updates step and unit settings with floor enforcement', () => {
-    setTimeFilterStep(2.5, 'Hours');
+  it("updates step and unit settings with floor enforcement", () => {
+    setTimeFilterStep(2.5, "Hours");
     assert.strictEqual(timeFilterStepSignal.value, 2.5);
-    assert.strictEqual(timeFilterUnitSignal.value, 'Hours');
+    assert.strictEqual(timeFilterUnitSignal.value, "Hours");
 
     // Values below minimum are clamped
     const tooSmall = 0.000000000001;
     const clamped = Math.max(MIN_TIME_FILTER_STEP, tooSmall);
-    setTimeFilterStep(clamped, 'Seconds');
+    setTimeFilterStep(clamped, "Seconds");
     assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
   });
 });
 
-describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
+describe("TimeFilterWidget: Component Rendering (Ticket #235)", () => {
   beforeEach(() => {
     resetTimeFilterState();
     setTimeFilterActive(true);
@@ -167,50 +171,50 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
       Date.UTC(2026, 5, 15, 12, 0, 0),
       Date.UTC(2026, 5, 15, 12, 0, 0)
     );
-    setTimeFilterStep(1.0, 'Days');
+    setTimeFilterStep(1.0, "Days");
   });
 
-  it('renders complete widget markup with transport buttons, slider, and range controls', () => {
+  it("renders complete widget markup with transport buttons, slider, and range controls", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     // Verify title and container
     assert.ok(
-      markup.includes('Time Filter'),
-      'Markup must include widget title'
+      markup.includes("Time Filter"),
+      "Markup must include widget title"
     );
     assert.ok(
-      markup.includes('time-filter-widget-container'),
-      'Markup must contain container class'
+      markup.includes("time-filter-widget-container"),
+      "Markup must contain container class"
     );
 
     // Verify activation and auto-range buttons
     assert.ok(
-      markup.includes('Toggle Dynamic Temporal Control'),
-      'Markup must include toggle button'
+      markup.includes("Toggle Dynamic Temporal Control"),
+      "Markup must include toggle button"
     );
     assert.ok(
-      markup.includes('Auto-calculate Range from Active Temporal Layers'),
-      'Markup must include auto-range button'
+      markup.includes("Auto-calculate Range from Active Temporal Layers"),
+      "Markup must include auto-range button"
     );
 
     // Verify VCR transport buttons
     assert.ok(
-      markup.includes('Jump to Start'),
-      'Markup must include Jump to Start'
+      markup.includes("Jump to Start"),
+      "Markup must include Jump to Start"
     );
     assert.ok(
-      markup.includes('Step Backward'),
-      'Markup must include Step Backward'
+      markup.includes("Step Backward"),
+      "Markup must include Step Backward"
     );
     assert.ok(
-      markup.includes('Step Forward'),
-      'Markup must include Step Forward'
+      markup.includes("Step Forward"),
+      "Markup must include Step Forward"
     );
     assert.ok(
-      markup.includes('Jump to End'),
-      'Markup must include Jump to End'
+      markup.includes("Jump to End"),
+      "Markup must include Jump to End"
     );
 
     // Verify Current Frame formatted with pipe separator
@@ -222,12 +226,12 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
 
     // Verify continuous scrubbing slider
     assert.ok(
-      markup.includes('time-filter-slider'),
-      'Markup must include continuous slider'
+      markup.includes("time-filter-slider"),
+      "Markup must include continuous slider"
     );
     assert.ok(
       markup.includes('type="range"'),
-      'Markup must contain range input'
+      "Markup must contain range input"
     );
     assert.ok(
       markup.includes('step="86400000"'),
@@ -235,31 +239,31 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
     );
 
     // Verify Range labels and Unit select
-    assert.ok(markup.includes('From:'), 'Markup must include From label');
-    assert.ok(markup.includes('To:'), 'Markup must include To label');
-    assert.ok(markup.includes('Step:'), 'Markup must include Step label');
+    assert.ok(markup.includes("From:"), "Markup must include From label");
+    assert.ok(markup.includes("To:"), "Markup must include To label");
+    assert.ok(markup.includes("Step:"), "Markup must include Step label");
     assert.ok(
-      markup.includes('time-filter-unit-select'),
-      'Markup must include unit select'
+      markup.includes("time-filter-unit-select"),
+      "Markup must include unit select"
     );
-    assert.ok(markup.includes('Years'), 'Markup must contain Years option');
-    assert.ok(markup.includes('Months'), 'Markup must contain Months option');
-    assert.ok(markup.includes('Days'), 'Markup must contain Days option');
+    assert.ok(markup.includes("Years"), "Markup must contain Years option");
+    assert.ok(markup.includes("Months"), "Markup must contain Months option");
+    assert.ok(markup.includes("Days"), "Markup must contain Days option");
   });
 
-  it('renders all transport, auto-range, and stepper buttons with canonical Icon SVG elements without throwing (Ticket #236)', () => {
+  it("renders all transport, auto-range, and stepper buttons with canonical Icon SVG elements without throwing (Ticket #236)", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     // Verify SVG icon elements rendered within buttons
     assert.ok(
-      markup.includes('<svg'),
-      'Markup must render SVG elements from canonical Icon component'
+      markup.includes("<svg"),
+      "Markup must render SVG elements from canonical Icon component"
     );
     assert.ok(
       markup.includes('viewBox="0 0 24 24"'),
-      'SVG elements must define 24x24 MDI viewBox'
+      "SVG elements must define 24x24 MDI viewBox"
     );
 
     // Count rendered SVG icons:
@@ -276,19 +280,19 @@ describe('TimeFilterWidget: Component Rendering (Ticket #235)', () => {
   });
 });
 
-describe('TimeFilterWidget: Step Unit Dropdown Reactivity (Ticket #239)', () => {
+describe("TimeFilterWidget: Step Unit Dropdown Reactivity (Ticket #239)", () => {
   beforeEach(() => {
     resetTimeFilterState();
   });
 
-  it('updates timeFilterUnitSignal and renders selected unit across render cycles', () => {
-    const units: import('../../../src/shared/types').TimeFilterUnit[] = [
-      'Years',
-      'Months',
-      'Days',
-      'Hours',
-      'Minutes',
-      'Seconds',
+  it("updates timeFilterUnitSignal and renders selected unit across render cycles", () => {
+    const units: import("../../../src/shared/types").TimeFilterUnit[] = [
+      "Years",
+      "Months",
+      "Days",
+      "Hours",
+      "Minutes",
+      "Seconds",
     ];
 
     for (const u of units) {
@@ -302,106 +306,111 @@ describe('TimeFilterWidget: Step Unit Dropdown Reactivity (Ticket #239)', () => 
       // Verify the rendered select element reflects the selected unit
       assert.ok(
         markup.includes(`value="${u}"`)
-        || markup.includes(`<option selected="" value="${u}"`)
-        || markup.includes(`<option value="${u}" selected`),
+          || markup.includes(`<option selected="" value="${u}"`)
+          || markup.includes(`<option value="${u}" selected`),
         `Markup must reflect selected unit ${u}`
       );
     }
   });
 
-  it('calculates transport stepping using the selected unit', () => {
+  it("calculates transport stepping using the selected unit", () => {
     setTimeFilterRange(0, 100_000_000_000);
     setTimeFilterFrame(1_000_000, 1_000_000);
 
     // Step under 'Seconds' (1 step = 1,000 ms)
-    setTimeFilterStep(5, 'Seconds');
-    assert.strictEqual(timeFilterUnitSignal.value, 'Seconds');
+    setTimeFilterStep(5, "Seconds");
+    assert.strictEqual(timeFilterUnitSignal.value, "Seconds");
     assert.strictEqual(timeFilterStepSignal.value, 5);
-    const targetSec = stepTemporalTimestamp(1_000_000, 5, 'Seconds');
+    const targetSec = stepTemporalTimestamp(1_000_000, 5, "Seconds");
     assert.strictEqual(targetSec, 1_000_000 + 5_000);
 
     // Step under 'Hours' (1 step = 3,600,000 ms)
-    setTimeFilterStep(2, 'Hours');
-    assert.strictEqual(timeFilterUnitSignal.value, 'Hours');
-    const targetHours = stepTemporalTimestamp(1_000_000, 2, 'Hours');
+    setTimeFilterStep(2, "Hours");
+    assert.strictEqual(timeFilterUnitSignal.value, "Hours");
+    const targetHours = stepTemporalTimestamp(1_000_000, 2, "Hours");
     assert.strictEqual(targetHours, 1_000_000 + 7_200_000);
   });
 });
 
-describe('TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)', () => {
-  it('applies box-sizing border-box and vertical clearance padding on container and controls', () => {
+describe("TimeFilterWidget: Dropdown Border Clipping & Clearance (Ticket #240)", () => {
+  it("applies box-sizing border-box and vertical clearance padding on container and controls", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     // 1. Container padding and box-sizing
     assert.ok(
-      markup.includes('padding:6px 10px 8px 10px') || markup.includes('padding: 6px 10px 8px 10px'),
-      'Container must define 8px bottom padding clearance'
+      markup.includes("padding:6px 10px 8px 10px")
+        || markup.includes("padding: 6px 10px 8px 10px"),
+      "Container must define 8px bottom padding clearance"
     );
     assert.ok(
-      markup.includes('box-sizing:border-box') || markup.includes('box-sizing: border-box'),
-      'Container must define box-sizing: border-box'
+      markup.includes("box-sizing:border-box")
+        || markup.includes("box-sizing: border-box"),
+      "Container must define box-sizing: border-box"
     );
 
     // 2. Bottom bar clearance
     assert.ok(
-      markup.includes('padding-bottom:2px') || markup.includes('padding-bottom: 2px'),
-      'Bottom control bar must define 2px padding-bottom clearance'
+      markup.includes("padding-bottom:2px")
+        || markup.includes("padding-bottom: 2px"),
+      "Bottom control bar must define 2px padding-bottom clearance"
     );
 
     // 3. Step unit select border and box-sizing
     assert.ok(
-      markup.includes('time-filter-unit-select'),
-      'Unit select dropdown must exist'
+      markup.includes("time-filter-unit-select"),
+      "Unit select dropdown must exist"
     );
     assert.ok(
       !/class="[^"]*time-filter-unit-select"[^>]*style=/.test(markup),
-      'Unit select must take its border from the token-bound shared Select class, not an inline style (Tickets #318, #344)'
+      "Unit select must take its border from the token-bound shared Select class, not an inline style (Tickets #318, #344)"
     );
 
     // 4. Step input border and box-sizing
     assert.ok(
-      markup.includes('time-filter-step-input'),
-      'Step input must exist'
+      markup.includes("time-filter-step-input"),
+      "Step input must exist"
     );
   });
 });
 
-describe('TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)', () => {
-  it('assigns time-filter-unit-select, time-filter-step-input, and time-filter-btn classes without suppressing the outline', () => {
+describe("TimeFilterWidget: Theme Focus Styling & Classes (Ticket #241)", () => {
+  it("assigns time-filter-unit-select, time-filter-step-input, and time-filter-btn classes without suppressing the outline", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     // 1. Verify class assignment
     assert.ok(
-      markup.includes('class="cartouche-select is-compact time-filter-unit-select"'),
-      'Unit select element must have time-filter-unit-select class'
+      markup.includes(
+        'class="cartouche-select is-compact time-filter-unit-select"'
+      ),
+      "Unit select element must have time-filter-unit-select class"
     );
     assert.ok(
       markup.includes('class="time-filter-step-input"'),
-      'Step input element must have time-filter-step-input class'
+      "Step input element must have time-filter-step-input class"
     );
     assert.ok(
-      markup.includes('time-filter-btn'),
-      'VCR transport buttons must have time-filter-btn class'
+      markup.includes("time-filter-btn"),
+      "VCR transport buttons must have time-filter-btn class"
     );
 
     // 2. The global Focus Indicator must reach the controls: no inline outline suppression (Ticket #318)
     assert.ok(
-      !markup.includes('outline:none') && !markup.includes('outline: none'),
-      'Markup must not suppress the Focus Indicator inline'
+      !markup.includes("outline:none") && !markup.includes("outline: none"),
+      "Markup must not suppress the Focus Indicator inline"
     );
   });
 });
 
-describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #242)', () => {
+describe("TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #242)", () => {
   beforeEach(() => {
     resetTimeFilterState();
   });
 
-  it('reflects updated numeric step values and preserves step across render cycles without reverting', () => {
+  it("reflects updated numeric step values and preserves step across render cycles without reverting", () => {
     // 1. Initial default step is 1.0
     assert.strictEqual(timeFilterStepSignal.value, 1.0);
     let markup = renderToStaticMarkup(
@@ -413,98 +422,99 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     );
 
     // 2. Direct numeric update to integer (e.g. 5)
-    setTimeFilterStep(5, 'Seconds');
+    setTimeFilterStep(5, "Seconds");
     assert.strictEqual(timeFilterStepSignal.value, 5);
-    markup = renderToStaticMarkup(
-      React.createElement(TimeFilterWidget, {})
-    );
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
     assert.ok(
       markup.includes('value="5"'),
       'Step input must render value="5" without reverting'
     );
 
     // 3. Direct numeric update to fractional decimal (e.g. 2.75)
-    setTimeFilterStep(2.75, 'Minutes');
+    setTimeFilterStep(2.75, "Minutes");
     assert.strictEqual(timeFilterStepSignal.value, 2.75);
-    markup = renderToStaticMarkup(
-      React.createElement(TimeFilterWidget, {})
-    );
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
     assert.ok(
       markup.includes('value="2.75"'),
       'Step input must render value="2.75" without reverting'
     );
 
     // 4. Direct numeric update to micro-decimal down to MIN_TIME_FILTER_STEP
-    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Years');
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, "Years");
     assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
-    markup = renderToStaticMarkup(
-      React.createElement(TimeFilterWidget, {})
-    );
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
     assert.ok(
-      markup.includes(`value="${MIN_TIME_FILTER_STEP}"`) || markup.includes('value="3.1623e-8"'),
-      'Step input must reflect micro-decimal value without reverting'
+      markup.includes(`value="${MIN_TIME_FILTER_STEP}"`)
+        || markup.includes('value="3.1623e-8"'),
+      "Step input must reflect micro-decimal value without reverting"
     );
   });
 
-  it('increments step value by 1.00 on Step Up button click', () => {
+  it("increments step value by 1.00 on Step Up button click", () => {
     // Starting at 1.0 -> 2.0
-    setTimeFilterStep(1.0, 'Seconds');
+    setTimeFilterStep(1.0, "Seconds");
     let current = timeFilterStepSignal.value;
-    let next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
+    let next = Math.max(
+      MIN_TIME_FILTER_STEP,
+      Number((current + 1.0).toFixed(12))
+    );
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, 2.0);
 
     // Starting at 2.5 -> 3.5
-    setTimeFilterStep(2.5, 'Hours');
+    setTimeFilterStep(2.5, "Hours");
     current = timeFilterStepSignal.value;
     next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, 3.5);
 
     // Starting at MIN_TIME_FILTER_STEP -> 1.000000031623
-    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Years');
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, "Years");
     current = timeFilterStepSignal.value;
     next = Math.max(MIN_TIME_FILTER_STEP, Number((current + 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, 1.000000031623);
   });
 
-  it('decrements step value by 1.00 and enforces MIN_TIME_FILTER_STEP floor on Step Down button click', () => {
+  it("decrements step value by 1.00 and enforces MIN_TIME_FILTER_STEP floor on Step Down button click", () => {
     // Starting at 4.0 -> 3.0
-    setTimeFilterStep(4.0, 'Days');
+    setTimeFilterStep(4.0, "Days");
     let current = timeFilterStepSignal.value;
-    let next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
+    let next = Math.max(
+      MIN_TIME_FILTER_STEP,
+      Number((current - 1.0).toFixed(12))
+    );
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, 3.0);
 
     // Starting at 1.5 -> 0.5
-    setTimeFilterStep(1.5, 'Days');
+    setTimeFilterStep(1.5, "Days");
     current = timeFilterStepSignal.value;
     next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, 0.5);
 
     // Starting at 1.0 -> decrements to 0.0, which clamps to MIN_TIME_FILTER_STEP
-    setTimeFilterStep(1.0, 'Days');
+    setTimeFilterStep(1.0, "Days");
     current = timeFilterStepSignal.value;
     next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
 
     // Starting at MIN_TIME_FILTER_STEP -> stays at MIN_TIME_FILTER_STEP
-    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Days');
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, "Days");
     current = timeFilterStepSignal.value;
     next = Math.max(MIN_TIME_FILTER_STEP, Number((current - 1.0).toFixed(12)));
     setTimeFilterStep(next, timeFilterUnitSignal.value);
     assert.strictEqual(timeFilterStepSignal.value, MIN_TIME_FILTER_STEP);
   });
 
-  it('utilizes the updated numeric step value for subsequent VCR transport stepping', () => {
+  it("utilizes the updated numeric step value for subsequent VCR transport stepping", () => {
     const base = 1_000_000;
     setTimeFilterActive(true);
     setTimeFilterRange(0, 10_000_000);
     setTimeFilterFrame(base, base);
-    setTimeFilterStep(1.0, 'Seconds');
+    setTimeFilterStep(1.0, "Seconds");
 
     // 1. Initial 1.0 second forward step (1,000 ms)
     let s = timeFilterStepSignal.value;
@@ -514,7 +524,7 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_001_000);
 
     // 2. Update step to 10.0 seconds -> subsequent step moves 10,000 ms
-    setTimeFilterStep(10.0, 'Seconds');
+    setTimeFilterStep(10.0, "Seconds");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
     target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
@@ -522,7 +532,7 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_011_000);
 
     // 3. Update step to 2.5 seconds -> subsequent backward step moves -2,500 ms
-    setTimeFilterStep(2.5, 'Seconds');
+    setTimeFilterStep(2.5, "Seconds");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
     target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, -s, u);
@@ -530,7 +540,7 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_008_500);
 
     // 4. Update unit to 'Hours' and step to 0.5 -> subsequent forward step moves 1,800,000 ms
-    setTimeFilterStep(0.5, 'Hours');
+    setTimeFilterStep(0.5, "Hours");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
     target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
@@ -538,7 +548,7 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     assert.strictEqual(timeFilterFrameStartSignal.value, 2_808_500);
 
     // 5. Update unit to 'Years' and step to micro-decimal MIN_TIME_FILTER_STEP -> moves ~998 ms (~1 second)
-    setTimeFilterStep(MIN_TIME_FILTER_STEP, 'Years');
+    setTimeFilterStep(MIN_TIME_FILTER_STEP, "Years");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
     target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
@@ -556,8 +566,9 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
       'Step input must allow any micro-decimal increment via step="any"'
     );
     assert.ok(
-      markup.includes(`min="${MIN_TIME_FILTER_STEP}"`) || markup.includes('min="3.1623e-8"'),
-      'Step input must enforce min floor via min attribute'
+      markup.includes(`min="${MIN_TIME_FILTER_STEP}"`)
+        || markup.includes('min="3.1623e-8"'),
+      "Step input must enforce min floor via min attribute"
     );
     assert.ok(
       markup.includes('title="Step Up by 1.00"'),
@@ -570,12 +581,12 @@ describe('TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
   });
 });
 
-describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', () => {
+describe("TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)", () => {
   beforeEach(() => {
     resetTimeFilterState();
   });
 
-  it('updates timeFilterRangeStartSignal and reflects across render cycles when From spinner changes', () => {
+  it("updates timeFilterRangeStartSignal and reflects across render cycles when From spinner changes", () => {
     const fromUtc = Date.UTC(2024, 5, 15, 12, 0, 0);
     const toUtc = Date.UTC(2030, 0, 1, 0, 0, 0);
     setTimeFilterRange(fromUtc, toUtc);
@@ -590,11 +601,11 @@ describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', 
     // Verify From: spinner reflects 2024
     assert.ok(
       markup.includes('value="2024"'),
-      'From: TimestampSpinner must reflect updated year value 2024'
+      "From: TimestampSpinner must reflect updated year value 2024"
     );
   });
 
-  it('updates timeFilterRangeEndSignal and reflects across render cycles when To spinner changes', () => {
+  it("updates timeFilterRangeEndSignal and reflects across render cycles when To spinner changes", () => {
     const fromUtc = Date.UTC(2024, 0, 1, 0, 0, 0);
     const toUtc = Date.UTC(2028, 10, 20, 18, 30, 0);
     setTimeFilterRange(fromUtc, toUtc);
@@ -609,11 +620,11 @@ describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', 
     // Verify To: spinner reflects 2028
     assert.ok(
       markup.includes('value="2028"'),
-      'To: TimestampSpinner must reflect updated year value 2028'
+      "To: TimestampSpinner must reflect updated year value 2028"
     );
   });
 
-  it('scrubber slider min and max boundaries update reactively when range boundaries change', () => {
+  it("scrubber slider min and max boundaries update reactively when range boundaries change", () => {
     const fromUtc = 100_000;
     const toUtc = 500_000;
     setTimeFilterRange(fromUtc, toUtc);
@@ -624,30 +635,28 @@ describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', 
 
     assert.ok(
       markup.includes('min="100000"'),
-      'Scrubber slider min attribute must reflect updated fromUtc boundary'
+      "Scrubber slider min attribute must reflect updated fromUtc boundary"
     );
     assert.ok(
       markup.includes('max="500000"'),
-      'Scrubber slider max attribute must reflect updated toUtc boundary'
+      "Scrubber slider max attribute must reflect updated toUtc boundary"
     );
 
     // Update boundaries to new values
     setTimeFilterRange(200_000, 800_000);
-    markup = renderToStaticMarkup(
-      React.createElement(TimeFilterWidget, {})
-    );
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
 
     assert.ok(
       markup.includes('min="200000"'),
-      'Scrubber slider min attribute must reactively update to 200000'
+      "Scrubber slider min attribute must reactively update to 200000"
     );
     assert.ok(
       markup.includes('max="800000"'),
-      'Scrubber slider max attribute must reactively update to 800000'
+      "Scrubber slider max attribute must reactively update to 800000"
     );
   });
 
-  it('clamps active frame reactively when range boundaries change outside the active frame', () => {
+  it("clamps active frame reactively when range boundaries change outside the active frame", () => {
     // Initial range [100, 500], frame at 300
     setTimeFilterRange(100, 500);
     setTimeFilterFrame(300, 300);
@@ -658,7 +667,7 @@ describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', 
     assert.strictEqual(
       timeFilterFrameStartSignal.value,
       350,
-      'Active frame must clamp up to new lower range boundary'
+      "Active frame must clamp up to new lower range boundary"
     );
 
     // Narrow range boundary To to 400 with frame at 450
@@ -667,62 +676,64 @@ describe('TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)', 
     assert.strictEqual(
       timeFilterFrameStartSignal.value,
       400,
-      'Active frame must clamp down to new upper range boundary'
+      "Active frame must clamp down to new upper range boundary"
     );
   });
 
-  it('retains userSelect: text on TimestampSpinner segment inputs and wrapper containers', () => {
+  it("retains userSelect: text on TimestampSpinner segment inputs and wrapper containers", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     assert.ok(
-      markup.includes('user-select:text') || markup.includes('user-select: text'),
-      'TimestampSpinner segment inputs must retain userSelect: text within TimeFilterWidget container'
+      markup.includes("user-select:text")
+        || markup.includes("user-select: text"),
+      "TimestampSpinner segment inputs must retain userSelect: text within TimeFilterWidget container"
     );
   });
 });
 
-describe('TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket #244)', () => {
+describe("TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket #244)", () => {
   beforeEach(() => {
     resetTimeFilterState();
   });
 
-  it('renders current frame container with transparent background and no box border', () => {
+  it("renders current frame container with transparent background and no box border", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     assert.ok(
-      markup.includes('time-filter-current-frame-container'),
-      'Frame display container must exist with class time-filter-current-frame-container'
+      markup.includes("time-filter-current-frame-container"),
+      "Frame display container must exist with class time-filter-current-frame-container"
     );
     assert.ok(
-      markup.includes('background:transparent') || markup.includes('background: transparent'),
-      'Frame container must define background: transparent'
+      markup.includes("background:transparent")
+        || markup.includes("background: transparent"),
+      "Frame container must define background: transparent"
     );
     assert.ok(
-      markup.includes('border:none') || markup.includes('border: none'),
-      'Frame container must define border: none'
+      markup.includes("border:none") || markup.includes("border: none"),
+      "Frame container must define border: none"
     );
   });
 
-  it('renders Frame: descriptor text using muted theme typography', () => {
+  it("renders Frame: descriptor text using muted theme typography", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
     assert.ok(
-      markup.includes('var(--cartouche-theme-fg-muted'),
-      'Frame descriptor must render using var(--cartouche-theme-fg-muted)'
+      markup.includes("var(--cartouche-theme-fg-muted"),
+      "Frame descriptor must render using var(--cartouche-theme-fg-muted)"
     );
     assert.ok(
-      markup.includes('Frame:'),
-      'Descriptor must display Frame: label'
+      markup.includes("Frame:"),
+      "Descriptor must display Frame: label"
     );
   });
 
-  it('renders formatted timestamp range in clean monospace font matching workbench metadata', () => {
+  it("renders formatted timestamp range in clean monospace font matching workbench metadata", () => {
     setTimeFilterFrame(
       Date.UTC(2026, 0, 1, 0, 0, 0),
       Date.UTC(2026, 0, 1, 12, 0, 0)
@@ -733,105 +744,109 @@ describe('TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket 
     );
 
     assert.ok(
-      markup.includes('time-filter-current-frame-label'),
-      'Formatted timestamp must have class time-filter-current-frame-label'
+      markup.includes("time-filter-current-frame-label"),
+      "Formatted timestamp must have class time-filter-current-frame-label"
     );
     assert.ok(
-      markup.includes('2026-01-01 00:00:00 | 2026-01-01 12:00:00'),
-      'Must render formatted start and end timestamps'
+      markup.includes("2026-01-01 00:00:00 | 2026-01-01 12:00:00"),
+      "Must render formatted start and end timestamps"
     );
-    assert.ok(
-      markup.includes('ui-monospace'),
-      'Must use monospace font stack'
-    );
+    assert.ok(markup.includes("ui-monospace"), "Must use monospace font stack");
   });
 });
 
-describe('TimeFilterWidget: Dynamic minHeight Calculation (Ticket #245)', () => {
-  it('computeTimeFilterWidgetMinHeight returns a valid CSS calc expression incorporating typography and icon CSS variables', () => {
+describe("TimeFilterWidget: Dynamic minHeight Calculation (Ticket #245)", () => {
+  it("computeTimeFilterWidgetMinHeight returns a valid CSS calc expression incorporating typography and icon CSS variables", () => {
     const minHeightExpr = computeTimeFilterWidgetMinHeight();
 
     assert.ok(
-      typeof minHeightExpr === 'string',
-      'computeTimeFilterWidgetMinHeight must return a string'
+      typeof minHeightExpr === "string",
+      "computeTimeFilterWidgetMinHeight must return a string"
     );
     assert.ok(
-      minHeightExpr.startsWith('calc(') && minHeightExpr.endsWith(')'),
-      'Must be a valid CSS calc() expression'
+      minHeightExpr.startsWith("calc(") && minHeightExpr.endsWith(")"),
+      "Must be a valid CSS calc() expression"
     );
     assert.ok(
-      minHeightExpr.includes('--cartouche-ui-icon-size'),
-      'Must incorporate --cartouche-ui-icon-size variable for header and button scaling'
+      minHeightExpr.includes("--cartouche-ui-icon-size"),
+      "Must incorporate --cartouche-ui-icon-size variable for header and button scaling"
     );
     assert.ok(
-      minHeightExpr.includes('--cartouche-ui-basefont-size'),
-      'Must incorporate --cartouche-ui-basefont-size variable for input and typography scaling'
+      minHeightExpr.includes("--cartouche-ui-basefont-size"),
+      "Must incorporate --cartouche-ui-basefont-size variable for input and typography scaling"
     );
   });
 
-  it('renders TimeFilterWidget with dynamic minHeight calc expression on BasicWidget', () => {
+  it("renders TimeFilterWidget with dynamic minHeight calc expression on BasicWidget", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
-    assert.ok(markup.length > 0, 'TimeFilterWidget must render without throwing');
+    assert.ok(
+      markup.length > 0,
+      "TimeFilterWidget must render without throwing"
+    );
   });
 
-  it('allows overriding minHeight through explicit props', () => {
+  it("allows overriding minHeight through explicit props", () => {
     const customMinHeight = 150;
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, { minHeight: customMinHeight })
     );
 
-    assert.ok(markup.length > 0, 'TimeFilterWidget must accept custom minHeight override');
+    assert.ok(
+      markup.length > 0,
+      "TimeFilterWidget must accept custom minHeight override"
+    );
   });
 });
 
-describe('TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)', () => {
+describe("TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)", () => {
   beforeEach(() => {
     resetTimeFilterState();
   });
 
-  it('exports TIME_FILTER_SCRUB_DEBOUNCE_MS as 300ms', () => {
+  it("exports TIME_FILTER_SCRUB_DEBOUNCE_MS as 300ms", () => {
     assert.strictEqual(
       TIME_FILTER_SCRUB_DEBOUNCE_MS,
       300,
-      'Debounce duration must be exactly 300ms'
+      "Debounce duration must be exactly 300ms"
     );
   });
 
-  it('disables timeline slider when range is uninitialized or invalid, and enables when rangeStart < rangeEnd', () => {
+  it("disables timeline slider when range is uninitialized or invalid, and enables when rangeStart < rangeEnd", () => {
     // 1. Uninitialized range [0, 0] -> slider is disabled
     setTimeFilterRange(0, 0);
     let markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
     assert.ok(
-      markup.includes('time-filter-slider') && markup.includes('disabled=""'),
-      'Slider must be disabled when rangeStart >= rangeEnd'
+      markup.includes("time-filter-slider") && markup.includes('disabled=""'),
+      "Slider must be disabled when rangeStart >= rangeEnd"
     );
     assert.ok(
-      markup.includes('cursor:not-allowed') || markup.includes('cursor: not-allowed'),
-      'Disabled slider must style cursor: not-allowed'
+      markup.includes("cursor:not-allowed")
+        || markup.includes("cursor: not-allowed"),
+      "Disabled slider must style cursor: not-allowed"
     );
 
     // 2. Valid range [1000, 5000] -> slider is enabled
     setTimeFilterRange(1000, 5000);
-    markup = renderToStaticMarkup(
-      React.createElement(TimeFilterWidget, {})
-    );
-    const sliderTag = (markup.match(/<input[^>]*time-filter-slider[^>]*>/) || [''])[0];
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    const sliderTag = (markup.match(/<input[^>]*time-filter-slider[^>]*>/) || [
+      "",
+    ])[0];
     assert.ok(
-      !sliderTag.includes('disabled'),
-      'Slider must be enabled when rangeStart < rangeEnd'
+      !sliderTag.includes("disabled"),
+      "Slider must be enabled when rangeStart < rangeEnd"
     );
     assert.ok(
-      markup.includes('cursor:pointer') || markup.includes('cursor: pointer'),
-      'Enabled slider must style cursor: pointer'
+      markup.includes("cursor:pointer") || markup.includes("cursor: pointer"),
+      "Enabled slider must style cursor: pointer"
     );
   });
 
-  it('renders slider with real-time value and min/max boundaries matching active range', () => {
+  it("renders slider with real-time value and min/max boundaries matching active range", () => {
     setTimeFilterRange(100_000, 500_000);
     setTimeFilterFrame(250_000, 250_000);
 
@@ -841,19 +856,19 @@ describe('TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)', 
 
     assert.ok(
       markup.includes('min="100000"'),
-      'Slider min must equal rangeStart'
+      "Slider min must equal rangeStart"
     );
     assert.ok(
       markup.includes('max="500000"'),
-      'Slider max must equal rangeEnd'
+      "Slider max must equal rangeEnd"
     );
     assert.ok(
       markup.includes('value="250000"'),
-      'Slider value must equal current frame position'
+      "Slider value must equal current frame position"
     );
   });
 
-  it('debounces frame signal updates by 300ms to prevent spamming map viewport redraws', async () => {
+  it("debounces frame signal updates by 300ms to prevent spamming map viewport redraws", async () => {
     setTimeFilterRange(0, 10_000);
     setTimeFilterFrame(1000, 1000);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1000);
@@ -879,7 +894,7 @@ describe('TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)', 
     assert.strictEqual(
       timeFilterFrameStartSignal.value,
       1000,
-      'Frame signal must NOT update prematurely before 300ms debounce expires'
+      "Frame signal must NOT update prematurely before 300ms debounce expires"
     );
 
     // After 350ms total, the debounced update must have executed
@@ -887,1136 +902,1371 @@ describe('TimeFilterWidget: Debounced Timeline Slider Scrubbing (Ticket #246)', 
     assert.strictEqual(
       timeFilterFrameStartSignal.value,
       targetScrubVal,
-      'Frame signal must update to final scrub position once 300ms debounce completes'
+      "Frame signal must update to final scrub position once 300ms debounce completes"
     );
   });
 });
 
-describe('TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States (Ticket #247)', () => {
-    it('defines theme hover, tactile active click offset, and disabled rules in workbench.css', () => {
-      const cssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-      const css = fs.readFileSync(cssPath, 'utf8');
+describe("TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States (Ticket #247)", () => {
+  it("defines theme hover, tactile active click offset, and disabled rules in workbench.css", () => {
+    const cssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/workbench.css"
+    );
+    const css = fs.readFileSync(cssPath, "utf8");
 
-      // 1. Hover styling with surface-alt
-      assert.ok(
-        css.includes('.time-filter-btn:hover:not(:disabled)') &&
-          css.includes('var(--cartouche-theme-surface-alt)'),
-        '.time-filter-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)'
-      );
+    // 1. Hover styling with surface-alt
+    assert.ok(
+      css.includes(".time-filter-btn:hover:not(:disabled)")
+        && css.includes("var(--cartouche-theme-surface-alt)"),
+      ".time-filter-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)"
+    );
 
-      // 2. Active tactile feedback with subtle active background and 1px click offset
-      assert.ok(
-        css.includes('.time-filter-btn:active:not(:disabled)') &&
-          css.includes('var(--cartouche-theme-surface-active)') &&
-          css.includes('translateY(1px)'),
-        '.time-filter-btn:active:not(:disabled) must apply active background and 1px translateY offset'
-      );
+    // 2. Active tactile feedback with subtle active background and 1px click offset
+    assert.ok(
+      css.includes(".time-filter-btn:active:not(:disabled)")
+        && css.includes("var(--cartouche-theme-surface-active)")
+        && css.includes("translateY(1px)"),
+      ".time-filter-btn:active:not(:disabled) must apply active background and 1px translateY offset"
+    );
 
-      // 3. Disabled opacity and default cursor
-      assert.ok(
-        css.includes('.time-filter-btn:disabled') &&
-          css.includes('cursor: default'),
-        '.time-filter-btn:disabled must set cursor to default'
-      );
-    });
-
-    it('renders all VCR transport buttons with time-filter-btn styling class', () => {
-      setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(3000, 3000);
-
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const buttons = [
-        'Jump to Start',
-        'Step Backward',
-        'Step Forward',
-        'Jump to End',
-      ];
-
-      for (const btnLabel of buttons) {
-        const regex = new RegExp(`<button[^>]*aria-label="${btnLabel}"[^>]*>`, 'i');
-        const match = markup.match(regex);
-        assert.ok(match, `Button "${btnLabel}" must be rendered`);
-        assert.ok(
-          match[0].includes('class="time-filter-btn"') || match[0].includes('time-filter-btn'),
-          `Button "${btnLabel}" must carry class "time-filter-btn"`
-        );
-      }
-    });
-
-    it('disables all VCR transport buttons when temporal range is uninitialized or invalid', () => {
-      setTimeFilterRange(0, 0);
-      setTimeFilterFrame(0, 0);
-
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const buttons = [
-        'Jump to Start',
-        'Step Backward',
-        'Step Forward',
-        'Jump to End',
-      ];
-
-      for (const btnLabel of buttons) {
-        const regex = new RegExp(`<button[^>]*aria-label="${btnLabel}"[^>]*>`, 'i');
-        const match = markup.match(regex);
-        assert.ok(match, `Button "${btnLabel}" must be rendered`);
-        assert.ok(
-          match[0].includes('disabled=""') || match[0].includes('disabled'),
-          `Button "${btnLabel}" must be disabled when rangeStart >= rangeEnd`
-        );
-      }
-    });
-
-    it('disables Jump to Start and Step Backward when active frame is at or before rangeStart', () => {
-      setTimeFilterRange(1000, 5000);
-
-      // Instant frame at rangeStart
-      setTimeFilterFrame(1000, 1000);
-      let markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const jumpStartTag = (markup.match(/<button[^>]*aria-label="Jump to Start"[^>]*>/) || [''])[0];
-      const stepBackTag = (markup.match(/<button[^>]*aria-label="Step Backward"[^>]*>/) || [''])[0];
-      const stepForwardTag = (markup.match(/<button[^>]*aria-label="Step Forward"[^>]*>/) || [''])[0];
-      const jumpEndTag = (markup.match(/<button[^>]*aria-label="Jump to End"[^>]*>/) || [''])[0];
-
-      assert.ok(jumpStartTag.includes('disabled'), 'Jump to Start must be disabled at rangeStart');
-      assert.ok(stepBackTag.includes('disabled'), 'Step Backward must be disabled at rangeStart');
-      assert.ok(!stepForwardTag.includes('disabled'), 'Step Forward must be enabled when before rangeEnd');
-      assert.ok(!jumpEndTag.includes('disabled'), 'Jump to End must be enabled when before rangeEnd');
-
-      // Window frame starting at rangeStart
-      setTimeFilterFrame(1000, 2000);
-      markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-      const jumpStartWindow = (markup.match(/<button[^>]*aria-label="Jump to Start"[^>]*>/) || [''])[0];
-      const stepBackWindow = (markup.match(/<button[^>]*aria-label="Step Backward"[^>]*>/) || [''])[0];
-      assert.ok(jumpStartWindow.includes('disabled'), 'Jump to Start must be disabled for window at rangeStart');
-      assert.ok(stepBackWindow.includes('disabled'), 'Step Backward must be disabled for window at rangeStart');
-    });
-
-    it('disables Jump to End and Step Forward when active frame is at or after rangeEnd', () => {
-      setTimeFilterRange(1000, 5000);
-
-      // Instant frame at rangeEnd
-      setTimeFilterFrame(5000, 5000);
-      let markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const jumpStartTag = (markup.match(/<button[^>]*aria-label="Jump to Start"[^>]*>/) || [''])[0];
-      const stepBackTag = (markup.match(/<button[^>]*aria-label="Step Backward"[^>]*>/) || [''])[0];
-      const stepForwardTag = (markup.match(/<button[^>]*aria-label="Step Forward"[^>]*>/) || [''])[0];
-      const jumpEndTag = (markup.match(/<button[^>]*aria-label="Jump to End"[^>]*>/) || [''])[0];
-
-      assert.ok(!jumpStartTag.includes('disabled'), 'Jump to Start must be enabled when after rangeStart');
-      assert.ok(!stepBackTag.includes('disabled'), 'Step Backward must be enabled when after rangeStart');
-      assert.ok(stepForwardTag.includes('disabled'), 'Step Forward must be disabled at rangeEnd');
-      assert.ok(jumpEndTag.includes('disabled'), 'Jump to End must be disabled at rangeEnd');
-
-      // Window frame ending at rangeEnd
-      setTimeFilterFrame(4000, 5000);
-      markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-      const stepForwardWindow = (markup.match(/<button[^>]*aria-label="Step Forward"[^>]*>/) || [''])[0];
-      const jumpEndWindow = (markup.match(/<button[^>]*aria-label="Jump to End"[^>]*>/) || [''])[0];
-      assert.ok(stepForwardWindow.includes('disabled'), 'Step Forward must be disabled for window at rangeEnd');
-      assert.ok(jumpEndWindow.includes('disabled'), 'Jump to End must be disabled for window at rangeEnd');
-    });
-
-    it('enables all VCR transport buttons when frame is strictly within range bounds', () => {
-      setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(2500, 3500);
-
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const buttons = [
-        'Jump to Start',
-        'Step Backward',
-        'Step Forward',
-        'Jump to End',
-      ];
-
-      for (const btnLabel of buttons) {
-        const regex = new RegExp(`<button[^>]*aria-label="${btnLabel}"[^>]*>`, 'i');
-        const match = markup.match(regex);
-        assert.ok(match, `Button "${btnLabel}" must be rendered`);
-        assert.ok(
-          !match[0].includes('disabled'),
-          `Button "${btnLabel}" must be enabled inside range bounds`
-        );
-      }
-    });
+    // 3. Disabled opacity and default cursor
+    assert.ok(
+      css.includes(".time-filter-btn:disabled")
+        && css.includes("cursor: default"),
+      ".time-filter-btn:disabled must set cursor to default"
+    );
   });
 
-  describe('TimeFilterWidget: Activation Toggle Button Alignment (Ticket #248)', () => {
-    it('verifies that .toolbar-btn and .toolbar-btn.active CSS rules match standard toolbar toggle conventions', () => {
-      const cssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-      const css = fs.readFileSync(cssPath, 'utf8');
+  it("renders all VCR transport buttons with time-filter-btn styling class", () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(3000, 3000);
 
-      // Inactive / base styling
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    const buttons = [
+      "Jump to Start",
+      "Step Backward",
+      "Step Forward",
+      "Jump to End",
+    ];
+
+    for (const btnLabel of buttons) {
+      const regex = new RegExp(
+        `<button[^>]*aria-label="${btnLabel}"[^>]*>`,
+        "i"
+      );
+      const match = markup.match(regex);
+      assert.ok(match, `Button "${btnLabel}" must be rendered`);
       assert.ok(
-        css.includes('.toolbar-btn {') &&
-          css.includes('background: transparent;') &&
-          css.includes('var(--cartouche-theme-fg-primary)'),
-        '.toolbar-btn must have transparent background and primary fg color'
+        match[0].includes('class="time-filter-btn"')
+          || match[0].includes("time-filter-btn"),
+        `Button "${btnLabel}" must carry class "time-filter-btn"`
       );
-
-      // Hover styling
-      assert.ok(
-        css.includes('.toolbar-btn:hover:not(:disabled)') &&
-          css.includes('var(--cartouche-theme-surface-alt)'),
-        '.toolbar-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)'
-      );
-
-      // Active styling
-      assert.ok(
-        css.includes('.toolbar-btn.active') &&
-          css.includes('var(--cartouche-theme-info-subtle)') &&
-          css.includes('var(--cartouche-theme-info)'),
-        '.toolbar-btn.active must apply info-subtle background and info border/color'
-      );
-    });
-
-    it('renders activation toggle button with .toolbar-btn class', () => {
-      setTimeFilterActive(false);
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
-      assert.ok(toggleMatch, 'Activation toggle button must be rendered');
-      assert.ok(
-        toggleMatch[0].includes('toolbar-btn'),
-        'Activation toggle button must adopt toolbar-btn class'
-      );
-      assert.ok(
-        !toggleMatch[0].includes('toolbar-btn active') && !toggleMatch[0].includes('active'),
-        'Inactive toggle button must not carry active class'
-      );
-    });
-
-    it('reactively applies active class when isTimeFilterActiveSignal is true', () => {
-      setTimeFilterActive(true);
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
-      assert.ok(toggleMatch, 'Activation toggle button must be rendered');
-      assert.ok(
-        toggleMatch[0].includes('toolbar-btn active') || (toggleMatch[0].includes('toolbar-btn') && toggleMatch[0].includes('active')),
-        'Active toggle button must adopt .toolbar-btn.active class'
-      );
-      // Ensure hardcoded navy background (#1b446c) has been completely removed
-      assert.ok(
-        !toggleMatch[0].includes('#1b446c'),
-        'Hardcoded navy background must not be present'
-      );
-    });
-
-    it('toggles active class immediately when signal toggles between true and false', () => {
-      // Inactive
-      setTimeFilterActive(false);
-      let markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
-      let toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
-      assert.ok(toggleMatch && !toggleMatch[0].includes('active'), 'Must be inactive initially');
-
-      // Toggle to active
-      setTimeFilterActive(true);
-      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
-      toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
-      assert.ok(toggleMatch && toggleMatch[0].includes('active'), 'Must reactively become active');
-
-      // Toggle back to inactive
-      setTimeFilterActive(false);
-      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
-      toggleMatch = markup.match(/<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/);
-      assert.ok(toggleMatch && !toggleMatch[0].includes('active'), 'Must reactively become inactive again');
-    });
+    }
   });
 
-  describe('TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket #250)', () => {
-    beforeEach(() => {
-      resetTimeFilterState();
-    });
+  it("disables all VCR transport buttons when temporal range is uninitialized or invalid", () => {
+    setTimeFilterRange(0, 0);
+    setTimeFilterFrame(0, 0);
 
-    it('verifies discrete frame duration stepping across all step units (Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years)', () => {
-      const baseMs = Date.UTC(2026, 5, 1, 12, 0, 0, 0);
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
 
-      // 1. Milliseconds
-      const msStep = stepTemporalTimestamp(baseMs, 50, 'Milliseconds');
-      assert.strictEqual(msStep, baseMs + 50);
+    const buttons = [
+      "Jump to Start",
+      "Step Backward",
+      "Step Forward",
+      "Jump to End",
+    ];
 
-      // 2. Seconds
-      const secStep = stepTemporalTimestamp(baseMs, 10, 'Seconds');
-      assert.strictEqual(secStep, baseMs + 10_000);
-
-      // 3. Minutes
-      const minStep = stepTemporalTimestamp(baseMs, 5, 'Minutes');
-      assert.strictEqual(minStep, baseMs + 5 * 60_000);
-
-      // 4. Hours
-      const hrStep = stepTemporalTimestamp(baseMs, 2, 'Hours');
-      assert.strictEqual(hrStep, baseMs + 2 * 3_600_000);
-
-      // 5. Days
-      const dayStep = stepTemporalTimestamp(baseMs, 3, 'Days');
-      assert.strictEqual(dayStep, baseMs + 3 * 86_400_000);
-
-      // 6. Weeks
-      const weekStep = stepTemporalTimestamp(baseMs, 2, 'Weeks');
-      assert.strictEqual(weekStep, baseMs + 14 * 86_400_000);
-
-      // 7. Months
-      const monthStep = stepTemporalTimestamp(baseMs, 1, 'Months');
-      assert.strictEqual(monthStep, Date.UTC(2026, 6, 1, 12, 0, 0, 0));
-
-      // 8. Years
-      const yearStep = stepTemporalTimestamp(baseMs, 1, 'Years');
-      assert.strictEqual(yearStep, Date.UTC(2027, 5, 1, 12, 0, 0, 0));
-    });
-
-    it('computeFrameEnd clamps frame end to rangeEnd boundary', () => {
-      const start = 1_000_000;
-      const rangeEnd = 1_050_000;
-
-      // Unclamped (1_000_000 + 10_000 = 1_010_000 <= 1_050_000)
-      const end1 = computeFrameEnd(start, 10, 'Seconds', rangeEnd);
-      assert.strictEqual(end1, 1_010_000);
-
-      // Clamped to rangeEnd (1_000_000 + 100_000 = 1_100_000 > 1_050_000)
-      const end2 = computeFrameEnd(start, 100, 'Seconds', rangeEnd);
-      assert.strictEqual(end2, rangeEnd);
-    });
-
-    it('renders Current Frame label with distinct start and end timestamps formatted in UTC', () => {
-      const startMs = Date.UTC(2026, 0, 1, 0, 0, 0);
-      const endMs = Date.UTC(2026, 0, 2, 0, 0, 0);
-      setTimeFilterRange(startMs, Date.UTC(2026, 11, 31, 23, 59, 59));
-      setTimeFilterFrame(startMs, endMs);
-
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
+    for (const btnLabel of buttons) {
+      const regex = new RegExp(
+        `<button[^>]*aria-label="${btnLabel}"[^>]*>`,
+        "i"
       );
-
-      const expectedLabel = `${formatUtcTimestamp(startMs)} | ${formatUtcTimestamp(endMs)}`;
+      const match = markup.match(regex);
+      assert.ok(match, `Button "${btnLabel}" must be rendered`);
       assert.ok(
-        markup.includes(expectedLabel),
-        `Rendered markup must contain discrete frame interval "${expectedLabel}"`
+        match[0].includes('disabled=""') || match[0].includes("disabled"),
+        `Button "${btnLabel}" must be disabled when rangeStart >= rangeEnd`
       );
-      assert.notStrictEqual(
-        formatUtcTimestamp(startMs),
-        formatUtcTimestamp(endMs),
-        'Frame start and end labels must be distinct'
-      );
-    });
-
-    it('advances frame window and updates signals when stepping through transport controls', () => {
-      const rangeStart = 1_000_000;
-      const rangeEnd = 2_000_000;
-      setTimeFilterRange(rangeStart, rangeEnd);
-      setTimeFilterStep(5, 'Seconds'); // 5,000 ms per step
-
-      // Jump to Start: sets [rangeStart, computeFrameEnd(rangeStart, 5, 'Seconds', rangeEnd)]
-      const expectedEnd = rangeStart + 5_000;
-      setTimeFilterFrame(rangeStart, expectedEnd);
-      assert.strictEqual(timeFilterFrameStartSignal.value, rangeStart);
-      assert.strictEqual(timeFilterFrameEndSignal.value, expectedEnd);
-
-      // Step Forward: advances start to 1_005_000, end to 1_010_000
-      const nextStart = stepTemporalTimestamp(rangeStart, 5, 'Seconds');
-      const nextEnd = computeFrameEnd(nextStart, 5, 'Seconds', rangeEnd);
-      setTimeFilterFrame(nextStart, nextEnd);
-      assert.strictEqual(timeFilterFrameStartSignal.value, 1_005_000);
-      assert.strictEqual(timeFilterFrameEndSignal.value, 1_010_000);
-
-      // Step Backward: returns to 1_000_000, 1_005_000
-      const prevStart = stepTemporalTimestamp(nextStart, -5, 'Seconds');
-      const prevEnd = computeFrameEnd(prevStart, 5, 'Seconds', rangeEnd);
-      setTimeFilterFrame(prevStart, prevEnd);
-      assert.strictEqual(timeFilterFrameStartSignal.value, 1_000_000);
-      assert.strictEqual(timeFilterFrameEndSignal.value, 1_005_000);
-
-      // Jump to End: sets [rangeEnd - 5s, rangeEnd]
-      const endStart = Math.max(rangeStart, stepTemporalTimestamp(rangeEnd, -5, 'Seconds'));
-      const endEnd = computeFrameEnd(endStart, 5, 'Seconds', rangeEnd);
-      setTimeFilterFrame(endStart, endEnd);
-      assert.strictEqual(timeFilterFrameStartSignal.value, 1_995_000);
-      assert.strictEqual(timeFilterFrameEndSignal.value, rangeEnd);
-    });
+    }
   });
 
-  describe('TimeFilterWidget: Scrubber Clearance & MinHeight Synchronization (Ticket #251)', () => {
-    it('renders middle bar slider container with vertical padding clearance and box-sizing', () => {
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
+  it("disables Jump to Start and Step Backward when active frame is at or before rangeStart", () => {
+    setTimeFilterRange(1000, 5000);
 
-      assert.ok(
-        markup.includes('time-filter-slider-container'),
-        'Markup must include time-filter-slider-container class'
-      );
-      assert.ok(
-        markup.includes('padding:4px 0') || markup.includes('padding: 4px 0'),
-        'Slider container must have 4px vertical padding clearance'
-      );
-      assert.ok(
-        markup.includes('box-sizing:border-box') || markup.includes('box-sizing: border-box'),
-        'Slider container must have box-sizing border-box'
-      );
-    });
+    // Instant frame at rangeStart
+    setTimeFilterFrame(1000, 1000);
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
 
-    it('computeTimeFilterWidgetMinHeight dynamic calc expression accounts for slider vertical clearance (24px)', () => {
-      const minHeight = computeTimeFilterWidgetMinHeight();
-      assert.ok(
-        minHeight.includes('24px'),
-        'Dynamic minHeight calc expression must incorporate 24px vertical clearance for the slider row'
-      );
-    });
+    const jumpStartTag = (markup.match(
+      /<button[^>]*aria-label="Jump to Start"[^>]*>/
+    ) || [""])[0];
+    const stepBackTag = (markup.match(
+      /<button[^>]*aria-label="Step Backward"[^>]*>/
+    ) || [""])[0];
+    const stepForwardTag = (markup.match(
+      /<button[^>]*aria-label="Step Forward"[^>]*>/
+    ) || [""])[0];
+    const jumpEndTag = (markup.match(
+      /<button[^>]*aria-label="Jump to End"[^>]*>/
+    ) || [""])[0];
+
+    assert.ok(
+      jumpStartTag.includes("disabled"),
+      "Jump to Start must be disabled at rangeStart"
+    );
+    assert.ok(
+      stepBackTag.includes("disabled"),
+      "Step Backward must be disabled at rangeStart"
+    );
+    assert.ok(
+      !stepForwardTag.includes("disabled"),
+      "Step Forward must be enabled when before rangeEnd"
+    );
+    assert.ok(
+      !jumpEndTag.includes("disabled"),
+      "Jump to End must be enabled when before rangeEnd"
+    );
+
+    // Window frame starting at rangeStart
+    setTimeFilterFrame(1000, 2000);
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    const jumpStartWindow = (markup.match(
+      /<button[^>]*aria-label="Jump to Start"[^>]*>/
+    ) || [""])[0];
+    const stepBackWindow = (markup.match(
+      /<button[^>]*aria-label="Step Backward"[^>]*>/
+    ) || [""])[0];
+    assert.ok(
+      jumpStartWindow.includes("disabled"),
+      "Jump to Start must be disabled for window at rangeStart"
+    );
+    assert.ok(
+      stepBackWindow.includes("disabled"),
+      "Step Backward must be disabled for window at rangeStart"
+    );
   });
 
-  describe('TimeFilterWidget: Temporal Envelope Auto-Detection & Signal Synchronization (Ticket #252)', () => {
-    beforeEach(() => {
-      resetTimeFilterState();
-    });
+  it("disables Jump to End and Step Forward when active frame is at or after rangeEnd", () => {
+    setTimeFilterRange(1000, 5000);
 
-    it('autoDetectTemporalRange correctly discovers global minimum start and maximum end with pre-1970 and future dates', async () => {
-      const layers: LayerDescriptor[] = [
-        {
-          id: 'layer-historical',
-          name: 'Historical Layer',
-          temporal: {
-            enabled: true,
-            mode: 'start_end',
-            startField: 'began',
-            endField: 'ended',
-          },
-        } as any,
-        {
-          id: 'layer-future',
-          name: 'Future Layer',
-          temporal: {
-            enabled: true,
-            mode: 'start_end',
-            startField: 'commenced',
-            endField: 'concluded',
-          },
-        } as any,
-      ];
+    // Instant frame at rangeEnd
+    setTimeFilterFrame(5000, 5000);
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
 
-      const mockQueryExtent = async (layerId: string, options: any) => {
-        if (layerId === 'layer-historical') {
-          if (options.orderBy?.[0]?.[1] === 'ASC') {
-            return { features: [{ properties: { began: '0500-06-06' } }] };
-          }
-          return { features: [{ properties: { ended: '0600-01-01' } }] };
-        }
-        if (layerId === 'layer-future') {
-          if (options.orderBy?.[0]?.[1] === 'ASC') {
-            return { features: [{ properties: { commenced: '2020-01-01' } }] };
-          }
-          return { features: [{ properties: { concluded: '2099-12-31' } }] };
-        }
-        return null;
-      };
+    const jumpStartTag = (markup.match(
+      /<button[^>]*aria-label="Jump to Start"[^>]*>/
+    ) || [""])[0];
+    const stepBackTag = (markup.match(
+      /<button[^>]*aria-label="Step Backward"[^>]*>/
+    ) || [""])[0];
+    const stepForwardTag = (markup.match(
+      /<button[^>]*aria-label="Step Forward"[^>]*>/
+    ) || [""])[0];
+    const jumpEndTag = (markup.match(
+      /<button[^>]*aria-label="Jump to End"[^>]*>/
+    ) || [""])[0];
 
-      const range = await autoDetectTemporalRange(layers, mockQueryExtent);
-      assert.ok(range, 'Range must be resolved');
+    assert.ok(
+      !jumpStartTag.includes("disabled"),
+      "Jump to Start must be enabled when after rangeStart"
+    );
+    assert.ok(
+      !stepBackTag.includes("disabled"),
+      "Step Backward must be enabled when after rangeStart"
+    );
+    assert.ok(
+      stepForwardTag.includes("disabled"),
+      "Step Forward must be disabled at rangeEnd"
+    );
+    assert.ok(
+      jumpEndTag.includes("disabled"),
+      "Jump to End must be disabled at rangeEnd"
+    );
 
-      const expectedEarliest = Date.parse('0500-06-06');
-      const expectedLatest = Date.parse('2099-12-31');
-      assert.strictEqual(range.from, expectedEarliest, 'Earliest bound must resolve to 0500-06-06');
-      assert.strictEqual(range.to, expectedLatest, 'Latest bound must resolve to 2099-12-31');
-    });
+    // Window frame ending at rangeEnd
+    setTimeFilterFrame(4000, 5000);
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    const stepForwardWindow = (markup.match(
+      /<button[^>]*aria-label="Step Forward"[^>]*>/
+    ) || [""])[0];
+    const jumpEndWindow = (markup.match(
+      /<button[^>]*aria-label="Jump to End"[^>]*>/
+    ) || [""])[0];
+    assert.ok(
+      stepForwardWindow.includes("disabled"),
+      "Step Forward must be disabled for window at rangeEnd"
+    );
+    assert.ok(
+      jumpEndWindow.includes("disabled"),
+      "Jump to End must be disabled for window at rangeEnd"
+    );
+  });
 
-    it('loadProjectIntoSignals auto-detects temporal range when project contains temporal layers with uninitialized bounds', async () => {
-      const { loadProjectIntoSignals } = jiti(
-        '@renderer/state/gisSignals'
-      ) as typeof import('@renderer/state/gisSignals');
+  it("enables all VCR transport buttons when frame is strictly within range bounds", () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(2500, 3500);
 
-      const project: any = {
-        name: 'Temporal Test Project',
-        layers: [
-          {
-            id: 'archaeological-sites',
-            name: 'Archaeological Sites',
-            geometryKind: 'Point',
-            temporal: {
-              enabled: true,
-              mode: 'start_end',
-              startField: 'founded',
-              endField: 'abandoned',
-            },
-          },
-        ],
-        timeFilter: {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    const buttons = [
+      "Jump to Start",
+      "Step Backward",
+      "Step Forward",
+      "Jump to End",
+    ];
+
+    for (const btnLabel of buttons) {
+      const regex = new RegExp(
+        `<button[^>]*aria-label="${btnLabel}"[^>]*>`,
+        "i"
+      );
+      const match = markup.match(regex);
+      assert.ok(match, `Button "${btnLabel}" must be rendered`);
+      assert.ok(
+        !match[0].includes("disabled"),
+        `Button "${btnLabel}" must be enabled inside range bounds`
+      );
+    }
+  });
+});
+
+describe("TimeFilterWidget: Activation Toggle Button Alignment (Ticket #248)", () => {
+  it("verifies that .toolbar-btn and .toolbar-btn.active CSS rules match standard toolbar toggle conventions", () => {
+    const cssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/workbench.css"
+    );
+    const css = fs.readFileSync(cssPath, "utf8");
+
+    // Inactive / base styling
+    assert.ok(
+      css.includes(".toolbar-btn {")
+        && css.includes("background: transparent;")
+        && css.includes("var(--cartouche-theme-fg-primary)"),
+      ".toolbar-btn must have transparent background and primary fg color"
+    );
+
+    // Hover styling
+    assert.ok(
+      css.includes(".toolbar-btn:hover:not(:disabled)")
+        && css.includes("var(--cartouche-theme-surface-alt)"),
+      ".toolbar-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)"
+    );
+
+    // Active styling
+    assert.ok(
+      css.includes(".toolbar-btn.active")
+        && css.includes("var(--cartouche-theme-info-subtle)")
+        && css.includes("var(--cartouche-theme-info)"),
+      ".toolbar-btn.active must apply info-subtle background and info border/color"
+    );
+  });
+
+  it("renders activation toggle button with .toolbar-btn class", () => {
+    setTimeFilterActive(false);
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    const toggleMatch = markup.match(
+      /<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/
+    );
+    assert.ok(toggleMatch, "Activation toggle button must be rendered");
+    assert.ok(
+      toggleMatch[0].includes("toolbar-btn"),
+      "Activation toggle button must adopt toolbar-btn class"
+    );
+    assert.ok(
+      !toggleMatch[0].includes("toolbar-btn active")
+        && !toggleMatch[0].includes("active"),
+      "Inactive toggle button must not carry active class"
+    );
+  });
+
+  it("reactively applies active class when isTimeFilterActiveSignal is true", () => {
+    setTimeFilterActive(true);
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    const toggleMatch = markup.match(
+      /<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/
+    );
+    assert.ok(toggleMatch, "Activation toggle button must be rendered");
+    assert.ok(
+      toggleMatch[0].includes("toolbar-btn active")
+        || (toggleMatch[0].includes("toolbar-btn")
+          && toggleMatch[0].includes("active")),
+      "Active toggle button must adopt .toolbar-btn.active class"
+    );
+    // Ensure hardcoded navy background (#1b446c) has been completely removed
+    assert.ok(
+      !toggleMatch[0].includes("#1b446c"),
+      "Hardcoded navy background must not be present"
+    );
+  });
+
+  it("toggles active class immediately when signal toggles between true and false", () => {
+    // Inactive
+    setTimeFilterActive(false);
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    let toggleMatch = markup.match(
+      /<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/
+    );
+    assert.ok(
+      toggleMatch && !toggleMatch[0].includes("active"),
+      "Must be inactive initially"
+    );
+
+    // Toggle to active
+    setTimeFilterActive(true);
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    toggleMatch = markup.match(
+      /<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/
+    );
+    assert.ok(
+      toggleMatch && toggleMatch[0].includes("active"),
+      "Must reactively become active"
+    );
+
+    // Toggle back to inactive
+    setTimeFilterActive(false);
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    toggleMatch = markup.match(
+      /<button[^>]*aria-label="Toggle Dynamic Temporal Control"[^>]*>/
+    );
+    assert.ok(
+      toggleMatch && !toggleMatch[0].includes("active"),
+      "Must reactively become inactive again"
+    );
+  });
+});
+
+describe("TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket #250)", () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it("verifies discrete frame duration stepping across all step units (Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years)", () => {
+    const baseMs = Date.UTC(2026, 5, 1, 12, 0, 0, 0);
+
+    // 1. Milliseconds
+    const msStep = stepTemporalTimestamp(baseMs, 50, "Milliseconds");
+    assert.strictEqual(msStep, baseMs + 50);
+
+    // 2. Seconds
+    const secStep = stepTemporalTimestamp(baseMs, 10, "Seconds");
+    assert.strictEqual(secStep, baseMs + 10_000);
+
+    // 3. Minutes
+    const minStep = stepTemporalTimestamp(baseMs, 5, "Minutes");
+    assert.strictEqual(minStep, baseMs + 5 * 60_000);
+
+    // 4. Hours
+    const hrStep = stepTemporalTimestamp(baseMs, 2, "Hours");
+    assert.strictEqual(hrStep, baseMs + 2 * 3_600_000);
+
+    // 5. Days
+    const dayStep = stepTemporalTimestamp(baseMs, 3, "Days");
+    assert.strictEqual(dayStep, baseMs + 3 * 86_400_000);
+
+    // 6. Weeks
+    const weekStep = stepTemporalTimestamp(baseMs, 2, "Weeks");
+    assert.strictEqual(weekStep, baseMs + 14 * 86_400_000);
+
+    // 7. Months
+    const monthStep = stepTemporalTimestamp(baseMs, 1, "Months");
+    assert.strictEqual(monthStep, Date.UTC(2026, 6, 1, 12, 0, 0, 0));
+
+    // 8. Years
+    const yearStep = stepTemporalTimestamp(baseMs, 1, "Years");
+    assert.strictEqual(yearStep, Date.UTC(2027, 5, 1, 12, 0, 0, 0));
+  });
+
+  it("computeFrameEnd clamps frame end to rangeEnd boundary", () => {
+    const start = 1_000_000;
+    const rangeEnd = 1_050_000;
+
+    // Unclamped (1_000_000 + 10_000 = 1_010_000 <= 1_050_000)
+    const end1 = computeFrameEnd(start, 10, "Seconds", rangeEnd);
+    assert.strictEqual(end1, 1_010_000);
+
+    // Clamped to rangeEnd (1_000_000 + 100_000 = 1_100_000 > 1_050_000)
+    const end2 = computeFrameEnd(start, 100, "Seconds", rangeEnd);
+    assert.strictEqual(end2, rangeEnd);
+  });
+
+  it("renders Current Frame label with distinct start and end timestamps formatted in UTC", () => {
+    const startMs = Date.UTC(2026, 0, 1, 0, 0, 0);
+    const endMs = Date.UTC(2026, 0, 2, 0, 0, 0);
+    setTimeFilterRange(startMs, Date.UTC(2026, 11, 31, 23, 59, 59));
+    setTimeFilterFrame(startMs, endMs);
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    const expectedLabel = `${formatUtcTimestamp(startMs)} | ${formatUtcTimestamp(endMs)}`;
+    assert.ok(
+      markup.includes(expectedLabel),
+      `Rendered markup must contain discrete frame interval "${expectedLabel}"`
+    );
+    assert.notStrictEqual(
+      formatUtcTimestamp(startMs),
+      formatUtcTimestamp(endMs),
+      "Frame start and end labels must be distinct"
+    );
+  });
+
+  it("advances frame window and updates signals when stepping through transport controls", () => {
+    const rangeStart = 1_000_000;
+    const rangeEnd = 2_000_000;
+    setTimeFilterRange(rangeStart, rangeEnd);
+    setTimeFilterStep(5, "Seconds"); // 5,000 ms per step
+
+    // Jump to Start: sets [rangeStart, computeFrameEnd(rangeStart, 5, 'Seconds', rangeEnd)]
+    const expectedEnd = rangeStart + 5_000;
+    setTimeFilterFrame(rangeStart, expectedEnd);
+    assert.strictEqual(timeFilterFrameStartSignal.value, rangeStart);
+    assert.strictEqual(timeFilterFrameEndSignal.value, expectedEnd);
+
+    // Step Forward: advances start to 1_005_000, end to 1_010_000
+    const nextStart = stepTemporalTimestamp(rangeStart, 5, "Seconds");
+    const nextEnd = computeFrameEnd(nextStart, 5, "Seconds", rangeEnd);
+    setTimeFilterFrame(nextStart, nextEnd);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1_005_000);
+    assert.strictEqual(timeFilterFrameEndSignal.value, 1_010_000);
+
+    // Step Backward: returns to 1_000_000, 1_005_000
+    const prevStart = stepTemporalTimestamp(nextStart, -5, "Seconds");
+    const prevEnd = computeFrameEnd(prevStart, 5, "Seconds", rangeEnd);
+    setTimeFilterFrame(prevStart, prevEnd);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1_000_000);
+    assert.strictEqual(timeFilterFrameEndSignal.value, 1_005_000);
+
+    // Jump to End: sets [rangeEnd - 5s, rangeEnd]
+    const endStart = Math.max(
+      rangeStart,
+      stepTemporalTimestamp(rangeEnd, -5, "Seconds")
+    );
+    const endEnd = computeFrameEnd(endStart, 5, "Seconds", rangeEnd);
+    setTimeFilterFrame(endStart, endEnd);
+    assert.strictEqual(timeFilterFrameStartSignal.value, 1_995_000);
+    assert.strictEqual(timeFilterFrameEndSignal.value, rangeEnd);
+  });
+});
+
+describe("TimeFilterWidget: Scrubber Clearance & MinHeight Synchronization (Ticket #251)", () => {
+  it("renders middle bar slider container with vertical padding clearance and box-sizing", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    assert.ok(
+      markup.includes("time-filter-slider-container"),
+      "Markup must include time-filter-slider-container class"
+    );
+    assert.ok(
+      markup.includes("padding:4px 0") || markup.includes("padding: 4px 0"),
+      "Slider container must have 4px vertical padding clearance"
+    );
+    assert.ok(
+      markup.includes("box-sizing:border-box")
+        || markup.includes("box-sizing: border-box"),
+      "Slider container must have box-sizing border-box"
+    );
+  });
+
+  it("computeTimeFilterWidgetMinHeight dynamic calc expression accounts for slider vertical clearance (24px)", () => {
+    const minHeight = computeTimeFilterWidgetMinHeight();
+    assert.ok(
+      minHeight.includes("24px"),
+      "Dynamic minHeight calc expression must incorporate 24px vertical clearance for the slider row"
+    );
+  });
+});
+
+describe("TimeFilterWidget: Temporal Envelope Auto-Detection & Signal Synchronization (Ticket #252)", () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it("autoDetectTemporalRange correctly discovers global minimum start and maximum end with pre-1970 and future dates", async () => {
+    const layers: LayerDescriptor[] = [
+      {
+        id: "layer-historical",
+        name: "Historical Layer",
+        temporal: {
           enabled: true,
-          from: 0,
-          to: 0, // uninitialized bounds
-          step: 1,
-          unit: 'Days',
+          mode: "start_end",
+          startField: "began",
+          endField: "ended",
         },
-      };
-
-      // Mock electronAPI.queryExtent
-      (globalThis as any).window = (globalThis as any).window || {};
-      (globalThis as any).window.electronAPI = (globalThis as any).window.electronAPI || {};
-      (globalThis as any).window.electronAPI.queryExtent = async (_id: string, opts: any) => {
-        if (opts.orderBy?.[0]?.[1] === 'ASC') {
-          return { features: [{ properties: { founded: '1000-01-01' } }] };
-        }
-        return { features: [{ properties: { abandoned: '1500-12-31' } }] };
-      };
-
-      loadProjectIntoSignals(project);
-
-      // Wait for autoDetectTemporalRange promise resolution
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      assert.strictEqual(timeFilterRangeStartSignal.value, Date.parse('1000-01-01'));
-      assert.strictEqual(timeFilterRangeEndSignal.value, Date.parse('1500-12-31'));
-      assert.strictEqual(timeFilterFrameStartSignal.value, Date.parse('1000-01-01'));
-    });
-  });
-
-  describe('TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantics (Ticket #255)', () => {
-    beforeEach(() => {
-      resetTimeFilterState();
-    });
-
-    it('computeTemporalStepAttribute computes exact millisecond step for fixed units and 1 for calendar-variable units', () => {
-      assert.strictEqual(computeTemporalStepAttribute(50, 'Milliseconds'), 50);
-      assert.strictEqual(computeTemporalStepAttribute(5, 'Seconds'), 5000);
-      assert.strictEqual(computeTemporalStepAttribute(2.5, 'Minutes'), 150000);
-      assert.strictEqual(computeTemporalStepAttribute(3, 'Hours'), 10800000);
-      assert.strictEqual(computeTemporalStepAttribute(1, 'Days'), 86400000);
-      assert.strictEqual(computeTemporalStepAttribute(2, 'Weeks'), 1209600000);
-      assert.strictEqual(computeTemporalStepAttribute(1, 'Months'), 1);
-      assert.strictEqual(computeTemporalStepAttribute(1, 'Years'), 1);
-    });
-
-    it('renders slider with step matching step control multiplied by unit', () => {
-      setTimeFilterRange(Date.UTC(2026, 0, 1), Date.UTC(2026, 11, 31));
-      setTimeFilterStep(5, 'Seconds');
-      let markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
-      assert.ok(markup.includes('step="5000"'), 'Slider step must be 5000 for 5 Seconds');
-
-      setTimeFilterStep(2, 'Hours');
-      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
-      assert.ok(markup.includes('step="7200000"'), 'Slider step must be 7200000 for 2 Hours');
-
-      setTimeFilterStep(1, 'Months');
-      markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
-      assert.ok(markup.includes('step="1"'), 'Slider step must be 1 for Months');
-    });
-
-    it('preserves exact calendar date when stepping months (2026-10-20 -> 2026-11-20)', () => {
-      const start = Date.UTC(2026, 9, 20, 14, 0, 0); // 2026-10-20 14:00:00 UTC
-      const end = Date.UTC(2027, 9, 20, 14, 0, 0);
-
-      const plusOneMonth = stepTemporalTimestamp(start, 1, 'Months');
-      assert.strictEqual(
-        plusOneMonth,
-        Date.UTC(2026, 10, 20, 14, 0, 0),
-        'Adding 1 month to 2026-10-20 must produce 2026-11-20'
-      );
-
-      const minusTwoDays = stepTemporalTimestamp(start, -2, 'Days');
-      assert.strictEqual(
-        minusTwoDays,
-        Date.UTC(2026, 9, 18, 14, 0, 0),
-        'Subtracting 2 days from 2026-10-20 must produce 2026-10-18'
-      );
-
-      // Verify snapToTemporalStep snaps a position closer to 2026-11-20
-      const midway = start + 25 * 86400000;
-      const snapped = snapToTemporalStep(midway, start, end, 1, 'Months');
-      assert.strictEqual(
-        snapped,
-        Date.UTC(2026, 10, 20, 14, 0, 0),
-        'Snapping halfway through the month must land on exact calendar month date'
-      );
-    });
-
-    it('clamps slider position strictly between rangeStart and rangeEnd', () => {
-      const rStart = Date.UTC(2026, 0, 1, 0, 0, 0);
-      const rEnd = Date.UTC(2026, 11, 31, 23, 59, 59);
-
-      // Underflow
-      const underflow = snapToTemporalStep(rStart - 100000, rStart, rEnd, 1, 'Days');
-      assert.strictEqual(underflow, rStart, 'Underflow must clamp to rangeStart');
-
-      // Overflow
-      const overflow = snapToTemporalStep(rEnd + 100000, rStart, rEnd, 1, 'Days');
-      assert.strictEqual(overflow, rEnd, 'Overflow must clamp to rangeEnd');
-    });
-
-    it('supports sub-day stepping and micro-decimal steps down to MIN_TIME_FILTER_STEP', () => {
-      const rStart = Date.UTC(2026, 0, 1, 0, 0, 0);
-
-      // Micro-decimal step in Years
-      const stepped = stepTemporalTimestamp(rStart, MIN_TIME_FILTER_STEP, 'Years');
-      assert.ok(stepped > rStart, 'Micro-decimal step must advance timestamp');
-      const deltaMs = stepped - rStart;
-      assert.ok(
-        Math.abs(deltaMs - 1000) <= 5,
-        `MIN_TIME_FILTER_STEP in Years must advance timestamp by ~1 second (1000ms), got ${deltaMs}`
-      );
-
-      // Sub-day Milliseconds stepping
-      const msStepped = stepTemporalTimestamp(rStart, 50, 'Milliseconds');
-      assert.strictEqual(msStepped, rStart + 50);
-
-      // Sub-day Seconds stepping
-      const secStepped = stepTemporalTimestamp(rStart, 15, 'Seconds');
-      assert.strictEqual(secStepped, rStart + 15000);
-    });
-  });
-
-  describe('TimeFilterWidget: Custom Range Slider Track and Thumb Styling (Ticket #256)', () => {
-    it('defines cross-browser pseudo-element styling for .time-filter-slider in workbench.css', () => {
-      const cssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-      const css = fs.readFileSync(cssPath, 'utf8');
-
-      // 1. Base .time-filter-slider appearance and outline reset
-      assert.ok(
-        css.includes('.time-filter-slider {') &&
-          css.includes('-webkit-appearance: none;') &&
-          css.includes('appearance: none;') &&
-          css.includes('background: transparent;'),
-        '.time-filter-slider must reset appearance and use transparent background'
-      );
-
-      // 2. WebKit track: narrow 2px dark line using theme border strong
-      assert.ok(
-        css.includes('.time-filter-slider::-webkit-slider-runnable-track {') &&
-          css.includes('height: 2px;') &&
-          css.includes('var(--cartouche-theme-border-strong)'),
-        '.time-filter-slider::-webkit-slider-runnable-track must define 2px height track with theme border strong'
-      );
-
-      // 3. WebKit thumb: sized to 80% of ui.icon.size and vertically centered with negative margin
-      assert.ok(
-        css.includes('.time-filter-slider::-webkit-slider-thumb {') &&
-          css.includes('width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
-          css.includes('height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
-          css.includes('border-radius: 50%;') &&
-          css.includes('var(--cartouche-theme-primary);') &&
-          css.includes('margin-top: calc((2px - (var(--cartouche-ui-icon-size, 24px) * 0.8)) / 2);'),
-        '.time-filter-slider::-webkit-slider-thumb must be sized to 80% of ui.icon.size and vertically centered'
-      );
-
-      // 4. Gecko track: narrow 2px dark line using theme border strong
-      assert.ok(
-        css.includes('.time-filter-slider::-moz-range-track {') &&
-          css.includes('height: 2px;') &&
-          css.includes('var(--cartouche-theme-border-strong)'),
-        '.time-filter-slider::-moz-range-track must define 2px height track with theme border strong'
-      );
-
-      // 5. Gecko thumb: sized to 80% of ui.icon.size
-      assert.ok(
-        css.includes('.time-filter-slider::-moz-range-thumb {') &&
-          css.includes('width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
-          css.includes('height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);') &&
-          css.includes('border-radius: 50%;') &&
-          css.includes('var(--cartouche-theme-primary);'),
-        '.time-filter-slider::-moz-range-thumb must be sized to 80% of ui.icon.size'
-      );
-
-      // 6. Gecko progress: transparent to prevent left-side track fill / highlight
-      assert.ok(
-        css.includes('.time-filter-slider::-moz-range-progress {') &&
-          css.includes('background-color: transparent;'),
-        '.time-filter-slider::-moz-range-progress must have transparent background to prevent left-side fill'
-      );
-    });
-
-    it('renders slider input element without conflicting inline accentColor style', () => {
-      setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(2000, 3000);
-      const markup = renderToStaticMarkup(
-        React.createElement(TimeFilterWidget, {})
-      );
-
-      const sliderMatch = markup.match(/<input[^>]*time-filter-slider[^>]*>/);
-      assert.ok(sliderMatch, 'Slider element with time-filter-slider class must be present');
-      assert.ok(
-        !sliderMatch[0].includes('accent-color') && !sliderMatch[0].includes('accentColor'),
-        'Slider input element must not include conflicting inline accentColor'
-      );
-    });
-  });
-
-  describe('TimeFilterWidget: Project Dirty State on Range, Slider, and Transport Changes (Ticket #257)', () => {
-    /**
-     * @class MockElement
-     * @description Headless MockElement implementation for React 19 testing in Node.js.
-     */
-    class MockElement {
-      nodeType = 1;
-      tagName: string;
-      nodeName: string;
-      ownerDocument: any = null;
-      parentNode: any = null;
-      childNodes: any[] = [];
-      style: Record<string, string> & {
-        setProperty: (name: string, val: string) => void;
-        removeProperty: (name: string) => void;
-        getPropertyValue: (name: string) => string;
-        cssText: string;
-      };
-      className = '';
-      attributes: Record<string, string> = {};
-      eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
-      disabled = false;
-      value = '';
-      multiple = false;
-      get options(): any[] {
-        return this.childNodes.filter((c) => c && c.tagName === 'OPTION');
-      }
-      get selectedOptions(): any[] {
-        return this.options.filter((o) => o.selected);
-      }
-      attachEvent(evt: string, handler: (e: any) => void) {
-        this.addEventListener(evt, handler);
-      }
-      detachEvent(evt: string, handler: (e: any) => void) {
-        this.removeEventListener(evt, handler);
-      }
-
-      constructor(tag = 'div') {
-        this.tagName = tag.toUpperCase();
-        this.nodeName = tag.toUpperCase();
-        const styleObj: Record<string, string> = { cssText: '' };
-        this.style = Object.assign(styleObj, {
-          cssText: '',
-          setProperty: (name: string, val: string) => {
-            styleObj[name] = val;
-          },
-          removeProperty: (name: string) => {
-            delete styleObj[name];
-          },
-          getPropertyValue: (name: string) => styleObj[name] || '',
-        });
-      }
-
-      setAttribute(key: string, val: string): void {
-        this.attributes[key] = String(val);
-        if (key === 'class') {
-          this.className = String(val);
-        }
-        if (key === 'disabled') {
-          this.disabled = true;
-        }
-        if (key === 'value') {
-          this.value = String(val);
-        }
-      }
-
-      getAttribute(key: string): string | null {
-        if (key === 'disabled' && this.disabled) return '';
-        if (key === 'value') return this.value;
-        return this.attributes[key] ?? null;
-      }
-
-      hasAttribute(key: string): boolean {
-        if (key === 'disabled') return this.disabled;
-        return key in this.attributes;
-      }
-
-      removeAttribute(key: string): void {
-        delete this.attributes[key];
-        if (key === 'disabled') {
-          this.disabled = false;
-        }
-      }
-
-      appendChild(child: any): any {
-        this.childNodes.push(child);
-        child.parentNode = this;
-        return child;
-      }
-
-      removeChild(child: any): any {
-        this.childNodes = this.childNodes.filter((c) => c !== child);
-        child.parentNode = null;
-        return child;
-      }
-
-      insertBefore(newChild: any, refChild: any): any {
-        const idx = this.childNodes.indexOf(refChild);
-        if (idx !== -1) {
-          this.childNodes.splice(idx, 0, newChild);
-        } else {
-          this.childNodes.push(newChild);
-        }
-        newChild.parentNode = this;
-        return newChild;
-      }
-
-      addEventListener(type: string, cb: (e: any) => void, opts?: any): void {
-        const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
-        if (!this.eventListeners[type]) this.eventListeners[type] = [];
-        this.eventListeners[type].push({ cb, capture });
-      }
-
-      removeEventListener(type: string, cb: (e: any) => void): void {
-        if (!this.eventListeners[type]) return;
-        this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
-      }
-
-      dispatchEvent(event: any): boolean {
-        event.target = event.target || this;
-        event.currentTarget = this;
-        const origStop = event.stopPropagation;
-        event.stopPropagation = () => {
-          event.cancelBubble = true;
-          if (origStop) origStop.call(event);
-        };
-        const listeners = (this.eventListeners[event.type] || []).slice();
-        for (const { cb } of listeners) {
-          cb(event);
-        }
-        if (event.bubbles !== false && this.parentNode && !event.cancelBubble) {
-          this.parentNode.dispatchEvent(event);
-        }
-        return !event.defaultPrevented;
-      }
-
-      focus(): void {
-        if (this.ownerDocument) this.ownerDocument.activeElement = this;
-        const focusEv = { type: 'focus', target: this, currentTarget: this, bubbles: false, cancelable: false };
-        this.dispatchEvent(focusEv);
-        const focusInEv = { type: 'focusin', target: this, currentTarget: this, bubbles: true, cancelable: false };
-        this.dispatchEvent(focusInEv);
-      }
-
-      blur(): void {
-        const blurEv = { type: 'blur', target: this, currentTarget: this, bubbles: false, cancelable: false };
-        this.dispatchEvent(blurEv);
-      }
-
-      select(): void {}
-
-      getBoundingClientRect() {
-        return { left: 0, top: 0, right: 100, bottom: 20, width: 100, height: 20, x: 0, y: 0 };
-      }
-    }
-
-    let mockDoc: any;
-    let mockContainer: MockElement;
-    let mockRoot: Root | null = null;
-
-    function setupMockDom(): void {
-      const documentElement = new MockElement('html');
-      const body = new MockElement('body');
-      documentElement.appendChild(body);
-
-      mockDoc = {
-        nodeType: 9,
-        documentElement,
-        body,
-        createElement: (tag: string) => {
-          const el = new MockElement(tag);
-          el.ownerDocument = mockDoc;
-          return el;
+      } as any,
+      {
+        id: "layer-future",
+        name: "Future Layer",
+        temporal: {
+          enabled: true,
+          mode: "start_end",
+          startField: "commenced",
+          endField: "concluded",
         },
-        createElementNS: (_ns: string, tag: string) => {
-          const el = new MockElement(tag);
-          el.ownerDocument = mockDoc;
-          return el;
-        },
-        createTextNode: (text: string) => ({
-          nodeType: 3,
-          nodeValue: text,
-          textContent: text,
-          ownerDocument: mockDoc,
-          parentNode: null,
-        }),
-        createComment: (data: string) => ({
-          nodeType: 8,
-          data,
-          ownerDocument: mockDoc,
-          parentNode: null,
-        }),
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        defaultView: null as any,
-      };
-      documentElement.ownerDocument = mockDoc;
-      body.ownerDocument = mockDoc;
+      } as any,
+    ];
 
-      const win = {
-        innerWidth: 1024,
-        innerHeight: 768,
-        document: mockDoc,
-        HTMLIFrameElement: class {},
-        HTMLElement: MockElement,
-        Element: MockElement,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        getSelection: () => ({
-          removeAllRanges: () => {},
-          addRange: () => {},
-        }),
-      };
-      mockDoc.defaultView = win;
-
-      (globalThis as any).ResizeObserver = class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      };
-      (globalThis as any).document = mockDoc;
-      (globalThis as any).window = win;
-      (globalThis as any).HTMLIFrameElement = class {};
-      (globalThis as any).HTMLElement = MockElement;
-      (globalThis as any).Element = MockElement;
-      (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
-      (globalThis as any).getSelection = win.getSelection;
-
-      mockContainer = mockDoc.createElement('div');
-      body.appendChild(mockContainer);
-      mockRoot = createRoot(mockContainer as any);
-    }
-
-    function tearDownMockDom(): void {
-      if (mockRoot) {
-        act(() => {
-          mockRoot?.unmount();
-        });
-        mockRoot = null;
-      }
-      delete (globalThis as any).document;
-      delete (globalThis as any).window;
-      delete (globalThis as any).ResizeObserver;
-    }
-
-    function findNodeByPredicate(rootNode: MockElement, pred: (el: MockElement) => boolean): MockElement | null {
-      if (pred(rootNode)) return rootNode;
-      for (const child of rootNode.childNodes) {
-        if (child && child.nodeType === 1) {
-          const found = findNodeByPredicate(child, pred);
-          if (found) return found;
+    const mockQueryExtent = async (layerId: string, options: any) => {
+      if (layerId === "layer-historical") {
+        if (options.orderBy?.[0]?.[1] === "ASC") {
+          return { features: [{ properties: { began: "0500-06-06" } }] };
         }
+        return { features: [{ properties: { ended: "0600-01-01" } }] };
+      }
+      if (layerId === "layer-future") {
+        if (options.orderBy?.[0]?.[1] === "ASC") {
+          return { features: [{ properties: { commenced: "2020-01-01" } }] };
+        }
+        return { features: [{ properties: { concluded: "2099-12-31" } }] };
       }
       return null;
-    }
+    };
 
-    function findAllNodesByPredicate(rootNode: MockElement, pred: (el: MockElement) => boolean): MockElement[] {
-      const result: MockElement[] = [];
-      if (pred(rootNode)) result.push(rootNode);
-      for (const child of rootNode.childNodes) {
-        if (child && child.nodeType === 1) {
-          result.push(...findAllNodesByPredicate(child, pred));
-        }
+    const range = await autoDetectTemporalRange(layers, mockQueryExtent);
+    assert.ok(range, "Range must be resolved");
+
+    const expectedEarliest = Date.parse("0500-06-06");
+    const expectedLatest = Date.parse("2099-12-31");
+    assert.strictEqual(
+      range.from,
+      expectedEarliest,
+      "Earliest bound must resolve to 0500-06-06"
+    );
+    assert.strictEqual(
+      range.to,
+      expectedLatest,
+      "Latest bound must resolve to 2099-12-31"
+    );
+  });
+
+  it("loadProjectIntoSignals auto-detects temporal range when project contains temporal layers with uninitialized bounds", async () => {
+    const { loadProjectIntoSignals } = jiti(
+      "@renderer/state/gisSignals"
+    ) as typeof import("@renderer/state/gisSignals");
+
+    const project: any = {
+      name: "Temporal Test Project",
+      layers: [
+        {
+          id: "archaeological-sites",
+          name: "Archaeological Sites",
+          geometryKind: "Point",
+          temporal: {
+            enabled: true,
+            mode: "start_end",
+            startField: "founded",
+            endField: "abandoned",
+          },
+        },
+      ],
+      timeFilter: {
+        enabled: true,
+        from: 0,
+        to: 0, // uninitialized bounds
+        step: 1,
+        unit: "Days",
+      },
+    };
+
+    // Mock electronAPI.queryExtent
+    (globalThis as any).window = (globalThis as any).window || {};
+    (globalThis as any).window.electronAPI =
+      (globalThis as any).window.electronAPI || {};
+    (globalThis as any).window.electronAPI.queryExtent = async (
+      _id: string,
+      opts: any
+    ) => {
+      if (opts.orderBy?.[0]?.[1] === "ASC") {
+        return { features: [{ properties: { founded: "1000-01-01" } }] };
       }
-      return result;
+      return { features: [{ properties: { abandoned: "1500-12-31" } }] };
+    };
+
+    loadProjectIntoSignals(project);
+
+    // Wait for autoDetectTemporalRange promise resolution
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert.strictEqual(
+      timeFilterRangeStartSignal.value,
+      Date.parse("1000-01-01")
+    );
+    assert.strictEqual(
+      timeFilterRangeEndSignal.value,
+      Date.parse("1500-12-31")
+    );
+    assert.strictEqual(
+      timeFilterFrameStartSignal.value,
+      Date.parse("1000-01-01")
+    );
+  });
+});
+
+describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantics (Ticket #255)", () => {
+  beforeEach(() => {
+    resetTimeFilterState();
+  });
+
+  it("computeTemporalStepAttribute computes exact millisecond step for fixed units and 1 for calendar-variable units", () => {
+    assert.strictEqual(computeTemporalStepAttribute(50, "Milliseconds"), 50);
+    assert.strictEqual(computeTemporalStepAttribute(5, "Seconds"), 5000);
+    assert.strictEqual(computeTemporalStepAttribute(2.5, "Minutes"), 150000);
+    assert.strictEqual(computeTemporalStepAttribute(3, "Hours"), 10800000);
+    assert.strictEqual(computeTemporalStepAttribute(1, "Days"), 86400000);
+    assert.strictEqual(computeTemporalStepAttribute(2, "Weeks"), 1209600000);
+    assert.strictEqual(computeTemporalStepAttribute(1, "Months"), 1);
+    assert.strictEqual(computeTemporalStepAttribute(1, "Years"), 1);
+  });
+
+  it("renders slider with step matching step control multiplied by unit", () => {
+    setTimeFilterRange(Date.UTC(2026, 0, 1), Date.UTC(2026, 11, 31));
+    setTimeFilterStep(5, "Seconds");
+    let markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes('step="5000"'),
+      "Slider step must be 5000 for 5 Seconds"
+    );
+
+    setTimeFilterStep(2, "Hours");
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    assert.ok(
+      markup.includes('step="7200000"'),
+      "Slider step must be 7200000 for 2 Hours"
+    );
+
+    setTimeFilterStep(1, "Months");
+    markup = renderToStaticMarkup(React.createElement(TimeFilterWidget, {}));
+    assert.ok(markup.includes('step="1"'), "Slider step must be 1 for Months");
+  });
+
+  it("preserves exact calendar date when stepping months (2026-10-20 -> 2026-11-20)", () => {
+    const start = Date.UTC(2026, 9, 20, 14, 0, 0); // 2026-10-20 14:00:00 UTC
+    const end = Date.UTC(2027, 9, 20, 14, 0, 0);
+
+    const plusOneMonth = stepTemporalTimestamp(start, 1, "Months");
+    assert.strictEqual(
+      plusOneMonth,
+      Date.UTC(2026, 10, 20, 14, 0, 0),
+      "Adding 1 month to 2026-10-20 must produce 2026-11-20"
+    );
+
+    const minusTwoDays = stepTemporalTimestamp(start, -2, "Days");
+    assert.strictEqual(
+      minusTwoDays,
+      Date.UTC(2026, 9, 18, 14, 0, 0),
+      "Subtracting 2 days from 2026-10-20 must produce 2026-10-18"
+    );
+
+    // Verify snapToTemporalStep snaps a position closer to 2026-11-20
+    const midway = start + 25 * 86400000;
+    const snapped = snapToTemporalStep(midway, start, end, 1, "Months");
+    assert.strictEqual(
+      snapped,
+      Date.UTC(2026, 10, 20, 14, 0, 0),
+      "Snapping halfway through the month must land on exact calendar month date"
+    );
+  });
+
+  it("clamps slider position strictly between rangeStart and rangeEnd", () => {
+    const rStart = Date.UTC(2026, 0, 1, 0, 0, 0);
+    const rEnd = Date.UTC(2026, 11, 31, 23, 59, 59);
+
+    // Underflow
+    const underflow = snapToTemporalStep(
+      rStart - 100000,
+      rStart,
+      rEnd,
+      1,
+      "Days"
+    );
+    assert.strictEqual(underflow, rStart, "Underflow must clamp to rangeStart");
+
+    // Overflow
+    const overflow = snapToTemporalStep(rEnd + 100000, rStart, rEnd, 1, "Days");
+    assert.strictEqual(overflow, rEnd, "Overflow must clamp to rangeEnd");
+  });
+
+  it("supports sub-day stepping and micro-decimal steps down to MIN_TIME_FILTER_STEP", () => {
+    const rStart = Date.UTC(2026, 0, 1, 0, 0, 0);
+
+    // Micro-decimal step in Years
+    const stepped = stepTemporalTimestamp(
+      rStart,
+      MIN_TIME_FILTER_STEP,
+      "Years"
+    );
+    assert.ok(stepped > rStart, "Micro-decimal step must advance timestamp");
+    const deltaMs = stepped - rStart;
+    assert.ok(
+      Math.abs(deltaMs - 1000) <= 5,
+      `MIN_TIME_FILTER_STEP in Years must advance timestamp by ~1 second (1000ms), got ${deltaMs}`
+    );
+
+    // Sub-day Milliseconds stepping
+    const msStepped = stepTemporalTimestamp(rStart, 50, "Milliseconds");
+    assert.strictEqual(msStepped, rStart + 50);
+
+    // Sub-day Seconds stepping
+    const secStepped = stepTemporalTimestamp(rStart, 15, "Seconds");
+    assert.strictEqual(secStepped, rStart + 15000);
+  });
+});
+
+describe("TimeFilterWidget: Custom Range Slider Track and Thumb Styling (Ticket #256)", () => {
+  it("defines cross-browser pseudo-element styling for .time-filter-slider in workbench.css", () => {
+    const cssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/workbench.css"
+    );
+    const css = fs.readFileSync(cssPath, "utf8");
+
+    // 1. Base .time-filter-slider appearance and outline reset
+    assert.ok(
+      css.includes(".time-filter-slider {")
+        && css.includes("-webkit-appearance: none;")
+        && css.includes("appearance: none;")
+        && css.includes("background: transparent;"),
+      ".time-filter-slider must reset appearance and use transparent background"
+    );
+
+    // 2. WebKit track: narrow 2px dark line using theme border strong
+    assert.ok(
+      css.includes(".time-filter-slider::-webkit-slider-runnable-track {")
+        && css.includes("height: 2px;")
+        && css.includes("var(--cartouche-theme-border-strong)"),
+      ".time-filter-slider::-webkit-slider-runnable-track must define 2px height track with theme border strong"
+    );
+
+    // 3. WebKit thumb: sized to 80% of ui.icon.size and vertically centered with negative margin
+    assert.ok(
+      css.includes(".time-filter-slider::-webkit-slider-thumb {")
+        && css.includes(
+          "width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);"
+        )
+        && css.includes(
+          "height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);"
+        )
+        && css.includes("border-radius: 50%;")
+        && css.includes("var(--cartouche-theme-primary);")
+        && css.includes(
+          "margin-top: calc((2px - (var(--cartouche-ui-icon-size, 24px) * 0.8)) / 2);"
+        ),
+      ".time-filter-slider::-webkit-slider-thumb must be sized to 80% of ui.icon.size and vertically centered"
+    );
+
+    // 4. Gecko track: narrow 2px dark line using theme border strong
+    assert.ok(
+      css.includes(".time-filter-slider::-moz-range-track {")
+        && css.includes("height: 2px;")
+        && css.includes("var(--cartouche-theme-border-strong)"),
+      ".time-filter-slider::-moz-range-track must define 2px height track with theme border strong"
+    );
+
+    // 5. Gecko thumb: sized to 80% of ui.icon.size
+    assert.ok(
+      css.includes(".time-filter-slider::-moz-range-thumb {")
+        && css.includes(
+          "width: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);"
+        )
+        && css.includes(
+          "height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);"
+        )
+        && css.includes("border-radius: 50%;")
+        && css.includes("var(--cartouche-theme-primary);"),
+      ".time-filter-slider::-moz-range-thumb must be sized to 80% of ui.icon.size"
+    );
+
+    // 6. Gecko progress: transparent to prevent left-side track fill / highlight
+    assert.ok(
+      css.includes(".time-filter-slider::-moz-range-progress {")
+        && css.includes("background-color: transparent;"),
+      ".time-filter-slider::-moz-range-progress must have transparent background to prevent left-side fill"
+    );
+  });
+
+  it("renders slider input element without conflicting inline accentColor style", () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(2000, 3000);
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+
+    const sliderMatch = markup.match(/<input[^>]*time-filter-slider[^>]*>/);
+    assert.ok(
+      sliderMatch,
+      "Slider element with time-filter-slider class must be present"
+    );
+    assert.ok(
+      !sliderMatch[0].includes("accent-color")
+        && !sliderMatch[0].includes("accentColor"),
+      "Slider input element must not include conflicting inline accentColor"
+    );
+  });
+});
+
+describe("TimeFilterWidget: Project Dirty State on Range, Slider, and Transport Changes (Ticket #257)", () => {
+  /**
+   * @class MockElement
+   * @description Headless MockElement implementation for React 19 testing in Node.js.
+   */
+  class MockElement {
+    nodeType = 1;
+    tagName: string;
+    nodeName: string;
+    ownerDocument: any = null;
+    parentNode: any = null;
+    childNodes: any[] = [];
+    style: Record<string, string> & {
+      setProperty: (name: string, val: string) => void;
+      removeProperty: (name: string) => void;
+      getPropertyValue: (name: string) => string;
+      cssText: string;
+    };
+    className = "";
+    attributes: Record<string, string> = {};
+    eventListeners: Record<
+      string,
+      Array<{ cb: (e: any) => void; capture: boolean }>
+    > = {};
+    disabled = false;
+    value = "";
+    multiple = false;
+    get options(): any[] {
+      return this.childNodes.filter((c) => c && c.tagName === "OPTION");
+    }
+    get selectedOptions(): any[] {
+      return this.options.filter((o) => o.selected);
+    }
+    attachEvent(evt: string, handler: (e: any) => void) {
+      this.addEventListener(evt, handler);
+    }
+    detachEvent(evt: string, handler: (e: any) => void) {
+      this.removeEventListener(evt, handler);
     }
 
-    beforeEach(() => {
-      resetTimeFilterState();
-      isProjectDirtySignal.value = false;
-      setupMockDom();
-    });
-
-    afterEach(() => {
-      tearDownMockDom();
-    });
-
-    it('sets isProjectDirtySignal.value = true when From: timestamp spinner changes', () => {
-      setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(2000, 3000);
-      isProjectDirtySignal.value = false;
-
-      act(() => {
-        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+    constructor(tag = "div") {
+      this.tagName = tag.toUpperCase();
+      this.nodeName = tag.toUpperCase();
+      const styleObj: Record<string, string> = { cssText: "" };
+      this.style = Object.assign(styleObj, {
+        cssText: "",
+        setProperty: (name: string, val: string) => {
+          styleObj[name] = val;
+        },
+        removeProperty: (name: string) => {
+          delete styleObj[name];
+        },
+        getPropertyValue: (name: string) => styleObj[name] || "",
       });
+    }
 
-      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
+    setAttribute(key: string, val: string): void {
+      this.attributes[key] = String(val);
+      if (key === "class") {
+        this.className = String(val);
+      }
+      if (key === "disabled") {
+        this.disabled = true;
+      }
+      if (key === "value") {
+        this.value = String(val);
+      }
+    }
 
-      // Find all TimestampSpinner up buttons (first is From:, second is To:)
-      const upButtons = findAllNodesByPredicate(mockContainer, (n) =>
-        Boolean(n.className?.includes('timestamp-spinner-btn-up'))
+    getAttribute(key: string): string | null {
+      if (key === "disabled" && this.disabled) return "";
+      if (key === "value") return this.value;
+      return this.attributes[key] ?? null;
+    }
+
+    hasAttribute(key: string): boolean {
+      if (key === "disabled") return this.disabled;
+      return key in this.attributes;
+    }
+
+    removeAttribute(key: string): void {
+      delete this.attributes[key];
+      if (key === "disabled") {
+        this.disabled = false;
+      }
+    }
+
+    appendChild(child: any): any {
+      this.childNodes.push(child);
+      child.parentNode = this;
+      return child;
+    }
+
+    removeChild(child: any): any {
+      this.childNodes = this.childNodes.filter((c) => c !== child);
+      child.parentNode = null;
+      return child;
+    }
+
+    insertBefore(newChild: any, refChild: any): any {
+      const idx = this.childNodes.indexOf(refChild);
+      if (idx !== -1) {
+        this.childNodes.splice(idx, 0, newChild);
+      } else {
+        this.childNodes.push(newChild);
+      }
+      newChild.parentNode = this;
+      return newChild;
+    }
+
+    addEventListener(type: string, cb: (e: any) => void, opts?: any): void {
+      const capture = typeof opts === "boolean" ? opts : Boolean(opts?.capture);
+      if (!this.eventListeners[type]) this.eventListeners[type] = [];
+      this.eventListeners[type].push({ cb, capture });
+    }
+
+    removeEventListener(type: string, cb: (e: any) => void): void {
+      if (!this.eventListeners[type]) return;
+      this.eventListeners[type] = this.eventListeners[type].filter(
+        (l) => l.cb !== cb
       );
-      assert.ok(upButtons.length >= 2, 'Must locate at least 2 TimestampSpinner up buttons (From and To)');
-      const fromUpBtn = upButtons[0];
+    }
 
-      act(() => {
-        fromUpBtn.dispatchEvent({ type: 'click', bubbles: true });
-      });
-
-      assert.strictEqual(
-        isProjectDirtySignal.value,
-        true,
-        'Changing the From: timestamp spinner must set isProjectDirtySignal.value = true'
-      );
-    });
-
-    it('sets isProjectDirtySignal.value = true when To: timestamp spinner changes', () => {
-      setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(2000, 3000);
-      isProjectDirtySignal.value = false;
-
-      act(() => {
-        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
-      });
-
-      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
-
-      const upButtons = findAllNodesByPredicate(mockContainer, (n) =>
-        Boolean(n.className?.includes('timestamp-spinner-btn-up'))
-      );
-      assert.ok(upButtons.length >= 2, 'Must locate at least 2 TimestampSpinner up buttons (From and To)');
-      const toUpBtn = upButtons[1];
-
-      act(() => {
-        toUpBtn.dispatchEvent({ type: 'click', bubbles: true });
-      });
-
-      assert.strictEqual(
-        isProjectDirtySignal.value,
-        true,
-        'Changing the To: timestamp spinner must set isProjectDirtySignal.value = true'
-      );
-    });
-
-    it('sets isProjectDirtySignal.value = true when clicking the Auto-Range button', async () => {
-      setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(2000, 3000);
-      isProjectDirtySignal.value = false;
-
-      act(() => {
-        mockRoot?.render(React.createElement(TimeFilterWidget, {}));
-      });
-
-      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
-
-      const autoRangeBtn = findNodeByPredicate(mockContainer, (n) =>
-        n.getAttribute('aria-label') === 'Auto-calculate Range from Active Temporal Layers'
-      );
-      assert.ok(autoRangeBtn, 'Auto-Range button must be found');
-
-      (globalThis as any).window.electronAPI = {
-        queryExtent: async () => null,
+    dispatchEvent(event: any): boolean {
+      event.target = event.target || this;
+      event.currentTarget = this;
+      const origStop = event.stopPropagation;
+      event.stopPropagation = () => {
+        event.cancelBubble = true;
+        if (origStop) origStop.call(event);
       };
+      const listeners = (this.eventListeners[event.type] || []).slice();
+      for (const { cb } of listeners) {
+        cb(event);
+      }
+      if (event.bubbles !== false && this.parentNode && !event.cancelBubble) {
+        this.parentNode.dispatchEvent(event);
+      }
+      return !event.defaultPrevented;
+    }
 
-      await act(async () => {
-        autoRangeBtn.dispatchEvent({ type: 'click', bubbles: true });
-        // Flush microtasks and scheduler turns
-        for (let i = 0; i < 5; i++) {
-          await Promise.resolve();
-        }
-        await new Promise((resolve) => setTimeout(resolve, 50));
+    focus(): void {
+      if (this.ownerDocument) this.ownerDocument.activeElement = this;
+      const focusEv = {
+        type: "focus",
+        target: this,
+        currentTarget: this,
+        bubbles: false,
+        cancelable: false,
+      };
+      this.dispatchEvent(focusEv);
+      const focusInEv = {
+        type: "focusin",
+        target: this,
+        currentTarget: this,
+        bubbles: true,
+        cancelable: false,
+      };
+      this.dispatchEvent(focusInEv);
+    }
+
+    blur(): void {
+      const blurEv = {
+        type: "blur",
+        target: this,
+        currentTarget: this,
+        bubbles: false,
+        cancelable: false,
+      };
+      this.dispatchEvent(blurEv);
+    }
+
+    select(): void {}
+
+    getBoundingClientRect() {
+      return {
+        left: 0,
+        top: 0,
+        right: 100,
+        bottom: 20,
+        width: 100,
+        height: 20,
+        x: 0,
+        y: 0,
+      };
+    }
+  }
+
+  let mockDoc: any;
+  let mockContainer: MockElement;
+  let mockRoot: Root | null = null;
+
+  function setupMockDom(): void {
+    const documentElement = new MockElement("html");
+    const body = new MockElement("body");
+    documentElement.appendChild(body);
+
+    mockDoc = {
+      nodeType: 9,
+      documentElement,
+      body,
+      createElement: (tag: string) => {
+        const el = new MockElement(tag);
+        el.ownerDocument = mockDoc;
+        return el;
+      },
+      createElementNS: (_ns: string, tag: string) => {
+        const el = new MockElement(tag);
+        el.ownerDocument = mockDoc;
+        return el;
+      },
+      createTextNode: (text: string) => ({
+        nodeType: 3,
+        nodeValue: text,
+        textContent: text,
+        ownerDocument: mockDoc,
+        parentNode: null,
+      }),
+      createComment: (data: string) => ({
+        nodeType: 8,
+        data,
+        ownerDocument: mockDoc,
+        parentNode: null,
+      }),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      defaultView: null as any,
+    };
+    documentElement.ownerDocument = mockDoc;
+    body.ownerDocument = mockDoc;
+
+    const win = {
+      innerWidth: 1024,
+      innerHeight: 768,
+      document: mockDoc,
+      HTMLIFrameElement: class {},
+      HTMLElement: MockElement,
+      Element: MockElement,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      getSelection: () => ({ removeAllRanges: () => {}, addRange: () => {} }),
+    };
+    mockDoc.defaultView = win;
+
+    (globalThis as any).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    (globalThis as any).document = mockDoc;
+    (globalThis as any).window = win;
+    (globalThis as any).HTMLIFrameElement = class {};
+    (globalThis as any).HTMLElement = MockElement;
+    (globalThis as any).Element = MockElement;
+    (globalThis as any).Node = {
+      ELEMENT_NODE: 1,
+      TEXT_NODE: 3,
+      COMMENT_NODE: 8,
+      DOCUMENT_NODE: 9,
+    };
+    (globalThis as any).getSelection = win.getSelection;
+
+    mockContainer = mockDoc.createElement("div");
+    body.appendChild(mockContainer);
+    mockRoot = createRoot(mockContainer as any);
+  }
+
+  function tearDownMockDom(): void {
+    if (mockRoot) {
+      act(() => {
+        mockRoot?.unmount();
       });
+      mockRoot = null;
+    }
+    delete (globalThis as any).document;
+    delete (globalThis as any).window;
+    delete (globalThis as any).ResizeObserver;
+  }
 
-      assert.strictEqual(
-        isProjectDirtySignal.value,
-        true,
-        'Clicking the Auto-Range button must set isProjectDirtySignal.value = true'
-      );
+  function findNodeByPredicate(
+    rootNode: MockElement,
+    pred: (el: MockElement) => boolean
+  ): MockElement | null {
+    if (pred(rootNode)) return rootNode;
+    for (const child of rootNode.childNodes) {
+      if (child && child.nodeType === 1) {
+        const found = findNodeByPredicate(child, pred);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function findAllNodesByPredicate(
+    rootNode: MockElement,
+    pred: (el: MockElement) => boolean
+  ): MockElement[] {
+    const result: MockElement[] = [];
+    if (pred(rootNode)) result.push(rootNode);
+    for (const child of rootNode.childNodes) {
+      if (child && child.nodeType === 1) {
+        result.push(...findAllNodesByPredicate(child, pred));
+      }
+    }
+    return result;
+  }
+
+  beforeEach(() => {
+    resetTimeFilterState();
+    isProjectDirtySignal.value = false;
+    setupMockDom();
+  });
+
+  afterEach(() => {
+    tearDownMockDom();
+  });
+
+  it("sets isProjectDirtySignal.value = true when From: timestamp spinner changes", () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(2000, 3000);
+    isProjectDirtySignal.value = false;
+
+    act(() => {
+      mockRoot?.render(React.createElement(TimeFilterWidget, {}));
     });
 
-    it('sets isProjectDirtySignal.value = true when scrubbing or changing the timeline slider', () => {
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      false,
+      "Project must be clean initially"
+    );
+
+    // Find all TimestampSpinner up buttons (first is From:, second is To:)
+    const upButtons = findAllNodesByPredicate(mockContainer, (n) =>
+      Boolean(n.className?.includes("timestamp-spinner-btn-up"))
+    );
+    assert.ok(
+      upButtons.length >= 2,
+      "Must locate at least 2 TimestampSpinner up buttons (From and To)"
+    );
+    const fromUpBtn = upButtons[0];
+
+    act(() => {
+      fromUpBtn.dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      true,
+      "Changing the From: timestamp spinner must set isProjectDirtySignal.value = true"
+    );
+  });
+
+  it("sets isProjectDirtySignal.value = true when To: timestamp spinner changes", () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(2000, 3000);
+    isProjectDirtySignal.value = false;
+
+    act(() => {
+      mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      false,
+      "Project must be clean initially"
+    );
+
+    const upButtons = findAllNodesByPredicate(mockContainer, (n) =>
+      Boolean(n.className?.includes("timestamp-spinner-btn-up"))
+    );
+    assert.ok(
+      upButtons.length >= 2,
+      "Must locate at least 2 TimestampSpinner up buttons (From and To)"
+    );
+    const toUpBtn = upButtons[1];
+
+    act(() => {
+      toUpBtn.dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      true,
+      "Changing the To: timestamp spinner must set isProjectDirtySignal.value = true"
+    );
+  });
+
+  it("sets isProjectDirtySignal.value = true when clicking the Auto-Range button", async () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(2000, 3000);
+    isProjectDirtySignal.value = false;
+
+    act(() => {
+      mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      false,
+      "Project must be clean initially"
+    );
+
+    const autoRangeBtn = findNodeByPredicate(
+      mockContainer,
+      (n) =>
+        n.getAttribute("aria-label")
+        === "Auto-calculate Range from Active Temporal Layers"
+    );
+    assert.ok(autoRangeBtn, "Auto-Range button must be found");
+
+    (globalThis as any).window.electronAPI = { queryExtent: async () => null };
+
+    await act(async () => {
+      autoRangeBtn.dispatchEvent({ type: "click", bubbles: true });
+      // Flush microtasks and scheduler turns
+      for (let i = 0; i < 5; i++) {
+        await Promise.resolve();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      true,
+      "Clicking the Auto-Range button must set isProjectDirtySignal.value = true"
+    );
+  });
+
+  it("sets isProjectDirtySignal.value = true when scrubbing or changing the timeline slider", () => {
+    setTimeFilterRange(1000, 5000);
+    setTimeFilterFrame(2000, 3000);
+    isProjectDirtySignal.value = false;
+
+    act(() => {
+      mockRoot?.render(React.createElement(TimeFilterWidget, {}));
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      false,
+      "Project must be clean initially"
+    );
+
+    const slider = findNodeByPredicate(
+      mockContainer,
+      (n) => n.getAttribute("aria-label") === "Time Filter Scrubber"
+    );
+    assert.ok(slider, "Timeline slider must be found");
+
+    act(() => {
+      slider.focus();
+    });
+    slider.value = "3500";
+    act(() => {
+      slider.dispatchEvent({
+        type: "keydown",
+        key: "ArrowRight",
+        bubbles: true,
+      });
+      if (!isProjectDirtySignal.value) {
+        const propsKey = Object.keys(slider).find((k) =>
+          k.startsWith("__reactProps")
+        );
+        if (propsKey && (slider as any)[propsKey]?.onChange) {
+          (slider as any)[propsKey].onChange({ target: { value: "3500" } });
+        }
+      }
+    });
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      true,
+      "Scrubbing or changing the timeline slider must set isProjectDirtySignal.value = true"
+    );
+  });
+
+  it("sets isProjectDirtySignal.value = true when clicking each of the 4 VCR transport buttons", () => {
+    const transportButtons = [
+      "Jump to Start",
+      "Step Backward",
+      "Step Forward",
+      "Jump to End",
+    ];
+
+    for (const btnLabel of transportButtons) {
+      // Reset range and set frame comfortably in the middle so all transport buttons are enabled
       setTimeFilterRange(1000, 5000);
-      setTimeFilterFrame(2000, 3000);
+      setTimeFilterFrame(2500, 3000);
       isProjectDirtySignal.value = false;
 
       act(() => {
         mockRoot?.render(React.createElement(TimeFilterWidget, {}));
       });
-
-      assert.strictEqual(isProjectDirtySignal.value, false, 'Project must be clean initially');
-
-      const slider = findNodeByPredicate(mockContainer, (n) =>
-        n.getAttribute('aria-label') === 'Time Filter Scrubber'
-      );
-      assert.ok(slider, 'Timeline slider must be found');
-
-      act(() => {
-        slider.focus();
-      });
-      slider.value = '3500';
-      act(() => {
-        slider.dispatchEvent({ type: 'keydown', key: 'ArrowRight', bubbles: true });
-        if (!isProjectDirtySignal.value) {
-          const propsKey = Object.keys(slider).find((k) => k.startsWith('__reactProps'));
-          if (propsKey && (slider as any)[propsKey]?.onChange) {
-            (slider as any)[propsKey].onChange({ target: { value: '3500' } });
-          }
-        }
-      });
-
-      assert.strictEqual(
-        isProjectDirtySignal.value,
-        true,
-        'Scrubbing or changing the timeline slider must set isProjectDirtySignal.value = true'
-      );
-    });
-
-    it('sets isProjectDirtySignal.value = true when clicking each of the 4 VCR transport buttons', () => {
-      const transportButtons = [
-        'Jump to Start',
-        'Step Backward',
-        'Step Forward',
-        'Jump to End',
-      ];
-
-      for (const btnLabel of transportButtons) {
-        // Reset range and set frame comfortably in the middle so all transport buttons are enabled
-        setTimeFilterRange(1000, 5000);
-        setTimeFilterFrame(2500, 3000);
-        isProjectDirtySignal.value = false;
-
-        act(() => {
-          mockRoot?.render(React.createElement(TimeFilterWidget, {}));
-        });
-
-        assert.strictEqual(isProjectDirtySignal.value, false, `Project must be clean before clicking ${btnLabel}`);
-
-        const btn = findNodeByPredicate(mockContainer, (n) =>
-          n.getAttribute('aria-label') === btnLabel
-        );
-        assert.ok(btn, `VCR button "${btnLabel}" must be found`);
-        assert.strictEqual(btn.hasAttribute('disabled'), false, `VCR button "${btnLabel}" must be enabled`);
-
-        act(() => {
-          btn.dispatchEvent({ type: 'click', bubbles: true });
-        });
-
-        assert.strictEqual(
-          isProjectDirtySignal.value,
-          true,
-          `Clicking "${btnLabel}" must set isProjectDirtySignal.value = true`
-        );
-      }
-    });
-
-    it('does not set isProjectDirtySignal on programmatic signal updates or project deserialization', () => {
-      isProjectDirtySignal.value = false;
-
-      // Programmatic signal modifications
-      setTimeFilterRange(500, 1500);
-      setTimeFilterFrame(600, 700);
-      setTimeFilterStep(2, 'Hours');
-      resetTimeFilterState();
 
       assert.strictEqual(
         isProjectDirtySignal.value,
         false,
-        'Direct programmatic signal updates must not transition Project Dirty State'
+        `Project must be clean before clicking ${btnLabel}`
       );
-    });
+
+      const btn = findNodeByPredicate(
+        mockContainer,
+        (n) => n.getAttribute("aria-label") === btnLabel
+      );
+      assert.ok(btn, `VCR button "${btnLabel}" must be found`);
+      assert.strictEqual(
+        btn.hasAttribute("disabled"),
+        false,
+        `VCR button "${btnLabel}" must be enabled`
+      );
+
+      act(() => {
+        btn.dispatchEvent({ type: "click", bubbles: true });
+      });
+
+      assert.strictEqual(
+        isProjectDirtySignal.value,
+        true,
+        `Clicking "${btnLabel}" must set isProjectDirtySignal.value = true`
+      );
+    }
   });
+
+  it("does not set isProjectDirtySignal on programmatic signal updates or project deserialization", () => {
+    isProjectDirtySignal.value = false;
+
+    // Programmatic signal modifications
+    setTimeFilterRange(500, 1500);
+    setTimeFilterFrame(600, 700);
+    setTimeFilterStep(2, "Hours");
+    resetTimeFilterState();
+
+    assert.strictEqual(
+      isProjectDirtySignal.value,
+      false,
+      "Direct programmatic signal updates must not transition Project Dirty State"
+    );
+  });
+});

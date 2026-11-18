@@ -19,7 +19,10 @@ import Icon from "@renderer/components/common/Icon";
 import { mdiClose } from "@mdi/js";
 import { DetachedWindowPortal } from "@renderer/components/common/DetachedWindowPortal";
 import type { DialogWindowName } from "@shared/types";
-import { registerActiveDialog, focusActiveDialog } from "@renderer/state/dialogSignals";
+import {
+  registerActiveDialog,
+  focusActiveDialog,
+} from "@renderer/state/dialogSignals";
 import { isWithinOpenSelect } from "@renderer/components/common/Select";
 
 /**
@@ -157,7 +160,11 @@ export const Dialog: React.FC<DialogProps> = ({
           <div className='cartouche-dialog-title-container'>
             {icon
               && (typeof icon === "string" ?
-                <Icon path={icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)' style={{ flexShrink: 0 }} />
+                <Icon
+                  path={icon}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)'
+                  style={{ flexShrink: 0 }}
+                />
               : icon)}
             <span className='cartouche-dialog-title'>{title}</span>
           </div>
@@ -169,7 +176,10 @@ export const Dialog: React.FC<DialogProps> = ({
               className='cartouche-dialog-close-btn'
               onClick={() => onClose()}
               title='Close (Esc)'>
-              <Icon path={mdiClose} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)' />
+              <Icon
+                path={mdiClose}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)'
+              />
             </button>
           </div>
         </div>

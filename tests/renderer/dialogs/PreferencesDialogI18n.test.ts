@@ -10,24 +10,25 @@
  * @see {@link dictionarySignal}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { createRendererJiti } from "../rendererJiti";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const React = jiti('react');
-const ReactDOM = jiti('react-dom');
-const { renderToStaticMarkup } = jiti('react-dom/server');
-const { PreferencesDialog } = jiti('../../../src/renderer/workbench/dialogs/PreferencesDialog.tsx');
-const {
-  isPreferencesOpenSignal,
-  activeCategorySignal,
-  openPreferencesDialog
-} = jiti('../../../src/renderer/state/preferencesSignals.ts');
-const { dictionarySignal, t } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const React = jiti("react");
+const ReactDOM = jiti("react-dom");
+const { renderToStaticMarkup } = jiti("react-dom/server");
+const { PreferencesDialog } = jiti(
+  "../../../src/renderer/workbench/dialogs/PreferencesDialog.tsx"
+);
+const { isPreferencesOpenSignal, activeCategorySignal, openPreferencesDialog } =
+  jiti("../../../src/renderer/state/preferencesSignals.ts");
+const { dictionarySignal, t } = jiti(
+  "../../../src/renderer/state/i18nSignals.ts"
+);
 
-describe('PreferencesDialog i18n Entity Decoding Display', () => {
+describe("PreferencesDialog i18n Entity Decoding Display", () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalCreatePortal: any;
@@ -36,21 +37,17 @@ describe('PreferencesDialog i18n Entity Decoding Display', () => {
     originalDocument = globalThis.document;
     originalWindow = (globalThis as any).window;
 
-    (globalThis as any).document = {
-      createElement: () => ({ style: {} })
-    };
+    (globalThis as any).document = { createElement: () => ({ style: {} }) };
     (globalThis as any).window = {
-      electronAPI: {
-        getPreferenceValue: async () => ({})
-      }
+      electronAPI: { getPreferenceValue: async () => ({}) },
     };
     originalCreatePortal = ReactDOM.createPortal;
     ReactDOM.createPortal = (children: unknown) => children;
 
     // Populate active dictionary signal with decoded i18n strings
     dictionarySignal.value = {
-      prefs_tab_ui_name: 'UI & Display',
-      prefs_tab_plugins_name: 'Plugins & Extensions'
+      prefs_tab_ui_name: "UI & Display",
+      prefs_tab_plugins_name: "Plugins & Extensions",
     };
     openPreferencesDialog();
   });
@@ -70,47 +67,50 @@ describe('PreferencesDialog i18n Entity Decoding Display', () => {
     }
   });
 
-  it('resolves i18n tab translation keys to decoded strings with genuine ampersand', () => {
-    assert.equal(t('prefs_tab_ui_name'), 'UI & Display');
-    assert.equal(t('prefs_tab_plugins_name'), 'Plugins & Extensions');
+  it("resolves i18n tab translation keys to decoded strings with genuine ampersand", () => {
+    assert.equal(t("prefs_tab_ui_name"), "UI & Display");
+    assert.equal(t("prefs_tab_plugins_name"), "Plugins & Extensions");
   });
 
   it('renders "UI & Display" in sidebar tab and active header when UI category is selected', () => {
-    activeCategorySignal.value = 'ui';
+    activeCategorySignal.value = "ui";
     const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
 
     // In React HTML serialization, a genuine '&' in text is encoded to '&amp;' once (e.g. <span>UI &amp; Display</span>)
     // If it were unescaped raw entity in the dictionary, it would serialize as '&amp;amp;'
     assert.ok(
-      !html.includes('&amp;amp;'),
-      'HTML output must not contain double-escaped &amp;amp; entities'
+      !html.includes("&amp;amp;"),
+      "HTML output must not contain double-escaped &amp;amp; entities"
     );
     assert.ok(
-      html.includes('<span>UI &amp; Display</span>'),
-      'Sidebar tab for UI must render genuine & symbol (serialized as <span>UI &amp; Display</span>)'
+      html.includes("<span>UI &amp; Display</span>"),
+      "Sidebar tab for UI must render genuine & symbol (serialized as <span>UI &amp; Display</span>)"
     );
     assert.ok(
-      html.includes('<div class="preferences-section-title">UI &amp; Display</div>'),
+      html.includes(
+        '<div class="preferences-section-title">UI &amp; Display</div>'
+      ),
       'Active tab header for UI must display "UI & Display"'
     );
   });
 
   it('renders "Plugins & Extensions" in sidebar tab and active header when Plugins category is selected', () => {
-    activeCategorySignal.value = 'plugins';
+    activeCategorySignal.value = "plugins";
     const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
 
     assert.ok(
-      !html.includes('&amp;amp;'),
-      'HTML output must not contain double-escaped &amp;amp; entities'
+      !html.includes("&amp;amp;"),
+      "HTML output must not contain double-escaped &amp;amp; entities"
     );
     assert.ok(
-      html.includes('<span>Plugins &amp; Extensions</span>'),
-      'Sidebar tab for Plugins must render genuine & symbol (serialized as <span>Plugins &amp; Extensions</span>)'
+      html.includes("<span>Plugins &amp; Extensions</span>"),
+      "Sidebar tab for Plugins must render genuine & symbol (serialized as <span>Plugins &amp; Extensions</span>)"
     );
     assert.ok(
-      html.includes('<div class="preferences-section-title">Plugins &amp; Extensions</div>'),
+      html.includes(
+        '<div class="preferences-section-title">Plugins &amp; Extensions</div>'
+      ),
       'Active tab header for Plugins must display "Plugins & Extensions"'
     );
   });
 });
-

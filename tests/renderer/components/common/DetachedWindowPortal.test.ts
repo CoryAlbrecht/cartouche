@@ -9,17 +9,19 @@
  * @see {@link DetachedWindowPortal}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { DetachedWindowPortal } = jiti('@renderer/components/common/DetachedWindowPortal');
+const { DetachedWindowPortal } = jiti(
+  "@renderer/components/common/DetachedWindowPortal"
+);
 
 class MockElement {
   nodeType = 1;
@@ -34,29 +36,32 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
   }
@@ -108,9 +113,15 @@ class MockElement {
     this.eventListeners[type].push({ cb, capture });
   }
 
-  removeEventListener(type: string, cb: (e: any) => void, _capture = false): void {
+  removeEventListener(
+    type: string,
+    cb: (e: any) => void,
+    _capture = false
+  ): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -120,7 +131,11 @@ class MockElement {
     for (const l of listeners) {
       l.cb(event);
     }
-    if (!event._bubblesStopped && this.parentNode && typeof this.parentNode.dispatchEvent === 'function') {
+    if (
+      !event._bubblesStopped
+      && this.parentNode
+      && typeof this.parentNode.dispatchEvent === "function"
+    ) {
       this.parentNode.dispatchEvent(event);
     }
     return true;
@@ -150,12 +165,15 @@ class MockElement {
   }
 }
 
-describe('DetachedWindowPortal Keydown and Focus Capture', () => {
+describe("DetachedWindowPortal Keydown and Focus Capture", () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalMutationObserver: typeof globalThis.MutationObserver;
   let mockChildWindow: any;
-  let childListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>>;
+  let childListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  >;
   let root: Root | null = null;
   let container: MockElement;
 
@@ -165,15 +183,15 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
     originalMutationObserver = globalThis.MutationObserver;
 
     childListeners = {};
-    const childDocElement = new MockElement('html');
-    const childBody = new MockElement('body');
-    const childHead = new MockElement('head');
+    const childDocElement = new MockElement("html");
+    const childBody = new MockElement("body");
+    const childHead = new MockElement("head");
     childDocElement.appendChild(childHead);
     childDocElement.appendChild(childBody);
 
     const childDoc: any = {
       nodeType: 9,
-      title: '',
+      title: "",
       documentElement: childDocElement,
       body: childBody,
       head: childHead,
@@ -184,7 +202,7 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
         return el;
       },
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     childHead.ownerDocument = childDoc;
     childBody.ownerDocument = childDoc;
@@ -192,11 +210,19 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
     mockChildWindow = {
       closed: false,
       document: childDoc,
-      addEventListener: (type: string, cb: (e: any) => void, capture = false) => {
+      addEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        capture = false
+      ) => {
         if (!childListeners[type]) childListeners[type] = [];
         childListeners[type].push({ cb, capture });
       },
-      removeEventListener: (type: string, cb: (e: any) => void, _capture = false) => {
+      removeEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        _capture = false
+      ) => {
         if (!childListeners[type]) return;
         childListeners[type] = childListeners[type].filter((l) => l.cb !== cb);
       },
@@ -209,12 +235,12 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
       },
       close: () => {
         mockChildWindow.closed = true;
-      }
+      },
     };
 
-    const mainDocElement = new MockElement('html');
-    const mainBody = new MockElement('body');
-    const mainHead = new MockElement('head');
+    const mainDocElement = new MockElement("html");
+    const mainBody = new MockElement("body");
+    const mainHead = new MockElement("head");
     mainDocElement.appendChild(mainHead);
     mainDocElement.appendChild(mainBody);
 
@@ -230,7 +256,7 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
       },
       querySelectorAll: () => [],
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     mainHead.ownerDocument = mainDoc;
     mainBody.ownerDocument = mainDoc;
@@ -242,7 +268,7 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
       removeEventListener: () => {},
       HTMLIFrameElement: class {},
       HTMLElement: MockElement,
-      Element: MockElement
+      Element: MockElement,
     };
 
     mainDoc.defaultView = win;
@@ -253,14 +279,19 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
 
     (globalThis as any).document = mainDoc;
     (globalThis as any).window = win;
-    (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+    (globalThis as any).Node = {
+      ELEMENT_NODE: 1,
+      TEXT_NODE: 3,
+      COMMENT_NODE: 8,
+      DOCUMENT_NODE: 9,
+    };
 
     (globalThis as any).MutationObserver = class {
       observe() {}
       disconnect() {}
     };
 
-    container = new MockElement('div');
+    container = new MockElement("div");
     container.ownerDocument = mainDoc;
     mainBody.appendChild(container);
     root = createRoot(container as any);
@@ -290,7 +321,7 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
     }
   });
 
-  it('captures keydown events on the child window context and invokes onKeyDown', async () => {
+  it("captures keydown events on the child window context and invokes onKeyDown", async () => {
     let capturedEvent: any = null;
     const onKeyDown = (e: any) => {
       capturedEvent = e;
@@ -301,36 +332,43 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
         React.createElement(
           DetachedWindowPortal,
           {
-            title: 'Test Window',
-            frameName: 'testPortalWindow',
+            title: "Test Window",
+            frameName: "testPortalWindow",
             onClose: () => {},
-            onKeyDown
+            onKeyDown,
           },
-          React.createElement('div', null, 'Portal Content')
+          React.createElement("div", null, "Portal Content")
         )
       );
     });
 
-    assert.ok(childListeners['keydown'], 'keydown listener must be attached to child window');
-    assert.equal(childListeners['keydown'].length, 1);
-    assert.equal(childListeners['keydown'][0].capture, true, 'keydown must be attached in capture phase');
+    assert.ok(
+      childListeners["keydown"],
+      "keydown listener must be attached to child window"
+    );
+    assert.equal(childListeners["keydown"].length, 1);
+    assert.equal(
+      childListeners["keydown"][0].capture,
+      true,
+      "keydown must be attached in capture phase"
+    );
 
     // Simulate keydown event dispatched in child window
     const keyEvent = {
-      type: 'keydown',
-      key: 'Escape',
+      type: "keydown",
+      key: "Escape",
       defaultPrevented: false,
       preventDefault() {
         this.defaultPrevented = true;
-      }
+      },
     };
     mockChildWindow.dispatchEvent(keyEvent);
 
-    assert.ok(capturedEvent, 'onKeyDown handler must receive dispatched event');
-    assert.equal(capturedEvent.key, 'Escape');
+    assert.ok(capturedEvent, "onKeyDown handler must receive dispatched event");
+    assert.equal(capturedEvent.key, "Escape");
   });
 
-  it('attaches onFocus listener to child window and invokes callback when focused', async () => {
+  it("attaches onFocus listener to child window and invokes callback when focused", async () => {
     let focusCalled = false;
     const onFocus = () => {
       focusCalled = true;
@@ -341,18 +379,21 @@ describe('DetachedWindowPortal Keydown and Focus Capture', () => {
         React.createElement(
           DetachedWindowPortal,
           {
-            title: 'Test Window',
-            frameName: 'testPortalWindow',
+            title: "Test Window",
+            frameName: "testPortalWindow",
             onClose: () => {},
-            onFocus
+            onFocus,
           },
-          React.createElement('div', null, 'Portal Content')
+          React.createElement("div", null, "Portal Content")
         )
       );
     });
 
-    assert.ok(childListeners['focus'], 'focus listener must be attached to child window');
-    mockChildWindow.dispatchEvent({ type: 'focus' });
-    assert.equal(focusCalled, true, 'onFocus handler must be invoked');
+    assert.ok(
+      childListeners["focus"],
+      "focus listener must be attached to child window"
+    );
+    mockChildWindow.dispatchEvent({ type: "focus" });
+    assert.equal(focusCalled, true, "onFocus handler must be invoked");
   });
 });

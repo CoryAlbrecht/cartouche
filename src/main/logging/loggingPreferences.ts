@@ -10,10 +10,10 @@
  * @see {@link PreferencesStore}
  */
 
-import type { PreferenceMap } from '../../shared/types';
-import type { LogLevel } from '../../shared/logging';
-import { LoggingHub, type LoggingHubOptions } from './LoggingHub';
-import { PreferencesStore } from '../api/ui/preferences/PreferencesStore';
+import type { PreferenceMap } from "../../shared/types";
+import type { LogLevel } from "../../shared/logging";
+import { LoggingHub, type LoggingHubOptions } from "./LoggingHub";
+import { PreferencesStore } from "../api/ui/preferences/PreferencesStore";
 
 /**
  * @typedef {Object} LoggingPreferencesOverrides
@@ -43,14 +43,18 @@ export function extractLoggingOptionsFromPreferences(
   prefs: PreferenceMap,
   overrides?: LoggingPreferencesOverrides
 ): LoggingHubOptions {
-  const filePref = prefs['general.logging.location']?.value;
-  const resolvedLogFile = overrides?.cliLogFile !== undefined
-    ? overrides.cliLogFile
-    : (typeof filePref === 'string' && filePref.trim() !== '' ? filePref.trim() : undefined);
+  const filePref = prefs["general.logging.location"]?.value;
+  const resolvedLogFile =
+    overrides?.cliLogFile !== undefined ? overrides.cliLogFile
+    : typeof filePref === "string" && filePref.trim() !== "" ? filePref.trim()
+    : undefined;
 
-  const enableColors = prefs['general.logging.colours.console']?.value !== false;
-  const enableFileColors = prefs['general.logging.colours.file']?.value !== false;
-  const coloursPattern = prefs['general.logging.colours.pattern']?.value || 'level-only';
+  const enableColors =
+    prefs["general.logging.colours.console"]?.value !== false;
+  const enableFileColors =
+    prefs["general.logging.colours.file"]?.value !== false;
+  const coloursPattern =
+    prefs["general.logging.colours.pattern"]?.value || "level-only";
 
   return {
     ...(overrides?.cliLevel !== undefined ? { level: overrides.cliLevel } : {}),
@@ -59,12 +63,12 @@ export function extractLoggingOptionsFromPreferences(
     enableFileColors,
     coloursPattern,
     coloursLevels: {
-      critical: prefs['general.logging.colours.level.critical']?.value || 'red',
-      error: prefs['general.logging.colours.level.error']?.value || 'red',
-      warn: prefs['general.logging.colours.level.warn']?.value || 'yellow',
-      info: prefs['general.logging.colours.level.info']?.value || 'cyan',
-      debug: prefs['general.logging.colours.level.debug']?.value || 'gray'
-    }
+      critical: prefs["general.logging.colours.level.critical"]?.value || "red",
+      error: prefs["general.logging.colours.level.error"]?.value || "red",
+      warn: prefs["general.logging.colours.level.warn"]?.value || "yellow",
+      info: prefs["general.logging.colours.level.info"]?.value || "cyan",
+      debug: prefs["general.logging.colours.level.debug"]?.value || "gray",
+    },
   };
 }
 
@@ -90,10 +94,11 @@ export function bindLoggingPreferences(
 
   // Listen for runtime updates to general.logging.*
   return store.onPreferenceChange((key: string) => {
-    if (key.startsWith('general.logging.')) {
+    if (key.startsWith("general.logging.")) {
       const currentPrefs = store.get();
-      hub.configure(extractLoggingOptionsFromPreferences(currentPrefs, overrides));
+      hub.configure(
+        extractLoggingOptionsFromPreferences(currentPrefs, overrides)
+      );
     }
   });
 }
-

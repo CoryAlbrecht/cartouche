@@ -13,17 +13,17 @@
  * @see {@link resolveColorToHex}
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import Icon from '@renderer/components/common/Icon';
-import { mdiAlertRhombus } from '@mdi/js';
+import React, { useState, useEffect, useRef } from "react";
+import Icon from "@renderer/components/common/Icon";
+import { mdiAlertRhombus } from "@mdi/js";
 import {
   CSS_COLOR_NAMES,
   isValidCssColor,
   resolveColorToHex,
-} from '@shared/colors/cssColors';
-import { parseCssColor } from '@shared/colors/colorConversions';
-import { ColourButton } from '@renderer/components/common/ColourButton';
-import { useTranslation } from '@renderer/hooks/useTranslation';
+} from "@shared/colors/cssColors";
+import { parseCssColor } from "@shared/colors/colorConversions";
+import { ColourButton } from "@renderer/components/common/ColourButton";
+import { useTranslation } from "@renderer/hooks/useTranslation";
 
 /**
  * @typedef {Object} ColorInputProps
@@ -66,7 +66,7 @@ export interface ColorInputProps {
  */
 export const CssColorsDatalist: React.FC = () => {
   return (
-    <datalist id="css-colors-datalist">
+    <datalist id='css-colors-datalist'>
       {CSS_COLOR_NAMES.map((name) => (
         <option key={name} value={name} />
       ))}
@@ -90,16 +90,16 @@ export const ColorInput: React.FC<ColorInputProps> = ({
   onChange,
   disabled = false,
   ariaLabel,
-  className = '',
+  className = "",
   style,
   inputStyle,
   showTextInput = true,
-  fallbackColor = '#000000',
+  fallbackColor = "#000000",
   buttonWidth,
   buttonHeight,
 }) => {
   const { t } = useTranslation();
-  const [textValue, setTextValue] = useState<string>(value || '');
+  const [textValue, setTextValue] = useState<string>(value || "");
 
   // Maintain reference to the most recent valid hex color to preserve swatch preview during invalid typing
   const initialResolved = resolveColorToHex(value) || fallbackColor;
@@ -107,14 +107,15 @@ export const ColorInput: React.FC<ColorInputProps> = ({
 
   // Synchronize internal text state when external value changes
   useEffect(() => {
-    setTextValue(value || '');
+    setTextValue(value || "");
     const resolved = resolveColorToHex(value);
     if (resolved) {
       lastValidHexRef.current = resolved;
     }
   }, [value]);
 
-  const isValid = isValidCssColor(textValue) || parseCssColor(textValue) !== null;
+  const isValid =
+    isValidCssColor(textValue) || parseCssColor(textValue) !== null;
 
   if (isValid) {
     const resolved = resolveColorToHex(textValue);
@@ -123,7 +124,8 @@ export const ColorInput: React.FC<ColorInputProps> = ({
     }
   }
 
-  const buttonColor = isValid ? textValue : lastValidHexRef.current || fallbackColor;
+  const buttonColor =
+    isValid ? textValue : lastValidHexRef.current || fallbackColor;
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVal = e.target.value;
@@ -147,37 +149,45 @@ export const ColorInput: React.FC<ColorInputProps> = ({
     <div
       className={`color-input-container ${className}`.trim()}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.375rem',
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.375rem",
         ...style,
       }}>
       {showTextInput && (
-        <div className="preference-text-wrapper" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+        <div
+          className='preference-text-wrapper'
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+          }}>
           <input
             id={id}
-            type="text"
+            type='text'
             tabIndex={0}
-            aria-label={ariaLabel ?? 'Color'}
+            aria-label={ariaLabel ?? "Color"}
             aria-invalid={!isValid}
             disabled={disabled}
-            list="css-colors-datalist"
+            list='css-colors-datalist'
             value={textValue}
             onChange={handleTextChange}
-            className="preference-input-text color-input-text"
+            className='preference-input-text color-input-text'
             style={inputStyle}
-            title={!isValid ? 'Invalid CSS color name or hex format' : undefined}
+            title={
+              !isValid ? "Invalid CSS color name or hex format" : undefined
+            }
           />
           {!isValid && (
             <span
               tabIndex={0}
-              className="preference-input-error-icon cartouche-focus-invalid"
-              title="Invalid CSS color name or hex format"
-              aria-label="Invalid CSS color name or hex format">
+              className='preference-input-error-icon cartouche-focus-invalid'
+              title='Invalid CSS color name or hex format'
+              aria-label='Invalid CSS color name or hex format'>
               <Icon
                 path={mdiAlertRhombus}
-                size="calc(var(--cartouche-ui-icon-size, 24px) * 0.67)"
-                title="Invalid CSS color name or hex format"
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                title='Invalid CSS color name or hex format'
               />
             </span>
           )}
@@ -190,7 +200,11 @@ export const ColorInput: React.FC<ColorInputProps> = ({
         height={buttonHeight}
         onChange={handleButtonChange}
         dialogTitle={ariaLabel}
-        ariaLabel={ariaLabel ? t('colour_button_pick_for', { label: ariaLabel }) : undefined}
+        ariaLabel={
+          ariaLabel ?
+            t("colour_button_pick_for", { label: ariaLabel })
+          : undefined
+        }
         disabled={disabled}
       />
     </div>

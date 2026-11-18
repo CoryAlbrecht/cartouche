@@ -10,13 +10,14 @@
  * @see {@link GeospatialEngine}
  */
 
-import type { BoundingBox, GeometryKind } from '.';
+import type { BoundingBox, GeometryKind } from ".";
 
 /**
  * @typedef {'ogr_sql' | 'native_sql' | 'nosql' | 'generic'} ProviderQueryDialect
  * @description Provider query dialect classification tier for feature subset filter queries.
  */
-export type ProviderQueryDialect = 'ogr_sql' | 'native_sql' | 'nosql' | 'generic';
+export type ProviderQueryDialect =
+  "ogr_sql" | "native_sql" | "nosql" | "generic";
 
 /**
  * Canonical scalar data types inferred from vector layer attribute columns.
@@ -27,16 +28,16 @@ export type ProviderQueryDialect = 'ogr_sql' | 'native_sql' | 'nosql' | 'generic
  * @since 0.1.0-dev
  */
 export type InferredScalarFieldType =
-  | 'string'
-  | 'integer'
-  | 'real'
-  | 'boolean'
-  | 'date'
-  | 'time'
-  | 'datetime'
-  | 'uuid'
-  | 'json'
-  | 'binary';
+  | "string"
+  | "integer"
+  | "real"
+  | "boolean"
+  | "date"
+  | "time"
+  | "datetime"
+  | "uuid"
+  | "json"
+  | "binary";
 
 /**
  * Canonical array/list data types inferred from vector layer attribute columns.
@@ -47,16 +48,16 @@ export type InferredScalarFieldType =
  * @since 0.1.0-dev
  */
 export type InferredArrayFieldType =
-  | 'string[]'
-  | 'integer[]'
-  | 'real[]'
-  | 'boolean[]'
-  | 'date[]'
-  | 'time[]'
-  | 'datetime[]'
-  | 'uuid[]'
-  | 'json[]'
-  | 'binary[]';
+  | "string[]"
+  | "integer[]"
+  | "real[]"
+  | "boolean[]"
+  | "date[]"
+  | "time[]"
+  | "datetime[]"
+  | "uuid[]"
+  | "json[]"
+  | "binary[]";
 
 /**
  * Union of all canonical scalar and array inferred field data types.
@@ -66,7 +67,8 @@ export type InferredArrayFieldType =
  * @updated 2026-11-02
  * @since 0.1.0-dev
  */
-export type InferredFieldType = InferredScalarFieldType | InferredArrayFieldType;
+export type InferredFieldType =
+  InferredScalarFieldType | InferredArrayFieldType;
 
 /**
  * Array of all 20 canonical scalar and array inferred field data types.
@@ -77,26 +79,26 @@ export type InferredFieldType = InferredScalarFieldType | InferredArrayFieldType
  * @type {readonly InferredFieldType[]}
  */
 export const CANONICAL_INFERRED_FIELD_TYPES: readonly InferredFieldType[] = [
-  'string',
-  'integer',
-  'real',
-  'boolean',
-  'date',
-  'time',
-  'datetime',
-  'uuid',
-  'json',
-  'binary',
-  'string[]',
-  'integer[]',
-  'real[]',
-  'boolean[]',
-  'date[]',
-  'time[]',
-  'datetime[]',
-  'uuid[]',
-  'json[]',
-  'binary[]'
+  "string",
+  "integer",
+  "real",
+  "boolean",
+  "date",
+  "time",
+  "datetime",
+  "uuid",
+  "json",
+  "binary",
+  "string[]",
+  "integer[]",
+  "real[]",
+  "boolean[]",
+  "date[]",
+  "time[]",
+  "datetime[]",
+  "uuid[]",
+  "json[]",
+  "binary[]",
 ] as const;
 
 /**
@@ -138,7 +140,8 @@ export interface LayerFieldInfo {
   comment?: string;
   userOverridden?: boolean;
   isVirtual?: boolean;
-  mappedType?: 'string' | 'number' | 'boolean' | 'Date' | 'unknown' | InferredFieldType;
+  mappedType?:
+    "string" | "number" | "boolean" | "Date" | "unknown" | InferredFieldType;
 }
 
 /**

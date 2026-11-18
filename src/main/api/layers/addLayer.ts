@@ -12,17 +12,31 @@
  * @see {@link ProjectBroadcaster}
  */
 
-import * as path from 'node:path';
-import * as crypto from 'node:crypto';
-import type { AddLayerParams, GeometryKind, BoundingBox, LayerDescriptor } from '@shared/types';
-import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
-import { projectStore } from '../../project/ProjectStore';
-import { Layer } from '../../project/models/Layer';
-import { geospatialService } from '../../worker/GeospatialService';
-import { mapGdalGeometryKind } from '../../worker/GeospatialEngine';
-import { getProjectDefaultStyles, resolveNewLayerStyleContent } from '../../../shared/styles/projectDefaultStyles';
-import { broadcastProjectLayersTree, broadcastLayerAdded } from '../../project/ProjectBroadcaster';
-import { adoptFirstLayerCrs, broadcastProjectCrs } from '../../project/projectCrs';
+import * as path from "node:path";
+import * as crypto from "node:crypto";
+import type {
+  AddLayerParams,
+  GeometryKind,
+  BoundingBox,
+  LayerDescriptor,
+} from "@shared/types";
+import { fileTypeRegistry } from "../../filetypes/FileTypeRegistry";
+import { projectStore } from "../../project/ProjectStore";
+import { Layer } from "../../project/models/Layer";
+import { geospatialService } from "../../worker/GeospatialService";
+import { mapGdalGeometryKind } from "../../worker/GeospatialEngine";
+import {
+  getProjectDefaultStyles,
+  resolveNewLayerStyleContent,
+} from "../../../shared/styles/projectDefaultStyles";
+import {
+  broadcastProjectLayersTree,
+  broadcastLayerAdded,
+} from "../../project/ProjectBroadcaster";
+import {
+  adoptFirstLayerCrs,
+  broadcastProjectCrs,
+} from "../../project/projectCrs";
 
 export { mapGdalGeometryKind };
 
@@ -41,15 +55,17 @@ export { mapGdalGeometryKind };
 export async function addLayer(params: AddLayerParams): Promise<Layer> {
   // 1. Inspect filename to identify format descriptor from FileTypeRegistry
   const descriptor =
-    (await fileTypeRegistry.identifyFile(params.filePath)) ||
-    fileTypeRegistry.identifyByExtension(params.filePath);
+    (await fileTypeRegistry.identifyFile(params.filePath))
+    || fileTypeRegistry.identifyByExtension(params.filePath);
 
   if (!descriptor) {
-    throw new Error(`Unsupported or unrecognized file format for layer: "${params.filePath}"`);
+    throw new Error(
+      `Unsupported or unrecognized file format for layer: "${params.filePath}"`
+    );
   }
 
   // 2. Resolve unique layer ID
-  let resolvedId = '';
+  let resolvedId = "";
   if (params.layerId && params.layerId.trim().length > 0) {
     resolvedId = params.layerId.trim();
   } else {
@@ -57,12 +73,12 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
     const snakeBase =
       baseName
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '') || 'layer';
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "layer";
 
-    const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
+    const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
     const randomBytes = crypto.randomBytes(4);
-    let suffix = '';
+    let suffix = "";
     for (let i = 0; i < 4; i++) {
       suffix += chars[randomBytes[i] % chars.length];
     }
@@ -70,27 +86,25 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   }
 
   // 3. Register spatial dataset via GeospatialService in worker/engine
-  const isRaster = descriptor.category === 'raster' || params.sourceType === 'raster';
+  const isRaster =
+    descriptor.category === "raster" || params.sourceType === "raster";
   let metadata: {
     name?: string;
     extent: BoundingBox;
     featureCount: number;
-    crs?: import('@shared/types').ProjectCrs;
+    crs?: import("@shared/types").ProjectCrs;
     geometryKind?: GeometryKind;
-    fields?: import('@shared/types').LayerFieldInfo[];
+    fields?: import("@shared/types").LayerFieldInfo[];
     fidColumn?: string;
-    capabilities?: import('@shared/types/layers').LayerCapabilities;
-  } = {
-    extent: [0, 0, 0, 0],
-    featureCount: 0
-  };
+    capabilities?: import("@shared/types/layers").LayerCapabilities;
+  } = { extent: [0, 0, 0, 0], featureCount: 0 };
 
   if (!isRaster) {
     metadata = await geospatialService.openDataset(resolvedId, params.filePath);
   }
 
   // 4. Resolve display name
-  let resolvedName = '';
+  let resolvedName = "";
   if (params.layerName && params.layerName.trim().length > 0) {
     resolvedName = params.layerName.trim();
   } else if (metadata.name && metadata.name.trim().length > 0) {
@@ -100,11 +114,17 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   }
 
   // 5. Construct Layer model and populate properties
-  const layerKind = isRaster ? 'raster' : 'vector';
+  const layerKind = isRaster ? "raster" : "vector";
 
-  const newLayer = new Layer(resolvedName, params.filePath, layerKind, resolvedId);
+  const newLayer = new Layer(
+    resolvedName,
+    params.filePath,
+    layerKind,
+    resolvedId
+  );
   newLayer.fileType = descriptor;
-  newLayer.geometryKind = isRaster ? 'Raster' : (metadata.geometryKind || 'Unknown');
+  newLayer.geometryKind =
+    isRaster ? "Raster" : metadata.geometryKind || "Unknown";
   newLayer.crs = metadata.crs;
 
   // Attach the Project Default Style for the layer's geometry family (or the random-colour
@@ -115,7 +135,7 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
         newLayer.geometryKind,
         getProjectDefaultStyles(projectStore.getProject()?.styles)
       ),
-      format: 'cartouche'
+      format: "cartouche",
     };
   }
 
@@ -153,14 +173,11 @@ export async function addLayer(params: AddLayerParams): Promise<Layer> {
   // 6. Append to ProjectStore singleton
   if (!projectStore.hasProject()) {
     projectStore.setProject({
-      format: 'cartouche-xml',
-      pathMode: 'relative',
-      metadata: {
-        title: 'Untitled Project',
-        appVersion: '0.1.0-dev'
-      },
+      format: "cartouche-xml",
+      pathMode: "relative",
+      metadata: { title: "Untitled Project", appVersion: "0.1.0-dev" },
       layers: [],
-      styles: []
+      styles: [],
     });
   }
 

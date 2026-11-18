@@ -168,7 +168,8 @@ execSync(debCmd, { stdio: "inherit" });
 
 // Build .rpm package
 console.log("==> Building .rpm package with fpm...");
-const { version: rpmVersion, release: rpmRelease } = formatRpmVersionAndRelease(pkgVersion);
+const { version: rpmVersion, release: rpmRelease } =
+  formatRpmVersionAndRelease(pkgVersion);
 const rpmFileName = `cartouche-${rpmVersion}-${rpmRelease}.x86_64.rpm`;
 const rpmCmd = `"${fpmPath}" -s dir -t rpm -n cartouche -v "${rpmVersion}" --iteration "${rpmRelease}" \
   -m "Cory Albrecht <cory@hanfastolfe.com>" \
@@ -185,7 +186,4 @@ console.log("==> Packaging complete! Output files generated in release/:");
 console.log(
   `    - ${path.join(releaseDir, `cartouche_${pkgVersion}_amd64.deb`)}`
 );
-console.log(
-  `    - ${path.join(releaseDir, rpmFileName)}`
-);
-
+console.log(`    - ${path.join(releaseDir, rpmFileName)}`);

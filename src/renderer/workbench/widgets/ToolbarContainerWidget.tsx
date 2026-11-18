@@ -69,7 +69,10 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
    * @type {Signal<boolean>}
    */
   const isToolbarZoneDragOverSignal = useSignal<boolean>(false);
-  const isDragOver = propIsDragOver !== undefined ? propIsDragOver : isToolbarZoneDragOverSignal.value;
+  const isDragOver =
+    propIsDragOver !== undefined ? propIsDragOver : (
+      isToolbarZoneDragOverSignal.value
+    );
 
   /**
    * @signal containerDropPositionSignal
@@ -80,8 +83,13 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
    * @since 0.1.0-dev
    * @type {Signal<ToolbarDropPosition | null>}
    */
-  const containerDropPositionSignal = useSignal<ToolbarDropPosition | null>(null);
-  const containerDropPosition = propDropPosition !== undefined ? propDropPosition : containerDropPositionSignal.value;
+  const containerDropPositionSignal = useSignal<ToolbarDropPosition | null>(
+    null
+  );
+  const containerDropPosition =
+    propDropPosition !== undefined ? propDropPosition : (
+      containerDropPositionSignal.value
+    );
 
   const isHorizontal = zone === "top" || zone === "bottom";
   const visibleToolbars = visibleToolbarsSignal.value;
@@ -128,8 +136,16 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
       isToolbarZoneDragOverSignal.value = true;
     }
     const rect = e.currentTarget?.getBoundingClientRect?.();
-    const offset = rect ? (isHorizontal ? e.clientY - rect.top : e.clientX - rect.left) : 0;
-    const dimension = rect ? (isHorizontal ? rect.height : rect.width) : 0;
+    const offset =
+      rect ?
+        isHorizontal ? e.clientY - rect.top
+        : e.clientX - rect.left
+      : 0;
+    const dimension =
+      rect ?
+        isHorizontal ? rect.height
+        : rect.width
+      : 0;
     const pos = resolveContainerDropPosition(zone, offset, dimension);
     if (containerDropPositionSignal.value !== pos) {
       containerDropPositionSignal.value = pos;
@@ -150,20 +166,34 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     isToolbarZoneDragOverSignal.value = false;
     containerDropPositionSignal.value = null;
     const toolbarId =
-      activeDraggedToolbarSignal.value ||
-      (e.dataTransfer.getData("text/plain") as ToolbarId);
+      activeDraggedToolbarSignal.value
+      || (e.dataTransfer.getData("text/plain") as ToolbarId);
     if (toolbarId && visibleToolbars[toolbarId] !== undefined) {
       const rect = e.currentTarget?.getBoundingClientRect?.();
-      const offset = rect ? (isHorizontal ? e.clientY - rect.top : e.clientX - rect.left) : 0;
-      const dimension = rect ? (isHorizontal ? rect.height : rect.width) : 0;
+      const offset =
+        rect ?
+          isHorizontal ? e.clientY - rect.top
+          : e.clientX - rect.left
+        : 0;
+      const dimension =
+        rect ?
+          isHorizontal ? rect.height
+          : rect.width
+        : 0;
       const position = resolveContainerDropPosition(zone, offset, dimension);
       moveToolbar(toolbarId, zone, { position });
     }
     activeDraggedToolbarSignal.value = null;
   };
 
-  const activeBackground = isDragOver ? "var(--cartouche-drop-target-bg)" : "var(--cartouche-theme-surface-subtle)";
-  const activeBorderColor = isDragOver ? "var(--cartouche-drop-target-border)" : "var(--cartouche-theme-surface-subtle)";
+  const activeBackground =
+    isDragOver ?
+      "var(--cartouche-drop-target-bg)"
+    : "var(--cartouche-theme-surface-subtle)";
+  const activeBorderColor =
+    isDragOver ?
+      "var(--cartouche-drop-target-border)"
+    : "var(--cartouche-theme-surface-subtle)";
 
   // Fast transition on drag-enter (0.05s), slow smooth transition on drag-leave (0.7s)
   const currentTransition =

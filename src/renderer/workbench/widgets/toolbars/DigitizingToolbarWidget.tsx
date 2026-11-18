@@ -98,9 +98,7 @@ export function isDrawingToolEnabled(
   if (!inEditMode) return false;
   if (geometryKind === "Raster") return false;
   return (
-    geometryKind === targetKind ||
-    geometryKind === "Unknown" ||
-    !geometryKind
+    geometryKind === targetKind || geometryKind === "Unknown" || !geometryKind
   );
 }
 
@@ -148,7 +146,9 @@ export function isSaveActiveLayerEnabled(
  * @param {number} selectedCount - Count of currently selected spatial features.
  * @returns {boolean} True if delete is enabled, false otherwise.
  */
-export function isDeleteSelectedFeaturesEnabled(selectedCount: number): boolean {
+export function isDeleteSelectedFeaturesEnabled(
+  selectedCount: number
+): boolean {
   return selectedCount > 0;
 }
 
@@ -209,10 +209,7 @@ export function isPasteFeaturesEnabled(inEditMode: boolean): boolean {
  * @param {boolean} [isDisabled=false] - Whether the button is disabled.
  * @returns {string} Space-delimited CSS class string.
  */
-export function getButtonClass(
-  isActive = false,
-  isDisabled = false
-): string {
+export function getButtonClass(isActive = false, isDisabled = false): string {
   const classes = ["toolbar-btn"];
   if (isActive) classes.push("active");
   if (isDisabled) classes.push("disabled");
@@ -249,7 +246,11 @@ export const DigitizingToolbarWidget: React.FC<
     isEditMode,
     isProjectDirtySignal.value
   );
-  const isPointEnabled = isDrawingToolEnabled(geometryKind, "Point", isEditMode);
+  const isPointEnabled = isDrawingToolEnabled(
+    geometryKind,
+    "Point",
+    isEditMode
+  );
   const isLineEnabled = isDrawingToolEnabled(
     geometryKind,
     "LineString",
@@ -339,7 +340,10 @@ export const DigitizingToolbarWidget: React.FC<
       <button
         type='button'
         id='toolbar-tool-add-point'
-        className={getButtonClass(activeToolSignal.value === "point", !isPointEnabled)}
+        className={getButtonClass(
+          activeToolSignal.value === "point",
+          !isPointEnabled
+        )}
         title={pointLabel}
         aria-label={pointLabel}
         disabled={!isPointEnabled}
@@ -354,7 +358,10 @@ export const DigitizingToolbarWidget: React.FC<
       <button
         type='button'
         id='toolbar-tool-add-line'
-        className={getButtonClass(activeToolSignal.value === "line", !isLineEnabled)}
+        className={getButtonClass(
+          activeToolSignal.value === "line",
+          !isLineEnabled
+        )}
         title={lineLabel}
         aria-label={lineLabel}
         disabled={!isLineEnabled}
@@ -369,7 +376,10 @@ export const DigitizingToolbarWidget: React.FC<
       <button
         type='button'
         id='toolbar-tool-add-polygon'
-        className={getButtonClass(activeToolSignal.value === "polygon", !isPolygonEnabled)}
+        className={getButtonClass(
+          activeToolSignal.value === "polygon",
+          !isPolygonEnabled
+        )}
         title={polygonLabel}
         aria-label={polygonLabel}
         disabled={!isPolygonEnabled}
@@ -384,7 +394,10 @@ export const DigitizingToolbarWidget: React.FC<
       <button
         type='button'
         id='toolbar-tool-vertex-editor'
-        className={getButtonClass(activeToolSignal.value === "vertex_editor", !isVertexEnabled)}
+        className={getButtonClass(
+          activeToolSignal.value === "vertex_editor",
+          !isVertexEnabled
+        )}
         title={vertexTitle}
         aria-label={vertexLabel}
         disabled={!isVertexEnabled}

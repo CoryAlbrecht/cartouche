@@ -9,8 +9,8 @@
  * @see {@link ensureProjectionRegistered}
  */
 
-import gdal from 'gdal-async';
-import { logging } from '../../shared/logging';
+import gdal from "gdal-async";
+import { logging } from "../../shared/logging";
 
 /**
  * @typedef {Object} CrsDefinition
@@ -41,7 +41,7 @@ export interface CrsDefinition {
  * @returns {CrsDefinition | null} Definitions, or null.
  */
 export function getCrsDefinition(authId: string): CrsDefinition | null {
-  if (!authId || typeof authId !== 'string') return null;
+  if (!authId || typeof authId !== "string") return null;
   try {
     const srs = gdal.SpatialReference.fromUserInput(authId.trim());
     const proj4 = srs.toProj4().trim();
@@ -49,7 +49,10 @@ export function getCrsDefinition(authId: string): CrsDefinition | null {
     const wkt = srs.toWKT();
     return { authId, proj4, ...(wkt ? { wkt } : {}) };
   } catch (err) {
-    logging.warn('Failed to resolve CRS definition', err, { scope: 'crsDefinition', authId });
+    logging.warn("Failed to resolve CRS definition", err, {
+      scope: "crsDefinition",
+      authId,
+    });
     return null;
   }
 }

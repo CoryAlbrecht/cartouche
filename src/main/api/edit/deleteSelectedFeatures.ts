@@ -9,7 +9,7 @@
  * @see {@link deleteSelectedFeatures}
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @function deleteSelectedFeatures
@@ -21,5 +21,7 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function deleteSelectedFeatures(): void {
-  logging.debug('Delete selected features requested', { scope: 'deleteSelectedFeatures' });
+  logging.debug("Delete selected features requested", {
+    scope: "deleteSelectedFeatures",
+  });
 }

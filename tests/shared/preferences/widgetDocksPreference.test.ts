@@ -10,37 +10,45 @@
  * @see {@link DEFAULT_WORKBENCH_WIDGET_DOCKS}
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { BUILTIN_PREFERENCES } from '../../../src/shared/preferences';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { BUILTIN_PREFERENCES } from "../../../src/shared/preferences";
 import {
   DEFAULT_WORKBENCH_WIDGET_DOCKS,
   type WorkbenchWidgetDocksState,
-} from '../../../src/shared/types';
+} from "../../../src/shared/types";
 
-describe('ui.workbench.widgetDocks Preference Registration', () => {
-  it('registers ui.workbench.widgetDocks in BUILTIN_PREFERENCES with correct descriptor attributes', () => {
-    const pref = BUILTIN_PREFERENCES['ui.workbench.widgetDocks'];
-    assert.ok(pref, 'ui.workbench.widgetDocks preference must be registered');
-    assert.strictEqual(pref.hidden, true, 'Preference must be hidden from Preferences Dialog');
-    assert.strictEqual(pref.ephemeral, false, 'Preference must be persistent (not ephemeral)');
-    assert.strictEqual(pref.category, 'ui', 'Preference category must be "ui"');
-    assert.strictEqual(pref.type, 'object', 'Preference type must be "object"');
+describe("ui.workbench.widgetDocks Preference Registration", () => {
+  it("registers ui.workbench.widgetDocks in BUILTIN_PREFERENCES with correct descriptor attributes", () => {
+    const pref = BUILTIN_PREFERENCES["ui.workbench.widgetDocks"];
+    assert.ok(pref, "ui.workbench.widgetDocks preference must be registered");
+    assert.strictEqual(
+      pref.hidden,
+      true,
+      "Preference must be hidden from Preferences Dialog"
+    );
+    assert.strictEqual(
+      pref.ephemeral,
+      false,
+      "Preference must be persistent (not ephemeral)"
+    );
+    assert.strictEqual(pref.category, "ui", 'Preference category must be "ui"');
+    assert.strictEqual(pref.type, "object", 'Preference type must be "object"');
     assert.deepStrictEqual(
       pref.defaultValue,
       DEFAULT_WORKBENCH_WIDGET_DOCKS,
-      'Default value must match DEFAULT_WORKBENCH_WIDGET_DOCKS'
+      "Default value must match DEFAULT_WORKBENCH_WIDGET_DOCKS"
     );
   });
 
-  it('defines default dock allocations for built-in panels (layer-tree, attribute-table, console)', () => {
+  it("defines default dock allocations for built-in panels (layer-tree, attribute-table, console)", () => {
     const docks: WorkbenchWidgetDocksState = DEFAULT_WORKBENCH_WIDGET_DOCKS;
 
     // Left dock contains visible layer-tree with width 260
     assert.strictEqual(docks.left.length, 1);
     const layerTree = docks.left[0];
-    assert.strictEqual(layerTree.id, 'layer-tree');
-    assert.strictEqual(layerTree.dock, 'left');
+    assert.strictEqual(layerTree.id, "layer-tree");
+    assert.strictEqual(layerTree.dock, "left");
     assert.strictEqual(layerTree.order, 0);
     assert.strictEqual(layerTree.axisRatio, 1);
     assert.strictEqual(layerTree.visible, true);
@@ -53,8 +61,8 @@ describe('ui.workbench.widgetDocks Preference Registration', () => {
     // Top dock contains time-filter (initially visible)
     assert.strictEqual(docks.top.length, 1);
     const timeFilter = docks.top[0];
-    assert.strictEqual(timeFilter.id, 'time-filter');
-    assert.strictEqual(timeFilter.dock, 'top');
+    assert.strictEqual(timeFilter.id, "time-filter");
+    assert.strictEqual(timeFilter.dock, "top");
     assert.strictEqual(timeFilter.order, 0);
     assert.strictEqual(timeFilter.axisRatio, 1);
     assert.strictEqual(timeFilter.visible, true);
@@ -64,20 +72,19 @@ describe('ui.workbench.widgetDocks Preference Registration', () => {
     // Bottom dock contains attribute-table and console (both initially hidden)
     assert.strictEqual(docks.bottom.length, 2);
     const attrTable = docks.bottom[0];
-    assert.strictEqual(attrTable.id, 'attribute-table');
-    assert.strictEqual(attrTable.dock, 'bottom');
+    assert.strictEqual(attrTable.id, "attribute-table");
+    assert.strictEqual(attrTable.dock, "bottom");
     assert.strictEqual(attrTable.order, 0);
     assert.strictEqual(attrTable.axisRatio, 1);
     assert.strictEqual(attrTable.visible, false);
     assert.strictEqual(attrTable.dimensions.height, 200);
 
     const consolePanel = docks.bottom[1];
-    assert.strictEqual(consolePanel.id, 'console');
-    assert.strictEqual(consolePanel.dock, 'bottom');
+    assert.strictEqual(consolePanel.id, "console");
+    assert.strictEqual(consolePanel.dock, "bottom");
     assert.strictEqual(consolePanel.order, 1);
     assert.strictEqual(consolePanel.axisRatio, 1);
     assert.strictEqual(consolePanel.visible, false);
     assert.strictEqual(consolePanel.dimensions.height, 160);
   });
 });
-

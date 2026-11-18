@@ -29,7 +29,12 @@ import type {
   StagedFeatureEdit,
 } from "../../shared/types";
 import { classifyDriverDialect } from "../../shared/layers/queryDialect";
-import { quoteSqlIdentifier, quoteSqlString, sqlDialectForDriver, type SqlDialect } from "../gdal/sqlQuote";
+import {
+  quoteSqlIdentifier,
+  quoteSqlString,
+  sqlDialectForDriver,
+  type SqlDialect,
+} from "../gdal/sqlQuote";
 import { selectRows, type SqliteRow } from "../gdal/readOnlySqlite";
 import {
   WKB_PACKET_MAGIC,
@@ -314,7 +319,9 @@ export function reprojectBoundingBox(
     const transform = new gdal.CoordinateTransformation(sourceSrs, targetSrs);
     /** Transforms one (x, y) corner, swapping to the source CRS's authority axis order when required. */
     const transformCorner = (x: number, y: number): gdal.xyz =>
-      swapAxes ? transform.transformPoint(y, x) : transform.transformPoint(x, y);
+      swapAxes ?
+        transform.transformPoint(y, x)
+      : transform.transformPoint(x, y);
     const corners = [
       transformCorner(minX, minY),
       transformCorner(maxX, minY),
@@ -367,21 +374,27 @@ export function parseDateOrDateTimeToEpochMs(val: unknown): number | null {
       const y = obj.year;
       const m = obj.month;
       const d = obj.day;
-      if (typeof y === "number" && typeof m === "number" && typeof d === "number") {
+      if (
+        typeof y === "number"
+        && typeof m === "number"
+        && typeof d === "number"
+      ) {
         const hour = typeof obj.hour === "number" ? obj.hour : 0;
         const minute = typeof obj.minute === "number" ? obj.minute : 0;
-        const second = typeof obj.second === "number" ? Math.floor(obj.second) : 0;
+        const second =
+          typeof obj.second === "number" ? Math.floor(obj.second) : 0;
         const ms =
-          typeof obj.second === "number"
-            ? Math.round((obj.second - second) * 1000)
-            : 0;
+          typeof obj.second === "number" ?
+            Math.round((obj.second - second) * 1000)
+          : 0;
 
         let offsetMs = 0;
         if (typeof obj.timezone === "number" && obj.timezone > 1) {
           offsetMs = (obj.timezone - 100) * 15 * 60 * 1000;
         }
 
-        const utcMs = Date.UTC(y, m - 1, d, hour, minute, second, ms) - offsetMs;
+        const utcMs =
+          Date.UTC(y, m - 1, d, hour, minute, second, ms) - offsetMs;
         return Number.isNaN(utcMs) ? null : utcMs;
       }
     } catch {
@@ -450,8 +463,8 @@ export function parseTimeToMidnightMs(val: unknown): number | null {
     return null;
   }
   if (typeof val === "number") {
-    return Number.isFinite(val) && val >= 0 && val < 86400000
-      ? Math.floor(val)
+    return Number.isFinite(val) && val >= 0 && val < 86400000 ?
+        Math.floor(val)
       : null;
   }
   if (typeof val === "object") {
@@ -460,11 +473,12 @@ export function parseTimeToMidnightMs(val: unknown): number | null {
       if (typeof obj.hour === "number" && typeof obj.minute === "number") {
         const hour = obj.hour;
         const minute = obj.minute;
-        const second = typeof obj.second === "number" ? Math.floor(obj.second) : 0;
+        const second =
+          typeof obj.second === "number" ? Math.floor(obj.second) : 0;
         const ms =
-          typeof obj.second === "number"
-            ? Math.round((obj.second - second) * 1000)
-            : 0;
+          typeof obj.second === "number" ?
+            Math.round((obj.second - second) * 1000)
+          : 0;
         if (
           hour >= 0
           && hour < 24
@@ -644,22 +658,32 @@ export function buildOrderBySql(
   const seen = new Set<string>();
   for (const key of orderBy) {
     if (!Array.isArray(key) || typeof key[0] !== "string") {
-      throw new Error(`Invalid Sort Key ${JSON.stringify(key)}: expected [field, "ASC" | "DESC"]`);
+      throw new Error(
+        `Invalid Sort Key ${JSON.stringify(key)}: expected [field, "ASC" | "DESC"]`
+      );
     }
     const [field, direction] = key;
     if (direction !== "ASC" && direction !== "DESC") {
-      throw new Error(`Invalid sort direction ${JSON.stringify(direction)} for field "${field}": expected "ASC" or "DESC"`);
+      throw new Error(
+        `Invalid sort direction ${JSON.stringify(direction)} for field "${field}": expected "ASC" or "DESC"`
+      );
     }
     if (!knownFields.has(field)) {
-      throw new Error(`Cannot sort by field "${field}": it is not a field of layer "${layerName}"`);
+      throw new Error(
+        `Cannot sort by field "${field}": it is not a field of layer "${layerName}"`
+      );
     }
     if (seen.has(field)) {
-      throw new Error(`Repeated Sort Key field "${field}": each field may appear only once in orderBy`);
+      throw new Error(
+        `Repeated Sort Key field "${field}": each field may appear only once in orderBy`
+      );
     }
     seen.add(field);
   }
 
-  const terms = orderBy.map(([field, direction]) => `${quoteSqlIdentifier(field, dialect)} ${direction}`);
+  const terms = orderBy.map(
+    ([field, direction]) => `${quoteSqlIdentifier(field, dialect)} ${direction}`
+  );
   const tiebreaker = fidColumn ? quoteSqlIdentifier(fidColumn, dialect) : "FID";
   if (!fidColumn || !seen.has(fidColumn)) {
     terms.push(`${tiebreaker} ASC`);
@@ -680,7 +704,11 @@ export function buildOrderBySql(
  * @param {boolean} hasSpatialFilter - Whether the query applies a spatial filter.
  * @returns {boolean} True when {@link buildPagedSelectSql} may be used for the layer.
  */
-export function supportsSqlWindow(driverName: string | undefined, fidColumn: string, hasSpatialFilter: boolean): boolean {
+export function supportsSqlWindow(
+  driverName: string | undefined,
+  fidColumn: string,
+  hasSpatialFilter: boolean
+): boolean {
   if (sqlDialectForDriver(driverName) !== "SQLITE" || fidColumn.length === 0) {
     return false;
   }
@@ -713,13 +741,19 @@ export function buildPagedSelectSql(
   max: number | undefined
 ): string {
   if (!fidColumn) {
-    throw new Error(`Cannot page layer "${layerName}" in SQL: it has no Persistent FID column`);
+    throw new Error(
+      `Cannot page layer "${layerName}" in SQL: it has no Persistent FID column`
+    );
   }
   if (!Number.isInteger(start) || start < 0) {
-    throw new Error(`Invalid window start ${start}: expected a non-negative integer`);
+    throw new Error(
+      `Invalid window start ${start}: expected a non-negative integer`
+    );
   }
   if (max !== undefined && (!Number.isInteger(max) || max < 0)) {
-    throw new Error(`Invalid window max ${max}: expected a non-negative integer`);
+    throw new Error(
+      `Invalid window max ${max}: expected a non-negative integer`
+    );
   }
   const ordered =
     buildOrderBySql(layerName, orderBy, schemaFields, fidColumn, "SQLITE")
@@ -742,7 +776,10 @@ export class GeospatialEngine {
   private pendingQueries = new Map<string, number>();
   private layerEdits = new Map<string, LayerEditCacheEntry>();
   public backgroundScanEnabled: boolean = true;
-  public onFieldDemoted?: (layerId: string, updatedFields: LayerFieldInfo[]) => void;
+  public onFieldDemoted?: (
+    layerId: string,
+    updatedFields: LayerFieldInfo[]
+  ) => void;
 
   /**
    * @description Stages an uncommitted feature modification or newly added feature into the engine's per-layer edit cache so subsequent queries reflect the edit immediately.
@@ -776,10 +813,7 @@ export class GeospatialEngine {
           ...prev,
           ...edit,
           isNew: true,
-          properties: {
-            ...prev.properties,
-            ...edit.properties,
-          },
+          properties: { ...prev.properties, ...edit.properties },
         };
       } else {
         entry.addedFeatures.push({
@@ -796,10 +830,7 @@ export class GeospatialEngine {
       ...prevMod,
       ...edit,
       id: edit.id,
-      properties: {
-        ...prevMod?.properties,
-        ...edit.properties,
-      },
+      properties: { ...prevMod?.properties, ...edit.properties },
     });
   }
 
@@ -881,7 +912,10 @@ export class GeospatialEngine {
 
     let fidColumn = "";
     try {
-      fidColumn = typeof (layer as any).fidColumn === "string" ? (layer as any).fidColumn : "";
+      fidColumn =
+        typeof (layer as any).fidColumn === "string" ?
+          (layer as any).fidColumn
+        : "";
     } catch {
       // Ignore if provider doesn't report fidColumn
     }
@@ -893,15 +927,27 @@ export class GeospatialEngine {
     };
     try {
       capabilities = {
-        randomWrite: Boolean(layer.testCapability((gdal as any).OLCRandomWrite)),
-        deleteFeature: Boolean(layer.testCapability((gdal as any).OLCDeleteFeature)),
-        fastRandomRead: Boolean(layer.testCapability((gdal as any).OLCRandomRead)),
+        randomWrite: Boolean(
+          layer.testCapability((gdal as any).OLCRandomWrite)
+        ),
+        deleteFeature: Boolean(
+          layer.testCapability((gdal as any).OLCDeleteFeature)
+        ),
+        fastRandomRead: Boolean(
+          layer.testCapability((gdal as any).OLCRandomRead)
+        ),
       };
     } catch {
       // Ignore if provider doesn't support testCapability
     }
 
-    this.sessions.set(layerId, { dataset, layer, filePath, fidColumn, capabilities });
+    this.sessions.set(layerId, {
+      dataset,
+      layer,
+      filePath,
+      fidColumn,
+      capabilities,
+    });
 
     const rawName = layer.name?.trim();
     const name =
@@ -1031,7 +1077,11 @@ export class GeospatialEngine {
    * @returns {T} Whatever `use` returns.
    * @throws {Error} If the handle cannot be opened, or whatever `use` throws.
    */
-  private withSqlHandle<T>(dataset: gdal.Dataset, filePath: string, use: (handle: gdal.Dataset) => T): T {
+  private withSqlHandle<T>(
+    dataset: gdal.Dataset,
+    filePath: string,
+    use: (handle: gdal.Dataset) => T
+  ): T {
     if (dataset.driver?.description === "Memory") {
       return use(dataset);
     }
@@ -1064,7 +1114,11 @@ export class GeospatialEngine {
     consume: (resultLayer: gdal.Layer) => T
   ): T {
     return this.withSqlHandle(session.dataset, session.filePath, (handle) =>
-      consume(spatialFilter ? handle.executeSQL(sql, spatialFilter) : handle.executeSQL(sql))
+      consume(
+        spatialFilter ?
+          handle.executeSQL(sql, spatialFilter)
+        : handle.executeSQL(sql)
+      )
     );
   }
 
@@ -1087,7 +1141,10 @@ export class GeospatialEngine {
     layerName: string
   ): { pragmaRows: SqliteRow[]; dataColumnRows: SqliteRow[] } {
     const empty = { pragmaRows: [], dataColumnRows: [] };
-    if (layerName.length === 0 || sqlDialectForDriver(dataset.driver?.description ?? "") !== "SQLITE") {
+    if (
+      layerName.length === 0
+      || sqlDialectForDriver(dataset.driver?.description ?? "") !== "SQLITE"
+    ) {
       return empty;
     }
     const tryRows = (handle: gdal.Dataset, sql: string): SqliteRow[] => {
@@ -1099,13 +1156,22 @@ export class GeospatialEngine {
     };
     try {
       return this.withSqlHandle(dataset, filePath, (handle) => ({
-        pragmaRows: tryRows(handle, `PRAGMA table_info(${quoteSqlIdentifier(layerName, "SQLITE")})`),
+        pragmaRows: tryRows(
+          handle,
+          `PRAGMA table_info(${quoteSqlIdentifier(layerName, "SQLITE")})`
+        ),
         // SELECT * because the standard table has no data_type column (only mime_type); naming it made the query fail on every real GeoPackage.
         // data_type is still read when a non-standard table carries it; on a standard table it is empty and only mime_type counts.
-        dataColumnRows: tryRows(handle, `SELECT * FROM gpkg_data_columns WHERE table_name = ${quoteSqlString(layerName)}`),
+        dataColumnRows: tryRows(
+          handle,
+          `SELECT * FROM gpkg_data_columns WHERE table_name = ${quoteSqlString(layerName)}`
+        ),
       }));
     } catch (err) {
-      logging.debug("Field introspection skipped: could not open a SQL handle", { scope: "GeospatialEngine", filePath, error: String(err) });
+      logging.debug(
+        "Field introspection skipped: could not open a SQL handle",
+        { scope: "GeospatialEngine", filePath, error: String(err) }
+      );
       return empty;
     }
   }
@@ -1198,9 +1264,15 @@ export class GeospatialEngine {
     if (!capabilities) {
       try {
         capabilities = {
-          randomWrite: Boolean(layer.testCapability((gdal as any).OLCRandomWrite)),
-          deleteFeature: Boolean(layer.testCapability((gdal as any).OLCDeleteFeature)),
-          fastRandomRead: Boolean(layer.testCapability((gdal as any).OLCRandomRead)),
+          randomWrite: Boolean(
+            layer.testCapability((gdal as any).OLCRandomWrite)
+          ),
+          deleteFeature: Boolean(
+            layer.testCapability((gdal as any).OLCDeleteFeature)
+          ),
+          fastRandomRead: Boolean(
+            layer.testCapability((gdal as any).OLCRandomRead)
+          ),
         };
       } catch {
         capabilities = {
@@ -1256,12 +1328,19 @@ export class GeospatialEngine {
       { data_type: string; mime_type: string | null }
     >();
 
-    const { pragmaRows, dataColumnRows } = this.readSqliteColumnRows(dataset, filePath, layerName);
+    const { pragmaRows, dataColumnRows } = this.readSqliteColumnRows(
+      dataset,
+      filePath,
+      layerName
+    );
     for (const row of pragmaRows) {
       if (row.name) {
         pragmaColumns.set(String(row.name).toLowerCase(), {
           type: String(row.type || "").toUpperCase(),
-          dflt_value: row.dflt_value !== undefined && row.dflt_value !== null ? String(row.dflt_value) : null,
+          dflt_value:
+            row.dflt_value !== undefined && row.dflt_value !== null ?
+              String(row.dflt_value)
+            : null,
           notnull: row.notnull === 1 || row.notnull === true,
         });
       }
@@ -1270,7 +1349,10 @@ export class GeospatialEngine {
       if (row.column_name) {
         gpkgDataColumns.set(String(row.column_name).toLowerCase(), {
           data_type: String(row.data_type || "").toLowerCase(),
-          mime_type: row.mime_type !== undefined && row.mime_type !== null ? String(row.mime_type).toLowerCase() : null,
+          mime_type:
+            row.mime_type !== undefined && row.mime_type !== null ?
+              String(row.mime_type).toLowerCase()
+            : null,
         });
       }
     }
@@ -1284,18 +1366,29 @@ export class GeospatialEngine {
       const nameLower = name.toLowerCase().trim();
       const nativeType = String(f.type || "unknown");
       const nativeTypeLower = nativeType.toLowerCase();
-      const nativeSubType = (f as any).subType || (f as any).subtype || undefined;
-      const width = typeof f.width === "number" && f.width > 0 ? f.width : undefined;
-      const precision = typeof f.precision === "number" && f.precision >= 0 ? f.precision : undefined;
-      const domainName = (f as any).domainName || (f as any).domain_name || undefined;
-      const alternativeName = (f as any).alternativeName || (f as any).alternative_name || undefined;
-      const isArrayType = nativeTypeLower.includes("list") || nativeTypeLower.endsWith("[]");
+      const nativeSubType =
+        (f as any).subType || (f as any).subtype || undefined;
+      const width =
+        typeof f.width === "number" && f.width > 0 ? f.width : undefined;
+      const precision =
+        typeof f.precision === "number" && f.precision >= 0 ?
+          f.precision
+        : undefined;
+      const domainName =
+        (f as any).domainName || (f as any).domain_name || undefined;
+      const alternativeName =
+        (f as any).alternativeName || (f as any).alternative_name || undefined;
+      const isArrayType =
+        nativeTypeLower.includes("list") || nativeTypeLower.endsWith("[]");
 
       const pragmaCol = pragmaColumns.get(nameLower);
       const gpkgCol = gpkgDataColumns.get(nameLower);
 
       let defaultValue =
-        (f as any).defaultValue !== undefined && (f as any).defaultValue !== null ?
+        (
+          (f as any).defaultValue !== undefined
+          && (f as any).defaultValue !== null
+        ) ?
           String((f as any).defaultValue)
         : undefined;
       if (!defaultValue && pragmaCol?.dflt_value) {
@@ -1318,20 +1411,35 @@ export class GeospatialEngine {
       });
 
       const inferredType: InferredFieldType =
-        isArrayType ? (`${inferredScalar}[]` as InferredFieldType) : inferredScalar;
+        isArrayType ?
+          (`${inferredScalar}[]` as InferredFieldType)
+        : inferredScalar;
 
-      let mappedType: "string" | "number" | "boolean" | "Date" | "unknown" = "unknown";
+      let mappedType: "string" | "number" | "boolean" | "Date" | "unknown" =
+        "unknown";
       if (inferredScalar === "integer" || inferredScalar === "real") {
         mappedType = "number";
       } else if (inferredScalar === "boolean") {
         mappedType = "boolean";
-      } else if (inferredScalar === "date" || inferredScalar === "time" || inferredScalar === "datetime") {
+      } else if (
+        inferredScalar === "date"
+        || inferredScalar === "time"
+        || inferredScalar === "datetime"
+      ) {
         mappedType = "Date";
-      } else if (inferredScalar === "string" || inferredScalar === "uuid" || inferredScalar === "json") {
+      } else if (
+        inferredScalar === "string"
+        || inferredScalar === "uuid"
+        || inferredScalar === "json"
+      ) {
         mappedType = "string";
       }
 
-      const comment = (f as any).comment || (pragmaCol as any)?.comment || (gpkgCol as any)?.description || undefined;
+      const comment =
+        (f as any).comment
+        || (pragmaCol as any)?.comment
+        || (gpkgCol as any)?.description
+        || undefined;
 
       fields.push({
         index: i,
@@ -1401,18 +1509,39 @@ export class GeospatialEngine {
     // 1a. GDAL Field Domains (CodedValue, Range, Glob)
     const activeDomain =
       domain
-      || (domainName && dataset?.fieldDomains ? dataset.fieldDomains[domainName] : undefined);
+      || (domainName && dataset?.fieldDomains ?
+        dataset.fieldDomains[domainName]
+      : undefined);
 
     if (activeDomain) {
       // CodedValueFieldDomain (Enumeration)
       const codedValues =
-        activeDomain.codedValues || activeDomain.enumeration || activeDomain.values;
+        activeDomain.codedValues
+        || activeDomain.enumeration
+        || activeDomain.values;
       if (codedValues && typeof codedValues === "object") {
-        const entries = Array.isArray(codedValues) ? codedValues : Object.entries(codedValues);
-        const keys = entries.map((e: any) => (Array.isArray(e) ? String(e[0]) : String(e.code ?? e.key)));
-        const values = entries.map((e: any) => (Array.isArray(e) ? String(e[1]).toLowerCase() : String(e.value ?? e.name).toLowerCase()));
-        const isBoolCodes = keys.length === 2 && keys.every((k) => k === "0" || k === "1" || k === "true" || k === "false");
-        const isBoolValues = entries.length === 2 && values.every((v) => ["true", "false", "yes", "no", "t", "f", "y", "n"].includes(v));
+        const entries =
+          Array.isArray(codedValues) ? codedValues : (
+            Object.entries(codedValues)
+          );
+        const keys = entries.map((e: any) =>
+          Array.isArray(e) ? String(e[0]) : String(e.code ?? e.key)
+        );
+        const values = entries.map((e: any) =>
+          Array.isArray(e) ?
+            String(e[1]).toLowerCase()
+          : String(e.value ?? e.name).toLowerCase()
+        );
+        const isBoolCodes =
+          keys.length === 2
+          && keys.every(
+            (k) => k === "0" || k === "1" || k === "true" || k === "false"
+          );
+        const isBoolValues =
+          entries.length === 2
+          && values.every((v) =>
+            ["true", "false", "yes", "no", "t", "f", "y", "n"].includes(v)
+          );
         if (entries.length === 2 && (isBoolCodes || isBoolValues)) {
           return "boolean";
         }
@@ -1421,7 +1550,11 @@ export class GeospatialEngine {
       // RangeFieldDomain
       const minVal = activeDomain.minValue ?? activeDomain.min;
       const maxVal = activeDomain.maxValue ?? activeDomain.max;
-      if (minVal === 0 && maxVal === 1 && (nativeTypeLower.includes("int") || width === 1)) {
+      if (
+        minVal === 0
+        && maxVal === 1
+        && (nativeTypeLower.includes("int") || width === 1)
+      ) {
         return "boolean";
       }
 
@@ -1464,7 +1597,8 @@ export class GeospatialEngine {
     // =========================================================================
     if (nativeSubType) {
       const subLower = String(nativeSubType).toLowerCase();
-      if (subLower === "ofstboolean" || subLower === "boolean") return "boolean";
+      if (subLower === "ofstboolean" || subLower === "boolean")
+        return "boolean";
       if (subLower === "ofstuuid" || subLower === "uuid") return "uuid";
       if (subLower === "ofstjson" || subLower === "json") return "json";
     }
@@ -1475,7 +1609,9 @@ export class GeospatialEngine {
     if (defaultValue) {
       const defTrim = defaultValue.trim();
       if (
-        /CURRENT_TIMESTAMP|datetime\s*\(\s*['"]now['"]\s*\)|^['"]?now['"]?$/i.test(defTrim)
+        /CURRENT_TIMESTAMP|datetime\s*\(\s*['"]now['"]\s*\)|^['"]?now['"]?$/i.test(
+          defTrim
+        )
       ) {
         return "datetime";
       }
@@ -1522,7 +1658,11 @@ export class GeospatialEngine {
     // =========================================================================
     // Tier 5: Column Naming Patterns
     // =========================================================================
-    if (/^(is|has|can|should|active)(_|$)|^.*(_flag|_active|_enabled)$/i.test(nameLower)) {
+    if (
+      /^(is|has|can|should|active)(_|$)|^.*(_flag|_active|_enabled)$/i.test(
+        nameLower
+      )
+    ) {
       return "boolean";
     }
 
@@ -1538,7 +1678,10 @@ export class GeospatialEngine {
       return "time";
     }
 
-    if (!nativeTypeLower.includes("int") && /^.*(_id|_uuid|_guid)$|^uuid$|^guid$/i.test(nameLower)) {
+    if (
+      !nativeTypeLower.includes("int")
+      && /^.*(_id|_uuid|_guid)$|^uuid$|^guid$/i.test(nameLower)
+    ) {
       return "uuid";
     }
 
@@ -1555,7 +1698,8 @@ export class GeospatialEngine {
     // =========================================================================
     if (nativeTypeLower.includes("int")) return "integer";
     if (nativeTypeLower.includes("real")) return "real";
-    if (nativeTypeLower.includes("date") && nativeTypeLower.includes("time")) return "datetime";
+    if (nativeTypeLower.includes("date") && nativeTypeLower.includes("time"))
+      return "datetime";
     if (nativeTypeLower.includes("date")) return "date";
     if (nativeTypeLower.includes("time")) return "time";
     if (nativeTypeLower.includes("binary")) return "binary";
@@ -1627,426 +1771,445 @@ export class GeospatialEngine {
 
     try {
       return await this.executeSequential(layerId, async () => {
-      const activeSession = this.sessions.get(layerId);
-      if (!activeSession) {
-        throw new Error(`Layer session not found for layer UUID: "${layerId}"`);
-      }
-
-      if (!activeSession.fields) {
-        activeSession.fields = this.inferLayerFields(
-          activeSession.dataset,
-          activeSession.layer,
-          activeSession.filePath
-        );
-      }
-      const fieldTypeMap = new Map<string, InferredFieldType>();
-      for (const field of activeSession.fields) {
-        fieldTypeMap.set(field.name, field.inferredType);
-      }
-
-      const { layer } = activeSession;
-      try {
-        let extentBox: BoundingBox | undefined;
-        let proj: string | undefined = targetProjection;
-        let includeGeometry = true;
-        let fields: string[] | undefined = undefined;
-        let startOpt: number | undefined = undefined;
-        let maxOpt: number | undefined = undefined;
-        let featureIdsOpt: Array<string | number> | undefined = undefined;
-        let orderByOpt: SortKey[] | undefined = undefined;
-
-        if (Array.isArray(options)) {
-          extentBox = options;
-        } else if (options && typeof options === "object") {
-          extentBox = options.extent;
-          proj = options.targetProjection ?? targetProjection;
-          if (options.includeGeometry !== undefined) {
-            includeGeometry = options.includeGeometry;
-          }
-          fields = options.fields;
-          startOpt = options.start;
-          maxOpt = options.max;
-          featureIdsOpt = options.featureIds;
-          orderByOpt = options.orderBy;
+        const activeSession = this.sessions.get(layerId);
+        if (!activeSession) {
+          throw new Error(
+            `Layer session not found for layer UUID: "${layerId}"`
+          );
         }
 
-        const sliceStart =
-          startOpt !== undefined && Number.isFinite(startOpt)
-            ? Math.max(0, Math.floor(startOpt))
+        if (!activeSession.fields) {
+          activeSession.fields = this.inferLayerFields(
+            activeSession.dataset,
+            activeSession.layer,
+            activeSession.filePath
+          );
+        }
+        const fieldTypeMap = new Map<string, InferredFieldType>();
+        for (const field of activeSession.fields) {
+          fieldTypeMap.set(field.name, field.inferredType);
+        }
+
+        const { layer } = activeSession;
+        try {
+          let extentBox: BoundingBox | undefined;
+          let proj: string | undefined = targetProjection;
+          let includeGeometry = true;
+          let fields: string[] | undefined = undefined;
+          let startOpt: number | undefined = undefined;
+          let maxOpt: number | undefined = undefined;
+          let featureIdsOpt: Array<string | number> | undefined = undefined;
+          let orderByOpt: SortKey[] | undefined = undefined;
+
+          if (Array.isArray(options)) {
+            extentBox = options;
+          } else if (options && typeof options === "object") {
+            extentBox = options.extent;
+            proj = options.targetProjection ?? targetProjection;
+            if (options.includeGeometry !== undefined) {
+              includeGeometry = options.includeGeometry;
+            }
+            fields = options.fields;
+            startOpt = options.start;
+            maxOpt = options.max;
+            featureIdsOpt = options.featureIds;
+            orderByOpt = options.orderBy;
+          }
+
+          const sliceStart =
+            startOpt !== undefined && Number.isFinite(startOpt) ?
+              Math.max(0, Math.floor(startOpt))
             : 0;
-        const sliceEnd =
-          maxOpt !== undefined && Number.isFinite(maxOpt)
-            ? sliceStart + Math.max(0, Math.floor(maxOpt))
+          const sliceEnd =
+            maxOpt !== undefined && Number.isFinite(maxOpt) ?
+              sliceStart + Math.max(0, Math.floor(maxOpt))
             : Infinity;
-        const allowedIdSet =
-          featureIdsOpt !== undefined
-            ? new Set(featureIdsOpt.map((id) => String(id)))
+          const allowedIdSet =
+            featureIdsOpt !== undefined ?
+              new Set(featureIdsOpt.map((id) => String(id)))
             : null;
-        const layerEditEntry = this.layerEdits.get(layerId);
+          const layerEditEntry = this.layerEdits.get(layerId);
 
-        let shouldFilter = false;
-        let filterExtent: BoundingBox = [0, 0, 0, 0];
+          let shouldFilter = false;
+          let filterExtent: BoundingBox = [0, 0, 0, 0];
 
-        if (extentBox && Array.isArray(extentBox) && extentBox.length === 4) {
-          const [minX, minY, maxX, maxY] = extentBox;
-          if (
-            isFinite(minX)
-            && isFinite(minY)
-            && isFinite(maxX)
-            && isFinite(maxY)
-            && (minX !== 0 || minY !== 0 || maxX !== 0 || maxY !== 0)
-          ) {
-            shouldFilter = true;
-            filterExtent = [minX, minY, maxX, maxY];
+          if (extentBox && Array.isArray(extentBox) && extentBox.length === 4) {
+            const [minX, minY, maxX, maxY] = extentBox;
+            if (
+              isFinite(minX)
+              && isFinite(minY)
+              && isFinite(maxX)
+              && isFinite(maxY)
+              && (minX !== 0 || minY !== 0 || maxX !== 0 || maxY !== 0)
+            ) {
+              shouldFilter = true;
+              filterExtent = [minX, minY, maxX, maxY];
 
-            const refSrs = layer.srs;
-            if (proj && refSrs) {
-              const layerAuth = getSrsAuthority(refSrs);
-              if (!layerAuth || proj.toUpperCase() !== layerAuth) {
-                filterExtent = reprojectBoundingBox(
-                  filterExtent,
-                  proj,
-                  refSrs
-                );
+              const refSrs = layer.srs;
+              if (proj && refSrs) {
+                const layerAuth = getSrsAuthority(refSrs);
+                if (!layerAuth || proj.toUpperCase() !== layerAuth) {
+                  filterExtent = reprojectBoundingBox(
+                    filterExtent,
+                    proj,
+                    refSrs
+                  );
+                }
               }
             }
           }
-        }
 
-        if (shouldFilter) {
-          layer.setSpatialFilter(
-            filterExtent[0],
-            filterExtent[1],
-            filterExtent[2],
-            filterExtent[3]
-          );
-        } else {
-          layer.setSpatialFilter(null);
-        }
+          if (shouldFilter) {
+            layer.setSpatialFilter(
+              filterExtent[0],
+              filterExtent[1],
+              filterExtent[2],
+              filterExtent[3]
+            );
+          } else {
+            layer.setSpatialFilter(null);
+          }
 
-        // Choose how the base rows are read. A SQLite-dialect layer pages in SQL (Ticket #339) unless a
-        // featureIds whitelist must be applied before the window; other sorted queries use a SQL result
-        // layer without a window; everything else iterates the session layer directly.
-        const fidColumn = this.resolveFidColumn(activeSession);
-        const canRunSql = typeof activeSession.dataset.executeSQL === "function";
-        const windowed =
-          canRunSql
-          && allowedIdSet === null
-          && (sliceStart > 0 || sliceEnd !== Infinity)
-          && supportsSqlWindow(activeSession.dataset.driver?.description, fidColumn, shouldFilter);
-        const schemaFields = layer.fields.getNames();
-        let sql: string | null = null;
-        if (windowed) {
-          sql = buildPagedSelectSql(
-            layer.name,
-            orderByOpt,
-            schemaFields,
-            fidColumn,
-            sliceStart,
-            sliceEnd === Infinity ? undefined : sliceEnd - sliceStart
-          );
-        } else if (orderByOpt && orderByOpt.length > 0) {
-          const orderSql = buildOrderBySql(
-            layer.name,
-            orderByOpt,
-            schemaFields,
-            fidColumn,
-            sqlDialectForDriver(activeSession.dataset.driver?.description)
-          );
-          sql = canRunSql ? orderSql : null;
-        }
-        const sqlSpatialFilter =
-          sql !== null && shouldFilter
-            ? new gdal.Envelope({
+          // Choose how the base rows are read. A SQLite-dialect layer pages in SQL (Ticket #339) unless a
+          // featureIds whitelist must be applied before the window; other sorted queries use a SQL result
+          // layer without a window; everything else iterates the session layer directly.
+          const fidColumn = this.resolveFidColumn(activeSession);
+          const canRunSql =
+            typeof activeSession.dataset.executeSQL === "function";
+          const windowed =
+            canRunSql
+            && allowedIdSet === null
+            && (sliceStart > 0 || sliceEnd !== Infinity)
+            && supportsSqlWindow(
+              activeSession.dataset.driver?.description,
+              fidColumn,
+              shouldFilter
+            );
+          const schemaFields = layer.fields.getNames();
+          let sql: string | null = null;
+          if (windowed) {
+            sql = buildPagedSelectSql(
+              layer.name,
+              orderByOpt,
+              schemaFields,
+              fidColumn,
+              sliceStart,
+              sliceEnd === Infinity ? undefined : sliceEnd - sliceStart
+            );
+          } else if (orderByOpt && orderByOpt.length > 0) {
+            const orderSql = buildOrderBySql(
+              layer.name,
+              orderByOpt,
+              schemaFields,
+              fidColumn,
+              sqlDialectForDriver(activeSession.dataset.driver?.description)
+            );
+            sql = canRunSql ? orderSql : null;
+          }
+          const sqlSpatialFilter =
+            sql !== null && shouldFilter ?
+              new gdal.Envelope({
                 minX: filterExtent[0],
                 minY: filterExtent[1],
                 maxX: filterExtent[2],
                 maxY: filterExtent[3],
               }).toPolygon()
             : null;
-        // The window skips the rows before it, so the total comes from counting the filtered session layer.
-        const windowedBaseCount = windowed ? layer.features.count(true) : 0;
-        // Index of the first base row read, so a windowed read's rows keep their position in the full result.
-        const rowOffset = windowed ? sliceStart : 0;
+          // The window skips the rows before it, so the total comes from counting the filtered session layer.
+          const windowedBaseCount = windowed ? layer.features.count(true) : 0;
+          // Index of the first base row read, so a windowed read's rows keep their position in the full result.
+          const rowOffset = windowed ? sliceStart : 0;
 
-        interface ExtractedRecord {
-          fid: bigint;
-          wkbBytes: Uint8Array | null;
-          propsBytes: Uint8Array | null;
-          properties: Record<string, unknown>;
-        }
+          interface ExtractedRecord {
+            fid: bigint;
+            wkbBytes: Uint8Array | null;
+            propsBytes: Uint8Array | null;
+            properties: Record<string, unknown>;
+          }
 
-        const encoder = new TextEncoder();
-        const extracted: ExtractedRecord[] = [];
-        const features: QueryExtentFeature[] = [];
-        let totalMatched = 0;
+          const encoder = new TextEncoder();
+          const extracted: ExtractedRecord[] = [];
+          const features: QueryExtentFeature[] = [];
+          let totalMatched = 0;
 
-        const collectBaseFeature = (feature: gdal.Feature): void => {
-          try {
-            const rawFid = feature.fid;
-            const fidKey = String(rawFid);
+          const collectBaseFeature = (feature: gdal.Feature): void => {
+            try {
+              const rawFid = feature.fid;
+              const fidKey = String(rawFid);
 
-            if (allowedIdSet !== null && !allowedIdSet.has(fidKey)) {
-              return;
-            }
-
-            const matchedIndex = rowOffset + totalMatched;
-            totalMatched++;
-
-            if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
-              return;
-            }
-
-            const stagedEdit = layerEditEntry?.modifiedFeatures.get(fidKey);
-            const fid = BigInt(rawFid);
-            let wkbBytes: Uint8Array | null = null;
-
-            if (includeGeometry) {
-              if (stagedEdit?.wkb) {
-                wkbBytes = new Uint8Array(
-                  stagedEdit.wkb.buffer,
-                  stagedEdit.wkb.byteOffset,
-                  stagedEdit.wkb.byteLength
-                );
-              } else {
-                const geom = feature.getGeometry();
-                if (geom) {
-                  try {
-                    const rawWkb = geom.toWKB();
-                    wkbBytes = new Uint8Array(
-                      rawWkb.buffer,
-                      rawWkb.byteOffset,
-                      rawWkb.byteLength
-                    );
-                  } catch {
-                    // Fallback if WKB extraction fails
-                  }
-                }
+              if (allowedIdSet !== null && !allowedIdSet.has(fidKey)) {
+                return;
               }
-            }
 
-            let propsBytes: Uint8Array | null = null;
-            let properties: Record<string, unknown> = {};
+              const matchedIndex = rowOffset + totalMatched;
+              totalMatched++;
 
-            if (fields === undefined) {
-              const rawProps = feature.fields.toObject();
-              properties = {};
-              for (const [k, v] of Object.entries(rawProps)) {
-                properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
+              if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
+                return;
               }
-              if (stagedEdit?.properties) {
-                for (const [k, v] of Object.entries(stagedEdit.properties)) {
-                  properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
-                }
-              }
-              propsBytes = encoder.encode(JSON.stringify(properties));
-            } else if (fields.length > 0) {
-              for (const f of fields) {
-                if (stagedEdit?.properties && f in stagedEdit.properties) {
-                  properties[f] = transformFeatureProperty(
-                    f,
-                    stagedEdit.properties[f],
-                    fieldTypeMap
+
+              const stagedEdit = layerEditEntry?.modifiedFeatures.get(fidKey);
+              const fid = BigInt(rawFid);
+              let wkbBytes: Uint8Array | null = null;
+
+              if (includeGeometry) {
+                if (stagedEdit?.wkb) {
+                  wkbBytes = new Uint8Array(
+                    stagedEdit.wkb.buffer,
+                    stagedEdit.wkb.byteOffset,
+                    stagedEdit.wkb.byteLength
                   );
                 } else {
-                  try {
-                    const val = feature.fields.get(f);
-                    if (val !== undefined) {
-                      properties[f] = transformFeatureProperty(
-                        f,
-                        val,
-                        fieldTypeMap
+                  const geom = feature.getGeometry();
+                  if (geom) {
+                    try {
+                      const rawWkb = geom.toWKB();
+                      wkbBytes = new Uint8Array(
+                        rawWkb.buffer,
+                        rawWkb.byteOffset,
+                        rawWkb.byteLength
                       );
+                    } catch {
+                      // Fallback if WKB extraction fails
                     }
-                  } catch {
-                    // Field might not exist
                   }
                 }
               }
-              propsBytes = encoder.encode(JSON.stringify(properties));
-            } else {
-              // fields === []: properties completely omitted
-              propsBytes = null;
-              properties = {};
-            }
 
-            extracted.push({ fid, wkbBytes, propsBytes, properties });
+              let propsBytes: Uint8Array | null = null;
+              let properties: Record<string, unknown> = {};
 
-            features.push({
-              id: rawFid,
-              wkb: wkbBytes ?? undefined,
-              ...(stagedEdit?.geojson ? { geojson: stagedEdit.geojson } : {}),
-              properties,
-            });
-          } catch (featErr) {
-            logging.warn("Failed to process feature", featErr, {
-              fid: feature.fid,
-              scope: "GeospatialEngine",
-            });
-          }
-        };
-
-        if (sql !== null) {
-          this.executeSessionSql(activeSession, sql, sqlSpatialFilter, (resultLayer) => {
-            resultLayer.features.forEach(collectBaseFeature);
-          });
-        } else {
-          layer.features.forEach(collectBaseFeature);
-        }
-        if (windowed) {
-          totalMatched = windowedBaseCount;
-        }
-
-        // Append staged newly added features to the end of the stream
-        if (layerEditEntry && layerEditEntry.addedFeatures.length > 0) {
-          for (const added of layerEditEntry.addedFeatures) {
-            const addedIdKey = String(added.id);
-            if (allowedIdSet !== null && !allowedIdSet.has(addedIdKey)) {
-              continue;
-            }
-
-            if (shouldFilter && added.wkb) {
-              try {
-                const geom = gdal.Geometry.fromWKB(Buffer.from(added.wkb));
-                const env = geom.getEnvelope();
-                const intersects =
-                  env.minX <= filterExtent[2]
-                  && env.maxX >= filterExtent[0]
-                  && env.minY <= filterExtent[3]
-                  && env.maxY >= filterExtent[1];
-                if (!intersects) {
-                  continue;
+              if (fields === undefined) {
+                const rawProps = feature.fields.toObject();
+                properties = {};
+                for (const [k, v] of Object.entries(rawProps)) {
+                  properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
                 }
-              } catch {
-                // If WKB envelope cannot be parsed, include by default
+                if (stagedEdit?.properties) {
+                  for (const [k, v] of Object.entries(stagedEdit.properties)) {
+                    properties[k] = transformFeatureProperty(
+                      k,
+                      v,
+                      fieldTypeMap
+                    );
+                  }
+                }
+                propsBytes = encoder.encode(JSON.stringify(properties));
+              } else if (fields.length > 0) {
+                for (const f of fields) {
+                  if (stagedEdit?.properties && f in stagedEdit.properties) {
+                    properties[f] = transformFeatureProperty(
+                      f,
+                      stagedEdit.properties[f],
+                      fieldTypeMap
+                    );
+                  } else {
+                    try {
+                      const val = feature.fields.get(f);
+                      if (val !== undefined) {
+                        properties[f] = transformFeatureProperty(
+                          f,
+                          val,
+                          fieldTypeMap
+                        );
+                      }
+                    } catch {
+                      // Field might not exist
+                    }
+                  }
+                }
+                propsBytes = encoder.encode(JSON.stringify(properties));
+              } else {
+                // fields === []: properties completely omitted
+                propsBytes = null;
+                properties = {};
               }
+
+              extracted.push({ fid, wkbBytes, propsBytes, properties });
+
+              features.push({
+                id: rawFid,
+                wkb: wkbBytes ?? undefined,
+                ...(stagedEdit?.geojson ? { geojson: stagedEdit.geojson } : {}),
+                properties,
+              });
+            } catch (featErr) {
+              logging.warn("Failed to process feature", featErr, {
+                fid: feature.fid,
+                scope: "GeospatialEngine",
+              });
             }
+          };
 
-            const matchedIndex = totalMatched;
-            totalMatched++;
+          if (sql !== null) {
+            this.executeSessionSql(
+              activeSession,
+              sql,
+              sqlSpatialFilter,
+              (resultLayer) => {
+                resultLayer.features.forEach(collectBaseFeature);
+              }
+            );
+          } else {
+            layer.features.forEach(collectBaseFeature);
+          }
+          if (windowed) {
+            totalMatched = windowedBaseCount;
+          }
 
-            if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
-              continue;
-            }
+          // Append staged newly added features to the end of the stream
+          if (layerEditEntry && layerEditEntry.addedFeatures.length > 0) {
+            for (const added of layerEditEntry.addedFeatures) {
+              const addedIdKey = String(added.id);
+              if (allowedIdSet !== null && !allowedIdSet.has(addedIdKey)) {
+                continue;
+              }
 
-            const numericFid =
-              typeof added.id === "number"
-                ? BigInt(Math.trunc(added.id))
-                : /^-?\d+$/.test(addedIdKey)
-                  ? BigInt(addedIdKey)
-                  : BigInt(0);
+              if (shouldFilter && added.wkb) {
+                try {
+                  const geom = gdal.Geometry.fromWKB(Buffer.from(added.wkb));
+                  const env = geom.getEnvelope();
+                  const intersects =
+                    env.minX <= filterExtent[2]
+                    && env.maxX >= filterExtent[0]
+                    && env.minY <= filterExtent[3]
+                    && env.maxY >= filterExtent[1];
+                  if (!intersects) {
+                    continue;
+                  }
+                } catch {
+                  // If WKB envelope cannot be parsed, include by default
+                }
+              }
 
-            const wkbBytes =
-              includeGeometry && added.wkb
-                ? new Uint8Array(
+              const matchedIndex = totalMatched;
+              totalMatched++;
+
+              if (matchedIndex < sliceStart || matchedIndex >= sliceEnd) {
+                continue;
+              }
+
+              const numericFid =
+                typeof added.id === "number" ? BigInt(Math.trunc(added.id))
+                : /^-?\d+$/.test(addedIdKey) ? BigInt(addedIdKey)
+                : BigInt(0);
+
+              const wkbBytes =
+                includeGeometry && added.wkb ?
+                  new Uint8Array(
                     added.wkb.buffer,
                     added.wkb.byteOffset,
                     added.wkb.byteLength
                   )
                 : null;
 
-            let propsBytes: Uint8Array | null = null;
-            let properties: Record<string, unknown> = {};
+              let propsBytes: Uint8Array | null = null;
+              let properties: Record<string, unknown> = {};
 
-            if (fields === undefined) {
-              for (const [k, v] of Object.entries(added.properties ?? {})) {
-                properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
-              }
-              propsBytes = encoder.encode(JSON.stringify(properties));
-            } else if (fields.length > 0) {
-              const srcProps = added.properties ?? {};
-              for (const f of fields) {
-                if (f in srcProps) {
-                  properties[f] = transformFeatureProperty(
-                    f,
-                    srcProps[f],
-                    fieldTypeMap
-                  );
+              if (fields === undefined) {
+                for (const [k, v] of Object.entries(added.properties ?? {})) {
+                  properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
                 }
+                propsBytes = encoder.encode(JSON.stringify(properties));
+              } else if (fields.length > 0) {
+                const srcProps = added.properties ?? {};
+                for (const f of fields) {
+                  if (f in srcProps) {
+                    properties[f] = transformFeatureProperty(
+                      f,
+                      srcProps[f],
+                      fieldTypeMap
+                    );
+                  }
+                }
+                propsBytes = encoder.encode(JSON.stringify(properties));
+              } else {
+                propsBytes = null;
+                properties = {};
               }
-              propsBytes = encoder.encode(JSON.stringify(properties));
-            } else {
-              propsBytes = null;
-              properties = {};
+
+              extracted.push({
+                fid: numericFid,
+                wkbBytes,
+                propsBytes,
+                properties,
+              });
+              features.push({
+                id: added.id,
+                wkb: wkbBytes ?? undefined,
+                ...(added.geojson ? { geojson: added.geojson } : {}),
+                properties,
+              });
+            }
+          }
+
+          let hasGeometry = false;
+          let hasProperties = false;
+          let totalSize = 12; // 12-byte header
+
+          for (const rec of extracted) {
+            const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
+            const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
+            if (wkbLen > 0) hasGeometry = true;
+            if (propsLen > 0) hasProperties = true;
+            // fid (8) + wkbLength (4) + W + propsLength (4) + P
+            totalSize += 8 + 4 + wkbLen + 4 + propsLen;
+          }
+
+          const flags =
+            (hasGeometry ? WKB_FLAG_HAS_GEOMETRY : 0)
+            | (hasProperties ? WKB_FLAG_HAS_PROPERTIES : 0);
+
+          const packetBuffer = new ArrayBuffer(totalSize);
+          const view = new DataView(packetBuffer);
+          const uint8View = new Uint8Array(packetBuffer);
+
+          // Header (12 bytes, Little-Endian)
+          view.setUint32(0, WKB_PACKET_MAGIC, true);
+          view.setUint16(4, WKB_PACKET_VERSION, true);
+          view.setUint16(6, flags, true);
+          view.setUint32(8, extracted.length, true);
+
+          let offset = 12;
+          for (const rec of extracted) {
+            // int64 fid (8 bytes)
+            view.setBigInt64(offset, rec.fid, true);
+            offset += 8;
+
+            // uint32 wkbLength (4 bytes)
+            const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
+            view.setUint32(offset, wkbLen, true);
+            offset += 4;
+            if (wkbLen > 0 && rec.wkbBytes) {
+              uint8View.set(rec.wkbBytes, offset);
+              offset += wkbLen;
             }
 
-            extracted.push({ fid: numericFid, wkbBytes, propsBytes, properties });
-            features.push({
-              id: added.id,
-              wkb: wkbBytes ?? undefined,
-              ...(added.geojson ? { geojson: added.geojson } : {}),
-              properties,
-            });
-          }
-        }
-
-        let hasGeometry = false;
-        let hasProperties = false;
-        let totalSize = 12; // 12-byte header
-
-        for (const rec of extracted) {
-          const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
-          const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
-          if (wkbLen > 0) hasGeometry = true;
-          if (propsLen > 0) hasProperties = true;
-          // fid (8) + wkbLength (4) + W + propsLength (4) + P
-          totalSize += 8 + 4 + wkbLen + 4 + propsLen;
-        }
-
-        const flags =
-          (hasGeometry ? WKB_FLAG_HAS_GEOMETRY : 0)
-          | (hasProperties ? WKB_FLAG_HAS_PROPERTIES : 0);
-
-        const packetBuffer = new ArrayBuffer(totalSize);
-        const view = new DataView(packetBuffer);
-        const uint8View = new Uint8Array(packetBuffer);
-
-        // Header (12 bytes, Little-Endian)
-        view.setUint32(0, WKB_PACKET_MAGIC, true);
-        view.setUint16(4, WKB_PACKET_VERSION, true);
-        view.setUint16(6, flags, true);
-        view.setUint32(8, extracted.length, true);
-
-        let offset = 12;
-        for (const rec of extracted) {
-          // int64 fid (8 bytes)
-          view.setBigInt64(offset, rec.fid, true);
-          offset += 8;
-
-          // uint32 wkbLength (4 bytes)
-          const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
-          view.setUint32(offset, wkbLen, true);
-          offset += 4;
-          if (wkbLen > 0 && rec.wkbBytes) {
-            uint8View.set(rec.wkbBytes, offset);
-            offset += wkbLen;
+            // uint32 propsLength (4 bytes)
+            const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
+            view.setUint32(offset, propsLen, true);
+            offset += 4;
+            if (propsLen > 0 && rec.propsBytes) {
+              uint8View.set(rec.propsBytes, offset);
+              offset += propsLen;
+            }
           }
 
-          // uint32 propsLength (4 bytes)
-          const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
-          view.setUint32(offset, propsLen, true);
-          offset += 4;
-          if (propsLen > 0 && rec.propsBytes) {
-            uint8View.set(rec.propsBytes, offset);
-            offset += propsLen;
+          return {
+            layerId,
+            buffer: packetBuffer,
+            features,
+            totalMatched,
+            transferList: [packetBuffer],
+          };
+        } finally {
+          try {
+            layer.setSpatialFilter(null);
+          } catch {
+            // Suppress filter cleanup error
           }
         }
-
-        return {
-          layerId,
-          buffer: packetBuffer,
-          features,
-          totalMatched,
-          transferList: [packetBuffer],
-        };
-      } finally {
-        try {
-          layer.setSpatialFilter(null);
-        } catch {
-          // Suppress filter cleanup error
-        }
-      }
-    });
+      });
     } finally {
       const remaining = (this.pendingQueries.get(layerId) || 1) - 1;
       if (remaining <= 0) {
@@ -2196,7 +2359,10 @@ export class GeospatialEngine {
    * @param {number} [batchSize=500] - Batch size of features processed per tick.
    * @returns {Promise<void>} Resolves when the background scan completes or is cancelled.
    */
-  public async startBackgroundScan(layerId: string, batchSize: number = 500): Promise<void> {
+  public async startBackgroundScan(
+    layerId: string,
+    batchSize: number = 500
+  ): Promise<void> {
     if (!this.backgroundScanEnabled) {
       return;
     }
@@ -2416,9 +2582,9 @@ export class GeospatialEngine {
         if (item !== null && item !== undefined) {
           if (this.validateAndDemoteField(dummyField, item)) {
             field.inferredType =
-              dummyField.inferredType === "string"
-                ? "string"
-                : (`${dummyField.inferredType}[]` as InferredFieldType);
+              dummyField.inferredType === "string" ?
+                "string"
+              : (`${dummyField.inferredType}[]` as InferredFieldType);
             return true;
           }
         }

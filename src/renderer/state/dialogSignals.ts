@@ -10,9 +10,12 @@
  * @see {@link Dialog}
  */
 
-import { signal, Signal } from '@preact/signals-react';
-import type { DialogWindowName } from '@shared/types';
-import { isPreferencesOpenSignal, cancelPreferencesEdits } from './preferencesSignals';
+import { signal, Signal } from "@preact/signals-react";
+import type { DialogWindowName } from "@shared/types";
+import {
+  isPreferencesOpenSignal,
+  cancelPreferencesEdits,
+} from "./preferencesSignals";
 import {
   isAddLayersOpenSignal,
   closeAddLayersDialog,
@@ -23,9 +26,12 @@ import {
   isSnappingOptionsOpenSignal,
   closeSnappingOptionsDialog,
   isCreateLayerOpenSignal,
-  closeCreateLayerDialog
-} from './gisSignals';
-import { activeLayerPropertiesIdSignal, cancelLayerPropertiesEdits } from './layerPropertiesSignals';
+  closeCreateLayerDialog,
+} from "./gisSignals";
+import {
+  activeLayerPropertiesIdSignal,
+  cancelLayerPropertiesEdits,
+} from "./layerPropertiesSignals";
 
 /**
  * @typedef {Object} ActiveDialogEntry
@@ -46,7 +52,9 @@ export interface ActiveDialogEntry {
  * @since 0.1.0-dev
  * @type {Signal<ActiveDialogEntry[]>}
  */
-export const activeDialogStackSignal: Signal<ActiveDialogEntry[]> = signal<ActiveDialogEntry[]>([]);
+export const activeDialogStackSignal: Signal<ActiveDialogEntry[]> = signal<
+  ActiveDialogEntry[]
+>([]);
 
 /**
  * @function registerActiveDialog
@@ -59,14 +67,19 @@ export const activeDialogStackSignal: Signal<ActiveDialogEntry[]> = signal<Activ
  * @param {() => void} cancel - Cancellation callback invoked on Escape.
  * @returns {() => void} Cleanup function unregistering the dialog on close or unmount.
  */
-export function registerActiveDialog(name: DialogWindowName, cancel: () => void): () => void {
+export function registerActiveDialog(
+  name: DialogWindowName,
+  cancel: () => void
+): () => void {
   activeDialogStackSignal.value = [
     ...activeDialogStackSignal.value.filter((d) => d.name !== name),
-    { name, cancel }
+    { name, cancel },
   ];
 
   return () => {
-    activeDialogStackSignal.value = activeDialogStackSignal.value.filter((d) => d.name !== name);
+    activeDialogStackSignal.value = activeDialogStackSignal.value.filter(
+      (d) => d.name !== name
+    );
   };
 }
 
@@ -85,7 +98,7 @@ export function focusActiveDialog(name: DialogWindowName): void {
   if (existing) {
     activeDialogStackSignal.value = [
       ...activeDialogStackSignal.value.filter((d) => d.name !== name),
-      existing
+      existing,
     ];
   }
 }
@@ -102,7 +115,8 @@ export function focusActiveDialog(name: DialogWindowName): void {
  */
 export function cancelTopDialog(): boolean {
   if (activeDialogStackSignal.value.length > 0) {
-    const top = activeDialogStackSignal.value[activeDialogStackSignal.value.length - 1];
+    const top =
+      activeDialogStackSignal.value[activeDialogStackSignal.value.length - 1];
     top.cancel();
     return true;
   }
@@ -145,4 +159,3 @@ export function cancelTopDialog(): boolean {
 
   return false;
 }
-

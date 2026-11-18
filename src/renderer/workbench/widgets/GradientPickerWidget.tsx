@@ -191,8 +191,10 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   }, [initialStops, activeStopId]);
 
   // Active stop reference
-  const activeStop = stops.find((s) => s.id === activeStopId)
-    || stops[0] || DEFAULT_GRADIENT_STOPS[0];
+  const activeStop =
+    stops.find((s) => s.id === activeStopId)
+    || stops[0]
+    || DEFAULT_GRADIENT_STOPS[0];
 
   const isBoundaryStop = activeStop.offset <= 0 || activeStop.offset >= 100;
   const isDeleteDisabled = isBoundaryStop || stops.length <= 2;

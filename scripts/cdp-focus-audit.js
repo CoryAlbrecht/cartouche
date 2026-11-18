@@ -19,8 +19,8 @@
  * @see scripts/cdp-input.js
  */
 
-import { connectRenderer, takeTargetArg } from './cdp-client.js';
-import { clickAt, pressKey } from './cdp-input.js';
+import { connectRenderer, takeTargetArg } from "./cdp-client.js";
+import { clickAt, pressKey } from "./cdp-input.js";
 
 /**
  * @description In-page helper installed as `window.__cartoucheFocusAudit`: collects the controls to audit and reads whether a control, or its open drop-down list, shows the Focus Indicator. Kept as a string so it runs in the renderer, not in Node.
@@ -128,8 +128,14 @@ const PAGE_HELPER = String.raw`(() => {
  * @throws {Error} When the expression throws.
  */
 async function evaluate(session, expression) {
-  const { result, exceptionDetails } = await session.send('Runtime.evaluate', { expression, returnByValue: true });
-  if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+  const { result, exceptionDetails } = await session.send("Runtime.evaluate", {
+    expression,
+    returnByValue: true,
+  });
+  if (exceptionDetails)
+    throw new Error(
+      exceptionDetails.exception?.description ?? exceptionDetails.text
+    );
   return result.value;
 }
 
@@ -157,12 +163,15 @@ function settle() {
  */
 async function main() {
   const { target, rest } = takeTargetArg(process.argv.slice(2));
-  const scopeIndex = rest.indexOf('--selector');
+  const scopeIndex = rest.indexOf("--selector");
   const scope = scopeIndex >= 0 ? rest[scopeIndex + 1] : undefined;
   const session = await connectRenderer(target);
   try {
     await evaluate(session, PAGE_HELPER);
-    const controls = await evaluate(session, `window.__cartoucheFocusAudit.collect(${JSON.stringify(scope ?? null)})`);
+    const controls = await evaluate(
+      session,
+      `window.__cartoucheFocusAudit.collect(${JSON.stringify(scope ?? null)})`
+    );
     if (!controls) {
       console.error(`No element matches --selector ${scope}`);
       return 1;
@@ -170,30 +179,64 @@ async function main() {
     const failures = [];
     for (const control of controls) {
       // Keyboard: a key press sets keyboard modality, so programmatic focus then matches :focus-visible.
-      await pressKey(session, 'Shift');
-      if (await evaluate(session, `window.__cartoucheFocusAudit.focusProgrammatically(${control.i})`)) {
+      await pressKey(session, "Shift");
+      if (
+        await evaluate(
+          session,
+          `window.__cartoucheFocusAudit.focusProgrammatically(${control.i})`
+        )
+      ) {
         await settle();
-        const result = await evaluate(session, `window.__cartoucheFocusAudit.check(${control.i})`);
-        if (!result.ok) failures.push({ ...control, mode: 'keyboard focus', observed: result.observed });
+        const result = await evaluate(
+          session,
+          `window.__cartoucheFocusAudit.check(${control.i})`
+        );
+        if (!result.ok)
+          failures.push({
+            ...control,
+            mode: "keyboard focus",
+            observed: result.observed,
+          });
       }
-      if (control.kind === 'other') continue;
+      if (control.kind === "other") continue;
       // Mouse: text entry and dropdowns keep the indicator however they were focused.
-      const point = await evaluate(session, `window.__cartoucheFocusAudit.centre(${control.i})`);
+      const point = await evaluate(
+        session,
+        `window.__cartoucheFocusAudit.centre(${control.i})`
+      );
       if (!point) continue;
       await clickAt(session, point.x, point.y);
       await settle();
-      const mouse = await evaluate(session, `window.__cartoucheFocusAudit.check(${control.i})`);
-      if (!mouse.ok) failures.push({ ...control, mode: 'mouse focus', observed: mouse.observed });
-      if (control.kind === 'dropdown') {
-        const list = await evaluate(session, `window.__cartoucheFocusAudit.checkOpenList(${control.i})`);
-        if (!list.ok) failures.push({ ...control, mode: 'open drop-down list', observed: list.observed });
+      const mouse = await evaluate(
+        session,
+        `window.__cartoucheFocusAudit.check(${control.i})`
+      );
+      if (!mouse.ok)
+        failures.push({
+          ...control,
+          mode: "mouse focus",
+          observed: mouse.observed,
+        });
+      if (control.kind === "dropdown") {
+        const list = await evaluate(
+          session,
+          `window.__cartoucheFocusAudit.checkOpenList(${control.i})`
+        );
+        if (!list.ok)
+          failures.push({
+            ...control,
+            mode: "open drop-down list",
+            observed: list.observed,
+          });
         if (!list.skipped) {
-          await pressKey(session, 'Escape');
+          await pressKey(session, "Escape");
           await settle();
         }
       }
     }
-    console.log(`Audited ${controls.length} control(s) in ${session.url}${scope ? ` within ${scope}` : ''}: ${failures.length} failure(s).`);
+    console.log(
+      `Audited ${controls.length} control(s) in ${session.url}${scope ? ` within ${scope}` : ""}: ${failures.length} failure(s).`
+    );
     for (const f of failures) {
       console.log(`FAIL [${f.mode}] ${f.label}\n     ${f.observed}`);
     }

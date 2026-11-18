@@ -107,34 +107,33 @@ export const MapViewToolbarWidget: React.FC<MapViewToolbarWidgetProps> = ({
   const { t } = useTranslation();
 
   const panShortcut = getActionFormattedKey("pan_tool", "H");
-  const panTitle = panShortcut
-    ? `${t("pan_tool")} (${panShortcut})`
-    : t("pan_tool");
+  const panTitle =
+    panShortcut ? `${t("pan_tool")} (${panShortcut})` : t("pan_tool");
 
   const zoomInShortcut = getActionFormattedKey("zoom_in", "Ctrl+=");
-  const zoomInTitle = zoomInShortcut
-    ? `${t("zoom_in")} (${zoomInShortcut})`
-    : t("zoom_in");
+  const zoomInTitle =
+    zoomInShortcut ? `${t("zoom_in")} (${zoomInShortcut})` : t("zoom_in");
 
   const zoomOutShortcut = getActionFormattedKey("zoom_out", "Ctrl+-");
-  const zoomOutTitle = zoomOutShortcut
-    ? `${t("zoom_out")} (${zoomOutShortcut})`
-    : t("zoom_out");
+  const zoomOutTitle =
+    zoomOutShortcut ? `${t("zoom_out")} (${zoomOutShortcut})` : t("zoom_out");
 
   const zoomToSelectionShortcut = getActionFormattedKey(
     "zoom_to_selection",
     "Ctrl+J"
   );
-  const zoomToSelectionTitle = zoomToSelectionShortcut
-    ? `${t("zoom_to_selection")} (${zoomToSelectionShortcut})`
+  const zoomToSelectionTitle =
+    zoomToSelectionShortcut ?
+      `${t("zoom_to_selection")} (${zoomToSelectionShortcut})`
     : t("zoom_to_selection");
 
   const zoomToLayerShortcut = getActionFormattedKey(
     "zoom_to_layer",
     "Ctrl+Alt+L"
   );
-  const zoomToLayerTitle = zoomToLayerShortcut
-    ? `${t("zoom_to_layer")} (${zoomToLayerShortcut})`
+  const zoomToLayerTitle =
+    zoomToLayerShortcut ?
+      `${t("zoom_to_layer")} (${zoomToLayerShortcut})`
     : t("zoom_to_layer");
 
   const isSelectionDisabled = isZoomToSelectionDisabled(

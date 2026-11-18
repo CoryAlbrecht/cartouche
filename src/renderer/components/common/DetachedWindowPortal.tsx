@@ -87,10 +87,10 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
         initialFeaturesRef.current
       );
       if (!childWindow) {
-        logging.error('Failed to open child window in detached portal', {
-          scope: 'DetachedWindowPortal',
+        logging.error("Failed to open child window in detached portal", {
+          scope: "DetachedWindowPortal",
           frameName: initialFrameNameRef.current,
-          title
+          title,
         });
         onCloseRef.current();
         return;
@@ -104,8 +104,10 @@ export const DetachedWindowPortal: React.FC<DetachedWindowPortalProps> = ({
     }
     childWindow.document.body.style.margin = "0";
     childWindow.document.body.style.padding = "0";
-    childWindow.document.body.style.background = "var(--cartouche-theme-bg, #ffffff)";
-    childWindow.document.body.style.color = "var(--cartouche-theme-fg, #000000)";
+    childWindow.document.body.style.background =
+      "var(--cartouche-theme-bg, #ffffff)";
+    childWindow.document.body.style.color =
+      "var(--cartouche-theme-fg, #000000)";
     childWindow.document.body.style.overflow = "hidden";
 
     // Copy parent document stylesheets to child window

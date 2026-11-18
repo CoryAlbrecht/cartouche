@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect } from "react";
 
 /**
  * @typedef {Object} InlineRenameInputProps
@@ -42,9 +42,9 @@ export const InlineRenameInput: React.FC<InlineRenameInputProps> = ({
   initialValue,
   onSave,
   onCancel,
-  className = 'tree-inline-input',
+  className = "tree-inline-input",
   commitRef,
-  inputRef: externalInputRef
+  inputRef: externalInputRef,
 }) => {
   const isCancelledRef = useRef(false);
   const localInputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +54,7 @@ export const InlineRenameInput: React.FC<InlineRenameInputProps> = ({
     (rawVal: string) => {
       if (isCancelledRef.current) return;
       isCancelledRef.current = true;
-      const sanitized = rawVal.replace(/[\r\n]+/g, ' ').trim();
+      const sanitized = rawVal.replace(/[\r\n]+/g, " ").trim();
       if (sanitized && sanitized !== initialValue) {
         onSave(sanitized);
       } else {
@@ -95,10 +95,10 @@ export const InlineRenameInput: React.FC<InlineRenameInputProps> = ({
       onMouseUp={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (e.key === 'Enter') {
+        if (e.key === "Enter") {
           e.preventDefault();
           handleCommit(e.currentTarget.value);
-        } else if (e.key === 'Escape') {
+        } else if (e.key === "Escape") {
           e.preventDefault();
           isCancelledRef.current = true;
           e.currentTarget.value = initialValue;
@@ -109,16 +109,20 @@ export const InlineRenameInput: React.FC<InlineRenameInputProps> = ({
       onKeyPress={(e) => e.stopPropagation()}
       onPaste={(e) => {
         e.stopPropagation();
-        const text = e.clipboardData.getData('text');
+        const text = e.clipboardData.getData("text");
         if (/[\r\n]/.test(text)) {
           e.preventDefault();
-          const sanitized = text.replace(/[\r\n]+/g, ' ');
+          const sanitized = text.replace(/[\r\n]+/g, " ");
           const target = e.currentTarget;
           const start = target.selectionStart ?? 0;
           const end = target.selectionEnd ?? 0;
           const currentVal = target.value;
-          target.value = currentVal.substring(0, start) + sanitized + currentVal.substring(end);
-          target.selectionStart = target.selectionEnd = start + sanitized.length;
+          target.value =
+            currentVal.substring(0, start)
+            + sanitized
+            + currentVal.substring(end);
+          target.selectionStart = target.selectionEnd =
+            start + sanitized.length;
         }
       }}
       onBlur={(e) => {
@@ -131,4 +135,3 @@ export const InlineRenameInput: React.FC<InlineRenameInputProps> = ({
 };
 
 export default InlineRenameInput;
-

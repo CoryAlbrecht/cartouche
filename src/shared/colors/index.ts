@@ -11,7 +11,6 @@
  * @see {@link gradientStops}
  */
 
-export * from './cssColors';
-export * from './colorConversions';
-export * from './gradientStops';
-
+export * from "./cssColors";
+export * from "./colorConversions";
+export * from "./gradientStops";

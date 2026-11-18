@@ -11,29 +11,30 @@
  * @see {@link cancelTopDialog}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { PreferencesDialog } = jiti('@renderer/workbench/dialogs/PreferencesDialog');
+const { PreferencesDialog } = jiti(
+  "@renderer/workbench/dialogs/PreferencesDialog"
+);
 const {
   isPreferencesOpenSignal,
   preferencesMapSignal,
   prefsUiBaseFontSize,
   openPreferencesDialog,
-  cancelPreferencesEdits
-} = jiti('@renderer/state/preferencesSignals');
-const {
-  activeDialogStackSignal,
-  cancelTopDialog
-} = jiti('@renderer/state/dialogSignals');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals');
+  cancelPreferencesEdits,
+} = jiti("@renderer/state/preferencesSignals");
+const { activeDialogStackSignal, cancelTopDialog } = jiti(
+  "@renderer/state/dialogSignals"
+);
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals");
 
 class MockElement {
   nodeType = 1;
@@ -48,29 +49,32 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
   }
@@ -122,9 +126,15 @@ class MockElement {
     this.eventListeners[type].push({ cb, capture });
   }
 
-  removeEventListener(type: string, cb: (e: any) => void, _capture = false): void {
+  removeEventListener(
+    type: string,
+    cb: (e: any) => void,
+    _capture = false
+  ): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -134,7 +144,11 @@ class MockElement {
     for (const l of listeners) {
       l.cb(event);
     }
-    if (!event._bubblesStopped && this.parentNode && typeof this.parentNode.dispatchEvent === 'function') {
+    if (
+      !event._bubblesStopped
+      && this.parentNode
+      && typeof this.parentNode.dispatchEvent === "function"
+    ) {
       this.parentNode.dispatchEvent(event);
     }
     return true;
@@ -164,12 +178,15 @@ class MockElement {
   }
 }
 
-describe('PreferencesDialog Escape and Cancel Handling', () => {
+describe("PreferencesDialog Escape and Cancel Handling", () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalMutationObserver: typeof globalThis.MutationObserver;
   let mockChildWindow: any;
-  let childListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>>;
+  let childListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  >;
   let root: Root | null = null;
   let container: MockElement;
 
@@ -179,13 +196,13 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     dictionarySignal.value = {};
     prefsUiBaseFontSize.value = 12;
     preferencesMapSignal.value = {
-      'ui.basefont.size': {
+      "ui.basefont.size": {
         value: 12,
-        displayName: 'Base Font Size',
-        type: 'number',
-        category: 'ui',
-        signal: prefsUiBaseFontSize
-      }
+        displayName: "Base Font Size",
+        type: "number",
+        category: "ui",
+        signal: prefsUiBaseFontSize,
+      },
     };
 
     originalDocument = globalThis.document;
@@ -193,15 +210,15 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     originalMutationObserver = globalThis.MutationObserver;
 
     childListeners = {};
-    const childDocElement = new MockElement('html');
-    const childBody = new MockElement('body');
-    const childHead = new MockElement('head');
+    const childDocElement = new MockElement("html");
+    const childBody = new MockElement("body");
+    const childHead = new MockElement("head");
     childDocElement.appendChild(childHead);
     childDocElement.appendChild(childBody);
 
     const childDoc: any = {
       nodeType: 9,
-      title: '',
+      title: "",
       documentElement: childDocElement,
       body: childBody,
       head: childHead,
@@ -217,7 +234,7 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
         return el;
       },
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     childHead.ownerDocument = childDoc;
     childBody.ownerDocument = childDoc;
@@ -225,11 +242,19 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     mockChildWindow = {
       closed: false,
       document: childDoc,
-      addEventListener: (type: string, cb: (e: any) => void, capture = false) => {
+      addEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        capture = false
+      ) => {
         if (!childListeners[type]) childListeners[type] = [];
         childListeners[type].push({ cb, capture });
       },
-      removeEventListener: (type: string, cb: (e: any) => void, _capture = false) => {
+      removeEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        _capture = false
+      ) => {
         if (!childListeners[type]) return;
         childListeners[type] = childListeners[type].filter((l) => l.cb !== cb);
       },
@@ -242,12 +267,12 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
       },
       close: () => {
         mockChildWindow.closed = true;
-      }
+      },
     };
 
-    const mainDocElement = new MockElement('html');
-    const mainBody = new MockElement('body');
-    const mainHead = new MockElement('head');
+    const mainDocElement = new MockElement("html");
+    const mainBody = new MockElement("body");
+    const mainHead = new MockElement("head");
     mainDocElement.appendChild(mainHead);
     mainDocElement.appendChild(mainBody);
 
@@ -268,7 +293,7 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
       },
       querySelectorAll: () => [],
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     mainHead.ownerDocument = mainDoc;
     mainBody.ownerDocument = mainDoc;
@@ -283,15 +308,15 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
       Element: MockElement,
       electronAPI: {
         getPreferenceValue: async () => ({
-          'ui.basefont.size': {
+          "ui.basefont.size": {
             value: 12,
-            displayName: 'Base Font Size',
-            type: 'number',
-            category: 'ui',
-            signal: prefsUiBaseFontSize
-          }
-        })
-      }
+            displayName: "Base Font Size",
+            type: "number",
+            category: "ui",
+            signal: prefsUiBaseFontSize,
+          },
+        }),
+      },
     };
 
     mainDoc.defaultView = win;
@@ -302,14 +327,19 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
 
     (globalThis as any).document = mainDoc;
     (globalThis as any).window = win;
-    (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+    (globalThis as any).Node = {
+      ELEMENT_NODE: 1,
+      TEXT_NODE: 3,
+      COMMENT_NODE: 8,
+      DOCUMENT_NODE: 9,
+    };
 
     (globalThis as any).MutationObserver = class {
       observe() {}
       disconnect() {}
     };
 
-    container = new MockElement('div');
+    container = new MockElement("div");
     container.ownerDocument = mainDoc;
     mainBody.appendChild(container);
     root = createRoot(container as any);
@@ -341,7 +371,7 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     }
   });
 
-  it('cancelPreferencesEdits reverts modified signals back to stored values and closes dialog', () => {
+  it("cancelPreferencesEdits reverts modified signals back to stored values and closes dialog", () => {
     openPreferencesDialog();
     assert.equal(isPreferencesOpenSignal.value, true);
 
@@ -353,11 +383,19 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     cancelPreferencesEdits();
 
     // Signal should revert to stored value (12) and dialog should be closed
-    assert.equal(prefsUiBaseFontSize.value, 12, 'signal value should be reverted to stored value');
-    assert.equal(isPreferencesOpenSignal.value, false, 'dialog should be closed');
+    assert.equal(
+      prefsUiBaseFontSize.value,
+      12,
+      "signal value should be reverted to stored value"
+    );
+    assert.equal(
+      isPreferencesOpenSignal.value,
+      false,
+      "dialog should be closed"
+    );
   });
 
-  it('cancelTopDialog prioritizes PreferencesDialog cancellation when preferences is open', () => {
+  it("cancelTopDialog prioritizes PreferencesDialog cancellation when preferences is open", () => {
     openPreferencesDialog();
     assert.equal(isPreferencesOpenSignal.value, true);
 
@@ -365,12 +403,24 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     assert.equal(prefsUiBaseFontSize.value, 18);
 
     const handled = cancelTopDialog();
-    assert.equal(handled, true, 'cancelTopDialog must handle open preferences dialog');
-    assert.equal(isPreferencesOpenSignal.value, false, 'dialog should be closed');
-    assert.equal(prefsUiBaseFontSize.value, 12, 'signal value should be reverted to stored value');
+    assert.equal(
+      handled,
+      true,
+      "cancelTopDialog must handle open preferences dialog"
+    );
+    assert.equal(
+      isPreferencesOpenSignal.value,
+      false,
+      "dialog should be closed"
+    );
+    assert.equal(
+      prefsUiBaseFontSize.value,
+      12,
+      "signal value should be reverted to stored value"
+    );
   });
 
-  it('pressing Escape while PreferencesDialog window is focused triggers cancellation and reverts edits', async () => {
+  it("pressing Escape while PreferencesDialog window is focused triggers cancellation and reverts edits", async () => {
     openPreferencesDialog();
     assert.equal(isPreferencesOpenSignal.value, true);
 
@@ -385,18 +435,26 @@ describe('PreferencesDialog Escape and Cancel Handling', () => {
     // Dispatch Escape in child window inside act
     await act(async () => {
       const escapeEvent = {
-        type: 'keydown',
-        key: 'Escape',
+        type: "keydown",
+        key: "Escape",
         defaultPrevented: false,
         preventDefault() {
           this.defaultPrevented = true;
         },
-        stopPropagation() {}
+        stopPropagation() {},
       };
       mockChildWindow.dispatchEvent(escapeEvent);
     });
 
-    assert.equal(isPreferencesOpenSignal.value, false, 'Preferences dialog should be closed on Escape');
-    assert.equal(prefsUiBaseFontSize.value, 12, 'Preference signal should revert to stored value');
+    assert.equal(
+      isPreferencesOpenSignal.value,
+      false,
+      "Preferences dialog should be closed on Escape"
+    );
+    assert.equal(
+      prefsUiBaseFontSize.value,
+      12,
+      "Preference signal should revert to stored value"
+    );
   });
 });

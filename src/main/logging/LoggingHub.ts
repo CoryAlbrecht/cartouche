@@ -10,20 +10,20 @@
  * @see {@link LogLevel}
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import winston from 'winston';
-import * as colorette from 'colorette';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import winston from "winston";
+import * as colorette from "colorette";
 import {
   type LogLevel,
   type LogPayload,
   normalizeLogLevel,
-  setLogSink
-} from '../../shared/logging';
+  setLogSink,
+} from "../../shared/logging";
 import {
   resolveColorToRgb,
-  findClosestAnsi16Color
-} from '../../shared/colors/cssColors';
+  findClosestAnsi16Color,
+} from "../../shared/colors/cssColors";
 
 /**
  * @description Custom Winston log level severity mapping ascending with verbosity.
@@ -39,7 +39,7 @@ const WINSTON_LEVELS: Record<string, number> = {
   error: 2,
   warn: 3,
   info: 4,
-  debug: 5
+  debug: 5,
 };
 
 /**
@@ -81,7 +81,7 @@ export interface LoggingHubOptions {
   logFile?: string;
   enableColors?: boolean;
   enableFileColors?: boolean;
-  coloursPattern?: 'level-only' | 'level-and-message' | 'full-line';
+  coloursPattern?: "level-only" | "level-and-message" | "full-line";
   coloursLevels?: LoggingHubLevelColours;
 }
 
@@ -120,17 +120,19 @@ function resolveColorFunction(
   }
 
   const isTruecolor =
-    isFile ||
-    (typeof process !== 'undefined' &&
-      (process.env.COLORTERM === 'truecolor' || process.env.COLORTERM === '24bit'));
+    isFile
+    || (typeof process !== "undefined"
+      && (process.env.COLORTERM === "truecolor"
+        || process.env.COLORTERM === "24bit"));
 
   if (isTruecolor) {
-    return (str: string) => `\x1b[38;2;${rgb.r};${rgb.g};${rgb.b}m${str}\x1b[39m`;
+    return (str: string) =>
+      `\x1b[38;2;${rgb.r};${rgb.g};${rgb.b}m${str}\x1b[39m`;
   }
 
   const closest = findClosestAnsi16Color(rgb);
   const colorFn = activeColors[closest.colorFnName];
-  if (typeof colorFn === 'function') {
+  if (typeof colorFn === "function") {
     return colorFn;
   }
   return activeColors.gray;
@@ -147,21 +149,23 @@ function resolveColorFunction(
  */
 export class LoggingHub {
   private logger!: winston.Logger;
-  private options: Required<Omit<LoggingHubOptions, 'logFile'>> & { logFile?: string } = {
-    level: 'error',
+  private options: Required<Omit<LoggingHubOptions, "logFile">> & {
+    logFile?: string;
+  } = {
+    level: "error",
     logFile: undefined,
     enableColors: true,
     enableFileColors: true,
-    coloursPattern: 'level-only',
+    coloursPattern: "level-only",
     coloursLevels: {
-      critical: 'red',
-      error: 'red',
-      warn: 'yellow',
-      info: 'cyan',
-      debug: 'gray'
-    }
+      critical: "red",
+      error: "red",
+      warn: "yellow",
+      info: "cyan",
+      debug: "gray",
+    },
   };
-  private activeDestination: 'stderr' | 'file' = 'stderr';
+  private activeDestination: "stderr" | "file" = "stderr";
 
   /**
    * @constructor
@@ -187,7 +191,7 @@ export class LoggingHub {
    * @since 0.1.0-dev
    * @returns {'stderr' | 'file'} Active destination.
    */
-  public getActiveDestination(): 'stderr' | 'file' {
+  public getActiveDestination(): "stderr" | "file" {
     return this.activeDestination;
   }
 
@@ -203,33 +207,40 @@ export class LoggingHub {
    * @param {boolean} [isFile=false] - True if formatting for persistent log file transport.
    * @returns {string} Formatted log line with trailing newline.
    */
-  public formatLogLine(payload: LogPayload, enableColor: boolean, isFile = false): string {
+  public formatLogLine(
+    payload: LogPayload,
+    enableColor: boolean,
+    isFile = false
+  ): string {
     const timestamp = payload.timestamp || new Date().toISOString();
-    const source = payload.source || 'Main';
-    const levelUpper = (payload.level || 'error').toUpperCase();
-    const message = payload.message || '';
+    const source = payload.source || "Main";
+    const levelUpper = (payload.level || "error").toUpperCase();
+    const message = payload.message || "";
 
-    let formattedLevelAndMessage = '';
+    let formattedLevelAndMessage = "";
     if (!enableColor) {
       formattedLevelAndMessage = `${timestamp} [${source}] ${levelUpper}: ${message}`;
     } else {
-      const configuredColor = this.options.coloursLevels[payload.level] || 'gray';
+      const configuredColor =
+        this.options.coloursLevels[payload.level] || "gray";
       const colorFn = resolveColorFunction(configuredColor, true, isFile);
       const applyStyle = (text: string) => {
-        if (payload.level === 'critical') {
+        if (payload.level === "critical") {
           return activeColors.bold(colorFn(text));
         }
         return colorFn(text);
       };
 
       switch (this.options.coloursPattern) {
-        case 'level-and-message':
+        case "level-and-message":
           formattedLevelAndMessage = `${timestamp} [${source}] ${applyStyle(`${levelUpper}: ${message}`)}`;
           break;
-        case 'full-line':
-          formattedLevelAndMessage = applyStyle(`${timestamp} [${source}] ${levelUpper}: ${message}`);
+        case "full-line":
+          formattedLevelAndMessage = applyStyle(
+            `${timestamp} [${source}] ${levelUpper}: ${message}`
+          );
           break;
-        case 'level-only':
+        case "level-only":
         default:
           formattedLevelAndMessage = `${timestamp} [${source}] ${applyStyle(levelUpper)}: ${message}`;
           break;
@@ -237,19 +248,19 @@ export class LoggingHub {
     }
 
     // Inspect meta for JSON metadata and error stack traces
-    let stackTrace = '';
+    let stackTrace = "";
     const nonErrorMeta: any[] = [];
 
     if (Array.isArray(payload.meta) && payload.meta.length > 0) {
       for (const item of payload.meta) {
-        if (item && typeof item === 'object') {
+        if (item && typeof item === "object") {
           if (item.stack) {
             stackTrace = String(item.stack);
             // Preserve custom error properties in nonErrorMeta
             const customProps: Record<string, any> = {};
             let hasCustomProps = false;
             for (const [k, v] of Object.entries(item)) {
-              if (k !== 'name' && k !== 'message' && k !== 'stack') {
+              if (k !== "name" && k !== "message" && k !== "stack") {
                 customProps[k] = v;
                 hasCustomProps = true;
               }
@@ -266,19 +277,24 @@ export class LoggingHub {
       }
     }
 
-    let metaString = '';
+    let metaString = "";
     if (nonErrorMeta.length > 0) {
       try {
-        metaString = ' ' + JSON.stringify(nonErrorMeta.length === 1 ? nonErrorMeta[0] : nonErrorMeta);
+        metaString =
+          " "
+          + JSON.stringify(
+            nonErrorMeta.length === 1 ? nonErrorMeta[0] : nonErrorMeta
+          );
       } catch {
-        metaString = ' [unserializable metadata]';
+        metaString = " [unserializable metadata]";
       }
     }
 
     let line = `${formattedLevelAndMessage}${metaString}`;
     if (stackTrace) {
-      const formattedStack = enableColor
-        ? activeColors.dim(activeColors.red(stackTrace))
+      const formattedStack =
+        enableColor ?
+          activeColors.dim(activeColors.red(stackTrace))
         : stackTrace;
       line += `\n${formattedStack}`;
     }
@@ -297,11 +313,11 @@ export class LoggingHub {
    */
   private createConsoleTransport(): winston.transport {
     return new winston.transports.Console({
-      stderrLevels: ['critical', 'error', 'warn', 'info', 'debug'],
+      stderrLevels: ["critical", "error", "warn", "info", "debug"],
       format: winston.format.printf((info) => {
         const payload = (info as any).payload as LogPayload;
         return this.formatLogLine(payload, this.options.enableColors, false);
-      })
+      }),
     });
   }
 
@@ -315,31 +331,39 @@ export class LoggingHub {
    * @returns {void}
    */
   private initLogger(): void {
-    const { level: canonicalLevel, numericLevel } = normalizeLogLevel(this.options.level);
+    const { level: canonicalLevel, numericLevel } = normalizeLogLevel(
+      this.options.level
+    );
     const isSilent = numericLevel === 0;
 
     let targetTransport: winston.transport;
     let isFile = false;
 
-    if (this.options.logFile && this.options.logFile.trim() !== '') {
+    if (this.options.logFile && this.options.logFile.trim() !== "") {
       const targetPath = this.options.logFile.trim();
       try {
         fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         // Test write ability
-        fs.appendFileSync(targetPath, '', { flag: 'a' });
+        fs.appendFileSync(targetPath, "", { flag: "a" });
 
         const fileFormats = [
-          ...(!this.options.enableFileColors ? [winston.format.uncolorize()] : []),
+          ...(!this.options.enableFileColors ?
+            [winston.format.uncolorize()]
+          : []),
           winston.format.printf((info) => {
             const payload = (info as any).payload as LogPayload;
-            return this.formatLogLine(payload, this.options.enableFileColors, true);
-          })
+            return this.formatLogLine(
+              payload,
+              this.options.enableFileColors,
+              true
+            );
+          }),
         ];
 
         targetTransport = new winston.transports.File({
           filename: targetPath,
-          options: { flags: 'a' },
-          format: winston.format.combine(...fileFormats)
+          options: { flags: "a" },
+          format: winston.format.combine(...fileFormats),
         });
         isFile = true;
       } catch (err: any) {
@@ -352,13 +376,13 @@ export class LoggingHub {
       targetTransport = this.createConsoleTransport();
     }
 
-    this.activeDestination = isFile ? 'file' : 'stderr';
+    this.activeDestination = isFile ? "file" : "stderr";
 
     this.logger = winston.createLogger({
       levels: WINSTON_LEVELS,
       level: canonicalLevel,
       silent: isSilent,
-      transports: [targetTransport]
+      transports: [targetTransport],
     });
   }
 
@@ -390,7 +414,7 @@ export class LoggingHub {
     if (newOptions.coloursLevels !== undefined) {
       this.options.coloursLevels = {
         ...this.options.coloursLevels,
-        ...newOptions.coloursLevels
+        ...newOptions.coloursLevels,
       };
     }
 
@@ -418,12 +442,9 @@ export class LoggingHub {
     }
 
     // Winston level filter
-    const winstonLevel = payload.level in WINSTON_LEVELS ? payload.level : 'error';
-    this.logger.log({
-      level: winstonLevel,
-      message: payload.message,
-      payload
-    });
+    const winstonLevel =
+      payload.level in WINSTON_LEVELS ? payload.level : "error";
+    this.logger.log({ level: winstonLevel, message: payload.message, payload });
   }
 
   /**
@@ -437,7 +458,7 @@ export class LoggingHub {
   public destroy(): void {
     if (this.logger && this.logger.transports) {
       for (const t of this.logger.transports) {
-        if (typeof (t as any).close === 'function') {
+        if (typeof (t as any).close === "function") {
           (t as any).close();
         }
       }

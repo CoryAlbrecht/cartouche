@@ -9,12 +9,12 @@
  * @see {@link PreferenceMap}
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { app } from 'electron';
-import type { PreferenceMap } from '@shared/types';
-import { BUILTIN_PREFERENCES } from '../../../../shared/preferences/index';
-import { logging } from '../../../../shared/logging';
+import fs from "node:fs";
+import path from "node:path";
+import { app } from "electron";
+import type { PreferenceMap } from "@shared/types";
+import { BUILTIN_PREFERENCES } from "../../../../shared/preferences/index";
+import { logging } from "../../../../shared/logging";
 
 /**
  * @description Helper function to check if a preference key string represents a window/dialog location or geometry property.
@@ -22,7 +22,10 @@ import { logging } from '../../../../shared/logging';
  * @returns {boolean} True if the key is a location or window bounds property.
  */
 function isLocationKey(key: string): boolean {
-  return key.includes('.location.') || /\.(location|x|y|width|height|maximized)$/i.test(key);
+  return (
+    key.includes(".location.")
+    || /\.(location|x|y|width|height|maximized)$/i.test(key)
+  );
 }
 
 /**
@@ -31,7 +34,7 @@ function isLocationKey(key: string): boolean {
  * @returns {boolean} True if the key is a layer map tool preference.
  */
 function isLayerPreference(key: string): boolean {
-  return key.startsWith('mapTools.layer.');
+  return key.startsWith("mapTools.layer.");
 }
 
 /**
@@ -43,7 +46,9 @@ function isLayerPreference(key: string): boolean {
  * @since 0.1.0-dev
  */
 class PreferencesStoreManager {
-  private preferences: PreferenceMap = JSON.parse(JSON.stringify(BUILTIN_PREFERENCES));
+  private preferences: PreferenceMap = JSON.parse(
+    JSON.stringify(BUILTIN_PREFERENCES)
+  );
   private filePath: string | null = null;
   private isLoaded = false;
   private changeListeners: Array<(key: string, value: any) => void> = [];
@@ -57,7 +62,9 @@ class PreferencesStoreManager {
    * @param {(key: string, value: any) => void} listener - Preference change listener callback.
    * @returns {() => void} Unsubscribe function.
    */
-  public onPreferenceChange(listener: (key: string, value: any) => void): () => void {
+  public onPreferenceChange(
+    listener: (key: string, value: any) => void
+  ): () => void {
     this.changeListeners.push(listener);
     return () => {
       this.changeListeners = this.changeListeners.filter((l) => l !== listener);
@@ -88,11 +95,11 @@ class PreferencesStoreManager {
     if (this.filePath) return this.filePath;
     try {
       if (app) {
-        if (!app.getName() || app.getName() === 'Electron') {
-          app.setName('cartouche');
+        if (!app.getName() || app.getName() === "Electron") {
+          app.setName("cartouche");
         }
-        const userDataPath = app.getPath('userData');
-        this.filePath = path.join(userDataPath, 'preferences.json');
+        const userDataPath = app.getPath("userData");
+        this.filePath = path.join(userDataPath, "preferences.json");
         return this.filePath;
       }
     } catch {
@@ -134,10 +141,12 @@ class PreferencesStoreManager {
     let parsed: Record<string, any> = {};
     if (fs.existsSync(targetPath)) {
       try {
-        const data = fs.readFileSync(targetPath, 'utf-8');
+        const data = fs.readFileSync(targetPath, "utf-8");
         parsed = JSON.parse(data);
       } catch (err) {
-        logging.warn('Failed to load preferences from disk', err, { scope: 'PreferencesStore' });
+        logging.warn("Failed to load preferences from disk", err, {
+          scope: "PreferencesStore",
+        });
       }
     }
 
@@ -154,20 +163,37 @@ class PreferencesStoreManager {
       }
     };
 
-    migrateKey('ui.preferencesDialog.x', 'ui.preferencesDialog.location.x');
-    migrateKey('ui.preferencesDialog.y', 'ui.preferencesDialog.location.y');
-    migrateKey('ui.preferencesDialog.width', 'ui.preferencesDialog.location.width');
-    migrateKey('ui.preferencesDialog.height', 'ui.preferencesDialog.location.height');
-    migrateKey('ui.workbench.maximized', 'ui.workbench.location.maximized');
-    migrateKey('general.mapViewport.zoomAmount', 'mapTools.mapViewport.zoomAmount');
+    migrateKey("ui.preferencesDialog.x", "ui.preferencesDialog.location.x");
+    migrateKey("ui.preferencesDialog.y", "ui.preferencesDialog.location.y");
+    migrateKey(
+      "ui.preferencesDialog.width",
+      "ui.preferencesDialog.location.width"
+    );
+    migrateKey(
+      "ui.preferencesDialog.height",
+      "ui.preferencesDialog.location.height"
+    );
+    migrateKey("ui.workbench.maximized", "ui.workbench.location.maximized");
+    migrateKey(
+      "general.mapViewport.zoomAmount",
+      "mapTools.mapViewport.zoomAmount"
+    );
 
     // Process known default preferences
     for (const [key, item] of Object.entries(this.preferences)) {
       if (item.ephemeral || isLayerPreference(key)) {
-        item.value = item.defaultValue !== undefined ? item.defaultValue : item.value;
+        item.value =
+          item.defaultValue !== undefined ? item.defaultValue : item.value;
       } else if (parsed[key] !== undefined) {
         const diskVal = parsed[key];
-        item.value = typeof diskVal === 'object' && diskVal !== null && 'value' in diskVal ? diskVal.value : diskVal;
+        item.value =
+          (
+            typeof diskVal === "object"
+            && diskVal !== null
+            && "value" in diskVal
+          ) ?
+            diskVal.value
+          : diskVal;
       } else if (item.defaultValue !== undefined) {
         item.value = item.defaultValue;
       }
@@ -177,7 +203,10 @@ class PreferencesStoreManager {
     for (const [key, val] of Object.entries(parsed)) {
       if (!this.preferences[key]) {
         if (isLayerPreference(key)) continue;
-        const itemVal = typeof val === 'object' && val !== null && 'value' in val ? (val as any).value : val;
+        const itemVal =
+          typeof val === "object" && val !== null && "value" in val ?
+            (val as any).value
+          : val;
         const isLoc = isLocationKey(key);
         this.preferences[key] = {
           displayName: key,
@@ -185,8 +214,11 @@ class PreferencesStoreManager {
           defaultValue: itemVal,
           ephemeral: false,
           hidden: isLoc,
-          category: isLoc ? 'ui' : 'general',
-          type: typeof itemVal === 'boolean' ? 'boolean' : typeof itemVal === 'number' ? 'number' : 'string'
+          category: isLoc ? "ui" : "general",
+          type:
+            typeof itemVal === "boolean" ? "boolean"
+            : typeof itemVal === "number" ? "number"
+            : "string",
         };
       }
     }
@@ -216,9 +248,11 @@ class PreferencesStoreManager {
         }
       }
       fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-      fs.writeFileSync(targetPath, JSON.stringify(toSave, null, 2), 'utf-8');
+      fs.writeFileSync(targetPath, JSON.stringify(toSave, null, 2), "utf-8");
     } catch (err) {
-      logging.error('Failed to save preferences to disk', err, { scope: 'PreferencesStore' });
+      logging.error("Failed to save preferences to disk", err, {
+        scope: "PreferencesStore",
+      });
     }
   }
 
@@ -233,7 +267,7 @@ class PreferencesStoreManager {
    */
   public get(name?: string): PreferenceMap {
     this.ensureLoaded();
-    if (!name || name.trim() === '') {
+    if (!name || name.trim() === "") {
       return { ...this.preferences };
     }
     const key = name.trim();
@@ -261,7 +295,9 @@ class PreferencesStoreManager {
       this.preferences[key] = {
         ...this.preferences[key],
         value,
-        ...(isMapToolLayer ? { ephemeral: true, hidden: true, category: 'map_tools' } : {})
+        ...(isMapToolLayer ?
+          { ephemeral: true, hidden: true, category: "map_tools" }
+        : {}),
       };
     } else {
       const isLoc = isLocationKey(key);
@@ -271,8 +307,14 @@ class PreferencesStoreManager {
         defaultValue: value,
         ephemeral: isMapToolLayer,
         hidden: isMapToolLayer || isLoc,
-        category: isMapToolLayer ? 'map_tools' : isLoc ? 'ui' : 'general',
-        type: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
+        category:
+          isMapToolLayer ? "map_tools"
+          : isLoc ? "ui"
+          : "general",
+        type:
+          typeof value === "boolean" ? "boolean"
+          : typeof value === "number" ? "number"
+          : "string",
       };
     }
     this.saveToDisk();
@@ -280,7 +322,10 @@ class PreferencesStoreManager {
       try {
         listener(key, value);
       } catch (err) {
-        logging.error('Error in preferences change listener', err, { scope: 'PreferencesStore', preference: key });
+        logging.error("Error in preferences change listener", err, {
+          scope: "PreferencesStore",
+          preference: key,
+        });
       }
     }
     return { [key]: { ...this.preferences[key] } };

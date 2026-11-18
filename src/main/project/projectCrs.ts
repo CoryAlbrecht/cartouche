@@ -12,10 +12,10 @@
  * @see {@link ProjectCrs}
  */
 
-import type { ProjectCrs, ProjectModel } from '../../shared/types';
-import { emitToWindows } from './ProjectBroadcaster';
-import { getCrsDefinition, type CrsDefinition } from '../crs/crsDefinition';
-import { logging } from '../../shared/logging';
+import type { ProjectCrs, ProjectModel } from "../../shared/types";
+import { emitToWindows } from "./ProjectBroadcaster";
+import { getCrsDefinition, type CrsDefinition } from "../crs/crsDefinition";
+import { logging } from "../../shared/logging";
 
 /**
  * @callback CrsDefinitionLookup
@@ -36,12 +36,18 @@ export type CrsDefinitionLookup = (authId: string) => CrsDefinition | null;
  * @param {CrsDefinitionLookup} [lookup=getCrsDefinition] - Definition lookup (GDAL by default).
  * @returns {ProjectCrs} A new Project CRS carrying its definition when it could be resolved.
  */
-export function completeProjectCrs(crs: ProjectCrs, lookup: CrsDefinitionLookup = getCrsDefinition): ProjectCrs {
+export function completeProjectCrs(
+  crs: ProjectCrs,
+  lookup: CrsDefinitionLookup = getCrsDefinition
+): ProjectCrs {
   const next: ProjectCrs = { ...crs };
   if (next.none || !next.authId || next.proj4) return next;
   const definition = lookup(next.authId);
   if (!definition?.proj4) {
-    logging.warn('Project CRS committed without a proj4 definition: CRS could not be resolved', { scope: 'projectCrs', authId: next.authId });
+    logging.warn(
+      "Project CRS committed without a proj4 definition: CRS could not be resolved",
+      { scope: "projectCrs", authId: next.authId }
+    );
     return next;
   }
   next.proj4 = definition.proj4;
@@ -80,7 +86,10 @@ export function toProjectCrs(layerCrs: ProjectCrs): ProjectCrs {
  * @param {ProjectCrs | undefined} layerCrs - The new layer's CRS.
  * @returns {ProjectCrs | null} The adopted Project CRS, or null when nothing changed.
  */
-export function adoptFirstLayerCrs(project: ProjectModel, layerCrs: ProjectCrs | undefined): ProjectCrs | null {
+export function adoptFirstLayerCrs(
+  project: ProjectModel,
+  layerCrs: ProjectCrs | undefined
+): ProjectCrs | null {
   if (project.crs) return null;
   if (!layerCrs?.authId) return null;
   project.crs = completeProjectCrs(toProjectCrs(layerCrs));
@@ -98,5 +107,5 @@ export function adoptFirstLayerCrs(project: ProjectModel, layerCrs: ProjectCrs |
  * @returns {void}
  */
 export function broadcastProjectCrs(crs: ProjectCrs | null): void {
-  emitToWindows('project:crs-updated', crs);
+  emitToWindows("project:crs-updated", crs);
 }

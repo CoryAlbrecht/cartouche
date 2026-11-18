@@ -18,7 +18,15 @@
 
 import React, { useCallback } from "react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { mdiFolderCogOutline, mdiInformationOutline, mdiDotsHorizontal, mdiRuler, mdiClockOutline, mdiEarth, mdiPaletteOutline } from "@mdi/js";
+import {
+  mdiFolderCogOutline,
+  mdiInformationOutline,
+  mdiDotsHorizontal,
+  mdiRuler,
+  mdiClockOutline,
+  mdiEarth,
+  mdiPaletteOutline,
+} from "@mdi/js";
 import { ProjectDefaultStylesTab } from "./ProjectDefaultStylesTab";
 import { ProjectCrsTab } from "./ProjectCrsTab";
 import { TimeFilterControls } from "@renderer/components/common/TimeFilterControls";
@@ -83,11 +91,7 @@ const SIDEBAR_TABS: ProjectPropertiesSidebarTabDef[] = [
     labelKey: "project_properties_tab_measurements",
     icon: mdiRuler,
   },
-  {
-    id: "crs",
-    labelKey: "project_properties_tab_crs",
-    icon: mdiEarth,
-  },
+  { id: "crs", labelKey: "project_properties_tab_crs", icon: mdiEarth },
   {
     id: "default_styles",
     labelKey: "project_properties_tab_default_styles",
@@ -245,7 +249,11 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 {/* Project File (read-only) + Save As */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
                   <label htmlFor='project-prop-file' style={LABEL_STYLE}>
                     {t("project_properties_label_file")}:
                   </label>
@@ -269,7 +277,11 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 {/* Project Home + directory picker */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
                   <label htmlFor='project-prop-home' style={LABEL_STYLE}>
                     {t("project_properties_label_home")}:
                   </label>
@@ -278,7 +290,9 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     className='project-prop-input project-prop-home'
                     type='text'
                     value={draft.home}
-                    placeholder={filePath ? "" : t("project_properties_file_unsaved")}
+                    placeholder={
+                      filePath ? "" : t("project_properties_file_unsaved")
+                    }
                     onChange={(e) =>
                       updateProjectPropertiesDraft({ home: e.target.value })
                     }
@@ -297,7 +311,11 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 {/* Project Title */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
                   <label htmlFor='project-prop-title' style={LABEL_STYLE}>
                     {t("project_properties_label_title")}:
                   </label>
@@ -315,31 +333,57 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 {/* Save Path Mode */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <span style={LABEL_STYLE}>{t("project_properties_label_path_mode")}:</span>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
+                  <span style={LABEL_STYLE}>
+                    {t("project_properties_label_path_mode")}:
+                  </span>
                   <div
                     role='radiogroup'
                     aria-label={t("project_properties_label_path_mode")}
-                    style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.875rem" }}>
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1.25rem",
+                    }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.375rem",
+                        fontSize: "0.875rem",
+                      }}>
                       <input
                         type='radio'
                         name='project-prop-path-mode'
                         id='project-prop-path-mode-absolute'
                         value='absolute'
                         checked={draft.pathMode === "absolute"}
-                        onChange={() => updateProjectPropertiesDraft({ pathMode: "absolute" })}
+                        onChange={() =>
+                          updateProjectPropertiesDraft({ pathMode: "absolute" })
+                        }
                       />
                       {t("project_properties_path_mode_absolute")}
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.875rem" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.375rem",
+                        fontSize: "0.875rem",
+                      }}>
                       <input
                         type='radio'
                         name='project-prop-path-mode'
                         id='project-prop-path-mode-relative'
                         value='relative'
                         checked={draft.pathMode === "relative"}
-                        onChange={() => updateProjectPropertiesDraft({ pathMode: "relative" })}
+                        onChange={() =>
+                          updateProjectPropertiesDraft({ pathMode: "relative" })
+                        }
                       />
                       {t("project_properties_path_mode_relative")}
                     </label>
@@ -350,7 +394,11 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 <div
                   id='project-prop-selection-colour-row'
                   className='project-properties-row project-prop-selection-colour-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
                   <span style={LABEL_STYLE}>
                     {t("project_properties_label_selection_colour")}:
                   </span>
@@ -360,7 +408,9 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     height={DIALOG_COLOUR_BUTTON_HEIGHT}
                     dialogTitle={t("project_properties_label_selection_colour")}
                     allowAlpha={true}
-                    onChange={(colour) => updateProjectPropertiesDraft({ selectionColour: colour })}
+                    onChange={(colour) =>
+                      updateProjectPropertiesDraft({ selectionColour: colour })
+                    }
                   />
                 </div>
 
@@ -368,7 +418,11 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 <div
                   id='project-prop-background-colour-row'
                   className='project-properties-row project-prop-background-colour-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
                   <span style={LABEL_STYLE}>
                     {t("project_properties_label_background_colour")}:
                   </span>
@@ -376,7 +430,9 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     value={draft.backgroundColour}
                     width={DIALOG_COLOUR_BUTTON_WIDTH}
                     height={DIALOG_COLOUR_BUTTON_HEIGHT}
-                    dialogTitle={t("project_properties_label_background_colour")}
+                    dialogTitle={t(
+                      "project_properties_label_background_colour"
+                    )}
                     allowAlpha={false}
                     onChange={(colour) =>
                       updateProjectPropertiesDraft({
@@ -406,8 +462,14 @@ export const ProjectPropertiesDialog: React.FC = () => {
                 {/* Units for Distance */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <label htmlFor='project-prop-distance-unit' style={LABEL_STYLE}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
+                  <label
+                    htmlFor='project-prop-distance-unit'
+                    style={LABEL_STYLE}>
                     {t("project_properties_label_distance_unit")}:
                   </label>
                   <Select<ProjectDistanceUnit>
@@ -416,16 +478,24 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     value={draft.distanceUnit}
                     options={PROJECT_DISTANCE_UNITS.map((unit) => ({
                       value: unit,
-                      label: t(`project_properties_distance_unit_${unit.replace(/-/g, "_")}`),
+                      label: t(
+                        `project_properties_distance_unit_${unit.replace(/-/g, "_")}`
+                      ),
                     }))}
-                    onChange={(distanceUnit) => updateProjectPropertiesDraft({ distanceUnit })}
+                    onChange={(distanceUnit) =>
+                      updateProjectPropertiesDraft({ distanceUnit })
+                    }
                   />
                 </div>
 
                 {/* Units for Area */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
                   <label htmlFor='project-prop-area-unit' style={LABEL_STYLE}>
                     {t("project_properties_label_area_unit")}:
                   </label>
@@ -435,17 +505,27 @@ export const ProjectPropertiesDialog: React.FC = () => {
                     value={draft.areaUnit}
                     options={PROJECT_AREA_UNITS.map((unit) => ({
                       value: unit,
-                      label: t(`project_properties_area_unit_${unit.replace(/-/g, "_")}`),
+                      label: t(
+                        `project_properties_area_unit_${unit.replace(/-/g, "_")}`
+                      ),
                     }))}
-                    onChange={(areaUnit) => updateProjectPropertiesDraft({ areaUnit })}
+                    onChange={(areaUnit) =>
+                      updateProjectPropertiesDraft({ areaUnit })
+                    }
                   />
                 </div>
 
                 {/* Scale Calculation */}
                 <div
                   className='project-properties-row'
-                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <label htmlFor='project-prop-scale-method' style={LABEL_STYLE}>
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}>
+                  <label
+                    htmlFor='project-prop-scale-method'
+                    style={LABEL_STYLE}>
                     {t("project_properties_label_scale_method")}:
                   </label>
                   <Select<ScaleCalculationMethod>
@@ -456,7 +536,9 @@ export const ProjectPropertiesDialog: React.FC = () => {
                       value: method,
                       label: t(`project_properties_scale_method_${method}`),
                     }))}
-                    onChange={(scaleMethod) => updateProjectPropertiesDraft({ scaleMethod })}
+                    onChange={(scaleMethod) =>
+                      updateProjectPropertiesDraft({ scaleMethod })
+                    }
                   />
                 </div>
               </div>

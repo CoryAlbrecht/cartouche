@@ -11,12 +11,13 @@
  * @see {@link interpolateColor}
  */
 
-import { W3C_CSS_COLORS } from './cssColors';
+import { W3C_CSS_COLORS } from "./cssColors";
 
 /**
  * Supported color format identifiers across Cartouche UI and color pickers.
  */
-export type ColorFormat = 'RGB' | 'HSL' | 'LCH' | 'OKLCH' | 'LAB' | 'OKLAB' | 'HWB' | 'HEX';
+export type ColorFormat =
+  "RGB" | "HSL" | "LCH" | "OKLCH" | "LAB" | "OKLAB" | "HWB" | "HEX";
 
 /**
  * Standard sRGB color coordinates in range [0, 255] with optional alpha in range [0, 1].
@@ -130,11 +131,7 @@ export interface ParsedCssColor {
 /**
  * D65 illuminant reference white coordinates for CIE 1931 2-degree observer.
  */
-const D65 = {
-  xn: 0.95047,
-  yn: 1.0,
-  zn: 1.08883
-};
+const D65 = { xn: 0.95047, yn: 1.0, zn: 1.08883 };
 
 /**
  * Clamps a numeric coordinate between an inclusive minimum and maximum boundary.
@@ -181,7 +178,7 @@ export function srgbToLinearRgb(srgb: RgbColor): LinearRgbColor {
     r: toLinear(rNorm),
     g: toLinear(gNorm),
     b: toLinear(bNorm),
-    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1
+    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1,
   };
 }
 
@@ -194,7 +191,10 @@ export function srgbToLinearRgb(srgb: RgbColor): LinearRgbColor {
 export function linearRgbToSrgb(linear: LinearRgbColor): RgbColor {
   const toGamma = (c: number): number => {
     const clamped = clamp(c, 0, 1);
-    const gamma = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+    const gamma =
+      clamped <= 0.0031308 ?
+        clamped * 12.92
+      : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
     return Math.round(clamp(gamma, 0, 1) * 255);
   };
 
@@ -202,7 +202,7 @@ export function linearRgbToSrgb(linear: LinearRgbColor): RgbColor {
     r: toGamma(linear.r),
     g: toGamma(linear.g),
     b: toGamma(linear.b),
-    alpha: linear.alpha !== undefined ? clamp(linear.alpha, 0, 1) : 1
+    alpha: linear.alpha !== undefined ? clamp(linear.alpha, 0, 1) : 1,
   };
 }
 
@@ -219,9 +219,13 @@ export function linearRgbToXyzD65(linear: LinearRgbColor): XyzColor {
 
   return {
     x: 0.41239079926595934 * r + 0.357584339383878 * g + 0.1804807884018343 * b,
-    y: 0.21263900587151027 * r + 0.715168678767756 * g + 0.07219231536073371 * b,
-    z: 0.01933081871559182 * r + 0.11919477979462598 * g + 0.9505321522496607 * b,
-    alpha: linear.alpha
+    y:
+      0.21263900587151027 * r + 0.715168678767756 * g + 0.07219231536073371 * b,
+    z:
+      0.01933081871559182 * r
+      + 0.11919477979462598 * g
+      + 0.9505321522496607 * b,
+    alpha: linear.alpha,
   };
 }
 
@@ -239,8 +243,11 @@ export function xyzD65ToLinearRgb(xyz: XyzColor): LinearRgbColor {
   return {
     r: 3.2409699419045226 * x - 1.537383177570094 * y - 0.4986107602930034 * z,
     g: -0.96924363628088 * x + 1.8759675015077202 * y + 0.04155505740717559 * z,
-    b: 0.05563007969699366 * x - 0.20397695888897652 * y + 1.0569715142428786 * z,
-    alpha: xyz.alpha
+    b:
+      0.05563007969699366 * x
+      - 0.20397695888897652 * y
+      + 1.0569715142428786 * z,
+    alpha: xyz.alpha,
   };
 }
 
@@ -270,7 +277,7 @@ export function xyzD65ToLab(xyz: XyzColor): LabColor {
     l: 116 * fy - 16,
     a: 500 * (fx - fy),
     b: 200 * (fy - fz),
-    alpha: xyz.alpha
+    alpha: xyz.alpha,
   };
 }
 
@@ -288,16 +295,14 @@ export function labToXyzD65(lab: LabColor): XyzColor {
   const fx = lab.a / 500 + fy;
   const fz = fy - lab.b / 200;
 
-  const xr = Math.pow(fx, 3) > epsilon ? Math.pow(fx, 3) : (116 * fx - 16) / kappa;
-  const yr = lab.l > kappa * epsilon ? Math.pow((lab.l + 16) / 116, 3) : lab.l / kappa;
-  const zr = Math.pow(fz, 3) > epsilon ? Math.pow(fz, 3) : (116 * fz - 16) / kappa;
+  const xr =
+    Math.pow(fx, 3) > epsilon ? Math.pow(fx, 3) : (116 * fx - 16) / kappa;
+  const yr =
+    lab.l > kappa * epsilon ? Math.pow((lab.l + 16) / 116, 3) : lab.l / kappa;
+  const zr =
+    Math.pow(fz, 3) > epsilon ? Math.pow(fz, 3) : (116 * fz - 16) / kappa;
 
-  return {
-    x: xr * D65.xn,
-    y: yr * D65.yn,
-    z: zr * D65.zn,
-    alpha: lab.alpha
-  };
+  return { x: xr * D65.xn, y: yr * D65.yn, z: zr * D65.zn, alpha: lab.alpha };
 }
 
 /**
@@ -310,12 +315,7 @@ export function labToLch(lab: LabColor): LchColor {
   const c = Math.hypot(lab.a, lab.b);
   const h = normalizeHue((Math.atan2(lab.b, lab.a) * 180) / Math.PI);
 
-  return {
-    l: lab.l,
-    c,
-    h,
-    alpha: lab.alpha
-  };
+  return { l: lab.l, c, h, alpha: lab.alpha };
 }
 
 /**
@@ -330,7 +330,7 @@ export function lchToLab(lch: LchColor): LabColor {
     l: lch.l,
     a: lch.c * Math.cos(rad),
     b: lch.c * Math.sin(rad),
-    alpha: lch.alpha
+    alpha: lch.alpha,
   };
 }
 
@@ -357,7 +357,7 @@ export function linearRgbToOklab(linear: LinearRgbColor): OklabColor {
     l: 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
     a: 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
     b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_,
-    alpha: linear.alpha
+    alpha: linear.alpha,
   };
 }
 
@@ -380,7 +380,7 @@ export function oklabToLinearRgb(oklab: OklabColor): LinearRgbColor {
     r: 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
     g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     b: -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-    alpha: oklab.alpha
+    alpha: oklab.alpha,
   };
 }
 
@@ -394,12 +394,7 @@ export function oklabToOklch(oklab: OklabColor): OklchColor {
   const c = Math.hypot(oklab.a, oklab.b);
   const h = normalizeHue((Math.atan2(oklab.b, oklab.a) * 180) / Math.PI);
 
-  return {
-    l: oklab.l,
-    c,
-    h,
-    alpha: oklab.alpha
-  };
+  return { l: oklab.l, c, h, alpha: oklab.alpha };
 }
 
 /**
@@ -414,7 +409,7 @@ export function oklchToOklab(oklch: OklchColor): OklabColor {
     l: oklch.l,
     a: oklch.c * Math.cos(rad),
     b: oklch.c * Math.sin(rad),
-    alpha: oklch.alpha
+    alpha: oklch.alpha,
   };
 }
 
@@ -456,7 +451,7 @@ export function srgbToHsl(srgb: RgbColor): HslColor {
     h: normalizeHue(h),
     s: s * 100,
     l: l * 100,
-    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1
+    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1,
   };
 }
 
@@ -509,7 +504,7 @@ export function hslToSrgb(hsl: HslColor): RgbColor {
     r: Math.round((r1 + m) * 255),
     g: Math.round((g1 + m) * 255),
     b: Math.round((b1 + m) * 255),
-    alpha: hsl.alpha !== undefined ? clamp(hsl.alpha, 0, 1) : 1
+    alpha: hsl.alpha !== undefined ? clamp(hsl.alpha, 0, 1) : 1,
   };
 }
 
@@ -550,7 +545,7 @@ export function srgbToHsv(srgb: RgbColor): HsvColor {
     h: normalizeHue(h),
     s: s * 100,
     v: v * 100,
-    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1
+    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1,
   };
 }
 
@@ -603,7 +598,7 @@ export function hsvToSrgb(hsv: HsvColor): RgbColor {
     r: Math.round((r1 + m) * 255),
     g: Math.round((g1 + m) * 255),
     b: Math.round((b1 + m) * 255),
-    alpha: hsv.alpha !== undefined ? clamp(hsv.alpha, 0, 1) : 1
+    alpha: hsv.alpha !== undefined ? clamp(hsv.alpha, 0, 1) : 1,
   };
 }
 
@@ -626,7 +621,7 @@ export function srgbToHwb(srgb: RgbColor): HwbColor {
     h: hsl.h,
     w,
     b: bl,
-    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1
+    alpha: srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1,
   };
 }
 
@@ -653,7 +648,7 @@ export function hwbToSrgb(hwb: HwbColor): RgbColor {
       r: gray,
       g: gray,
       b: gray,
-      alpha: hwb.alpha !== undefined ? clamp(hwb.alpha, 0, 1) : 1
+      alpha: hwb.alpha !== undefined ? clamp(hwb.alpha, 0, 1) : 1,
     };
   }
 
@@ -666,7 +661,7 @@ export function hwbToSrgb(hwb: HwbColor): RgbColor {
     r: Math.round(clamp(rNorm, 0, 1) * 255),
     g: Math.round(clamp(gNorm, 0, 1) * 255),
     b: Math.round(clamp(bNorm, 0, 1) * 255),
-    alpha: hwb.alpha !== undefined ? clamp(hwb.alpha, 0, 1) : 1
+    alpha: hwb.alpha !== undefined ? clamp(hwb.alpha, 0, 1) : 1,
   };
 }
 
@@ -678,7 +673,10 @@ export function hwbToSrgb(hwb: HwbColor): RgbColor {
  * @returns {string} Hexadecimal color string (#rrggbb or #rrggbbaa).
  */
 export function srgbToHex(srgb: RgbColor, includeAlpha = true): string {
-  const toHex = (c: number): string => Math.round(clamp(c, 0, 255)).toString(16).padStart(2, '0');
+  const toHex = (c: number): string =>
+    Math.round(clamp(c, 0, 255))
+      .toString(16)
+      .padStart(2, "0");
   const base = `#${toHex(srgb.r)}${toHex(srgb.g)}${toHex(srgb.b)}`;
 
   if (!includeAlpha) {
@@ -686,7 +684,9 @@ export function srgbToHex(srgb: RgbColor, includeAlpha = true): string {
   }
 
   const a = srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1;
-  const aHex = Math.round(a * 255).toString(16).padStart(2, '0');
+  const aHex = Math.round(a * 255)
+    .toString(16)
+    .padStart(2, "0");
   return `${base}${aHex}`;
 }
 
@@ -698,7 +698,7 @@ export function srgbToHex(srgb: RgbColor, includeAlpha = true): string {
  */
 export function hexToSrgb(hex: string): RgbColor | null {
   const trimmed = hex.trim();
-  if (!trimmed.startsWith('#')) return null;
+  if (!trimmed.startsWith("#")) return null;
   const raw = trimmed.slice(1);
 
   if (/^[0-9a-fA-F]{3}$/.test(raw)) {
@@ -741,35 +741,38 @@ export function hexToSrgb(hex: string): RgbColor | null {
  * @param {ColorFormat} format - Target color model.
  * @returns {unknown} Formatted color structure or hex string.
  */
-export function srgbToColorFormat(srgb: RgbColor, format: ColorFormat): unknown {
+export function srgbToColorFormat(
+  srgb: RgbColor,
+  format: ColorFormat
+): unknown {
   switch (format) {
-    case 'RGB':
+    case "RGB":
       return { r: srgb.r, g: srgb.g, b: srgb.b, alpha: srgb.alpha ?? 1 };
-    case 'HSL':
+    case "HSL":
       return srgbToHsl(srgb);
-    case 'HWB':
+    case "HWB":
       return srgbToHwb(srgb);
-    case 'LAB': {
+    case "LAB": {
       const lin = srgbToLinearRgb(srgb);
       const xyz = linearRgbToXyzD65(lin);
       return xyzD65ToLab(xyz);
     }
-    case 'LCH': {
+    case "LCH": {
       const lin = srgbToLinearRgb(srgb);
       const xyz = linearRgbToXyzD65(lin);
       const lab = xyzD65ToLab(xyz);
       return labToLch(lab);
     }
-    case 'OKLAB': {
+    case "OKLAB": {
       const lin = srgbToLinearRgb(srgb);
       return linearRgbToOklab(lin);
     }
-    case 'OKLCH': {
+    case "OKLCH": {
       const lin = srgbToLinearRgb(srgb);
       const oklab = linearRgbToOklab(lin);
       return oklabToOklch(oklab);
     }
-    case 'HEX':
+    case "HEX":
       return srgbToHex(srgb);
   }
 }
@@ -781,8 +784,11 @@ export function srgbToColorFormat(srgb: RgbColor, format: ColorFormat): unknown 
  * @param {ColorFormat} format - Source color format.
  * @returns {RgbColor} Standard non-linear sRGB color.
  */
-export function colorFormatToSrgb(color: unknown, format: ColorFormat): RgbColor {
-  if (format === 'HEX' && typeof color === 'string') {
+export function colorFormatToSrgb(
+  color: unknown,
+  format: ColorFormat
+): RgbColor {
+  if (format === "HEX" && typeof color === "string") {
     const parsed = hexToSrgb(color);
     return parsed ?? { r: 0, g: 0, b: 0, alpha: 1 };
   }
@@ -791,38 +797,38 @@ export function colorFormatToSrgb(color: unknown, format: ColorFormat): RgbColor
   const alpha = obj.alpha !== undefined ? clamp(obj.alpha, 0, 1) : 1;
 
   switch (format) {
-    case 'RGB':
+    case "RGB":
       return {
         r: Math.round(clamp(obj.r, 0, 255)),
         g: Math.round(clamp(obj.g, 0, 255)),
         b: Math.round(clamp(obj.b, 0, 255)),
-        alpha
+        alpha,
       };
-    case 'HSL':
+    case "HSL":
       return hslToSrgb({ h: obj.h, s: obj.s, l: obj.l, alpha });
-    case 'HWB':
+    case "HWB":
       return hwbToSrgb({ h: obj.h, w: obj.w, b: obj.b, alpha });
-    case 'LAB': {
+    case "LAB": {
       const xyz = labToXyzD65({ l: obj.l, a: obj.a, b: obj.b, alpha });
       const lin = xyzD65ToLinearRgb(xyz);
       return linearRgbToSrgb(lin);
     }
-    case 'LCH': {
+    case "LCH": {
       const lab = lchToLab({ l: obj.l, c: obj.c, h: obj.h, alpha });
       const xyz = labToXyzD65(lab);
       const lin = xyzD65ToLinearRgb(xyz);
       return linearRgbToSrgb(lin);
     }
-    case 'OKLAB': {
+    case "OKLAB": {
       const lin = oklabToLinearRgb({ l: obj.l, a: obj.a, b: obj.b, alpha });
       return linearRgbToSrgb(lin);
     }
-    case 'OKLCH': {
+    case "OKLCH": {
       const oklab = oklchToOklab({ l: obj.l, c: obj.c, h: obj.h, alpha });
       const lin = oklabToLinearRgb(oklab);
       return linearRgbToSrgb(lin);
     }
-    case 'HEX':
+    case "HEX":
       return hexToSrgb(String(color)) ?? { r: 0, g: 0, b: 0, alpha: 1 };
   }
 }
@@ -837,36 +843,36 @@ export function colorFormatToSrgb(color: unknown, format: ColorFormat): RgbColor
 export function formatCssColor(srgb: RgbColor, format: ColorFormat): string {
   const alpha = srgb.alpha !== undefined ? clamp(srgb.alpha, 0, 1) : 1;
   const hasAlpha = alpha < 1;
-  const alphaStr = hasAlpha ? ` / ${parseFloat(alpha.toFixed(4))}` : '';
+  const alphaStr = hasAlpha ? ` / ${parseFloat(alpha.toFixed(4))}` : "";
 
   switch (format) {
-    case 'RGB':
+    case "RGB":
       return `rgb(${Math.round(clamp(srgb.r, 0, 255))} ${Math.round(clamp(srgb.g, 0, 255))} ${Math.round(clamp(srgb.b, 0, 255))}${alphaStr})`;
-    case 'HSL': {
+    case "HSL": {
       const hsl = srgbToHsl(srgb);
       return `hsl(${parseFloat(hsl.h.toFixed(1))} ${parseFloat(hsl.s.toFixed(1))}% ${parseFloat(hsl.l.toFixed(1))}%${alphaStr})`;
     }
-    case 'HWB': {
+    case "HWB": {
       const hwb = srgbToHwb(srgb);
       return `hwb(${parseFloat(hwb.h.toFixed(1))} ${parseFloat(hwb.w.toFixed(1))}% ${parseFloat(hwb.b.toFixed(1))}%${alphaStr})`;
     }
-    case 'LAB': {
-      const lab = srgbToColorFormat(srgb, 'LAB') as LabColor;
+    case "LAB": {
+      const lab = srgbToColorFormat(srgb, "LAB") as LabColor;
       return `lab(${parseFloat(lab.l.toFixed(2))} ${parseFloat(lab.a.toFixed(2))} ${parseFloat(lab.b.toFixed(2))}${alphaStr})`;
     }
-    case 'LCH': {
-      const lch = srgbToColorFormat(srgb, 'LCH') as LchColor;
+    case "LCH": {
+      const lch = srgbToColorFormat(srgb, "LCH") as LchColor;
       return `lch(${parseFloat(lch.l.toFixed(2))} ${parseFloat(lch.c.toFixed(2))} ${parseFloat(lch.h.toFixed(2))}${alphaStr})`;
     }
-    case 'OKLAB': {
-      const oklab = srgbToColorFormat(srgb, 'OKLAB') as OklabColor;
+    case "OKLAB": {
+      const oklab = srgbToColorFormat(srgb, "OKLAB") as OklabColor;
       return `oklab(${parseFloat(oklab.l.toFixed(4))} ${parseFloat(oklab.a.toFixed(4))} ${parseFloat(oklab.b.toFixed(4))}${alphaStr})`;
     }
-    case 'OKLCH': {
-      const oklch = srgbToColorFormat(srgb, 'OKLCH') as OklchColor;
+    case "OKLCH": {
+      const oklch = srgbToColorFormat(srgb, "OKLCH") as OklchColor;
       return `oklch(${parseFloat(oklch.l.toFixed(4))} ${parseFloat(oklch.c.toFixed(4))} ${parseFloat(oklch.h.toFixed(2))}${alphaStr})`;
     }
-    case 'HEX':
+    case "HEX":
       return srgbToHex(srgb, true);
   }
 }
@@ -878,14 +884,14 @@ export function formatCssColor(srgb: RgbColor, format: ColorFormat): string {
  * @returns {ParsedCssColor | null} Parsed color structure or null if unrecognizable.
  */
 export function parseCssColor(input: string): ParsedCssColor | null {
-  if (!input || typeof input !== 'string') return null;
+  if (!input || typeof input !== "string") return null;
   const raw = input.trim().toLowerCase();
 
   // 1. Hex
-  if (raw.startsWith('#')) {
+  if (raw.startsWith("#")) {
     const srgb = hexToSrgb(raw);
     if (srgb) {
-      return { srgb, format: 'HEX', raw };
+      return { srgb, format: "HEX", raw };
     }
     return null;
   }
@@ -895,15 +901,15 @@ export function parseCssColor(input: string): ParsedCssColor | null {
     const hex = W3C_CSS_COLORS[raw];
     const srgb = hexToSrgb(hex);
     if (srgb) {
-      return { srgb, format: 'RGB', raw };
+      return { srgb, format: "RGB", raw };
     }
   }
 
   // Helper to parse alpha component (/ 0.5 or , 0.5)
   const parseAlpha = (str?: string): number => {
     if (!str) return 1;
-    const clean = str.trim().replace(/^[/,]\s*/, '');
-    if (clean.endsWith('%')) {
+    const clean = str.trim().replace(/^[/,]\s*/, "");
+    if (clean.endsWith("%")) {
       return clamp(parseFloat(clean) / 100, 0, 1);
     }
     return clamp(parseFloat(clean), 0, 1);
@@ -915,16 +921,16 @@ export function parseCssColor(input: string): ParsedCssColor | null {
   );
   if (rgbMatch) {
     const parseChan = (v: string): number => {
-      if (v.endsWith('%')) return Math.round((parseFloat(v) / 100) * 255);
+      if (v.endsWith("%")) return Math.round((parseFloat(v) / 100) * 255);
       return Math.round(parseFloat(v));
     };
     const srgb: RgbColor = {
       r: clamp(parseChan(rgbMatch[1]), 0, 255),
       g: clamp(parseChan(rgbMatch[2]), 0, 255),
       b: clamp(parseChan(rgbMatch[3]), 0, 255),
-      alpha: rgbMatch[4] !== undefined ? parseAlpha(rgbMatch[4]) : 1
+      alpha: rgbMatch[4] !== undefined ? parseAlpha(rgbMatch[4]) : 1,
     };
-    return { srgb, format: 'RGB', raw };
+    return { srgb, format: "RGB", raw };
   }
 
   // 4. hsl(...) / hsla(...)
@@ -937,7 +943,7 @@ export function parseCssColor(input: string): ParsedCssColor | null {
     const l = parseFloat(hslMatch[3]);
     const alpha = hslMatch[4] !== undefined ? parseAlpha(hslMatch[4]) : 1;
     const srgb = hslToSrgb({ h, s, l, alpha });
-    return { srgb, format: 'HSL', raw };
+    return { srgb, format: "HSL", raw };
   }
 
   // 5. hwb(...)
@@ -950,7 +956,7 @@ export function parseCssColor(input: string): ParsedCssColor | null {
     const b = parseFloat(hwbMatch[3]);
     const alpha = hwbMatch[4] !== undefined ? parseAlpha(hwbMatch[4]) : 1;
     const srgb = hwbToSrgb({ h, w, b, alpha });
-    return { srgb, format: 'HWB', raw };
+    return { srgb, format: "HWB", raw };
   }
 
   // 6. lab(...)
@@ -962,8 +968,8 @@ export function parseCssColor(input: string): ParsedCssColor | null {
     const a = parseFloat(labMatch[2]);
     const b = parseFloat(labMatch[3]);
     const alpha = labMatch[4] !== undefined ? parseAlpha(labMatch[4]) : 1;
-    const srgb = colorFormatToSrgb({ l, a, b, alpha }, 'LAB');
-    return { srgb, format: 'LAB', raw };
+    const srgb = colorFormatToSrgb({ l, a, b, alpha }, "LAB");
+    return { srgb, format: "LAB", raw };
   }
 
   // 7. lch(...)
@@ -975,8 +981,8 @@ export function parseCssColor(input: string): ParsedCssColor | null {
     const c = parseFloat(lchMatch[2]);
     const h = parseFloat(lchMatch[3]);
     const alpha = lchMatch[4] !== undefined ? parseAlpha(lchMatch[4]) : 1;
-    const srgb = colorFormatToSrgb({ l, c, h, alpha }, 'LCH');
-    return { srgb, format: 'LCH', raw };
+    const srgb = colorFormatToSrgb({ l, c, h, alpha }, "LCH");
+    return { srgb, format: "LCH", raw };
   }
 
   // 8. oklab(...)
@@ -985,12 +991,12 @@ export function parseCssColor(input: string): ParsedCssColor | null {
   );
   if (oklabMatch) {
     let l = parseFloat(oklabMatch[1]);
-    if (oklabMatch[1].endsWith('%')) l = l / 100;
+    if (oklabMatch[1].endsWith("%")) l = l / 100;
     const a = parseFloat(oklabMatch[2]);
     const b = parseFloat(oklabMatch[3]);
     const alpha = oklabMatch[4] !== undefined ? parseAlpha(oklabMatch[4]) : 1;
-    const srgb = colorFormatToSrgb({ l, a, b, alpha }, 'OKLAB');
-    return { srgb, format: 'OKLAB', raw };
+    const srgb = colorFormatToSrgb({ l, a, b, alpha }, "OKLAB");
+    return { srgb, format: "OKLAB", raw };
   }
 
   // 9. oklch(...)
@@ -999,12 +1005,12 @@ export function parseCssColor(input: string): ParsedCssColor | null {
   );
   if (oklchMatch) {
     let l = parseFloat(oklchMatch[1]);
-    if (oklchMatch[1].endsWith('%')) l = l / 100;
+    if (oklchMatch[1].endsWith("%")) l = l / 100;
     const c = parseFloat(oklchMatch[2]);
     const h = parseFloat(oklchMatch[3]);
     const alpha = oklchMatch[4] !== undefined ? parseAlpha(oklchMatch[4]) : 1;
-    const srgb = colorFormatToSrgb({ l, c, h, alpha }, 'OKLCH');
-    return { srgb, format: 'OKLCH', raw };
+    const srgb = colorFormatToSrgb({ l, c, h, alpha }, "OKLCH");
+    return { srgb, format: "OKLCH", raw };
   }
 
   return null;
@@ -1023,14 +1029,14 @@ export function interpolateColor(
   color1: RgbColor,
   color2: RgbColor,
   factor: number,
-  space: 'sRGB' | 'Oklab' = 'sRGB'
+  space: "sRGB" | "Oklab" = "sRGB"
 ): RgbColor {
   const t = clamp(factor, 0, 1);
   const a1 = color1.alpha !== undefined ? clamp(color1.alpha, 0, 1) : 1;
   const a2 = color2.alpha !== undefined ? clamp(color2.alpha, 0, 1) : 1;
   const blendedAlpha = a1 + (a2 - a1) * t;
 
-  if (space === 'Oklab') {
+  if (space === "Oklab") {
     const ok1 = linearRgbToOklab(srgbToLinearRgb(color1));
     const ok2 = linearRgbToOklab(srgbToLinearRgb(color2));
 
@@ -1038,7 +1044,7 @@ export function interpolateColor(
       l: ok1.l + (ok2.l - ok1.l) * t,
       a: ok1.a + (ok2.a - ok1.a) * t,
       b: ok1.b + (ok2.b - ok1.b) * t,
-      alpha: blendedAlpha
+      alpha: blendedAlpha,
     };
 
     const linBlended = oklabToLinearRgb(okBlended);
@@ -1050,7 +1056,7 @@ export function interpolateColor(
     r: Math.round(color1.r + (color2.r - color1.r) * t),
     g: Math.round(color1.g + (color2.g - color1.g) * t),
     b: Math.round(color1.b + (color2.b - color1.b) * t),
-    alpha: blendedAlpha
+    alpha: blendedAlpha,
   };
 }
 

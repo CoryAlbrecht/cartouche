@@ -19,7 +19,7 @@
  * @updated 2026-11-16
  * @since 0.1.0-dev
  */
-export const WIDGET_DRAG_MIME = 'application/x-cartouche-widget';
+export const WIDGET_DRAG_MIME = "application/x-cartouche-widget";
 
 /**
  * @constant {string} TAB_EXTRACT_DRAG_MIME
@@ -29,7 +29,7 @@ export const WIDGET_DRAG_MIME = 'application/x-cartouche-widget';
  * @updated 2026-11-16
  * @since 0.1.0-dev
  */
-export const TAB_EXTRACT_DRAG_MIME = 'application/x-cartouche-tab-extract';
+export const TAB_EXTRACT_DRAG_MIME = "application/x-cartouche-tab-extract";
 
 /**
  * Decides whether a drag is a widget drag that widget drop targets should react to.
@@ -46,7 +46,9 @@ export const TAB_EXTRACT_DRAG_MIME = 'application/x-cartouche-tab-extract';
  */
 export function isWidgetDrag(types: ArrayLike<string>): boolean {
   const list = Array.from(types);
-  return list.includes(WIDGET_DRAG_MIME) || list.includes(TAB_EXTRACT_DRAG_MIME);
+  return (
+    list.includes(WIDGET_DRAG_MIME) || list.includes(TAB_EXTRACT_DRAG_MIME)
+  );
 }
 
 /**
@@ -62,21 +64,23 @@ export function isWidgetDrag(types: ArrayLike<string>): boolean {
  * @param {Pick<DataTransfer, 'getData'>} dataTransfer - The drop event's data transfer.
  * @returns {string} The dragged widget id, or '' when the drag carries no readable widget payload.
  */
-export function readDraggedWidgetId(dataTransfer: Pick<DataTransfer, 'getData'>): string {
+export function readDraggedWidgetId(
+  dataTransfer: Pick<DataTransfer, "getData">
+): string {
   try {
     const widgetData = dataTransfer.getData(WIDGET_DRAG_MIME);
     if (widgetData) {
       const parsed = JSON.parse(widgetData);
-      return String(parsed.widgetId || parsed.panelId || '');
+      return String(parsed.widgetId || parsed.panelId || "");
     }
     const tabData = dataTransfer.getData(TAB_EXTRACT_DRAG_MIME);
     if (tabData) {
-      return String(JSON.parse(tabData).tabId || '');
+      return String(JSON.parse(tabData).tabId || "");
     }
   } catch {
     // Malformed payload: not a usable widget drag.
   }
-  return '';
+  return "";
 }
 
 /**
@@ -88,12 +92,12 @@ export function readDraggedWidgetId(dataTransfer: Pick<DataTransfer, 'getData'>)
  * @since 0.1.0-dev
  */
 export type WidgetDropZone =
-  | 'edge-top'
-  | 'edge-bottom'
-  | 'edge-left'
-  | 'edge-right'
-  | 'center-overlap'
-  | 'none';
+  | "edge-top"
+  | "edge-bottom"
+  | "edge-left"
+  | "edge-right"
+  | "center-overlap"
+  | "none";
 
 /**
  * @typedef {Object} ResolveWidgetDropZoneParams
@@ -133,7 +137,9 @@ export interface ResolveWidgetDropZoneParams {
  * @param {ResolveWidgetDropZoneParams} params - Geometry and capability attributes.
  * @returns {WidgetDropZone} Resolved drop zone.
  */
-export function resolveWidgetDropZone(params: ResolveWidgetDropZoneParams): WidgetDropZone {
+export function resolveWidgetDropZone(
+  params: ResolveWidgetDropZoneParams
+): WidgetDropZone {
   const {
     rect,
     clientX,
@@ -147,7 +153,7 @@ export function resolveWidgetDropZone(params: ResolveWidgetDropZoneParams): Widg
 
   // Cannot drop widget onto itself
   if (draggedWidgetId && targetWidgetId && draggedWidgetId === targetWidgetId) {
-    return 'none';
+    return "none";
   }
 
   const relX = clientX - rect.left;
@@ -155,7 +161,7 @@ export function resolveWidgetDropZone(params: ResolveWidgetDropZoneParams): Widg
 
   // Out of bounds
   if (relX < 0 || relX > rect.width || relY < 0 || relY > rect.height) {
-    return 'none';
+    return "none";
   }
 
   // Edge thresholds: 25% of dimension or minimum 24px
@@ -170,16 +176,20 @@ export function resolveWidgetDropZone(params: ResolveWidgetDropZoneParams): Widg
 
   // Determine closest edge if near perimeter
   if (isTopEdge && relY <= relX && relY <= rect.width - relX) {
-    return 'edge-top';
+    return "edge-top";
   }
-  if (isBottomEdge && rect.height - relY <= relX && rect.height - relY <= rect.width - relX) {
-    return 'edge-bottom';
+  if (
+    isBottomEdge
+    && rect.height - relY <= relX
+    && rect.height - relY <= rect.width - relX
+  ) {
+    return "edge-bottom";
   }
   if (isLeftEdge) {
-    return 'edge-left';
+    return "edge-left";
   }
   if (isRightEdge) {
-    return 'edge-right';
+    return "edge-right";
   }
 
   // Center region: check overlap compatibility
@@ -187,8 +197,8 @@ export function resolveWidgetDropZone(params: ResolveWidgetDropZoneParams): Widg
     draggedOverlappable && (targetOverlappable || isTargetOverlapContainer);
 
   if (canOverlap) {
-    return 'center-overlap';
+    return "center-overlap";
   }
 
-  return 'none';
+  return "none";
 }

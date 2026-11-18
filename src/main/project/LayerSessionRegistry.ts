@@ -9,8 +9,8 @@
  * @see {@link Layer}
  */
 
-import type gdal from 'gdal-async';
-import { logging } from '../../shared/logging';
+import type gdal from "gdal-async";
+import { logging } from "../../shared/logging";
 
 /**
  * @typedef {Object} LayerSession
@@ -41,7 +41,11 @@ export class LayerSessionRegistry {
    * @param {gdal.Layer} layer - The native GDAL spatial layer.
    * @returns {void}
    */
-  public register(layerId: string, dataset: gdal.Dataset, layer: gdal.Layer): void {
+  public register(
+    layerId: string,
+    dataset: gdal.Dataset,
+    layer: gdal.Layer
+  ): void {
     if (this.sessions.has(layerId)) {
       this.remove(layerId);
     }
@@ -89,11 +93,17 @@ export class LayerSessionRegistry {
     this.queues.delete(layerId);
 
     try {
-      if (session.dataset && typeof (session.dataset as any).close === 'function') {
+      if (
+        session.dataset
+        && typeof (session.dataset as any).close === "function"
+      ) {
         (session.dataset as any).close();
       }
     } catch (err) {
-      logging.warn('Failed to close native dataset for layer', err, { layerId, scope: 'LayerSessionRegistry' });
+      logging.warn("Failed to close native dataset for layer", err, {
+        layerId,
+        scope: "LayerSessionRegistry",
+      });
     }
   }
 
@@ -117,7 +127,9 @@ export class LayerSessionRegistry {
       return;
     }
     if (this.sessions.has(newLayerId)) {
-      throw new Error(`Cannot re-key layer: destination session ID "${newLayerId}" already exists.`);
+      throw new Error(
+        `Cannot re-key layer: destination session ID "${newLayerId}" already exists.`
+      );
     }
     const queue = this.queues.get(oldLayerId);
     this.sessions.delete(oldLayerId);
@@ -162,7 +174,10 @@ export class LayerSessionRegistry {
     const currentPromise = previousPromise.then(() => task(session));
 
     // Catch errors on the queue tracker so future tasks in the queue still execute
-    this.queues.set(layerId, currentPromise.catch(() => {}));
+    this.queues.set(
+      layerId,
+      currentPromise.catch(() => {})
+    );
 
     return currentPromise;
   }
@@ -177,4 +192,3 @@ export class LayerSessionRegistry {
  * @type {LayerSessionRegistry}
  */
 export const layerSessionRegistry = new LayerSessionRegistry();
-

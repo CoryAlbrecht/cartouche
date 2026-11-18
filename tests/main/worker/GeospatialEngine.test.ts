@@ -9,15 +9,15 @@
  * @see {@link GeospatialEngine}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { fromAny, fromPartial } from '@total-typescript/shoehorn';
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import WKB from 'ol/format/WKB.js';
-import gdal from 'gdal-async';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { fromAny, fromPartial } from "@total-typescript/shoehorn";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import WKB from "ol/format/WKB.js";
+import gdal from "gdal-async";
 import {
   GeospatialEngine,
   mapGdalGeometryKind,
@@ -30,22 +30,36 @@ import {
   buildOrderBySql,
   buildPagedSelectSql,
   supportsSqlWindow,
-} from '../../../src/main/worker/GeospatialEngine';
-import { classifyDriverDialect } from '../../../src/shared/layers/queryDialect';
-import type { BoundingBox, LayerFieldInfo, QueryExtentOptions, SortKey } from '../../../src/shared/types';
+} from "../../../src/main/worker/GeospatialEngine";
+import { classifyDriverDialect } from "../../../src/shared/layers/queryDialect";
+import type {
+  BoundingBox,
+  LayerFieldInfo,
+  QueryExtentOptions,
+  SortKey,
+} from "../../../src/shared/types";
 import {
   WKB_PACKET_MAGIC,
   WKB_PACKET_VERSION,
   WKB_FLAG_HAS_GEOMETRY,
-  WKB_FLAG_HAS_PROPERTIES
-} from '../../../src/shared/types';
+  WKB_FLAG_HAS_PROPERTIES,
+} from "../../../src/shared/types";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const lakesGeoJsonPath = path.resolve(__dirname, '../../data/ne_10m_lakes_north_america.geojson');
-const lakesShpPath = path.resolve(__dirname, '../../data/ne_10m_lakes.shp');
-const centrelinesGeoJsonPath = path.resolve(__dirname, '../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson');
-const timelineGpkgPath = path.resolve(__dirname, '../../data/timeline_level_0.gpkg');
+const lakesGeoJsonPath = path.resolve(
+  __dirname,
+  "../../data/ne_10m_lakes_north_america.geojson"
+);
+const lakesShpPath = path.resolve(__dirname, "../../data/ne_10m_lakes.shp");
+const centrelinesGeoJsonPath = path.resolve(
+  __dirname,
+  "../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson"
+);
+const timelineGpkgPath = path.resolve(
+  __dirname,
+  "../../data/timeline_level_0.gpkg"
+);
 
 /**
  * @function assertExtentClose
@@ -54,7 +68,11 @@ const timelineGpkgPath = path.resolve(__dirname, '../../data/timeline_level_0.gp
  * @param {BoundingBox} expected - Expected extent.
  * @param {number} tolerance - Maximum absolute difference per coordinate.
  */
-const assertExtentClose = (actual: BoundingBox, expected: BoundingBox, tolerance: number): void => {
+const assertExtentClose = (
+  actual: BoundingBox,
+  expected: BoundingBox,
+  tolerance: number
+): void => {
   for (let i = 0; i < 4; i++) {
     assert.ok(
       Math.abs(actual[i] - expected[i]) <= tolerance,
@@ -68,27 +86,27 @@ const assertExtentClose = (actual: BoundingBox, expected: BoundingBox, tolerance
  * @type {string}
  */
 const QUARANTINED_294 =
-  'Quarantined (Ticket #294): intermittent gdal-async SpatialReference identity bug, mmomtchev/node-gdal-async#389';
+  "Quarantined (Ticket #294): intermittent gdal-async SpatialReference identity bug, mmomtchev/node-gdal-async#389";
 
-describe('GeospatialEngine Helper Functions', () => {
-  it('mapGdalGeometryKind correctly maps GDAL geometry types', () => {
-    assert.equal(mapGdalGeometryKind(undefined), 'Unknown');
-    assert.equal(mapGdalGeometryKind(0), 'Unknown');
-    assert.equal(mapGdalGeometryKind(7), 'Unknown');
-    assert.equal(mapGdalGeometryKind(100), 'Unknown');
-    assert.equal(mapGdalGeometryKind(1), 'Point');
-    assert.equal(mapGdalGeometryKind(4), 'Point');
-    assert.equal(mapGdalGeometryKind(2), 'LineString');
-    assert.equal(mapGdalGeometryKind(5), 'LineString');
-    assert.equal(mapGdalGeometryKind(3), 'Polygon');
-    assert.equal(mapGdalGeometryKind(6), 'Polygon');
+describe("GeospatialEngine Helper Functions", () => {
+  it("mapGdalGeometryKind correctly maps GDAL geometry types", () => {
+    assert.equal(mapGdalGeometryKind(undefined), "Unknown");
+    assert.equal(mapGdalGeometryKind(0), "Unknown");
+    assert.equal(mapGdalGeometryKind(7), "Unknown");
+    assert.equal(mapGdalGeometryKind(100), "Unknown");
+    assert.equal(mapGdalGeometryKind(1), "Point");
+    assert.equal(mapGdalGeometryKind(4), "Point");
+    assert.equal(mapGdalGeometryKind(2), "LineString");
+    assert.equal(mapGdalGeometryKind(5), "LineString");
+    assert.equal(mapGdalGeometryKind(3), "Polygon");
+    assert.equal(mapGdalGeometryKind(6), "Polygon");
     // Multi types with high bits or 3D codes
-    assert.equal(mapGdalGeometryKind(1001), 'Point');
-    assert.equal(mapGdalGeometryKind(1002), 'LineString');
-    assert.equal(mapGdalGeometryKind(1003), 'Polygon');
+    assert.equal(mapGdalGeometryKind(1001), "Point");
+    assert.equal(mapGdalGeometryKind(1002), "LineString");
+    assert.equal(mapGdalGeometryKind(1003), "Polygon");
   });
 
-  it('resolveLayerGeometryKind resolves homogeneous single+multi feature layers and returns Unknown for mixed geometry families', () => {
+  it("resolveLayerGeometryKind resolves homogeneous single+multi feature layers and returns Unknown for mixed geometry families", () => {
     // Mock layer with geomType = 0 (wkbUnknown) and LineString (2) + MultiLineString (5) features
     const lineLayer: any = {
       geomType: 0,
@@ -96,17 +114,17 @@ describe('GeospatialEngine Helper Functions', () => {
         forEach(cb: (f: any) => void) {
           cb({ getGeometry: () => ({ wkbType: 2 }) });
           cb({ getGeometry: () => ({ wkbType: 5 }) });
-        }
-      }
+        },
+      },
     };
-    assert.equal(resolveLayerGeometryKind(lineLayer), 'LineString');
+    assert.equal(resolveLayerGeometryKind(lineLayer), "LineString");
 
     // Mock layer with geomType = 0 and mixed Point (1) + Polygon (3) features
     let visitedCount = 0;
     const mixedFeatures = [
       { getGeometry: () => ({ wkbType: 1 }) },
       { getGeometry: () => ({ wkbType: 3 }) },
-      { getGeometry: () => ({ wkbType: 3 }) }
+      { getGeometry: () => ({ wkbType: 3 }) },
     ];
     let idx = 0;
     const mixedLayer: any = {
@@ -124,122 +142,174 @@ describe('GeospatialEngine Helper Functions', () => {
             return mixedFeatures[idx];
           }
           return null;
-        }
-      }
+        },
+      },
     };
-    assert.equal(resolveLayerGeometryKind(mixedLayer), 'Unknown');
-    assert.equal(visitedCount, 2, 'Should short-circuit immediately upon encountering mixed geometry families');
+    assert.equal(resolveLayerGeometryKind(mixedLayer), "Unknown");
+    assert.equal(
+      visitedCount,
+      2,
+      "Should short-circuit immediately upon encountering mixed geometry families"
+    );
 
     // Empty unknown layer
     const emptyUnknownLayer: any = {
       geomType: 0,
-      features: {
-        first: () => null,
-        next: () => null
-      }
+      features: { first: () => null, next: () => null },
     };
-    assert.equal(resolveLayerGeometryKind(emptyUnknownLayer), 'Unknown');
+    assert.equal(resolveLayerGeometryKind(emptyUnknownLayer), "Unknown");
   });
 
-  it('getSrsAuthority handles null or undefined SRS safely', () => {
+  it("getSrsAuthority handles null or undefined SRS safely", () => {
     assert.equal(getSrsAuthority(undefined), null);
   });
 
-  it('reprojectBoundingBox falls back to input extent on invalid projection string', () => {
+  it("reprojectBoundingBox falls back to input extent on invalid projection string", () => {
     const inputBbox: BoundingBox = [-100, 40, -80, 50];
     const dummySrs: any = {};
-    const result = reprojectBoundingBox(inputBbox, 'INVALID:NOT_A_CRS', dummySrs);
+    const result = reprojectBoundingBox(
+      inputBbox,
+      "INVALID:NOT_A_CRS",
+      dummySrs
+    );
     assert.deepEqual(result, inputBbox);
   });
 
-  describe('antimeridian clamping (Ticket #262)', { skip: QUARANTINED_294 }, () => {
-    /**
-     * @function layerWgs84Srs
-     * @description Returns the SpatialReference of an in-memory WGS 84 GeoJSON layer, matching the lon/lat axis order of real vector layer sessions.
-     * @returns {gdal.SpatialReference} Layer SRS.
-     */
-    const layerWgs84Srs = (): gdal.SpatialReference => {
-      const ds = gdal.open(JSON.stringify({ type: 'FeatureCollection', features: [] }));
-      const srs = ds.layers.get(0).srs;
-      assert.ok(srs, 'In-memory GeoJSON layer must expose a SpatialReference');
-      const detached = srs.clone();
-      ds.close();
-      return detached;
-    };
+  describe(
+    "antimeridian clamping (Ticket #262)",
+    { skip: QUARANTINED_294 },
+    () => {
+      /**
+       * @function layerWgs84Srs
+       * @description Returns the SpatialReference of an in-memory WGS 84 GeoJSON layer, matching the lon/lat axis order of real vector layer sessions.
+       * @returns {gdal.SpatialReference} Layer SRS.
+       */
+      const layerWgs84Srs = (): gdal.SpatialReference => {
+        const ds = gdal.open(
+          JSON.stringify({ type: "FeatureCollection", features: [] })
+        );
+        const srs = ds.layers.get(0).srs;
+        assert.ok(
+          srs,
+          "In-memory GeoJSON layer must expose a SpatialReference"
+        );
+        const detached = srs.clone();
+        ds.close();
+        return detached;
+      };
 
-    it('clamps an EPSG:3857 viewport whose west edge lies past -180° instead of wrapping it to the opposite hemisphere', () => {
-      // project-4 viewport: west edge at -185.02° lon. Expected values derived by hand from the
-      // spherical Mercator inverse: lon = x / R · 180/π, lat = (2·atan(e^(y/R)) − π/2) · 180/π.
-      const viewport: BoundingBox = [-20595856.85, 509898.6, -1598679.24, 11069455.54];
-      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertExtentClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
-    });
-
-    it('clamps an EPSG:3857 viewport whose east edge lies past +180°', () => {
-      const viewport: BoundingBox = [1598679.24, 509898.6, 20595856.85, 11069455.54];
-      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertExtentClose(result, [14.3612, 4.5756, 180, 70.0023], 0.001);
-    });
-
-    it('collapses an EPSG:3857 viewport lying entirely past -180° onto the antimeridian instead of inverting it', () => {
-      // x -22,000,000 .. -21,500,000 m ≈ -197.6° .. -193.1° lon: wholly outside the world.
-      const viewport: BoundingBox = [-22000000, 509898.6, -21500000, 11069455.54];
-      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertExtentClose(result, [-180, 4.5756, -180, 70.0023], 0.001);
-    });
-
-    it('clamps when the CRS is given in lower case or URN form', () => {
-      const viewport: BoundingBox = [-20595856.85, 509898.6, -1598679.24, 11069455.54];
-      for (const crs of ['epsg:3857', 'urn:ogc:def:crs:EPSG::3857']) {
-        const result = reprojectBoundingBox(viewport, crs, layerWgs84Srs());
+      it("clamps an EPSG:3857 viewport whose west edge lies past -180° instead of wrapping it to the opposite hemisphere", () => {
+        // project-4 viewport: west edge at -185.02° lon. Expected values derived by hand from the
+        // spherical Mercator inverse: lon = x / R · 180/π, lat = (2·atan(e^(y/R)) − π/2) · 180/π.
+        const viewport: BoundingBox = [
+          -20595856.85, 509898.6, -1598679.24, 11069455.54,
+        ];
+        const result = reprojectBoundingBox(
+          viewport,
+          "EPSG:3857",
+          layerWgs84Srs()
+        );
         assertExtentClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
-      }
-    });
+      });
 
-    it('reprojects an EPSG:3857 viewport within world bounds unchanged by clamping', () => {
-      // -100°..-80° lon, 40°..50° lat expressed in spherical Mercator metres.
-      const viewport: BoundingBox = [-11131949.08, 4865942.28, -8905559.26, 6446275.84];
-      const result = reprojectBoundingBox(viewport, 'EPSG:3857', layerWgs84Srs());
-      assertExtentClose(result, [-100, 40, -80, 50], 0.001);
-    });
-  });
+      it("clamps an EPSG:3857 viewport whose east edge lies past +180°", () => {
+        const viewport: BoundingBox = [
+          1598679.24, 509898.6, 20595856.85, 11069455.54,
+        ];
+        const result = reprojectBoundingBox(
+          viewport,
+          "EPSG:3857",
+          layerWgs84Srs()
+        );
+        assertExtentClose(result, [14.3612, 4.5756, 180, 70.0023], 0.001);
+      });
 
-  describe('geographic source CRS axis order (Ticket #264)', { skip: QUARANTINED_294 }, () => {
-    it('reprojects a lon/lat EPSG:4326 extent to EPSG:3857 despite authority lat/lon axis order', () => {
-      // Expected values from the spherical Mercator forward formula:
-      // x = R · lon · π/180, y = R · ln(tan(π/4 + lat · π/360)), R = 6378137.
-      const result = reprojectBoundingBox(
-        [-100, 40, -80, 50],
-        'EPSG:4326',
-        gdal.SpatialReference.fromUserInput('EPSG:3857')
-      );
-      assertExtentClose(result, [-11131949.08, 4865942.28, -8905559.26, 6446275.84], 1);
-    });
+      it("collapses an EPSG:3857 viewport lying entirely past -180° onto the antimeridian instead of inverting it", () => {
+        // x -22,000,000 .. -21,500,000 m ≈ -197.6° .. -193.1° lon: wholly outside the world.
+        const viewport: BoundingBox = [
+          -22000000, 509898.6, -21500000, 11069455.54,
+        ];
+        const result = reprojectBoundingBox(
+          viewport,
+          "EPSG:3857",
+          layerWgs84Srs()
+        );
+        assertExtentClose(result, [-180, 4.5756, -180, 70.0023], 0.001);
+      });
 
-    it('reprojects a lon/lat EPSG:4326 extent to a UTM zone despite authority lat/lon axis order', () => {
-      // UTM 14N central meridian is -99°: easting 500,000 m on it; northing 0 at the equator and
-      // 0.9996 × the WGS 84 meridian arc (≈ 1,105,854.8 m) at 10°N.
-      const result = reprojectBoundingBox(
-        [-99, 0, -99, 10],
-        'EPSG:4326',
-        gdal.SpatialReference.fromUserInput('EPSG:32614')
-      );
-      assertExtentClose(result, [500000, 0, 500000, 1105412.5], 20);
-    });
+      it("clamps when the CRS is given in lower case or URN form", () => {
+        const viewport: BoundingBox = [
+          -20595856.85, 509898.6, -1598679.24, 11069455.54,
+        ];
+        for (const crs of ["epsg:3857", "urn:ogc:def:crs:EPSG::3857"]) {
+          const result = reprojectBoundingBox(viewport, crs, layerWgs84Srs());
+          assertExtentClose(result, [-180, 4.5756, -14.3612, 70.0023], 0.001);
+        }
+      });
 
-    it('still clamps the longitude of an EPSG:4326 extent crossing -180° before swapping axes', () => {
-      // West edge -185° clamps to -180° → x = -20,037,508.34 m (half the Mercator world width).
-      const result = reprojectBoundingBox(
-        [-185, 40, -80, 50],
-        'EPSG:4326',
-        gdal.SpatialReference.fromUserInput('EPSG:3857')
-      );
-      assertExtentClose(result, [-20037508.34, 4865942.28, -8905559.26, 6446275.84], 1);
-    });
-  });
+      it("reprojects an EPSG:3857 viewport within world bounds unchanged by clamping", () => {
+        // -100°..-80° lon, 40°..50° lat expressed in spherical Mercator metres.
+        const viewport: BoundingBox = [
+          -11131949.08, 4865942.28, -8905559.26, 6446275.84,
+        ];
+        const result = reprojectBoundingBox(
+          viewport,
+          "EPSG:3857",
+          layerWgs84Srs()
+        );
+        assertExtentClose(result, [-100, 40, -80, 50], 0.001);
+      });
+    }
+  );
+
+  describe(
+    "geographic source CRS axis order (Ticket #264)",
+    { skip: QUARANTINED_294 },
+    () => {
+      it("reprojects a lon/lat EPSG:4326 extent to EPSG:3857 despite authority lat/lon axis order", () => {
+        // Expected values from the spherical Mercator forward formula:
+        // x = R · lon · π/180, y = R · ln(tan(π/4 + lat · π/360)), R = 6378137.
+        const result = reprojectBoundingBox(
+          [-100, 40, -80, 50],
+          "EPSG:4326",
+          gdal.SpatialReference.fromUserInput("EPSG:3857")
+        );
+        assertExtentClose(
+          result,
+          [-11131949.08, 4865942.28, -8905559.26, 6446275.84],
+          1
+        );
+      });
+
+      it("reprojects a lon/lat EPSG:4326 extent to a UTM zone despite authority lat/lon axis order", () => {
+        // UTM 14N central meridian is -99°: easting 500,000 m on it; northing 0 at the equator and
+        // 0.9996 × the WGS 84 meridian arc (≈ 1,105,854.8 m) at 10°N.
+        const result = reprojectBoundingBox(
+          [-99, 0, -99, 10],
+          "EPSG:4326",
+          gdal.SpatialReference.fromUserInput("EPSG:32614")
+        );
+        assertExtentClose(result, [500000, 0, 500000, 1105412.5], 20);
+      });
+
+      it("still clamps the longitude of an EPSG:4326 extent crossing -180° before swapping axes", () => {
+        // West edge -185° clamps to -180° → x = -20,037,508.34 m (half the Mercator world width).
+        const result = reprojectBoundingBox(
+          [-185, 40, -80, 50],
+          "EPSG:4326",
+          gdal.SpatialReference.fromUserInput("EPSG:3857")
+        );
+        assertExtentClose(
+          result,
+          [-20037508.34, 4865942.28, -8905559.26, 6446275.84],
+          1
+        );
+      });
+    }
+  );
 });
 
-describe('GeospatialEngine Lifecycle & Operations', () => {
+describe("GeospatialEngine Lifecycle & Operations", () => {
   let engine: GeospatialEngine;
 
   beforeEach(() => {
@@ -250,45 +320,54 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     engine.closeAll();
   });
 
-  it('opens GeoJSON dataset and extracts layer metadata', async () => {
-    const metadata = await engine.openDataset('lakes-na-1', lakesGeoJsonPath);
+  it("opens GeoJSON dataset and extracts layer metadata", async () => {
+    const metadata = await engine.openDataset("lakes-na-1", lakesGeoJsonPath);
 
-    assert.equal(metadata.layerId, 'lakes-na-1');
-    assert.equal(metadata.name, 'ne_10m_lakes_north_america');
+    assert.equal(metadata.layerId, "lakes-na-1");
+    assert.equal(metadata.name, "ne_10m_lakes_north_america");
     assert.equal(metadata.featureCount, 1200);
-    assert.equal(metadata.geometryKind, 'Polygon');
-    assert.ok(metadata.crs, 'CRS must be defined');
-    assert.equal(metadata.crs.authId, 'EPSG:4326');
-    assert.ok(metadata.crs.wkt, 'WKT must be resolved');
+    assert.equal(metadata.geometryKind, "Polygon");
+    assert.ok(metadata.crs, "CRS must be defined");
+    assert.equal(metadata.crs.authId, "EPSG:4326");
+    assert.ok(metadata.crs.wkt, "WKT must be resolved");
 
     assert.equal(metadata.extent.length, 4);
-    assert.ok(metadata.extent[0] < metadata.extent[2], 'minX must be less than maxX');
-    assert.ok(metadata.extent[1] < metadata.extent[3], 'minY must be less than maxY');
+    assert.ok(
+      metadata.extent[0] < metadata.extent[2],
+      "minX must be less than maxX"
+    );
+    assert.ok(
+      metadata.extent[1] < metadata.extent[3],
+      "minY must be less than maxY"
+    );
 
-    assert.equal(engine.hasDataset('lakes-na-1'), true);
+    assert.equal(engine.hasDataset("lakes-na-1"), true);
     assert.equal(engine.size, 1);
-    assert.deepEqual(engine.getLoadedLayerIds(), ['lakes-na-1']);
+    assert.deepEqual(engine.getLoadedLayerIds(), ["lakes-na-1"]);
   });
 
-  it('resolves LineString geometryKind for GeoJSON dataset mixing LineString and MultiLineString (wkbUnknown)', async () => {
-    const metadata = await engine.openDataset('centrelines-1', centrelinesGeoJsonPath);
-    assert.equal(metadata.layerId, 'centrelines-1');
+  it("resolves LineString geometryKind for GeoJSON dataset mixing LineString and MultiLineString (wkbUnknown)", async () => {
+    const metadata = await engine.openDataset(
+      "centrelines-1",
+      centrelinesGeoJsonPath
+    );
+    assert.equal(metadata.layerId, "centrelines-1");
     assert.equal(metadata.featureCount, 4176);
-    assert.equal(metadata.geometryKind, 'LineString');
+    assert.equal(metadata.geometryKind, "LineString");
   });
 
-  it('extracts layer.fidColumn and tests capabilities (Ticket #202)', async () => {
+  it("extracts layer.fidColumn and tests capabilities (Ticket #202)", async () => {
     // 1. GeoPackage: persistent FID column 'fid' and capabilities
-    const gpkgMeta = await engine.openDataset('gpkg-test', timelineGpkgPath);
-    assert.equal(gpkgMeta.fidColumn, 'fid');
+    const gpkgMeta = await engine.openDataset("gpkg-test", timelineGpkgPath);
+    assert.equal(gpkgMeta.fidColumn, "fid");
     assert.deepEqual(gpkgMeta.capabilities, {
       randomWrite: false,
       deleteFeature: false,
       fastRandomRead: true,
     });
 
-    const gpkgInfo = await engine.getLayerInfo('gpkg-test');
-    assert.equal(gpkgInfo.fidColumn, 'fid');
+    const gpkgInfo = await engine.getLayerInfo("gpkg-test");
+    assert.equal(gpkgInfo.fidColumn, "fid");
     assert.deepEqual(gpkgInfo.capabilities, {
       randomWrite: false,
       deleteFeature: false,
@@ -296,16 +375,16 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     });
 
     // 2. Shapefile: virtual row index FID (empty fidColumn) and capabilities
-    const shpMeta = await engine.openDataset('shp-test', lakesShpPath);
-    assert.equal(shpMeta.fidColumn, '');
+    const shpMeta = await engine.openDataset("shp-test", lakesShpPath);
+    assert.equal(shpMeta.fidColumn, "");
     assert.deepEqual(shpMeta.capabilities, {
       randomWrite: false,
       deleteFeature: false,
       fastRandomRead: true,
     });
 
-    const shpInfo = await engine.getLayerInfo('shp-test');
-    assert.equal(shpInfo.fidColumn, '');
+    const shpInfo = await engine.getLayerInfo("shp-test");
+    assert.equal(shpInfo.fidColumn, "");
     assert.deepEqual(shpInfo.capabilities, {
       randomWrite: false,
       deleteFeature: false,
@@ -313,61 +392,78 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     });
   });
 
-  it('throws descriptive error on invalid or non-existent dataset file', async () => {
-    await assert.rejects(
-      async () => {
-        await engine.openDataset('bad-layer', '/non/existent/file.shp');
-      },
-      /No such file or directory|does not exist/i
-    );
+  it("throws descriptive error on invalid or non-existent dataset file", async () => {
+    await assert.rejects(async () => {
+      await engine.openDataset("bad-layer", "/non/existent/file.shp");
+    }, /No such file or directory|does not exist/i);
   });
 
-  it('queries unbounded spatial extent and extracts OGC WKB buffers readable by OpenLayers', async () => {
-    await engine.openDataset('lakes-shp-1', lakesShpPath);
+  it("queries unbounded spatial extent and extracts OGC WKB buffers readable by OpenLayers", async () => {
+    await engine.openDataset("lakes-shp-1", lakesShpPath);
 
-    const result = await engine.queryExtent('lakes-shp-1');
-    assert.equal(result.layerId, 'lakes-shp-1');
+    const result = await engine.queryExtent("lakes-shp-1");
+    assert.equal(result.layerId, "lakes-shp-1");
     assert.equal(result.features.length, 1353);
-    assert.equal(result.transferList.length, 1, 'Transfer list must contain exactly 1 contiguous packet buffer');
+    assert.equal(
+      result.transferList.length,
+      1,
+      "Transfer list must contain exactly 1 contiguous packet buffer"
+    );
     assert.deepEqual(result.transferList, [result.buffer]);
 
     const first = result.features[0];
-    assert.ok(first.wkb instanceof Uint8Array, 'Feature geometry must be a Uint8Array');
-    assert.ok(first.wkb.byteLength > 0, 'WKB buffer must have non-zero length');
+    assert.ok(
+      first.wkb instanceof Uint8Array,
+      "Feature geometry must be a Uint8Array"
+    );
+    assert.ok(first.wkb.byteLength > 0, "WKB buffer must have non-zero length");
 
     // Verify OpenLayers parses the WKB buffer into an OL geometry cleanly
     const olWkb = new WKB();
     const geom = olWkb.readGeometry(first.wkb);
-    assert.ok(geom, 'OpenLayers must parse extracted WKB buffer');
-    assert.ok(geom.getType().includes('Polygon'), 'Geometry type should be Polygon');
+    assert.ok(geom, "OpenLayers must parse extracted WKB buffer");
+    assert.ok(
+      geom.getType().includes("Polygon"),
+      "Geometry type should be Polygon"
+    );
   });
 
-  it('filters features within spatial bounding box and reprojects EPSG:3857 input extent', async () => {
-    await engine.openDataset('lakes-shp-2', lakesShpPath);
+  it("filters features within spatial bounding box and reprojects EPSG:3857 input extent", async () => {
+    await engine.openDataset("lakes-shp-2", lakesShpPath);
 
     // Native EPSG:4326 bbox over Great Lakes region
     const bbox4326: BoundingBox = [-100, 40, -80, 50];
-    const filtered4326 = await engine.queryExtent('lakes-shp-2', bbox4326);
+    const filtered4326 = await engine.queryExtent("lakes-shp-2", bbox4326);
     assert.equal(filtered4326.features.length, 34);
 
     // Same Great Lakes region expressed in EPSG:3857 (Web Mercator meters)
     const bbox3857: BoundingBox = [-11131949, 4865942, -8905559, 6446275];
-    const filtered3857 = await engine.queryExtent('lakes-shp-2', bbox3857, 'EPSG:3857');
-    assert.equal(filtered3857.features.length, 34, 'Reprojected query must match native CRS subset');
+    const filtered3857 = await engine.queryExtent(
+      "lakes-shp-2",
+      bbox3857,
+      "EPSG:3857"
+    );
+    assert.equal(
+      filtered3857.features.length,
+      34,
+      "Reprojected query must match native CRS subset"
+    );
   });
 
-  it('executes concurrent queries sequentially without corrupting spatial filter state', async () => {
-    await engine.openDataset('lakes-shp-3', lakesShpPath);
+  it("executes concurrent queries sequentially without corrupting spatial filter state", async () => {
+    await engine.openDataset("lakes-shp-3", lakesShpPath);
 
     const extents: BoundingBox[] = [
       [-100, 40, -80, 50],
       [-160, 60, -140, 70],
       [-100, 40, -80, 50],
       [0, 0, 10, 10],
-      [-100, 40, -80, 50]
+      [-100, 40, -80, 50],
     ];
 
-    const promises = extents.map((ext) => engine.queryExtent('lakes-shp-3', ext));
+    const promises = extents.map((ext) =>
+      engine.queryExtent("lakes-shp-3", ext)
+    );
     const results = await Promise.all(promises);
 
     assert.equal(results.length, 5);
@@ -376,63 +472,60 @@ describe('GeospatialEngine Lifecycle & Operations', () => {
     assert.equal(results[4].features.length, 34);
   });
 
-  it('throws error when querying unregistered layer UUID', async () => {
-    await assert.rejects(
-      async () => {
-        await engine.queryExtent('unknown-layer-id');
-      },
-      /Layer session not found for layer UUID/i
-    );
+  it("throws error when querying unregistered layer UUID", async () => {
+    await assert.rejects(async () => {
+      await engine.queryExtent("unknown-layer-id");
+    }, /Layer session not found for layer UUID/i);
   });
 
-  it('closes dataset cleanly and handles repeated closeDataset calls', async () => {
-    await engine.openDataset('lakes-na-2', lakesGeoJsonPath);
-    assert.equal(engine.hasDataset('lakes-na-2'), true);
+  it("closes dataset cleanly and handles repeated closeDataset calls", async () => {
+    await engine.openDataset("lakes-na-2", lakesGeoJsonPath);
+    assert.equal(engine.hasDataset("lakes-na-2"), true);
 
-    const closed = engine.closeDataset('lakes-na-2');
+    const closed = engine.closeDataset("lakes-na-2");
     assert.equal(closed, true);
-    assert.equal(engine.hasDataset('lakes-na-2'), false);
+    assert.equal(engine.hasDataset("lakes-na-2"), false);
     assert.equal(engine.size, 0);
 
     // Repeated close returns false
-    const closedAgain = engine.closeDataset('lakes-na-2');
+    const closedAgain = engine.closeDataset("lakes-na-2");
     assert.equal(closedAgain, false);
   });
 
-  it('rehydrates batch of layer specifications', async () => {
+  it("rehydrates batch of layer specifications", async () => {
     const specs = [
-      { layerId: 'layer-1', filePath: lakesGeoJsonPath },
-      { layerId: 'layer-2', filePath: lakesShpPath },
-      { layerId: 'layer-bad', filePath: '/invalid/path/test.shp' }
+      { layerId: "layer-1", filePath: lakesGeoJsonPath },
+      { layerId: "layer-2", filePath: lakesShpPath },
+      { layerId: "layer-bad", filePath: "/invalid/path/test.shp" },
     ];
 
     const result = await engine.rehydrate(specs);
-    assert.deepEqual(result.rehydrated, ['layer-1', 'layer-2']);
+    assert.deepEqual(result.rehydrated, ["layer-1", "layer-2"]);
     assert.equal(result.failed.length, 1);
-    assert.equal(result.failed[0].layerId, 'layer-bad');
+    assert.equal(result.failed[0].layerId, "layer-bad");
 
-    assert.equal(engine.hasDataset('layer-1'), true);
-    assert.equal(engine.hasDataset('layer-2'), true);
-    assert.equal(engine.hasDataset('layer-bad'), false);
+    assert.equal(engine.hasDataset("layer-1"), true);
+    assert.equal(engine.hasDataset("layer-2"), true);
+    assert.equal(engine.hasDataset("layer-bad"), false);
   });
 });
 
-describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
+describe("GeospatialEngine Contiguous Binary WKB Packet Serialization", () => {
   let engine: GeospatialEngine;
   const wkbFormat = new WKB();
 
   beforeEach(async () => {
     engine = new GeospatialEngine();
-    await engine.openDataset('lakes-bin-test', lakesShpPath);
+    await engine.openDataset("lakes-bin-test", lakesShpPath);
   });
 
   afterEach(() => {
     engine.closeAll();
   });
 
-  it('formats spatial features into a compliant contiguous ArrayBuffer packet conforming to ADR 0004 header', async () => {
+  it("formats spatial features into a compliant contiguous ArrayBuffer packet conforming to ADR 0004 header", async () => {
     const queryBbox: BoundingBox = [-100, 40, -80, 50];
-    const result = await engine.queryExtent('lakes-bin-test', queryBbox);
+    const result = await engine.queryExtent("lakes-bin-test", queryBbox);
 
     assert.ok(result.buffer instanceof ArrayBuffer);
     assert.ok(result.buffer.byteLength > 12);
@@ -444,62 +537,77 @@ describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
     const flags = view.getUint16(6, true);
     const featureCount = view.getUint32(8, true);
 
-    assert.equal(magic, WKB_PACKET_MAGIC, 'Magic bytes must equal 0x43415254 (ASCII "CART")');
-    assert.equal(version, WKB_PACKET_VERSION, 'Version must equal 1');
+    assert.equal(
+      magic,
+      WKB_PACKET_MAGIC,
+      'Magic bytes must equal 0x43415254 (ASCII "CART")'
+    );
+    assert.equal(version, WKB_PACKET_VERSION, "Version must equal 1");
     assert.equal(flags, WKB_FLAG_HAS_GEOMETRY | WKB_FLAG_HAS_PROPERTIES);
-    assert.equal(featureCount, 34, 'Expected 34 features in bounding box');
+    assert.equal(featureCount, 34, "Expected 34 features in bounding box");
 
     // Parse sequential records
     let offset = 12;
     const decoder = new TextDecoder();
     for (let i = 0; i < featureCount; i++) {
       const fid = view.getBigInt64(offset, true);
-      assert.ok(fid >= 0n, 'FID must be non-negative BigInt');
+      assert.ok(fid >= 0n, "FID must be non-negative BigInt");
       offset += 8;
 
       const wkbLen = view.getUint32(offset, true);
-      assert.ok(wkbLen > 0, 'Geometry WKB length must be positive');
+      assert.ok(wkbLen > 0, "Geometry WKB length must be positive");
       offset += 4;
 
       const wkbSlice = new Uint8Array(result.buffer, offset, wkbLen);
       const geom = wkbFormat.readGeometry(wkbSlice);
-      assert.ok(geom, 'OpenLayers WKB reader must parse geometry');
-      assert.ok(geom.getType().includes('Polygon'), 'Geometry type should be Polygon or MultiPolygon');
+      assert.ok(geom, "OpenLayers WKB reader must parse geometry");
+      assert.ok(
+        geom.getType().includes("Polygon"),
+        "Geometry type should be Polygon or MultiPolygon"
+      );
       offset += wkbLen;
 
       const propsLen = view.getUint32(offset, true);
-      assert.ok(propsLen > 0, 'Properties length must be positive');
+      assert.ok(propsLen > 0, "Properties length must be positive");
       offset += 4;
 
       const propsBytes = new Uint8Array(result.buffer, offset, propsLen);
       const props = JSON.parse(decoder.decode(propsBytes));
-      assert.ok(typeof props === 'object' && props !== null);
-      assert.ok('name' in props || 'NAME' in props);
+      assert.ok(typeof props === "object" && props !== null);
+      assert.ok("name" in props || "NAME" in props);
       offset += propsLen;
     }
 
-    assert.equal(offset, result.buffer.byteLength, 'Offset must match exact buffer byteLength');
+    assert.equal(
+      offset,
+      result.buffer.byteLength,
+      "Offset must match exact buffer byteLength"
+    );
   });
 
-  it('omits geometry bytes when includeGeometry is false', async () => {
+  it("omits geometry bytes when includeGeometry is false", async () => {
     const options: QueryExtentOptions = {
       extent: [-100, 40, -80, 50],
-      includeGeometry: false
+      includeGeometry: false,
     };
 
-    const result = await engine.queryExtent('lakes-bin-test', options);
+    const result = await engine.queryExtent("lakes-bin-test", options);
     const view = new DataView(result.buffer);
     const flags = view.getUint16(6, true);
     const count = view.getUint32(8, true);
 
-    assert.equal(flags & WKB_FLAG_HAS_GEOMETRY, 0, 'FLAG_HAS_GEOMETRY must be unset');
+    assert.equal(
+      flags & WKB_FLAG_HAS_GEOMETRY,
+      0,
+      "FLAG_HAS_GEOMETRY must be unset"
+    );
     assert.equal(count, 34);
 
     let offset = 12;
     for (let i = 0; i < count; i++) {
       offset += 8; // fid
       const wkbLen = view.getUint32(offset, true);
-      assert.equal(wkbLen, 0, 'wkbLength must be 0 when geometry is omitted');
+      assert.equal(wkbLen, 0, "wkbLength must be 0 when geometry is omitted");
       offset += 4;
       const propsLen = view.getUint32(offset, true);
       assert.ok(propsLen > 0);
@@ -509,18 +617,22 @@ describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
     assert.equal(offset, result.buffer.byteLength);
   });
 
-  it('omits properties when fields is an empty array', async () => {
+  it("omits properties when fields is an empty array", async () => {
     const options: QueryExtentOptions = {
       extent: [-100, 40, -80, 50],
-      fields: []
+      fields: [],
     };
 
-    const result = await engine.queryExtent('lakes-bin-test', options);
+    const result = await engine.queryExtent("lakes-bin-test", options);
     const view = new DataView(result.buffer);
     const flags = view.getUint16(6, true);
     const count = view.getUint32(8, true);
 
-    assert.equal(flags & WKB_FLAG_HAS_PROPERTIES, 0, 'FLAG_HAS_PROPERTIES must be unset');
+    assert.equal(
+      flags & WKB_FLAG_HAS_PROPERTIES,
+      0,
+      "FLAG_HAS_PROPERTIES must be unset"
+    );
     assert.equal(count, 34);
 
     let offset = 12;
@@ -530,20 +642,24 @@ describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
       assert.ok(wkbLen > 0);
       offset += 4 + wkbLen;
       const propsLen = view.getUint32(offset, true);
-      assert.equal(propsLen, 0, 'propsLength must be 0 when fields is empty array');
+      assert.equal(
+        propsLen,
+        0,
+        "propsLength must be 0 when fields is empty array"
+      );
       offset += 4;
     }
 
     assert.equal(offset, result.buffer.byteLength);
   });
 
-  it('projects only requested attribute keys when fields list is provided', async () => {
+  it("projects only requested attribute keys when fields list is provided", async () => {
     const options: QueryExtentOptions = {
       extent: [-100, 40, -80, 50],
-      fields: ['name']
+      fields: ["name"],
     };
 
-    const result = await engine.queryExtent('lakes-bin-test', options);
+    const result = await engine.queryExtent("lakes-bin-test", options);
     const view = new DataView(result.buffer);
     const count = view.getUint32(8, true);
     const decoder = new TextDecoder();
@@ -559,13 +675,17 @@ describe('GeospatialEngine Contiguous Binary WKB Packet Serialization', () => {
       const propsBytes = new Uint8Array(result.buffer, offset, propsLen);
       const props = JSON.parse(decoder.decode(propsBytes));
 
-      assert.deepEqual(Object.keys(props), ['name'], 'Properties must only contain requested field');
+      assert.deepEqual(
+        Object.keys(props),
+        ["name"],
+        "Properties must only contain requested field"
+      );
       offset += propsLen;
     }
   });
 });
 
-describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)', () => {
+describe("GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)", () => {
   let engine: GeospatialEngine;
 
   beforeEach(() => {
@@ -576,356 +696,420 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
     engine.closeAll();
   });
 
-  it('classifies provider driver dialects correctly across all 4 tiers', () => {
-    assert.equal(classifyDriverDialect('ESRI Shapefile'), 'ogr_sql');
-    assert.equal(classifyDriverDialect('GeoJSON'), 'ogr_sql');
-    assert.equal(classifyDriverDialect('FlatGeobuf'), 'ogr_sql');
-    assert.equal(classifyDriverDialect('KML'), 'ogr_sql');
-    assert.equal(classifyDriverDialect('CSV'), 'ogr_sql');
+  it("classifies provider driver dialects correctly across all 4 tiers", () => {
+    assert.equal(classifyDriverDialect("ESRI Shapefile"), "ogr_sql");
+    assert.equal(classifyDriverDialect("GeoJSON"), "ogr_sql");
+    assert.equal(classifyDriverDialect("FlatGeobuf"), "ogr_sql");
+    assert.equal(classifyDriverDialect("KML"), "ogr_sql");
+    assert.equal(classifyDriverDialect("CSV"), "ogr_sql");
 
-    assert.equal(classifyDriverDialect('GPKG'), 'native_sql');
-    assert.equal(classifyDriverDialect('SQLite / Spatialite'), 'native_sql');
-    assert.equal(classifyDriverDialect('PostgreSQL'), 'native_sql');
-    assert.equal(classifyDriverDialect('PostGIS'), 'native_sql');
+    assert.equal(classifyDriverDialect("GPKG"), "native_sql");
+    assert.equal(classifyDriverDialect("SQLite / Spatialite"), "native_sql");
+    assert.equal(classifyDriverDialect("PostgreSQL"), "native_sql");
+    assert.equal(classifyDriverDialect("PostGIS"), "native_sql");
 
-    assert.equal(classifyDriverDialect('MongoDB'), 'nosql');
-    assert.equal(classifyDriverDialect('Elasticsearch'), 'nosql');
+    assert.equal(classifyDriverDialect("MongoDB"), "nosql");
+    assert.equal(classifyDriverDialect("Elasticsearch"), "nosql");
 
-    assert.equal(classifyDriverDialect('UnknownCustomDriver'), 'generic');
-    assert.equal(classifyDriverDialect(undefined), 'generic');
+    assert.equal(classifyDriverDialect("UnknownCustomDriver"), "generic");
+    assert.equal(classifyDriverDialect(undefined), "generic");
   });
 
-  it('retrieves detailed layer info, OGR schema fields, and provider descriptors for a shapefile', async () => {
-    await engine.openDataset('lakes-info-test', lakesShpPath);
-    const info = await engine.getLayerInfo('lakes-info-test');
+  it("retrieves detailed layer info, OGR schema fields, and provider descriptors for a shapefile", async () => {
+    await engine.openDataset("lakes-info-test", lakesShpPath);
+    const info = await engine.getLayerInfo("lakes-info-test");
 
-    assert.equal(info.layerId, 'lakes-info-test');
-    assert.equal(info.driverName, 'ESRI Shapefile');
-    assert.equal(info.driverDialect, 'ogr_sql');
-    assert.equal(info.geometryKind, 'Polygon');
-    assert(info.featureCount > 0, 'Feature count should be greater than 0');
-    assert(info.crsDescription.includes('EPSG:4326'), 'CRS should include EPSG:4326');
+    assert.equal(info.layerId, "lakes-info-test");
+    assert.equal(info.driverName, "ESRI Shapefile");
+    assert.equal(info.driverDialect, "ogr_sql");
+    assert.equal(info.geometryKind, "Polygon");
+    assert(info.featureCount > 0, "Feature count should be greater than 0");
+    assert(
+      info.crsDescription.includes("EPSG:4326"),
+      "CRS should include EPSG:4326"
+    );
     assert.equal(info.source, lakesShpPath);
-    assert(info.extent[0] !== 0 || info.extent[2] !== 0, 'Extent should be calculated');
+    assert(
+      info.extent[0] !== 0 || info.extent[2] !== 0,
+      "Extent should be calculated"
+    );
 
-    assert(Array.isArray(info.fields), 'Fields must be an array');
-    assert(info.fields.length > 0, 'Fields count should be positive');
+    assert(Array.isArray(info.fields), "Fields must be an array");
+    assert(info.fields.length > 0, "Fields count should be positive");
 
-    const nameField = info.fields.find((f) => f.name === 'name');
-    assert(nameField, 'name field should exist');
-    assert.equal(nameField.nativeType, 'string');
-    assert.equal(nameField.mappedType, 'string');
+    const nameField = info.fields.find((f) => f.name === "name");
+    assert(nameField, "name field should exist");
+    assert.equal(nameField.nativeType, "string");
+    assert.equal(nameField.mappedType, "string");
     assert.equal(nameField.nullable, true);
     assert.equal(nameField.originalInferredType, nameField.inferredType);
-    assert.equal(typeof nameField.index, 'number');
+    assert.equal(typeof nameField.index, "number");
 
-    const rankField = info.fields.find((f) => f.name === 'scalerank');
-    assert(rankField, 'scalerank field should exist');
-    assert.equal(rankField.mappedType, 'number');
+    const rankField = info.fields.find((f) => f.name === "scalerank");
+    assert(rankField, "scalerank field should exist");
+    assert.equal(rankField.mappedType, "number");
     assert.equal(rankField.originalInferredType, rankField.inferredType);
   });
 
-  it('throws descriptive error when getLayerInfo is called for unregistered layerId', async () => {
-    await assert.rejects(
-      async () => {
-        await engine.getLayerInfo('nonexistent-layer');
-      },
-      /Layer session not found for layerId: "nonexistent-layer"/
-    );
+  it("throws descriptive error when getLayerInfo is called for unregistered layerId", async () => {
+    await assert.rejects(async () => {
+      await engine.getLayerInfo("nonexistent-layer");
+    }, /Layer session not found for layerId: "nonexistent-layer"/);
   });
 
-  it('rekeys session to new layer identifier without dropping open dataset', async () => {
-    await engine.openDataset('old-layer-id', lakesShpPath);
-    engine.rekeySession('old-layer-id', 'new-layer-id');
+  it("rekeys session to new layer identifier without dropping open dataset", async () => {
+    await engine.openDataset("old-layer-id", lakesShpPath);
+    engine.rekeySession("old-layer-id", "new-layer-id");
 
-    await assert.rejects(
-      async () => {
-        await engine.getLayerInfo('old-layer-id');
-      },
-      /Layer session not found/
-    );
+    await assert.rejects(async () => {
+      await engine.getLayerInfo("old-layer-id");
+    }, /Layer session not found/);
 
-    const info = await engine.getLayerInfo('new-layer-id');
-    assert.equal(info.layerId, 'new-layer-id');
-    assert.equal(info.driverName, 'ESRI Shapefile');
+    const info = await engine.getLayerInfo("new-layer-id");
+    assert.equal(info.layerId, "new-layer-id");
+    assert.equal(info.driverName, "ESRI Shapefile");
   });
 
-  describe('6-Tier Field Type Inference Cascade (Ticket #138)', () => {
-    it('openDataset populates metadata.fields via 6-tier cascade on vector layers', async () => {
-      const metadata = await engine.openDataset('lakes-test-fields', lakesShpPath);
-      assert.ok(metadata.fields, 'metadata.fields must be defined');
-      assert.ok(metadata.fields.length > 0, 'metadata.fields must have elements');
+  describe("6-Tier Field Type Inference Cascade (Ticket #138)", () => {
+    it("openDataset populates metadata.fields via 6-tier cascade on vector layers", async () => {
+      const metadata = await engine.openDataset(
+        "lakes-test-fields",
+        lakesShpPath
+      );
+      assert.ok(metadata.fields, "metadata.fields must be defined");
+      assert.ok(
+        metadata.fields.length > 0,
+        "metadata.fields must have elements"
+      );
 
-      const nameField = metadata.fields.find((f) => f.name === 'name');
+      const nameField = metadata.fields.find((f) => f.name === "name");
       assert.ok(nameField);
-      assert.equal(nameField.inferredType, 'string');
-      assert.equal(nameField.mappedType, 'string');
+      assert.equal(nameField.inferredType, "string");
+      assert.equal(nameField.mappedType, "string");
 
-      const rankField = metadata.fields.find((f) => f.name === 'scalerank');
+      const rankField = metadata.fields.find((f) => f.name === "scalerank");
       assert.ok(rankField);
-      assert.equal(rankField.inferredType, 'integer');
-      assert.equal(rankField.mappedType, 'number');
+      assert.equal(rankField.inferredType, "integer");
+      assert.equal(rankField.mappedType, "number");
 
       // Verify getLayerInfo matches openDataset fields
-      const info = await engine.getLayerInfo('lakes-test-fields');
+      const info = await engine.getLayerInfo("lakes-test-fields");
       assert.deepEqual(info.fields, metadata.fields);
     });
 
-    it('Tier 1: detects booleans, ranges, regex dates from GDAL field domains, PRAGMA table_info, and gpkg_data_columns', () => {
+    it("Tier 1: detects booleans, ranges, regex dates from GDAL field domains, PRAGMA table_info, and gpkg_data_columns", () => {
       const mockFields = [
-        { name: 'coded_bool', type: 'integer', domain: { codedValues: { 0: 'False', 1: 'True' } } },
-        { name: 'range_bool', type: 'integer', domain: { minValue: 0, maxValue: 1 } },
-        { name: 'glob_date', type: 'string', domain: { glob: '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' } },
-        { name: 'col_pragma_bool', type: 'integer' },
-        { name: 'col_pragma_date', type: 'string' },
-        { name: 'col_pragma_time', type: 'string' },
-        { name: 'col_pragma_datetime', type: 'string' },
-        { name: 'col_pragma_uuid', type: 'string' },
-        { name: 'col_pragma_json', type: 'string' },
-        { name: 'col_gpkg_date', type: 'string' },
-        { name: 'col_gpkg_uuid', type: 'string' },
-        { name: 'col_gpkg_json', type: 'string' },
+        {
+          name: "coded_bool",
+          type: "integer",
+          domain: { codedValues: { 0: "False", 1: "True" } },
+        },
+        {
+          name: "range_bool",
+          type: "integer",
+          domain: { minValue: 0, maxValue: 1 },
+        },
+        {
+          name: "glob_date",
+          type: "string",
+          domain: { glob: "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" },
+        },
+        { name: "col_pragma_bool", type: "integer" },
+        { name: "col_pragma_date", type: "string" },
+        { name: "col_pragma_time", type: "string" },
+        { name: "col_pragma_datetime", type: "string" },
+        { name: "col_pragma_uuid", type: "string" },
+        { name: "col_pragma_json", type: "string" },
+        { name: "col_gpkg_date", type: "string" },
+        { name: "col_gpkg_uuid", type: "string" },
+        { name: "col_gpkg_json", type: "string" },
       ];
 
       const mockLayer: any = {
-        name: 'test_tier1_table',
+        name: "test_tier1_table",
         fields: {
           count: () => mockFields.length,
           get: (i: number) => mockFields[i],
         },
       };
 
-      fromAny<{ readSqliteColumnRows: GeospatialEngine['readSqliteColumnRows'] }, GeospatialEngine>(engine).readSqliteColumnRows = () => ({
+      fromAny<
+        { readSqliteColumnRows: GeospatialEngine["readSqliteColumnRows"] },
+        GeospatialEngine
+      >(engine).readSqliteColumnRows = () => ({
         pragmaRows: [
-          { name: 'col_pragma_bool', type: 'BOOLEAN', dflt_value: null },
-          { name: 'col_pragma_date', type: 'DATE', dflt_value: null },
-          { name: 'col_pragma_time', type: 'TIME', dflt_value: null },
-          { name: 'col_pragma_datetime', type: 'DATETIME', dflt_value: null },
-          { name: 'col_pragma_uuid', type: 'UUID', dflt_value: null },
-          { name: 'col_pragma_json', type: 'JSON', dflt_value: null },
+          { name: "col_pragma_bool", type: "BOOLEAN", dflt_value: null },
+          { name: "col_pragma_date", type: "DATE", dflt_value: null },
+          { name: "col_pragma_time", type: "TIME", dflt_value: null },
+          { name: "col_pragma_datetime", type: "DATETIME", dflt_value: null },
+          { name: "col_pragma_uuid", type: "UUID", dflt_value: null },
+          { name: "col_pragma_json", type: "JSON", dflt_value: null },
         ],
         dataColumnRows: [
-          { column_name: 'col_gpkg_date', data_type: 'date', mime_type: null },
-          { column_name: 'col_gpkg_uuid', data_type: 'string', mime_type: 'application/x-uuid' },
-          { column_name: 'col_gpkg_json', data_type: 'string', mime_type: 'application/json' },
+          { column_name: "col_gpkg_date", data_type: "date", mime_type: null },
+          {
+            column_name: "col_gpkg_uuid",
+            data_type: "string",
+            mime_type: "application/x-uuid",
+          },
+          {
+            column_name: "col_gpkg_json",
+            data_type: "string",
+            mime_type: "application/json",
+          },
         ],
       });
-      const mockDataset = fromPartial<gdal.Dataset>({ driver: fromPartial<gdal.Driver>({ description: 'GPKG' }) });
+      const mockDataset = fromPartial<gdal.Dataset>({
+        driver: fromPartial<gdal.Driver>({ description: "GPKG" }),
+      });
 
-      const inferred = engine.inferLayerFields(mockDataset, mockLayer, '/data/test.gpkg');
+      const inferred = engine.inferLayerFields(
+        mockDataset,
+        mockLayer,
+        "/data/test.gpkg"
+      );
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
 
-      assert.equal(byName.get('coded_bool'), 'boolean');
-      assert.equal(byName.get('range_bool'), 'boolean');
-      assert.equal(byName.get('glob_date'), 'date');
-      assert.equal(byName.get('col_pragma_bool'), 'boolean');
-      assert.equal(byName.get('col_pragma_date'), 'date');
-      assert.equal(byName.get('col_pragma_time'), 'time');
-      assert.equal(byName.get('col_pragma_datetime'), 'datetime');
-      assert.equal(byName.get('col_pragma_uuid'), 'uuid');
-      assert.equal(byName.get('col_pragma_json'), 'json');
-      assert.equal(byName.get('col_gpkg_date'), 'date');
-      assert.equal(byName.get('col_gpkg_uuid'), 'uuid');
-      assert.equal(byName.get('col_gpkg_json'), 'json');
+      assert.equal(byName.get("coded_bool"), "boolean");
+      assert.equal(byName.get("range_bool"), "boolean");
+      assert.equal(byName.get("glob_date"), "date");
+      assert.equal(byName.get("col_pragma_bool"), "boolean");
+      assert.equal(byName.get("col_pragma_date"), "date");
+      assert.equal(byName.get("col_pragma_time"), "time");
+      assert.equal(byName.get("col_pragma_datetime"), "datetime");
+      assert.equal(byName.get("col_pragma_uuid"), "uuid");
+      assert.equal(byName.get("col_pragma_json"), "json");
+      assert.equal(byName.get("col_gpkg_date"), "date");
+      assert.equal(byName.get("col_gpkg_uuid"), "uuid");
+      assert.equal(byName.get("col_gpkg_json"), "json");
     });
 
-    it('Tier 2: detects boolean, uuid, and json from native OGR subtypes', () => {
+    it("Tier 2: detects boolean, uuid, and json from native OGR subtypes", () => {
       const mockFields = [
-        { name: 'flag_field', type: 'integer', subType: 'OFSTBoolean' },
-        { name: 'guid_field', type: 'string', subType: 'OFSTUUID' },
-        { name: 'payload_field', type: 'string', subType: 'OFSTJSON' },
+        { name: "flag_field", type: "integer", subType: "OFSTBoolean" },
+        { name: "guid_field", type: "string", subType: "OFSTUUID" },
+        { name: "payload_field", type: "string", subType: "OFSTJSON" },
       ];
 
       const mockLayer: any = {
-        name: 'test_tier2',
+        name: "test_tier2",
         fields: {
           count: () => mockFields.length,
           get: (i: number) => mockFields[i],
         },
       };
 
-      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.shp');
+      const inferred = engine.inferLayerFields(
+        {} as any,
+        mockLayer,
+        "/data/test.shp"
+      );
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
 
-      assert.equal(byName.get('flag_field'), 'boolean');
-      assert.equal(byName.get('guid_field'), 'uuid');
-      assert.equal(byName.get('payload_field'), 'json');
+      assert.equal(byName.get("flag_field"), "boolean");
+      assert.equal(byName.get("guid_field"), "uuid");
+      assert.equal(byName.get("payload_field"), "json");
     });
 
-    it('Tier 3: detects temporal and boolean fields from default value expressions', () => {
+    it("Tier 3: detects temporal and boolean fields from default value expressions", () => {
       const mockFields = [
-        { name: 'ts_field', type: 'string', defaultValue: 'CURRENT_TIMESTAMP' },
-        { name: 'now_field', type: 'string', defaultValue: "datetime('now')" },
-        { name: 'date_def', type: 'string', defaultValue: 'CURRENT_DATE' },
-        { name: 'time_def', type: 'string', defaultValue: 'CURRENT_TIME' },
-        { name: 'bool_true', type: 'string', defaultValue: 'true' },
-        { name: 'bool_zero', type: 'integer', defaultValue: '0' },
-        { name: 'bool_y', type: 'string', width: 1, defaultValue: 'Y' },
+        { name: "ts_field", type: "string", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "now_field", type: "string", defaultValue: "datetime('now')" },
+        { name: "date_def", type: "string", defaultValue: "CURRENT_DATE" },
+        { name: "time_def", type: "string", defaultValue: "CURRENT_TIME" },
+        { name: "bool_true", type: "string", defaultValue: "true" },
+        { name: "bool_zero", type: "integer", defaultValue: "0" },
+        { name: "bool_y", type: "string", width: 1, defaultValue: "Y" },
       ];
 
       const mockLayer: any = {
-        name: 'test_tier3',
+        name: "test_tier3",
         fields: {
           count: () => mockFields.length,
           get: (i: number) => mockFields[i],
         },
       };
 
-      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.shp');
+      const inferred = engine.inferLayerFields(
+        {} as any,
+        mockLayer,
+        "/data/test.shp"
+      );
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
 
-      assert.equal(byName.get('ts_field'), 'datetime');
-      assert.equal(byName.get('now_field'), 'datetime');
-      assert.equal(byName.get('date_def'), 'date');
-      assert.equal(byName.get('time_def'), 'time');
-      assert.equal(byName.get('bool_true'), 'boolean');
-      assert.equal(byName.get('bool_zero'), 'boolean');
-      assert.equal(byName.get('bool_y'), 'boolean');
+      assert.equal(byName.get("ts_field"), "datetime");
+      assert.equal(byName.get("now_field"), "datetime");
+      assert.equal(byName.get("date_def"), "date");
+      assert.equal(byName.get("time_def"), "time");
+      assert.equal(byName.get("bool_true"), "boolean");
+      assert.equal(byName.get("bool_zero"), "boolean");
+      assert.equal(byName.get("bool_y"), "boolean");
     });
 
-    it('Tier 4: detects dates (width 10, width 8 DBF), booleans (width 1), UUIDs (width 36), and 64-bit integers (real precision 0)', () => {
+    it("Tier 4: detects dates (width 10, width 8 DBF), booleans (width 1), UUIDs (width 36), and 64-bit integers (real precision 0)", () => {
       const mockFields = [
-        { name: 'str_10', type: 'string', width: 10 },
-        { name: 'dbf_8', type: 'string', width: 8 },
-        { name: 'str_1', type: 'string', width: 1 },
-        { name: 'int_1', type: 'integer', width: 1 },
-        { name: 'str_36', type: 'string', width: 36 },
-        { name: 'coerced_int', type: 'real', width: 18, precision: 0 },
+        { name: "str_10", type: "string", width: 10 },
+        { name: "dbf_8", type: "string", width: 8 },
+        { name: "str_1", type: "string", width: 1 },
+        { name: "int_1", type: "integer", width: 1 },
+        { name: "str_36", type: "string", width: 36 },
+        { name: "coerced_int", type: "real", width: 18, precision: 0 },
       ];
 
       const mockLayer: any = {
-        name: 'test_tier4',
+        name: "test_tier4",
         fields: {
           count: () => mockFields.length,
           get: (i: number) => mockFields[i],
         },
       };
 
-      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.dbf');
+      const inferred = engine.inferLayerFields(
+        {} as any,
+        mockLayer,
+        "/data/test.dbf"
+      );
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
 
-      assert.equal(byName.get('str_10'), 'date');
-      assert.equal(byName.get('dbf_8'), 'date');
-      assert.equal(byName.get('str_1'), 'boolean');
-      assert.equal(byName.get('int_1'), 'boolean');
-      assert.equal(byName.get('str_36'), 'uuid');
-      assert.equal(byName.get('coerced_int'), 'integer');
+      assert.equal(byName.get("str_10"), "date");
+      assert.equal(byName.get("dbf_8"), "date");
+      assert.equal(byName.get("str_1"), "boolean");
+      assert.equal(byName.get("int_1"), "boolean");
+      assert.equal(byName.get("str_36"), "uuid");
+      assert.equal(byName.get("coerced_int"), "integer");
     });
 
-    it('Tier 5: infers types from canonical column naming patterns', () => {
+    it("Tier 5: infers types from canonical column naming patterns", () => {
       const mockFields = [
-        { name: 'is_active', type: 'string' },
-        { name: 'has_parking', type: 'string' },
-        { name: 'can_edit', type: 'string' },
-        { name: 'highway_flag', type: 'string' },
-        { name: 'active', type: 'string' },
-        { name: 'expiration_date', type: 'string' },
-        { name: 'event_dt', type: 'string' },
-        { name: 'dob', type: 'string' },
-        { name: 'created_at', type: 'string' },
-        { name: 'flight_timestamp', type: 'string' },
-        { name: 'arrival_time', type: 'string' },
-        { name: 'customer_id', type: 'string' },
-        { name: 'object_uuid', type: 'string' },
-        { name: 'guid', type: 'string' },
-        { name: 'config_json', type: 'string' },
-        { name: 'sensor_data', type: 'string' },
-        { name: 'properties', type: 'string' },
-        { name: 'attributes', type: 'string' },
-        { name: 'num_lanes', type: 'string' },
-        { name: 'cnt_trees', type: 'string' },
-        { name: 'count', type: 'string' },
-        { name: 'total_population', type: 'string' },
+        { name: "is_active", type: "string" },
+        { name: "has_parking", type: "string" },
+        { name: "can_edit", type: "string" },
+        { name: "highway_flag", type: "string" },
+        { name: "active", type: "string" },
+        { name: "expiration_date", type: "string" },
+        { name: "event_dt", type: "string" },
+        { name: "dob", type: "string" },
+        { name: "created_at", type: "string" },
+        { name: "flight_timestamp", type: "string" },
+        { name: "arrival_time", type: "string" },
+        { name: "customer_id", type: "string" },
+        { name: "object_uuid", type: "string" },
+        { name: "guid", type: "string" },
+        { name: "config_json", type: "string" },
+        { name: "sensor_data", type: "string" },
+        { name: "properties", type: "string" },
+        { name: "attributes", type: "string" },
+        { name: "num_lanes", type: "string" },
+        { name: "cnt_trees", type: "string" },
+        { name: "count", type: "string" },
+        { name: "total_population", type: "string" },
       ];
 
       const mockLayer: any = {
-        name: 'test_tier5',
+        name: "test_tier5",
         fields: {
           count: () => mockFields.length,
           get: (i: number) => mockFields[i],
         },
       };
 
-      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.geojson');
+      const inferred = engine.inferLayerFields(
+        {} as any,
+        mockLayer,
+        "/data/test.geojson"
+      );
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
 
-      assert.equal(byName.get('is_active'), 'boolean');
-      assert.equal(byName.get('has_parking'), 'boolean');
-      assert.equal(byName.get('can_edit'), 'boolean');
-      assert.equal(byName.get('highway_flag'), 'boolean');
-      assert.equal(byName.get('active'), 'boolean');
-      assert.equal(byName.get('expiration_date'), 'date');
-      assert.equal(byName.get('event_dt'), 'date');
-      assert.equal(byName.get('dob'), 'date');
-      assert.equal(byName.get('created_at'), 'datetime');
-      assert.equal(byName.get('flight_timestamp'), 'datetime');
-      assert.equal(byName.get('arrival_time'), 'time');
-      assert.equal(byName.get('customer_id'), 'uuid');
-      assert.equal(byName.get('object_uuid'), 'uuid');
-      assert.equal(byName.get('guid'), 'uuid');
-      assert.equal(byName.get('config_json'), 'json');
-      assert.equal(byName.get('sensor_data'), 'json');
-      assert.equal(byName.get('properties'), 'json');
-      assert.equal(byName.get('attributes'), 'json');
-      assert.equal(byName.get('num_lanes'), 'integer');
-      assert.equal(byName.get('cnt_trees'), 'integer');
-      assert.equal(byName.get('count'), 'integer');
-      assert.equal(byName.get('total_population'), 'integer');
+      assert.equal(byName.get("is_active"), "boolean");
+      assert.equal(byName.get("has_parking"), "boolean");
+      assert.equal(byName.get("can_edit"), "boolean");
+      assert.equal(byName.get("highway_flag"), "boolean");
+      assert.equal(byName.get("active"), "boolean");
+      assert.equal(byName.get("expiration_date"), "date");
+      assert.equal(byName.get("event_dt"), "date");
+      assert.equal(byName.get("dob"), "date");
+      assert.equal(byName.get("created_at"), "datetime");
+      assert.equal(byName.get("flight_timestamp"), "datetime");
+      assert.equal(byName.get("arrival_time"), "time");
+      assert.equal(byName.get("customer_id"), "uuid");
+      assert.equal(byName.get("object_uuid"), "uuid");
+      assert.equal(byName.get("guid"), "uuid");
+      assert.equal(byName.get("config_json"), "json");
+      assert.equal(byName.get("sensor_data"), "json");
+      assert.equal(byName.get("properties"), "json");
+      assert.equal(byName.get("attributes"), "json");
+      assert.equal(byName.get("num_lanes"), "integer");
+      assert.equal(byName.get("cnt_trees"), "integer");
+      assert.equal(byName.get("count"), "integer");
+      assert.equal(byName.get("total_population"), "integer");
     });
 
-    it('Tier 6: safe fallback mapping from native base OGR types to scalar and array variants', () => {
+    it("Tier 6: safe fallback mapping from native base OGR types to scalar and array variants", () => {
       const mockFields = [
-        { name: 'col_int', type: 'integer' },
-        { name: 'col_real', type: 'real' },
-        { name: 'col_date', type: 'date' },
-        { name: 'col_time', type: 'time' },
-        { name: 'col_datetime', type: 'datetime' },
-        { name: 'col_binary', type: 'binary' },
-        { name: 'col_str', type: 'string' },
-        { name: 'col_int_list', type: 'IntegerList' },
-        { name: 'col_real_list', type: 'RealList' },
-        { name: 'col_str_list', type: 'StringList' },
+        { name: "col_int", type: "integer" },
+        { name: "col_real", type: "real" },
+        { name: "col_date", type: "date" },
+        { name: "col_time", type: "time" },
+        { name: "col_datetime", type: "datetime" },
+        { name: "col_binary", type: "binary" },
+        { name: "col_str", type: "string" },
+        { name: "col_int_list", type: "IntegerList" },
+        { name: "col_real_list", type: "RealList" },
+        { name: "col_str_list", type: "StringList" },
       ];
 
       const mockLayer: any = {
-        name: 'test_tier6',
+        name: "test_tier6",
         fields: {
           count: () => mockFields.length,
           get: (i: number) => mockFields[i],
         },
       };
 
-      const inferred = engine.inferLayerFields({} as any, mockLayer, '/data/test.bin');
+      const inferred = engine.inferLayerFields(
+        {} as any,
+        mockLayer,
+        "/data/test.bin"
+      );
       const byName = new Map(inferred.map((f) => [f.name, f.inferredType]));
 
-      assert.equal(byName.get('col_int'), 'integer');
-      assert.equal(byName.get('col_real'), 'real');
-      assert.equal(byName.get('col_date'), 'date');
-      assert.equal(byName.get('col_time'), 'time');
-      assert.equal(byName.get('col_datetime'), 'datetime');
-      assert.equal(byName.get('col_binary'), 'binary');
-      assert.equal(byName.get('col_str'), 'string');
-      assert.equal(byName.get('col_int_list'), 'integer[]');
-      assert.equal(byName.get('col_real_list'), 'real[]');
-      assert.equal(byName.get('col_str_list'), 'string[]');
+      assert.equal(byName.get("col_int"), "integer");
+      assert.equal(byName.get("col_real"), "real");
+      assert.equal(byName.get("col_date"), "date");
+      assert.equal(byName.get("col_time"), "time");
+      assert.equal(byName.get("col_datetime"), "datetime");
+      assert.equal(byName.get("col_binary"), "binary");
+      assert.equal(byName.get("col_str"), "string");
+      assert.equal(byName.get("col_int_list"), "integer[]");
+      assert.equal(byName.get("col_real_list"), "real[]");
+      assert.equal(byName.get("col_str_list"), "string[]");
     });
   });
 
-  describe('Ticket #139: Temporal Epoch MS Conversion and Complex Attribute Text Preservation', () => {
-    describe('parseDateOrDateTimeToEpochMs', () => {
-      it('converts date and datetime values to UTC Unix epoch milliseconds', () => {
+  describe("Ticket #139: Temporal Epoch MS Conversion and Complex Attribute Text Preservation", () => {
+    describe("parseDateOrDateTimeToEpochMs", () => {
+      it("converts date and datetime values to UTC Unix epoch milliseconds", () => {
         // ISO strings
-        assert.equal(parseDateOrDateTimeToEpochMs('2026-11-02'), 1793577600000);
-        assert.equal(parseDateOrDateTimeToEpochMs('2026-11-02T12:30:00Z'), 1793622600000);
-        assert.equal(parseDateOrDateTimeToEpochMs('2026-11-02 12:30:00'), 1793622600000);
-        assert.equal(parseDateOrDateTimeToEpochMs('2026/11/02'), 1793577600000);
+        assert.equal(parseDateOrDateTimeToEpochMs("2026-11-02"), 1793577600000);
+        assert.equal(
+          parseDateOrDateTimeToEpochMs("2026-11-02T12:30:00Z"),
+          1793622600000
+        );
+        assert.equal(
+          parseDateOrDateTimeToEpochMs("2026-11-02 12:30:00"),
+          1793622600000
+        );
+        assert.equal(parseDateOrDateTimeToEpochMs("2026/11/02"), 1793577600000);
 
         // Date object
-        const d = new Date('2026-11-02T00:00:00Z');
+        const d = new Date("2026-11-02T00:00:00Z");
         assert.equal(parseDateOrDateTimeToEpochMs(d), 1793577600000);
 
         // Numeric pass-through
-        assert.equal(parseDateOrDateTimeToEpochMs(1793577600000), 1793577600000);
+        assert.equal(
+          parseDateOrDateTimeToEpochMs(1793577600000),
+          1793577600000
+        );
 
         // GDAL date object
         assert.equal(
@@ -948,32 +1132,35 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         );
       });
 
-      it('disambiguates 8-character string values by rejecting colons', () => {
+      it("disambiguates 8-character string values by rejecting colons", () => {
         // 8-character compact date YYYYMMDD
-        assert.equal(parseDateOrDateTimeToEpochMs('20261102'), 1793577600000);
+        assert.equal(parseDateOrDateTimeToEpochMs("20261102"), 1793577600000);
 
         // 8-character time HH:MM:SS has a colon -> emits null
-        assert.equal(parseDateOrDateTimeToEpochMs('12:30:45'), null);
+        assert.equal(parseDateOrDateTimeToEpochMs("12:30:45"), null);
       });
 
-      it('emits null for corrupted, unparseable, or null values without throwing', () => {
+      it("emits null for corrupted, unparseable, or null values without throwing", () => {
         assert.equal(parseDateOrDateTimeToEpochMs(null), null);
         assert.equal(parseDateOrDateTimeToEpochMs(undefined), null);
-        assert.equal(parseDateOrDateTimeToEpochMs(''), null);
-        assert.equal(parseDateOrDateTimeToEpochMs('not_a_date'), null);
-        assert.equal(parseDateOrDateTimeToEpochMs('9999999999999999999999999999999'), null);
+        assert.equal(parseDateOrDateTimeToEpochMs(""), null);
+        assert.equal(parseDateOrDateTimeToEpochMs("not_a_date"), null);
+        assert.equal(
+          parseDateOrDateTimeToEpochMs("9999999999999999999999999999999"),
+          null
+        );
         assert.equal(parseDateOrDateTimeToEpochMs({ corrupted: true }), null);
         assert.equal(parseDateOrDateTimeToEpochMs(NaN), null);
         assert.equal(parseDateOrDateTimeToEpochMs(Infinity), null);
       });
     });
 
-    describe('parseTimeToMidnightMs', () => {
-      it('converts time values to integer milliseconds elapsed since midnight UTC', () => {
-        assert.equal(parseTimeToMidnightMs('00:00:00'), 0);
-        assert.equal(parseTimeToMidnightMs('12:30:45'), 45045000);
-        assert.equal(parseTimeToMidnightMs('23:59:59.999'), 86399999);
-        assert.equal(parseTimeToMidnightMs('14:30'), 52200000);
+    describe("parseTimeToMidnightMs", () => {
+      it("converts time values to integer milliseconds elapsed since midnight UTC", () => {
+        assert.equal(parseTimeToMidnightMs("00:00:00"), 0);
+        assert.equal(parseTimeToMidnightMs("12:30:45"), 45045000);
+        assert.equal(parseTimeToMidnightMs("23:59:59.999"), 86399999);
+        assert.equal(parseTimeToMidnightMs("14:30"), 52200000);
 
         // GDAL time object
         assert.equal(
@@ -985,87 +1172,106 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         assert.equal(parseTimeToMidnightMs(45045000), 45045000);
       });
 
-      it('disambiguates 8-character string values by requiring colons', () => {
+      it("disambiguates 8-character string values by requiring colons", () => {
         // 8-character time HH:MM:SS has a colon -> parses as time
-        assert.equal(parseTimeToMidnightMs('12:30:45'), 45045000);
+        assert.equal(parseTimeToMidnightMs("12:30:45"), 45045000);
 
         // 8-character compact date YYYYMMDD lacks colon -> emits null
-        assert.equal(parseTimeToMidnightMs('20261102'), null);
+        assert.equal(parseTimeToMidnightMs("20261102"), null);
       });
 
-      it('emits null for corrupted, unparseable, or null values without throwing', () => {
+      it("emits null for corrupted, unparseable, or null values without throwing", () => {
         assert.equal(parseTimeToMidnightMs(null), null);
         assert.equal(parseTimeToMidnightMs(undefined), null);
-        assert.equal(parseTimeToMidnightMs(''), null);
-        assert.equal(parseTimeToMidnightMs('invalid_time'), null);
-        assert.equal(parseTimeToMidnightMs('25:00:00'), null);
-        assert.equal(parseTimeToMidnightMs({ bad: 'object' }), null);
+        assert.equal(parseTimeToMidnightMs(""), null);
+        assert.equal(parseTimeToMidnightMs("invalid_time"), null);
+        assert.equal(parseTimeToMidnightMs("25:00:00"), null);
+        assert.equal(parseTimeToMidnightMs({ bad: "object" }), null);
         assert.equal(parseTimeToMidnightMs(-100), null);
         assert.equal(parseTimeToMidnightMs(90000000), null);
         assert.equal(parseTimeToMidnightMs(NaN), null);
       });
     });
 
-    describe('transformFeatureProperty', () => {
+    describe("transformFeatureProperty", () => {
       const fieldTypeMap = new Map([
-        ['created_date', 'date' as const],
-        ['updated_at', 'datetime' as const],
-        ['start_time', 'time' as const],
-        ['metadata_json', 'json' as const],
-        ['tags', 'string[]' as const],
-        ['scores', 'real[]' as const],
-        ['title', 'string' as const],
-        ['count', 'integer' as const],
+        ["created_date", "date" as const],
+        ["updated_at", "datetime" as const],
+        ["start_time", "time" as const],
+        ["metadata_json", "json" as const],
+        ["tags", "string[]" as const],
+        ["scores", "real[]" as const],
+        ["title", "string" as const],
+        ["count", "integer" as const],
       ]);
 
-      it('converts date and datetime fields to epoch milliseconds', () => {
+      it("converts date and datetime fields to epoch milliseconds", () => {
         assert.equal(
-          transformFeatureProperty('created_date', '20261102', fieldTypeMap),
+          transformFeatureProperty("created_date", "20261102", fieldTypeMap),
           1793577600000
         );
         assert.equal(
-          transformFeatureProperty('updated_at', '2026-11-02T12:30:00Z', fieldTypeMap),
+          transformFeatureProperty(
+            "updated_at",
+            "2026-11-02T12:30:00Z",
+            fieldTypeMap
+          ),
           1793622600000
         );
       });
 
-      it('converts time fields to milliseconds elapsed since midnight UTC', () => {
+      it("converts time fields to milliseconds elapsed since midnight UTC", () => {
         assert.equal(
-          transformFeatureProperty('start_time', '12:30:45', fieldTypeMap),
+          transformFeatureProperty("start_time", "12:30:45", fieldTypeMap),
           45045000
         );
       });
 
-      it('preserves json and array types as raw string text', () => {
+      it("preserves json and array types as raw string text", () => {
         // Objects to raw string
         assert.equal(
-          transformFeatureProperty('metadata_json', { mode: 'fast', level: 3 }, fieldTypeMap),
+          transformFeatureProperty(
+            "metadata_json",
+            { mode: "fast", level: 3 },
+            fieldTypeMap
+          ),
           '{"mode":"fast","level":3}'
         );
         // Already string stays string
         assert.equal(
-          transformFeatureProperty('metadata_json', '{"existing":"raw"}', fieldTypeMap),
+          transformFeatureProperty(
+            "metadata_json",
+            '{"existing":"raw"}',
+            fieldTypeMap
+          ),
           '{"existing":"raw"}'
         );
         // Array of strings to raw string
         assert.equal(
-          transformFeatureProperty('tags', ['gis', 'vector', 'cartouche'], fieldTypeMap),
+          transformFeatureProperty(
+            "tags",
+            ["gis", "vector", "cartouche"],
+            fieldTypeMap
+          ),
           '["gis","vector","cartouche"]'
         );
         // Array of numbers to raw string
         assert.equal(
-          transformFeatureProperty('scores', [1.5, 2.7, 9.9], fieldTypeMap),
-          '[1.5,2.7,9.9]'
+          transformFeatureProperty("scores", [1.5, 2.7, 9.9], fieldTypeMap),
+          "[1.5,2.7,9.9]"
         );
       });
 
-      it('passes through primitive types unchanged', () => {
-        assert.equal(transformFeatureProperty('title', 'Cartouche Map', fieldTypeMap), 'Cartouche Map');
-        assert.equal(transformFeatureProperty('count', 42, fieldTypeMap), 42);
+      it("passes through primitive types unchanged", () => {
+        assert.equal(
+          transformFeatureProperty("title", "Cartouche Map", fieldTypeMap),
+          "Cartouche Map"
+        );
+        assert.equal(transformFeatureProperty("count", 42, fieldTypeMap), 42);
       });
     });
 
-    describe('queryExtent WKB packet feature properties integration', () => {
+    describe("queryExtent WKB packet feature properties integration", () => {
       let engine: GeospatialEngine;
 
       beforeEach(async () => {
@@ -1076,18 +1282,18 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         engine.closeAll();
       });
 
-      it('converts temporal fields and preserves json/array text in queryExtent binary packet', async () => {
+      it("converts temporal fields and preserves json/array text in queryExtent binary packet", async () => {
         const geojson = JSON.stringify({
-          type: 'FeatureCollection',
+          type: "FeatureCollection",
           features: [
             {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [10, 20] },
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [10, 20] },
               properties: {
-                event_date: '2026-11-02',
-                event_time: '14:30:15',
-                event_dt: '2026-11-02T14:30:00Z',
-                tags_list: ['alpha', 'beta'],
+                event_date: "2026-11-02",
+                event_time: "14:30:15",
+                event_dt: "2026-11-02T14:30:00Z",
+                tags_list: ["alpha", "beta"],
                 data_json: { nested: { key: 123 } },
               },
             },
@@ -1097,33 +1303,35 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         const ds = gdal.open(geojson);
         const layer = ds.layers.get(0);
 
-        (engine as any).sessions.set('test-temporal-layer', {
+        (engine as any).sessions.set("test-temporal-layer", {
           dataset: ds,
           layer,
-          filePath: '/data/events.geojson',
+          filePath: "/data/events.geojson",
         });
 
-        const res = await engine.queryExtent('test-temporal-layer');
+        const res = await engine.queryExtent("test-temporal-layer");
         assert.equal(res.features.length, 1);
         const props = res.features[0].properties;
-        assert.ok(props, 'Properties must be defined');
+        assert.ok(props, "Properties must be defined");
 
         // Assert numeric epoch conversion for dates, datetimes, and times
-        assert.equal(typeof props.event_date, 'number');
+        assert.equal(typeof props.event_date, "number");
         assert.equal(props.event_date, 1793577600000);
 
-        assert.equal(typeof props.event_time, 'number');
+        assert.equal(typeof props.event_time, "number");
         assert.equal(props.event_time, 52215000);
 
-        assert.equal(typeof props.event_dt, 'number');
+        assert.equal(typeof props.event_dt, "number");
         assert.equal(props.event_dt, 1793629800000);
 
         // Assert raw text preservation for json and string[]
-        assert.equal(typeof props.tags_list, 'string');
+        assert.equal(typeof props.tags_list, "string");
         assert.equal(props.tags_list, '["alpha","beta"]');
 
-        assert.equal(typeof props.data_json, 'string');
-        assert.deepEqual(JSON.parse(props.data_json as string), { nested: { key: 123 } });
+        assert.equal(typeof props.data_json, "string");
+        assert.deepEqual(JSON.parse(props.data_json as string), {
+          nested: { key: 123 },
+        });
 
         // Assert binary packet contains serialized JSON properties
         const view = new DataView(res.buffer);
@@ -1137,20 +1345,28 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         const propsLen = view.getUint32(propsOffset, true);
         assert.ok(propsLen > 0);
 
-        const propsBuffer = new Uint8Array(res.buffer, propsOffset + 4, propsLen);
-        const deserializedPacketProps = JSON.parse(new TextDecoder().decode(propsBuffer));
+        const propsBuffer = new Uint8Array(
+          res.buffer,
+          propsOffset + 4,
+          propsLen
+        );
+        const deserializedPacketProps = JSON.parse(
+          new TextDecoder().decode(propsBuffer)
+        );
 
         assert.equal(deserializedPacketProps.event_date, 1793577600000);
         assert.equal(deserializedPacketProps.event_time, 52215000);
         assert.equal(deserializedPacketProps.event_dt, 1793629800000);
         assert.equal(deserializedPacketProps.tags_list, '["alpha","beta"]');
-        assert.equal(typeof deserializedPacketProps.data_json, 'string');
-        assert.deepEqual(JSON.parse(deserializedPacketProps.data_json), { nested: { key: 123 } });
+        assert.equal(typeof deserializedPacketProps.data_json, "string");
+        assert.deepEqual(JSON.parse(deserializedPacketProps.data_json), {
+          nested: { key: 123 },
+        });
       });
     });
   });
 
-  describe('Cooperative Background Verification Scanner (Ticket #142)', () => {
+  describe("Cooperative Background Verification Scanner (Ticket #142)", () => {
     let engine: GeospatialEngine;
 
     beforeEach(() => {
@@ -1161,143 +1377,207 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       engine.closeAll();
     });
 
-    it('processes non-geometry fields in batches of 500 features per tick via setImmediate', async () => {
-      await engine.openDataset('lakes-bg-test', lakesGeoJsonPath);
+    it("processes non-geometry fields in batches of 500 features per tick via setImmediate", async () => {
+      await engine.openDataset("lakes-bg-test", lakesGeoJsonPath);
       // Background scan starts automatically on openDataset
       // Verify background scan is running or runs cooperatively
-      const scanPromise = engine.startBackgroundScan('lakes-bg-test', 500);
-      assert.equal(engine.isBackgroundScanActive('lakes-bg-test'), true);
+      const scanPromise = engine.startBackgroundScan("lakes-bg-test", 500);
+      assert.equal(engine.isBackgroundScanActive("lakes-bg-test"), true);
       await scanPromise;
-      assert.equal(engine.isBackgroundScanActive('lakes-bg-test'), false);
+      assert.equal(engine.isBackgroundScanActive("lakes-bg-test"), false);
     });
 
-    it('viewport extent queries take immediate execution priority over in-progress background scans', async () => {
-      await engine.openDataset('lakes-priority-test', lakesGeoJsonPath);
-      const scanPromise = engine.startBackgroundScan('lakes-priority-test', 200);
+    it("viewport extent queries take immediate execution priority over in-progress background scans", async () => {
+      await engine.openDataset("lakes-priority-test", lakesGeoJsonPath);
+      const scanPromise = engine.startBackgroundScan(
+        "lakes-priority-test",
+        200
+      );
 
       // Execute viewport extent query while scan is in flight
-      const queryRes = await engine.queryExtent('lakes-priority-test', [-180, -90, 180, 90]);
+      const queryRes = await engine.queryExtent(
+        "lakes-priority-test",
+        [-180, -90, 180, 90]
+      );
       assert.ok(queryRes.features.length > 0);
       assert.ok(queryRes.buffer.byteLength > 0);
 
       await scanPromise;
     });
 
-    it('closing a layer or closing all cancels active background scan immediately', async () => {
-      await engine.openDataset('lakes-cancel-test', lakesGeoJsonPath);
-      engine.startBackgroundScan('lakes-cancel-test', 100);
-      assert.equal(engine.isBackgroundScanActive('lakes-cancel-test'), true);
+    it("closing a layer or closing all cancels active background scan immediately", async () => {
+      await engine.openDataset("lakes-cancel-test", lakesGeoJsonPath);
+      engine.startBackgroundScan("lakes-cancel-test", 100);
+      assert.equal(engine.isBackgroundScanActive("lakes-cancel-test"), true);
 
-      engine.closeDataset('lakes-cancel-test');
-      assert.equal(engine.isBackgroundScanActive('lakes-cancel-test'), false);
+      engine.closeDataset("lakes-cancel-test");
+      assert.equal(engine.isBackgroundScanActive("lakes-cancel-test"), false);
 
-      await engine.openDataset('lakes-cancel-all', lakesGeoJsonPath);
-      engine.startBackgroundScan('lakes-cancel-all', 100);
-      assert.equal(engine.isBackgroundScanActive('lakes-cancel-all'), true);
+      await engine.openDataset("lakes-cancel-all", lakesGeoJsonPath);
+      engine.startBackgroundScan("lakes-cancel-all", 100);
+      assert.equal(engine.isBackgroundScanActive("lakes-cancel-all"), true);
 
       engine.closeAll();
-      assert.equal(engine.isBackgroundScanActive('lakes-cancel-all'), false);
+      assert.equal(engine.isBackgroundScanActive("lakes-cancel-all"), false);
     });
 
-    it('demotes inferredType to compatible fallback (real or string) when data anomaly is encountered', () => {
+    it("demotes inferredType to compatible fallback (real or string) when data anomaly is encountered", () => {
       // 1. Integer with float -> real
-      const intField1 = { name: 'f1', nativeType: 'Integer', inferredType: 'integer' as const };
+      const intField1 = {
+        name: "f1",
+        nativeType: "Integer",
+        inferredType: "integer" as const,
+      };
       assert.equal(engine.validateAndDemoteField(intField1, 12.34), true);
-      assert.equal(intField1.inferredType, 'real');
+      assert.equal(intField1.inferredType, "real");
 
       // 2. Integer with text -> string
-      const intField2 = { name: 'f2', nativeType: 'Integer', inferredType: 'integer' as const };
-      assert.equal(engine.validateAndDemoteField(intField2, 'invalid_text'), true);
-      assert.equal(intField2.inferredType, 'string');
+      const intField2 = {
+        name: "f2",
+        nativeType: "Integer",
+        inferredType: "integer" as const,
+      };
+      assert.equal(
+        engine.validateAndDemoteField(intField2, "invalid_text"),
+        true
+      );
+      assert.equal(intField2.inferredType, "string");
 
       // 3. Real with non-numeric text -> string
-      const realField = { name: 'f3', nativeType: 'Real', inferredType: 'real' as const };
-      assert.equal(engine.validateAndDemoteField(realField, 'not_a_number'), true);
-      assert.equal(realField.inferredType, 'string');
+      const realField = {
+        name: "f3",
+        nativeType: "Real",
+        inferredType: "real" as const,
+      };
+      assert.equal(
+        engine.validateAndDemoteField(realField, "not_a_number"),
+        true
+      );
+      assert.equal(realField.inferredType, "string");
 
       // 4. Boolean with integer > 1 -> integer
-      const boolField1 = { name: 'f4', nativeType: 'Integer', inferredType: 'boolean' as const };
+      const boolField1 = {
+        name: "f4",
+        nativeType: "Integer",
+        inferredType: "boolean" as const,
+      };
       assert.equal(engine.validateAndDemoteField(boolField1, 42), true);
-      assert.equal(boolField1.inferredType, 'integer');
+      assert.equal(boolField1.inferredType, "integer");
 
       // 5. Boolean with arbitrary string -> string
-      const boolField2 = { name: 'f5', nativeType: 'String', inferredType: 'boolean' as const };
-      assert.equal(engine.validateAndDemoteField(boolField2, 'maybe'), true);
-      assert.equal(boolField2.inferredType, 'string');
+      const boolField2 = {
+        name: "f5",
+        nativeType: "String",
+        inferredType: "boolean" as const,
+      };
+      assert.equal(engine.validateAndDemoteField(boolField2, "maybe"), true);
+      assert.equal(boolField2.inferredType, "string");
 
       // 6. Date with invalid date -> string
-      const dateField = { name: 'f6', nativeType: 'String', inferredType: 'date' as const };
-      assert.equal(engine.validateAndDemoteField(dateField, 'not-a-valid-date'), true);
-      assert.equal(dateField.inferredType, 'string');
+      const dateField = {
+        name: "f6",
+        nativeType: "String",
+        inferredType: "date" as const,
+      };
+      assert.equal(
+        engine.validateAndDemoteField(dateField, "not-a-valid-date"),
+        true
+      );
+      assert.equal(dateField.inferredType, "string");
 
       // 7. Time with invalid time -> string
-      const timeField = { name: 'f7', nativeType: 'String', inferredType: 'time' as const };
-      assert.equal(engine.validateAndDemoteField(timeField, 'not-a-valid-time'), true);
-      assert.equal(timeField.inferredType, 'string');
+      const timeField = {
+        name: "f7",
+        nativeType: "String",
+        inferredType: "time" as const,
+      };
+      assert.equal(
+        engine.validateAndDemoteField(timeField, "not-a-valid-time"),
+        true
+      );
+      assert.equal(timeField.inferredType, "string");
 
       // 8. UUID with non-uuid -> string
-      const uuidField = { name: 'f8', nativeType: 'String', inferredType: 'uuid' as const };
-      assert.equal(engine.validateAndDemoteField(uuidField, '12345'), true);
-      assert.equal(uuidField.inferredType, 'string');
+      const uuidField = {
+        name: "f8",
+        nativeType: "String",
+        inferredType: "uuid" as const,
+      };
+      assert.equal(engine.validateAndDemoteField(uuidField, "12345"), true);
+      assert.equal(uuidField.inferredType, "string");
 
       // 9. JSON with corrupted JSON -> string
-      const jsonField = { name: 'f9', nativeType: 'String', inferredType: 'json' as const };
-      assert.equal(engine.validateAndDemoteField(jsonField, '{invalid_json'), true);
-      assert.equal(jsonField.inferredType, 'string');
+      const jsonField = {
+        name: "f9",
+        nativeType: "String",
+        inferredType: "json" as const,
+      };
+      assert.equal(
+        engine.validateAndDemoteField(jsonField, "{invalid_json"),
+        true
+      );
+      assert.equal(jsonField.inferredType, "string");
 
       // 10. String cannot be demoted
-      const stringField = { name: 'f10', nativeType: 'String', inferredType: 'string' as const };
+      const stringField = {
+        name: "f10",
+        nativeType: "String",
+        inferredType: "string" as const,
+      };
       assert.equal(engine.validateAndDemoteField(stringField, 1234), false);
-      assert.equal(stringField.inferredType, 'string');
+      assert.equal(stringField.inferredType, "string");
     });
 
-    it('shields fields with userOverridden === true from automatic demotion', () => {
+    it("shields fields with userOverridden === true from automatic demotion", () => {
       const intField = {
-        name: 'user_int',
-        nativeType: 'Integer',
-        inferredType: 'integer' as const,
-        userOverridden: true
+        name: "user_int",
+        nativeType: "Integer",
+        inferredType: "integer" as const,
+        userOverridden: true,
       };
       assert.equal(engine.validateAndDemoteField(intField, 99.99), false);
-      assert.equal(intField.inferredType, 'integer');
-      assert.equal(engine.validateAndDemoteField(intField, 'broken'), false);
-      assert.equal(intField.inferredType, 'integer');
+      assert.equal(intField.inferredType, "integer");
+      assert.equal(engine.validateAndDemoteField(intField, "broken"), false);
+      assert.equal(intField.inferredType, "integer");
 
       const realField = {
-        name: 'user_real',
-        nativeType: 'Real',
-        inferredType: 'real' as const,
-        userOverridden: true
+        name: "user_real",
+        nativeType: "Real",
+        inferredType: "real" as const,
+        userOverridden: true,
       };
-      assert.equal(engine.validateAndDemoteField(realField, 'corrupted'), false);
-      assert.equal(realField.inferredType, 'real');
+      assert.equal(
+        engine.validateAndDemoteField(realField, "corrupted"),
+        false
+      );
+      assert.equal(realField.inferredType, "real");
     });
 
-    it('preference toggle disables active scans and prevents new scans', async () => {
+    it("preference toggle disables active scans and prevents new scans", async () => {
       engine.setBackgroundScanEnabled(false);
       assert.equal(engine.backgroundScanEnabled, false);
 
-      await engine.openDataset('lakes-disabled-scan', lakesGeoJsonPath);
-      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), false);
+      await engine.openDataset("lakes-disabled-scan", lakesGeoJsonPath);
+      assert.equal(engine.isBackgroundScanActive("lakes-disabled-scan"), false);
 
       // Explicit scan attempt also respects toggle
-      await engine.startBackgroundScan('lakes-disabled-scan');
-      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), false);
+      await engine.startBackgroundScan("lakes-disabled-scan");
+      assert.equal(engine.isBackgroundScanActive("lakes-disabled-scan"), false);
 
       // Re-enabling allows scan to start
       engine.setBackgroundScanEnabled(true);
-      const scanP = engine.startBackgroundScan('lakes-disabled-scan', 500);
-      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), true);
+      const scanP = engine.startBackgroundScan("lakes-disabled-scan", 500);
+      assert.equal(engine.isBackgroundScanActive("lakes-disabled-scan"), true);
 
       // Toggling off while scan is in-progress cancels it immediately
       engine.setBackgroundScanEnabled(false);
-      assert.equal(engine.isBackgroundScanActive('lakes-disabled-scan'), false);
+      assert.equal(engine.isBackgroundScanActive("lakes-disabled-scan"), false);
       await scanP;
     });
 
-    it('triggers onFieldDemoted callback when anomaly is detected during background scan', async () => {
+    it("triggers onFieldDemoted callback when anomaly is detected during background scan", async () => {
       let demotedCallbackFired = false;
-      let demotedLayerId = '';
+      let demotedLayerId = "";
       let demotedFields: any[] = [];
 
       engine.onFieldDemoted = (layerId, fields) => {
@@ -1306,48 +1586,48 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
         demotedFields = fields;
       };
 
-      await engine.openDataset('lakes-demote-event', lakesGeoJsonPath);
-      engine.cancelBackgroundScan('lakes-demote-event');
-      const session = (engine as any).sessions.get('lakes-demote-event');
-      const nameField = session?.fields?.find((f: any) => f.name === 'name');
+      await engine.openDataset("lakes-demote-event", lakesGeoJsonPath);
+      engine.cancelBackgroundScan("lakes-demote-event");
+      const session = (engine as any).sessions.get("lakes-demote-event");
+      const nameField = session?.fields?.find((f: any) => f.name === "name");
       if (nameField) {
-        nameField.inferredType = 'integer';
+        nameField.inferredType = "integer";
         nameField.userOverridden = false;
       }
 
-      await engine.startBackgroundScan('lakes-demote-event', 200);
+      await engine.startBackgroundScan("lakes-demote-event", 200);
 
       assert.equal(demotedCallbackFired, true);
-      assert.equal(demotedLayerId, 'lakes-demote-event');
-      const updatedNameField = demotedFields.find(f => f.name === 'name');
-      assert.equal(updatedNameField?.inferredType, 'string');
+      assert.equal(demotedLayerId, "lakes-demote-event");
+      const updatedNameField = demotedFields.find((f) => f.name === "name");
+      assert.equal(updatedNameField?.inferredType, "string");
     });
   });
 
-  describe('Pagination (start/max), Feature ID Filtering, and Staged Edit Interception', () => {
+  describe("Pagination (start/max), Feature ID Filtering, and Staged Edit Interception", () => {
     let engine: GeospatialEngine;
 
     beforeEach(async () => {
       engine = new GeospatialEngine();
       engine.setBackgroundScanEnabled(false);
-      await engine.openDataset('lakes-paginated', lakesShpPath);
+      await engine.openDataset("lakes-paginated", lakesShpPath);
     });
 
     afterEach(() => {
       engine.closeAll();
     });
 
-    it('slices returned features and binary buffer using start and max options while reporting totalMatched', async () => {
-      const fullResult = await engine.queryExtent('lakes-paginated', {
-        extent: [-100, 40, -80, 50]
+    it("slices returned features and binary buffer using start and max options while reporting totalMatched", async () => {
+      const fullResult = await engine.queryExtent("lakes-paginated", {
+        extent: [-100, 40, -80, 50],
       });
       assert.equal(fullResult.features.length, 34);
       assert.equal(fullResult.totalMatched, 34);
 
-      const page1 = await engine.queryExtent('lakes-paginated', {
+      const page1 = await engine.queryExtent("lakes-paginated", {
         extent: [-100, 40, -80, 50],
         start: 0,
-        max: 10
+        max: 10,
       });
       assert.equal(page1.features.length, 10);
       assert.equal(page1.totalMatched, 34);
@@ -1360,10 +1640,10 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       const view1 = new DataView(page1.buffer);
       assert.equal(view1.getUint32(8, true), 10);
 
-      const page4 = await engine.queryExtent('lakes-paginated', {
+      const page4 = await engine.queryExtent("lakes-paginated", {
         extent: [-100, 40, -80, 50],
         start: 30,
-        max: 10
+        max: 10,
       });
       assert.equal(page4.features.length, 4);
       assert.equal(page4.totalMatched, 34);
@@ -1373,22 +1653,22 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       );
     });
 
-    it('filters features by featureIds whitelist combined with start and max pagination', async () => {
-      const allInExtent = await engine.queryExtent('lakes-paginated', {
-        extent: [-100, 40, -80, 50]
+    it("filters features by featureIds whitelist combined with start and max pagination", async () => {
+      const allInExtent = await engine.queryExtent("lakes-paginated", {
+        extent: [-100, 40, -80, 50],
       });
       const targetIds = [
         allInExtent.features[1].id,
         allInExtent.features[3].id,
         allInExtent.features[5].id,
-        allInExtent.features[7].id
+        allInExtent.features[7].id,
       ];
 
-      const filtered = await engine.queryExtent('lakes-paginated', {
+      const filtered = await engine.queryExtent("lakes-paginated", {
         extent: [-100, 40, -80, 50],
         featureIds: targetIds,
         start: 1,
-        max: 2
+        max: 2,
       });
 
       assert.equal(filtered.totalMatched, 4);
@@ -1399,73 +1679,76 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       );
     });
 
-    it('intercepts features as they are read, applies staged property edits, appends new features, and clears on clearLayerEdits', async () => {
-      const page1Before = await engine.queryExtent('lakes-paginated', {
+    it("intercepts features as they are read, applies staged property edits, appends new features, and clears on clearLayerEdits", async () => {
+      const page1Before = await engine.queryExtent("lakes-paginated", {
         start: 0,
-        max: 5
+        max: 5,
       });
       const targetFeature = page1Before.features[2];
       const originalName = targetFeature.properties?.name;
 
       // Stage an edit on feature at index 2 and add a new feature
-      engine.stageFeatureEdit('lakes-paginated', {
+      engine.stageFeatureEdit("lakes-paginated", {
         id: targetFeature.id,
-        properties: { name: 'Edited Lake Name' }
+        properties: { name: "Edited Lake Name" },
       });
-      engine.stageFeatureEdit('lakes-paginated', {
+      engine.stageFeatureEdit("lakes-paginated", {
         id: 999999,
         isNew: true,
-        properties: { name: 'Brand New Lake', scalerank: 1 }
+        properties: { name: "Brand New Lake", scalerank: 1 },
       });
 
       // Query first chunk and verify modified feature is intercepted
-      const page1After = await engine.queryExtent('lakes-paginated', {
+      const page1After = await engine.queryExtent("lakes-paginated", {
         start: 0,
-        max: 5
+        max: 5,
       });
       assert.equal(page1After.totalMatched, 1354);
-      assert.equal(page1After.features[2].properties?.name, 'Edited Lake Name');
+      assert.equal(page1After.features[2].properties?.name, "Edited Lake Name");
 
       // Query end of stream and verify newly added feature is appended at index 1353
-      const lastPage = await engine.queryExtent('lakes-paginated', {
+      const lastPage = await engine.queryExtent("lakes-paginated", {
         start: 1350,
-        max: 10
+        max: 10,
       });
       assert.equal(lastPage.totalMatched, 1354);
       assert.equal(lastPage.features.length, 4);
       const addedFeature = lastPage.features[3];
       assert.equal(addedFeature.id, 999999);
-      assert.equal(addedFeature.properties?.name, 'Brand New Lake');
+      assert.equal(addedFeature.properties?.name, "Brand New Lake");
 
       // Clear edits and verify original state is restored
-      engine.clearLayerEdits('lakes-paginated');
-      const page1Cleared = await engine.queryExtent('lakes-paginated', {
+      engine.clearLayerEdits("lakes-paginated");
+      const page1Cleared = await engine.queryExtent("lakes-paginated", {
         start: 0,
-        max: 5
+        max: 5,
       });
       assert.equal(page1Cleared.totalMatched, 1353);
       assert.equal(page1Cleared.features[2].properties?.name, originalName);
     });
   });
 
-  describe('Sorted Feature Queries via GDAL SQL (Ticket #238)', () => {
-    const timelineGpkgPath = path.resolve(__dirname, '../../data/timeline_level_0.gpkg');
+  describe("Sorted Feature Queries via GDAL SQL (Ticket #238)", () => {
+    const timelineGpkgPath = path.resolve(
+      __dirname,
+      "../../data/timeline_level_0.gpkg"
+    );
 
     beforeEach(async () => {
-      await engine.openDataset('timeline-test', timelineGpkgPath);
+      await engine.openDataset("timeline-test", timelineGpkgPath);
     });
 
     afterEach(() => {
       engine.closeAll();
     });
 
-    it('queries earliest and latest feature bounds using single-key orderBy Sort Keys', async () => {
+    it("queries earliest and latest feature bounds using single-key orderBy Sort Keys", async () => {
       // Query earliest bound: ASC limit 1
-      const ascResult = await engine.queryExtent('timeline-test', {
-        orderBy: [['start_date', 'ASC']],
+      const ascResult = await engine.queryExtent("timeline-test", {
+        orderBy: [["start_date", "ASC"]],
         max: 1,
         includeGeometry: false,
-        fields: ['start_date', 'names']
+        fields: ["start_date", "names"],
       });
 
       assert.equal(ascResult.features.length, 1);
@@ -1475,11 +1758,11 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
       assert.ok(ascResult.features[0].properties.start_date !== undefined);
 
       // Query latest bound: DESC limit 1
-      const descResult = await engine.queryExtent('timeline-test', {
-        orderBy: [['end_date', 'DESC']],
+      const descResult = await engine.queryExtent("timeline-test", {
+        orderBy: [["end_date", "DESC"]],
         max: 1,
         includeGeometry: false,
-        fields: ['end_date', 'names']
+        fields: ["end_date", "names"],
       });
 
       assert.equal(descResult.features.length, 1);
@@ -1496,12 +1779,12 @@ describe('GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)'
  * @type {Array<[string, number]>}
  */
 const SORT_KEY_ROWS: Array<[string, number]> = [
-  ['B', 1],
-  ['A', 2],
-  ['A', 1],
-  ['B', 1],
-  ['A', 2],
-  ['A', 3],
+  ["B", 1],
+  ["A", 2],
+  ["A", 1],
+  ["B", 1],
+  ["A", 2],
+  ["A", 3],
 ];
 
 /**
@@ -1511,15 +1794,22 @@ const SORT_KEY_ROWS: Array<[string, number]> = [
  * @param {string} filePath - Dataset path to create.
  * @returns {gdal.Dataset} The open, writable dataset.
  */
-const createSortKeyFixture = (driver: string, filePath: string): gdal.Dataset => {
-  const dataset = gdal.open(filePath, 'w', driver);
-  const layer = dataset.layers.create('sort_keys', gdal.SpatialReference.fromEPSG(4326), gdal.wkbPoint);
-  layer.fields.add(new gdal.FieldDefn('category', gdal.OFTString));
-  layer.fields.add(new gdal.FieldDefn('priority', gdal.OFTInteger));
+const createSortKeyFixture = (
+  driver: string,
+  filePath: string
+): gdal.Dataset => {
+  const dataset = gdal.open(filePath, "w", driver);
+  const layer = dataset.layers.create(
+    "sort_keys",
+    gdal.SpatialReference.fromEPSG(4326),
+    gdal.wkbPoint
+  );
+  layer.fields.add(new gdal.FieldDefn("category", gdal.OFTString));
+  layer.fields.add(new gdal.FieldDefn("priority", gdal.OFTInteger));
   SORT_KEY_ROWS.forEach(([category, priority], index) => {
     const feature = new gdal.Feature(layer);
-    feature.fields.set('category', category);
-    feature.fields.set('priority', priority);
+    feature.fields.set("category", category);
+    feature.fields.set("priority", priority);
     feature.setGeometry(new gdal.Point(index, index));
     layer.features.add(feature);
   });
@@ -1540,8 +1830,13 @@ type TestSessionView = { dataset: gdal.Dataset; fields?: LayerFieldInfo[] };
  * @param {string} layerId - Session layer identifier.
  * @returns {TestSessionView} The session.
  */
-const sessionOf = (engine: GeospatialEngine, layerId: string): TestSessionView =>
-  fromAny<{ sessions: Map<string, TestSessionView> }, GeospatialEngine>(engine).sessions.get(layerId)!;
+const sessionOf = (
+  engine: GeospatialEngine,
+  layerId: string
+): TestSessionView =>
+  fromAny<{ sessions: Map<string, TestSessionView> }, GeospatialEngine>(
+    engine
+  ).sessions.get(layerId)!;
 
 /**
  * @function recordSessionSql
@@ -1559,7 +1854,11 @@ const recordSessionSql = (
   const session = (engine as any).sessions.get(layerId);
   const original = (engine as any).executeSessionSql.bind(engine);
   const statements: string[] = [];
-  (engine as any).executeSessionSql = (target: unknown, sql: string, ...rest: unknown[]) => {
+  (engine as any).executeSessionSql = (
+    target: unknown,
+    sql: string,
+    ...rest: unknown[]
+  ) => {
     const recorded = target === session ? select(sql) : null;
     if (recorded !== null) {
       statements.push(recorded);
@@ -1576,82 +1875,147 @@ const recordSessionSql = (
  * @param {string} layerId - Session layer identifier.
  * @returns {string[]} Live list of recorded ORDER BY statements (window stripped).
  */
-const recordOrderBySql = (engine: GeospatialEngine, layerId: string): string[] =>
+const recordOrderBySql = (
+  engine: GeospatialEngine,
+  layerId: string
+): string[] =>
   recordSessionSql(engine, layerId, (sql) =>
-    sql.includes('ORDER BY') ? sql.replace(/ LIMIT -?\d+ OFFSET \d+$/, '') : null
+    sql.includes("ORDER BY") ?
+      sql.replace(/ LIMIT -?\d+ OFFSET \d+$/, "")
+    : null
   );
 
-describe('buildOrderBySql (Ticket #334)', () => {
-  const schema = ['category', 'priority', 'na"me'];
+describe("buildOrderBySql (Ticket #334)", () => {
+  const schema = ["category", "priority", 'na"me'];
 
-  it('returns null for a missing or empty orderBy', () => {
-    assert.equal(buildOrderBySql('t', undefined, schema, 'fid', 'SQLITE'), null);
-    assert.equal(buildOrderBySql('t', [], schema, 'fid', 'SQLITE'), null);
+  it("returns null for a missing or empty orderBy", () => {
+    assert.equal(
+      buildOrderBySql("t", undefined, schema, "fid", "SQLITE"),
+      null
+    );
+    assert.equal(buildOrderBySql("t", [], schema, "fid", "SQLITE"), null);
   });
 
-  it('builds a quoted multi-column ORDER BY with the stored ID column tiebreaker', () => {
+  it("builds a quoted multi-column ORDER BY with the stored ID column tiebreaker", () => {
     assert.equal(
-      buildOrderBySql('my "layer"', [['category', 'ASC'], ['na"me', 'DESC']], schema, 'fid', 'SQLITE'),
+      buildOrderBySql(
+        'my "layer"',
+        [
+          ["category", "ASC"],
+          ['na"me', "DESC"],
+        ],
+        schema,
+        "fid",
+        "SQLITE"
+      ),
       'SELECT * FROM "my ""layer""" ORDER BY "category" ASC, "na""me" DESC, "fid" ASC'
     );
   });
 
-  it('escapes identifiers for OGR SQL with backslashes instead of doubled quotes (Ticket #340)', () => {
+  it("escapes identifiers for OGR SQL with backslashes instead of doubled quotes (Ticket #340)", () => {
     assert.equal(
-      buildOrderBySql('my "layer"', [['na"me', 'DESC']], schema, '', 'OGRSQL'),
+      buildOrderBySql('my "layer"', [['na"me', "DESC"]], schema, "", "OGRSQL"),
       'SELECT * FROM "my \\"layer\\"" ORDER BY "na\\"me" DESC, FID ASC'
     );
   });
 
-  it('uses OGR SQL FID as the tiebreaker when the layer has no stored ID column name', () => {
+  it("uses OGR SQL FID as the tiebreaker when the layer has no stored ID column name", () => {
     assert.equal(
-      buildOrderBySql('t', [['priority', 'DESC']], schema, '', 'OGRSQL'),
+      buildOrderBySql("t", [["priority", "DESC"]], schema, "", "OGRSQL"),
       'SELECT * FROM "t" ORDER BY "priority" DESC, FID ASC'
     );
   });
 
-  it('accepts the stored ID column as a Sort Key and skips the tiebreaker', () => {
+  it("accepts the stored ID column as a Sort Key and skips the tiebreaker", () => {
     assert.equal(
-      buildOrderBySql('t', [['category', 'ASC'], ['fid', 'DESC']], schema, 'fid', 'SQLITE'),
+      buildOrderBySql(
+        "t",
+        [
+          ["category", "ASC"],
+          ["fid", "DESC"],
+        ],
+        schema,
+        "fid",
+        "SQLITE"
+      ),
       'SELECT * FROM "t" ORDER BY "category" ASC, "fid" DESC'
     );
   });
 
-  it('rejects unknown, case-mismatched, and Virtual Field names with an error naming the field', () => {
-    assert.throws(() => buildOrderBySql('t', [['nope', 'ASC']], schema, 'fid', 'SQLITE'), /"nope"/);
-    assert.throws(() => buildOrderBySql('t', [['Category', 'ASC']], schema, 'fid', 'SQLITE'), /"Category"/);
-    assert.throws(() => buildOrderBySql('t', [['FID', 'ASC']], schema, '', 'OGRSQL'), /"FID"/);
+  it("rejects unknown, case-mismatched, and Virtual Field names with an error naming the field", () => {
+    assert.throws(
+      () => buildOrderBySql("t", [["nope", "ASC"]], schema, "fid", "SQLITE"),
+      /"nope"/
+    );
+    assert.throws(
+      () =>
+        buildOrderBySql("t", [["Category", "ASC"]], schema, "fid", "SQLITE"),
+      /"Category"/
+    );
+    assert.throws(
+      () => buildOrderBySql("t", [["FID", "ASC"]], schema, "", "OGRSQL"),
+      /"FID"/
+    );
   });
 
-  it('rejects a repeated field with an error naming the field', () => {
+  it("rejects a repeated field with an error naming the field", () => {
     assert.throws(
-      () => buildOrderBySql('t', [['category', 'ASC'], ['priority', 'ASC'], ['category', 'DESC']], schema, 'fid', 'SQLITE'),
+      () =>
+        buildOrderBySql(
+          "t",
+          [
+            ["category", "ASC"],
+            ["priority", "ASC"],
+            ["category", "DESC"],
+          ],
+          schema,
+          "fid",
+          "SQLITE"
+        ),
       /repeated.*"category"/i
     );
   });
 
-  it('rejects a Sort Key without a valid direction with an error naming the field', () => {
-    assert.throws(() => buildOrderBySql('t', fromAny([['category']]), schema, 'fid', 'SQLITE'), /"category"/);
-    assert.throws(() => buildOrderBySql('t', fromAny([['category', 'asc']]), schema, 'fid', 'SQLITE'), /"category"/);
-    assert.throws(() => buildOrderBySql('t', fromAny(['category']), schema, 'fid', 'SQLITE'), /Sort Key/);
+  it("rejects a Sort Key without a valid direction with an error naming the field", () => {
+    assert.throws(
+      () =>
+        buildOrderBySql("t", fromAny([["category"]]), schema, "fid", "SQLITE"),
+      /"category"/
+    );
+    assert.throws(
+      () =>
+        buildOrderBySql(
+          "t",
+          fromAny([["category", "asc"]]),
+          schema,
+          "fid",
+          "SQLITE"
+        ),
+      /"category"/
+    );
+    assert.throws(
+      () =>
+        buildOrderBySql("t", fromAny(["category"]), schema, "fid", "SQLITE"),
+      /Sort Key/
+    );
   });
 
-  it('keeps the OGR SQL FID tiebreaker when a Sort Key names an attribute field called FID and the layer has no stored ID column', () => {
+  it("keeps the OGR SQL FID tiebreaker when a Sort Key names an attribute field called FID and the layer has no stored ID column", () => {
     assert.equal(
-      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], '', 'OGRSQL'),
+      buildOrderBySql("t", [["FID", "DESC"]], ["FID", "name"], "", "OGRSQL"),
       'SELECT * FROM "t" ORDER BY "FID" DESC, FID ASC'
     );
   });
 
-  it('skips the tiebreaker only for the stored ID column, not for an attribute field that shares its name in another case', () => {
+  it("skips the tiebreaker only for the stored ID column, not for an attribute field that shares its name in another case", () => {
     assert.equal(
-      buildOrderBySql('t', [['FID', 'DESC']], ['FID', 'name'], 'fid', 'SQLITE'),
+      buildOrderBySql("t", [["FID", "DESC"]], ["FID", "name"], "fid", "SQLITE"),
       'SELECT * FROM "t" ORDER BY "FID" DESC, "fid" ASC'
     );
   });
 });
 
-describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', () => {
+describe("Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)", () => {
   /**
    * @description Expected row indexes into {@link SORT_KEY_ROWS} for `category ASC, priority DESC` with an ascending ID tiebreaker.
    * @type {number[]}
@@ -1670,7 +2034,7 @@ describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', ()
   beforeEach(() => {
     engine = new GeospatialEngine();
     engine.setBackgroundScanEnabled(false);
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-sort-keys-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-sort-keys-"));
   });
 
   afterEach(() => {
@@ -1689,36 +2053,36 @@ describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', ()
     open: (layerId: string) => Promise<void>;
   }> = [
     {
-      name: 'GeoPackage',
+      name: "GeoPackage",
       firstFid: 1,
       tiebreaker: ', "fid" ASC',
       open: async (layerId) => {
-        const filePath = path.join(tempDir, 'sort_keys.gpkg');
-        createSortKeyFixture('GPKG', filePath).close();
+        const filePath = path.join(tempDir, "sort_keys.gpkg");
+        createSortKeyFixture("GPKG", filePath).close();
         await engine.openDataset(layerId, filePath);
       },
     },
     {
-      name: 'Shapefile',
+      name: "Shapefile",
       firstFid: 0,
-      tiebreaker: ', FID ASC',
+      tiebreaker: ", FID ASC",
       open: async (layerId) => {
-        const filePath = path.join(tempDir, 'sort_keys.shp');
-        createSortKeyFixture('ESRI Shapefile', filePath).close();
+        const filePath = path.join(tempDir, "sort_keys.shp");
+        createSortKeyFixture("ESRI Shapefile", filePath).close();
         await engine.openDataset(layerId, filePath);
       },
     },
     {
-      name: 'Memory',
+      name: "Memory",
       firstFid: 0,
-      tiebreaker: ', FID ASC',
+      tiebreaker: ", FID ASC",
       open: async (layerId) => {
-        const dataset = createSortKeyFixture('Memory', 'sort_keys');
+        const dataset = createSortKeyFixture("Memory", "sort_keys");
         (engine as any).sessions.set(layerId, {
           dataset,
           layer: dataset.layers.get(0),
-          filePath: 'sort_keys',
-          fidColumn: '',
+          filePath: "sort_keys",
+          fidColumn: "",
         });
       },
     },
@@ -1729,21 +2093,38 @@ describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', ()
       const layerId = `sort-keys-${format.name}`;
       const ids = (rows: number[]) => rows.map((row) => row + format.firstFid);
 
-      it('orders by several columns, earlier keys first, and pages stably', async () => {
+      it("orders by several columns, earlier keys first, and pages stably", async () => {
         await format.open(layerId);
         const statements = recordOrderBySql(engine, layerId);
-        const orderBy: QueryExtentOptions['orderBy'] = [['category', 'ASC'], ['priority', 'DESC']];
+        const orderBy: QueryExtentOptions["orderBy"] = [
+          ["category", "ASC"],
+          ["priority", "DESC"],
+        ];
 
-        const full = await engine.queryExtent(layerId, { orderBy, includeGeometry: false });
-        assert.deepEqual(full.features.map((f) => Number(f.id)), ids(CATEGORY_ASC_PRIORITY_DESC));
+        const full = await engine.queryExtent(layerId, {
+          orderBy,
+          includeGeometry: false,
+        });
         assert.deepEqual(
-          full.features.map((f) => [f.properties?.category, f.properties?.priority]),
+          full.features.map((f) => Number(f.id)),
+          ids(CATEGORY_ASC_PRIORITY_DESC)
+        );
+        assert.deepEqual(
+          full.features.map((f) => [
+            f.properties?.category,
+            f.properties?.priority,
+          ]),
           CATEGORY_ASC_PRIORITY_DESC.map((row) => SORT_KEY_ROWS[row])
         );
 
         const paged: number[] = [];
         for (let start = 0; start < SORT_KEY_ROWS.length; start += 2) {
-          const page = await engine.queryExtent(layerId, { orderBy, start, max: 2, includeGeometry: false });
+          const page = await engine.queryExtent(layerId, {
+            orderBy,
+            start,
+            max: 2,
+            includeGeometry: false,
+          });
           assert.equal(page.totalMatched, SORT_KEY_ROWS.length);
           paged.push(...page.features.map((f) => Number(f.id)));
         }
@@ -1752,42 +2133,77 @@ describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', ()
         assert.ok(statements.length > 0);
         for (const sql of statements) {
           assert.ok(
-            sql.endsWith(`ORDER BY "category" ASC, "priority" DESC${format.tiebreaker}`),
+            sql.endsWith(
+              `ORDER BY "category" ASC, "priority" DESC${format.tiebreaker}`
+            ),
             `unexpected SQL: ${sql}`
           );
         }
       });
 
-      it('appends the hidden ascending ID tiebreaker to break ties', async () => {
+      it("appends the hidden ascending ID tiebreaker to break ties", async () => {
         await format.open(layerId);
         const statements = recordOrderBySql(engine, layerId);
 
-        const result = await engine.queryExtent(layerId, { orderBy: [['category', 'ASC']], includeGeometry: false });
-        assert.deepEqual(result.features.map((f) => Number(f.id)), ids(CATEGORY_ASC));
-        assert.deepEqual(statements, [`SELECT * FROM "sort_keys" ORDER BY "category" ASC${format.tiebreaker}`]);
+        const result = await engine.queryExtent(layerId, {
+          orderBy: [["category", "ASC"]],
+          includeGeometry: false,
+        });
+        assert.deepEqual(
+          result.features.map((f) => Number(f.id)),
+          ids(CATEGORY_ASC)
+        );
+        assert.deepEqual(statements, [
+          `SELECT * FROM "sort_keys" ORDER BY "category" ASC${format.tiebreaker}`,
+        ]);
       });
 
-      it('keeps the natural order with no SQL layer for a missing or empty orderBy', async () => {
+      it("keeps the natural order with no SQL layer for a missing or empty orderBy", async () => {
         await format.open(layerId);
         const statements = recordOrderBySql(engine, layerId);
         const natural = ids(SORT_KEY_ROWS.map((_, row) => row));
 
-        const empty = await engine.queryExtent(layerId, { orderBy: [], includeGeometry: false });
-        assert.deepEqual(empty.features.map((f) => Number(f.id)), natural);
-        const missing = await engine.queryExtent(layerId, { includeGeometry: false });
-        assert.deepEqual(missing.features.map((f) => Number(f.id)), natural);
+        const empty = await engine.queryExtent(layerId, {
+          orderBy: [],
+          includeGeometry: false,
+        });
+        assert.deepEqual(
+          empty.features.map((f) => Number(f.id)),
+          natural
+        );
+        const missing = await engine.queryExtent(layerId, {
+          includeGeometry: false,
+        });
+        assert.deepEqual(
+          missing.features.map((f) => Number(f.id)),
+          natural
+        );
         assert.deepEqual(statements, []);
       });
 
-      it('rejects unknown, case-mismatched, Virtual Field, and repeated Sort Key fields before any SQL', async () => {
+      it("rejects unknown, case-mismatched, Virtual Field, and repeated Sort Key fields before any SQL", async () => {
         await format.open(layerId);
         const statements = recordOrderBySql(engine, layerId);
 
-        await assert.rejects(engine.queryExtent(layerId, { orderBy: [['missing_field', 'ASC']] }), /"missing_field"/);
-        await assert.rejects(engine.queryExtent(layerId, { orderBy: [['Category', 'ASC']] }), /"Category"/);
-        await assert.rejects(engine.queryExtent(layerId, { orderBy: [['virtual_label', 'DESC']] }), /"virtual_label"/);
         await assert.rejects(
-          engine.queryExtent(layerId, { orderBy: [['priority', 'ASC'], ['priority', 'DESC']] }),
+          engine.queryExtent(layerId, { orderBy: [["missing_field", "ASC"]] }),
+          /"missing_field"/
+        );
+        await assert.rejects(
+          engine.queryExtent(layerId, { orderBy: [["Category", "ASC"]] }),
+          /"Category"/
+        );
+        await assert.rejects(
+          engine.queryExtent(layerId, { orderBy: [["virtual_label", "DESC"]] }),
+          /"virtual_label"/
+        );
+        await assert.rejects(
+          engine.queryExtent(layerId, {
+            orderBy: [
+              ["priority", "ASC"],
+              ["priority", "DESC"],
+            ],
+          }),
           /"priority"/
         );
         assert.deepEqual(statements, []);
@@ -1795,122 +2211,178 @@ describe('Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)', ()
     });
   }
 
-  it('sorts GeoPackage by its stored ID column without a second tiebreaker', async () => {
-    await formats[0].open('sort-keys-gpkg-fid');
-    const statements = recordOrderBySql(engine, 'sort-keys-gpkg-fid');
+  it("sorts GeoPackage by its stored ID column without a second tiebreaker", async () => {
+    await formats[0].open("sort-keys-gpkg-fid");
+    const statements = recordOrderBySql(engine, "sort-keys-gpkg-fid");
 
-    const result = await engine.queryExtent('sort-keys-gpkg-fid', {
-      orderBy: [['fid', 'DESC']],
+    const result = await engine.queryExtent("sort-keys-gpkg-fid", {
+      orderBy: [["fid", "DESC"]],
       includeGeometry: false,
     });
-    assert.deepEqual(result.features.map((f) => Number(f.id)), [6, 5, 4, 3, 2, 1]);
-    assert.deepEqual(statements, ['SELECT * FROM "sort_keys" ORDER BY "fid" DESC']);
+    assert.deepEqual(
+      result.features.map((f) => Number(f.id)),
+      [6, 5, 4, 3, 2, 1]
+    );
+    assert.deepEqual(statements, [
+      'SELECT * FROM "sort_keys" ORDER BY "fid" DESC',
+    ]);
   });
 
-  for (const driver of ['ESRI Shapefile', 'Memory']) {
+  for (const driver of ["ESRI Shapefile", "Memory"]) {
     it(`${driver}: an attribute field named FID shadows OGR SQL FID, and its ties keep the natural order and page stably`, async () => {
       const layerId = `sort-keys-attribute-fid-${driver}`;
       const dataset =
-        driver === 'Memory'
-          ? gdal.open('attribute_fid', 'w', 'Memory')
-          : gdal.open(path.join(tempDir, 'attribute_fid.shp'), 'w', driver);
-      const layer = dataset.layers.create('attribute_fid', gdal.SpatialReference.fromEPSG(4326), gdal.wkbPoint);
-      layer.fields.add(new gdal.FieldDefn('FID', gdal.OFTInteger));
+        driver === "Memory" ?
+          gdal.open("attribute_fid", "w", "Memory")
+        : gdal.open(path.join(tempDir, "attribute_fid.shp"), "w", driver);
+      const layer = dataset.layers.create(
+        "attribute_fid",
+        gdal.SpatialReference.fromEPSG(4326),
+        gdal.wkbPoint
+      );
+      layer.fields.add(new gdal.FieldDefn("FID", gdal.OFTInteger));
       // Attribute FID values run against the feature IDs 0-4, with ties.
       [5, 5, 1, 5, 1].forEach((value, index) => {
         const feature = new gdal.Feature(layer);
-        feature.fields.set('FID', value);
+        feature.fields.set("FID", value);
         feature.setGeometry(new gdal.Point(index, index));
         layer.features.add(feature);
       });
-      if (driver === 'Memory') {
-        (engine as any).sessions.set(layerId, { dataset, layer, filePath: 'attribute_fid', fidColumn: '' });
+      if (driver === "Memory") {
+        (engine as any).sessions.set(layerId, {
+          dataset,
+          layer,
+          filePath: "attribute_fid",
+          fidColumn: "",
+        });
       } else {
         dataset.close();
-        await engine.openDataset(layerId, path.join(tempDir, 'attribute_fid.shp'));
+        await engine.openDataset(
+          layerId,
+          path.join(tempDir, "attribute_fid.shp")
+        );
       }
       const statements = recordOrderBySql(engine, layerId);
-      const orderBy: SortKey[] = [['FID', 'DESC']];
+      const orderBy: SortKey[] = [["FID", "DESC"]];
 
-      const full = await engine.queryExtent(layerId, { orderBy, includeGeometry: false });
+      const full = await engine.queryExtent(layerId, {
+        orderBy,
+        includeGeometry: false,
+      });
       // OGR SQL resolves both "FID" and the bare FID tiebreaker to the attribute field, so the tiebreaker
       // cannot order the ties by feature ID; OGR's stable sort leaves them in natural (ascending ID) order.
-      assert.deepEqual(full.features.map((f) => Number(f.id)), [0, 1, 3, 2, 4]);
-      assert.deepEqual(full.features.map((f) => f.properties?.FID), [5, 5, 5, 1, 1]);
+      assert.deepEqual(
+        full.features.map((f) => Number(f.id)),
+        [0, 1, 3, 2, 4]
+      );
+      assert.deepEqual(
+        full.features.map((f) => f.properties?.FID),
+        [5, 5, 5, 1, 1]
+      );
 
       const paged: number[] = [];
       for (let start = 0; start < 5; start += 2) {
-        const page = await engine.queryExtent(layerId, { orderBy, start, max: 2, includeGeometry: false });
+        const page = await engine.queryExtent(layerId, {
+          orderBy,
+          start,
+          max: 2,
+          includeGeometry: false,
+        });
         paged.push(...page.features.map((f) => Number(f.id)));
       }
       assert.deepEqual(paged, [0, 1, 3, 2, 4]);
       for (const sql of statements) {
-        assert.ok(sql.endsWith('ORDER BY "FID" DESC, FID ASC'), `unexpected SQL: ${sql}`);
+        assert.ok(
+          sql.endsWith('ORDER BY "FID" DESC, FID ASC'),
+          `unexpected SQL: ${sql}`
+        );
       }
     });
   }
 });
 
-describe('buildPagedSelectSql and supportsSqlWindow (Ticket #339)', () => {
-  const schema = ['category', 'priority'];
+describe("buildPagedSelectSql and supportsSqlWindow (Ticket #339)", () => {
+  const schema = ["category", "priority"];
 
-  it('orders by the Persistent FID column and appends LIMIT/OFFSET when no Sort Keys are given', () => {
+  it("orders by the Persistent FID column and appends LIMIT/OFFSET when no Sort Keys are given", () => {
     assert.equal(
-      buildPagedSelectSql('sort_keys', undefined, schema, 'fid', 20, 10),
+      buildPagedSelectSql("sort_keys", undefined, schema, "fid", 20, 10),
       'SELECT * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 10 OFFSET 20'
     );
     assert.equal(
-      buildPagedSelectSql('sort_keys', [], schema, 'fid', 0, 5),
+      buildPagedSelectSql("sort_keys", [], schema, "fid", 0, 5),
       'SELECT * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 5 OFFSET 0'
     );
   });
 
-  it('keeps the Sort Keys and ID tiebreaker and windows them', () => {
+  it("keeps the Sort Keys and ID tiebreaker and windows them", () => {
     assert.equal(
-      buildPagedSelectSql('sort_keys', [['category', 'ASC']], schema, 'fid', 4, 2),
+      buildPagedSelectSql(
+        "sort_keys",
+        [["category", "ASC"]],
+        schema,
+        "fid",
+        4,
+        2
+      ),
       'SELECT * FROM "sort_keys" ORDER BY "category" ASC, "fid" ASC LIMIT 2 OFFSET 4'
     );
   });
 
-  it('uses LIMIT -1 (no limit) when only start is given, and LIMIT 0 for an empty window', () => {
+  it("uses LIMIT -1 (no limit) when only start is given, and LIMIT 0 for an empty window", () => {
     assert.equal(
-      buildPagedSelectSql('t', undefined, schema, 'fid', 7, undefined),
+      buildPagedSelectSql("t", undefined, schema, "fid", 7, undefined),
       'SELECT * FROM "t" ORDER BY "fid" ASC LIMIT -1 OFFSET 7'
     );
     assert.equal(
-      buildPagedSelectSql('t', undefined, schema, 'fid', 0, 0),
+      buildPagedSelectSql("t", undefined, schema, "fid", 0, 0),
       'SELECT * FROM "t" ORDER BY "fid" ASC LIMIT 0 OFFSET 0'
     );
   });
 
-  it('rejects a layer without a Persistent FID and non-integer or negative window bounds', () => {
-    assert.throws(() => buildPagedSelectSql('t', undefined, schema, '', 0, 5), /Persistent FID/);
-    assert.throws(() => buildPagedSelectSql('t', undefined, schema, 'fid', -1, 5), /start/);
-    assert.throws(() => buildPagedSelectSql('t', undefined, schema, 'fid', 1.5, 5), /start/);
-    assert.throws(() => buildPagedSelectSql('t', undefined, schema, 'fid', 0, -2), /max/);
+  it("rejects a layer without a Persistent FID and non-integer or negative window bounds", () => {
+    assert.throws(
+      () => buildPagedSelectSql("t", undefined, schema, "", 0, 5),
+      /Persistent FID/
+    );
+    assert.throws(
+      () => buildPagedSelectSql("t", undefined, schema, "fid", -1, 5),
+      /start/
+    );
+    assert.throws(
+      () => buildPagedSelectSql("t", undefined, schema, "fid", 1.5, 5),
+      /start/
+    );
+    assert.throws(
+      () => buildPagedSelectSql("t", undefined, schema, "fid", 0, -2),
+      /max/
+    );
   });
 
-  it('validates Sort Keys exactly like buildOrderBySql', () => {
-    assert.throws(() => buildPagedSelectSql('t', [['missing', 'ASC']], schema, 'fid', 0, 5), /"missing"/);
+  it("validates Sort Keys exactly like buildOrderBySql", () => {
+    assert.throws(
+      () => buildPagedSelectSql("t", [["missing", "ASC"]], schema, "fid", 0, 5),
+      /"missing"/
+    );
   });
 
-  it('only allows SQLite-dialect drivers with a Persistent FID', () => {
-    assert.equal(supportsSqlWindow('GPKG', 'fid', false), true);
-    assert.equal(supportsSqlWindow('SQLite', 'ogc_fid', false), true);
-    assert.equal(supportsSqlWindow('GPKG', '', false), false);
-    assert.equal(supportsSqlWindow('ESRI Shapefile', '', false), false);
-    assert.equal(supportsSqlWindow('PostgreSQL', 'ogc_fid', false), false);
-    assert.equal(supportsSqlWindow(undefined, 'fid', false), false);
+  it("only allows SQLite-dialect drivers with a Persistent FID", () => {
+    assert.equal(supportsSqlWindow("GPKG", "fid", false), true);
+    assert.equal(supportsSqlWindow("SQLite", "ogc_fid", false), true);
+    assert.equal(supportsSqlWindow("GPKG", "", false), false);
+    assert.equal(supportsSqlWindow("ESRI Shapefile", "", false), false);
+    assert.equal(supportsSqlWindow("PostgreSQL", "ogc_fid", false), false);
+    assert.equal(supportsSqlWindow(undefined, "fid", false), false);
   });
 
-  it('allows a spatial filter only for GeoPackage, whose driver filters before the window', () => {
-    assert.equal(supportsSqlWindow('GPKG', 'fid', true), true);
-    assert.equal(supportsSqlWindow('SQLite', 'ogc_fid', true), false);
+  it("allows a spatial filter only for GeoPackage, whose driver filters before the window", () => {
+    assert.equal(supportsSqlWindow("GPKG", "fid", true), true);
+    assert.equal(supportsSqlWindow("SQLite", "ogc_fid", true), false);
   });
 });
 
-describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
-  const layerId = 'timeline-paging';
+describe("GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)", () => {
+  const layerId = "timeline-paging";
   /** Left half of the timeline layer's extent, which matches a strict subset of its 252 features. */
   const westExtent: BoundingBox = [-179.11901, -43.65057, 0.44, 83.11652];
   let engine: GeospatialEngine;
@@ -1931,12 +2403,18 @@ describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
    * @param {QueryExtentOptions} options - Query options without start/max.
    * @returns {Promise<number[]>} Sorted feature IDs.
    */
-  const allIds = async (options: QueryExtentOptions = {}): Promise<number[]> => {
-    const res = await engine.queryExtent(layerId, { ...options, includeGeometry: false, fields: [] });
+  const allIds = async (
+    options: QueryExtentOptions = {}
+  ): Promise<number[]> => {
+    const res = await engine.queryExtent(layerId, {
+      ...options,
+      includeGeometry: false,
+      fields: [],
+    });
     return res.features.map((f) => Number(f.id)).sort((a, b) => a - b);
   };
 
-  it('windows unsorted pages in SQL and returns the same rows as slicing the full ID-ordered set', async () => {
+  it("windows unsorted pages in SQL and returns the same rows as slicing the full ID-ordered set", async () => {
     const statements = recordSessionSql(engine, layerId);
     const full = await allIds();
     assert.equal(full.length, 252);
@@ -1949,12 +2427,24 @@ describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
       { start: 250 },
     ];
     for (const { start, max } of cases) {
-      const page = await engine.queryExtent(layerId, { start, max, includeGeometry: false, fields: [] });
+      const page = await engine.queryExtent(layerId, {
+        start,
+        max,
+        includeGeometry: false,
+        fields: [],
+      });
       const from = start ?? 0;
       const to = max === undefined ? undefined : from + max;
-      assert.deepEqual(page.features.map((f) => Number(f.id)), full.slice(from, to), `start=${start} max=${max}`);
+      assert.deepEqual(
+        page.features.map((f) => Number(f.id)),
+        full.slice(from, to),
+        `start=${start} max=${max}`
+      );
       assert.equal(page.totalMatched, 252);
-      assert.equal(new DataView(page.buffer).getUint32(8, true), page.features.length);
+      assert.equal(
+        new DataView(page.buffer).getUint32(8, true),
+        page.features.length
+      );
     }
 
     assert.deepEqual(statements, [
@@ -1966,77 +2456,159 @@ describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
     ]);
   });
 
-  it('applies the extent filter before the window and reports the filtered total', async () => {
+  it("applies the extent filter before the window and reports the filtered total", async () => {
     const filtered = await allIds({ extent: westExtent });
-    assert.ok(filtered.length > 20 && filtered.length < 252, `fixture extent matched ${filtered.length}`);
+    assert.ok(
+      filtered.length > 20 && filtered.length < 252,
+      `fixture extent matched ${filtered.length}`
+    );
 
-    const page = await engine.queryExtent(layerId, { extent: westExtent, start: 5, max: 7, includeGeometry: false, fields: [] });
-    assert.deepEqual(page.features.map((f) => Number(f.id)), filtered.slice(5, 12));
+    const page = await engine.queryExtent(layerId, {
+      extent: westExtent,
+      start: 5,
+      max: 7,
+      includeGeometry: false,
+      fields: [],
+    });
+    assert.deepEqual(
+      page.features.map((f) => Number(f.id)),
+      filtered.slice(5, 12)
+    );
     assert.equal(page.totalMatched, filtered.length);
   });
 
-  it('pages sorted queries in SQL with the same rows and order as the full sorted query', async () => {
-    const orderBy: SortKey[] = [['start_date', 'ASC']];
-    const full = await engine.queryExtent(layerId, { orderBy, includeGeometry: false, fields: [] });
+  it("pages sorted queries in SQL with the same rows and order as the full sorted query", async () => {
+    const orderBy: SortKey[] = [["start_date", "ASC"]];
+    const full = await engine.queryExtent(layerId, {
+      orderBy,
+      includeGeometry: false,
+      fields: [],
+    });
     const fullIds = full.features.map((f) => Number(f.id));
     const statements = recordSessionSql(engine, layerId);
 
     const paged: number[] = [];
     for (let start = 0; start < 252; start += 50) {
-      const page = await engine.queryExtent(layerId, { orderBy, start, max: 50, includeGeometry: false, fields: [] });
+      const page = await engine.queryExtent(layerId, {
+        orderBy,
+        start,
+        max: 50,
+        includeGeometry: false,
+        fields: [],
+      });
       assert.equal(page.totalMatched, 252);
       paged.push(...page.features.map((f) => Number(f.id)));
     }
     assert.deepEqual(paged, fullIds);
-    assert.ok(statements.every((sql) => /ORDER BY "start_date" ASC, "fid" ASC LIMIT 50 OFFSET \d+$/.test(sql)));
+    assert.ok(
+      statements.every((sql) =>
+        /ORDER BY "start_date" ASC, "fid" ASC LIMIT 50 OFFSET \d+$/.test(sql)
+      )
+    );
   });
 
-  it('keeps JS slicing for a featureIds filter and applies the window once', async () => {
+  it("keeps JS slicing for a featureIds filter and applies the window once", async () => {
     const statements = recordSessionSql(engine, layerId);
     const ids = [3, 9, 27, 81, 200];
-    const page = await engine.queryExtent(layerId, { featureIds: ids, start: 1, max: 3, includeGeometry: false, fields: [] });
-    assert.deepEqual(page.features.map((f) => Number(f.id)), [9, 27, 81]);
+    const page = await engine.queryExtent(layerId, {
+      featureIds: ids,
+      start: 1,
+      max: 3,
+      includeGeometry: false,
+      fields: [],
+    });
+    assert.deepEqual(
+      page.features.map((f) => Number(f.id)),
+      [9, 27, 81]
+    );
     assert.equal(page.totalMatched, 5);
     assert.deepEqual(statements, []);
   });
 
-  it('appends staged new features after the windowed rows and counts them in totalMatched', async () => {
-    engine.stageFeatureEdit(layerId, { id: 999999, isNew: true, properties: { names: 'Added' } });
-    engine.stageFeatureEdit(layerId, { id: 2, properties: { names: 'Edited' } });
+  it("appends staged new features after the windowed rows and counts them in totalMatched", async () => {
+    engine.stageFeatureEdit(layerId, {
+      id: 999999,
+      isNew: true,
+      properties: { names: "Added" },
+    });
+    engine.stageFeatureEdit(layerId, {
+      id: 2,
+      properties: { names: "Edited" },
+    });
 
-    const first = await engine.queryExtent(layerId, { start: 0, max: 3, includeGeometry: false });
+    const first = await engine.queryExtent(layerId, {
+      start: 0,
+      max: 3,
+      includeGeometry: false,
+    });
     assert.equal(first.totalMatched, 253);
-    assert.deepEqual(first.features.map((f) => Number(f.id)), [1, 2, 3]);
-    assert.equal(first.features[1].properties?.names, 'Edited');
+    assert.deepEqual(
+      first.features.map((f) => Number(f.id)),
+      [1, 2, 3]
+    );
+    assert.equal(first.features[1].properties?.names, "Edited");
 
-    const last = await engine.queryExtent(layerId, { start: 250, max: 10, includeGeometry: false });
+    const last = await engine.queryExtent(layerId, {
+      start: 250,
+      max: 10,
+      includeGeometry: false,
+    });
     assert.equal(last.totalMatched, 253);
-    assert.deepEqual(last.features.map((f) => Number(f.id)), [251, 252, 999999]);
+    assert.deepEqual(
+      last.features.map((f) => Number(f.id)),
+      [251, 252, 999999]
+    );
 
-    const onlyAdded = await engine.queryExtent(layerId, { start: 252, max: 10, includeGeometry: false });
-    assert.deepEqual(onlyAdded.features.map((f) => Number(f.id)), [999999]);
+    const onlyAdded = await engine.queryExtent(layerId, {
+      start: 252,
+      max: 10,
+      includeGeometry: false,
+    });
+    assert.deepEqual(
+      onlyAdded.features.map((f) => Number(f.id)),
+      [999999]
+    );
   });
 
-  it('combines the extent filter, Sort Keys, staged edits and the window in one query', async () => {
-    const orderBy: SortKey[] = [['start_date', 'DESC']];
-    engine.stageFeatureEdit(layerId, { id: 999999, isNew: true, properties: { names: 'Added' } });
-    const full = await engine.queryExtent(layerId, { extent: westExtent, orderBy, includeGeometry: false, fields: [] });
+  it("combines the extent filter, Sort Keys, staged edits and the window in one query", async () => {
+    const orderBy: SortKey[] = [["start_date", "DESC"]];
+    engine.stageFeatureEdit(layerId, {
+      id: 999999,
+      isNew: true,
+      properties: { names: "Added" },
+    });
+    const full = await engine.queryExtent(layerId, {
+      extent: westExtent,
+      orderBy,
+      includeGeometry: false,
+      fields: [],
+    });
     const fullIds = full.features.map((f) => Number(f.id));
     assert.equal(fullIds[fullIds.length - 1], 999999);
 
     const statements = recordSessionSql(engine, layerId);
     const paged: number[] = [];
     for (let start = 0; start < full.totalMatched; start += 9) {
-      const page = await engine.queryExtent(layerId, { extent: westExtent, orderBy, start, max: 9, includeGeometry: false, fields: [] });
+      const page = await engine.queryExtent(layerId, {
+        extent: westExtent,
+        orderBy,
+        start,
+        max: 9,
+        includeGeometry: false,
+        fields: [],
+      });
       assert.equal(page.totalMatched, full.totalMatched);
       paged.push(...page.features.map((f) => Number(f.id)));
     }
     assert.deepEqual(paged, fullIds);
-    assert.ok(statements.length > 0 && statements.every((sql) => / LIMIT 9 OFFSET \d+$/.test(sql)));
+    assert.ok(
+      statements.length > 0
+        && statements.every((sql) => / LIMIT 9 OFFSET \d+$/.test(sql))
+    );
   });
 
-  it('does not deadlock when many SQL queries and field introspections interleave with plain reads on the same dataset (Ticket #342)', async () => {
-    const orderBy: SortKey[] = [['start_date', 'DESC']];
+  it("does not deadlock when many SQL queries and field introspections interleave with plain reads on the same dataset (Ticket #342)", async () => {
+    const orderBy: SortKey[] = [["start_date", "DESC"]];
     const session = sessionOf(engine, layerId);
     for (let round = 0; round < 25; round++) {
       session.fields = undefined; // re-runs PRAGMA table_info / gpkg_data_columns introspection on the next query
@@ -2049,7 +2621,7 @@ describe('GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)', () => {
   });
 });
 
-describe('Extent-filtered paging on SQLite-dialect layers without an R-tree (Ticket #339)', () => {
+describe("Extent-filtered paging on SQLite-dialect layers without an R-tree (Ticket #339)", () => {
   let engine: GeospatialEngine;
   let tempDir: string;
   /** Left half of the timeline layer's extent. */
@@ -2058,7 +2630,7 @@ describe('Extent-filtered paging on SQLite-dialect layers without an R-tree (Tic
   beforeEach(() => {
     engine = new GeospatialEngine();
     engine.setBackgroundScanEnabled(false);
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-paging-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-paging-"));
   });
 
   afterEach(() => {
@@ -2066,29 +2638,59 @@ describe('Extent-filtered paging on SQLite-dialect layers without an R-tree (Tic
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  const cases: Array<{ name: string; file: string; options: string[]; pagesInSql: boolean }> = [
-    { name: 'GeoPackage without a spatial index', file: 'no_rtree.gpkg', options: ['-f', 'GPKG', '-lco', 'SPATIAL_INDEX=NO'], pagesInSql: true },
-    { name: 'plain SQLite', file: 'plain.sqlite', options: ['-f', 'SQLite'], pagesInSql: false },
+  const cases: Array<{
+    name: string;
+    file: string;
+    options: string[];
+    pagesInSql: boolean;
+  }> = [
+    {
+      name: "GeoPackage without a spatial index",
+      file: "no_rtree.gpkg",
+      options: ["-f", "GPKG", "-lco", "SPATIAL_INDEX=NO"],
+      pagesInSql: true,
+    },
+    {
+      name: "plain SQLite",
+      file: "plain.sqlite",
+      options: ["-f", "SQLite"],
+      pagesInSql: false,
+    },
   ];
 
   for (const { name, file, options, pagesInSql } of cases) {
-    it(`${name}: returns the filtered window and total (${pagesInSql ? 'in SQL' : 'JS slicing'})`, async () => {
+    it(`${name}: returns the filtered window and total (${pagesInSql ? "in SQL" : "JS slicing"})`, async () => {
       const filePath = path.join(tempDir, file);
       const source = gdal.open(timelineGpkgPath);
       gdal.vectorTranslate(filePath, source, options).close();
       source.close();
       await engine.openDataset(name, filePath);
 
-      const all = await engine.queryExtent(name, { extent: westExtent, includeGeometry: false, fields: [] });
-      const filtered = all.features.map((f) => Number(f.id)).sort((a, b) => a - b);
+      const all = await engine.queryExtent(name, {
+        extent: westExtent,
+        includeGeometry: false,
+        fields: [],
+      });
+      const filtered = all.features
+        .map((f) => Number(f.id))
+        .sort((a, b) => a - b);
       assert.ok(filtered.length > 20 && filtered.length < 252);
 
       const statements = recordSessionSql(engine, name);
-      const page = await engine.queryExtent(name, { extent: westExtent, start: 5, max: 7, includeGeometry: false, fields: [] });
+      const page = await engine.queryExtent(name, {
+        extent: westExtent,
+        start: 5,
+        max: 7,
+        includeGeometry: false,
+        fields: [],
+      });
       assert.equal(page.totalMatched, filtered.length);
       assert.equal(page.features.length, 7);
       if (pagesInSql) {
-        assert.deepEqual(page.features.map((f) => Number(f.id)), filtered.slice(5, 12));
+        assert.deepEqual(
+          page.features.map((f) => Number(f.id)),
+          filtered.slice(5, 12)
+        );
         assert.equal(statements.length, 1);
       } else {
         assert.deepEqual(statements, []);
@@ -2097,7 +2699,7 @@ describe('Extent-filtered paging on SQLite-dialect layers without an R-tree (Tic
   }
 });
 
-describe('Layer and field names containing quotes (Ticket #340)', () => {
+describe("Layer and field names containing quotes (Ticket #340)", () => {
   /**
    * @description Layer name with both quote characters.
    * @type {string}
@@ -2116,7 +2718,7 @@ describe('Layer and field names containing quotes (Ticket #340)', () => {
   beforeEach(() => {
     engine = new GeospatialEngine();
     engine.setBackgroundScanEnabled(false);
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-sql-quote-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-sql-quote-"));
   });
 
   afterEach(() => {
@@ -2144,9 +2746,13 @@ describe('Layer and field names containing quotes (Ticket #340)', () => {
    * @param {gdal.Dataset} dataset - Dataset to add the layer to.
    */
   const addQuotedLayer = (dataset: gdal.Dataset): void => {
-    const layer = dataset.layers.create(LAYER, gdal.SpatialReference.fromEPSG(4326), gdal.wkbPoint);
+    const layer = dataset.layers.create(
+      LAYER,
+      gdal.SpatialReference.fromEPSG(4326),
+      gdal.wkbPoint
+    );
     layer.fields.add(new gdal.FieldDefn(FIELD, gdal.OFTString));
-    for (const value of ['b', 'a', 'c']) {
+    for (const value of ["b", "a", "c"]) {
       const feature = new gdal.Feature(layer);
       feature.fields.set(FIELD, value);
       feature.setGeometry(new gdal.Point(1, 2));
@@ -2160,13 +2766,13 @@ describe('Layer and field names containing quotes (Ticket #340)', () => {
    * @returns {string} Path of the GeoPackage.
    */
   const createQuotedGpkg = (): string => {
-    const filePath = path.join(tempDir, 'quoted.gpkg');
-    const dataset = gdal.open(filePath, 'w', 'GPKG');
+    const filePath = path.join(tempDir, "quoted.gpkg");
+    const dataset = gdal.open(filePath, "w", "GPKG");
     addQuotedLayer(dataset);
     runStatement(
       dataset,
-      'CREATE TABLE gpkg_data_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, name TEXT, title TEXT, '
-        + 'description TEXT, mime_type TEXT, constraint_name TEXT)'
+      "CREATE TABLE gpkg_data_columns (table_name TEXT NOT NULL, column_name TEXT NOT NULL, name TEXT, title TEXT, "
+        + "description TEXT, mime_type TEXT, constraint_name TEXT)"
     );
     runStatement(
       dataset,
@@ -2176,66 +2782,128 @@ describe('Layer and field names containing quotes (Ticket #340)', () => {
     return filePath;
   };
 
-  it('finds the field in PRAGMA table_info and gpkg_data_columns on a GeoPackage', () => {
+  it("finds the field in PRAGMA table_info and gpkg_data_columns on a GeoPackage", () => {
     const filePath = createQuotedGpkg();
     const dataset = gdal.open(filePath);
     try {
-      const { pragmaRows, dataColumnRows } = engine.readSqliteColumnRows(dataset, filePath, LAYER);
-      assert.ok(pragmaRows.some((row) => row.name === FIELD), 'PRAGMA table_info lists the field');
-      assert.deepEqual(dataColumnRows.map((row) => row.column_name), [FIELD]);
-      const fields = engine.inferLayerFields(dataset, dataset.layers.get(0), filePath);
-      assert.equal(fields.find((field) => field.name === FIELD)?.inferredType, 'json');
+      const { pragmaRows, dataColumnRows } = engine.readSqliteColumnRows(
+        dataset,
+        filePath,
+        LAYER
+      );
+      assert.ok(
+        pragmaRows.some((row) => row.name === FIELD),
+        "PRAGMA table_info lists the field"
+      );
+      assert.deepEqual(
+        dataColumnRows.map((row) => row.column_name),
+        [FIELD]
+      );
+      const fields = engine.inferLayerFields(
+        dataset,
+        dataset.layers.get(0),
+        filePath
+      );
+      assert.equal(
+        fields.find((field) => field.name === FIELD)?.inferredType,
+        "json"
+      );
     } finally {
       dataset.close();
     }
   });
 
-  it('infers the field type from gpkg_data_columns when opening the GeoPackage', async () => {
-    const metadata = await engine.openDataset('quoted-gpkg', createQuotedGpkg());
-    assert.equal(metadata.fields?.find((field) => field.name === FIELD)?.inferredType, 'json');
+  it("infers the field type from gpkg_data_columns when opening the GeoPackage", async () => {
+    const metadata = await engine.openDataset(
+      "quoted-gpkg",
+      createQuotedGpkg()
+    );
+    assert.equal(
+      metadata.fields?.find((field) => field.name === FIELD)?.inferredType,
+      "json"
+    );
   });
 
-  it('orders and pages a GeoPackage layer by the field in SQL', async () => {
-    await engine.openDataset('quoted-gpkg', createQuotedGpkg());
-    const statements = recordSessionSql(engine, 'quoted-gpkg');
-    const orderBy: QueryExtentOptions['orderBy'] = [[FIELD, 'DESC']];
+  it("orders and pages a GeoPackage layer by the field in SQL", async () => {
+    await engine.openDataset("quoted-gpkg", createQuotedGpkg());
+    const statements = recordSessionSql(engine, "quoted-gpkg");
+    const orderBy: QueryExtentOptions["orderBy"] = [[FIELD, "DESC"]];
 
-    const full = await engine.queryExtent('quoted-gpkg', { orderBy, includeGeometry: false });
-    assert.deepEqual(full.features.map((f) => f.properties?.[FIELD]), ['c', 'b', 'a']);
-    const page = await engine.queryExtent('quoted-gpkg', { orderBy, start: 1, max: 1, includeGeometry: false });
-    assert.deepEqual(page.features.map((f) => f.properties?.[FIELD]), ['b']);
-    assert.ok(statements.some((sql) => sql.includes('"o\'brien ""x"" \\" DESC')), `unexpected SQL: ${statements.join(' | ')}`);
+    const full = await engine.queryExtent("quoted-gpkg", {
+      orderBy,
+      includeGeometry: false,
+    });
+    assert.deepEqual(
+      full.features.map((f) => f.properties?.[FIELD]),
+      ["c", "b", "a"]
+    );
+    const page = await engine.queryExtent("quoted-gpkg", {
+      orderBy,
+      start: 1,
+      max: 1,
+      includeGeometry: false,
+    });
+    assert.deepEqual(
+      page.features.map((f) => f.properties?.[FIELD]),
+      ["b"]
+    );
+    assert.ok(
+      statements.some((sql) => sql.includes('"o\'brien ""x"" \\" DESC')),
+      `unexpected SQL: ${statements.join(" | ")}`
+    );
   });
 
-  it('orders a Memory layer by the field in OGR SQL', async () => {
-    const dataset = gdal.open('quoted_memory', 'w', 'Memory');
+  it("orders a Memory layer by the field in OGR SQL", async () => {
+    const dataset = gdal.open("quoted_memory", "w", "Memory");
     addQuotedLayer(dataset);
-    fromAny<{ sessions: Map<string, unknown> }, GeospatialEngine>(engine).sessions.set('quoted-memory', {
+    fromAny<{ sessions: Map<string, unknown> }, GeospatialEngine>(
+      engine
+    ).sessions.set("quoted-memory", {
       dataset,
       layer: dataset.layers.get(0),
-      filePath: 'quoted_memory',
-      fidColumn: '',
+      filePath: "quoted_memory",
+      fidColumn: "",
     });
 
-    const result = await engine.queryExtent('quoted-memory', { orderBy: [[FIELD, 'ASC']], includeGeometry: false });
-    assert.deepEqual(result.features.map((f) => f.properties?.[FIELD]), ['a', 'b', 'c']);
+    const result = await engine.queryExtent("quoted-memory", {
+      orderBy: [[FIELD, "ASC"]],
+      includeGeometry: false,
+    });
+    assert.deepEqual(
+      result.features.map((f) => f.properties?.[FIELD]),
+      ["a", "b", "c"]
+    );
   });
 
-  it('runs no SQL on the long-lived session dataset, introspection included (Ticket #342)', async () => {
-    await engine.openDataset('quoted-gpkg', createQuotedGpkg());
-    const session = sessionOf(engine, 'quoted-gpkg');
+  it("runs no SQL on the long-lived session dataset, introspection included (Ticket #342)", async () => {
+    await engine.openDataset("quoted-gpkg", createQuotedGpkg());
+    const session = sessionOf(engine, "quoted-gpkg");
     const onSession: string[] = [];
-    session.dataset.executeSQL = fromAny<gdal.Dataset['executeSQL'], (sql: string) => never>((sql: string) => {
+    session.dataset.executeSQL = fromAny<
+      gdal.Dataset["executeSQL"],
+      (sql: string) => never
+    >((sql: string) => {
       onSession.push(sql);
-      throw new Error('executeSQL on the session dataset');
+      throw new Error("executeSQL on the session dataset");
     });
 
     session.fields = undefined;
-    const sorted = await engine.queryExtent('quoted-gpkg', { orderBy: [[FIELD, 'DESC']], start: 0, max: 2, includeGeometry: false });
-    assert.deepEqual(sorted.features.map((f) => f.properties?.[FIELD]), ['c', 'b']);
-    const inferred = sessionOf(engine, 'quoted-gpkg').fields; // re-read: the reset above narrowed session.fields to undefined
-    assert.equal(inferred?.find((field) => field.name === FIELD)?.inferredType, 'json');
-    await engine.getLayerInfo('quoted-gpkg');
+    const sorted = await engine.queryExtent("quoted-gpkg", {
+      orderBy: [[FIELD, "DESC"]],
+      start: 0,
+      max: 2,
+      includeGeometry: false,
+    });
+    assert.deepEqual(
+      sorted.features.map((f) => f.properties?.[FIELD]),
+      ["c", "b"]
+    );
+    const inferred = sessionOf(engine, "quoted-gpkg").fields; // re-read: the reset above narrowed session.fields to undefined
+    assert.equal(
+      inferred?.find((field) => field.name === FIELD)?.inferredType,
+      "json"
+    );
+    await engine.getLayerInfo("quoted-gpkg");
     assert.deepEqual(onSession, []);
   });
 });

@@ -183,7 +183,11 @@ export function Select<V extends string = string>({
   onKeyDown,
   ...rest
 }: SelectProps<V>): React.ReactElement {
-  const classes = ["cartouche-select", density === "compact" ? "is-compact" : "", className ?? ""]
+  const classes = [
+    "cartouche-select",
+    density === "compact" ? "is-compact" : "",
+    className ?? "",
+  ]
     .filter(Boolean)
     .join(" ");
   return (
@@ -195,12 +199,18 @@ export function Select<V extends string = string>({
       onKeyDown={selectKeyDownHandler(onKeyDown)}>
       <button className='cartouche-select-trigger'>
         <span className='cartouche-select-face'>
-          {React.createElement("selectedcontent", { className: "cartouche-select-value" })}
+          {React.createElement("selectedcontent", {
+            className: "cartouche-select-value",
+          })}
           {options.length <= SELECT_SIZER_OPTION_LIMIT && (
             <span className='cartouche-select-sizer' aria-hidden='true'>
               {options.map((option) => (
-                <span key={option.value} className='cartouche-select-sizer-item'>
-                  <span className='cartouche-select-option-label'>{option.label}</span>
+                <span
+                  key={option.value}
+                  className='cartouche-select-sizer-item'>
+                  <span className='cartouche-select-option-label'>
+                    {option.label}
+                  </span>
                   {option.adornment}
                 </span>
               ))}
@@ -212,7 +222,10 @@ export function Select<V extends string = string>({
         </span>
       </button>
       {options.map((option) => (
-        <option key={option.value} value={option.value} disabled={option.disabled}>
+        <option
+          key={option.value}
+          value={option.value}
+          disabled={option.disabled}>
           <span className='cartouche-select-option-label'>{option.label}</span>
           {option.adornment}
         </option>

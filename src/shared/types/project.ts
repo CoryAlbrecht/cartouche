@@ -8,15 +8,15 @@
  * @since 0.1.0-dev
  */
 
-import type { GeometryKind, BoundingBox } from '.';
-import type { LayerFieldInfo } from './layers';
+import type { GeometryKind, BoundingBox } from ".";
+import type { LayerFieldInfo } from "./layers";
 
 export type {
   InferredFieldType,
   InferredScalarFieldType,
   InferredArrayFieldType,
   LayerFieldInfo,
-} from './layers';
+} from "./layers";
 
 /**
  * @typedef {Object} ProjectMetadata
@@ -91,7 +91,7 @@ export interface ProjectViewport {
  * @updated 2026-11-01
  * @since 0.1.0-dev
  */
-export type ProjectStyleFormat = 'cartouche' | 'openlayers' | 'sld';
+export type ProjectStyleFormat = "cartouche" | "openlayers" | "sld";
 
 /**
  * Supported OGC Styled Layer Descriptor (SLD) specification versions.
@@ -101,7 +101,7 @@ export type ProjectStyleFormat = 'cartouche' | 'openlayers' | 'sld';
  * @updated 2026-11-01
  * @since 0.1.0-dev
  */
-export type SldStyleVersion = '1.0.0' | '1.1.0';
+export type SldStyleVersion = "1.0.0" | "1.1.0";
 
 /**
  * @typedef {Object} ProjectLayerStyleItem
@@ -156,14 +156,16 @@ export type OlLayerStyle = Record<string, any> | OlFlatStyleRule[];
  * @param {unknown} style - Value to test.
  * @returns {style is ProjectLayerStyleItem} True if style is a ProjectLayerStyleItem wrapper object.
  */
-export function isProjectLayerStyleWrapper(style: unknown): style is ProjectLayerStyleItem {
-  if (typeof style !== 'object' || style === null || Array.isArray(style)) {
+export function isProjectLayerStyleWrapper(
+  style: unknown
+): style is ProjectLayerStyleItem {
+  if (typeof style !== "object" || style === null || Array.isArray(style)) {
     return false;
   }
   const candidate = style as Record<string, unknown>;
   return (
-    ('href' in candidate && typeof candidate.href === 'string') ||
-    ('content' in candidate && typeof candidate.content === 'string')
+    ("href" in candidate && typeof candidate.href === "string")
+    || ("content" in candidate && typeof candidate.content === "string")
   );
 }
 
@@ -207,7 +209,7 @@ export interface ProjectLayerItem {
   opacity?: number;
   selectable?: boolean;
   readOnly?: boolean;
-  layerKind?: 'vector' | 'raster';
+  layerKind?: "vector" | "raster";
   geometryKind?: GeometryKind;
   style?: string | ProjectLayerStyleItem | OlLayerStyle;
   styleId?: string;
@@ -219,7 +221,7 @@ export interface ProjectLayerItem {
   temporalEnabled?: boolean;
   temporal?: LayerTemporalConfig;
   fidColumn?: string;
-  capabilities?: import('./layers').LayerCapabilities;
+  capabilities?: import("./layers").LayerCapabilities;
 }
 
 /**
@@ -230,7 +232,7 @@ export interface ProjectLayerItem {
  * @updated 2026-11-10
  * @since 0.1.0-dev
  */
-export type LayerTemporalMode = 'start' | 'end' | 'start_end';
+export type LayerTemporalMode = "start" | "end" | "start_end";
 
 /**
  * Supported start boundary comparison operators for layer temporal filtering.
@@ -240,7 +242,7 @@ export type LayerTemporalMode = 'start' | 'end' | 'start_end';
  * @updated 2026-11-10
  * @since 0.1.0-dev
  */
-export type LayerTemporalStartOp = '>' | '>=';
+export type LayerTemporalStartOp = ">" | ">=";
 
 /**
  * Supported end boundary comparison operators for layer temporal filtering.
@@ -250,7 +252,7 @@ export type LayerTemporalStartOp = '>' | '>=';
  * @updated 2026-11-10
  * @since 0.1.0-dev
  */
-export type LayerTemporalEndOp = '<' | '<=';
+export type LayerTemporalEndOp = "<" | "<=";
 
 /**
  * Structured temporal configuration options for layer-level temporal viewport filtering.
@@ -284,14 +286,14 @@ export interface LayerTemporalConfig {
  * @since 0.1.0-dev
  */
 export type TimeFilterUnit =
-  | 'Years'
-  | 'Months'
-  | 'Weeks'
-  | 'Days'
-  | 'Hours'
-  | 'Minutes'
-  | 'Seconds'
-  | 'Milliseconds';
+  | "Years"
+  | "Months"
+  | "Weeks"
+  | "Days"
+  | "Hours"
+  | "Minutes"
+  | "Seconds"
+  | "Milliseconds";
 
 /**
  * Structured project-level time filter configuration options for workbench transport control and viewport filtering.
@@ -324,7 +326,7 @@ export interface ProjectTimeFilterConfig {
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export const DEFAULT_MAP_BACKGROUND_COLOUR = '#ffffff';
+export const DEFAULT_MAP_BACKGROUND_COLOUR = "#ffffff";
 
 /**
  * @constant {string} DEFAULT_SELECTION_COLOUR
@@ -334,7 +336,7 @@ export const DEFAULT_MAP_BACKGROUND_COLOUR = '#ffffff';
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const DEFAULT_SELECTION_COLOUR = 'rgba(255,255,0,0.6)';
+export const DEFAULT_SELECTION_COLOUR = "rgba(255,255,0,0.6)";
 
 /**
  * @typedef {Object} ProjectDisplaySettings
@@ -364,7 +366,7 @@ export interface ProjectDisplaySettings {
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type ProjectPathMode = 'absolute' | 'relative';
+export type ProjectPathMode = "absolute" | "relative";
 
 /**
  * @constant {ProjectPathMode} DEFAULT_NEW_PROJECT_PATH_MODE
@@ -374,7 +376,7 @@ export type ProjectPathMode = 'absolute' | 'relative';
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = 'relative';
+export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = "relative";
 
 /**
  * @constant {readonly string[]} PROJECT_DISTANCE_UNITS
@@ -385,8 +387,16 @@ export const DEFAULT_NEW_PROJECT_PATH_MODE: ProjectPathMode = 'relative';
  * @since 0.1.0-dev
  */
 export const PROJECT_DISTANCE_UNITS = [
-  'degrees', 'millimetres', 'centimetres', 'metres', 'kilometres',
-  'inches', 'feet', 'yards', 'miles', 'nautical-miles',
+  "degrees",
+  "millimetres",
+  "centimetres",
+  "metres",
+  "kilometres",
+  "inches",
+  "feet",
+  "yards",
+  "miles",
+  "nautical-miles",
 ] as const;
 
 /**
@@ -397,7 +407,7 @@ export const PROJECT_DISTANCE_UNITS = [
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type ProjectDistanceUnit = typeof PROJECT_DISTANCE_UNITS[number];
+export type ProjectDistanceUnit = (typeof PROJECT_DISTANCE_UNITS)[number];
 
 /**
  * @constant {readonly string[]} PROJECT_AREA_UNITS
@@ -408,8 +418,18 @@ export type ProjectDistanceUnit = typeof PROJECT_DISTANCE_UNITS[number];
  * @since 0.1.0-dev
  */
 export const PROJECT_AREA_UNITS = [
-  'square-degrees', 'square-millimetres', 'square-centimetres', 'square-metres', 'hectares', 'square-kilometres',
-  'square-inches', 'square-feet', 'square-yards', 'square-miles', 'acres', 'square-nautical-miles',
+  "square-degrees",
+  "square-millimetres",
+  "square-centimetres",
+  "square-metres",
+  "hectares",
+  "square-kilometres",
+  "square-inches",
+  "square-feet",
+  "square-yards",
+  "square-miles",
+  "acres",
+  "square-nautical-miles",
 ] as const;
 
 /**
@@ -420,7 +440,7 @@ export const PROJECT_AREA_UNITS = [
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type ProjectAreaUnit = typeof PROJECT_AREA_UNITS[number];
+export type ProjectAreaUnit = (typeof PROJECT_AREA_UNITS)[number];
 
 /**
  * @constant {readonly string[]} SCALE_CALCULATION_METHODS
@@ -430,7 +450,13 @@ export type ProjectAreaUnit = typeof PROJECT_AREA_UNITS[number];
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const SCALE_CALCULATION_METHODS = ['top', 'middle', 'bottom', 'average', 'equator'] as const;
+export const SCALE_CALCULATION_METHODS = [
+  "top",
+  "middle",
+  "bottom",
+  "average",
+  "equator",
+] as const;
 
 /**
  * @typedef {typeof SCALE_CALCULATION_METHODS[number]} ScaleCalculationMethod
@@ -440,7 +466,7 @@ export const SCALE_CALCULATION_METHODS = ['top', 'middle', 'bottom', 'average', 
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type ScaleCalculationMethod = typeof SCALE_CALCULATION_METHODS[number];
+export type ScaleCalculationMethod = (typeof SCALE_CALCULATION_METHODS)[number];
 
 /**
  * @typedef {Object} ProjectMeasurementSettings
@@ -467,11 +493,12 @@ export interface ProjectMeasurementSettings {
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> = Object.freeze({
-  distanceUnit: 'degrees',
-  areaUnit: 'square-degrees',
-  scaleMethod: 'middle',
-});
+export const DEFAULT_MEASUREMENT_SETTINGS: Required<ProjectMeasurementSettings> =
+  Object.freeze({
+    distanceUnit: "degrees",
+    areaUnit: "square-degrees",
+    scaleMethod: "middle",
+  });
 
 /**
  * @typedef {Object} ProjectPropertiesPatch
@@ -503,7 +530,7 @@ export interface ProjectPropertiesPatch {
   scaleMethod?: ScaleCalculationMethod;
   crs?: ProjectCrs | null;
   recentCrs?: ProjectCrs[];
-  defaultStyles?: Partial<Record<'point' | 'line' | 'polygon', string | null>>;
+  defaultStyles?: Partial<Record<"point" | "line" | "polygon", string | null>>;
 }
 
 /**
@@ -591,7 +618,7 @@ export interface ProjectModel {
  * @property {string} [layerName] - Optional custom display name for spatial layer.
  */
 export interface AddLayerParams {
-  sourceType: 'vector' | 'raster' | 'database';
+  sourceType: "vector" | "raster" | "database";
   filePath: string;
   layerName?: string;
   layerId?: string;
@@ -608,7 +635,7 @@ export interface AddLayerParams {
  * @since 0.1.0-dev
  */
 export interface LayerDescriptor extends ProjectLayerItem {
-  extent: import('.').BoundingBox;
+  extent: import(".").BoundingBox;
   featureCount: number;
   fields?: LayerFieldInfo[];
 }
@@ -735,7 +762,7 @@ export const WKB_FLAG_HAS_PROPERTIES = 0x02;
  * @since 0.1.0-dev
  * @see {@link QueryExtentOptions}
  */
-export type SortKey = [field: string, direction: 'ASC' | 'DESC'];
+export type SortKey = [field: string, direction: "ASC" | "DESC"];
 
 /**
  * @typedef {Object} QueryExtentOptions
@@ -779,4 +806,3 @@ export interface QueryExtentBinaryResult {
   buffer: ArrayBuffer;
   totalMatched?: number;
 }
-

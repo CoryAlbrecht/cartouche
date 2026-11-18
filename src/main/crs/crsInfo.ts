@@ -10,9 +10,9 @@
  * @see {@link formatCrsInfoText}
  */
 
-import { selectRows, withReadOnlySqlite } from '../gdal/readOnlySqlite';
-import { quoteSqlString } from '../gdal/sqlQuote';
-import type { CrsInfo } from '../../shared/types/crs';
+import { selectRows, withReadOnlySqlite } from "../gdal/readOnlySqlite";
+import { quoteSqlString } from "../gdal/sqlQuote";
+import type { CrsInfo } from "../../shared/types/crs";
 
 /**
  * @typedef {Object} CrsDbFacts
@@ -81,7 +81,7 @@ export interface SrsLike {
  * @returns {[string, string] | null} Authority and code, or null.
  */
 function splitAuthId(authId: string): [string, string] | null {
-  const idx = authId.indexOf(':');
+  const idx = authId.indexOf(":");
   if (idx <= 0) return null;
   return [authId.slice(0, idx), authId.slice(idx + 1)];
 }
@@ -117,8 +117,11 @@ export function createProjDbLookup(projDbPath: string): CrsDbLookup {
          LIMIT 1`
       );
       if (!crs) return {};
-      const facts: CrsDbFacts = { name: String(crs.name), deprecated: Number(crs.deprecated) === 1 };
-      if (crs.da != null && crs.da !== '' && crs.dc != null) {
+      const facts: CrsDbFacts = {
+        name: String(crs.name),
+        deprecated: Number(crs.deprecated) === 1,
+      };
+      if (crs.da != null && crs.da !== "" && crs.dc != null) {
         const datumAuth = String(crs.da);
         const datumCode = String(crs.dc);
         const [frame] = selectRows(
@@ -133,7 +136,8 @@ export function createProjDbLookup(projDbPath: string): CrsDbLookup {
           facts.datumName = String(frame.name);
           facts.datumAuthId = `${datumAuth}:${datumCode}`;
           if (frame.epoch != null) facts.dynamic = true;
-          if (frame.accuracy != null) facts.ensembleAccuracy = Number(frame.accuracy);
+          if (frame.accuracy != null)
+            facts.ensembleAccuracy = Number(frame.accuracy);
           if (frame.body) facts.celestialBody = String(frame.body);
         }
       }
@@ -143,8 +147,18 @@ export function createProjDbLookup(projDbPath: string): CrsDbLookup {
            FROM usage u JOIN extent x ON x.auth_name = u.extent_auth_name AND x.code = u.extent_code
           WHERE u.object_table_name = ${quoteSqlString(String(crs.tbl))} AND u.object_auth_name = ${auth} AND u.object_code = ${code} LIMIT 1`
       );
-      if (ext && [ext.w, ext.s, ext.e, ext.n].every((v) => typeof v === 'number' && isFinite(v))) {
-        facts.extent = [ext.w, ext.s, ext.e, ext.n] as [number, number, number, number];
+      if (
+        ext
+        && [ext.w, ext.s, ext.e, ext.n].every(
+          (v) => typeof v === "number" && isFinite(v)
+        )
+      ) {
+        facts.extent = [ext.w, ext.s, ext.e, ext.n] as [
+          number,
+          number,
+          number,
+          number,
+        ];
       }
       return facts;
     });
@@ -164,7 +178,7 @@ export function createProjDbLookup(projDbPath: string): CrsDbLookup {
 function safe(fn: () => string): string | undefined {
   try {
     const v = fn();
-    return typeof v === 'string' && v.trim() ? v.trim() : undefined;
+    return typeof v === "string" && v.trim() ? v.trim() : undefined;
   } catch {
     return undefined;
   }
@@ -182,26 +196,51 @@ function safe(fn: () => string): string | undefined {
  * @param {CrsDbFacts} facts - Database facts.
  * @returns {CrsInfo} Info.
  */
-export function buildCrsInfo(authId: string, srs: SrsLike, facts: CrsDbFacts): CrsInfo {
-  const geographic = (() => { try { return srs.isGeographic(); } catch { return false; } })();
-  const projected = (() => { try { return srs.isProjected(); } catch { return false; } })();
-  const name = facts.name ?? safe(() => srs.getAttrValue(projected ? 'PROJCS' : 'GEOGCS')) ?? authId;
+export function buildCrsInfo(
+  authId: string,
+  srs: SrsLike,
+  facts: CrsDbFacts
+): CrsInfo {
+  const geographic = (() => {
+    try {
+      return srs.isGeographic();
+    } catch {
+      return false;
+    }
+  })();
+  const projected = (() => {
+    try {
+      return srs.isProjected();
+    } catch {
+      return false;
+    }
+  })();
+  const name =
+    facts.name
+    ?? safe(() => srs.getAttrValue(projected ? "PROJCS" : "GEOGCS"))
+    ?? authId;
 
   const properties: string[] = [];
-  if (geographic) properties.push('Geographic (uses latitude and longitude for coordinates)');
-  else if (projected) properties.push('Projected');
-  if (facts.dynamic) properties.push('Dynamic (relies on a reference frame which is not plate-fixed)');
-  if (facts.celestialBody) properties.push(`Celestial body: ${facts.celestialBody}`);
-  const datumName = facts.datumName ?? safe(() => srs.getAttrValue('DATUM'));
+  if (geographic)
+    properties.push("Geographic (uses latitude and longitude for coordinates)");
+  else if (projected) properties.push("Projected");
+  if (facts.dynamic)
+    properties.push(
+      "Dynamic (relies on a reference frame which is not plate-fixed)"
+    );
+  if (facts.celestialBody)
+    properties.push(`Celestial body: ${facts.celestialBody}`);
+  const datumName = facts.datumName ?? safe(() => srs.getAttrValue("DATUM"));
   if (datumName) {
-    const id = facts.datumAuthId ? ` (${facts.datumAuthId})` : '';
+    const id = facts.datumAuthId ? ` (${facts.datumAuthId})` : "";
     const accuracy =
       facts.ensembleAccuracy !== undefined ?
         `, which has a limited accuracy of at best ${facts.ensembleAccuracy} meters`
-      : '';
+      : "";
     properties.push(`Based on ${datumName}${id}${accuracy}`);
   }
-  const method = geographic ? 'Lat/long' : safe(() => srs.getAttrValue('PROJECTION'));
+  const method =
+    geographic ? "Lat/long" : safe(() => srs.getAttrValue("PROJECTION"));
   if (method) properties.push(`Method: ${method}`);
 
   return {
@@ -209,7 +248,9 @@ export function buildCrsInfo(authId: string, srs: SrsLike, facts: CrsDbFacts): C
     name,
     deprecated: Boolean(facts.deprecated),
     properties,
-    ...(safe(() => srs.toPrettyWKT()) ? { wkt: safe(() => srs.toPrettyWKT()) } : {}),
+    ...(safe(() => srs.toPrettyWKT()) ?
+      { wkt: safe(() => srs.toPrettyWKT()) }
+    : {}),
     ...(safe(() => srs.toProj4()) ? { proj4: safe(() => srs.toProj4()) } : {}),
     ...(facts.extent ? { extent: facts.extent } : {}),
   };

@@ -9,10 +9,10 @@
  * @see {@link MapController}
  */
 
-import React, { useEffect, useRef } from 'react';
-import { MapController } from '@renderer/map/MapController';
-import type { IDockviewPanelProps } from 'dockview-react';
-import 'ol/ol.css';
+import React, { useEffect, useRef } from "react";
+import { MapController } from "@renderer/map/MapController";
+import type { IDockviewPanelProps } from "dockview-react";
+import "ol/ol.css";
 
 /**
  * @component MapViewportPanel
@@ -50,16 +50,16 @@ export const MapViewportPanel: React.FC<IDockviewPanelProps | any> = React.memo(
       <div
         ref={containerRef}
         style={{
-          width: '100%',
-          height: '100%',
-          position: 'relative',
-          overflow: 'hidden',
-          backgroundColor: '#ffffff',
-          userSelect: 'none',
+          width: "100%",
+          height: "100%",
+          position: "relative",
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
+          userSelect: "none",
         }}
       />
     );
   }
 );
 
-MapViewportPanel.displayName = 'MapViewportPanel';
+MapViewportPanel.displayName = "MapViewportPanel";

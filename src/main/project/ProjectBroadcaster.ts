@@ -9,20 +9,20 @@
  * @see {@link ProjectStore}
  */
 
-import { BrowserWindow } from 'electron';
+import { BrowserWindow } from "electron";
 import type {
   ProjectGroupItem,
   ProjectLayerItem,
   ProjectMetadata,
   ProjectViewport,
   ProjectModel,
-  LayerDescriptor
-} from '@shared/types';
-import { projectStore } from './ProjectStore';
-import { LayerTreeNode } from './models/LayerTreeNode';
-import { LayerGroup } from './models/LayerGroup';
-import { Layer } from './models/Layer';
-import { logging } from '../../shared/logging';
+  LayerDescriptor,
+} from "@shared/types";
+import { projectStore } from "./ProjectStore";
+import { LayerTreeNode } from "./models/LayerTreeNode";
+import { LayerGroup } from "./models/LayerGroup";
+import { Layer } from "./models/Layer";
+import { logging } from "../../shared/logging";
 
 /**
  * @description Recursively serializes a LayerTreeNode instance into a clean IPC-safe project item DTO.
@@ -33,7 +33,9 @@ import { logging } from '../../shared/logging';
  * @param {LayerTreeNode} node - Layer or group node to serialize.
  * @returns {ProjectLayerItem | ProjectGroupItem} Serialized layer or group DTO.
  */
-export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | ProjectGroupItem {
+export function serializeLayerTreeNode(
+  node: LayerTreeNode
+): ProjectLayerItem | ProjectGroupItem {
   if (node instanceof LayerGroup) {
     return {
       id: node.id,
@@ -41,7 +43,9 @@ export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | 
       visible: node.visible,
       selected: node.selected,
       expanded: node.expanded,
-      children: node.getAllChildren().map(child => serializeLayerTreeNode(child))
+      children: node
+        .getAllChildren()
+        .map((child) => serializeLayerTreeNode(child)),
     };
   }
 
@@ -65,8 +69,11 @@ export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | 
     customProperties: layer.customProperties,
     extent: layer.extent,
     featureCount: layer.featureCount,
-    temporalEnabled: layer.temporalEnabled !== undefined ? layer.temporalEnabled : layer.temporal?.enabled,
-    temporal: layer.temporal
+    temporalEnabled:
+      layer.temporalEnabled !== undefined ?
+        layer.temporalEnabled
+      : layer.temporal?.enabled,
+    temporal: layer.temporal,
   };
 }
 
@@ -78,9 +85,13 @@ export function serializeLayerTreeNode(node: LayerTreeNode): ProjectLayerItem | 
  * @since 0.1.0-dev
  * @returns {Array<ProjectLayerItem | ProjectGroupItem>} Serialized layer tree items.
  */
-export function serializeProjectLayersTree(): Array<ProjectLayerItem | ProjectGroupItem> {
+export function serializeProjectLayersTree(): Array<
+  ProjectLayerItem | ProjectGroupItem
+> {
   const rootGroup = projectStore.getRootGroup();
-  return rootGroup.getAllChildren().map(child => serializeLayerTreeNode(child));
+  return rootGroup
+    .getAllChildren()
+    .map((child) => serializeLayerTreeNode(child));
 }
 
 /**
@@ -126,11 +137,18 @@ export function emitToWindows(channel: string, payload: any): void {
     try {
       listener(channel, payload);
     } catch (err) {
-      logging.warn('Error in broadcast listener', err, { scope: 'ProjectBroadcaster', channel });
+      logging.warn("Error in broadcast listener", err, {
+        scope: "ProjectBroadcaster",
+        channel,
+      });
     }
   }
 
-  if (typeof BrowserWindow !== 'undefined' && BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+  if (
+    typeof BrowserWindow !== "undefined"
+    && BrowserWindow
+    && typeof BrowserWindow.getAllWindows === "function"
+  ) {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send(channel, payload);
@@ -149,7 +167,7 @@ export function emitToWindows(channel: string, payload: any): void {
  * @returns {void}
  */
 export function broadcastLayerAdded(descriptor: LayerDescriptor): void {
-  emitToWindows('project:layer-added', descriptor);
+  emitToWindows("project:layer-added", descriptor);
 }
 
 /**
@@ -162,7 +180,7 @@ export function broadcastLayerAdded(descriptor: LayerDescriptor): void {
  */
 export function broadcastProjectLayersTree(): void {
   const tree = serializeProjectLayersTree();
-  emitToWindows('project:layers-tree-updated', tree);
+  emitToWindows("project:layers-tree-updated", tree);
 }
 
 /**
@@ -177,7 +195,7 @@ export function broadcastProjectLayersTree(): void {
 export function broadcastProjectMetadata(metadata?: ProjectMetadata): void {
   const meta = metadata || projectStore.getProject()?.metadata;
   if (!meta) return;
-  emitToWindows('project:metadata-updated', meta);
+  emitToWindows("project:metadata-updated", meta);
 }
 
 /**
@@ -192,7 +210,7 @@ export function broadcastProjectMetadata(metadata?: ProjectMetadata): void {
 export function broadcastProjectViewport(viewport?: ProjectViewport): void {
   const vp = viewport || projectStore.getProject()?.viewport;
   if (!vp) return;
-  emitToWindows('project:viewport-updated', vp);
+  emitToWindows("project:viewport-updated", vp);
 }
 
 /**
@@ -207,7 +225,7 @@ export function broadcastProjectViewport(viewport?: ProjectViewport): void {
 export function broadcastFullProject(project?: ProjectModel): void {
   const proj = project || projectStore.getProject();
   if (!proj) return;
-  emitToWindows('project:loaded', proj);
+  emitToWindows("project:loaded", proj);
 }
 
 /**
@@ -220,12 +238,10 @@ export function broadcastFullProject(project?: ProjectModel): void {
  * @returns {void}
  */
 export function broadcastProjectDirtyState(dirty: boolean): void {
-  emitToWindows('project:dirty-state-changed', dirty);
+  emitToWindows("project:dirty-state-changed", dirty);
 }
 
 // Automatically subscribe to projectStore dirty transitions to broadcast across windows
 projectStore.onDirtyChange((dirty: boolean) => {
   broadcastProjectDirtyState(dirty);
 });
-
-

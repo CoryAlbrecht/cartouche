@@ -10,15 +10,15 @@
  * @see {@link WidgetDockItem}
  */
 
-import { signal, type Signal } from '@preact/signals-react';
+import { signal, type Signal } from "@preact/signals-react";
 import {
   type WidgetDockId,
   type WidgetDockItem,
   type WorkbenchWidgetDocksState,
   DEFAULT_WORKBENCH_WIDGET_DOCKS,
   type PreferenceMap,
-} from '../../shared/types';
-import { updatePreference } from './preferencesSignals';
+} from "../../shared/types";
+import { updatePreference } from "./preferencesSignals";
 
 /**
  * Deep clones the default dock configuration to ensure mutations do not alter constant templates.
@@ -39,9 +39,8 @@ function cloneDefaultWidgetDocks(): WorkbenchWidgetDocksState {
  * @since 0.1.0-dev
  * @type {Signal<WorkbenchWidgetDocksState>}
  */
-export const widgetDocksSignal: Signal<WorkbenchWidgetDocksState> = signal<WorkbenchWidgetDocksState>(
-  cloneDefaultWidgetDocks()
-);
+export const widgetDocksSignal: Signal<WorkbenchWidgetDocksState> =
+  signal<WorkbenchWidgetDocksState>(cloneDefaultWidgetDocks());
 
 /**
  * Result returned by getWidgetDockItem lookup.
@@ -75,7 +74,7 @@ export function getWidgetDockItem(
   state?: WorkbenchWidgetDocksState
 ): WidgetDockItemSearchResult | undefined {
   const currentState = state || widgetDocksSignal.value;
-  const dockIds: WidgetDockId[] = ['left', 'right', 'top', 'bottom'];
+  const dockIds: WidgetDockId[] = ["left", "right", "top", "bottom"];
 
   for (const dock of dockIds) {
     const items = currentState[dock] || [];
@@ -108,7 +107,10 @@ export function getWidgetDockItem(
  * @param {number} newRatio - Proportional axis ratio value (minimum 0.01).
  * @returns {Promise<void>}
  */
-export async function updateWidgetDockRatio(id: string, newRatio: number): Promise<void> {
+export async function updateWidgetDockRatio(
+  id: string,
+  newRatio: number
+): Promise<void> {
   const current = widgetDocksSignal.value;
   const match = getWidgetDockItem(id, current);
   if (!match) return;
@@ -127,7 +129,7 @@ export async function updateWidgetDockRatio(id: string, newRatio: number): Promi
   };
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }
 
 /**
@@ -151,11 +153,11 @@ export async function reorderWidgetInDock(
   const current = widgetDocksSignal.value;
   const items = [...(current[dockId] || [])];
   if (
-    sourceIndex < 0 ||
-    sourceIndex >= items.length ||
-    targetIndex < 0 ||
-    targetIndex >= items.length ||
-    sourceIndex === targetIndex
+    sourceIndex < 0
+    || sourceIndex >= items.length
+    || targetIndex < 0
+    || targetIndex >= items.length
+    || sourceIndex === targetIndex
   ) {
     return;
   }
@@ -171,7 +173,7 @@ export async function reorderWidgetInDock(
   };
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }
 
 /**
@@ -205,7 +207,10 @@ export async function moveWidgetToDock(
 
   // Remove from source dock
   const sourceItems = current[match.dock].filter((item) => item.id !== id);
-  const reorderedSource = sourceItems.map((item, idx) => ({ ...item, order: idx }));
+  const reorderedSource = sourceItems.map((item, idx) => ({
+    ...item,
+    order: idx,
+  }));
 
   // Prepare transferred item: reset axisRatio to 1 per ADR 0025
   const transferredItem: WidgetDockItem = {
@@ -221,7 +226,10 @@ export async function moveWidgetToDock(
     : targetItems.length;
 
   targetItems.splice(insertionIndex, 0, transferredItem);
-  const reorderedTarget = targetItems.map((item, idx) => ({ ...item, order: idx }));
+  const reorderedTarget = targetItems.map((item, idx) => ({
+    ...item,
+    order: idx,
+  }));
 
   const nextState: WorkbenchWidgetDocksState = {
     ...current,
@@ -230,7 +238,7 @@ export async function moveWidgetToDock(
   };
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }
 
 /**
@@ -245,7 +253,10 @@ export async function moveWidgetToDock(
  * @param {boolean} visible - Whether the widget is visible.
  * @returns {Promise<void>}
  */
-export async function setWidgetDockItemVisibility(id: string, visible: boolean): Promise<void> {
+export async function setWidgetDockItemVisibility(
+  id: string,
+  visible: boolean
+): Promise<void> {
   const current = widgetDocksSignal.value;
   const match = getWidgetDockItem(id, current);
   if (!match) return;
@@ -263,7 +274,7 @@ export async function setWidgetDockItemVisibility(id: string, visible: boolean):
   };
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }
 
 /**
@@ -277,8 +288,8 @@ export async function setWidgetDockItemVisibility(id: string, visible: boolean):
  * @param {PreferenceMap} prefs - Loaded preferences map.
  */
 export function hydrateWidgetDocksFromPreferences(prefs: PreferenceMap): void {
-  const pref = prefs['ui.workbench.widgetDocks'];
-  if (pref && typeof pref.value === 'object' && pref.value !== null) {
+  const pref = prefs["ui.workbench.widgetDocks"];
+  if (pref && typeof pref.value === "object" && pref.value !== null) {
     const val = pref.value as WorkbenchWidgetDocksState;
     if (val.left && val.right && val.top && val.bottom) {
       widgetDocksSignal.value = val;
@@ -327,7 +338,9 @@ export async function createOverlapContainer(
   const targetDims = targetMatch ? targetMatch.item.dimensions : {};
 
   // Remove dragged widget from its previous dock
-  const nextState: WorkbenchWidgetDocksState = JSON.parse(JSON.stringify(current));
+  const nextState: WorkbenchWidgetDocksState = JSON.parse(
+    JSON.stringify(current)
+  );
   if (draggedMatch) {
     nextState[draggedMatch.dock] = nextState[draggedMatch.dock].filter(
       (item) => item.id !== draggedWidgetId
@@ -347,20 +360,21 @@ export async function createOverlapContainer(
     activeTabId: draggedWidgetId,
   };
 
-  const dockList = nextState[dockId].filter((item) => item.id !== targetWidgetId);
+  const dockList = nextState[dockId].filter(
+    (item) => item.id !== targetWidgetId
+  );
   dockList.splice(targetOrder, 0, containerItem);
   nextState[dockId] = dockList.map((item, idx) => ({ ...item, order: idx }));
 
   // Re-index dragged match dock if different
   if (draggedMatch && draggedMatch.dock !== dockId) {
-    nextState[draggedMatch.dock] = nextState[draggedMatch.dock].map((item, idx) => ({
-      ...item,
-      order: idx,
-    }));
+    nextState[draggedMatch.dock] = nextState[draggedMatch.dock].map(
+      (item, idx) => ({ ...item, order: idx })
+    );
   }
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
   return containerId;
 }
 
@@ -386,7 +400,9 @@ export async function appendTabToOverlapContainer(
 
   if (!containerMatch || !containerMatch.item.isOverlapContainer) return;
 
-  const nextState: WorkbenchWidgetDocksState = JSON.parse(JSON.stringify(current));
+  const nextState: WorkbenchWidgetDocksState = JSON.parse(
+    JSON.stringify(current)
+  );
 
   // Remove tab from previous standalone dock if present
   if (tabMatch && tabMatch.dock) {
@@ -400,21 +416,20 @@ export async function appendTabToOverlapContainer(
   }
 
   const existingTabs = containerMatch.item.tabChildren || [];
-  const updatedTabs = existingTabs.includes(tabId) ? existingTabs : [...existingTabs, tabId];
+  const updatedTabs =
+    existingTabs.includes(tabId) ? existingTabs : [...existingTabs, tabId];
 
-  nextState[containerMatch.dock] = nextState[containerMatch.dock].map((item) => {
-    if (item.id === containerId) {
-      return {
-        ...item,
-        tabChildren: updatedTabs,
-        activeTabId: tabId,
-      };
+  nextState[containerMatch.dock] = nextState[containerMatch.dock].map(
+    (item) => {
+      if (item.id === containerId) {
+        return { ...item, tabChildren: updatedTabs, activeTabId: tabId };
+      }
+      return item;
     }
-    return item;
-  });
+  );
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }
 
 /**
@@ -442,14 +457,20 @@ export async function extractTabFromOverlapContainer(
   if (!containerMatch || !containerMatch.item.isOverlapContainer) return;
 
   const destDock = targetDockId || containerMatch.dock;
-  const remainingTabs = (containerMatch.item.tabChildren || []).filter((id) => id !== tabId);
+  const remainingTabs = (containerMatch.item.tabChildren || []).filter(
+    (id) => id !== tabId
+  );
 
-  const nextState: WorkbenchWidgetDocksState = JSON.parse(JSON.stringify(current));
+  const nextState: WorkbenchWidgetDocksState = JSON.parse(
+    JSON.stringify(current)
+  );
 
   // Single-child auto-dissolution: if only 1 tab remains, dissolve container and restore solitary child
   if (remainingTabs.length <= 1) {
     const solitaryId = remainingTabs[0];
-    const containerIdx = nextState[containerMatch.dock].findIndex((i) => i.id === containerId);
+    const containerIdx = nextState[containerMatch.dock].findIndex(
+      (i) => i.id === containerId
+    );
 
     if (solitaryId && containerIdx !== -1) {
       const solitaryItem: WidgetDockItem = {
@@ -469,17 +490,19 @@ export async function extractTabFromOverlapContainer(
     }
   } else {
     // Update container with remaining tabs
-    nextState[containerMatch.dock] = nextState[containerMatch.dock].map((item) => {
-      if (item.id === containerId) {
-        return {
-          ...item,
-          tabChildren: remainingTabs,
-          activeTabId:
-            item.activeTabId === tabId ? remainingTabs[0] : item.activeTabId,
-        };
+    nextState[containerMatch.dock] = nextState[containerMatch.dock].map(
+      (item) => {
+        if (item.id === containerId) {
+          return {
+            ...item,
+            tabChildren: remainingTabs,
+            activeTabId:
+              item.activeTabId === tabId ? remainingTabs[0] : item.activeTabId,
+          };
+        }
+        return item;
       }
-      return item;
-    });
+    );
   }
 
   // Insert extracted widget into destDock as independent widget with axisRatio = 1
@@ -504,14 +527,13 @@ export async function extractTabFromOverlapContainer(
   // Re-index orders
   nextState[destDock] = destList.map((item, idx) => ({ ...item, order: idx }));
   if (destDock !== containerMatch.dock) {
-    nextState[containerMatch.dock] = nextState[containerMatch.dock].map((item, idx) => ({
-      ...item,
-      order: idx,
-    }));
+    nextState[containerMatch.dock] = nextState[containerMatch.dock].map(
+      (item, idx) => ({ ...item, order: idx })
+    );
   }
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }
 
 /**
@@ -525,12 +547,16 @@ export async function extractTabFromOverlapContainer(
  * @param {string} containerId - Container ID to dissolve.
  * @returns {Promise<void>}
  */
-export async function dissolveOverlapContainer(containerId: string): Promise<void> {
+export async function dissolveOverlapContainer(
+  containerId: string
+): Promise<void> {
   const current = widgetDocksSignal.value;
   const match = getWidgetDockItem(containerId, current);
   if (!match || !match.item.isOverlapContainer) return;
 
-  const nextState: WorkbenchWidgetDocksState = JSON.parse(JSON.stringify(current));
+  const nextState: WorkbenchWidgetDocksState = JSON.parse(
+    JSON.stringify(current)
+  );
   const tabs = match.item.tabChildren || [];
 
   const restoredItems: WidgetDockItem[] = tabs.map((tabId, idx) => ({
@@ -545,8 +571,11 @@ export async function dissolveOverlapContainer(containerId: string): Promise<voi
 
   const dockList = nextState[match.dock];
   dockList.splice(match.index, 1, ...restoredItems);
-  nextState[match.dock] = dockList.map((item, idx) => ({ ...item, order: idx }));
+  nextState[match.dock] = dockList.map((item, idx) => ({
+    ...item,
+    order: idx,
+  }));
 
   widgetDocksSignal.value = nextState;
-  await updatePreference('ui.workbench.widgetDocks', nextState);
+  await updatePreference("ui.workbench.widgetDocks", nextState);
 }

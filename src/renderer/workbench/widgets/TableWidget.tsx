@@ -12,16 +12,25 @@
  * @see {@link TableTextEditor}
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useSignal, type Signal } from '@preact/signals-react';
-import { useSignals } from '@preact/signals-react/runtime';
-import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from '@mdi/js';
-import Icon from '@renderer/components/common/Icon';
-import { BasicWidget, type BasicWidgetProps } from './BasicWidget';
-import { nextTableSort, sortTableRows, type TableSort, type TableSortDirection } from './tableSort';
-import { TableNumberEditor, TableTextEditor } from './tableEditors';
+import React, { useEffect, useRef, useState } from "react";
+import { useSignal, type Signal } from "@preact/signals-react";
+import { useSignals } from "@preact/signals-react/runtime";
+import { mdiChevronDown, mdiChevronUp, mdiUnfoldMoreHorizontal } from "@mdi/js";
+import Icon from "@renderer/components/common/Icon";
+import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
+import {
+  nextTableSort,
+  sortTableRows,
+  type TableSort,
+  type TableSortDirection,
+} from "./tableSort";
+import { TableNumberEditor, TableTextEditor } from "./tableEditors";
 
-export { TableNumberEditor, TableTextEditor, parseNumericInput } from './tableEditors';
+export {
+  TableNumberEditor,
+  TableTextEditor,
+  parseNumericInput,
+} from "./tableEditors";
 
 /**
  * @typedef {string | number} TableRowId
@@ -33,13 +42,13 @@ export type TableRowId = string | number;
  * @typedef {'left' | 'center' | 'right'} TableColumnAlign
  * @description Horizontal alignment of a column's header and cells.
  */
-export type TableColumnAlign = 'left' | 'center' | 'right';
+export type TableColumnAlign = "left" | "center" | "right";
 
 /**
  * @typedef {'next' | 'previous'} TableEditMove
  * @description Where editing moves after a commit (Ticket #327): to the next editable cell (Tab) or the previous one (Shift+Tab), in display order, row by row.
  */
-export type TableEditMove = 'next' | 'previous';
+export type TableEditMove = "next" | "previous";
 
 /**
  * @typedef {Object} TableCellEditorProps
@@ -125,7 +134,7 @@ export interface TableColumn<R> {
  * - `toggle`: `rowIds` is the one row toggled in or out of the selection (Ctrl+primary-click).
  * - `range`: `rowIds` is the range of displayed rows that is now the displayed selection; the host keeps or drops its rows that are not displayed as it sees fit (Shift+primary-click, Shift+↑/↓, Ctrl+A).
  */
-export type TableSelectionChangeKind = 'replace' | 'toggle' | 'range';
+export type TableSelectionChangeKind = "replace" | "toggle" | "range";
 
 /**
  * @typedef {Object} TableSelectionChange
@@ -144,7 +153,7 @@ export interface TableSelectionChange {
  * @typedef {'single' | 'multiple'} TableSelectionMode
  * @description How many rows a user can select (Ticket #335). In `multiple` mode every selection gesture works as described in {@link TableSelectionChangeKind}. In `single` mode at most one row is selected: Ctrl+primary-click and Shift+primary-click select only the clicked row and Shift+↑/↓ move the Active Row like ↑/↓ (all `replace` changes), and Ctrl+A does nothing.
  */
-export type TableSelectionMode = 'single' | 'multiple';
+export type TableSelectionMode = "single" | "multiple";
 
 /**
  * @typedef {Object} TableCellRef
@@ -165,7 +174,10 @@ export interface TableCellRef {
  * @param {TableColumn<R>} column - The cell's column.
  * @returns {string | null | undefined} Space-separated classes, or nothing.
  */
-export type TableCellClassNamer<R> = (row: R, column: TableColumn<R>) => string | null | undefined;
+export type TableCellClassNamer<R> = (
+  row: R,
+  column: TableColumn<R>
+) => string | null | undefined;
 
 /**
  * @callback TableSortHandler
@@ -174,7 +186,10 @@ export type TableCellClassNamer<R> = (row: R, column: TableColumn<R>) => string 
  * @param {TableSortDirection | null} direction - The column's new sort direction, or null when the table is no longer sorted.
  * @returns {void}
  */
-export type TableSortHandler = (columnKey: string, direction: TableSortDirection | null) => void;
+export type TableSortHandler = (
+  columnKey: string,
+  direction: TableSortDirection | null
+) => void;
 
 /**
  * @typedef {Object} TableCellStyle
@@ -195,9 +210,16 @@ export interface TableCellStyle {
  * @param {TableColumn<R>} column - The cell's column.
  * @returns {TableCellStyle | null | undefined} The cell's style, or nothing.
  */
-export type TableCellStyler<R> = (row: R, column: TableColumn<R>) => TableCellStyle | null | undefined;
+export type TableCellStyler<R> = (
+  row: R,
+  column: TableColumn<R>
+) => TableCellStyle | null | undefined;
 
-export type { TableSort, TableSortDirection, TableSortState } from './tableSort';
+export type {
+  TableSort,
+  TableSortDirection,
+  TableSortState,
+} from "./tableSort";
 
 /**
  * @typedef {Object} TableWidgetProps
@@ -226,7 +248,10 @@ export type { TableSort, TableSortDirection, TableSortState } from './tableSort'
  * @property {string} [ariaLabel] - Accessible name of the table element (`aria-label`) (Ticket #335).
  * @property {string} [ariaLabelledBy] - `id` of the element naming the table (`aria-labelledby`), e.g. a host form row's label (Ticket #335).
  */
-export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> {
+export interface TableWidgetProps<R> extends Omit<
+  BasicWidgetProps,
+  "children"
+> {
   rows: readonly R[];
   getRowId: (row: R) => TableRowId;
   columns: readonly TableColumn<R>[];
@@ -252,7 +277,7 @@ export interface TableWidgetProps<R> extends Omit<BasicWidgetProps, 'children'> 
 }
 
 /** Width of the Row Number Column; rem so it scales with the `ui.baseFont.size` preference. */
-const ROW_NUMBER_COLUMN_WIDTH = '3rem';
+const ROW_NUMBER_COLUMN_WIDTH = "3rem";
 
 /**
  * Stacking of sticky cells: Row Number Column cells pass under the sticky header row when scrolled up,
@@ -265,18 +290,18 @@ const Z_INDEX = { rowNumber: 1, header: 2, corner: 3 } as const;
  * bottom borders) come from the `.table-widget-header-cell`, `.table-widget-row-number` and `.table-widget-cell` classes.
  */
 const CELL_STYLE: React.CSSProperties = {
-  padding: '0.25rem 0.5rem',
-  boxSizing: 'border-box',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
+  padding: "0.25rem 0.5rem",
+  boxSizing: "border-box",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 /** Header row cell: bold header text, stuck to the top (its colours come from `.table-widget-header-cell`). */
 const HEADER_CELL_STYLE: React.CSSProperties = {
   ...CELL_STYLE,
-  fontWeight: 'bold',
-  position: 'sticky',
+  fontWeight: "bold",
+  position: "sticky",
   top: 0,
   zIndex: Z_INDEX.header,
 };
@@ -284,21 +309,21 @@ const HEADER_CELL_STYLE: React.CSSProperties = {
 /** Row Number Column body cell: stuck to the left edge (its header colours come from `.table-widget-row-number`). */
 const ROW_NUMBER_CELL_STYLE: React.CSSProperties = {
   ...CELL_STYLE,
-  textAlign: 'right',
-  position: 'sticky',
+  textAlign: "right",
+  position: "sticky",
   left: 0,
   zIndex: Z_INDEX.rowNumber,
 };
 
 /** Column resizer: a strip over the header cell's right edge (the sticky header cell is its containing block). */
 const RESIZE_HANDLE_STYLE: React.CSSProperties = {
-  position: 'absolute',
+  position: "absolute",
   top: 0,
   right: 0,
   bottom: 0,
-  width: '0.375rem',
-  cursor: 'col-resize',
-  userSelect: 'none',
+  width: "0.375rem",
+  cursor: "col-resize",
+  userSelect: "none",
 };
 
 /**
@@ -307,9 +332,9 @@ const RESIZE_HANDLE_STYLE: React.CSSProperties = {
  * padding box onto the shared lines is not clipped away while the text still ends in an ellipsis.
  */
 const BORDERED_CELL_STYLE: React.CSSProperties = {
-  position: 'relative',
-  overflow: 'clip',
-  overflowClipMargin: '1px',
+  position: "relative",
+  overflow: "clip",
+  overflowClipMargin: "1px",
 };
 
 /**
@@ -323,14 +348,17 @@ const BORDERED_CELL_STYLE: React.CSSProperties = {
  * @param {boolean} firstColumn - Whether the cell is in the first column.
  * @returns {React.CSSProperties} The overlay's position.
  */
-function cellBorderStyle(firstRow: boolean, firstColumn: boolean): React.CSSProperties {
+function cellBorderStyle(
+  firstRow: boolean,
+  firstColumn: boolean
+): React.CSSProperties {
   return {
-    position: 'absolute',
-    top: firstRow ? '0px' : '-1px',
-    right: '-1px',
-    bottom: '-1px',
-    left: firstColumn ? '0px' : '-1px',
-    pointerEvents: 'none',
+    position: "absolute",
+    top: firstRow ? "0px" : "-1px",
+    right: "-1px",
+    bottom: "-1px",
+    left: firstColumn ? "0px" : "-1px",
+    pointerEvents: "none",
   };
 }
 
@@ -341,8 +369,8 @@ function cellBorderStyle(firstRow: boolean, firstColumn: boolean): React.CSSProp
  * @property {string} [--table-widget-cell-border] - The host's border colour, read by the border overlay.
  */
 interface HostCellColours extends React.CSSProperties {
-  '--table-widget-cell-bg'?: string;
-  '--table-widget-cell-border'?: string;
+  "--table-widget-cell-bg"?: string;
+  "--table-widget-cell-border"?: string;
 }
 
 /**
@@ -355,10 +383,15 @@ interface HostCellColours extends React.CSSProperties {
  * @param {TableCellStyle} cellStyle - The host's style for the cell.
  * @returns {HostCellColours} The cell's colour custom properties.
  */
-function hostCellColours({ background, borderColour }: TableCellStyle): HostCellColours {
+function hostCellColours({
+  background,
+  borderColour,
+}: TableCellStyle): HostCellColours {
   return {
-    ...(background ? { '--table-widget-cell-bg': background } : undefined),
-    ...(borderColour ? { '--table-widget-cell-border': borderColour } : undefined),
+    ...(background ? { "--table-widget-cell-bg": background } : undefined),
+    ...(borderColour ?
+      { "--table-widget-cell-border": borderColour }
+    : undefined),
   };
 }
 
@@ -373,10 +406,16 @@ function hostCellColours({ background, borderColour }: TableCellStyle): HostCell
  * @param {boolean} showRowNumberColumn - Whether the Row Number Column is shown.
  * @returns {string} CSS width.
  */
-function tableWidth(widths: readonly (number | undefined)[], showRowNumberColumn: boolean): string {
-  if (widths.length === 0 || widths.some((width) => width === undefined)) return '100%';
+function tableWidth(
+  widths: readonly (number | undefined)[],
+  showRowNumberColumn: boolean
+): string {
+  if (widths.length === 0 || widths.some((width) => width === undefined))
+    return "100%";
   const total = `${widths.reduce<number>((sum, width) => sum + (width ?? 0), 0)}px`;
-  return showRowNumberColumn ? `calc(${total} + ${ROW_NUMBER_COLUMN_WIDTH})` : total;
+  return showRowNumberColumn ?
+      `calc(${total} + ${ROW_NUMBER_COLUMN_WIDTH})`
+    : total;
 }
 
 /**
@@ -392,7 +431,9 @@ function tableWidth(widths: readonly (number | undefined)[], showRowNumberColumn
  * @returns {unknown} The cell value.
  */
 function cellValue<R>(row: R, column: TableColumn<R>): unknown {
-  return column.value ? column.value(row) : (row as Record<string, unknown>)[column.key];
+  return column.value ?
+      column.value(row)
+    : (row as Record<string, unknown>)[column.key];
 }
 
 /**
@@ -410,7 +451,7 @@ function cellValue<R>(row: R, column: TableColumn<R>): unknown {
 function displayCell<R>(row: R, column: TableColumn<R>): React.ReactNode {
   const value = cellValue(row, column);
   if (column.display) return column.display(value, row);
-  return value === null || value === undefined ? '' : String(value);
+  return value === null || value === undefined ? "" : String(value);
 }
 
 /** Character width in px assumed where text cannot be measured (no canvas 2D context, as in headless tests). */
@@ -450,8 +491,8 @@ let measuringCanvas: HTMLCanvasElement | null = null;
  */
 function measureText(text: string, font: string): number {
   try {
-    measuringCanvas ??= document.createElement('canvas');
-    const context = measuringCanvas.getContext('2d');
+    measuringCanvas ??= document.createElement("canvas");
+    const context = measuringCanvas.getContext("2d");
     if (context) {
       context.font = font;
       return context.measureText(text).width;
@@ -488,11 +529,14 @@ interface CellMetrics {
  * @returns {CellMetrics} Fonts and padding for measuring the column.
  */
 function cellMetrics(header: HTMLElement | null): CellMetrics {
-  const style = header && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(header) : null;
+  const style =
+    header && typeof window.getComputedStyle === "function" ?
+      window.getComputedStyle(header)
+    : null;
   if (!style?.fontSize) {
     return {
-      headerFont: 'bold 1rem sans-serif',
-      bodyFont: '1rem sans-serif',
+      headerFont: "bold 1rem sans-serif",
+      bodyFont: "1rem sans-serif",
       extras: FALLBACK_CELL_EXTRAS,
       sortChevron: FALLBACK_SORT_CHEVRON_WIDTH,
     };
@@ -508,12 +552,18 @@ function cellMetrics(header: HTMLElement | null): CellMetrics {
    * @returns {number} The length in px, or 0.
    */
   const px = (value: string): number => parseFloat(value) || 0;
-  const iconSize = px(style.getPropertyValue?.('--cartouche-ui-icon-size') ?? '') || DEFAULT_ICON_SIZE;
+  const iconSize =
+    px(style.getPropertyValue?.("--cartouche-ui-icon-size") ?? "")
+    || DEFAULT_ICON_SIZE;
   return {
     headerFont: `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
     bodyFont: `${style.fontStyle} normal ${style.fontSize} ${style.fontFamily}`,
-    extras: px(style.paddingLeft) + px(style.paddingRight) + px(style.borderRightWidth),
-    sortChevron: SORT_ICON_SCALE * iconSize + SORT_ICON_MARGIN_REM * px(style.fontSize),
+    extras:
+      px(style.paddingLeft)
+      + px(style.paddingRight)
+      + px(style.borderRightWidth),
+    sortChevron:
+      SORT_ICON_SCALE * iconSize + SORT_ICON_MARGIN_REM * px(style.fontSize),
   };
 }
 
@@ -531,7 +581,9 @@ function cellMetrics(header: HTMLElement | null): CellMetrics {
  */
 function headerWidth<R>(column: TableColumn<R>, metrics: CellMetrics): number {
   const chevron = column.sortable === false ? 0 : metrics.sortChevron;
-  return measureText(column.header, metrics.headerFont) + chevron + metrics.extras;
+  return (
+    measureText(column.header, metrics.headerFont) + chevron + metrics.extras
+  );
 }
 
 /**
@@ -561,10 +613,16 @@ function minWidthOf<R>(column: TableColumn<R>, metrics: CellMetrics): number {
  * @returns {string} The content's text.
  */
 function nodeText(node: React.ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number' || typeof node === 'bigint') return String(node);
-  if (Array.isArray(node)) return node.map(nodeText).join('');
-  if (React.isValidElement<{ children?: React.ReactNode }>(node)) return nodeText(node.props.children);
-  return '';
+  if (
+    typeof node === "string"
+    || typeof node === "number"
+    || typeof node === "bigint"
+  )
+    return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join("");
+  if (React.isValidElement<{ children?: React.ReactNode }>(node))
+    return nodeText(node.props.children);
+  return "";
 }
 
 /**
@@ -577,8 +635,14 @@ function nodeText(node: React.ReactNode): string {
  */
 interface ColumnResizing<R> {
   widthOf: (column: TableColumn<R>) => number | undefined;
-  startResize: (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void;
-  autoSize: (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>) => void;
+  startResize: (
+    event: React.MouseEvent<HTMLElement>,
+    column: TableColumn<R>
+  ) => void;
+  autoSize: (
+    event: React.MouseEvent<HTMLElement>,
+    column: TableColumn<R>
+  ) => void;
 }
 
 /**
@@ -629,7 +693,8 @@ function useColumnResizing<R>(
    * @param {TableColumn<R>} column - The column.
    * @returns {number | undefined} Width in px, or undefined when the column shares the remaining width.
    */
-  const widthOf = (column: TableColumn<R>): number | undefined => widths[column.key] ?? column.width;
+  const widthOf = (column: TableColumn<R>): number | undefined =>
+    widths[column.key] ?? column.width;
 
   /**
    * @function startResize
@@ -642,13 +707,17 @@ function useColumnResizing<R>(
    * @param {TableColumn<R>} column - The column being resized.
    * @returns {void}
    */
-  const startResize = (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>): void => {
+  const startResize = (
+    event: React.MouseEvent<HTMLElement>,
+    column: TableColumn<R>
+  ): void => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     endDrag.current?.();
     const header = event.currentTarget.parentNode as HTMLElement | null;
-    const startWidth = widthOf(column) ?? header?.getBoundingClientRect?.().width ?? 0;
+    const startWidth =
+      widthOf(column) ?? header?.getBoundingClientRect?.().width ?? 0;
     const startX = event.clientX;
     const minWidth = minWidthOf(column, cellMetrics(header));
     /**
@@ -676,12 +745,12 @@ function useColumnResizing<R>(
      */
     const onUp = (): void => endDrag.current?.();
     endDrag.current = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
       endDrag.current = null;
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   /**
@@ -695,12 +764,22 @@ function useColumnResizing<R>(
    * @param {TableColumn<R>} column - The column to auto-size.
    * @returns {void}
    */
-  const autoSize = (event: React.MouseEvent<HTMLElement>, column: TableColumn<R>): void => {
+  const autoSize = (
+    event: React.MouseEvent<HTMLElement>,
+    column: TableColumn<R>
+  ): void => {
     event.preventDefault();
     event.stopPropagation();
-    const metrics = cellMetrics(event.currentTarget.parentNode as HTMLElement | null);
+    const metrics = cellMetrics(
+      event.currentTarget.parentNode as HTMLElement | null
+    );
     const widest = rows.reduce(
-      (max, row) => Math.max(max, measureText(nodeText(displayCell(row, column)), metrics.bodyFont) + metrics.extras),
+      (max, row) =>
+        Math.max(
+          max,
+          measureText(nodeText(displayCell(row, column)), metrics.bodyFont)
+            + metrics.extras
+        ),
       headerWidth(column, metrics)
     );
     const width = Math.max(column.minWidth ?? 0, Math.ceil(widest));
@@ -721,8 +800,8 @@ function useColumnResizing<R>(
  * @returns {string} MDI path data of the chevron.
  */
 function sortChevron(direction: TableSortDirection | null): string {
-  if (direction === 'ascending') return mdiChevronUp;
-  if (direction === 'descending') return mdiChevronDown;
+  if (direction === "ascending") return mdiChevronUp;
+  if (direction === "descending") return mdiChevronDown;
   return mdiUnfoldMoreHorizontal;
 }
 
@@ -739,15 +818,20 @@ function sortChevron(direction: TableSortDirection | null): string {
  * @param {boolean} active - Whether the row is the Active Row.
  * @returns {string} The row's classes.
  */
-function rowClassName(index: number, alternatingRows: boolean, selected: boolean, active: boolean): string {
+function rowClassName(
+  index: number,
+  alternatingRows: boolean,
+  selected: boolean,
+  active: boolean
+): string {
   return [
-    'table-widget-row',
-    alternatingRows && index % 2 === 0 && 'table-widget-row--alternate',
-    selected && 'table-widget-row--selected',
-    active && 'table-widget-row--active',
+    "table-widget-row",
+    alternatingRows && index % 2 === 0 && "table-widget-row--alternate",
+    selected && "table-widget-row--selected",
+    active && "table-widget-row--active",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 }
 
 /**
@@ -761,10 +845,17 @@ function rowClassName(index: number, alternatingRows: boolean, selected: boolean
  * @param {string | null | undefined} [hostClasses] - The host's extra classes for the cell.
  * @returns {string} The cell's classes.
  */
-function dataCellClassName(readOnly: boolean, hostClasses?: string | null): string {
-  return ['table-widget-cell', readOnly && 'table-widget-cell--readonly', hostClasses?.trim()]
+function dataCellClassName(
+  readOnly: boolean,
+  hostClasses?: string | null
+): string {
+  return [
+    "table-widget-cell",
+    readOnly && "table-widget-cell--readonly",
+    hostClasses?.trim(),
+  ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 }
 
 /**
@@ -812,9 +903,9 @@ function useRowSelection({
   selectedRowIds,
   activeRowId,
   onSelectionChange,
-  selectionMode = 'multiple',
+  selectionMode = "multiple",
 }: RowSelectionOptions): RowSelection {
-  const single = selectionMode === 'single';
+  const single = selectionMode === "single";
   /** Most recently clicked (or plainly navigated-to) row: where Shift ranges start. */
   const anchorRef = useRef<TableRowId | null>(null);
 
@@ -854,7 +945,7 @@ function useRowSelection({
    */
   const selectOnly = (rowId: TableRowId): void => {
     anchorRef.current = rowId;
-    commit('replace', [rowId], new Set([rowId]), rowId);
+    commit("replace", [rowId], new Set([rowId]), rowId);
   };
 
   /**
@@ -869,8 +960,11 @@ function useRowSelection({
    * @returns {void}
    */
   const selectRange = (anchorIndex: number, index: number): void => {
-    const rowIds = displayedRowIds.slice(Math.min(anchorIndex, index), Math.max(anchorIndex, index) + 1);
-    commit('range', rowIds, new Set(rowIds), displayedRowIds[index]);
+    const rowIds = displayedRowIds.slice(
+      Math.min(anchorIndex, index),
+      Math.max(anchorIndex, index) + 1
+    );
+    commit("range", rowIds, new Set(rowIds), displayedRowIds[index]);
   };
 
   /**
@@ -895,14 +989,22 @@ function useRowSelection({
       const selection = new Set(selectedRowIds.value);
       if (selection.has(rowId)) {
         selection.delete(rowId);
-        commit('toggle', [rowId], selection, activeRowId.value === rowId ? null : activeRowId.value);
+        commit(
+          "toggle",
+          [rowId],
+          selection,
+          activeRowId.value === rowId ? null : activeRowId.value
+        );
       } else {
         selection.add(rowId);
-        commit('toggle', [rowId], selection, rowId);
+        commit("toggle", [rowId], selection, rowId);
       }
       return;
     }
-    const anchorIndex = anchorRef.current === null ? -1 : displayedRowIds.indexOf(anchorRef.current);
+    const anchorIndex =
+      anchorRef.current === null ?
+        -1
+      : displayedRowIds.indexOf(anchorRef.current);
     if (event.shiftKey && anchorIndex !== -1) {
       selectRange(anchorIndex, displayedRowIds.indexOf(rowId));
       return;
@@ -923,27 +1025,45 @@ function useRowSelection({
   const onKeyDown = (event: React.KeyboardEvent): void => {
     if (displayedRowIds.length === 0) return;
     const last = displayedRowIds.length - 1;
-    const activeIndex = activeRowId.value === null ? -1 : displayedRowIds.indexOf(activeRowId.value);
+    const activeIndex =
+      activeRowId.value === null ?
+        -1
+      : displayedRowIds.indexOf(activeRowId.value);
 
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
       event.preventDefault();
       if (single) return;
       const rowIds = [...displayedRowIds];
-      commit('range', rowIds, new Set(rowIds), activeIndex === -1 ? rowIds[0] : rowIds[activeIndex]);
+      commit(
+        "range",
+        rowIds,
+        new Set(rowIds),
+        activeIndex === -1 ? rowIds[0] : rowIds[activeIndex]
+      );
       return;
     }
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
     event.preventDefault();
 
-    const step = event.key === 'ArrowDown' ? 1 : -1;
+    const step = event.key === "ArrowDown" ? 1 : -1;
     const target =
-      activeIndex === -1 ? (step === 1 ? 0 : last) : Math.min(last, Math.max(0, activeIndex + step));
+      activeIndex === -1 ?
+        step === 1 ?
+          0
+        : last
+      : Math.min(last, Math.max(0, activeIndex + step));
     if (!event.shiftKey || single) {
       selectOnly(displayedRowIds[target]);
       return;
     }
-    const anchorIndex = anchorRef.current === null ? -1 : displayedRowIds.indexOf(anchorRef.current);
-    const rangeStart = anchorIndex !== -1 ? anchorIndex : activeIndex !== -1 ? activeIndex : target;
+    const anchorIndex =
+      anchorRef.current === null ?
+        -1
+      : displayedRowIds.indexOf(anchorRef.current);
+    const rangeStart =
+      anchorIndex !== -1 ? anchorIndex
+      : activeIndex !== -1 ? activeIndex
+      : target;
     anchorRef.current = displayedRowIds[rangeStart];
     selectRange(rangeStart, target);
   };
@@ -1047,7 +1167,8 @@ function useCellEditing<R>({
     }
     if (!wasEditingRef.current) return;
     wasEditingRef.current = false;
-    const focused = typeof document === 'undefined' ? null : document.activeElement;
+    const focused =
+      typeof document === "undefined" ? null : document.activeElement;
     if (!focused || focused === document.body) tableRef.current?.focus?.();
   }, [editing, tableRef]);
 
@@ -1109,10 +1230,15 @@ function useCellEditing<R>({
    */
   const startEditInActiveRow = (): void => {
     const active = activeRowId.peek();
-    const row = displayedRows.find((candidate) => getRowId(candidate) === active);
+    const row = displayedRows.find(
+      (candidate) => getRowId(candidate) === active
+    );
     if (row === undefined) return;
-    const focused = columns.find((column) => column.key === focusedColumnRef.current);
-    const column = focused ?? columns.find((candidate) => !isReadOnly(row, candidate));
+    const focused = columns.find(
+      (column) => column.key === focusedColumnRef.current
+    );
+    const column =
+      focused ?? columns.find((candidate) => !isReadOnly(row, candidate));
     if (column) startEdit(row, column);
   };
 
@@ -1120,8 +1246,12 @@ function useCellEditing<R>({
   useEffect(() => {
     if (!requestedCell || !editCell) return;
     editCell.value = null;
-    const row = displayedRows.find((candidate) => getRowId(candidate) === requestedCell.rowId);
-    const column = columns.find((candidate) => candidate.key === requestedCell.columnKey);
+    const row = displayedRows.find(
+      (candidate) => getRowId(candidate) === requestedCell.rowId
+    );
+    const column = columns.find(
+      (candidate) => candidate.key === requestedCell.columnKey
+    );
     if (row === undefined || !column || isReadOnly(row, column)) return;
     selectOnly(requestedCell.rowId);
     startEdit(row, column);
@@ -1140,14 +1270,23 @@ function useCellEditing<R>({
    * @param {TableEditMove} move - Direction: `next` (Tab) or `previous` (Shift+Tab).
    * @returns {EditingCell | null} The cell, or null when there is none.
    */
-  const neighbour = (from: EditingCell, move: TableEditMove): EditingCell | null => {
-    const cells = displayedRows.flatMap((row) => columns.map((column) => ({ row, column })));
-    const start = cells.findIndex(({ row, column }) => getRowId(row) === from.rowId && column.key === from.columnKey);
+  const neighbour = (
+    from: EditingCell,
+    move: TableEditMove
+  ): EditingCell | null => {
+    const cells = displayedRows.flatMap((row) =>
+      columns.map((column) => ({ row, column }))
+    );
+    const start = cells.findIndex(
+      ({ row, column }) =>
+        getRowId(row) === from.rowId && column.key === from.columnKey
+    );
     if (start === -1) return null;
-    const step = move === 'next' ? 1 : -1;
+    const step = move === "next" ? 1 : -1;
     for (let i = start + step; i >= 0 && i < cells.length; i += step) {
       const { row, column } = cells[i];
-      if (!isReadOnly(row, column)) return { rowId: getRowId(row), columnKey: column.key };
+      if (!isReadOnly(row, column))
+        return { rowId: getRowId(row), columnKey: column.key };
     }
     return null;
   };
@@ -1164,18 +1303,31 @@ function useCellEditing<R>({
    * @param {TableEditMove} [move] - Where to move after committing.
    * @returns {void}
    */
-  const commit = (cell: EditingCell, newValue: unknown, move?: TableEditMove): void => {
+  const commit = (
+    cell: EditingCell,
+    newValue: unknown,
+    move?: TableEditMove
+  ): void => {
     if (editingRef.current !== cell) return;
     editingRef.current = null;
-    const row = displayedRows.find((candidate) => getRowId(candidate) === cell.rowId);
-    const column = columns.find((candidate) => candidate.key === cell.columnKey);
+    const row = displayedRows.find(
+      (candidate) => getRowId(candidate) === cell.rowId
+    );
+    const column = columns.find(
+      (candidate) => candidate.key === cell.columnKey
+    );
     if (row !== undefined && column) {
       const oldValue = cellValue(row, column);
       if (!Object.is(oldValue, newValue)) {
         try {
           // A `false` result rejects the edit. The table shows only `rows`, so the old value shows again
           // because a rejecting host leaves its row unchanged; the edit ends below either way.
-          onCellEdit?.({ rowId: cell.rowId, columnKey: cell.columnKey, oldValue, newValue });
+          onCellEdit?.({
+            rowId: cell.rowId,
+            columnKey: cell.columnKey,
+            oldValue,
+            newValue,
+          });
         } catch {
           // A throwing host rejects the edit the same way, and the edit still ends below.
         }
@@ -1201,7 +1353,14 @@ function useCellEditing<R>({
     open(null);
   };
 
-  return { editing, focusColumn, startEdit, startEditInActiveRow, commit, cancel };
+  return {
+    editing,
+    focusColumn,
+    startEdit,
+    startEditInActiveRow,
+    commit,
+    cancel,
+  };
 }
 
 /**
@@ -1246,19 +1405,22 @@ export function TableWidget<R>({
   isCellReadOnly,
   onCellEdit,
   cellStyle,
-  selectionMode = 'multiple',
+  selectionMode = "multiple",
   editCell,
   cellClassName: hostCellClassName,
   tableId,
   ariaLabel,
   ariaLabelledBy,
-  name = 'table-widget',
-  displayName = 'Table',
-  className = '',
+  name = "table-widget",
+  displayName = "Table",
+  className = "",
   ...basicWidgetProps
 }: TableWidgetProps<R>): React.ReactElement {
   useSignals();
-  const { widthOf, startResize, autoSize } = useColumnResizing(rows, columnWidths);
+  const { widthOf, startResize, autoSize } = useColumnResizing(
+    rows,
+    columnWidths
+  );
 
   /**
    * @signal internalSortSignal
@@ -1272,11 +1434,17 @@ export function TableWidget<R>({
   const internalSortSignal = useSignal<TableSort>(null);
   const sortSignal: Signal<TableSort> = hostSortSignal ?? internalSortSignal;
   const sort = sortSignal.value;
-  const sortColumn = sort ? columns.find((column) => column.key === sort.columnKey) : undefined;
+  const sortColumn =
+    sort ? columns.find((column) => column.key === sort.columnKey) : undefined;
   const displayedRows =
-    !sortHandler && sort && sortColumn
-      ? sortTableRows(rows, (row) => cellValue(row, sortColumn), sort.direction, sortColumn.compare)
-      : rows;
+    !sortHandler && sort && sortColumn ?
+      sortTableRows(
+        rows,
+        (row) => cellValue(row, sortColumn),
+        sort.direction,
+        sortColumn.compare
+      )
+    : rows;
   const { onRowClick, onKeyDown, selectOnly } = useRowSelection({
     displayedRowIds: displayedRows.map(getRowId),
     selectedRowIds,
@@ -1298,9 +1466,19 @@ export function TableWidget<R>({
    * @returns {boolean} True when the cell is read-only.
    */
   const isReadOnly = (row: R, column: TableColumn<R>): boolean =>
-    readOnly || column.readOnly === true || isRowReadOnly?.(row) === true || isCellReadOnly?.(row, column) === true;
+    readOnly
+    || column.readOnly === true
+    || isRowReadOnly?.(row) === true
+    || isCellReadOnly?.(row, column) === true;
 
-  const { editing, focusColumn, startEdit, startEditInActiveRow, commit, cancel } = useCellEditing({
+  const {
+    editing,
+    focusColumn,
+    startEdit,
+    startEditInActiveRow,
+    commit,
+    cancel,
+  } = useCellEditing({
     displayedRows,
     columns,
     getRowId,
@@ -1323,8 +1501,9 @@ export function TableWidget<R>({
    * @returns {void}
    */
   const handleTableKeyDown = (event: React.KeyboardEvent): void => {
-    const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
-    if (plain && (event.key === 'F2' || event.key === 'Enter')) {
+    const plain =
+      !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+    if (plain && (event.key === "F2" || event.key === "Enter")) {
       event.preventDefault();
       startEditInActiveRow();
       return;
@@ -1357,11 +1536,7 @@ export function TableWidget<R>({
       {...basicWidgetProps}>
       <div
         className='table-widget-frame'
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflow: 'auto',
-        }}>
+        style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
         <table
           className='table-widget-table'
           ref={tableRef}
@@ -1372,10 +1547,10 @@ export function TableWidget<R>({
           onKeyDown={handleTableKeyDown}
           style={{
             width: tableWidth(columns.map(widthOf), showRowNumberColumn),
-            tableLayout: 'fixed',
-            borderCollapse: 'separate',
+            tableLayout: "fixed",
+            borderCollapse: "separate",
             borderSpacing: 0,
-            fontSize: '1rem',
+            fontSize: "1rem",
           }}>
           <thead>
             <tr>
@@ -1385,7 +1560,7 @@ export function TableWidget<R>({
                   style={{
                     ...HEADER_CELL_STYLE,
                     width: ROW_NUMBER_COLUMN_WIDTH,
-                    textAlign: 'right',
+                    textAlign: "right",
                     left: 0,
                     zIndex: Z_INDEX.corner,
                   }}>
@@ -1394,18 +1569,19 @@ export function TableWidget<R>({
               )}
               {columns.map((column) => {
                 const sortable = column.sortable !== false;
-                const direction = sort?.columnKey === column.key ? sort.direction : null;
+                const direction =
+                  sort?.columnKey === column.key ? sort.direction : null;
                 return (
                   <th
                     key={column.key}
                     className='table-widget-header-cell'
-                    aria-sort={sortable ? (direction ?? 'none') : undefined}
+                    aria-sort={sortable ? (direction ?? "none") : undefined}
                     onClick={() => handleHeaderClick(column)}
                     style={{
                       ...HEADER_CELL_STYLE,
                       width: widthOf(column),
-                      textAlign: column.align ?? 'left',
-                      cursor: sortable ? 'pointer' : undefined,
+                      textAlign: column.align ?? "left",
+                      cursor: sortable ? "pointer" : undefined,
                     }}>
                     {column.header}
                     {sortable && (
@@ -1413,7 +1589,10 @@ export function TableWidget<R>({
                         className='table-widget-sort-icon'
                         path={sortChevron(direction)}
                         size={SORT_ICON_SIZE}
-                        style={{ verticalAlign: 'middle', marginLeft: `${SORT_ICON_MARGIN_REM}rem` }}
+                        style={{
+                          verticalAlign: "middle",
+                          marginLeft: `${SORT_ICON_MARGIN_REM}rem`,
+                        }}
                       />
                     )}
                     {column.resizable !== false && (
@@ -1438,12 +1617,19 @@ export function TableWidget<R>({
               return (
                 <tr
                   key={rowId}
-                  className={rowClassName(index, alternatingRows, selected, active)}
+                  className={rowClassName(
+                    index,
+                    alternatingRows,
+                    selected,
+                    active
+                  )}
                   data-row-id={rowId}
                   aria-selected={selected}
                   onClick={(event) => onRowClick(event, rowId)}>
                   {showRowNumberColumn && (
-                    <td className='table-widget-row-number' style={ROW_NUMBER_CELL_STYLE}>
+                    <td
+                      className='table-widget-row-number'
+                      style={ROW_NUMBER_CELL_STYLE}>
                       {index + 1}
                     </td>
                   )}
@@ -1451,39 +1637,58 @@ export function TableWidget<R>({
                     const hostStyle = cellStyle?.(row, column) ?? {};
                     const { borderColour } = hostStyle;
                     const readOnlyCell = isReadOnly(row, column);
-                    const cell = editing?.rowId === rowId && editing.columnKey === column.key ? editing : null;
+                    const cell =
+                      (
+                        editing?.rowId === rowId
+                        && editing.columnKey === column.key
+                      ) ?
+                        editing
+                      : null;
                     const value = cell ? cellValue(row, column) : undefined;
                     const Editor =
-                      column.editor ?? (typeof value === 'number' ? TableNumberEditor : TableTextEditor);
+                      column.editor
+                      ?? (typeof value === "number" ? TableNumberEditor : (
+                        TableTextEditor
+                      ));
                     return (
                       <td
                         key={column.key}
-                        className={dataCellClassName(readOnlyCell, hostCellClassName?.(row, column))}
+                        className={dataCellClassName(
+                          readOnlyCell,
+                          hostCellClassName?.(row, column)
+                        )}
                         aria-readonly={readOnlyCell || undefined}
-                        onClick={cell ? stopPropagation : () => focusColumn(column.key)}
-                        onDoubleClick={cell ? stopPropagation : () => startEdit(row, column)}
+                        onClick={
+                          cell ? stopPropagation : () => focusColumn(column.key)
+                        }
+                        onDoubleClick={
+                          cell ? stopPropagation : () => startEdit(row, column)
+                        }
                         onKeyDown={cell ? stopPropagation : undefined}
                         style={{
                           ...CELL_STYLE,
                           ...hostCellColours(hostStyle),
                           ...(borderColour ? BORDERED_CELL_STYLE : undefined),
-                          textAlign: column.align ?? 'left',
+                          textAlign: column.align ?? "left",
                         }}>
-                        {cell ? (
+                        {cell ?
                           <Editor
                             row={row}
                             column={column}
                             value={value}
-                            onCommit={(newValue, move) => commit(cell, newValue, move)}
+                            onCommit={(newValue, move) =>
+                              commit(cell, newValue, move)
+                            }
                             onCancel={() => cancel(cell)}
                           />
-                        ) : (
-                          displayCell(row, column)
-                        )}
+                        : displayCell(row, column)}
                         {borderColour && (
                           <span
                             className='table-widget-cell-border'
-                            style={cellBorderStyle(index === 0, columnIndex === 0)}
+                            style={cellBorderStyle(
+                              index === 0,
+                              columnIndex === 0
+                            )}
                           />
                         )}
                       </td>

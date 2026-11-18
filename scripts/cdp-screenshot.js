@@ -14,8 +14,8 @@
  * @see scripts/cdp-client.js
  */
 
-import { writeFileSync } from 'node:fs';
-import { connectRenderer, takeTargetArg } from './cdp-client.js';
+import { writeFileSync } from "node:fs";
+import { connectRenderer, takeTargetArg } from "./cdp-client.js";
 
 /**
  * @description Entry point: captures the renderer viewport, or the `--target` window's, and writes it to the given path.
@@ -30,12 +30,16 @@ async function main() {
   const { target, rest } = takeTargetArg(process.argv.slice(2));
   const outPath = rest[0];
   if (!outPath) {
-    throw new Error('Usage: node scripts/cdp-screenshot.js [--target <window title>] <out.png>');
+    throw new Error(
+      "Usage: node scripts/cdp-screenshot.js [--target <window title>] <out.png>"
+    );
   }
   const session = await connectRenderer(target);
   try {
-    const { data } = await session.send('Page.captureScreenshot', { format: 'png' });
-    writeFileSync(outPath, Buffer.from(data, 'base64'));
+    const { data } = await session.send("Page.captureScreenshot", {
+      format: "png",
+    });
+    writeFileSync(outPath, Buffer.from(data, "base64"));
     console.log(`Wrote ${outPath} (${session.url})`);
   } finally {
     session.close();

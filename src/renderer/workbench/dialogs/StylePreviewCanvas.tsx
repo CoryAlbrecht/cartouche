@@ -208,7 +208,10 @@ export function renderStylePreviewToCanvas(
       const rules = Array.isArray(parsed) ? parsed : [parsed];
       for (const item of rules) {
         if (!item || typeof item !== "object") continue;
-        const rule = (item.style && typeof item.style === "object" ? item.style : item) as Record<string, any>;
+        const rule = (
+          item.style && typeof item.style === "object" ?
+            item.style
+          : item) as Record<string, any>;
         ctx.save();
         ctx.globalAlpha = opacity;
 
@@ -292,22 +295,29 @@ export function renderStylePreviewToCanvas(
         /<(?:[a-zA-Z0-9_-]+:)?Size[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?Size>/i
       );
 
-      const fillColor = fillMatch ? fillMatch[1].replace(/<[^>]+>/g, "").trim() : null;
-      const strokeColor = strokeMatch ? strokeMatch[1].replace(/<[^>]+>/g, "").trim() : null;
-      const strokeWidth = strokeWidthMatch
-        ? parseFloat(strokeWidthMatch[1].replace(/<[^>]+>/g, "").trim()) || 1
+      const fillColor =
+        fillMatch ? fillMatch[1].replace(/<[^>]+>/g, "").trim() : null;
+      const strokeColor =
+        strokeMatch ? strokeMatch[1].replace(/<[^>]+>/g, "").trim() : null;
+      const strokeWidth =
+        strokeWidthMatch ?
+          parseFloat(strokeWidthMatch[1].replace(/<[^>]+>/g, "").trim()) || 1
         : 1;
-      const strokeCap = strokeCapMatch
-        ? strokeCapMatch[1].replace(/<[^>]+>/g, "").trim()
+      const strokeCap =
+        strokeCapMatch ?
+          strokeCapMatch[1].replace(/<[^>]+>/g, "").trim()
         : null;
-      const strokeJoin = strokeJoinMatch
-        ? strokeJoinMatch[1].replace(/<[^>]+>/g, "").trim()
+      const strokeJoin =
+        strokeJoinMatch ?
+          strokeJoinMatch[1].replace(/<[^>]+>/g, "").trim()
         : null;
-      const strokeDashOffset = strokeDashOffsetMatch
-        ? parseFloat(strokeDashOffsetMatch[1].replace(/<[^>]+>/g, "").trim())
+      const strokeDashOffset =
+        strokeDashOffsetMatch ?
+          parseFloat(strokeDashOffsetMatch[1].replace(/<[^>]+>/g, "").trim())
         : undefined;
-      const sizeVal = sizeMatch
-        ? parseFloat(sizeMatch[1].replace(/<[^>]+>/g, "").trim())
+      const sizeVal =
+        sizeMatch ?
+          parseFloat(sizeMatch[1].replace(/<[^>]+>/g, "").trim())
         : null;
 
       ctx.save();

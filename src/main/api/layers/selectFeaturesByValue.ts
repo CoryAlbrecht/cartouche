@@ -9,7 +9,7 @@
  * @see {@link selectFeaturesByValue}
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @function selectFeaturesByValue
@@ -21,5 +21,7 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function selectFeaturesByValue(): void {
-  logging.debug('Select features by value dialog requested', { scope: 'selectFeaturesByValue' });
+  logging.debug("Select features by value dialog requested", {
+    scope: "selectFeaturesByValue",
+  });
 }

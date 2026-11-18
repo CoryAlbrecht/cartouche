@@ -111,11 +111,7 @@ export function initGeospatialWorker(
     postResponse(port, {
       id: `demote-${layerId}`,
       success: true,
-      result: {
-        type: "fieldDemoted",
-        layerId,
-        fields,
-      },
+      result: { type: "fieldDemoted", layerId, fields },
       ...({ type: "fieldDemoted", layerId, fields } as any),
     });
   };
@@ -167,9 +163,7 @@ export function initGeospatialWorker(
         }
 
         case "queryExtent": {
-          logging.debug(
-            `Querying extent for layer "${request.layerId}"...`
-          );
+          logging.debug(`Querying extent for layer "${request.layerId}"...`);
           const queryOptions = request.options ?? request.extent;
           const { layerId, buffer, totalMatched, transferList } =
             await engine.queryExtent(
@@ -190,9 +184,7 @@ export function initGeospatialWorker(
             },
             transferList
           );
-          logging.debug(
-            `Response dispatched for layer "${layerId}"`
-          );
+          logging.debug(`Response dispatched for layer "${layerId}"`);
           break;
         }
 
@@ -243,7 +235,8 @@ export function initGeospatialWorker(
         }
 
         case "buildCrsCatalogue": {
-          const { runCrsCatalogueBuild } = await import("../main/crs/runCrsCatalogueBuild");
+          const { runCrsCatalogueBuild } =
+            await import("../main/crs/runCrsCatalogueBuild");
           const result = await runCrsCatalogueBuild(request.cacheDir);
           postResponse(port, {
             id: request.id,
@@ -261,7 +254,11 @@ export function initGeospatialWorker(
 
         case "rekeySession": {
           engine.rekeySession(request.oldLayerId, request.newLayerId);
-          postResponse(port, { id: request.id, success: true, result: { success: true } });
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: { success: true },
+          });
           break;
         }
 
@@ -304,7 +301,10 @@ export function initGeospatialWorker(
 }
 
 // Before anything uses PROJ: in a packaged build, point it and GDAL at their data files outside app.asar (#343).
-logging.debug("Bundled GDAL data paths", { applied: configureBundledGdalData(), scope: "worker" });
+logging.debug("Bundled GDAL data paths", {
+  applied: configureBundledGdalData(),
+  scope: "worker",
+});
 
 // Auto-initialize when running inside an Electron UtilityProcess where process.parentPort is available
 if ((process as any).parentPort) {

@@ -11,11 +11,11 @@
  * @see {@link usePickerButton}
  */
 
-import React from 'react';
-import { parseCssColor, srgbToHex } from '@shared/colors';
-import { ColourPickerDialog } from '@renderer/workbench/dialogs/ColourPickerDialog';
-import { useTranslation } from '@renderer/hooks/useTranslation';
-import { usePickerButton } from '@renderer/hooks/usePickerButton';
+import React from "react";
+import { parseCssColor, srgbToHex } from "@shared/colors";
+import { ColourPickerDialog } from "@renderer/workbench/dialogs/ColourPickerDialog";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import { usePickerButton } from "@renderer/hooks/usePickerButton";
 
 /**
  * @description Default button width and height: a 1rem swatch plus a 0.1rem inset and a 1px border on each side.
@@ -25,7 +25,7 @@ import { usePickerButton } from '@renderer/hooks/usePickerButton';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const DEFAULT_COLOUR_BUTTON_SIZE = 'calc(1.2rem + 2px)';
+export const DEFAULT_COLOUR_BUTTON_SIZE = "calc(1.2rem + 2px)";
 
 /**
  * @description Width of the colour buttons in the Preferences, Project Properties and Layer Properties dialogs.
@@ -35,7 +35,7 @@ export const DEFAULT_COLOUR_BUTTON_SIZE = 'calc(1.2rem + 2px)';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const DIALOG_COLOUR_BUTTON_WIDTH = '4rem';
+export const DIALOG_COLOUR_BUTTON_WIDTH = "4rem";
 
 /**
  * @description Height of the colour buttons in the Preferences, Project Properties and Layer Properties dialogs.
@@ -45,7 +45,7 @@ export const DIALOG_COLOUR_BUTTON_WIDTH = '4rem';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const DIALOG_COLOUR_BUTTON_HEIGHT = '2rem';
+export const DIALOG_COLOUR_BUTTON_HEIGHT = "2rem";
 
 /**
  * @typedef {Object} ColourButtonProps
@@ -78,7 +78,9 @@ export interface ColourButtonProps {
  * @param {ReturnType<typeof parseCssColor>} parsed - Parsed colour, or null when the value does not parse.
  * @returns {string | undefined} Hex background colour, or undefined for an unparseable value (only the checkerboard shows).
  */
-function swatchBackground(parsed: ReturnType<typeof parseCssColor>): string | undefined {
+function swatchBackground(
+  parsed: ReturnType<typeof parseCssColor>
+): string | undefined {
   if (!parsed) return undefined;
   return srgbToHex(parsed.srgb, (parsed.srgb.alpha ?? 1) < 1);
 }
@@ -101,29 +103,40 @@ export const ColourButton: React.FC<ColourButtonProps> = ({
   dialogTitle,
   allowAlpha = true,
   disabled = false,
-  ariaLabel
+  ariaLabel,
 }) => {
   const { t } = useTranslation();
-  const { buttonRef, isOpen, open, close, handleKeyDown, apply, dialogContainer } = usePickerButton<string>(disabled, onChange);
-  const title = dialogTitle ?? t('colour_picker_dialog_title');
+  const {
+    buttonRef,
+    isOpen,
+    open,
+    close,
+    handleKeyDown,
+    apply,
+    dialogContainer,
+  } = usePickerButton<string>(disabled, onChange);
+  const title = dialogTitle ?? t("colour_picker_dialog_title");
   const parsed = parseCssColor(value);
 
   return (
     <>
       <button
         ref={buttonRef}
-        type="button"
+        type='button'
         tabIndex={0}
-        aria-haspopup="dialog"
+        aria-haspopup='dialog'
         aria-label={ariaLabel ?? title}
         title={title}
-        className="picker-button colour-button"
+        className='picker-button colour-button'
         disabled={disabled}
         onClick={open}
         onKeyDown={handleKeyDown}
         style={{ width, height }}>
-        <span className="picker-button-swatch">
-          <span className="picker-button-swatch-fill" style={{ backgroundColor: swatchBackground(parsed) }} />
+        <span className='picker-button-swatch'>
+          <span
+            className='picker-button-swatch-fill'
+            style={{ backgroundColor: swatchBackground(parsed) }}
+          />
         </span>
       </button>
 

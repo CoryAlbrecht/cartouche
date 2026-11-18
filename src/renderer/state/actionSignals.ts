@@ -9,10 +9,10 @@
  * @see {@link ActionDefinition}
  */
 
-import { signal, computed } from '@preact/signals-react';
-import type { ActionDefinition } from '@shared/types';
-import { addConsoleLog } from './gisSignals';
-import { logging } from '../../shared/logging';
+import { signal, computed } from "@preact/signals-react";
+import type { ActionDefinition } from "@shared/types";
+import { addConsoleLog } from "./gisSignals";
+import { logging } from "../../shared/logging";
 
 /**
  * @signal registeredActionsSignal
@@ -47,7 +47,10 @@ export const actionsMapSignal = computed(() => {
  * @param {string} [defaultFallback=''] - Default string returned if action is unmapped.
  * @returns {string} Formatted shortcut key combination string.
  */
-export function getActionFormattedKey(name: string, defaultFallback: string = ''): string {
+export function getActionFormattedKey(
+  name: string,
+  defaultFallback: string = ""
+): string {
   const action = actionsMapSignal.value.get(name);
   if (action && action.formattedKey) {
     return action.formattedKey;
@@ -61,7 +64,10 @@ export function getActionFormattedKey(name: string, defaultFallback: string = ''
  * @param {string} [defaultFallback=''] - Default SVG path returned if no icon is specified.
  * @returns {string} SVG path string.
  */
-export function getActionIcon(name: string, defaultFallback: string = ''): string {
+export function getActionIcon(
+  name: string,
+  defaultFallback: string = ""
+): string {
   const action = actionsMapSignal.value.get(name);
   if (action && action.icon) {
     return action.icon;
@@ -82,9 +88,15 @@ export async function loadActionsFromMain(): Promise<void> {
     try {
       const actions = await window.electronAPI.getActions();
       registeredActionsSignal.value = actions || [];
-      addConsoleLog('info', `Loaded ${actions.length} action(s) from Main Process.`, 'Actions');
+      addConsoleLog(
+        "info",
+        `Loaded ${actions.length} action(s) from Main Process.`,
+        "Actions"
+      );
     } catch (err) {
-      logging.error('Failed to load actions from Main Process', err, { scope: 'actionSignals' });
+      logging.error("Failed to load actions from Main Process", err, {
+        scope: "actionSignals",
+      });
     }
   }
 }

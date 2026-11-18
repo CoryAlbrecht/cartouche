@@ -13,9 +13,9 @@
  * @see {@link dissolveOverlapContainer}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { resolveWidgetDropZone } from '../../../src/renderer/workbench/widgets/widgetDropTarget';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { resolveWidgetDropZone } from "../../../src/renderer/workbench/widgets/widgetDropTarget";
 import {
   widgetDocksSignal,
   resetWidgetDocksToDefault,
@@ -24,9 +24,9 @@ import {
   appendTabToOverlapContainer,
   extractTabFromOverlapContainer,
   dissolveOverlapContainer,
-} from '../../../src/renderer/state/widgetDockSignals';
+} from "../../../src/renderer/state/widgetDockSignals";
 
-describe('WidgetDragOverlap Integration', () => {
+describe("WidgetDragOverlap Integration", () => {
   let savedElectronAPI: any;
   const recordedPreferenceCalls: Array<{ key: string; value: any }> = [];
 
@@ -40,12 +40,7 @@ describe('WidgetDragOverlap Integration', () => {
       setPreferenceValue: async (name: string, value: any) => {
         recordedPreferenceCalls.push({ key: name, value });
         return {
-          [name]: {
-            displayName: name,
-            value,
-            category: 'ui',
-            type: 'object',
-          },
+          [name]: { displayName: name, value, category: "ui", type: "object" },
         };
       },
     };
@@ -59,7 +54,7 @@ describe('WidgetDragOverlap Integration', () => {
     }
   });
 
-  describe('resolveWidgetDropZone', () => {
+  describe("resolveWidgetDropZone", () => {
     const targetRect = { top: 100, left: 100, width: 400, height: 400 };
 
     it('returns "none" when pointer is outside widget bounds', () => {
@@ -70,7 +65,7 @@ describe('WidgetDragOverlap Integration', () => {
         targetOverlappable: true,
         draggedOverlappable: true,
       });
-      assert.equal(zone, 'none');
+      assert.equal(zone, "none");
     });
 
     it('returns "none" when dropping a widget onto itself', () => {
@@ -80,13 +75,13 @@ describe('WidgetDragOverlap Integration', () => {
         clientY: 300,
         targetOverlappable: true,
         draggedOverlappable: true,
-        draggedWidgetId: 'layer-tree',
-        targetWidgetId: 'layer-tree',
+        draggedWidgetId: "layer-tree",
+        targetWidgetId: "layer-tree",
       });
-      assert.equal(zone, 'none');
+      assert.equal(zone, "none");
     });
 
-    it('returns perimeter edge zones when pointer is near edges', () => {
+    it("returns perimeter edge zones when pointer is near edges", () => {
       // Top edge
       const topZone = resolveWidgetDropZone({
         rect: targetRect,
@@ -95,7 +90,7 @@ describe('WidgetDragOverlap Integration', () => {
         targetOverlappable: true,
         draggedOverlappable: true,
       });
-      assert.equal(topZone, 'edge-top');
+      assert.equal(topZone, "edge-top");
 
       // Bottom edge
       const bottomZone = resolveWidgetDropZone({
@@ -105,7 +100,7 @@ describe('WidgetDragOverlap Integration', () => {
         targetOverlappable: true,
         draggedOverlappable: true,
       });
-      assert.equal(bottomZone, 'edge-bottom');
+      assert.equal(bottomZone, "edge-bottom");
 
       // Left edge
       const leftZone = resolveWidgetDropZone({
@@ -115,7 +110,7 @@ describe('WidgetDragOverlap Integration', () => {
         targetOverlappable: true,
         draggedOverlappable: true,
       });
-      assert.equal(leftZone, 'edge-left');
+      assert.equal(leftZone, "edge-left");
 
       // Right edge
       const rightZone = resolveWidgetDropZone({
@@ -125,7 +120,7 @@ describe('WidgetDragOverlap Integration', () => {
         targetOverlappable: true,
         draggedOverlappable: true,
       });
-      assert.equal(rightZone, 'edge-right');
+      assert.equal(rightZone, "edge-right");
     });
 
     it('returns "center-overlap" when pointer is in center and both widgets are overlappable', () => {
@@ -135,10 +130,10 @@ describe('WidgetDragOverlap Integration', () => {
         clientY: 300,
         targetOverlappable: true,
         draggedOverlappable: true,
-        draggedWidgetId: 'console',
-        targetWidgetId: 'attribute-table',
+        draggedWidgetId: "console",
+        targetWidgetId: "attribute-table",
       });
-      assert.equal(zone, 'center-overlap');
+      assert.equal(zone, "center-overlap");
     });
 
     it('rejects "center-overlap" when target widget is not overlappable', () => {
@@ -148,10 +143,10 @@ describe('WidgetDragOverlap Integration', () => {
         clientY: 300,
         targetOverlappable: false,
         draggedOverlappable: true,
-        draggedWidgetId: 'console',
-        targetWidgetId: 'fixed-widget',
+        draggedWidgetId: "console",
+        targetWidgetId: "fixed-widget",
       });
-      assert.equal(zone, 'none');
+      assert.equal(zone, "none");
     });
 
     it('rejects "center-overlap" when dragged widget is not overlappable', () => {
@@ -161,10 +156,10 @@ describe('WidgetDragOverlap Integration', () => {
         clientY: 300,
         targetOverlappable: true,
         draggedOverlappable: false,
-        draggedWidgetId: 'fixed-widget',
-        targetWidgetId: 'layer-tree',
+        draggedWidgetId: "fixed-widget",
+        targetWidgetId: "layer-tree",
       });
-      assert.equal(zone, 'none');
+      assert.equal(zone, "none");
     });
 
     it('accepts "center-overlap" when dropping an overlappable widget onto an existing OverlapTabWidget container', () => {
@@ -175,104 +170,135 @@ describe('WidgetDragOverlap Integration', () => {
         targetOverlappable: false,
         draggedOverlappable: true,
         isTargetOverlapContainer: true,
-        draggedWidgetId: 'console',
-        targetWidgetId: 'overlap-container-1',
+        draggedWidgetId: "console",
+        targetWidgetId: "overlap-container-1",
       });
-      assert.equal(zone, 'center-overlap');
+      assert.equal(zone, "center-overlap");
     });
   });
 
-  describe('createOverlapContainer', () => {
-    it('bundles two overlappable widgets into an OverlapTabWidget and persists to preferences', async () => {
+  describe("createOverlapContainer", () => {
+    it("bundles two overlappable widgets into an OverlapTabWidget and persists to preferences", async () => {
       // Set up left dock with layer-tree, and bottom dock with console
-      const containerId = await createOverlapContainer('left', 'layer-tree', 'console');
+      const containerId = await createOverlapContainer(
+        "left",
+        "layer-tree",
+        "console"
+      );
 
-      assert.ok(containerId.startsWith('overlap-group-'));
+      assert.ok(containerId.startsWith("overlap-group-"));
 
       // In left dock, layer-tree is replaced by the container
       const leftDock = widgetDocksSignal.value.left;
       assert.equal(leftDock.length, 1);
       assert.equal(leftDock[0].id, containerId);
       assert.equal(leftDock[0].isOverlapContainer, true);
-      assert.deepEqual(leftDock[0].tabChildren, ['layer-tree', 'console']);
-      assert.equal(leftDock[0].activeTabId, 'console');
+      assert.deepEqual(leftDock[0].tabChildren, ["layer-tree", "console"]);
+      assert.equal(leftDock[0].activeTabId, "console");
 
       // In bottom dock, console was removed
       const bottomDock = widgetDocksSignal.value.bottom;
-      assert.ok(!bottomDock.some((item) => item.id === 'console'));
+      assert.ok(!bottomDock.some((item) => item.id === "console"));
 
       // Preference persisted
-      assert.ok(recordedPreferenceCalls.some((c) => c.key === 'ui.workbench.widgetDocks'));
+      assert.ok(
+        recordedPreferenceCalls.some(
+          (c) => c.key === "ui.workbench.widgetDocks"
+        )
+      );
     });
   });
 
-  describe('appendTabToOverlapContainer', () => {
-    it('appends an incoming widget to an existing overlap container and sets it as activeTab', async () => {
-      const containerId = await createOverlapContainer('left', 'layer-tree', 'console');
+  describe("appendTabToOverlapContainer", () => {
+    it("appends an incoming widget to an existing overlap container and sets it as activeTab", async () => {
+      const containerId = await createOverlapContainer(
+        "left",
+        "layer-tree",
+        "console"
+      );
 
       // Now append attribute-table from bottom dock
-      await appendTabToOverlapContainer(containerId, 'attribute-table');
+      await appendTabToOverlapContainer(containerId, "attribute-table");
 
       const container = getWidgetDockItem(containerId);
       assert.ok(container);
-      assert.deepEqual(container.item.tabChildren, ['layer-tree', 'console', 'attribute-table']);
-      assert.equal(container.item.activeTabId, 'attribute-table');
+      assert.deepEqual(container.item.tabChildren, [
+        "layer-tree",
+        "console",
+        "attribute-table",
+      ]);
+      assert.equal(container.item.activeTabId, "attribute-table");
 
       // attribute-table is no longer in bottom dock
       const bottomDock = widgetDocksSignal.value.bottom;
-      assert.ok(!bottomDock.some((item) => item.id === 'attribute-table'));
+      assert.ok(!bottomDock.some((item) => item.id === "attribute-table"));
     });
   });
 
-  describe('extractTabFromOverlapContainer', () => {
-    it('extracts a tab to a destination dock with axisRatio = 1 and dissolves container when 1 tab remains', async () => {
-      const containerId = await createOverlapContainer('left', 'layer-tree', 'console');
+  describe("extractTabFromOverlapContainer", () => {
+    it("extracts a tab to a destination dock with axisRatio = 1 and dissolves container when 1 tab remains", async () => {
+      const containerId = await createOverlapContainer(
+        "left",
+        "layer-tree",
+        "console"
+      );
 
       // Extract console to right dock
-      await extractTabFromOverlapContainer(containerId, 'console', 'right');
+      await extractTabFromOverlapContainer(containerId, "console", "right");
 
       // Right dock contains extracted console with axisRatio = 1
-      const extracted = getWidgetDockItem('console');
+      const extracted = getWidgetDockItem("console");
       assert.ok(extracted);
-      assert.equal(extracted.dock, 'right');
+      assert.equal(extracted.dock, "right");
       assert.equal(extracted.item.axisRatio, 1);
       assert.equal(extracted.item.isOverlapContainer, false);
 
       // Single-child auto-dissolution: left dock now contains layer-tree directly, container is gone!
       const leftDock = widgetDocksSignal.value.left;
       assert.equal(leftDock.length, 1);
-      assert.equal(leftDock[0].id, 'layer-tree');
+      assert.equal(leftDock[0].id, "layer-tree");
       assert.equal(leftDock[0].isOverlapContainer, false);
 
       const oldContainer = getWidgetDockItem(containerId);
       assert.equal(oldContainer, undefined);
     });
 
-    it('keeps container intact when 2 or more tabs remain after extraction', async () => {
-      const containerId = await createOverlapContainer('left', 'layer-tree', 'console');
-      await appendTabToOverlapContainer(containerId, 'attribute-table');
+    it("keeps container intact when 2 or more tabs remain after extraction", async () => {
+      const containerId = await createOverlapContainer(
+        "left",
+        "layer-tree",
+        "console"
+      );
+      await appendTabToOverlapContainer(containerId, "attribute-table");
 
       // Extract console
-      await extractTabFromOverlapContainer(containerId, 'console', 'bottom');
+      await extractTabFromOverlapContainer(containerId, "console", "bottom");
 
       const container = getWidgetDockItem(containerId);
       assert.ok(container);
-      assert.deepEqual(container.item.tabChildren, ['layer-tree', 'attribute-table']);
+      assert.deepEqual(container.item.tabChildren, [
+        "layer-tree",
+        "attribute-table",
+      ]);
       assert.equal(container.item.isOverlapContainer, true);
     });
   });
 
-  describe('dissolveOverlapContainer', () => {
-    it('unwraps container and restores child tabs as independent widgets with axisRatio = 1', async () => {
-      const containerId = await createOverlapContainer('bottom', 'attribute-table', 'console');
+  describe("dissolveOverlapContainer", () => {
+    it("unwraps container and restores child tabs as independent widgets with axisRatio = 1", async () => {
+      const containerId = await createOverlapContainer(
+        "bottom",
+        "attribute-table",
+        "console"
+      );
 
       await dissolveOverlapContainer(containerId);
 
       const bottomDock = widgetDocksSignal.value.bottom;
       assert.equal(bottomDock.length, 2);
 
-      const attr = bottomDock.find((i) => i.id === 'attribute-table');
-      const cons = bottomDock.find((i) => i.id === 'console');
+      const attr = bottomDock.find((i) => i.id === "attribute-table");
+      const cons = bottomDock.find((i) => i.id === "console");
 
       assert.ok(attr);
       assert.ok(cons);
@@ -283,15 +309,18 @@ describe('WidgetDragOverlap Integration', () => {
     });
   });
 
-  describe('getWidgetDockItem lookup', () => {
-    it('locates widgets nested inside overlap containers and reports containerId', async () => {
-      const containerId = await createOverlapContainer('left', 'layer-tree', 'console');
+  describe("getWidgetDockItem lookup", () => {
+    it("locates widgets nested inside overlap containers and reports containerId", async () => {
+      const containerId = await createOverlapContainer(
+        "left",
+        "layer-tree",
+        "console"
+      );
 
-      const match = getWidgetDockItem('console');
+      const match = getWidgetDockItem("console");
       assert.ok(match);
-      assert.equal(match.dock, 'left');
+      assert.equal(match.dock, "left");
       assert.equal(match.containerId, containerId);
     });
   });
 });
-

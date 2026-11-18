@@ -9,11 +9,11 @@
  * @see docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md (ADR 0008)
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,14 +38,14 @@ function getSourceFiles(dir: string, fileList: string[] = []): string[] {
   return fileList;
 }
 
-describe('Source Code Logging Hygiene (ADR 0008)', () => {
-  const srcRoot = path.resolve(__dirname, '../../../src');
+describe("Source Code Logging Hygiene (ADR 0008)", () => {
+  const srcRoot = path.resolve(__dirname, "../../../src");
   const exemptFiles = new Set([
-    path.resolve(srcRoot, 'shared/logging/index.ts'),
-    path.resolve(srcRoot, 'shared/logging/types.ts')
+    path.resolve(srcRoot, "shared/logging/index.ts"),
+    path.resolve(srcRoot, "shared/logging/types.ts"),
   ]);
 
-  it('ensures application source files do not contain raw console.* calls', () => {
+  it("ensures application source files do not contain raw console.* calls", () => {
     const allFiles = getSourceFiles(srcRoot);
     const violations: { file: string; line: number; match: string }[] = [];
     const consoleRegex = /console\.(log|warn|error|info|debug|trace)\s*\(/g;
@@ -54,26 +54,30 @@ describe('Source Code Logging Hygiene (ADR 0008)', () => {
       if (exemptFiles.has(path.resolve(file))) {
         continue;
       }
-      const content = fs.readFileSync(file, 'utf8');
-      const lines = content.split('\n');
+      const content = fs.readFileSync(file, "utf8");
+      const lines = content.split("\n");
       for (let i = 0; i < lines.length; i++) {
         const lineText = lines[i];
         // Strip single line comments
-        const uncommented = lineText.replace(/\/\/.*$/, '');
+        const uncommented = lineText.replace(/\/\/.*$/, "");
         let match: RegExpExecArray | null;
         while ((match = consoleRegex.exec(uncommented)) !== null) {
           violations.push({
             file: path.relative(srcRoot, file),
             line: i + 1,
-            match: match[0]
+            match: match[0],
           });
         }
       }
     }
 
     if (violations.length > 0) {
-      const summary = violations.map((v) => `  ${v.file}:${v.line} -> ${v.match}`).join('\n');
-      assert.fail(`Found ${violations.length} raw console statement(s) in src/:\n${summary}`);
+      const summary = violations
+        .map((v) => `  ${v.file}:${v.line} -> ${v.match}`)
+        .join("\n");
+      assert.fail(
+        `Found ${violations.length} raw console statement(s) in src/:\n${summary}`
+      );
     }
   });
 });

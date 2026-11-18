@@ -10,15 +10,15 @@
  * @see {@link UnsavedChangesModal}
  */
 
-import React from 'react';
-import { createPortal } from 'react-dom';
-import { useSignals } from '@preact/signals-react/runtime';
-import { useTranslation } from '@renderer/hooks/useTranslation';
-import { isWithinOpenSelect } from '@renderer/components/common/Select';
+import React from "react";
+import { createPortal } from "react-dom";
+import { useSignals } from "@preact/signals-react/runtime";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import { isWithinOpenSelect } from "@renderer/components/common/Select";
 import {
   unsavedChangesModalSignal,
-  resolveUnsavedChangesModal
-} from '@renderer/state/gisSignals';
+  resolveUnsavedChangesModal,
+} from "@renderer/state/gisSignals";
 
 /**
  * @typedef {Object} ModalDialogProps
@@ -54,20 +54,20 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   onClose,
   children,
   buttons,
-  width = '400px',
+  width = "400px",
 }) => {
   React.useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -75,63 +75,70 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   return createPortal(
     <div
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        backdropFilter: 'blur(2px)',
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+        backdropFilter: "blur(2px)",
         zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}>
       <div
         style={{
           width,
-          backgroundColor: '#ffffff',
-          borderRadius: '6px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
+          backgroundColor: "#ffffff",
+          borderRadius: "6px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}>
         {/* Header */}
-        <div style={{
-          padding: '12px 16px',
-          backgroundColor: '#1b446c',
-          color: '#ffffff',
-          fontWeight: 600,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <div
+          style={{
+            padding: "12px 16px",
+            backgroundColor: "#1b446c",
+            color: "#ffffff",
+            fontWeight: 600,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
           <span>{title}</span>
         </div>
-        
+
         {/* Body */}
-        <div style={{ padding: '16px', color: '#000000', fontSize: '1rem', lineHeight: 1.5 }}>
+        <div
+          style={{
+            padding: "16px",
+            color: "#000000",
+            fontSize: "1rem",
+            lineHeight: 1.5,
+          }}>
           {children}
         </div>
 
         {/* Footer */}
         {buttons && buttons.length > 0 && (
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: '#f8fafc',
-            borderTop: '1px solid #cbd5e1',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '8px'
-          }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#f8fafc",
+              borderTop: "1px solid #cbd5e1",
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "8px",
+            }}>
             {buttons.map((btn, i) => (
               <button
                 key={i}
-                type="button"
-                className={`dialog-btn dialog-btn-wide modal-dialog-btn ${btn.primary ? 'dialog-btn-primary' : 'dialog-btn-secondary'}`}
-                onClick={btn.onClick}
-              >
+                type='button'
+                className={`dialog-btn dialog-btn-wide modal-dialog-btn ${btn.primary ? "dialog-btn-primary" : "dialog-btn-secondary"}`}
+                onClick={btn.onClick}>
                 {btn.label}
               </button>
             ))}
@@ -162,33 +169,34 @@ export const UnsavedChangesModal: React.FC = () => {
   }
 
   const message =
-    promptState.targetType === 'layer'
-      ? t('unsaved_layer_changes_prompt', { name: promptState.targetName })
-      : t('unsaved_project_changes_prompt', { name: promptState.targetName });
+    promptState.targetType === "layer" ?
+      t("unsaved_layer_changes_prompt", { name: promptState.targetName })
+    : t("unsaved_project_changes_prompt", { name: promptState.targetName });
 
   return (
     <ModalDialog
-      title={t('unsaved_changes_title')}
+      title={t("unsaved_changes_title")}
       isOpen={true}
-      width="480px"
-      onClose={() => resolveUnsavedChangesModal('cancel')}
+      width='480px'
+      onClose={() => resolveUnsavedChangesModal("cancel")}
       buttons={[
         {
-          label: t('unsaved_changes_cancel'),
-          onClick: () => resolveUnsavedChangesModal('cancel')
+          label: t("unsaved_changes_cancel"),
+          onClick: () => resolveUnsavedChangesModal("cancel"),
         },
         {
-          label: t('unsaved_changes_dont_save'),
-          onClick: () => resolveUnsavedChangesModal('discard')
+          label: t("unsaved_changes_dont_save"),
+          onClick: () => resolveUnsavedChangesModal("discard"),
         },
         {
-          label: t('unsaved_changes_save'),
+          label: t("unsaved_changes_save"),
           primary: true,
-          onClick: () => resolveUnsavedChangesModal('save')
-        }
-      ]}
-    >
-      <p className="unsaved-changes-modal-message" style={{ margin: 0, fontSize: '1rem' }}>
+          onClick: () => resolveUnsavedChangesModal("save"),
+        },
+      ]}>
+      <p
+        className='unsaved-changes-modal-message'
+        style={{ margin: 0, fontSize: "1rem" }}>
         {message}
       </p>
     </ModalDialog>

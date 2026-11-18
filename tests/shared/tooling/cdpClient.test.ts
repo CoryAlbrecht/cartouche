@@ -9,17 +9,26 @@
  * @see scripts/cdp-client.js
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { takeTargetArg } from '../../../scripts/cdp-client.js';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { takeTargetArg } from "../../../scripts/cdp-client.js";
 
-describe('CDP client --target option (scripts/cdp-client.js)', () => {
-  it('removes --target and its value wherever it appears', () => {
-    assert.deepEqual(takeTargetArg(['--target', 'Project Properties', 'out.png']), { target: 'Project Properties', rest: ['out.png'] });
-    assert.deepEqual(takeTargetArg(['-e', 'return 1', '--target', 'Layer']), { target: 'Layer', rest: ['-e', 'return 1'] });
+describe("CDP client --target option (scripts/cdp-client.js)", () => {
+  it("removes --target and its value wherever it appears", () => {
+    assert.deepEqual(
+      takeTargetArg(["--target", "Project Properties", "out.png"]),
+      { target: "Project Properties", rest: ["out.png"] }
+    );
+    assert.deepEqual(takeTargetArg(["-e", "return 1", "--target", "Layer"]), {
+      target: "Layer",
+      rest: ["-e", "return 1"],
+    });
   });
 
-  it('leaves arguments alone when there is no --target', () => {
-    assert.deepEqual(takeTargetArg(['out.png']), { target: undefined, rest: ['out.png'] });
+  it("leaves arguments alone when there is no --target", () => {
+    assert.deepEqual(takeTargetArg(["out.png"]), {
+      target: undefined,
+      rest: ["out.png"],
+    });
   });
 });

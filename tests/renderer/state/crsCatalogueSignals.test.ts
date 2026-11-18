@@ -9,70 +9,115 @@
  * @see {@link listCrsChooserEntries}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { createRendererJiti } from "../rendererJiti";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const React = jiti('react');
-const ReactDOM = jiti('react-dom');
-const { renderToStaticMarkup } = jiti('react-dom/server');
+const React = jiti("react");
+const ReactDOM = jiti("react-dom");
+const { renderToStaticMarkup } = jiti("react-dom/server");
 const {
   hideDeprecatedCrsSignal,
   setCrsCatalogueState,
   listCrsChooserEntries,
   findCrsCatalogueEntry,
-} = jiti('../../../src/renderer/state/crsCatalogueSignals.ts');
-const { preferencesMapSignal } = jiti('../../../src/renderer/state/preferencesSignals.ts');
-const { BUILTIN_PREFERENCES } = jiti('../../../src/shared/preferences/index.ts');
-const { LayerPropertiesDialog } = jiti('../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx');
+} = jiti("../../../src/renderer/state/crsCatalogueSignals.ts");
+const { preferencesMapSignal } = jiti(
+  "../../../src/renderer/state/preferencesSignals.ts"
+);
+const { BUILTIN_PREFERENCES } = jiti(
+  "../../../src/shared/preferences/index.ts"
+);
+const { LayerPropertiesDialog } = jiti(
+  "../../../src/renderer/workbench/dialogs/LayerPropertiesDialog.tsx"
+);
 const {
   activeLayerPropertiesTabSignal,
   layerPropertiesDraftSignal,
   activeLayerPropertiesIdSignal,
   closeLayerPropertiesDialog,
-} = jiti('../../../src/renderer/state/layerPropertiesSignals.ts');
-const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+} = jiti("../../../src/renderer/state/layerPropertiesSignals.ts");
+const { dictionarySignal } = jiti("../../../src/renderer/state/i18nSignals.ts");
 
 const ENTRIES = [
-  { authId: 'EPSG:4326', name: 'WGS 84', type: 'geographic 2D', deprecated: false },
-  { authId: 'EPSG:3857', name: 'WGS 84 / Pseudo-Mercator', type: 'projected', deprecated: false },
-  { authId: 'EPSG:3785', name: 'Popular Visualisation CRS / Mercator', type: 'projected', deprecated: true },
+  {
+    authId: "EPSG:4326",
+    name: "WGS 84",
+    type: "geographic 2D",
+    deprecated: false,
+  },
+  {
+    authId: "EPSG:3857",
+    name: "WGS 84 / Pseudo-Mercator",
+    type: "projected",
+    deprecated: false,
+  },
+  {
+    authId: "EPSG:3785",
+    name: "Popular Visualisation CRS / Mercator",
+    type: "projected",
+    deprecated: true,
+  },
 ];
 
-describe('crsCatalogueSignals (Ticket #277)', () => {
+describe("crsCatalogueSignals (Ticket #277)", () => {
   let originalPrefs: any;
   beforeEach(() => {
     originalPrefs = preferencesMapSignal.value;
     preferencesMapSignal.value = {};
-    setCrsCatalogueState({ status: 'ready', entries: ENTRIES });
+    setCrsCatalogueState({ status: "ready", entries: ENTRIES });
   });
   afterEach(() => {
     preferencesMapSignal.value = originalPrefs;
-    setCrsCatalogueState({ status: 'building', entries: [] });
+    setCrsCatalogueState({ status: "building", entries: [] });
   });
 
-  it('defines the hidden crs.hideDeprecated preference defaulting to true', () => {
-    const pref = BUILTIN_PREFERENCES['crs.hideDeprecated'];
+  it("defines the hidden crs.hideDeprecated preference defaulting to true", () => {
+    const pref = BUILTIN_PREFERENCES["crs.hideDeprecated"];
     assert.ok(pref);
     assert.equal(pref.defaultValue, true);
     assert.equal(pref.hidden, true);
-    assert.equal(hideDeprecatedCrsSignal.value, true, 'absent preference means hide');
+    assert.equal(
+      hideDeprecatedCrsSignal.value,
+      true,
+      "absent preference means hide"
+    );
   });
 
-  it('hides deprecated entries but always lists the current CRS, even when uncatalogued', () => {
-    assert.deepEqual(listCrsChooserEntries().map((e: any) => e.authId), ['EPSG:4326', 'EPSG:3857']);
-    assert.deepEqual(listCrsChooserEntries(['EPSG:3785']).map((e: any) => e.authId), ['EPSG:4326', 'EPSG:3857', 'EPSG:3785']);
-    assert.deepEqual(listCrsChooserEntries(['LOCAL:1']).map((e: any) => e.authId), ['LOCAL:1', 'EPSG:4326', 'EPSG:3857']);
-    assert.equal(listCrsChooserEntries(['LOCAL:1'], { 'LOCAL:1': 'Site Grid' })[0].name, 'Site Grid', 'fallback name for uncatalogued CRS');
-    preferencesMapSignal.value = { 'crs.hideDeprecated': { value: false } };
-    assert.equal(listCrsChooserEntries().length, 3, 'preference off shows deprecated entries');
-    assert.equal(findCrsCatalogueEntry('epsg:3857')?.name, 'WGS 84 / Pseudo-Mercator');
+  it("hides deprecated entries but always lists the current CRS, even when uncatalogued", () => {
+    assert.deepEqual(
+      listCrsChooserEntries().map((e: any) => e.authId),
+      ["EPSG:4326", "EPSG:3857"]
+    );
+    assert.deepEqual(
+      listCrsChooserEntries(["EPSG:3785"]).map((e: any) => e.authId),
+      ["EPSG:4326", "EPSG:3857", "EPSG:3785"]
+    );
+    assert.deepEqual(
+      listCrsChooserEntries(["LOCAL:1"]).map((e: any) => e.authId),
+      ["LOCAL:1", "EPSG:4326", "EPSG:3857"]
+    );
+    assert.equal(
+      listCrsChooserEntries(["LOCAL:1"], { "LOCAL:1": "Site Grid" })[0].name,
+      "Site Grid",
+      "fallback name for uncatalogued CRS"
+    );
+    preferencesMapSignal.value = { "crs.hideDeprecated": { value: false } };
+    assert.equal(
+      listCrsChooserEntries().length,
+      3,
+      "preference off shows deprecated entries"
+    );
+    assert.equal(
+      findCrsCatalogueEntry("epsg:3857")?.name,
+      "WGS 84 / Pseudo-Mercator"
+    );
   });
 });
 
-describe('Layer Properties CRS dropdown uses the CRS Catalogue (Ticket #277)', () => {
+describe("Layer Properties CRS dropdown uses the CRS Catalogue (Ticket #277)", () => {
   let originalCreatePortal: any;
   let originalDocument: any;
   beforeEach(() => {
@@ -80,16 +125,21 @@ describe('Layer Properties CRS dropdown uses the CRS Catalogue (Ticket #277)', (
     (globalThis as any).document = { createElement: () => ({ style: {} }) };
     originalCreatePortal = ReactDOM.createPortal;
     ReactDOM.createPortal = (children: unknown) => children;
-    dictionarySignal.value = { crs_catalogue_building: 'CATALOGUE_BUILDING_PLACEHOLDER' };
-    activeLayerPropertiesIdSignal.value = 'layer-crs';
-    activeLayerPropertiesTabSignal.value = 'source';
-    layerPropertiesDraftSignal.value = { ...layerPropertiesDraftSignal.value, crsAuthId: 'EPSG:3785' };
+    dictionarySignal.value = {
+      crs_catalogue_building: "CATALOGUE_BUILDING_PLACEHOLDER",
+    };
+    activeLayerPropertiesIdSignal.value = "layer-crs";
+    activeLayerPropertiesTabSignal.value = "source";
+    layerPropertiesDraftSignal.value = {
+      ...layerPropertiesDraftSignal.value,
+      crsAuthId: "EPSG:3785",
+    };
   });
   afterEach(() => {
     closeLayerPropertiesDialog();
     ReactDOM.createPortal = originalCreatePortal;
     (globalThis as any).document = originalDocument;
-    setCrsCatalogueState({ status: 'building', entries: [] });
+    setCrsCatalogueState({ status: "building", entries: [] });
   });
 
   /**
@@ -98,26 +148,55 @@ describe('Layer Properties CRS dropdown uses the CRS Catalogue (Ticket #277)', (
    * @returns {string} Select HTML.
    */
   function crsSelectHtml(): string {
-    const html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
-    const m = html.match(/<select[^>]*id="layer-prop-crs"[^>]*>[\s\S]*?<\/select>/);
-    assert.ok(m, 'CRS select rendered');
+    const html = renderToStaticMarkup(
+      React.createElement(LayerPropertiesDialog)
+    );
+    const m = html.match(
+      /<select[^>]*id="layer-prop-crs"[^>]*>[\s\S]*?<\/select>/
+    );
+    assert.ok(m, "CRS select rendered");
     return m![0];
   }
 
-  it('lists catalogue entries, keeps the deprecated current CRS marked, and hides other deprecated entries', () => {
-    setCrsCatalogueState({ status: 'ready', entries: [...ENTRIES, { authId: 'EPSG:2000', name: 'Old Deprecated', type: 'projected', deprecated: true }] });
+  it("lists catalogue entries, keeps the deprecated current CRS marked, and hides other deprecated entries", () => {
+    setCrsCatalogueState({
+      status: "ready",
+      entries: [
+        ...ENTRIES,
+        {
+          authId: "EPSG:2000",
+          name: "Old Deprecated",
+          type: "projected",
+          deprecated: true,
+        },
+      ],
+    });
     const html = crsSelectHtml();
-    assert.ok(html.includes('value="EPSG:4326"') && html.includes('value="EPSG:3857"'));
-    assert.ok(html.includes('EPSG:3785 — Popular Visualisation CRS / Mercator (deprecated)'), 'current deprecated CRS kept and marked');
-    assert.ok(!html.includes('EPSG:2000'), 'other deprecated entries hidden');
-    assert.ok(!html.includes('CATALOGUE_BUILDING_PLACEHOLDER'));
-    assert.ok(!html.includes('EPSG:32632'), 'fixed popular list no longer used');
+    assert.ok(
+      html.includes('value="EPSG:4326"') && html.includes('value="EPSG:3857"')
+    );
+    assert.ok(
+      html.includes(
+        "EPSG:3785 — Popular Visualisation CRS / Mercator (deprecated)"
+      ),
+      "current deprecated CRS kept and marked"
+    );
+    assert.ok(!html.includes("EPSG:2000"), "other deprecated entries hidden");
+    assert.ok(!html.includes("CATALOGUE_BUILDING_PLACEHOLDER"));
+    assert.ok(
+      !html.includes("EPSG:32632"),
+      "fixed popular list no longer used"
+    );
   });
 
-  it('shows the catalogue-building placeholder while the catalogue builds and still lists the current CRS', () => {
-    setCrsCatalogueState({ status: 'building', entries: [] });
+  it("shows the catalogue-building placeholder while the catalogue builds and still lists the current CRS", () => {
+    setCrsCatalogueState({ status: "building", entries: [] });
     const html = crsSelectHtml();
-    assert.match(html, /<option value="" disabled=""><span class="cartouche-select-option-label">CATALOGUE_BUILDING_PLACEHOLDER<\/span><\/option>/, 'disabled catalogue-building placeholder');
-    assert.ok(html.includes('value="EPSG:3785"'), 'current CRS stays visible');
+    assert.match(
+      html,
+      /<option value="" disabled=""><span class="cartouche-select-option-label">CATALOGUE_BUILDING_PLACEHOLDER<\/span><\/option>/,
+      "disabled catalogue-building placeholder"
+    );
+    assert.ok(html.includes('value="EPSG:3785"'), "current CRS stays visible");
   });
 });

@@ -66,9 +66,9 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
   useSignals();
   const isHorizontal = zone === "top" || zone === "bottom";
   const effectiveScaling =
-    typeof scaling === "number" && Number.isFinite(scaling) && scaling > 0
-      ? scaling
-      : 1.0;
+    typeof scaling === "number" && Number.isFinite(scaling) && scaling > 0 ?
+      scaling
+    : 1.0;
 
   /**
    * @signal dropPositionSignal
@@ -80,7 +80,10 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
    * @type {Signal<ToolbarDropPosition | null>}
    */
   const dropPositionSignal = useSignal<ToolbarDropPosition | null>(null);
-  const dropPosition = propDropPosition !== undefined ? propDropPosition : dropPositionSignal.value;
+  const dropPosition =
+    propDropPosition !== undefined ? propDropPosition : (
+      dropPositionSignal.value
+    );
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
@@ -148,8 +151,8 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
 
   const handleDrop = (e: React.DragEvent) => {
     const draggedId =
-      activeDraggedToolbarSignal.value ||
-      (e.dataTransfer.getData("text/plain") as ToolbarId);
+      activeDraggedToolbarSignal.value
+      || (e.dataTransfer.getData("text/plain") as ToolbarId);
     if (!draggedId) return;
 
     // Prevent default and stop bubbling to outer containers regardless of target
@@ -165,8 +168,8 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
 
     const rect = e.currentTarget.getBoundingClientRect();
     const pos =
-      dropPositionSignal.value ||
-      resolveToolbarDropPosition(
+      dropPositionSignal.value
+      || resolveToolbarDropPosition(
         zone,
         e.clientX - rect.left,
         e.clientY - rect.top,
@@ -174,10 +177,7 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         rect.height
       );
 
-    moveToolbar(draggedId, zone, {
-      hoveredId: id,
-      position: pos,
-    });
+    moveToolbar(draggedId, zone, { hoveredId: id, position: pos });
     dropPositionSignal.value = null;
     activeDraggedToolbarSignal.value = null;
   };
@@ -193,13 +193,15 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         display: "inline-flex",
         ["--cartouche-ui-icon-scaling" as string]: effectiveScaling,
         position:
-          dropPosition &&
-          (dropPosition === "new-row-above" ||
-            dropPosition === "new-row-below" ||
-            dropPosition === "new-row-before" ||
-            dropPosition === "new-row-after")
-            ? "static"
-            : "relative",
+          (
+            dropPosition
+            && (dropPosition === "new-row-above"
+              || dropPosition === "new-row-below"
+              || dropPosition === "new-row-before"
+              || dropPosition === "new-row-after")
+          ) ?
+            "static"
+          : "relative",
       }}>
       <Widget
         id={`toolbar-widget-${id}`}
@@ -208,14 +210,14 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
         borderColor='var(--cartouche-toolbar-border)'
         location={zone}
         minWidth={
-          isHorizontal
-            ? "auto"
-            : "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)"
+          isHorizontal ? "auto" : (
+            "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)"
+          )
         }
         minHeight={
-          isHorizontal
-            ? "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)"
-            : "auto"
+          isHorizontal ?
+            "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0) + 12px)"
+          : "auto"
         }
         style={{
           display: "inline-flex",

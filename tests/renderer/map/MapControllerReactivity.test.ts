@@ -9,22 +9,22 @@
  * @see {@link MapController}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import Feature from 'ol/Feature.js';
-import Point from 'ol/geom/Point.js';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import Feature from "ol/Feature.js";
+import Point from "ol/geom/Point.js";
 import {
   projectLayersSignal,
   layerStylesSignal,
   projectTreeSignal,
   projectVisibleSignal,
   currentProjectSignal,
-} from '../../../src/renderer/state/projectSignals';
-import { MapController } from '../../../src/renderer/map/MapController';
+} from "../../../src/renderer/state/projectSignals";
+import { MapController } from "../../../src/renderer/map/MapController";
 import type {
   LayerDescriptor,
   ProjectGroupItem,
-} from '../../../src/shared/types';
+} from "../../../src/shared/types";
 
 // Setup headless mock browser/DOM environment for OpenLayers
 function setupMockDom(): void {
@@ -35,20 +35,21 @@ function setupMockDom(): void {
     disconnect() {}
   };
   (globalThis as any).getComputedStyle = () => ({
-    getPropertyValue: () => '',
-    paddingLeft: '0px',
-    paddingRight: '0px',
-    paddingTop: '0px',
-    paddingBottom: '0px',
+    getPropertyValue: () => "",
+    paddingLeft: "0px",
+    paddingRight: "0px",
+    paddingTop: "0px",
+    paddingBottom: "0px",
   });
-  (globalThis as any).requestAnimationFrame = (cb: () => void) => setTimeout(cb, 0);
+  (globalThis as any).requestAnimationFrame = (cb: () => void) =>
+    setTimeout(cb, 0);
   (globalThis as any).cancelAnimationFrame = (id: any) => clearTimeout(id);
 
   const makeElement = (tag: string): any => {
     const el: any = {
       tagName: tag.toUpperCase(),
       style: {},
-      className: '',
+      className: "",
       ownerDocument: null,
       parentNode: null,
       childNodes: [],
@@ -75,21 +76,17 @@ function setupMockDom(): void {
       getRootNode: () => (globalThis as any).document,
       addEventListener: () => {},
       removeEventListener: () => {},
-      classList: {
-        add: () => {},
-        remove: () => {},
-        contains: () => false,
-      },
+      classList: { add: () => {}, remove: () => {}, contains: () => false },
       clientWidth: 800,
       clientHeight: 600,
       offsetWidth: 800,
       offsetHeight: 600,
       getContext: () => ({
-        fillStyle: '',
-        strokeStyle: '',
+        fillStyle: "",
+        strokeStyle: "",
         fillRect: () => {},
         clearRect: () => {},
-        getImageData: () => ({ data: [0, 0, 0, 0] })
+        getImageData: () => ({ data: [0, 0, 0, 0] }),
       }),
     };
     el.ownerDocument = (globalThis as any).document;
@@ -99,7 +96,7 @@ function setupMockDom(): void {
   (globalThis as any).document = {
     createElement: makeElement,
     createTextNode: (t: string) => ({ textContent: t }),
-    body: makeElement('body'),
+    body: makeElement("body"),
     addEventListener: () => {},
     removeEventListener: () => {},
   };
@@ -115,39 +112,39 @@ function setupMockDom(): void {
 
 setupMockDom();
 
-describe('MapController Reactivity & Visual Synchronization', () => {
+describe("MapController Reactivity & Visual Synchronization", () => {
   let container: any;
   let controller: MapController;
 
   const desc1: LayerDescriptor = {
-    id: 'layer-top',
-    name: 'Top Layer',
-    type: 'geojson',
-    source: '/path/to/top.geojson',
-    geometryKind: 'Point',
-    layerKind: 'vector',
+    id: "layer-top",
+    name: "Top Layer",
+    type: "geojson",
+    source: "/path/to/top.geojson",
+    geometryKind: "Point",
+    layerKind: "vector",
     extent: [-90, 40, -80, 50],
     featureCount: 5,
   };
 
   const desc2: LayerDescriptor = {
-    id: 'layer-middle',
-    name: 'Middle Layer',
-    type: 'geojson',
-    source: '/path/to/middle.geojson',
-    geometryKind: 'Polygon',
-    layerKind: 'vector',
+    id: "layer-middle",
+    name: "Middle Layer",
+    type: "geojson",
+    source: "/path/to/middle.geojson",
+    geometryKind: "Polygon",
+    layerKind: "vector",
     extent: [-90, 40, -80, 50],
     featureCount: 10,
   };
 
   const desc3: LayerDescriptor = {
-    id: 'layer-bottom',
-    name: 'Bottom Layer',
-    type: 'geojson',
-    source: '/path/to/bottom.geojson',
-    geometryKind: 'LineString',
-    layerKind: 'vector',
+    id: "layer-bottom",
+    name: "Bottom Layer",
+    type: "geojson",
+    source: "/path/to/bottom.geojson",
+    geometryKind: "LineString",
+    layerKind: "vector",
     extent: [-90, 40, -80, 50],
     featureCount: 15,
   };
@@ -159,7 +156,7 @@ describe('MapController Reactivity & Visual Synchronization', () => {
     projectVisibleSignal.value = true;
     currentProjectSignal.value = null;
 
-    container = (globalThis as any).document.createElement('div');
+    container = (globalThis as any).document.createElement("div");
     controller = new MapController(container);
   });
 
@@ -173,15 +170,30 @@ describe('MapController Reactivity & Visual Synchronization', () => {
     (globalThis as any).window.electronAPI = undefined;
   });
 
-  it('computes layer zIndex inversely from flattened tree order (1000 - flatIndex)', () => {
+  it("computes layer zIndex inversely from flattened tree order (1000 - flatIndex)", () => {
     // Register 3 layers in projectLayersSignal
     projectLayersSignal.value = [desc1, desc2, desc3];
 
     // Tree order: desc1 (top), desc2 (middle), desc3 (bottom)
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source },
-      { id: desc2.id, name: desc2.name, type: desc2.type, source: desc2.source },
-      { id: desc3.id, name: desc3.name, type: desc3.type, source: desc3.source },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+      },
+      {
+        id: desc2.id,
+        name: desc2.name,
+        type: desc2.type,
+        source: desc2.source,
+      },
+      {
+        id: desc3.id,
+        name: desc3.name,
+        type: desc3.type,
+        source: desc3.source,
+      },
     ];
 
     const entryTop = controller.getLayer(desc1.id)!;
@@ -189,19 +201,46 @@ describe('MapController Reactivity & Visual Synchronization', () => {
     const entryBtm = controller.getLayer(desc3.id)!;
 
     assert.ok(entryTop && entryMid && entryBtm);
-    assert.equal(entryTop.layer.getZIndex(), 1000, 'Top layer in tree must have zIndex 1000');
-    assert.equal(entryMid.layer.getZIndex(), 999, 'Second layer in tree must have zIndex 999');
-    assert.equal(entryBtm.layer.getZIndex(), 998, 'Third layer in tree must have zIndex 998');
+    assert.equal(
+      entryTop.layer.getZIndex(),
+      1000,
+      "Top layer in tree must have zIndex 1000"
+    );
+    assert.equal(
+      entryMid.layer.getZIndex(),
+      999,
+      "Second layer in tree must have zIndex 999"
+    );
+    assert.equal(
+      entryBtm.layer.getZIndex(),
+      998,
+      "Third layer in tree must have zIndex 998"
+    );
   });
 
-  it('immediately updates layer zIndex on canvas when layers are reordered or moved into groups', () => {
+  it("immediately updates layer zIndex on canvas when layers are reordered or moved into groups", () => {
     projectLayersSignal.value = [desc1, desc2, desc3];
 
     // Initial tree order: desc1, desc2, desc3
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source },
-      { id: desc2.id, name: desc2.name, type: desc2.type, source: desc2.source },
-      { id: desc3.id, name: desc3.name, type: desc3.type, source: desc3.source },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+      },
+      {
+        id: desc2.id,
+        name: desc2.name,
+        type: desc2.type,
+        source: desc2.source,
+      },
+      {
+        id: desc3.id,
+        name: desc3.name,
+        type: desc3.type,
+        source: desc3.source,
+      },
     ];
 
     const entryTop = controller.getLayer(desc1.id)!;
@@ -210,25 +249,52 @@ describe('MapController Reactivity & Visual Synchronization', () => {
 
     // Now user drags desc3 to top, and groups desc1 and desc2
     const groupItem: ProjectGroupItem = {
-      name: 'Group 1',
+      name: "Group 1",
       children: [
-        { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source },
-        { id: desc2.id, name: desc2.name, type: desc2.type, source: desc2.source },
+        {
+          id: desc1.id,
+          name: desc1.name,
+          type: desc1.type,
+          source: desc1.source,
+        },
+        {
+          id: desc2.id,
+          name: desc2.name,
+          type: desc2.type,
+          source: desc2.source,
+        },
       ],
     };
 
     projectTreeSignal.value = [
-      { id: desc3.id, name: desc3.name, type: desc3.type, source: desc3.source },
+      {
+        id: desc3.id,
+        name: desc3.name,
+        type: desc3.type,
+        source: desc3.source,
+      },
       groupItem,
     ];
 
     // Order is now: desc3 (0 -> 1000), desc1 (1 -> 999), desc2 (2 -> 998)
-    assert.equal(entryBtm.layer.getZIndex(), 1000, 'Reordered desc3 must now have zIndex 1000');
-    assert.equal(entryTop.layer.getZIndex(), 999, 'desc1 inside group must now have zIndex 999');
-    assert.equal(entryMid.layer.getZIndex(), 998, 'desc2 inside group must now have zIndex 998');
+    assert.equal(
+      entryBtm.layer.getZIndex(),
+      1000,
+      "Reordered desc3 must now have zIndex 1000"
+    );
+    assert.equal(
+      entryTop.layer.getZIndex(),
+      999,
+      "desc1 inside group must now have zIndex 999"
+    );
+    assert.equal(
+      entryMid.layer.getZIndex(),
+      998,
+      "desc2 inside group must now have zIndex 998"
+    );
   });
 
-  it('applies live dynamic Flat Style changes from layerStylesSignal at 60 FPS without clearing feature caches', () => {
+  it("applies live dynamic Flat Style changes from layerStylesSignal at 60 FPS without clearing feature caches", () => {
     let queryCalls = 0;
     (globalThis as any).window.electronAPI = {
       queryExtent: async () => {
@@ -239,13 +305,18 @@ describe('MapController Reactivity & Visual Synchronization', () => {
 
     projectLayersSignal.value = [desc1];
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+      },
     ];
 
     const entry = controller.getLayer(desc1.id)!;
     // Pre-populate source with a feature
     const testFeature = new Feature(new Point([0, 0]));
-    testFeature.setId('f1');
+    testFeature.setId("f1");
     entry.source.addFeature(testFeature);
 
     assert.equal(entry.source.getFeatures().length, 1);
@@ -253,30 +324,48 @@ describe('MapController Reactivity & Visual Synchronization', () => {
 
     // Mutate layerStylesSignal with updated styling rules
     const updatedStyle = {
-      'circle-radius': 16,
-      'circle-fill-color': '#00ff00',
-      'circle-stroke-color': '#004400',
-      'circle-stroke-width': 3,
+      "circle-radius": 16,
+      "circle-fill-color": "#00ff00",
+      "circle-stroke-color": "#004400",
+      "circle-stroke-width": 3,
     };
 
-    layerStylesSignal.value = {
-      [desc1.id]: updatedStyle,
-    };
+    layerStylesSignal.value = { [desc1.id]: updatedStyle };
 
     // Verify style updated on OpenLayers layer
     assert.deepEqual(entry.layer.getStyle(), updatedStyle);
 
     // Verify feature caches were not invalidated and no IPC queries occurred
-    assert.equal(entry.source.getFeatures().length, 1, 'Feature cache must remain intact');
-    assert.equal(queryCalls, initialQueryCalls, 'No IPC spatial queries should be triggered on style update');
+    assert.equal(
+      entry.source.getFeatures().length,
+      1,
+      "Feature cache must remain intact"
+    );
+    assert.equal(
+      queryCalls,
+      initialQueryCalls,
+      "No IPC spatial queries should be triggered on style update"
+    );
   });
 
-  it('cascades layer visibility toggles from LayerTreeWidget without clearing feature caches', () => {
+  it("cascades layer visibility toggles from LayerTreeWidget without clearing feature caches", () => {
     projectLayersSignal.value = [desc1, desc2];
 
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source, visible: true },
-      { id: desc2.id, name: desc2.name, type: desc2.type, source: desc2.source, visible: true },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+        visible: true,
+      },
+      {
+        id: desc2.id,
+        name: desc2.name,
+        type: desc2.type,
+        source: desc2.source,
+        visible: true,
+      },
     ];
 
     const entry1 = controller.getLayer(desc1.id)!;
@@ -291,28 +380,64 @@ describe('MapController Reactivity & Visual Synchronization', () => {
 
     // Toggle desc1 to visible: false
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source, visible: false },
-      { id: desc2.id, name: desc2.name, type: desc2.type, source: desc2.source, visible: true },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+        visible: false,
+      },
+      {
+        id: desc2.id,
+        name: desc2.name,
+        type: desc2.type,
+        source: desc2.source,
+        visible: true,
+      },
     ];
 
-    assert.equal(entry1.layer.getVisible(), false, 'desc1 must be hidden');
-    assert.equal(entry2.layer.getVisible(), true, 'desc2 must remain visible');
-    assert.equal(entry1.source.getFeatures().length, 1, 'Features must remain cached in source');
+    assert.equal(entry1.layer.getVisible(), false, "desc1 must be hidden");
+    assert.equal(entry2.layer.getVisible(), true, "desc2 must remain visible");
+    assert.equal(
+      entry1.source.getFeatures().length,
+      1,
+      "Features must remain cached in source"
+    );
 
     // Toggle group visibility off
     const group: ProjectGroupItem = {
-      name: 'Folder',
+      name: "Folder",
       visible: false,
       children: [
-        { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source, visible: true },
-        { id: desc2.id, name: desc2.name, type: desc2.type, source: desc2.source, visible: true },
+        {
+          id: desc1.id,
+          name: desc1.name,
+          type: desc1.type,
+          source: desc1.source,
+          visible: true,
+        },
+        {
+          id: desc2.id,
+          name: desc2.name,
+          type: desc2.type,
+          source: desc2.source,
+          visible: true,
+        },
       ],
     };
 
     projectTreeSignal.value = [group];
 
-    assert.equal(entry1.layer.getVisible(), false, 'Group hidden must hide child layer desc1');
-    assert.equal(entry2.layer.getVisible(), false, 'Group hidden must hide child layer desc2');
+    assert.equal(
+      entry1.layer.getVisible(),
+      false,
+      "Group hidden must hide child layer desc1"
+    );
+    assert.equal(
+      entry2.layer.getVisible(),
+      false,
+      "Group hidden must hide child layer desc2"
+    );
     assert.equal(entry1.source.getFeatures().length, 1);
     assert.equal(entry2.source.getFeatures().length, 1);
 
@@ -322,10 +447,16 @@ describe('MapController Reactivity & Visual Synchronization', () => {
     assert.equal(entry2.layer.getVisible(), false);
   });
 
-  it('updates layer opacity without invalidating feature caches', () => {
+  it("updates layer opacity without invalidating feature caches", () => {
     projectLayersSignal.value = [desc1];
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source, opacity: 1.0 },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+        opacity: 1.0,
+      },
     ];
 
     const entry = controller.getLayer(desc1.id)!;
@@ -335,10 +466,24 @@ describe('MapController Reactivity & Visual Synchronization', () => {
 
     // Adjust layer opacity in tree
     projectTreeSignal.value = [
-      { id: desc1.id, name: desc1.name, type: desc1.type, source: desc1.source, opacity: 0.65 },
+      {
+        id: desc1.id,
+        name: desc1.name,
+        type: desc1.type,
+        source: desc1.source,
+        opacity: 0.65,
+      },
     ];
 
-    assert.equal(entry.layer.getOpacity(), 0.65, 'Layer opacity must update to 0.65');
-    assert.equal(entry.source.getFeatures().length, 1, 'Features must remain in source');
+    assert.equal(
+      entry.layer.getOpacity(),
+      0.65,
+      "Layer opacity must update to 0.65"
+    );
+    assert.equal(
+      entry.source.getFeatures().length,
+      1,
+      "Features must remain in source"
+    );
   });
 });

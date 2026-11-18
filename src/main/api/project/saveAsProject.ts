@@ -9,8 +9,8 @@
  * @see {@link saveProject}
  */
 
-import saveProject from './saveProject';
-import type { ProjectViewport } from '@shared/types';
+import saveProject from "./saveProject";
+import type { ProjectViewport } from "@shared/types";
 
 /**
  * @description Saves current active Cartouche project state under a newly selected file path.
@@ -23,6 +23,9 @@ import type { ProjectViewport } from '@shared/types';
  * @param {ProjectViewport} [viewport] - Optional viewport extent and camera configuration to persist.
  * @returns {Promise<boolean>} True if project was saved successfully, false otherwise.
  */
-export default async function saveAsProject(targetPath?: string, viewport?: ProjectViewport): Promise<boolean> {
+export default async function saveAsProject(
+  targetPath?: string,
+  viewport?: ProjectViewport
+): Promise<boolean> {
   return saveProject(targetPath, viewport);
 }

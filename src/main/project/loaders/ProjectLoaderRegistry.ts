@@ -9,8 +9,8 @@
  * @see {@link IProjectLoader}
  */
 
-import type { IProjectLoader } from './IProjectLoader';
-import { CartoucheXmlLoader } from './CartoucheXmlLoader';
+import type { IProjectLoader } from "./IProjectLoader";
+import { CartoucheXmlLoader } from "./CartoucheXmlLoader";
 
 /**
  * @class ProjectLoaderRegistry
@@ -79,7 +79,9 @@ export class ProjectLoaderRegistry {
    * @param {string} filePath - Path to candidate project document.
    * @returns {Promise<IProjectLoader | null>} Matching loader or null.
    */
-  public async getLoaderForFile(filePath: string): Promise<IProjectLoader | null> {
+  public async getLoaderForFile(
+    filePath: string
+  ): Promise<IProjectLoader | null> {
     for (const loader of this.loaders.values()) {
       const can = await loader.canLoad(filePath);
       if (can) {
@@ -98,9 +100,11 @@ export class ProjectLoaderRegistry {
    * @param {string} filePath - Path or destination target for saving the project.
    * @returns {Promise<IProjectLoader | null>} Matching saver loader or null.
    */
-  public async getSaverForFile(filePath: string): Promise<IProjectLoader | null> {
+  public async getSaverForFile(
+    filePath: string
+  ): Promise<IProjectLoader | null> {
     for (const loader of this.loaders.values()) {
-      if (typeof loader.save !== 'function') {
+      if (typeof loader.save !== "function") {
         continue;
       }
       if (loader.canSave) {

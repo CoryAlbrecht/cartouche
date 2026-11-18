@@ -11,17 +11,17 @@
  * @see {@link getActionFormattedKey}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { mdiFolderCogOutline } from '@mdi/js';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { mdiFolderCogOutline } from "@mdi/js";
+import { createRendererJiti } from "../rendererJiti";
 
 const require = createRequire(import.meta.url);
-require.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+require.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -38,11 +38,14 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleObj: Record<string, string> = {};
@@ -53,13 +56,13 @@ class MockElement {
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
   }
@@ -109,7 +112,11 @@ class MockElement {
     return newChild;
   }
 
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -118,7 +125,9 @@ class MockElement {
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -128,7 +137,11 @@ class MockElement {
     for (const l of listeners) {
       l.cb(event);
     }
-    if (!event._bubblesStopped && this.parentNode && typeof this.parentNode.dispatchEvent === 'function') {
+    if (
+      !event._bubblesStopped
+      && this.parentNode
+      && typeof this.parentNode.dispatchEvent === "function"
+    ) {
       this.parentNode.dispatchEvent(event);
     }
     return true;
@@ -144,8 +157,12 @@ class MockElement {
 
   get textContent(): string {
     return this.childNodes
-      .map((c) => (c.nodeType === 3 ? (c.nodeValue || c.textContent || '') : (c.textContent || '')))
-      .join('');
+      .map((c) =>
+        c.nodeType === 3 ?
+          c.nodeValue || c.textContent || ""
+        : c.textContent || ""
+      )
+      .join("");
   }
 
   set textContent(val: string) {
@@ -156,7 +173,7 @@ class MockElement {
         nodeValue: String(val),
         textContent: String(val),
         ownerDocument: this.ownerDocument,
-        parentNode: this
+        parentNode: this,
       });
     }
   }
@@ -169,14 +186,17 @@ class MockElement {
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
-let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let windowListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 
 function setupDom(): void {
   windowListeners = {};
 
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
-  const head = new MockElement('head');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
+  const head = new MockElement("head");
   documentElement.appendChild(body);
 
   doc = {
@@ -199,19 +219,19 @@ function setupDom(): void {
       nodeValue: String(text),
       textContent: String(text),
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data?: string) => ({
       nodeType: 8,
-      data: String(data || ''),
+      data: String(data || ""),
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     querySelectorAll: () => [],
     querySelector: () => null,
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
 
   documentElement.ownerDocument = doc;
@@ -222,13 +242,17 @@ function setupDom(): void {
     innerWidth: 1024,
     innerHeight: 768,
     document: doc,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
     removeEventListener: (type: string, cb: (e: any) => void) => {
       if (!windowListeners[type]) return;
-      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+      windowListeners[type] = windowListeners[type].filter((l) => l.cb !== cb);
     },
     dispatchEvent: (event: any) => {
       const listeners = (windowListeners[event.type] || []).slice();
@@ -240,22 +264,25 @@ function setupDom(): void {
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
     Element: MockElement,
-    electronAPI: {
-      getLayerInfo: async () => ({})
-    }
+    electronAPI: { getLayerInfo: async () => ({}) },
   };
 
   doc.defaultView = win;
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -273,7 +300,10 @@ function tearDownDom(): void {
   }
 }
 
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -291,33 +321,36 @@ const {
   projectNameSignal,
   projectTreeSignal,
   editingNodeIdSignal,
-  clearNodeSelection
-} = jiti('../../../src/renderer/state/projectSignals.ts');
+  clearNodeSelection,
+} = jiti("../../../src/renderer/state/projectSignals.ts");
 
-const {
-  isProjectPropertiesOpenSignal,
-  closeProjectPropertiesDialog
-} = jiti('../../../src/renderer/state/gisSignals.ts');
+const { isProjectPropertiesOpenSignal, closeProjectPropertiesDialog } = jiti(
+  "../../../src/renderer/state/gisSignals.ts"
+);
 
-const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
+const { dictionarySignal } = jiti("../../../src/renderer/state/i18nSignals.ts");
 
-const { registeredActionsSignal } = jiti('../../../src/renderer/state/actionSignals.ts');
+const { registeredActionsSignal } = jiti(
+  "../../../src/renderer/state/actionSignals.ts"
+);
 
-const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
+const { LayerTreeWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx"
+);
 
-describe('LayerTreeWidget Project Properties PopupMenu (Tickets #258, #259)', () => {
+describe("LayerTreeWidget Project Properties PopupMenu (Tickets #258, #259)", () => {
   beforeEach(() => {
     setupDom();
     hasProjectSignal.value = true;
-    projectNameSignal.value = 'Test Cartouche Project';
+    projectNameSignal.value = "Test Cartouche Project";
     editingNodeIdSignal.value = null;
     registeredActionsSignal.value = [];
     clearNodeSelection();
     closeProjectPropertiesDialog();
 
     dictionarySignal.value = {
-      project_properties: 'Project Properties...',
-      rename_layer_tree_node: 'Rename'
+      project_properties: "Project Properties...",
+      rename_layer_tree_node: "Rename",
     };
 
     projectTreeSignal.value = [];
@@ -329,25 +362,27 @@ describe('LayerTreeWidget Project Properties PopupMenu (Tickets #258, #259)', ()
     closeProjectPropertiesDialog();
   });
 
-  it('displays Project Properties... in PopupMenu when project node is secondary-clicked', () => {
+  it("displays Project Properties... in PopupMenu when project node is secondary-clicked", () => {
     act(() => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
     const projectRow = findAllNodes(
       container,
-      (el) => el.className.includes('tree-node-row') && el.className.includes('tree-node-project')
+      (el) =>
+        el.className.includes("tree-node-row")
+        && el.className.includes("tree-node-project")
     )[0];
-    assert(projectRow, 'Should find project root row in tree');
+    assert(projectRow, "Should find project root row in tree");
 
     // Trigger secondary click (contextmenu) on the project root row
     const event = {
-      type: 'contextmenu',
+      type: "contextmenu",
       clientX: 50,
       clientY: 100,
       preventDefault: () => {},
       stopPropagation: () => {},
-      _bubblesStopped: false
+      _bubblesStopped: false,
     };
 
     act(() => {
@@ -355,54 +390,85 @@ describe('LayerTreeWidget Project Properties PopupMenu (Tickets #258, #259)', ()
     });
 
     // Verify PopupMenu item rendered with "Project Properties..."
-    const menuItems = findAllNodes(
-      doc.body,
-      (el) => el.className.includes('menu-item-label')
+    const menuItems = findAllNodes(doc.body, (el) =>
+      el.className.includes("menu-item-label")
     );
 
-    const propertiesItem = menuItems.find((el) => (el as any).textContent?.includes('Project Properties'));
-    assert(propertiesItem, 'PopupMenu must include "Project Properties..." item for project root node');
+    const propertiesItem = menuItems.find((el) =>
+      (el as any).textContent?.includes("Project Properties")
+    );
+    assert(
+      propertiesItem,
+      'PopupMenu must include "Project Properties..." item for project root node'
+    );
 
     const propertiesRow = propertiesItem.parentNode;
-    assert(propertiesRow, 'Project Properties item must have a parent menu row');
+    assert(
+      propertiesRow,
+      "Project Properties item must have a parent menu row"
+    );
     const iconPaths = findAllNodes(
       propertiesRow,
-      (el) => el.tagName === 'PATH' && el.getAttribute('d') === mdiFolderCogOutline
+      (el) =>
+        el.tagName === "PATH" && el.getAttribute("d") === mdiFolderCogOutline
     );
-    assert.equal(iconPaths.length, 1, 'Project Properties item must display mdiFolderCogOutline icon');
-
-    const keySlots = findAllNodes(
-      propertiesRow,
-      (el) => el.className.includes('menu-key-slot')
+    assert.equal(
+      iconPaths.length,
+      1,
+      "Project Properties item must display mdiFolderCogOutline icon"
     );
-    assert.equal(keySlots.length, 1, 'Project Properties item must display an Action key slot');
-    assert.equal(keySlots[0].textContent, 'Ctrl+Alt+,', 'Project Properties item must display "Ctrl+Alt+," formatted key');
 
-    const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
-    assert(renameItem, 'PopupMenu must also include "Rename" item for project root node');
+    const keySlots = findAllNodes(propertiesRow, (el) =>
+      el.className.includes("menu-key-slot")
+    );
+    assert.equal(
+      keySlots.length,
+      1,
+      "Project Properties item must display an Action key slot"
+    );
+    assert.equal(
+      keySlots[0].textContent,
+      "Ctrl+Alt+,",
+      'Project Properties item must display "Ctrl+Alt+," formatted key'
+    );
+
+    const renameItem = menuItems.find((el) =>
+      (el as any).textContent?.includes("Rename")
+    );
+    assert(
+      renameItem,
+      'PopupMenu must also include "Rename" item for project root node'
+    );
 
     const renameRow = renameItem.parentNode;
-    assert(renameRow, 'Rename item must have a parent menu row');
-    const renameKeySlots = findAllNodes(
-      renameRow,
-      (el) => el.className.includes('menu-key-slot')
+    assert(renameRow, "Rename item must have a parent menu row");
+    const renameKeySlots = findAllNodes(renameRow, (el) =>
+      el.className.includes("menu-key-slot")
     );
-    assert.equal(renameKeySlots.length, 1, 'Rename item on project root must display an Action key slot');
-    assert.equal(renameKeySlots[0].textContent, 'F2', 'Rename item on project root must display "F2" formatted key');
+    assert.equal(
+      renameKeySlots.length,
+      1,
+      "Rename item on project root must display an Action key slot"
+    );
+    assert.equal(
+      renameKeySlots[0].textContent,
+      "F2",
+      'Rename item on project root must display "F2" formatted key'
+    );
   });
 
-  it('dynamically resolves Project Properties... and Rename Action keys via getActionFormattedKey() from Action Registry', () => {
+  it("dynamically resolves Project Properties... and Rename Action keys via getActionFormattedKey() from Action Registry", () => {
     registeredActionsSignal.value = [
       {
-        name: 'project_properties',
-        description: 'Opens project properties dialog',
-        formattedKey: 'Ctrl+Alt+P'
+        name: "project_properties",
+        description: "Opens project properties dialog",
+        formattedKey: "Ctrl+Alt+P",
       },
       {
-        name: 'rename_layer_tree_node',
-        description: 'Renames node',
-        formattedKey: 'Shift+F2'
-      }
+        name: "rename_layer_tree_node",
+        description: "Renames node",
+        formattedKey: "Shift+F2",
+      },
     ];
 
     act(() => {
@@ -411,88 +477,113 @@ describe('LayerTreeWidget Project Properties PopupMenu (Tickets #258, #259)', ()
 
     const projectRow = findAllNodes(
       container,
-      (el) => el.className.includes('tree-node-row') && el.className.includes('tree-node-project')
+      (el) =>
+        el.className.includes("tree-node-row")
+        && el.className.includes("tree-node-project")
     )[0];
-    assert(projectRow, 'Should find project root row in tree');
+    assert(projectRow, "Should find project root row in tree");
 
     act(() => {
       projectRow.dispatchEvent({
-        type: 'contextmenu',
+        type: "contextmenu",
         clientX: 50,
         clientY: 100,
         preventDefault: () => {},
         stopPropagation: () => {},
-        _bubblesStopped: false
+        _bubblesStopped: false,
       });
     });
 
-    const menuItems = findAllNodes(
-      doc.body,
-      (el) => el.className.includes('menu-item-label')
+    const menuItems = findAllNodes(doc.body, (el) =>
+      el.className.includes("menu-item-label")
     );
 
-    const propertiesItem = menuItems.find((el) => (el as any).textContent?.includes('Project Properties'));
-    assert(propertiesItem?.parentNode, 'Should find Project Properties row');
-    const propKeySlot = findAllNodes(
-      propertiesItem.parentNode,
-      (el) => el.className.includes('menu-key-slot')
+    const propertiesItem = menuItems.find((el) =>
+      (el as any).textContent?.includes("Project Properties")
+    );
+    assert(propertiesItem?.parentNode, "Should find Project Properties row");
+    const propKeySlot = findAllNodes(propertiesItem.parentNode, (el) =>
+      el.className.includes("menu-key-slot")
     )[0];
-    assert(propKeySlot, 'Project Properties must render menu-key-slot');
-    assert.equal(propKeySlot.textContent, 'Ctrl+Alt+P', 'Project Properties key slot must reflect registered action formattedKey');
+    assert(propKeySlot, "Project Properties must render menu-key-slot");
+    assert.equal(
+      propKeySlot.textContent,
+      "Ctrl+Alt+P",
+      "Project Properties key slot must reflect registered action formattedKey"
+    );
 
-    const renameItem = menuItems.find((el) => (el as any).textContent?.includes('Rename'));
-    assert(renameItem?.parentNode, 'Should find Rename row');
-    const renameKeySlot = findAllNodes(
-      renameItem.parentNode,
-      (el) => el.className.includes('menu-key-slot')
+    const renameItem = menuItems.find((el) =>
+      (el as any).textContent?.includes("Rename")
+    );
+    assert(renameItem?.parentNode, "Should find Rename row");
+    const renameKeySlot = findAllNodes(renameItem.parentNode, (el) =>
+      el.className.includes("menu-key-slot")
     )[0];
-    assert(renameKeySlot, 'Rename must render menu-key-slot');
-    assert.equal(renameKeySlot.textContent, 'Shift+F2', 'Rename key slot must reflect registered action formattedKey');
+    assert(renameKeySlot, "Rename must render menu-key-slot");
+    assert.equal(
+      renameKeySlot.textContent,
+      "Shift+F2",
+      "Rename key slot must reflect registered action formattedKey"
+    );
   });
 
-  it('invokes openProjectPropertiesDialog when Project Properties... is clicked', () => {
+  it("invokes openProjectPropertiesDialog when Project Properties... is clicked", () => {
     act(() => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
     const projectRow = findAllNodes(
       container,
-      (el) => el.className.includes('tree-node-row') && el.className.includes('tree-node-project')
+      (el) =>
+        el.className.includes("tree-node-row")
+        && el.className.includes("tree-node-project")
     )[0];
-    assert(projectRow, 'Should find project root row in tree');
+    assert(projectRow, "Should find project root row in tree");
 
     const event = {
-      type: 'contextmenu',
+      type: "contextmenu",
       clientX: 50,
       clientY: 100,
       preventDefault: () => {},
       stopPropagation: () => {},
-      _bubblesStopped: false
+      _bubblesStopped: false,
     };
 
     act(() => {
       projectRow.dispatchEvent(event);
     });
 
-    const menuRows = findAllNodes(
-      doc.body,
-      (el) => el.className.includes('menu-dropdown-item')
+    const menuRows = findAllNodes(doc.body, (el) =>
+      el.className.includes("menu-dropdown-item")
     );
 
-    const propertiesRow = menuRows.find((el) => (el as any).textContent?.includes('Project Properties'));
-    assert(propertiesRow, 'Should find Project Properties dropdown item element');
+    const propertiesRow = menuRows.find((el) =>
+      (el as any).textContent?.includes("Project Properties")
+    );
+    assert(
+      propertiesRow,
+      "Should find Project Properties dropdown item element"
+    );
 
-    assert.equal(isProjectPropertiesOpenSignal.value, false, 'Dialog should start closed');
+    assert.equal(
+      isProjectPropertiesOpenSignal.value,
+      false,
+      "Dialog should start closed"
+    );
 
     act(() => {
       propertiesRow.dispatchEvent({
-        type: 'click',
+        type: "click",
         preventDefault: () => {},
         stopPropagation: () => {},
-        _bubblesStopped: false
+        _bubblesStopped: false,
       });
     });
 
-    assert.equal(isProjectPropertiesOpenSignal.value, true, 'openProjectPropertiesDialog must be invoked when item is clicked');
+    assert.equal(
+      isProjectPropertiesOpenSignal.value,
+      true,
+      "openProjectPropertiesDialog must be invoked when item is clicked"
+    );
   });
 });

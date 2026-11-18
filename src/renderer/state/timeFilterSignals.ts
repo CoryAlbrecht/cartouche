@@ -20,8 +20,8 @@
  * @see {@link resetTimeFilterState}
  */
 
-import { signal, batch, type Signal } from '@preact/signals-react';
-import type { TimeFilterUnit } from '../../shared/types/project';
+import { signal, batch, type Signal } from "@preact/signals-react";
+import type { TimeFilterUnit } from "../../shared/types/project";
 
 /**
  * @signal isTimeFilterActiveSignal
@@ -98,7 +98,8 @@ export const timeFilterStepSignal: Signal<number> = signal<number>(1.0);
  * @since 0.1.0-dev
  * @type {Signal<TimeFilterUnit>}
  */
-export const timeFilterUnitSignal: Signal<TimeFilterUnit> = signal<TimeFilterUnit>('Days');
+export const timeFilterUnitSignal: Signal<TimeFilterUnit> =
+  signal<TimeFilterUnit>("Days");
 
 /**
  * @function setTimeFilterActive
@@ -125,10 +126,14 @@ export function setTimeFilterActive(active: boolean): void {
  * @param {number} [endUtcMs] - Optional frame window end in UTC epoch ms (defaults to startUtcMs if omitted).
  * @returns {void}
  */
-export function setTimeFilterFrame(startUtcMs: number, endUtcMs?: number): void {
+export function setTimeFilterFrame(
+  startUtcMs: number,
+  endUtcMs?: number
+): void {
   batch(() => {
     timeFilterFrameStartSignal.value = startUtcMs;
-    timeFilterFrameEndSignal.value = endUtcMs !== undefined ? endUtcMs : startUtcMs;
+    timeFilterFrameEndSignal.value =
+      endUtcMs !== undefined ? endUtcMs : startUtcMs;
   });
 }
 
@@ -153,7 +158,12 @@ export function setTimeFilterRange(fromUtcMs: number, toUtcMs: number): void {
     const curStart = timeFilterFrameStartSignal.value;
     const curEnd = timeFilterFrameEndSignal.value;
 
-    if (curStart < minBound || curStart > maxBound || curEnd < minBound || curEnd > maxBound) {
+    if (
+      curStart < minBound
+      || curStart > maxBound
+      || curEnd < minBound
+      || curEnd > maxBound
+    ) {
       const clampedStart = Math.min(Math.max(curStart, minBound), maxBound);
       const clampedEnd = Math.min(Math.max(curEnd, minBound), maxBound);
       timeFilterFrameStartSignal.value = clampedStart;
@@ -199,6 +209,6 @@ export function resetTimeFilterState(): void {
     timeFilterRangeStartSignal.value = 0;
     timeFilterRangeEndSignal.value = 0;
     timeFilterStepSignal.value = 1.0;
-    timeFilterUnitSignal.value = 'Days';
+    timeFilterUnitSignal.value = "Days";
   });
 }

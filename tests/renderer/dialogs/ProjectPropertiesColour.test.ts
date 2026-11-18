@@ -10,24 +10,35 @@
  * @see {@link ColourButton}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRendererJiti } from '../rendererJiti';
-import { installMockDom, teardownMockDom, findElementsByClass, textOf, type MockDom, type MockElement } from '../mockDom';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRendererJiti } from "../rendererJiti";
+import {
+  installMockDom,
+  teardownMockDom,
+  findElementsByClass,
+  textOf,
+  type MockDom,
+  type MockElement,
+} from "../mockDom";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { ProjectPropertiesDialog } = jiti('@renderer/workbench/dialogs/ProjectPropertiesDialog.tsx');
+const { ProjectPropertiesDialog } = jiti(
+  "@renderer/workbench/dialogs/ProjectPropertiesDialog.tsx"
+);
 const {
   activeProjectPropertiesTabSignal,
   projectPropertiesDraftSignal,
   openProjectPropertiesDialog,
   closeProjectPropertiesDialog,
-  updateProjectPropertiesDraft
-} = jiti('@renderer/state/projectPropertiesSignals.ts');
-const { currentProjectSignal, hasProjectSignal } = jiti('@renderer/state/projectSignals.ts');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
+  updateProjectPropertiesDraft,
+} = jiti("@renderer/state/projectPropertiesSignals.ts");
+const { currentProjectSignal, hasProjectSignal } = jiti(
+  "@renderer/state/projectSignals.ts"
+);
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals.ts");
 
 /**
  * @function click
@@ -36,7 +47,11 @@ const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
  */
 async function click(el: MockElement): Promise<void> {
   await act(async () => {
-    el.dispatchEvent({ type: 'click', bubbles: true, preventDefault: () => {} });
+    el.dispatchEvent({
+      type: "click",
+      bubbles: true,
+      preventDefault: () => {},
+    });
   });
 }
 
@@ -47,29 +62,36 @@ async function click(el: MockElement): Promise<void> {
  * @param {string} hex - Colour to enter.
  */
 async function typeHex(dom: MockDom, hex: string): Promise<void> {
-  const input = findElementsByClass(dom.doc.body, 'colour-picker-hex-input')[0];
-  assert.ok(input, 'Dialog opens in HEX with a hex input');
+  const input = findElementsByClass(dom.doc.body, "colour-picker-hex-input")[0];
+  assert.ok(input, "Dialog opens in HEX with a hex input");
   input.value = hex;
   await act(async () => {
-    input.dispatchEvent({ type: 'input', bubbles: true, target: input });
+    input.dispatchEvent({ type: "input", bubbles: true, target: input });
   });
 }
 
-describe('Project Properties General tab colour buttons (Ticket #304)', () => {
+describe("Project Properties General tab colour buttons (Ticket #304)", () => {
   let dom: MockDom | null = null;
 
   beforeEach(async () => {
     dom = installMockDom();
     dom.win.electronAPI = { updateProjectProperties: async () => true };
     dictionarySignal.value = {
-      project_properties_label_selection_colour: 'Selection Colour',
-      project_properties_label_background_colour: 'Map Background Colour'
+      project_properties_label_selection_colour: "Selection Colour",
+      project_properties_label_background_colour: "Map Background Colour",
     };
-    currentProjectSignal.value = { format: 'cartouche-xml', metadata: { title: 'World Atlas' }, layers: [] };
+    currentProjectSignal.value = {
+      format: "cartouche-xml",
+      metadata: { title: "World Atlas" },
+      layers: [],
+    };
     hasProjectSignal.value = true;
     openProjectPropertiesDialog();
-    activeProjectPropertiesTabSignal.value = 'general';
-    updateProjectPropertiesDraft({ selectionColour: '#0080ff66', backgroundColour: '#336699' });
+    activeProjectPropertiesTabSignal.value = "general";
+    updateProjectPropertiesDraft({
+      selectionColour: "#0080ff66",
+      backgroundColour: "#336699",
+    });
     await act(async () => {
       dom!.root.render(React.createElement(ProjectPropertiesDialog));
     });
@@ -92,9 +114,13 @@ describe('Project Properties General tab colour buttons (Ticket #304)', () => {
   function buttonIn(rowClass: string): MockElement {
     const row = findElementsByClass(dom!.doc.body, rowClass)[0];
     assert.ok(row, `Row ${rowClass} is rendered`);
-    assert.equal(findElementsByClass(row, 'colour-picker-widget').length, 0, 'No embedded ColourPickerWidget');
-    const button = findElementsByClass(row, 'colour-button')[0];
-    assert.ok(button, 'Row holds a ColourButton');
+    assert.equal(
+      findElementsByClass(row, "colour-picker-widget").length,
+      0,
+      "No embedded ColourPickerWidget"
+    );
+    const button = findElementsByClass(row, "colour-button")[0];
+    assert.ok(button, "Row holds a ColourButton");
     return button;
   }
 
@@ -104,37 +130,70 @@ describe('Project Properties General tab colour buttons (Ticket #304)', () => {
    * @returns {string} Header text.
    */
   function dialogTitle(): string {
-    return textOf(findElementsByClass(dom!.doc.body, 'colour-picker-dialog-header')[0].childNodes[0]);
+    return textOf(
+      findElementsByClass(dom!.doc.body, "colour-picker-dialog-header")[0]
+        .childNodes[0]
+    );
   }
 
-  it('Selection Colour opens a transparency-capable dialog and Apply writes the draft', async () => {
-    await click(buttonIn('project-prop-selection-colour-row'));
-    assert.equal(dialogTitle(), 'Selection Colour');
-    assert.equal(findElementsByClass(dom!.doc.body, 'colour-picker-alpha-strip').length, 1, 'Transparency allowed');
-    await typeHex(dom!, '#ff000080');
-    await click(findElementsByClass(dom!.doc.body, 'colour-picker-dialog-apply-btn')[0]);
+  it("Selection Colour opens a transparency-capable dialog and Apply writes the draft", async () => {
+    await click(buttonIn("project-prop-selection-colour-row"));
+    assert.equal(dialogTitle(), "Selection Colour");
+    assert.equal(
+      findElementsByClass(dom!.doc.body, "colour-picker-alpha-strip").length,
+      1,
+      "Transparency allowed"
+    );
+    await typeHex(dom!, "#ff000080");
+    await click(
+      findElementsByClass(dom!.doc.body, "colour-picker-dialog-apply-btn")[0]
+    );
 
-    assert.equal(projectPropertiesDraftSignal.value.selectionColour, '#ff000080', 'Translucent colour kept');
+    assert.equal(
+      projectPropertiesDraftSignal.value.selectionColour,
+      "#ff000080",
+      "Translucent colour kept"
+    );
   });
 
-  it('Map Background Colour opens an opaque-only dialog and Apply stores opaque hex', async () => {
-    await click(buttonIn('project-prop-background-colour-row'));
-    assert.equal(dialogTitle(), 'Map Background Colour');
-    assert.equal(findElementsByClass(dom!.doc.body, 'colour-picker-alpha-strip').length, 0, 'Opaque only');
+  it("Map Background Colour opens an opaque-only dialog and Apply stores opaque hex", async () => {
+    await click(buttonIn("project-prop-background-colour-row"));
+    assert.equal(dialogTitle(), "Map Background Colour");
+    assert.equal(
+      findElementsByClass(dom!.doc.body, "colour-picker-alpha-strip").length,
+      0,
+      "Opaque only"
+    );
 
-    await typeHex(dom!, '#ff8800ff');
-    await click(findElementsByClass(dom!.doc.body, 'colour-picker-dialog-apply-btn')[0]);
-    assert.equal(projectPropertiesDraftSignal.value.backgroundColour, '#ff8800', 'Normalized to six-digit hex');
+    await typeHex(dom!, "#ff8800ff");
+    await click(
+      findElementsByClass(dom!.doc.body, "colour-picker-dialog-apply-btn")[0]
+    );
+    assert.equal(
+      projectPropertiesDraftSignal.value.backgroundColour,
+      "#ff8800",
+      "Normalized to six-digit hex"
+    );
   });
 
-  it('Cancel leaves both colours unchanged', async () => {
-    await click(buttonIn('project-prop-background-colour-row'));
-    await typeHex(dom!, '#ff8800ff');
-    await click(findElementsByClass(dom!.doc.body, 'colour-picker-dialog-cancel-btn')[0]);
-    await click(buttonIn('project-prop-selection-colour-row'));
-    await click(findElementsByClass(dom!.doc.body, 'colour-picker-dialog-cancel-btn')[0]);
+  it("Cancel leaves both colours unchanged", async () => {
+    await click(buttonIn("project-prop-background-colour-row"));
+    await typeHex(dom!, "#ff8800ff");
+    await click(
+      findElementsByClass(dom!.doc.body, "colour-picker-dialog-cancel-btn")[0]
+    );
+    await click(buttonIn("project-prop-selection-colour-row"));
+    await click(
+      findElementsByClass(dom!.doc.body, "colour-picker-dialog-cancel-btn")[0]
+    );
 
-    assert.equal(projectPropertiesDraftSignal.value.backgroundColour, '#336699');
-    assert.equal(projectPropertiesDraftSignal.value.selectionColour, '#0080ff66');
+    assert.equal(
+      projectPropertiesDraftSignal.value.backgroundColour,
+      "#336699"
+    );
+    assert.equal(
+      projectPropertiesDraftSignal.value.selectionColour,
+      "#0080ff66"
+    );
   });
 });

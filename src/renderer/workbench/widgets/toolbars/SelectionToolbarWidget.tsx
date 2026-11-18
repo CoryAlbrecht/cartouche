@@ -15,11 +15,7 @@ import React from "react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { useTranslation } from "@renderer/hooks/useTranslation";
 import Icon from "@renderer/components/common/Icon";
-import {
-  mdiTableSearch,
-  mdiSelectAll,
-  mdiSelectionOff,
-} from "@mdi/js";
+import { mdiTableSearch, mdiSelectAll, mdiSelectionOff } from "@mdi/js";
 import {
   type ToolbarZone,
   type ActiveTool,
@@ -31,9 +27,7 @@ import {
   selectAllFeaturesAction,
   deselectAllFeaturesAction,
 } from "@renderer/state/gisSignals";
-import {
-  getActionFormattedKey,
-} from "@renderer/state/actionSignals";
+import { getActionFormattedKey } from "@renderer/state/actionSignals";
 import { SplitToolButton } from "@renderer/components/common/SplitToolButton";
 import { ToolbarWidget } from "../ToolbarWidget";
 
@@ -116,9 +110,9 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
   const { t } = useTranslation();
 
   const isSelectionActive =
-    activeToolSignal.value === "select" ||
-    activeToolSignal.value === "select_drag" ||
-    activeToolSignal.value === "select_freehand";
+    activeToolSignal.value === "select"
+    || activeToolSignal.value === "select_drag"
+    || activeToolSignal.value === "select_freehand";
 
   const handleSelectionModeSelect = (actionId: string): void => {
     activeSelectionModeSignal.value = actionId as SelectionMode;
@@ -140,27 +134,32 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
     "select_features_by_value",
     "F6"
   );
-  const selectByValueTitle = selectByValueShortcut
-    ? `${t("select_features_by_value")} (${selectByValueShortcut})`
+  const selectByValueTitle =
+    selectByValueShortcut ?
+      `${t("select_features_by_value")} (${selectByValueShortcut})`
     : t("select_features_by_value");
 
   const selectAllShortcut = getActionFormattedKey(
     "select_all_features",
     "Ctrl+A"
   );
-  const selectAllTitle = selectAllShortcut
-    ? `${t("select_all_features")} (${selectAllShortcut})`
+  const selectAllTitle =
+    selectAllShortcut ?
+      `${t("select_all_features")} (${selectAllShortcut})`
     : t("select_all_features");
 
   const deselectAllShortcut = getActionFormattedKey(
     "deselect_all_features",
     "Ctrl+Shift+A"
   );
-  const deselectAllTitle = deselectAllShortcut
-    ? `${t("deselect_all_features")} (${deselectAllShortcut})`
+  const deselectAllTitle =
+    deselectAllShortcut ?
+      `${t("deselect_all_features")} (${deselectAllShortcut})`
     : t("deselect_all_features");
 
-  const deselectDisabled = isDeselectAllDisabled(selectedFeatureIdsSignal.value);
+  const deselectDisabled = isDeselectAllDisabled(
+    selectedFeatureIdsSignal.value
+  );
 
   return (
     <ToolbarWidget
@@ -182,7 +181,9 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
         id='toolbar-tool-select-by-value'
         className='toolbar-btn'
         title={selectByValueTitle}
-        aria-label={t("select_features_by_value") || "Select Features by Value..."}
+        aria-label={
+          t("select_features_by_value") || "Select Features by Value..."
+        }
         onClick={openSelectByValueDialog}>
         <Icon path={mdiTableSearch} />
       </button>

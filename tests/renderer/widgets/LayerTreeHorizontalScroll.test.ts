@@ -11,19 +11,19 @@
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 // Mock .svg import for headless Node testing
 const require = createRequire(import.meta.url);
-require.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+require.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
 
 // Set React act environment flag
@@ -49,12 +49,15 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  value = '';
-  defaultValue = '';
+  value = "";
+  defaultValue = "";
 
   /**
    * @constructor
@@ -65,7 +68,7 @@ class MockElement {
    * @since 0.1.0-dev
    * @param {string} [tag='div'] - HTML element tag name.
    */
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -77,16 +80,18 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
   get textContent(): string {
     if (this.childNodes.length > 0) {
-      return this.childNodes.map(c => c.textContent || c.nodeValue || '').join('');
+      return this.childNodes
+        .map((c) => c.textContent || c.nodeValue || "")
+        .join("");
     }
-    return (this as any)._textContent || '';
+    return (this as any)._textContent || "";
   }
 
   set textContent(val: string) {
@@ -106,7 +111,7 @@ class MockElement {
    */
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
   }
@@ -135,8 +140,8 @@ class MockElement {
    */
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
   }
 
@@ -185,7 +190,7 @@ class MockElement {
    * @returns {any} The removed child node.
    */
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -222,7 +227,11 @@ class MockElement {
    * @param {boolean} [capture] - Whether event listener is capture phase.
    * @returns {void}
    */
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -241,7 +250,9 @@ class MockElement {
    */
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   /**
@@ -296,7 +307,14 @@ class MockElement {
    * @since 0.1.0-dev
    * @returns {{ width: number, height: number, top: number, left: number, right: number, bottom: number }} Layout bounds.
    */
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
     return { width: 160, height: 80, top: 0, left: 0, right: 160, bottom: 80 };
   }
 }
@@ -304,7 +322,10 @@ class MockElement {
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
-let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let windowListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 
 /**
  * @description Initializes mock window and document global objects for React DOM component testing.
@@ -317,8 +338,8 @@ let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boole
 function setupDom(): void {
   windowListeners = {};
 
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -339,17 +360,17 @@ function setupDom(): void {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -357,13 +378,17 @@ function setupDom(): void {
   const win = {
     innerWidth: 1024,
     innerHeight: 768,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
     removeEventListener: (type: string, cb: (e: any) => void) => {
       if (!windowListeners[type]) return;
-      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+      windowListeners[type] = windowListeners[type].filter((l) => l.cb !== cb);
     },
     dispatchEvent: (event: any) => {
       const listeners = (windowListeners[event.type] || []).slice();
@@ -375,20 +400,25 @@ function setupDom(): void {
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
 
   doc.defaultView = win;
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -424,7 +454,10 @@ function tearDownDom(): void {
  * @param {(el: MockElement) => boolean} predicate - Match predicate function.
  * @returns {MockElement[]} Array of matching elements.
  */
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -445,19 +478,25 @@ const {
   editingNodeIdSignal,
   activeLayerIdSignal,
   setNodeSelection,
-  clearNodeSelection
-} = jiti('../../../src/renderer/state/projectSignals.ts');
+  clearNodeSelection,
+} = jiti("../../../src/renderer/state/projectSignals.ts");
 
-const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
+const { LayerTreeWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx"
+);
 
-describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #64, ADR 0010)', () => {
-  const workbenchCssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-  let cssContent = '';
+describe("LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #64, ADR 0010)", () => {
+  const workbenchCssPath = path.resolve(
+    process.cwd(),
+    "src/renderer/styles/workbench.css"
+  );
+  let cssContent = "";
 
   beforeEach(() => {
     setupDom();
     hasProjectSignal.value = true;
-    projectNameSignal.value = 'Metropolitan Transit Spatial Analysis 2026 Project Long Title';
+    projectNameSignal.value =
+      "Metropolitan Transit Spatial Analysis 2026 Project Long Title";
     editingNodeIdSignal.value = null;
     clearNodeSelection();
     activeLayerIdSignal.value = null;
@@ -465,32 +504,32 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
     // Populate a test layer tree with long names
     projectTreeSignal.value = [
       {
-        id: 'group-transportation',
-        name: 'Transportation Infrastructure & Multi-Modal Corridors',
+        id: "group-transportation",
+        name: "Transportation Infrastructure & Multi-Modal Corridors",
         visible: true,
         expanded: true,
         children: [
           {
-            id: 'layer-osm-transport-a',
-            name: 'gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered',
-            type: 'vector',
-            source: '/test/gis_osm_transport_a_free_1.geojson',
+            id: "layer-osm-transport-a",
+            name: "gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered",
+            type: "vector",
+            source: "/test/gis_osm_transport_a_free_1.geojson",
             visible: true,
-            geometryKind: 'Polygon'
+            geometryKind: "Polygon",
           },
           {
-            id: 'layer-osm-transport-p',
-            name: 'gis_osm_transport_p_free_1_station_points_and_intermodal_stops',
-            type: 'vector',
-            source: '/test/gis_osm_transport_p_free_1.geojson',
+            id: "layer-osm-transport-p",
+            name: "gis_osm_transport_p_free_1_station_points_and_intermodal_stops",
+            type: "vector",
+            source: "/test/gis_osm_transport_p_free_1.geojson",
             visible: true,
-            geometryKind: 'Point'
-          }
-        ]
-      }
+            geometryKind: "Point",
+          },
+        ],
+      },
     ];
 
-    cssContent = fs.readFileSync(workbenchCssPath, 'utf-8');
+    cssContent = fs.readFileSync(workbenchCssPath, "utf-8");
   });
 
   afterEach(() => {
@@ -503,248 +542,315 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
     activeLayerIdSignal.value = null;
   });
 
-  it('workbench.css defines .layer-tree-viewport with overflow-x: auto, overflow-y: auto, and container-type: inline-size', () => {
+  it("workbench.css defines .layer-tree-viewport with overflow-x: auto, overflow-y: auto, and container-type: inline-size", () => {
     assert.match(
       cssContent,
       /\.layer-tree-viewport\s*\{[^}]*overflow-x:\s*auto/s,
-      '.layer-tree-viewport must declare overflow-x: auto'
+      ".layer-tree-viewport must declare overflow-x: auto"
     );
     assert.match(
       cssContent,
       /\.layer-tree-viewport\s*\{[^}]*overflow-y:\s*auto/s,
-      '.layer-tree-viewport must declare overflow-y: auto'
+      ".layer-tree-viewport must declare overflow-y: auto"
     );
     assert.match(
       cssContent,
       /\.layer-tree-viewport\s*\{[^}]*container-type:\s*inline-size/s,
-      '.layer-tree-viewport must declare container-type: inline-size for container queries'
+      ".layer-tree-viewport must declare container-type: inline-size for container queries"
     );
   });
 
-  it('workbench.css defines .tree-node-title and .project-title without text ellipsis shortening and with intrinsic width', () => {
+  it("workbench.css defines .tree-node-title and .project-title without text ellipsis shortening and with intrinsic width", () => {
     // Assert .tree-node-title has intrinsic width and no ellipsis shortening
-    const titleMatch = cssContent.match(/(?:^|\n)\.tree-node-title[^{]*\{([^}]+)\}/);
-    assert.ok(titleMatch, '.tree-node-title must be declared in workbench.css');
+    const titleMatch = cssContent.match(
+      /(?:^|\n)\.tree-node-title[^{]*\{([^}]+)\}/
+    );
+    assert.ok(titleMatch, ".tree-node-title must be declared in workbench.css");
     const titleRules = titleMatch[1];
 
     assert.doesNotMatch(
       titleRules,
       /text-overflow:\s*ellipsis/,
-      '.tree-node-title must NOT declare text-overflow: ellipsis'
+      ".tree-node-title must NOT declare text-overflow: ellipsis"
     );
     assert.match(
       titleRules,
       /text-overflow:\s*clip/,
-      '.tree-node-title must declare text-overflow: clip'
+      ".tree-node-title must declare text-overflow: clip"
     );
     assert.match(
       titleRules,
       /overflow:\s*visible/,
-      '.tree-node-title must declare overflow: visible'
+      ".tree-node-title must declare overflow: visible"
     );
     assert.match(
       titleRules,
       /flex:\s*0\s+0\s+auto/,
-      '.tree-node-title must declare flex: 0 0 auto for intrinsic sizing'
+      ".tree-node-title must declare flex: 0 0 auto for intrinsic sizing"
     );
     assert.match(
       titleRules,
       /width:\s*max-content/,
-      '.tree-node-title must declare width: max-content for intrinsic sizing'
+      ".tree-node-title must declare width: max-content for intrinsic sizing"
     );
   });
 
-  it('workbench.css defines .tree-node-row and .layer-tree-root with min-width: 100% and width: max-content', () => {
+  it("workbench.css defines .tree-node-row and .layer-tree-root with min-width: 100% and width: max-content", () => {
     const rowMatch = cssContent.match(/\.tree-node-row\s*\{([^}]+)\}/s);
-    assert.ok(rowMatch, '.tree-node-row must be declared in workbench.css');
+    assert.ok(rowMatch, ".tree-node-row must be declared in workbench.css");
     const rowRules = rowMatch[1];
 
     assert.match(
       rowRules,
       /min-width:\s*100%/,
-      '.tree-node-row must declare min-width: 100%'
+      ".tree-node-row must declare min-width: 100%"
     );
     assert.match(
       rowRules,
       /width:\s*max-content/,
-      '.tree-node-row must declare width: max-content'
+      ".tree-node-row must declare width: max-content"
     );
 
     assert.match(
       cssContent,
       /\.layer-tree-root\s*\{[^}]*min-width:\s*100%/s,
-      '.layer-tree-root must declare min-width: 100%'
+      ".layer-tree-root must declare min-width: 100%"
     );
     assert.match(
       cssContent,
       /\.layer-tree-root\s*\{[^}]*width:\s*max-content/s,
-      '.layer-tree-root must declare width: max-content'
+      ".layer-tree-root must declare width: max-content"
     );
   });
 
-  it('workbench.css defines .tree-drop-marker with position: sticky, left: 0, and 100cqw container-query constraint', () => {
+  it("workbench.css defines .tree-drop-marker with position: sticky, left: 0, and 100cqw container-query constraint", () => {
     const markerMatch = cssContent.match(/\.tree-drop-marker\s*\{([^}]+)\}/s);
-    assert.ok(markerMatch, '.tree-drop-marker must be declared in workbench.css');
+    assert.ok(
+      markerMatch,
+      ".tree-drop-marker must be declared in workbench.css"
+    );
     const markerRules = markerMatch[1];
 
     assert.match(
       markerRules,
       /position:\s*sticky/,
-      '.tree-drop-marker must declare position: sticky'
+      ".tree-drop-marker must declare position: sticky"
     );
     assert.match(
       markerRules,
       /left:\s*0/,
-      '.tree-drop-marker must declare left: 0'
+      ".tree-drop-marker must declare left: 0"
     );
     assert.match(
       markerRules,
       /100cqw/,
-      '.tree-drop-marker must reference 100cqw for container-query clamping'
+      ".tree-drop-marker must reference 100cqw for container-query clamping"
     );
   });
 
-  it('workbench.css defines .tree-inline-input with min-width: 14rem and flex: 1', () => {
+  it("workbench.css defines .tree-inline-input with min-width: 14rem and flex: 1", () => {
     const inputMatch = cssContent.match(/\.tree-inline-input\s*\{([^}]+)\}/s);
-    assert.ok(inputMatch, '.tree-inline-input must be declared in workbench.css');
+    assert.ok(
+      inputMatch,
+      ".tree-inline-input must be declared in workbench.css"
+    );
     const inputRules = inputMatch[1];
 
     assert.match(
       inputRules,
       /min-width:\s*14rem/,
-      '.tree-inline-input must declare min-width: 14rem for comfortable editing'
+      ".tree-inline-input must declare min-width: 14rem for comfortable editing"
     );
     assert.match(
       inputRules,
       /flex:\s*1/,
-      '.tree-inline-input must declare flex: 1'
+      ".tree-inline-input must declare flex: 1"
     );
   });
 
-  it('renders LayerTreeWidget viewport with overflowX: auto and overflowY: auto beneath pinned BasicWidget header', async () => {
+  it("renders LayerTreeWidget viewport with overflowX: auto and overflowY: auto beneath pinned BasicWidget header", async () => {
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
     // Pinned BasicWidget header bar must be present above viewport
-    const headerBars = findAllNodes(container, el => el.className.includes('basic-widget-header'));
-    assert.strictEqual(headerBars.length, 1, 'BasicWidget header bar must be present');
+    const headerBars = findAllNodes(container, (el) =>
+      el.className.includes("basic-widget-header")
+    );
+    assert.strictEqual(
+      headerBars.length,
+      1,
+      "BasicWidget header bar must be present"
+    );
 
     // Viewport must have overflow-x and overflow-y auto
-    const viewport = findAllNodes(container, el => el.className.includes('layer-tree-viewport'))[0];
-    assert.ok(viewport, 'layer-tree-viewport element must be rendered');
-    assert.strictEqual(viewport.style.overflowX, 'auto', 'Viewport must have overflowX auto');
-    assert.strictEqual(viewport.style.overflowY, 'auto', 'Viewport must have overflowY auto');
+    const viewport = findAllNodes(container, (el) =>
+      el.className.includes("layer-tree-viewport")
+    )[0];
+    assert.ok(viewport, "layer-tree-viewport element must be rendered");
+    assert.strictEqual(
+      viewport.style.overflowX,
+      "auto",
+      "Viewport must have overflowX auto"
+    );
+    assert.strictEqual(
+      viewport.style.overflowY,
+      "auto",
+      "Viewport must have overflowY auto"
+    );
   });
 
-  it('renders all tree node rows (project root, group, layers) with full content titles', async () => {
+  it("renders all tree node rows (project root, group, layers) with full content titles", async () => {
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
     // Project root title
-    const projectTitle = findAllNodes(container, el => el.className.includes('project-title'))[0];
-    assert.ok(projectTitle, 'Project title node must be rendered');
-    const projectText = (projectTitle as any).textContent || projectTitle.childNodes[0]?.nodeValue;
-    assert.ok(projectText?.includes('Metropolitan Transit Spatial Analysis 2026'));
+    const projectTitle = findAllNodes(container, (el) =>
+      el.className.includes("project-title")
+    )[0];
+    assert.ok(projectTitle, "Project title node must be rendered");
+    const projectText =
+      (projectTitle as any).textContent
+      || projectTitle.childNodes[0]?.nodeValue;
+    assert.ok(
+      projectText?.includes("Metropolitan Transit Spatial Analysis 2026")
+    );
 
     // Group title
-    const groupRows = findAllNodes(container, el => el.className.includes('tree-node-group'));
-    assert.strictEqual(groupRows.length, 1, 'Group row must be rendered');
-    const groupTitle = findAllNodes(groupRows[0], el => el.className.includes('tree-node-title'))[0];
-    assert.ok(groupTitle, 'Group title must be rendered');
-    const groupText = (groupTitle as any).textContent || groupTitle.childNodes[0]?.nodeValue;
-    assert.strictEqual(groupText, 'Transportation Infrastructure & Multi-Modal Corridors');
+    const groupRows = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-group")
+    );
+    assert.strictEqual(groupRows.length, 1, "Group row must be rendered");
+    const groupTitle = findAllNodes(groupRows[0], (el) =>
+      el.className.includes("tree-node-title")
+    )[0];
+    assert.ok(groupTitle, "Group title must be rendered");
+    const groupText =
+      (groupTitle as any).textContent || groupTitle.childNodes[0]?.nodeValue;
+    assert.strictEqual(
+      groupText,
+      "Transportation Infrastructure & Multi-Modal Corridors"
+    );
 
     // Layer rows
-    const layerRows = findAllNodes(container, el => el.className.includes('tree-node-layer'));
-    assert.strictEqual(layerRows.length, 2, 'Two layer rows must be rendered');
+    const layerRows = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-layer")
+    );
+    assert.strictEqual(layerRows.length, 2, "Two layer rows must be rendered");
 
-    const layer1Title = findAllNodes(layerRows[0], el => el.className.includes('tree-node-title'))[0];
-    const layer1Name = findAllNodes(layer1Title, el => el.className.includes('tree-node-name'))[0];
-    const layer1Text = (layer1Name as any).textContent || layer1Name.childNodes[0]?.nodeValue;
+    const layer1Title = findAllNodes(layerRows[0], (el) =>
+      el.className.includes("tree-node-title")
+    )[0];
+    const layer1Name = findAllNodes(layer1Title, (el) =>
+      el.className.includes("tree-node-name")
+    )[0];
+    const layer1Text =
+      (layer1Name as any).textContent || layer1Name.childNodes[0]?.nodeValue;
     assert.strictEqual(
       layer1Text,
-      'gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered'
+      "gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered"
     );
     assert.ok(
-      ((layer1Title as any).textContent || '').includes('gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered (...)')
+      ((layer1Title as any).textContent || "").includes(
+        "gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered (...)"
+      )
     );
 
-    const layer2Title = findAllNodes(layerRows[1], el => el.className.includes('tree-node-title'))[0];
-    const layer2Name = findAllNodes(layer2Title, el => el.className.includes('tree-node-name'))[0];
-    const layer2Text = (layer2Name as any).textContent || layer2Name.childNodes[0]?.nodeValue;
+    const layer2Title = findAllNodes(layerRows[1], (el) =>
+      el.className.includes("tree-node-title")
+    )[0];
+    const layer2Name = findAllNodes(layer2Title, (el) =>
+      el.className.includes("tree-node-name")
+    )[0];
+    const layer2Text =
+      (layer2Name as any).textContent || layer2Name.childNodes[0]?.nodeValue;
     assert.strictEqual(
       layer2Text,
-      'gis_osm_transport_p_free_1_station_points_and_intermodal_stops'
+      "gis_osm_transport_p_free_1_station_points_and_intermodal_stops"
     );
     assert.ok(
-      ((layer2Title as any).textContent || '').includes('gis_osm_transport_p_free_1_station_points_and_intermodal_stops (...)')
+      ((layer2Title as any).textContent || "").includes(
+        "gis_osm_transport_p_free_1_station_points_and_intermodal_stops (...)"
+      )
     );
   });
 
-  it('selection and active states apply full-width row highlight classes', async () => {
+  it("selection and active states apply full-width row highlight classes", async () => {
     // Select group and layer
-    setNodeSelection(['group-transportation', 'layer-osm-transport-a']);
-    activeLayerIdSignal.value = 'layer-osm-transport-a';
+    setNodeSelection(["group-transportation", "layer-osm-transport-a"]);
+    activeLayerIdSignal.value = "layer-osm-transport-a";
 
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const groupRow = findAllNodes(container, el => el.className.includes('tree-node-group'))[0];
-    assert.ok(groupRow.className.includes('selected'), 'Selected group must have .selected class');
+    const groupRow = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-group")
+    )[0];
+    assert.ok(
+      groupRow.className.includes("selected"),
+      "Selected group must have .selected class"
+    );
 
-    const layerRow = findAllNodes(container, el => el.className.includes('tree-node-layer'))[0];
-    assert.ok(layerRow.className.includes('selected'), 'Selected layer must have .selected class');
-    assert.ok(layerRow.className.includes('active'), 'Active layer must have .active class');
+    const layerRow = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-layer")
+    )[0];
+    assert.ok(
+      layerRow.className.includes("selected"),
+      "Selected layer must have .selected class"
+    );
+    assert.ok(
+      layerRow.className.includes("active"),
+      "Active layer must have .active class"
+    );
 
     // .selected in CSS has full row background color var(--cartouche-theme-info-subtle), while .active has bold italic title (ADR 0016)
     assert.match(
       cssContent,
       /\.tree-node-row\.selected[^{]*\{[^}]*background-color:\s*var\(--cartouche-theme-info-subtle\)/s,
-      '.tree-node-row.selected must have background-color var(--cartouche-theme-info-subtle)'
+      ".tree-node-row.selected must have background-color var(--cartouche-theme-info-subtle)"
     );
     assert.match(
       cssContent,
       /\.tree-node-row\.active\s+\.tree-node-title[^{]*\{[^}]*font-weight:\s*bold/s,
-      '.tree-node-row.active .tree-node-title must declare font-weight: bold'
+      ".tree-node-row.active .tree-node-title must declare font-weight: bold"
     );
   });
 
-  it('renders drop marker clamped with calc(100cqw - indentPx) when dragOverState is active', async () => {
+  it("renders drop marker clamped with calc(100cqw - indentPx) when dragOverState is active", async () => {
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const layerRows = findAllNodes(container, el => el.className.includes('tree-node-layer'));
+    const layerRows = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-layer")
+    );
     const layer1Row = layerRows[0];
     const layer2Row = layerRows[1];
-    assert.ok(layer1Row && layer2Row, 'Both layer rows must be rendered');
+    assert.ok(layer1Row && layer2Row, "Both layer rows must be rendered");
 
     // 1. Initiate drag from layer2Row to populate draggedNodeIdsRef
     await act(async () => {
       layer2Row.dispatchEvent({
-        type: 'dragstart',
+        type: "dragstart",
         bubbles: true,
         dataTransfer: {
           setData: () => {},
           setDragImage: () => {},
-          effectAllowed: ''
-        }
+          effectAllowed: "",
+        },
       });
     });
 
     // 2. Trigger dragOver on layer1Row with offsetY = 6 (top half -> position: before)
     await act(async () => {
       layer1Row.dispatchEvent({
-        type: 'dragover',
+        type: "dragover",
         bubbles: true,
-        dataTransfer: {
-          types: ['application/x-cartouche-layers']
-        },
+        dataTransfer: { types: ["application/x-cartouche-layers"] },
         clientY: 6,
-        clientX: 50
+        clientX: 50,
       });
     });
 
@@ -753,37 +859,51 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const dropMarkers = findAllNodes(container, el => el.className.includes('tree-drop-marker'));
-    assert.ok(dropMarkers.length > 0, 'Drop marker must be rendered during drag over');
+    const dropMarkers = findAllNodes(container, (el) =>
+      el.className.includes("tree-drop-marker")
+    );
+    assert.ok(
+      dropMarkers.length > 0,
+      "Drop marker must be rendered during drag over"
+    );
     const marker = dropMarkers[0];
 
     // Indent level for layer inside group is 2, so indentPx = 2 * 18 + 6 = 42px
-    assert.strictEqual(marker.style.marginLeft, '42px', 'Drop marker must indent to 42px');
+    assert.strictEqual(
+      marker.style.marginLeft,
+      "42px",
+      "Drop marker must indent to 42px"
+    );
     assert.strictEqual(
       marker.style.width,
-      'calc(100cqw - 42px)',
-      'Drop marker must constrain width to calc(100cqw - 42px) to clamp to visible pane edge'
+      "calc(100cqw - 42px)",
+      "Drop marker must constrain width to calc(100cqw - 42px) to clamp to visible pane edge"
     );
   });
 
-  it('transitions between intrinsic display name width and min-width 14rem inline input during rename', async () => {
+  it("transitions between intrinsic display name width and min-width 14rem inline input during rename", async () => {
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
     // Before rename: span.tree-node-title rendered
-    let inlineInputs = findAllNodes(container, el => el.className.includes('tree-inline-input'));
-    assert.strictEqual(inlineInputs.length, 0, 'No inline inputs before rename');
+    let inlineInputs = findAllNodes(container, (el) =>
+      el.className.includes("tree-inline-input")
+    );
+    assert.strictEqual(
+      inlineInputs.length,
+      0,
+      "No inline inputs before rename"
+    );
 
     // Double-click layer title to activate rename mode (index 0: project, 1: group, 2: layer 1)
-    const layerTitle = findAllNodes(container, el => el.className.includes('tree-node-title'))[2];
-    assert.ok(layerTitle, 'Layer title span must be present');
+    const layerTitle = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-title")
+    )[2];
+    assert.ok(layerTitle, "Layer title span must be present");
 
     await act(async () => {
-      layerTitle.dispatchEvent({
-        type: 'dblclick',
-        bubbles: true
-      });
+      layerTitle.dispatchEvent({ type: "dblclick", bubbles: true });
     });
 
     // Re-render to observe state change
@@ -791,13 +911,23 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    inlineInputs = findAllNodes(container, el => el.className.includes('tree-inline-input'));
-    assert.strictEqual(inlineInputs.length, 1, 'Inline input must be rendered during rename');
-    const inputVal = inlineInputs[0].value || inlineInputs[0].defaultValue || inlineInputs[0].attributes.value || inlineInputs[0].attributes.defaultValue;
+    inlineInputs = findAllNodes(container, (el) =>
+      el.className.includes("tree-inline-input")
+    );
+    assert.strictEqual(
+      inlineInputs.length,
+      1,
+      "Inline input must be rendered during rename"
+    );
+    const inputVal =
+      inlineInputs[0].value
+      || inlineInputs[0].defaultValue
+      || inlineInputs[0].attributes.value
+      || inlineInputs[0].attributes.defaultValue;
     assert.strictEqual(
       inputVal,
-      'gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered',
-      'Inline input must populate initial layer name'
+      "gis_osm_transport_a_free_1_regional_boundary_rail_corridors_buffered",
+      "Inline input must populate initial layer name"
     );
 
     // Cancel rename mode: returns to intrinsic display name
@@ -806,10 +936,21 @@ describe('LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    inlineInputs = findAllNodes(container, el => el.className.includes('tree-inline-input'));
-    assert.strictEqual(inlineInputs.length, 0, 'Inline input unmounted after cancelling rename');
+    inlineInputs = findAllNodes(container, (el) =>
+      el.className.includes("tree-inline-input")
+    );
+    assert.strictEqual(
+      inlineInputs.length,
+      0,
+      "Inline input unmounted after cancelling rename"
+    );
 
-    const restoredLayerTitle = findAllNodes(container, el => el.className.includes('tree-node-title'))[2];
-    assert.ok(restoredLayerTitle, 'Layer title span restored after cancelling rename');
+    const restoredLayerTitle = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-title")
+    )[2];
+    assert.ok(
+      restoredLayerTitle,
+      "Layer title span restored after cancelling rename"
+    );
   });
 });

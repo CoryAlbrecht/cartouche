@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import type { ProjectStyleFormat, SldStyleVersion } from './project';
+import type { ProjectStyleFormat, SldStyleVersion } from "./project";
 
 /**
  * @typedef {Object} SimpleFillComponent
@@ -24,7 +24,7 @@ import type { ProjectStyleFormat, SldStyleVersion } from './project';
  */
 export interface SimpleFillComponent {
   id: string;
-  type: 'simple-fill';
+  type: "simple-fill";
   enabled: boolean;
   locked?: boolean;
   color: string;
@@ -45,7 +45,7 @@ export interface SimpleFillComponent {
  */
 export interface GradientFillComponent {
   id: string;
-  type: 'gradient-fill';
+  type: "gradient-fill";
   enabled: boolean;
   locked?: boolean;
   stops: string[];
@@ -73,14 +73,14 @@ export interface GradientFillComponent {
  */
 export interface SimpleLineComponent {
   id: string;
-  type: 'simple-line';
+  type: "simple-line";
   enabled: boolean;
   locked?: boolean;
   color: string;
   width: number;
   offset?: number;
-  cap?: 'butt' | 'round' | 'square';
-  join?: 'bevel' | 'miter' | 'round';
+  cap?: "butt" | "round" | "square";
+  join?: "bevel" | "miter" | "round";
   dashPattern?: string;
   dashOffset?: number;
   dashArray?: number[];
@@ -95,16 +95,16 @@ export interface SimpleLineComponent {
  * @since 0.1.0-dev
  */
 export type DashPatternPreset =
-  | 'solid'
-  | 'no-line'
-  | 'dash'
-  | 'dot'
-  | 'dash-dot'
-  | 'dash-dot-dot'
-  | 'long-dash'
-  | 'long-dash-dot'
-  | 'sparse-dot'
-  | 'custom';
+  | "solid"
+  | "no-line"
+  | "dash"
+  | "dot"
+  | "dash-dot"
+  | "dash-dot-dot"
+  | "long-dash"
+  | "long-dash-dot"
+  | "sparse-dot"
+  | "custom";
 
 /**
  * Standard dictionary mapping CAD/GIS dash pattern presets to their alternating line/gap length sequences in pixels.
@@ -115,15 +115,15 @@ export type DashPatternPreset =
  * @since 0.1.0-dev
  */
 export const DASH_PATTERN_PRESETS: Record<string, number[]> = {
-  'solid': [],
-  'no-line': [],
-  'dash': [10, 5],
-  'dot': [2, 3],
-  'dash-dot': [10, 4, 2, 4],
-  'dash-dot-dot': [10, 4, 2, 4, 2, 4],
-  'long-dash': [18, 6],
-  'long-dash-dot': [18, 5, 2, 5],
-  'sparse-dot': [2, 6],
+  "solid": [],
+  "no-line": [],
+  "dash": [10, 5],
+  "dot": [2, 3],
+  "dash-dot": [10, 4, 2, 4],
+  "dash-dot-dot": [10, 4, 2, 4, 2, 4],
+  "long-dash": [18, 6],
+  "long-dash-dot": [18, 5, 2, 5],
+  "sparse-dot": [2, 6],
 };
 
 /**
@@ -140,27 +140,27 @@ export function matchDashPattern(
   dashArray?: number[],
   explicitPattern?: string
 ): string {
-  if (explicitPattern === 'no-line') {
-    return 'no-line';
+  if (explicitPattern === "no-line") {
+    return "no-line";
   }
-  if (explicitPattern === 'custom') {
-    return 'custom';
+  if (explicitPattern === "custom") {
+    return "custom";
   }
   if (!dashArray || dashArray.length === 0) {
-    return explicitPattern === 'no-line' ? 'no-line' : 'solid';
+    return explicitPattern === "no-line" ? "no-line" : "solid";
   }
   for (const [preset, arr] of Object.entries(DASH_PATTERN_PRESETS)) {
-    if (preset === 'solid' || preset === 'no-line') {
+    if (preset === "solid" || preset === "no-line") {
       continue;
     }
     if (
-      arr.length === dashArray.length &&
-      arr.every((val, idx) => Math.abs(val - dashArray[idx]) < 1e-4)
+      arr.length === dashArray.length
+      && arr.every((val, idx) => Math.abs(val - dashArray[idx]) < 1e-4)
     ) {
       return preset;
     }
   }
-  return 'custom';
+  return "custom";
 }
 
 /**
@@ -181,10 +181,10 @@ export function matchDashPattern(
  */
 export interface SimpleMarkerComponent {
   id: string;
-  type: 'simple-marker';
+  type: "simple-marker";
   enabled: boolean;
   locked?: boolean;
-  shape: 'circle';
+  shape: "circle";
   radius: number;
   fillColor: string;
   strokeColor: string;
@@ -213,7 +213,8 @@ export type StyleComponent =
  * @updated 2026-11-01
  * @since 0.1.0-dev
  */
-export type CartoucheStyleFormat = 'simple' | 'categorized' | 'graduated' | 'rules';
+export type CartoucheStyleFormat =
+  "simple" | "categorized" | "graduated" | "rules";
 
 /**
  * @typedef {Object} SimpleCartoucheStyle
@@ -226,7 +227,7 @@ export type CartoucheStyleFormat = 'simple' | 'categorized' | 'graduated' | 'rul
  * @since 0.1.0-dev
  */
 export interface SimpleCartoucheStyle {
-  format: 'simple';
+  format: "simple";
   version: 1;
   components: StyleComponent[];
 }
@@ -242,7 +243,7 @@ export interface SimpleCartoucheStyle {
  * @since 0.1.0-dev
  */
 export interface CategorizedCartoucheStyle {
-  format: 'categorized';
+  format: "categorized";
   version: 1;
   components?: StyleComponent[];
 }
@@ -258,7 +259,7 @@ export interface CategorizedCartoucheStyle {
  * @since 0.1.0-dev
  */
 export interface GraduatedCartoucheStyle {
-  format: 'graduated';
+  format: "graduated";
   version: 1;
   components?: StyleComponent[];
 }
@@ -274,7 +275,7 @@ export interface GraduatedCartoucheStyle {
  * @since 0.1.0-dev
  */
 export interface RulesCartoucheStyle {
-  format: 'rules';
+  format: "rules";
   version: 1;
   components?: StyleComponent[];
 }
@@ -347,7 +348,6 @@ export interface LayerVisualSymbolizer {
   strokeColor?: string;
   strokeWidth?: number;
   strokeLineDash?: boolean;
-  pointShape?: 'circle' | 'square' | 'triangle' | 'star' | 'cross' | 'x';
+  pointShape?: "circle" | "square" | "triangle" | "star" | "cross" | "x";
   pointRadius?: number;
 }
-

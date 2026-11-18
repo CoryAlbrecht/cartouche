@@ -9,9 +9,9 @@
  * @see {@link FileTypeRegistry}
  */
 
-import gdal from 'gdal-async';
-import type { FileTypeDescriptor } from '@shared/types';
-import type { FileLoaderFn } from '../FileTypeRegistry';
+import gdal from "gdal-async";
+import type { FileTypeDescriptor } from "@shared/types";
+import type { FileLoaderFn } from "../FileTypeRegistry";
 
 /**
  * @description Loads a vector dataset using gdal-async and returns its primary spatial layer.
@@ -59,4 +59,3 @@ export const gdalRasterLoader: FileLoaderFn = async (
   const dataset = await gdal.openAsync(filePath);
   return dataset;
 };
-

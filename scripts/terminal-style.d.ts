@@ -16,7 +16,11 @@ export interface FormatBlockerOptions {
   forceColor?: boolean;
 }
 
-export function supportsColor(stream?: NodeJS.WriteStream | { isTTY?: boolean }): boolean;
+export function supportsColor(
+  stream?: NodeJS.WriteStream | { isTTY?: boolean }
+): boolean;
 
-export function formatBlockerText(text: string, options?: FormatBlockerOptions): string;
-
+export function formatBlockerText(
+  text: string,
+  options?: FormatBlockerOptions
+): string;

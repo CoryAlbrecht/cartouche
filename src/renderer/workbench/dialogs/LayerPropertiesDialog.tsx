@@ -77,7 +77,10 @@ import { Dialog } from "./Dialog";
 import { TabbedDialogShell } from "./TabbedDialogShell";
 import { ModalDialog } from "./ModalDialog";
 import { StyleEditor } from "./StyleEditor";
-import { crsCatalogueSignal, listCrsChooserEntries } from "@renderer/state/crsCatalogueSignals";
+import {
+  crsCatalogueSignal,
+  listCrsChooserEntries,
+} from "@renderer/state/crsCatalogueSignals";
 import { formatCrsEntryLabel } from "@shared/types/crs";
 import {
   TableWidget,
@@ -86,8 +89,6 @@ import {
   type TableColumn,
   type TableRowId,
 } from "@renderer/workbench/widgets/TableWidget";
-
-
 
 /**
  * Raw style text editor history hook and its types/constants now live in {@link StyleEditor}; they are re-exported here for existing importers.
@@ -237,9 +238,9 @@ export function isFieldColumnEditable(
   switch (column) {
     case "width":
       return (
-        effectiveType === "string" ||
-        effectiveType === "integer" ||
-        effectiveType === "real"
+        effectiveType === "string"
+        || effectiveType === "integer"
+        || effectiveType === "real"
       );
     case "precision":
       return effectiveType === "real";
@@ -286,7 +287,9 @@ export function getEditableColumnsForField(
  * @param {TableColumn<LayerFieldInfo>[]} columns - Column definitions.
  * @returns {TableColumn<LayerFieldInfo>[]} The columns, each with `sortable: false`.
  */
-function unsortable(columns: TableColumn<LayerFieldInfo>[]): TableColumn<LayerFieldInfo>[] {
+function unsortable(
+  columns: TableColumn<LayerFieldInfo>[]
+): TableColumn<LayerFieldInfo>[] {
   return columns.map((column) => ({ ...column, sortable: false }));
 }
 
@@ -316,8 +319,8 @@ export function isEditableFieldColumn(key: string): key is EditableFieldColumn {
  */
 function effectiveFieldType(field: LayerFieldInfo): InferredFieldType {
   return (
-    field.inferredType ??
-    (field.mappedType === "number" ? "real"
+    field.inferredType
+    ?? (field.mappedType === "number" ? "real"
     : field.mappedType === "boolean" ? "boolean"
     : "string")
   );
@@ -330,7 +333,10 @@ function effectiveFieldType(field: LayerFieldInfo): InferredFieldType {
  * @param {InferredFieldType} newType - New data type.
  * @returns {void}
  */
-type FieldTypeChangeHandler = (fieldName: string, newType: InferredFieldType) => void;
+type FieldTypeChangeHandler = (
+  fieldName: string,
+  newType: InferredFieldType
+) => void;
 
 /**
  * @function stopTablePropagation
@@ -354,9 +360,11 @@ function stopTablePropagation(event: React.SyntheticEvent): void {
  * @since 0.1.0-dev
  * @type {SelectOption<InferredFieldType>[]}
  */
-const FIELD_TYPE_OPTIONS: SelectOption<InferredFieldType>[] = CANONICAL_INFERRED_FIELD_TYPES.map(
-  (typeOption) => ({ value: typeOption, label: typeOption })
-);
+const FIELD_TYPE_OPTIONS: SelectOption<InferredFieldType>[] =
+  CANONICAL_INFERRED_FIELD_TYPES.map((typeOption) => ({
+    value: typeOption,
+    label: typeOption,
+  }));
 
 /**
  * @component FieldTypeControls
@@ -379,8 +387,9 @@ const FieldTypeControls: React.FC<{
   onResetType: (fieldName: string) => void;
 }> = ({ field, isEditing, onTypeChange, onResetType }) => {
   const isOverridden = Boolean(
-    field.userOverridden ||
-      (field.originalInferredType && field.inferredType !== field.originalInferredType)
+    field.userOverridden
+    || (field.originalInferredType
+      && field.inferredType !== field.originalInferredType)
   );
   return (
     <div
@@ -411,7 +420,10 @@ const FieldTypeControls: React.FC<{
           e.stopPropagation();
           onResetType(field.name);
         }}>
-        <Icon path={mdiUndo} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+        <Icon
+          path={mdiUndo}
+          size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+        />
       </button>
     </div>
   );
@@ -454,10 +466,16 @@ const FIELD_TYPE_COLUMN_MIN_WIDTH_REM = 13.5;
  */
 function fieldsTabColumns(
   fields: LayerFieldInfo[],
-  { showNativeType, isEditing, onTypeChange, onResetType }: FieldsTabColumnOptions
+  {
+    showNativeType,
+    isEditing,
+    onTypeChange,
+    onResetType,
+  }: FieldsTabColumnOptions
 ): TableColumn<LayerFieldInfo>[] {
   const fieldTypeColumnWidth = Math.ceil(
-    FIELD_TYPE_COLUMN_MIN_WIDTH_REM * (((prefsUiBaseFontSize.value ?? 12) * 4) / 3)
+    FIELD_TYPE_COLUMN_MIN_WIDTH_REM
+      * (((prefsUiBaseFontSize.value ?? 12) * 4) / 3)
   );
   const columns: TableColumn<LayerFieldInfo>[] = [
     {
@@ -467,7 +485,11 @@ function fieldsTabColumns(
       readOnly: true,
       value: (field) => resolveFieldIndex(field, fields, fields.indexOf(field)),
     },
-    { key: "name", header: t("layer_properties_field_col_name"), readOnly: true },
+    {
+      key: "name",
+      header: t("layer_properties_field_col_name"),
+      readOnly: true,
+    },
     {
       key: "dataType",
       header: t("layer_properties_fields_col_data_type"),
@@ -622,14 +644,20 @@ export const LayerPropertiesDialog: React.FC = () => {
   const isLoading = isLayerPropertiesLoadingSignal.value;
   const draft = layerPropertiesDraftSignal.value;
 
-  const currentProjectLayer = activeId ? projectLayersSignal.value.find((l) => l.id === activeId) : undefined;
-  const currentTreeLayer = activeId ? findLayerInTree(projectTreeSignal.value, activeId) : undefined;
+  const currentProjectLayer =
+    activeId ?
+      projectLayersSignal.value.find((l) => l.id === activeId)
+    : undefined;
+  const currentTreeLayer =
+    activeId ? findLayerInTree(projectTreeSignal.value, activeId) : undefined;
   const layerFields: LayerFieldInfo[] =
-    draft.fields ??
-    currentProjectLayer?.fields ??
-    (currentTreeLayer && 'fields' in currentTreeLayer ? (currentTreeLayer as any).fields : undefined) ??
-    info?.fields ??
-    [];
+    draft.fields
+    ?? currentProjectLayer?.fields
+    ?? (currentTreeLayer && "fields" in currentTreeLayer ?
+      (currentTreeLayer as any).fields
+    : undefined)
+    ?? info?.fields
+    ?? [];
 
   const isEditing = isLayerInEditMode(activeId, editableLayerIdsSignal.value);
   const informationSelectedFieldNames = useSignal<Set<TableRowId>>(new Set());
@@ -672,7 +700,13 @@ export const LayerPropertiesDialog: React.FC = () => {
     const updatedFields = layerFields.filter((f) => !selected.has(f.name));
     updateLayerPropertiesDraft({ fields: updatedFields });
     clearFieldSelection();
-  }, [isEditing, selectedFieldNames, activeId, layerFields, clearFieldSelection]);
+  }, [
+    isEditing,
+    selectedFieldNames,
+    activeId,
+    layerFields,
+    clearFieldSelection,
+  ]);
 
   /**
    * @function handleFieldTypeChange
@@ -690,11 +724,7 @@ export const LayerPropertiesDialog: React.FC = () => {
       if (!activeId) return;
       const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
         if (f.name === fieldName) {
-          return {
-            ...f,
-            inferredType: newType,
-            userOverridden: true,
-          };
+          return { ...f, inferredType: newType, userOverridden: true };
         }
         return f;
       });
@@ -721,11 +751,7 @@ export const LayerPropertiesDialog: React.FC = () => {
       const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
         if (f.name === fieldName) {
           const original = f.originalInferredType ?? f.inferredType;
-          return {
-            ...f,
-            inferredType: original,
-            userOverridden: false,
-          };
+          return { ...f, inferredType: original, userOverridden: false };
         }
         return f;
       });
@@ -779,11 +805,7 @@ export const LayerPropertiesDialog: React.FC = () => {
 
       const updatedFields: LayerFieldInfo[] = layerFields.map((f) => {
         if (f.name === fieldName) {
-          return {
-            ...f,
-            [column]: updatedValue,
-            userOverridden: true,
-          };
+          return { ...f, [column]: updatedValue, userOverridden: true };
         }
         return f;
       });
@@ -806,7 +828,8 @@ export const LayerPropertiesDialog: React.FC = () => {
    */
   const isFieldsTabCellReadOnly = useCallback(
     (field: LayerFieldInfo, column: TableColumn<LayerFieldInfo>): boolean =>
-      !isEditableFieldColumn(column.key) || !isFieldColumnEditable(field, column.key),
+      !isEditableFieldColumn(column.key)
+      || !isFieldColumnEditable(field, column.key),
     []
   );
 
@@ -824,10 +847,18 @@ export const LayerPropertiesDialog: React.FC = () => {
     (edit: TableCellEdit): boolean | void => {
       const column = edit.columnKey;
       const field = layerFields.find((f) => f.name === edit.rowId);
-      if (!isEditing || !field || !isEditableFieldColumn(column) || !isFieldColumnEditable(field, column)) {
+      if (
+        !isEditing
+        || !field
+        || !isEditableFieldColumn(column)
+        || !isFieldColumnEditable(field, column)
+      ) {
         return false;
       }
-      const text = edit.newValue === null || edit.newValue === undefined ? "" : String(edit.newValue);
+      const text =
+        edit.newValue === null || edit.newValue === undefined ?
+          ""
+        : String(edit.newValue);
       if (text === resolveFieldColumnStringValue(field, column)) return;
       if (column !== "comment" && text.trim()) {
         const parsed = parseInt(text.trim(), 10);
@@ -839,7 +870,8 @@ export const LayerPropertiesDialog: React.FC = () => {
   );
 
   const showNativeType = Boolean(
-    preferencesMapSignal.value["ui.layerProperties.fields.showNativeType"]?.value
+    preferencesMapSignal.value["ui.layerProperties.fields.showNativeType"]
+      ?.value
   );
 
   /**
@@ -884,63 +916,64 @@ export const LayerPropertiesDialog: React.FC = () => {
     <>
       <Dialog
         name='layerPropertiesWindow'
-      title={dialogTitle}
-      icon='file:layers-cog-outline.svg'
-      isOpen={Boolean(activeId)}
-      onClose={handleClose}
-      onCancel={handleCancel}
-      defaultWidth={860}
-      defaultHeight={620}
-      footer={
-        <div
-          className='layer-properties-footer'
-          style={{
-            display: "flex",
-            width: "100%",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: "0.5rem",
+        title={dialogTitle}
+        icon='file:layers-cog-outline.svg'
+        isOpen={Boolean(activeId)}
+        onClose={handleClose}
+        onCancel={handleCancel}
+        defaultWidth={860}
+        defaultHeight={620}
+        footer={
+          <div
+            className='layer-properties-footer'
+            style={{
+              display: "flex",
+              width: "100%",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}>
+            <button
+              type='button'
+              className='layer-properties-btn cancel'
+              onClick={handleCancel}>
+              {t("layer_properties_btn_cancel")}
+            </button>
+            <button
+              type='button'
+              className='layer-properties-btn apply'
+              onClick={handleApply}
+              disabled={Boolean(
+                draft.idValidationError || draft.styleValidationError
+              )}>
+              {t("layer_properties_btn_apply")}
+            </button>
+            <button
+              type='button'
+              className='layer-properties-btn ok'
+              onClick={handleOk}
+              disabled={Boolean(
+                draft.idValidationError || draft.styleValidationError
+              )}>
+              {t("layer_properties_btn_ok")}
+            </button>
+          </div>
+        }>
+        <TabbedDialogShell
+          classPrefix='layer-properties'
+          tabs={SIDEBAR_TABS.map((tab) => ({
+            id: tab.id,
+            label: t(tab.labelKey),
+            icon: tab.icon,
+          }))}
+          activeTabId={activeTab}
+          onTabChange={(id) => {
+            activeLayerPropertiesTabSignal.value = id;
           }}>
-          <button
-            type='button'
-            className='layer-properties-btn cancel'
-            onClick={handleCancel}>
-            {t("layer_properties_btn_cancel")}
-          </button>
-          <button
-            type='button'
-            className='layer-properties-btn apply'
-            onClick={handleApply}
-            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}>
-            {t("layer_properties_btn_apply")}
-          </button>
-          <button
-            type='button'
-            className='layer-properties-btn ok'
-            onClick={handleOk}
-            disabled={Boolean(draft.idValidationError || draft.styleValidationError)}>
-            {t("layer_properties_btn_ok")}
-          </button>
-        </div>
-      }>
-      <TabbedDialogShell
-        classPrefix='layer-properties'
-        tabs={SIDEBAR_TABS.map((tab) => ({
-          id: tab.id,
-          label: t(tab.labelKey),
-          icon: tab.icon,
-        }))}
-        activeTabId={activeTab}
-        onTabChange={(id) => {
-          activeLayerPropertiesTabSignal.value = id;
-        }}>
           {isLoading && (
             <div
               className='layer-properties-loading'
-              style={{
-                padding: "1rem",
-                fontStyle: "italic",
-              }}>
+              style={{ padding: "1rem", fontStyle: "italic" }}>
               {t("layer_properties_loading")}
             </div>
           )}
@@ -959,15 +992,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_name")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.name || draft.layerName || "—"}
                   </span>
                 </div>
@@ -976,15 +1004,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_id")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.layerId || activeId}
                   </span>
                 </div>
@@ -993,18 +1016,12 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_source")}:
                   </span>
                   <span
                     className='layer-properties-value'
-                    style={{
-                      flex: 1,
-                      wordBreak: "break-all",
-                    }}>
+                    style={{ flex: 1, wordBreak: "break-all" }}>
                     {info?.source || "—"}
                   </span>
                 </div>
@@ -1020,15 +1037,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_driver")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.driverName || "—"}
                   </span>
                 </div>
@@ -1037,15 +1049,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_geometry")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.geometryKind || "—"}
                   </span>
                 </div>
@@ -1054,15 +1061,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_feature_count")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.featureCount !== undefined ?
                       info.featureCount.toLocaleString()
                     : "—"}
@@ -1073,15 +1075,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_crs")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.crsDescription || "—"}
                   </span>
                 </div>
@@ -1090,15 +1087,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   style={{ display: "flex", padding: "4px 0", gap: "1rem" }}>
                   <span
                     className='layer-properties-label'
-                    style={{
-                      width: "12rem",
-                      fontWeight: 500,
-                    }}>
+                    style={{ width: "12rem", fontWeight: 500 }}>
                     {t("layer_properties_label_extent")}:
                   </span>
-                  <span
-                    className='layer-properties-value'
-                    style={{ flex: 1 }}>
+                  <span className='layer-properties-value' style={{ flex: 1 }}>
                     {info?.extent ?
                       `[${info.extent.map((n: number) => Number(n).toFixed(4)).join(", ")}]`
                     : "—"}
@@ -1150,10 +1142,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   <label
                     htmlFor='layer-prop-name'
                     className='layer-prop-label'
-                    style={{
-                      fontWeight: 500,
-                      fontSize: "0.875rem",
-                    }}>
+                    style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                     {t("layer_properties_source_layer_name")}
                   </label>
                   <input
@@ -1178,10 +1167,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   <label
                     htmlFor='layer-prop-id'
                     className='layer-prop-label'
-                    style={{
-                      fontWeight: 500,
-                      fontSize: "0.875rem",
-                    }}>
+                    style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                     {t("layer_properties_source_layer_id")}
                   </label>
                   <input
@@ -1197,10 +1183,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   {draft.idValidationError && (
                     <span
                       className='layer-prop-validation-error'
-                      style={{
-                          fontSize: "0.75rem",
-                        fontWeight: 500,
-                      }}>
+                      style={{ fontSize: "0.75rem", fontWeight: 500 }}>
                       {draft.idValidationError}
                     </span>
                   )}
@@ -1217,25 +1200,33 @@ export const LayerPropertiesDialog: React.FC = () => {
                   <label
                     htmlFor='layer-prop-crs'
                     className='layer-prop-label'
-                    style={{
-                      fontWeight: 500,
-                      fontSize: "0.875rem",
-                    }}>
+                    style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                     {t("layer_properties_source_crs")}
                   </label>
                   <Select
                     id='layer-prop-crs'
                     value={draft.crsAuthId}
                     options={[
-                      ...listCrsChooserEntries(draft.crsAuthId ? [draft.crsAuthId] : [], POPULAR_CRS_NAMES).map((crs) => ({
+                      ...listCrsChooserEntries(
+                        draft.crsAuthId ? [draft.crsAuthId] : [],
+                        POPULAR_CRS_NAMES
+                      ).map((crs) => ({
                         value: crs.authId,
                         label: formatCrsEntryLabel(crs),
                       })),
-                      ...(crsCatalogueSignal.value.status === "building"
-                        ? [{ value: "", label: t("crs_catalogue_building"), disabled: true }]
-                        : []),
+                      ...(crsCatalogueSignal.value.status === "building" ?
+                        [
+                          {
+                            value: "",
+                            label: t("crs_catalogue_building"),
+                            disabled: true,
+                          },
+                        ]
+                      : []),
                     ]}
-                    onChange={(crsAuthId) => updateLayerPropertiesDraft({ crsAuthId })}
+                    onChange={(crsAuthId) =>
+                      updateLayerPropertiesDraft({ crsAuthId })
+                    }
                   />
                 </div>
               </fieldset>
@@ -1268,10 +1259,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   />
                   <span
                     className='layer-prop-dialect-caption'
-                    style={{
-                      fontSize: "0.75rem",
-                      fontStyle: "italic",
-                    }}>
+                    style={{ fontSize: "0.75rem", fontStyle: "italic" }}>
                     {info?.driverDialect === "ogr_sql" ?
                       t("layer_properties_dialect_ogr_sql")
                     : info?.driverDialect === "native_sql" ?
@@ -1334,7 +1322,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                       toggleLayerEditingAction(activeId);
                     }
                   }}>
-                  <Icon path={mdiPencilOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
+                  <Icon
+                    path={mdiPencilOutline}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1347,7 +1338,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                       setIsNewFieldOpen(true);
                     }
                   }}>
-                  <Icon path={mdiTablePlus} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
+                  <Icon
+                    path={mdiTablePlus}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1356,7 +1350,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   aria-label={t("layer_properties_fields_delete_field")}
                   disabled={!isEditing || selectedFieldNames.value.size === 0}
                   onClick={handleDeleteSelectedField}>
-                  <Icon path={mdiTrashCanOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
+                  <Icon
+                    path={mdiTrashCanOutline}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1364,7 +1361,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_calculate")}
                   aria-label={t("layer_properties_fields_calculate")}
                   disabled={!isEditing}>
-                  <Icon path={mdiCalculator} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
+                  <Icon
+                    path={mdiCalculator}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1372,7 +1372,10 @@ export const LayerPropertiesDialog: React.FC = () => {
                   title={t("layer_properties_fields_show_native_type")}
                   aria-pressed={showNativeType}
                   onClick={handleToggleShowNativeType}>
-                  <Icon path={mdiCodeTags} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)' />
+                  <Icon
+                    path={mdiCodeTags}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.58)'
+                  />
                   <span>{t("layer_properties_fields_show_native_type")}</span>
                 </button>
               </div>
@@ -1483,29 +1486,35 @@ export const LayerPropertiesDialog: React.FC = () => {
                         <label
                           htmlFor='layer-prop-time-mode'
                           className='layer-prop-label'
-                          style={{
-                            fontWeight: 500,
-                            fontSize: "0.875rem",
-                          }}>
+                          style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                           {t("layer_properties_time_mode")}
                         </label>
                         <Select<"start" | "end" | "start_end">
                           id='layer-prop-time-mode'
                           value={temporalConfig.mode || "start_end"}
                           options={[
-                            { value: "start", label: t("layer_properties_time_mode_start") || "Start Field" },
-                            { value: "end", label: t("layer_properties_time_mode_end") || "End Field" },
+                            {
+                              value: "start",
+                              label:
+                                t("layer_properties_time_mode_start")
+                                || "Start Field",
+                            },
+                            {
+                              value: "end",
+                              label:
+                                t("layer_properties_time_mode_end")
+                                || "End Field",
+                            },
                             {
                               value: "start_end",
-                              label: t("layer_properties_time_mode_start_end") || "Start and End Fields",
+                              label:
+                                t("layer_properties_time_mode_start_end")
+                                || "Start and End Fields",
                             },
                           ]}
                           onChange={(nextMode) => {
                             updateLayerPropertiesDraft({
-                              temporal: {
-                                ...temporalConfig,
-                                mode: nextMode,
-                              },
+                              temporal: { ...temporalConfig, mode: nextMode },
                             });
                           }}
                         />
@@ -1521,10 +1530,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                         <label
                           htmlFor='layer-prop-time-start'
                           className='layer-prop-label'
-                          style={{
-                            fontWeight: 500,
-                            fontSize: "0.875rem",
-                          }}>
+                          style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                           {t("layer_properties_time_start_field")}
                         </label>
                         <div
@@ -1540,15 +1546,15 @@ export const LayerPropertiesDialog: React.FC = () => {
                             disabled={isStartDisabled}
                             aria-label='Toggle start comparison operator'
                             title={
-                              (temporalConfig.startOp ?? ">=") === ">"
-                                ? ">"
-                                : ">="
+                              (temporalConfig.startOp ?? ">=") === ">" ?
+                                ">"
+                              : ">="
                             }
                             onClick={() => {
                               const nextOp =
-                                (temporalConfig.startOp ?? ">=") === ">"
-                                  ? ">="
-                                  : ">";
+                                (temporalConfig.startOp ?? ">=") === ">" ?
+                                  ">="
+                                : ">";
                               updateLayerPropertiesDraft({
                                 temporal: {
                                   ...temporalConfig,
@@ -1558,9 +1564,9 @@ export const LayerPropertiesDialog: React.FC = () => {
                             }}>
                             <Icon
                               path={
-                                (temporalConfig.startOp ?? ">=") === ">"
-                                  ? mdiGreaterThan
-                                  : mdiGreaterThanOrEqual
+                                (temporalConfig.startOp ?? ">=") === ">" ?
+                                  mdiGreaterThan
+                                : mdiGreaterThanOrEqual
                               }
                               size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
@@ -1593,10 +1599,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                         <label
                           htmlFor='layer-prop-time-end'
                           className='layer-prop-label'
-                          style={{
-                            fontWeight: 500,
-                            fontSize: "0.875rem",
-                          }}>
+                          style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                           {t("layer_properties_time_end_field")}
                         </label>
                         <div
@@ -1612,27 +1615,24 @@ export const LayerPropertiesDialog: React.FC = () => {
                             disabled={isEndDisabled}
                             aria-label='Toggle end comparison operator'
                             title={
-                              (temporalConfig.endOp ?? "<=") === "<"
-                                ? "<"
-                                : "<="
+                              (temporalConfig.endOp ?? "<=") === "<" ?
+                                "<"
+                              : "<="
                             }
                             onClick={() => {
                               const nextOp =
-                                (temporalConfig.endOp ?? "<=") === "<"
-                                  ? "<="
-                                  : "<";
+                                (temporalConfig.endOp ?? "<=") === "<" ?
+                                  "<="
+                                : "<";
                               updateLayerPropertiesDraft({
-                                temporal: {
-                                  ...temporalConfig,
-                                  endOp: nextOp,
-                                },
+                                temporal: { ...temporalConfig, endOp: nextOp },
                               });
                             }}>
                             <Icon
                               path={
-                                (temporalConfig.endOp ?? "<=") === "<"
-                                  ? mdiLessThan
-                                  : mdiLessThanOrEqual
+                                (temporalConfig.endOp ?? "<=") === "<" ?
+                                  mdiLessThan
+                                : mdiLessThanOrEqual
                               }
                               size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
                             />
@@ -1660,76 +1660,81 @@ export const LayerPropertiesDialog: React.FC = () => {
               </fieldset>
             </div>
           )}
-      </TabbedDialogShell>
-    </Dialog>
-    <Dialog
-      name='newFieldWindow'
-      title={t("layer_properties_fields_new_field")}
-      icon={mdiTablePlus}
-      isOpen={isNewFieldOpen}
-      onClose={() => setIsNewFieldOpen(false)}
-      defaultWidth={420}
-      defaultHeight={320}
-      footer={
+        </TabbedDialogShell>
+      </Dialog>
+      <Dialog
+        name='newFieldWindow'
+        title={t("layer_properties_fields_new_field")}
+        icon={mdiTablePlus}
+        isOpen={isNewFieldOpen}
+        onClose={() => setIsNewFieldOpen(false)}
+        defaultWidth={420}
+        defaultHeight={320}
+        footer={
+          <div
+            className='new-field-dialog-footer'
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "0.5rem",
+              padding: "0.5rem 0.75rem",
+            }}>
+            <button
+              type='button'
+              className='new-field-dialog-btn layer-prop-btn-secondary new-field-dialog-cancel-btn'
+              onClick={() => setIsNewFieldOpen(false)}>
+              {t("layer_properties_btn_cancel")}
+            </button>
+            <button
+              type='button'
+              className='new-field-dialog-btn layer-prop-btn-primary new-field-dialog-ok-btn'
+              onClick={() => setIsNewFieldOpen(false)}>
+              {t("layer_properties_btn_ok")}
+            </button>
+          </div>
+        }>
         <div
-          className='new-field-dialog-footer'
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "0.5rem",
-            padding: "0.5rem 0.75rem",
-          }}>
-          <button
-            type='button'
-            className='new-field-dialog-btn layer-prop-btn-secondary new-field-dialog-cancel-btn'
-            onClick={() => setIsNewFieldOpen(false)}>
-            {t("layer_properties_btn_cancel")}
-          </button>
-          <button
-            type='button'
-            className='new-field-dialog-btn layer-prop-btn-primary new-field-dialog-ok-btn'
-            onClick={() => setIsNewFieldOpen(false)}>
-            {t("layer_properties_btn_ok")}
-          </button>
+          className='new-field-dialog-placeholder'
+          style={{ padding: "1rem", fontSize: "0.875rem" }}>
+          New field configuration placeholder.
         </div>
-      }>
-      <div className='new-field-dialog-placeholder' style={{ padding: "1rem", fontSize: "0.875rem" }}>
-        New field configuration placeholder.
-      </div>
-    </Dialog>
-    {/* Confirmation ModalDialog for Discarding Unapplied Field Changes */}
-    <ModalDialog
-      isOpen={isDiscardFieldChangesModalOpenSignal.value}
-      title={t("layer_properties_fields_discard_title") || "Discard Unapplied Field Changes?"}
-      onClose={() => {
-        isDiscardFieldChangesModalOpenSignal.value = false;
-      }}
-      buttons={[
-        {
-          label: t("dialog_cancel") || "Cancel",
-          onClick: () => {
-            isDiscardFieldChangesModalOpenSignal.value = false;
+      </Dialog>
+      {/* Confirmation ModalDialog for Discarding Unapplied Field Changes */}
+      <ModalDialog
+        isOpen={isDiscardFieldChangesModalOpenSignal.value}
+        title={
+          t("layer_properties_fields_discard_title")
+          || "Discard Unapplied Field Changes?"
+        }
+        onClose={() => {
+          isDiscardFieldChangesModalOpenSignal.value = false;
+        }}
+        buttons={[
+          {
+            label: t("dialog_cancel") || "Cancel",
+            onClick: () => {
+              isDiscardFieldChangesModalOpenSignal.value = false;
+            },
           },
-        },
-        {
-          label: t("dialog_ok") || "OK",
-          primary: true,
-          onClick: () => {
-            discardUnappliedFieldChanges();
-            if (activeId) {
-              toggleLayerEditingAction(activeId, { force: true });
-            }
-            clearFieldSelection();
-            isDiscardFieldChangesModalOpenSignal.value = false;
+          {
+            label: t("dialog_ok") || "OK",
+            primary: true,
+            onClick: () => {
+              discardUnappliedFieldChanges();
+              if (activeId) {
+                toggleLayerEditingAction(activeId, { force: true });
+              }
+              clearFieldSelection();
+              isDiscardFieldChangesModalOpenSignal.value = false;
+            },
           },
-        },
-      ]}>
-      <p style={{ margin: 0 }}>
-        {t("layer_properties_fields_discard_warning") ||
-          "You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?"}
-      </p>
-    </ModalDialog>
-  </>
+        ]}>
+        <p style={{ margin: 0 }}>
+          {t("layer_properties_fields_discard_warning")
+            || "You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?"}
+        </p>
+      </ModalDialog>
+    </>
   );
 };
 

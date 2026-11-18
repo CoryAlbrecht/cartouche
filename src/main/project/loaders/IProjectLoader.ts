@@ -9,7 +9,7 @@
  * @see {@link ProjectModel}
  */
 
-import type { ProjectModel } from '@shared/types';
+import type { ProjectModel } from "@shared/types";
 
 /**
  * @typedef {Object} IProjectLoader

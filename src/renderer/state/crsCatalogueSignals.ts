@@ -10,16 +10,21 @@
  * @see {@link selectVisibleCrsEntries}
  */
 
-import { signal, computed, type Signal, type ReadonlySignal } from '@preact/signals-react';
+import {
+  signal,
+  computed,
+  type Signal,
+  type ReadonlySignal,
+} from "@preact/signals-react";
 import {
   CRS_HIDE_DEPRECATED_PREF,
   selectVisibleCrsEntries,
   type CrsCatalogueEntry,
   type CrsCatalogueState,
   type CrsInfo,
-} from '../../shared/types/crs';
-import { preferencesMapSignal, updatePreference } from './preferencesSignals';
-import { logging } from '../../shared/logging';
+} from "../../shared/types/crs";
+import { preferencesMapSignal, updatePreference } from "./preferencesSignals";
+import { logging } from "../../shared/logging";
 
 /**
  * @signal crsCatalogueSignal
@@ -30,7 +35,8 @@ import { logging } from '../../shared/logging';
  * @since 0.1.0-dev
  * @type {Signal<CrsCatalogueState>}
  */
-export const crsCatalogueSignal: Signal<CrsCatalogueState> = signal<CrsCatalogueState>({ status: 'building', entries: [] });
+export const crsCatalogueSignal: Signal<CrsCatalogueState> =
+  signal<CrsCatalogueState>({ status: "building", entries: [] });
 
 /**
  * @signal crsCatalogueIndexSignal
@@ -41,8 +47,13 @@ export const crsCatalogueSignal: Signal<CrsCatalogueState> = signal<CrsCatalogue
  * @since 0.1.0-dev
  * @type {ReadonlySignal<Map<string, CrsCatalogueEntry>>}
  */
-export const crsCatalogueIndexSignal: ReadonlySignal<Map<string, CrsCatalogueEntry>> = computed(
-  () => new Map(crsCatalogueSignal.value.entries.map((e) => [e.authId.toUpperCase(), e]))
+export const crsCatalogueIndexSignal: ReadonlySignal<
+  Map<string, CrsCatalogueEntry>
+> = computed(
+  () =>
+    new Map(
+      crsCatalogueSignal.value.entries.map((e) => [e.authId.toUpperCase(), e])
+    )
 );
 
 /**
@@ -70,7 +81,7 @@ export const hideDeprecatedCrsSignal: ReadonlySignal<boolean> = computed(
  */
 export function setCrsCatalogueState(state: CrsCatalogueState): void {
   crsCatalogueSignal.value = {
-    status: state?.status ?? 'error',
+    status: state?.status ?? "error",
     entries: Array.isArray(state?.entries) ? state.entries : [],
     ...(state?.error ? { error: state.error } : {}),
   };
@@ -86,7 +97,9 @@ export function setCrsCatalogueState(state: CrsCatalogueState): void {
  * @param {string | null | undefined} authId - `AUTH:code`.
  * @returns {CrsCatalogueEntry | undefined} Entry, if catalogued.
  */
-export function findCrsCatalogueEntry(authId: string | null | undefined): CrsCatalogueEntry | undefined {
+export function findCrsCatalogueEntry(
+  authId: string | null | undefined
+): CrsCatalogueEntry | undefined {
   if (!authId) return undefined;
   return crsCatalogueIndexSignal.value.get(authId.toUpperCase());
 }
@@ -106,11 +119,20 @@ export function listCrsChooserEntries(
   alwaysShow: string[] = [],
   fallbackNames: Record<string, string> = {}
 ): CrsCatalogueEntry[] {
-  const visible = selectVisibleCrsEntries(crsCatalogueSignal.value.entries, hideDeprecatedCrsSignal.value, alwaysShow);
+  const visible = selectVisibleCrsEntries(
+    crsCatalogueSignal.value.entries,
+    hideDeprecatedCrsSignal.value,
+    alwaysShow
+  );
   const index = crsCatalogueIndexSignal.value;
   const missing = alwaysShow
     .filter((id) => id && !index.has(id.toUpperCase()))
-    .map((id): CrsCatalogueEntry => ({ authId: id, name: fallbackNames[id.toUpperCase()] ?? id, type: 'projected', deprecated: false }));
+    .map((id): CrsCatalogueEntry => ({
+      authId: id,
+      name: fallbackNames[id.toUpperCase()] ?? id,
+      type: "projected",
+      deprecated: false,
+    }));
   return [...missing, ...visible];
 }
 
@@ -125,17 +147,24 @@ export function listCrsChooserEntries(
  */
 export async function refreshCrsCatalogue(): Promise<void> {
   const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.getCrsCatalogue !== 'function') return;
+  if (typeof api?.getCrsCatalogue !== "function") return;
   try {
     setCrsCatalogueState(await api.getCrsCatalogue());
   } catch (err) {
-    logging.warn('Failed to fetch CRS Catalogue', err, { scope: 'crsCatalogueSignals' });
+    logging.warn("Failed to fetch CRS Catalogue", err, {
+      scope: "crsCatalogueSignals",
+    });
   }
 }
 
 // Subscribe to catalogue broadcasts and fetch the current state once
-if (typeof window !== 'undefined' && window.electronAPI?.onCrsCatalogueUpdated) {
-  window.electronAPI.onCrsCatalogueUpdated((state) => setCrsCatalogueState(state));
+if (
+  typeof window !== "undefined"
+  && window.electronAPI?.onCrsCatalogueUpdated
+) {
+  window.electronAPI.onCrsCatalogueUpdated((state) =>
+    setCrsCatalogueState(state)
+  );
   void refreshCrsCatalogue();
 }
 
@@ -167,7 +196,8 @@ export async function setHideDeprecatedCrs(hide: boolean): Promise<void> {
  * @since 0.1.0-dev
  * @type {Signal<Record<string, CrsInfo | null>>}
  */
-export const crsInfoCacheSignal: Signal<Record<string, CrsInfo | null>> = signal<Record<string, CrsInfo | null>>({});
+export const crsInfoCacheSignal: Signal<Record<string, CrsInfo | null>> =
+  signal<Record<string, CrsInfo | null>>({});
 
 /**
  * @function loadCrsInfo
@@ -183,12 +213,15 @@ export async function loadCrsInfo(authId: string): Promise<CrsInfo | null> {
   const key = authId.toUpperCase();
   if (key in crsInfoCacheSignal.value) return crsInfoCacheSignal.value[key];
   const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.getCrsInfo !== 'function') return null;
+  if (typeof api?.getCrsInfo !== "function") return null;
   let info: CrsInfo | null = null;
   try {
     info = (await api.getCrsInfo(authId)) ?? null;
   } catch (err) {
-    logging.warn('Failed to fetch CRS info', err, { scope: 'crsCatalogueSignals', authId });
+    logging.warn("Failed to fetch CRS info", err, {
+      scope: "crsCatalogueSignals",
+      authId,
+    });
   }
   crsInfoCacheSignal.value = { ...crsInfoCacheSignal.value, [key]: info };
   return info;

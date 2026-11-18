@@ -19,14 +19,14 @@
  * @since 0.1.0-dev
  */
 export type DialogWindowName =
-  | 'preferencesWindow'
-  | 'addLayersWindow'
-  | 'layerPropertiesWindow'
-  | 'projectPropertiesWindow'
-  | 'selectByValueWindow'
-  | 'snappingOptionsWindow'
-  | 'newFieldWindow'
-  | 'createLayerWindow';
+  | "preferencesWindow"
+  | "addLayersWindow"
+  | "layerPropertiesWindow"
+  | "projectPropertiesWindow"
+  | "selectByValueWindow"
+  | "snappingOptionsWindow"
+  | "newFieldWindow"
+  | "createLayerWindow";
 
 /**
  * Structural definition of geometry constraints and preference keys for a dialog window.
@@ -60,70 +60,71 @@ export interface DialogWindowSpec {
  * @since 0.1.0-dev
  * @type {Readonly<Record<DialogWindowName, DialogWindowSpec>>}
  */
-export const DIALOG_WINDOW_SPECS: Readonly<Record<DialogWindowName, DialogWindowSpec>> = Object.freeze({
+export const DIALOG_WINDOW_SPECS: Readonly<
+  Record<DialogWindowName, DialogWindowSpec>
+> = Object.freeze({
   preferencesWindow: Object.freeze({
-    frameName: 'preferencesWindow',
-    locationKeyPrefix: 'ui.preferencesDialog.location',
+    frameName: "preferencesWindow",
+    locationKeyPrefix: "ui.preferencesDialog.location",
     defaultWidth: 720,
     defaultHeight: 520,
     minWidth: 480,
-    minHeight: 360
+    minHeight: 360,
   }),
   addLayersWindow: Object.freeze({
-    frameName: 'addLayersWindow',
-    locationKeyPrefix: 'ui.addLayers.location',
+    frameName: "addLayersWindow",
+    locationKeyPrefix: "ui.addLayers.location",
     defaultWidth: 640,
     defaultHeight: 480,
     minWidth: 400,
-    minHeight: 300
+    minHeight: 300,
   }),
   layerPropertiesWindow: Object.freeze({
-    frameName: 'layerPropertiesWindow',
-    locationKeyPrefix: 'ui.layerProperties.location',
+    frameName: "layerPropertiesWindow",
+    locationKeyPrefix: "ui.layerProperties.location",
     defaultWidth: 860,
     defaultHeight: 620,
     minWidth: 600,
-    minHeight: 400
+    minHeight: 400,
   }),
   projectPropertiesWindow: Object.freeze({
-    frameName: 'projectPropertiesWindow',
-    locationKeyPrefix: 'ui.projectProperties.location',
+    frameName: "projectPropertiesWindow",
+    locationKeyPrefix: "ui.projectProperties.location",
     defaultWidth: 720,
     defaultHeight: 520,
     minWidth: 480,
-    minHeight: 360
+    minHeight: 360,
   }),
   selectByValueWindow: Object.freeze({
-    frameName: 'selectByValueWindow',
-    locationKeyPrefix: 'ui.selectByValue.location',
+    frameName: "selectByValueWindow",
+    locationKeyPrefix: "ui.selectByValue.location",
     defaultWidth: 640,
     defaultHeight: 480,
     minWidth: 400,
-    minHeight: 300
+    minHeight: 300,
   }),
   snappingOptionsWindow: Object.freeze({
-    frameName: 'snappingOptionsWindow',
-    locationKeyPrefix: 'ui.snappingOptions.location',
+    frameName: "snappingOptionsWindow",
+    locationKeyPrefix: "ui.snappingOptions.location",
     defaultWidth: 600,
     defaultHeight: 450,
     minWidth: 400,
-    minHeight: 300
+    minHeight: 300,
   }),
   newFieldWindow: Object.freeze({
-    frameName: 'newFieldWindow',
-    locationKeyPrefix: 'ui.newField.location',
+    frameName: "newFieldWindow",
+    locationKeyPrefix: "ui.newField.location",
     defaultWidth: 420,
     defaultHeight: 320,
     minWidth: 360,
-    minHeight: 240
+    minHeight: 240,
   }),
   createLayerWindow: Object.freeze({
-    frameName: 'createLayerWindow',
-    locationKeyPrefix: 'ui.createLayer.location',
+    frameName: "createLayerWindow",
+    locationKeyPrefix: "ui.createLayer.location",
     defaultWidth: 640,
     defaultHeight: 480,
     minWidth: 400,
-    minHeight: 300
-  })
+    minHeight: 300,
+  }),
 });
-

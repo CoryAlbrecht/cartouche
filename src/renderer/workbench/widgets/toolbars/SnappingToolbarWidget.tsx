@@ -92,7 +92,10 @@ export const SNAPPING_SCOPE_OPTIONS: SplitToolOption[] = [
  * @param {boolean} disabled - Whether the button is disabled.
  * @returns {string} Clean space-separated class string.
  */
-export function getSnappingButtonClass(active: boolean, disabled: boolean): string {
+export function getSnappingButtonClass(
+  active: boolean,
+  disabled: boolean
+): string {
   const parts = ["toolbar-btn"];
   if (active) parts.push("active");
   if (disabled) parts.push("disabled");
@@ -193,21 +196,18 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
 
   const verticesKey = getActionFormattedKey("snap_to_vertices", "Alt+V");
   const verticesLabel = t("snap_to_vertices") || "Snap to Vertices";
-  const verticesTitle = verticesKey
-    ? `${verticesLabel} (${verticesKey})`
-    : verticesLabel;
+  const verticesTitle =
+    verticesKey ? `${verticesLabel} (${verticesKey})` : verticesLabel;
 
   const midpointKey = getActionFormattedKey("snap_to_midpoint", "Alt+M");
   const midpointLabel = t("snap_to_midpoint") || "Snap to Midpoints";
-  const midpointTitle = midpointKey
-    ? `${midpointLabel} (${midpointKey})`
-    : midpointLabel;
+  const midpointTitle =
+    midpointKey ? `${midpointLabel} (${midpointKey})` : midpointLabel;
 
   const segmentKey = getActionFormattedKey("snap_to_segment", "Alt+E");
   const segmentLabel = t("snap_to_segment") || "Snap to Segments";
-  const segmentTitle = segmentKey
-    ? `${segmentLabel} (${segmentKey})`
-    : segmentLabel;
+  const segmentTitle =
+    segmentKey ? `${segmentLabel} (${segmentKey})` : segmentLabel;
 
   /**
    * @function handleDistanceChange
@@ -219,12 +219,17 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event.
    * @returns {void}
    */
-  const handleDistanceChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleDistanceChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ): void => {
     if (disabled) return;
     const clamped = clampSnappingDistance(Number(e.target.value));
     snappingDistanceSignal.value = clamped;
     if (typeof (globalThis as any).PreferencesStore?.set === "function") {
-      (globalThis as any).PreferencesStore.set("mapTools.snapping.distance", clamped);
+      (globalThis as any).PreferencesStore.set(
+        "mapTools.snapping.distance",
+        clamped
+      );
     }
     updatePreference("mapTools.snapping.distance", clamped).catch(() => {});
   };
@@ -304,7 +309,7 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
       </button>
 
       {/* Snapping Distance Numeric Spinner */}
-      {isHorizontal ? (
+      {isHorizontal ?
         <div
           className={`snapping-distance-container horizontal ${disabled ? "disabled" : ""}`}
           style={{
@@ -340,8 +345,7 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
             px
           </span>
         </div>
-      ) : (
-        <div
+      : <div
           className={`snapping-distance-container vertical ${disabled ? "disabled" : ""}`}
           style={{
             display: "flex",
@@ -365,7 +369,7 @@ export const SnappingToolbarWidget: React.FC<SnappingToolbarWidgetProps> = ({
             aria-label='Snapping Tolerance in pixels'
           />
         </div>
-      )}
+      }
     </ToolbarWidget>
   );
 };

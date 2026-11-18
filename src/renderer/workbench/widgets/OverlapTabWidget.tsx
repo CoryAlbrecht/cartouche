@@ -131,9 +131,7 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
 
     const paramChildren: string[] = (props as any).params?.tabChildren || [];
     return paramChildren
-      .filter(
-        (id) => !id.startsWith("overlap-") && id !== "overlap-tab-widget"
-      )
+      .filter((id) => !id.startsWith("overlap-") && id !== "overlap-tab-widget")
       .map((id) => ({
         id,
         title: DEFAULT_TAB_TITLES[id] || id,
@@ -273,7 +271,12 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
     if (!isWidgetDrag(e.dataTransfer.types)) return;
     const draggedId = readDraggedWidgetId(e.dataTransfer);
 
-    if (!draggedId || draggedId === name || tabs.some((t) => t.id === draggedId)) return;
+    if (
+      !draggedId
+      || draggedId === name
+      || tabs.some((t) => t.id === draggedId)
+    )
+      return;
 
     if (zone === "center-overlap") {
       e.preventDefault();
@@ -312,10 +315,7 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
       e.dataTransfer.setData("text/plain", tabId);
       e.dataTransfer.setData(
         TAB_EXTRACT_DRAG_MIME,
-        JSON.stringify({
-          containerId: name,
-          tabId,
-        })
+        JSON.stringify({ containerId: name, tabId })
       );
     }
     if (onTabExtract) {
@@ -330,7 +330,9 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
   // Solitary child auto-dissolution: unwraps and renders single child directly
   if (tabs.length === 1) {
     return (
-      <div className='overlap-tab-dissolved' style={{ height: "100%", width: "100%" }}>
+      <div
+        className='overlap-tab-dissolved'
+        style={{ height: "100%", width: "100%" }}>
         {tabs[0].render({
           onClose: () => handleCloseTab(tabs[0].id),
           panelApi: props.panelApi || (props as any).api,
@@ -444,8 +446,8 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
             position: "relative",
             backgroundColor: "var(--cartouche-theme-surface)",
           }}>
-          {activeTab &&
-            activeTab.render({
+          {activeTab
+            && activeTab.render({
               onClose: () => handleCloseTab(activeTab.id),
               panelApi: props.panelApi || (props as any).api,
               containerApi: props.containerApi,

@@ -10,8 +10,11 @@
  * @see {@link runCrsCatalogueBuild}
  */
 
-import type { CrsCatalogueEntry, CrsCatalogueState } from '../../shared/types/crs';
-import { logging } from '../../shared/logging';
+import type {
+  CrsCatalogueEntry,
+  CrsCatalogueState,
+} from "../../shared/types/crs";
+import { logging } from "../../shared/logging";
 
 /**
  * @callback CrsCatalogueBuilder
@@ -19,7 +22,9 @@ import { logging } from '../../shared/logging';
  * @param {string} cacheDir - Cache directory.
  * @returns {Promise<{ entries: CrsCatalogueEntry[]; fromCache: boolean }>} Entries.
  */
-export type CrsCatalogueBuilder = (cacheDir: string) => Promise<{ entries: CrsCatalogueEntry[]; fromCache: boolean }>;
+export type CrsCatalogueBuilder = (
+  cacheDir: string
+) => Promise<{ entries: CrsCatalogueEntry[]; fromCache: boolean }>;
 
 /**
  * @callback CrsCatalogueBroadcaster
@@ -29,7 +34,7 @@ export type CrsCatalogueBuilder = (cacheDir: string) => Promise<{ entries: CrsCa
  */
 export type CrsCatalogueBroadcaster = (state: CrsCatalogueState) => void;
 
-let state: CrsCatalogueState = { status: 'idle', entries: [] };
+let state: CrsCatalogueState = { status: "idle", entries: [] };
 let inFlight: Promise<CrsCatalogueState> | null = null;
 
 /**
@@ -63,16 +68,16 @@ export function startCrsCatalogueBuild(
   broadcast?: CrsCatalogueBroadcaster
 ): Promise<CrsCatalogueState> {
   if (inFlight) return inFlight;
-  if (state.status === 'ready') return Promise.resolve(state);
+  if (state.status === "ready") return Promise.resolve(state);
 
-  state = { status: 'building', entries: [] };
+  state = { status: "building", entries: [] };
   broadcast?.(state);
   const started = Date.now();
   inFlight = builder(cacheDir)
     .then(({ entries, fromCache }) => {
-      state = { status: 'ready', entries };
-      logging.info('CRS Catalogue ready', {
-        scope: 'crsCatalogue',
+      state = { status: "ready", entries };
+      logging.info("CRS Catalogue ready", {
+        scope: "crsCatalogue",
         entries: entries.length,
         fromCache,
         ms: Date.now() - started,
@@ -80,8 +85,14 @@ export function startCrsCatalogueBuild(
       return state;
     })
     .catch((err: any) => {
-      state = { status: 'error', entries: [], error: err?.message || String(err) };
-      logging.error('CRS Catalogue build failed', err, { scope: 'crsCatalogue' });
+      state = {
+        status: "error",
+        entries: [],
+        error: err?.message || String(err),
+      };
+      logging.error("CRS Catalogue build failed", err, {
+        scope: "crsCatalogue",
+      });
       return state;
     })
     .finally(() => {
@@ -101,6 +112,6 @@ export function startCrsCatalogueBuild(
  * @returns {void}
  */
 export function resetCrsCatalogueState(): void {
-  state = { status: 'idle', entries: [] };
+  state = { status: "idle", entries: [] };
   inFlight = null;
 }

@@ -10,7 +10,7 @@
  * @see {@link ToolbarContainerWidget}
  */
 
-import type { ToolbarId, ToolbarZone } from '@renderer/state/gisSignals';
+import type { ToolbarId, ToolbarZone } from "@renderer/state/gisSignals";
 
 /**
  * @typedef {'before' | 'after' | 'new-row-above' | 'new-row-below' | 'new-row-before' | 'new-row-after' | 'prepend-new-row' | 'append-new-row'} ToolbarDropPosition
@@ -21,14 +21,14 @@ import type { ToolbarId, ToolbarZone } from '@renderer/state/gisSignals';
  * @since 0.1.0-dev
  */
 export type ToolbarDropPosition =
-  | 'before'
-  | 'after'
-  | 'new-row-above'
-  | 'new-row-below'
-  | 'new-row-before'
-  | 'new-row-after'
-  | 'prepend-new-row'
-  | 'append-new-row';
+  | "before"
+  | "after"
+  | "new-row-above"
+  | "new-row-below"
+  | "new-row-before"
+  | "new-row-after"
+  | "prepend-new-row"
+  | "append-new-row";
 
 /**
  * @typedef {Object} CalculateToolbarTargetIndexParams
@@ -75,29 +75,29 @@ export function resolveToolbarDropPosition(
   width: number,
   height: number
 ): ToolbarDropPosition {
-  const isHorizontal = zone === 'top' || zone === 'bottom';
+  const isHorizontal = zone === "top" || zone === "bottom";
 
   if (isHorizontal) {
     // Cross axis is Y (vertical offset within toolbar height)
     if (offsetY < height * 0.25) {
-      return 'new-row-above';
+      return "new-row-above";
     }
     if (offsetY > height * 0.75) {
-      return 'new-row-below';
+      return "new-row-below";
     }
     // Middle 50% cross-axis band: intra-row reordering by primary axis (X)
-    return offsetX < width * 0.5 ? 'before' : 'after';
+    return offsetX < width * 0.5 ? "before" : "after";
   }
 
   // Vertical zones ('left' | 'right'): cross axis is X (horizontal offset within toolbar width)
   if (offsetX < width * 0.25) {
-    return 'new-row-before';
+    return "new-row-before";
   }
   if (offsetX > width * 0.75) {
-    return 'new-row-after';
+    return "new-row-after";
   }
   // Middle 50% cross-axis band: intra-row reordering by primary axis (Y)
-  return offsetY < height * 0.5 ? 'before' : 'after';
+  return offsetY < height * 0.5 ? "before" : "after";
 }
 
 /**
@@ -116,9 +116,9 @@ export function resolveContainerDropPosition(
   _zone: ToolbarZone,
   offset: number,
   dimension: number
-): 'prepend-new-row' | 'append-new-row' {
-  if (dimension <= 0) return 'append-new-row';
-  return offset < dimension * 0.25 ? 'prepend-new-row' : 'append-new-row';
+): "prepend-new-row" | "append-new-row" {
+  if (dimension <= 0) return "append-new-row";
+  return offset < dimension * 0.25 ? "prepend-new-row" : "append-new-row";
 }
 
 /**
@@ -133,22 +133,45 @@ export function resolveContainerDropPosition(
 export function calculateToolbarTargetIndex(
   params: CalculateToolbarTargetIndexParams
 ): number {
-  const { fullOrder, visibleOrder, draggedId, hoveredId, currentZone, targetZone, position } = params;
+  const {
+    fullOrder,
+    visibleOrder,
+    draggedId,
+    hoveredId,
+    currentZone,
+    targetZone,
+    position,
+  } = params;
 
   // Normalize multi-row positions to before/after for flat array indexing
-  const isBefore = position === 'before' || position === 'new-row-above' || position === 'new-row-before';
+  const isBefore =
+    position === "before"
+    || position === "new-row-above"
+    || position === "new-row-before";
 
   const isSameZone = currentZone === targetZone;
   const draggedIndex = fullOrder.indexOf(draggedId);
 
   // If dropping before the first visible toolbar in the zone, it must land at index 0
-  if (isBefore && visibleOrder && visibleOrder.length > 0 && visibleOrder[0] === hoveredId) {
+  if (
+    isBefore
+    && visibleOrder
+    && visibleOrder.length > 0
+    && visibleOrder[0] === hoveredId
+  ) {
     return 0;
   }
 
   // If dropping after the last visible toolbar in the zone, it must land at the end
-  if (!isBefore && visibleOrder && visibleOrder.length > 0 && visibleOrder[visibleOrder.length - 1] === hoveredId) {
-    return isSameZone && draggedIndex !== -1 ? fullOrder.length - 1 : fullOrder.length;
+  if (
+    !isBefore
+    && visibleOrder
+    && visibleOrder.length > 0
+    && visibleOrder[visibleOrder.length - 1] === hoveredId
+  ) {
+    return isSameZone && draggedIndex !== -1 ?
+        fullOrder.length - 1
+      : fullOrder.length;
   }
 
   const hoverIndex = fullOrder.indexOf(hoveredId);

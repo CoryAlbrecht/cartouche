@@ -143,11 +143,7 @@ export function useRawStyleTextEditorHistory({
 
   const resetHistory = useCallback((newBaseContent: string) => {
     historyStackRef.current = [
-      {
-        content: newBaseContent,
-        selectionStart: 0,
-        selectionEnd: 0,
-      },
+      { content: newBaseContent, selectionStart: 0, selectionEnd: 0 },
     ];
     historyIndexRef.current = 0;
     selectionRef.current = null;
@@ -157,20 +153,19 @@ export function useRawStyleTextEditorHistory({
   // Initialize or synchronize external content updates (e.g. initial layer load)
   if (historyStackRef.current.length === 0) {
     resetHistory(content || "");
-  } else if (!isInternalEditRef.current && content !== lastSyncedContentRef.current) {
+  } else if (
+    !isInternalEditRef.current
+    && content !== lastSyncedContentRef.current
+  ) {
     lastSyncedContentRef.current = content;
     // If the baseline was empty and now non-empty content arrived from async layer load:
     if (
-      historyStackRef.current.length === 1 &&
-      historyStackRef.current[0].content === "" &&
-      content
+      historyStackRef.current.length === 1
+      && historyStackRef.current[0].content === ""
+      && content
     ) {
       historyStackRef.current = [
-        {
-          content: content,
-          selectionStart: 0,
-          selectionEnd: 0,
-        },
+        { content: content, selectionStart: 0, selectionEnd: 0 },
       ];
       historyIndexRef.current = 0;
     }
@@ -311,19 +306,19 @@ export function useRawStyleTextEditorHistory({
       const redoKey = redoActionDef?.keyCombination ?? { key: "y", ctrl: true };
 
       const isUndoMatch =
-        key === undoKey.key.toLowerCase() &&
-        !!undoKey.ctrl === ctrl &&
-        !!undoKey.alt === alt &&
-        !!undoKey.shift === shift &&
-        !!undoKey.meta === meta;
+        key === undoKey.key.toLowerCase()
+        && !!undoKey.ctrl === ctrl
+        && !!undoKey.alt === alt
+        && !!undoKey.shift === shift
+        && !!undoKey.meta === meta;
 
       const isRedoMatch =
-        (key === redoKey.key.toLowerCase() &&
-          !!redoKey.ctrl === ctrl &&
-          !!redoKey.alt === alt &&
-          !!redoKey.shift === shift &&
-          !!redoKey.meta === meta) ||
-        ((ctrl || meta) && shift && key === "z");
+        (key === redoKey.key.toLowerCase()
+          && !!redoKey.ctrl === ctrl
+          && !!redoKey.alt === alt
+          && !!redoKey.shift === shift
+          && !!redoKey.meta === meta)
+        || ((ctrl || meta) && shift && key === "z");
 
       if (!isUndoMatch && !isRedoMatch) {
         return;
@@ -358,7 +353,6 @@ export function useRawStyleTextEditorHistory({
     resetHistory,
   };
 }
-
 
 /**
  * @typedef {Object} StyleEditorProps
@@ -420,7 +414,10 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
         value.sldVersion
       );
       if (seq !== validationSeqRef.current) return;
-      const currentKey = styleFormatOptionKey(value.styleFormat, value.sldVersion);
+      const currentKey = styleFormatOptionKey(
+        value.styleFormat,
+        value.sldVersion
+      );
       if (validation.isValid) {
         onChangeRef.current({
           styleValidationError: null,
@@ -457,7 +454,10 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
     }
   }
 
-  const selectedFormatOption = styleFormatOptionKey(value.styleFormat, value.sldVersion);
+  const selectedFormatOption = styleFormatOptionKey(
+    value.styleFormat,
+    value.sldVersion
+  );
 
   /**
    * @function handleFormatOptionChange
@@ -471,7 +471,11 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
    */
   const handleFormatOptionChange = useCallback(
     async (formatOption: string) => {
-      const patch = await computeStyleFormatSwitch(value, formatOption, geometryKind);
+      const patch = await computeStyleFormatSwitch(
+        value,
+        formatOption,
+        geometryKind
+      );
       if (!patch) return;
       onChangeRef.current(patch);
       resetRawStyleHistory(patch.styleContent ?? "");
@@ -497,11 +501,8 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
             sldVersion: loadedVersion,
             styleContent: loaded.content,
             styleValidationError:
-              validation.isValid ? null : validation.error ?? "Invalid style",
-            formatCache: {
-              ...value.formatCache,
-              [formatKey]: loaded.content,
-            },
+              validation.isValid ? null : (validation.error ?? "Invalid style"),
+            formatCache: { ...value.formatCache, [formatKey]: loaded.content },
           });
           resetRawStyleHistory(loaded.content);
         }
@@ -531,7 +532,10 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
   const handleResetStyle = useCallback(async () => {
     const patch = await computeDefaultStyleReset(value, geometryKind);
     onChangeRef.current(patch);
-    if (patch.styleValidationError === null && patch.styleContent !== undefined) {
+    if (
+      patch.styleValidationError === null
+      && patch.styleContent !== undefined
+    ) {
       resetRawStyleHistory(patch.styleContent);
     }
   }, [value, geometryKind, resetRawStyleHistory]);
@@ -541,11 +545,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
   return (
     <div
       className='style-editor'
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.75rem",
-      }}>
+      style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
       {/* Action Bar / Controls */}
       <div
         style={{
@@ -555,31 +555,36 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
           flexWrap: "wrap",
         }}>
         {/* Format Selector */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <label
             htmlFor={`${idPrefix}-styling-format`}
-            style={{
-              fontWeight: 500,
-              fontSize: "0.875rem",
-              color: "#334155",
-            }}>
+            style={{ fontWeight: 500, fontSize: "0.875rem", color: "#334155" }}>
             {t("layer_properties_styling_format")}:
           </label>
           <Select
             id={`${idPrefix}-styling-format`}
             value={selectedFormatOption}
             options={[
-              { value: "cartouche", label: t("layer_properties_format_simple") },
-              { value: "openlayers", label: t("layer_properties_format_openlayers") },
-              { value: "sld-1.0.0", label: t("layer_properties_format_sld_100") },
-              { value: "sld-1.1.0", label: t("layer_properties_format_sld_110") },
+              {
+                value: "cartouche",
+                label: t("layer_properties_format_simple"),
+              },
+              {
+                value: "openlayers",
+                label: t("layer_properties_format_openlayers"),
+              },
+              {
+                value: "sld-1.0.0",
+                label: t("layer_properties_format_sld_100"),
+              },
+              {
+                value: "sld-1.1.0",
+                label: t("layer_properties_format_sld_110"),
+              },
             ]}
-            onChange={(formatOption) => void handleFormatOptionChange(formatOption)}
+            onChange={(formatOption) =>
+              void handleFormatOptionChange(formatOption)
+            }
           />
         </div>
 
@@ -617,11 +622,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
 
       {/* Main Content Layout: Editor / Controls on Left, 120x120 Preview on Right */}
       <div
-        style={{
-          display: "flex",
-          gap: "1.25rem",
-          alignItems: "flex-start",
-        }}>
+        style={{ display: "flex", gap: "1.25rem", alignItems: "flex-start" }}>
         {/* Left Column: Mode Specific Controls */}
         <div
           style={{
@@ -635,11 +636,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
           {onOpacityChange && (
             <div
               className='layer-properties-row'
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem",
-              }}>
+              style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <label
                 htmlFor={`${idPrefix}-layer-opacity`}
                 style={{
@@ -681,9 +678,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                 onChangeRef.current({
                   styleContent: newContent,
                   styleValidationError: null,
-                  formatCache: {
-                    cartouche: newContent,
-                  },
+                  formatCache: { cartouche: newContent },
                 });
               }}
             />

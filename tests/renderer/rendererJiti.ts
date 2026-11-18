@@ -9,18 +9,21 @@
  * @see tests/renderer/moduleIdentity.test.ts
  */
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import createJiti from 'jiti';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import createJiti from "jiti";
 
 /** Repository root, resolved from this file so the loader works from any launch location. */
-const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const REPOSITORY_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../.."
+);
 
 /** Alias prefixes and the source directories they map to. */
 const SOURCE_ALIASES: Record<string, string> = {
-  '@renderer': 'src/renderer',
-  '@shared': 'src/shared',
-  '@main': 'src/main',
+  "@renderer": "src/renderer",
+  "@shared": "src/shared",
+  "@main": "src/main",
 };
 
 /**
@@ -30,7 +33,7 @@ const SOURCE_ALIASES: Record<string, string> = {
  * @returns {string} Root-relative POSIX path, e.g. `D:\a\src` → `/a/src`.
  */
 export function rootRelativePosix(absolutePath: string): string {
-  return absolutePath.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/');
+  return absolutePath.replace(/^[A-Za-z]:/, "").replace(/\\/g, "/");
 }
 
 /**
@@ -40,7 +43,10 @@ export function rootRelativePosix(absolutePath: string): string {
  */
 export function rendererAliases(): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(SOURCE_ALIASES).map(([alias, dir]) => [alias, rootRelativePosix(path.join(REPOSITORY_ROOT, dir))]),
+    Object.entries(SOURCE_ALIASES).map(([alias, dir]) => [
+      alias,
+      rootRelativePosix(path.join(REPOSITORY_ROOT, dir)),
+    ])
   );
 }
 
@@ -50,6 +56,8 @@ export function rendererAliases(): Record<string, string> {
  * @param {string} callerUrl - The calling test's `import.meta.url`.
  * @returns {ReturnType<typeof createJiti>} jiti loader with TSX support and the renderer aliases.
  */
-export function createRendererJiti(callerUrl: string): ReturnType<typeof createJiti> {
+export function createRendererJiti(
+  callerUrl: string
+): ReturnType<typeof createJiti> {
   return createJiti(callerUrl, { jsx: true, alias: rendererAliases() });
 }

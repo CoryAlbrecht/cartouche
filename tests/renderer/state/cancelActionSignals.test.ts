@@ -9,56 +9,56 @@
  * @see {@link cancelAction}
  */
 
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import {
   activeToolSignal,
   selectedFeatureIdsSignal,
-  cancelAction
-} from '../../../src/renderer/state/gisSignals';
+  cancelAction,
+} from "../../../src/renderer/state/gisSignals";
 import {
   projectTreeSignal,
   selectedNodeIdsSignal,
   setNodeSelection,
-  isProjectSelectedSignal
-} from '../../../src/renderer/state/projectSignals';
+  isProjectSelectedSignal,
+} from "../../../src/renderer/state/projectSignals";
 
-describe('cancelAction in Renderer Signals', () => {
+describe("cancelAction in Renderer Signals", () => {
   beforeEach(() => {
-    activeToolSignal.value = 'pan';
+    activeToolSignal.value = "pan";
     selectedFeatureIdsSignal.value = new Set();
     projectTreeSignal.value = [
       {
-        id: 'layer-roads',
-        name: 'Roads',
-        type: 'vector',
-        source: '/path/to/roads.shp',
+        id: "layer-roads",
+        name: "Roads",
+        type: "vector",
+        source: "/path/to/roads.shp",
         visible: true,
-        selected: false
+        selected: false,
       },
       {
-        id: 'layer-rivers',
-        name: 'Rivers',
-        type: 'vector',
-        source: '/path/to/rivers.shp',
+        id: "layer-rivers",
+        name: "Rivers",
+        type: "vector",
+        source: "/path/to/rivers.shp",
         visible: true,
-        selected: false
-      }
+        selected: false,
+      },
     ];
     setNodeSelection([]);
   });
 
   it('reverts activeToolSignal from digitizing or selection tool back to "pan"', () => {
-    activeToolSignal.value = 'polygon';
-    assert.equal(activeToolSignal.value, 'polygon');
+    activeToolSignal.value = "polygon";
+    assert.equal(activeToolSignal.value, "polygon");
 
     cancelAction();
 
-    assert.equal(activeToolSignal.value, 'pan');
+    assert.equal(activeToolSignal.value, "pan");
   });
 
-  it('clears spatial feature selections in selectedFeatureIdsSignal', () => {
-    selectedFeatureIdsSignal.value = new Set(['feat-1', 'feat-2']);
+  it("clears spatial feature selections in selectedFeatureIdsSignal", () => {
+    selectedFeatureIdsSignal.value = new Set(["feat-1", "feat-2"]);
     assert.equal(selectedFeatureIdsSignal.value.size, 2);
 
     cancelAction();
@@ -66,8 +66,8 @@ describe('cancelAction in Renderer Signals', () => {
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
 
-  it('clears selected layer tree nodes and project root selection', () => {
-    setNodeSelection(['layer-roads', 'project']);
+  it("clears selected layer tree nodes and project root selection", () => {
+    setNodeSelection(["layer-roads", "project"]);
     assert.equal(selectedNodeIdsSignal.value.length, 2);
     assert.equal(isProjectSelectedSignal.value, true);
 
@@ -78,18 +78,18 @@ describe('cancelAction in Renderer Signals', () => {
   });
 
   it('dispatches executeAction("cancel_action") via window.electronAPI when available', () => {
-    let executedActionName = '';
+    let executedActionName = "";
     (globalThis as any).window = {
       electronAPI: {
         executeAction: (name: string) => {
           executedActionName = name;
-        }
-      }
+        },
+      },
     };
 
     try {
       cancelAction();
-      assert.equal(executedActionName, 'cancel_action');
+      assert.equal(executedActionName, "cancel_action");
     } finally {
       delete (globalThis as any).window;
     }

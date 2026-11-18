@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @description Saves uncommitted geometry and attribute edits in the active layer to disk.
@@ -19,6 +19,7 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function saveActiveLayer(): void {
-  logging.debug('Save active layer action executed', { scope: 'saveActiveLayer' });
+  logging.debug("Save active layer action executed", {
+    scope: "saveActiveLayer",
+  });
 }
-

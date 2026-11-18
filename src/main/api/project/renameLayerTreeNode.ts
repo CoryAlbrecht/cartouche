@@ -12,9 +12,12 @@
  * @see {@link broadcastProjectMetadata}
  */
 
-import { projectStore } from '../../project/ProjectStore';
-import { broadcastProjectLayersTree, broadcastProjectMetadata } from '../../project/ProjectBroadcaster';
-import { findNode } from './layerTreeOperations';
+import { projectStore } from "../../project/ProjectStore";
+import {
+  broadcastProjectLayersTree,
+  broadcastProjectMetadata,
+} from "../../project/ProjectBroadcaster";
+import { findNode } from "./layerTreeOperations";
 
 /**
  * @description Renames an existing leaf layer, layer group, or the project document root in the authoritative ProjectStore.
@@ -28,15 +31,15 @@ import { findNode } from './layerTreeOperations';
  * @returns {void}
  */
 export function renameLayerTreeNode(nodeId?: string, newName?: string): void {
-  if (!nodeId || typeof newName !== 'string') {
+  if (!nodeId || typeof newName !== "string") {
     return;
   }
-  const trimmed = newName.replace(/[\r\n]+/g, ' ').trim();
+  const trimmed = newName.replace(/[\r\n]+/g, " ").trim();
   if (!trimmed) {
     return;
   }
 
-  if (nodeId === 'project') {
+  if (nodeId === "project") {
     const project = projectStore.getProject();
     if (!project) {
       return;
@@ -66,4 +69,3 @@ export function renameLayerTreeNode(nodeId?: string, newName?: string): void {
 }
 
 export default renameLayerTreeNode;
-

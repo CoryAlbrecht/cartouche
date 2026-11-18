@@ -12,24 +12,27 @@
  * @see {@link LoggingHub}
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as crypto from 'node:crypto';
-import * as inspector from 'node:inspector';
-import { app, utilityProcess, type UtilityProcess } from 'electron';
-import type { CrsCatalogueEntry } from '../../shared/types/crs';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as crypto from "node:crypto";
+import * as inspector from "node:inspector";
+import { app, utilityProcess, type UtilityProcess } from "electron";
+import type { CrsCatalogueEntry } from "../../shared/types/crs";
 import type {
   BoundingBox,
   LayerDetailedInfo,
   LayerEditCacheEntry,
   LayerFieldInfo,
   QueryExtentOptions,
-  StagedFeatureEdit
-} from '@shared/types';
-import { GeospatialEngine } from './GeospatialEngine';
-import { projectStore } from '../project/ProjectStore';
-import { LoggingHub, loggingHub as defaultLoggingHub } from '../logging/LoggingHub';
-import { logging } from '../../shared/logging';
+  StagedFeatureEdit,
+} from "@shared/types";
+import { GeospatialEngine } from "./GeospatialEngine";
+import { projectStore } from "../project/ProjectStore";
+import {
+  LoggingHub,
+  loggingHub as defaultLoggingHub,
+} from "../logging/LoggingHub";
+import { logging } from "../../shared/logging";
 import type {
   GeospatialLayerMetadata,
   GeospatialQueryResult,
@@ -37,8 +40,8 @@ import type {
   RehydrateResult,
   WorkerRequest,
   WorkerRequestPayload,
-  WorkerResponse
-} from './types';
+  WorkerResponse,
+} from "./types";
 
 /**
  * @description Decides the Node `execArgv` for the geospatial worker's utility process. The worker gets a
@@ -54,7 +57,10 @@ import type {
  * @returns {string[]} `['--inspect=<main port + 1>']` when the worker should be debuggable, otherwise `[]`.
  * @throws {TypeError} If `mainInspectorUrl` is a non-empty string that is not a valid URL.
  */
-export function resolveWorkerExecArgv(isPackaged: boolean, mainInspectorUrl: string | undefined): string[] {
+export function resolveWorkerExecArgv(
+  isPackaged: boolean,
+  mainInspectorUrl: string | undefined
+): string[] {
   if (isPackaged || !mainInspectorUrl) {
     return [];
   }
@@ -129,8 +135,8 @@ export class GeospatialService {
   private maxConsecutiveFailures: number;
   private maxConsecutiveWorkerCrashes: number;
   private loggingHub: LoggingHub;
-  private stdoutBuffer = '';
-  private stderrBuffer = '';
+  private stdoutBuffer = "";
+  private stderrBuffer = "";
   private backgroundScanEnabled = true;
 
   /**
@@ -156,13 +162,11 @@ export class GeospatialService {
    * @param {GeospatialServiceOptions} [options] - Configuration options.
    */
   constructor(options: GeospatialServiceOptions = {}) {
-    this.options = {
-      defaultTimeoutMs: 30000,
-      ...options
-    };
+    this.options = { defaultTimeoutMs: 30000, ...options };
     this.loggingHub = options.loggingHub || defaultLoggingHub;
     this.maxConsecutiveFailures = this.options.maxConsecutiveFailures ?? 3;
-    this.maxConsecutiveWorkerCrashes = this.options.maxConsecutiveWorkerCrashes ?? 5;
+    this.maxConsecutiveWorkerCrashes =
+      this.options.maxConsecutiveWorkerCrashes ?? 5;
     this.init();
   }
 
@@ -187,21 +191,25 @@ export class GeospatialService {
       return;
     }
 
-    if (typeof app !== 'undefined' && typeof app.on === 'function') {
-      app.on('will-quit', () => {
+    if (typeof app !== "undefined" && typeof app.on === "function") {
+      app.on("will-quit", () => {
         this.dispose();
       });
     }
 
     const hasUtilityProcess =
-      !this.options.forceInProcess &&
-      typeof utilityProcess !== 'undefined' &&
-      typeof (utilityProcess as any)?.fork === 'function';
+      !this.options.forceInProcess
+      && typeof utilityProcess !== "undefined"
+      && typeof (utilityProcess as any)?.fork === "function";
 
     if (hasUtilityProcess) {
       this.resolvedWorkerPath = this.resolveWorkerPath(this.options.workerPath);
 
-      if (typeof app !== 'undefined' && typeof app.isReady === 'function' && !app.isReady()) {
+      if (
+        typeof app !== "undefined"
+        && typeof app.isReady === "function"
+        && !app.isReady()
+      ) {
         this.isReady = false;
         this.readyPromise = app.whenReady().then(() => {
           if (!this.isDisposed) {
@@ -235,20 +243,30 @@ export class GeospatialService {
     }
 
     const appPath =
-      typeof app !== 'undefined' && typeof app.getAppPath === 'function'
-        ? app.getAppPath()
-        : process.cwd();
+      typeof app !== "undefined" && typeof app.getAppPath === "function" ?
+        app.getAppPath()
+      : process.cwd();
 
     const candidates = [
-      path.join(appPath, 'dist-electron/worker/geospatialWorker.cjs'),
-      path.join(appPath, '../worker/geospatialWorker.cjs'),
-      path.join(appPath, 'worker/geospatialWorker.cjs'),
-      path.join(process.cwd(), 'dist-electron/worker/geospatialWorker.cjs')
+      path.join(appPath, "dist-electron/worker/geospatialWorker.cjs"),
+      path.join(appPath, "../worker/geospatialWorker.cjs"),
+      path.join(appPath, "worker/geospatialWorker.cjs"),
+      path.join(process.cwd(), "dist-electron/worker/geospatialWorker.cjs"),
     ];
 
-    if (typeof (process as any).resourcesPath === 'string') {
-      candidates.push(path.join((process as any).resourcesPath, 'dist-electron/worker/geospatialWorker.cjs'));
-      candidates.push(path.join((process as any).resourcesPath, 'app.asar/dist-electron/worker/geospatialWorker.cjs'));
+    if (typeof (process as any).resourcesPath === "string") {
+      candidates.push(
+        path.join(
+          (process as any).resourcesPath,
+          "dist-electron/worker/geospatialWorker.cjs"
+        )
+      );
+      candidates.push(
+        path.join(
+          (process as any).resourcesPath,
+          "app.asar/dist-electron/worker/geospatialWorker.cjs"
+        )
+      );
     }
 
     for (const candidate of candidates) {
@@ -257,7 +275,7 @@ export class GeospatialService {
       }
     }
 
-    return path.join(appPath, 'dist-electron/worker/geospatialWorker.cjs');
+    return path.join(appPath, "dist-electron/worker/geospatialWorker.cjs");
   }
 
   /**
@@ -290,11 +308,12 @@ export class GeospatialService {
    * @param {'stdout' | 'stderr'} streamKind - Stream origin identifying log severity.
    * @returns {void}
    */
-  private bufferStreamChunk(data: any, streamKind: 'stdout' | 'stderr'): void {
-    const isError = streamKind === 'stderr';
-    const currentBuffer = (isError ? this.stderrBuffer : this.stdoutBuffer) + data.toString();
-    const lines = currentBuffer.split('\n');
-    const remaining = lines.pop() || '';
+  private bufferStreamChunk(data: any, streamKind: "stdout" | "stderr"): void {
+    const isError = streamKind === "stderr";
+    const currentBuffer =
+      (isError ? this.stderrBuffer : this.stdoutBuffer) + data.toString();
+    const lines = currentBuffer.split("\n");
+    const remaining = lines.pop() || "";
 
     if (isError) {
       this.stderrBuffer = remaining;
@@ -303,13 +322,13 @@ export class GeospatialService {
     }
 
     for (const line of lines) {
-      if (line.trim() !== '') {
+      if (line.trim() !== "") {
         this.loggingHub.handleLogPayload({
           timestamp: new Date().toISOString(),
-          source: 'GeospatialWorker',
-          level: isError ? 'error' : 'info',
+          source: "GeospatialWorker",
+          level: isError ? "error" : "info",
           numericLevel: isError ? 2 : 4,
-          message: line
+          message: line,
         });
       }
     }
@@ -322,42 +341,51 @@ export class GeospatialService {
    * @returns {void}
    */
   private bindWorkerEvents(worker: any): void {
-    if (!worker || typeof worker.on !== 'function') {
+    if (!worker || typeof worker.on !== "function") {
       return;
     }
 
-    worker.on('message', (response: WorkerResponse) => {
-      if (response && (response as any).type === 'log' && (response as any).payload) {
+    worker.on("message", (response: WorkerResponse) => {
+      if (
+        response
+        && (response as any).type === "log"
+        && (response as any).payload
+      ) {
         this.loggingHub.handleLogPayload((response as any).payload);
         return;
       }
-      if (response && (response as any).type === 'fieldDemoted') {
-        this.handleFieldDemoted((response as any).layerId, (response as any).fields);
+      if (response && (response as any).type === "fieldDemoted") {
+        this.handleFieldDemoted(
+          (response as any).layerId,
+          (response as any).fields
+        );
         return;
       }
       this.handleWorkerResponse(response);
     });
 
-    worker.on('error', (err: any) => {
+    worker.on("error", (err: any) => {
       this.loggingHub.handleLogPayload({
         timestamp: new Date().toISOString(),
-        source: 'GeospatialWorker',
-        level: 'error',
+        source: "GeospatialWorker",
+        level: "error",
         numericLevel: 2,
         message: `Geospatial worker error: ${err?.message || err?.type || err}`,
-        ...(err?.location || err?.report ? { meta: [{ location: err?.location, report: err?.report }] } : {})
+        ...(err?.location || err?.report ?
+          { meta: [{ location: err?.location, report: err?.report }] }
+        : {}),
       });
     });
 
-    worker.stdout?.on('data', (data: any) => {
-      this.bufferStreamChunk(data, 'stdout');
+    worker.stdout?.on("data", (data: any) => {
+      this.bufferStreamChunk(data, "stdout");
     });
 
-    worker.stderr?.on('data', (data: any) => {
-      this.bufferStreamChunk(data, 'stderr');
+    worker.stderr?.on("data", (data: any) => {
+      this.bufferStreamChunk(data, "stderr");
     });
 
-    worker.on('exit', (code: number) => {
+    worker.on("exit", (code: number) => {
       this.handleWorkerExit(code);
     });
   }
@@ -376,17 +404,23 @@ export class GeospatialService {
   private spawnWorker(workerPath: string): void {
     try {
       this.worker = utilityProcess.fork(workerPath, [], {
-        serviceName: 'geospatial-worker',
-        stdio: 'pipe',
-        execArgv: resolveWorkerExecArgv(app?.isPackaged ?? false, inspector.url())
+        serviceName: "geospatial-worker",
+        stdio: "pipe",
+        execArgv: resolveWorkerExecArgv(
+          app?.isPackaged ?? false,
+          inspector.url()
+        ),
       });
       this.bindWorkerEvents(this.worker);
-      logging.info('Background geospatial worker process spawned successfully', { scope: 'GeospatialService' });
+      logging.info(
+        "Background geospatial worker process spawned successfully",
+        { scope: "GeospatialService" }
+      );
     } catch (err) {
       logging.warn(
-        'Failed to fork geospatial worker process; activating in-process fallback engine',
+        "Failed to fork geospatial worker process; activating in-process fallback engine",
         err,
-        { scope: 'GeospatialService' }
+        { scope: "GeospatialService" }
       );
       this.worker = null;
       this.initEngine();
@@ -417,7 +451,7 @@ export class GeospatialService {
       if (pending.layerId) {
         this.circuitBreaker.delete(pending.layerId);
       }
-      if (pending.type !== 'rehydrate') {
+      if (pending.type !== "rehydrate") {
         this.consecutiveWorkerCrashes = 0;
       }
       pending.resolve(response.result);
@@ -426,11 +460,10 @@ export class GeospatialService {
         const failures = (this.circuitBreaker.get(pending.layerId) || 0) + 1;
         this.circuitBreaker.set(pending.layerId, failures);
         if (failures >= this.maxConsecutiveFailures) {
-          logging.error('Circuit breaker tripped for layer after consecutive failures', {
-            scope: 'GeospatialService',
-            layerId: pending.layerId,
-            failures
-          });
+          logging.error(
+            "Circuit breaker tripped for layer after consecutive failures",
+            { scope: "GeospatialService", layerId: pending.layerId, failures }
+          );
           pending.reject(
             new Error(
               `Query failed: circuit breaker tripped after ${failures} consecutive failures for layer "${pending.layerId}"`
@@ -439,7 +472,9 @@ export class GeospatialService {
           return;
         }
       }
-      pending.reject(new Error(response.error || 'Geospatial worker request failed'));
+      pending.reject(
+        new Error(response.error || "Geospatial worker request failed")
+      );
     }
   }
 
@@ -459,10 +494,10 @@ export class GeospatialService {
     this.worker = null;
     this.consecutiveWorkerCrashes++;
 
-    logging.warn('Worker process exited unexpectedly, initiating auto-respawn', {
-      scope: 'GeospatialService',
-      exitCode: code
-    });
+    logging.warn(
+      "Worker process exited unexpectedly, initiating auto-respawn",
+      { scope: "GeospatialService", exitCode: code }
+    );
 
     // Classify pending requests: track circuit breaker on layer queries and determine retries
     const toRetry: PendingRequestEntry[] = [];
@@ -475,23 +510,26 @@ export class GeospatialService {
         const failures = (this.circuitBreaker.get(pending.layerId) || 0) + 1;
         this.circuitBreaker.set(pending.layerId, failures);
 
-        logging.warn('Failure recorded for layer query during worker exit', {
-          scope: 'GeospatialService',
+        logging.warn("Failure recorded for layer query during worker exit", {
+          scope: "GeospatialService",
           layerId: pending.layerId,
           failures,
           maxFailures: this.maxConsecutiveFailures,
           exitCode: code,
-          requestType: pending.type
+          requestType: pending.type,
         });
 
         if (failures >= this.maxConsecutiveFailures) {
-          logging.error('Circuit breaker tripped for layer following unexpected worker exit', {
-            scope: 'GeospatialService',
-            layerId: pending.layerId,
-            failures,
-            exitCode: code,
-            requestType: pending.type
-          });
+          logging.error(
+            "Circuit breaker tripped for layer following unexpected worker exit",
+            {
+              scope: "GeospatialService",
+              layerId: pending.layerId,
+              failures,
+              exitCode: code,
+              requestType: pending.type,
+            }
+          );
           pending.reject(
             new Error(
               `Query failed: circuit breaker tripped after ${failures} consecutive failures for layer "${pending.layerId}" (Worker process exited unexpectedly with code ${code})`
@@ -506,23 +544,28 @@ export class GeospatialService {
 
     // If excessive consecutive crashes occur before any successful recovery, abort worker auto-respawn and activate in-process fallback
     if (this.consecutiveWorkerCrashes >= this.maxConsecutiveWorkerCrashes) {
-      logging.warn('Worker crash threshold reached, activating in-process fallback engine', {
-        scope: 'GeospatialService',
-        crashes: this.consecutiveWorkerCrashes,
-        maxCrashes: this.maxConsecutiveWorkerCrashes
-      });
+      logging.warn(
+        "Worker crash threshold reached, activating in-process fallback engine",
+        {
+          scope: "GeospatialService",
+          crashes: this.consecutiveWorkerCrashes,
+          maxCrashes: this.maxConsecutiveWorkerCrashes,
+        }
+      );
       this.readyPromise = this.activateInProcessFallback(toRetry);
       return;
     }
 
     const canRespawn =
-      Boolean(this.options.mockWorkerFactory) ||
-      Boolean(!this.options.forceInProcess && this.resolvedWorkerPath);
+      Boolean(this.options.mockWorkerFactory)
+      || Boolean(!this.options.forceInProcess && this.resolvedWorkerPath);
 
     if (!canRespawn) {
       for (const pending of toRetry) {
         pending.reject(
-          new Error(`Worker process exited unexpectedly (code ${code}) while executing "${pending.type}"`)
+          new Error(
+            `Worker process exited unexpectedly (code ${code}) while executing "${pending.type}"`
+          )
         );
       }
       return;
@@ -532,10 +575,10 @@ export class GeospatialService {
     this.spawnWorkerInstance();
 
     if (!this.worker) {
-      logging.warn('Failed to respawn geospatial worker process, activating in-process fallback engine', {
-        scope: 'GeospatialService',
-        exitCode: code
-      });
+      logging.warn(
+        "Failed to respawn geospatial worker process, activating in-process fallback engine",
+        { scope: "GeospatialService", exitCode: code }
+      );
       this.readyPromise = this.activateInProcessFallback(toRetry);
       return;
     }
@@ -554,10 +597,13 @@ export class GeospatialService {
    * @param {PendingRequestEntry[]} [toRetry] - Optional list of in-flight requests interrupted by worker failure.
    * @returns {Promise<void>}
    */
-  private async activateInProcessFallback(toRetry: PendingRequestEntry[] = []): Promise<void> {
-    logging.warn('Activating in-process fallback engine following worker process failure', {
-      scope: 'GeospatialService'
-    });
+  private async activateInProcessFallback(
+    toRetry: PendingRequestEntry[] = []
+  ): Promise<void> {
+    logging.warn(
+      "Activating in-process fallback engine following worker process failure",
+      { scope: "GeospatialService" }
+    );
 
     if (this.worker) {
       try {
@@ -575,15 +621,19 @@ export class GeospatialService {
     // Consolidate active layer file paths from internal activeLayers map and ProjectStore
     const layersToRehydrate = new Map<string, string>(this.activeLayers);
 
-    if (projectStore && typeof projectStore.hasProject === 'function' && projectStore.hasProject()) {
+    if (
+      projectStore
+      && typeof projectStore.hasProject === "function"
+      && projectStore.hasProject()
+    ) {
       const root = projectStore.getRootGroup();
       const collectLayers = (group: any) => {
-        if (!group || typeof group.getAllChildren !== 'function') return;
+        if (!group || typeof group.getAllChildren !== "function") return;
         for (const child of group.getAllChildren()) {
           if (child && child.filePath && child.id) {
             layersToRehydrate.set(child.id, child.filePath);
           }
-          if (child && typeof child.getAllChildren === 'function') {
+          if (child && typeof child.getAllChildren === "function") {
             collectLayers(child);
           }
         }
@@ -592,12 +642,12 @@ export class GeospatialService {
     }
 
     if (layersToRehydrate.size > 0) {
-      const specs: RehydrateLayerSpec[] = Array.from(layersToRehydrate.entries()).map(
-        ([layerId, filePath]) => ({ layerId, filePath })
-      );
-      logging.info('Rehydrating layers into in-process fallback engine', {
-        scope: 'GeospatialService',
-        layerCount: specs.length
+      const specs: RehydrateLayerSpec[] = Array.from(
+        layersToRehydrate.entries()
+      ).map(([layerId, filePath]) => ({ layerId, filePath }));
+      logging.info("Rehydrating layers into in-process fallback engine", {
+        scope: "GeospatialService",
+        layerCount: specs.length,
       });
       try {
         const rehydrateRes = await this.engine!.rehydrate(specs);
@@ -607,13 +657,15 @@ export class GeospatialService {
           }
         }
         if (rehydrateRes.failed && rehydrateRes.failed.length > 0) {
-          logging.warn('Some layers failed to rehydrate into fallback engine', {
-            scope: 'GeospatialService',
-            failedLayers: rehydrateRes.failed
+          logging.warn("Some layers failed to rehydrate into fallback engine", {
+            scope: "GeospatialService",
+            failedLayers: rehydrateRes.failed,
           });
         }
       } catch (rehydrateErr) {
-        logging.warn('In-process layer rehydration error', rehydrateErr, { scope: 'GeospatialService' });
+        logging.warn("In-process layer rehydration error", rehydrateErr, {
+          scope: "GeospatialService",
+        });
       }
     }
 
@@ -632,7 +684,7 @@ export class GeospatialService {
     // Transparently execute pending requests against the in-process fallback engine
     for (const pending of toRetry) {
       if (this.isDisposed) {
-        pending.reject(new Error('GeospatialService has been disposed'));
+        pending.reject(new Error("GeospatialService has been disposed"));
         continue;
       }
 
@@ -658,21 +710,27 @@ export class GeospatialService {
   ): Promise<void> {
     try {
       if (!this.worker) {
-        throw new Error(`Failed to respawn geospatial worker process after exit code ${exitCode}`);
+        throw new Error(
+          `Failed to respawn geospatial worker process after exit code ${exitCode}`
+        );
       }
 
       // Consolidate active layer file paths from internal activeLayers map and ProjectStore
       const layersToRehydrate = new Map<string, string>(this.activeLayers);
 
-      if (projectStore && typeof projectStore.hasProject === 'function' && projectStore.hasProject()) {
+      if (
+        projectStore
+        && typeof projectStore.hasProject === "function"
+        && projectStore.hasProject()
+      ) {
         const root = projectStore.getRootGroup();
         const collectLayers = (group: any) => {
-          if (!group || typeof group.getAllChildren !== 'function') return;
+          if (!group || typeof group.getAllChildren !== "function") return;
           for (const child of group.getAllChildren()) {
             if (child && child.filePath && child.id) {
               layersToRehydrate.set(child.id, child.filePath);
             }
-            if (child && typeof child.getAllChildren === 'function') {
+            if (child && typeof child.getAllChildren === "function") {
               collectLayers(child);
             }
           }
@@ -681,21 +739,21 @@ export class GeospatialService {
       }
 
       if (layersToRehydrate.size > 0) {
-        const specs: RehydrateLayerSpec[] = Array.from(layersToRehydrate.entries()).map(
-          ([layerId, filePath]) => ({ layerId, filePath })
-        );
-        logging.info('Atomically rehydrating layers on restarted worker', {
-          scope: 'GeospatialService',
-          layerCount: specs.length
+        const specs: RehydrateLayerSpec[] = Array.from(
+          layersToRehydrate.entries()
+        ).map(([layerId, filePath]) => ({ layerId, filePath }));
+        logging.info("Atomically rehydrating layers on restarted worker", {
+          scope: "GeospatialService",
+          layerCount: specs.length,
         });
         const rehydrateRes = await this.sendInternalRequest<RehydrateResult>({
-          type: 'rehydrate',
-          layers: specs
+          type: "rehydrate",
+          layers: specs,
         });
         if (rehydrateRes.failed && rehydrateRes.failed.length > 0) {
-          logging.warn('Some layers failed to rehydrate upon worker restart', {
-            scope: 'GeospatialService',
-            failedLayers: rehydrateRes.failed
+          logging.warn("Some layers failed to rehydrate upon worker restart", {
+            scope: "GeospatialService",
+            failedLayers: rehydrateRes.failed,
           });
         }
       }
@@ -704,16 +762,16 @@ export class GeospatialService {
       for (const [layerId, editEntry] of this.layerEdits.entries()) {
         for (const edit of editEntry.modifiedFeatures.values()) {
           await this.sendInternalRequest({
-            type: 'stageFeatureEdit',
+            type: "stageFeatureEdit",
             layerId,
-            edit
+            edit,
           });
         }
         for (const added of editEntry.addedFeatures) {
           await this.sendInternalRequest({
-            type: 'stageFeatureEdit',
+            type: "stageFeatureEdit",
             layerId,
-            edit: { ...added, isNew: true }
+            edit: { ...added, isNew: true },
           });
         }
       }
@@ -723,14 +781,19 @@ export class GeospatialService {
       // Transparently retry queued in-flight requests against the restarted worker
       for (const pending of toRetry) {
         if (this.isDisposed) {
-          pending.reject(new Error('GeospatialService has been disposed'));
+          pending.reject(new Error("GeospatialService has been disposed"));
           continue;
         }
 
-        const timeout = pending.timeoutMs ?? this.options.defaultTimeoutMs ?? 30000;
+        const timeout =
+          pending.timeoutMs ?? this.options.defaultTimeoutMs ?? 30000;
         pending.timer = setTimeout(() => {
           this.pendingRequests.delete(pending.id);
-          pending.reject(new Error(`Request ${pending.id} (${pending.type}) timed out after ${timeout}ms`));
+          pending.reject(
+            new Error(
+              `Request ${pending.id} (${pending.type}) timed out after ${timeout}ms`
+            )
+          );
         }, timeout);
 
         this.pendingRequests.set(pending.id, pending);
@@ -744,9 +807,11 @@ export class GeospatialService {
         }
       }
     } catch (err: any) {
-      logging.error('Worker recovery and rehydration failed; activating in-process fallback', err, {
-        scope: 'GeospatialService'
-      });
+      logging.error(
+        "Worker recovery and rehydration failed; activating in-process fallback",
+        err,
+        { scope: "GeospatialService" }
+      );
       this.readyPromise = this.activateInProcessFallback(toRetry);
       await this.readyPromise;
     }
@@ -760,9 +825,16 @@ export class GeospatialService {
    * @param {number} [timeoutMs] - Request timeout.
    * @returns {Promise<T>} Result promise.
    */
-  private sendInternalRequest<T>(req: WorkerRequestPayload, timeoutMs: number = 30000): Promise<T> {
+  private sendInternalRequest<T>(
+    req: WorkerRequestPayload,
+    timeoutMs: number = 30000
+  ): Promise<T> {
     if (!this.worker) {
-      return Promise.reject(new Error('Cannot send internal request: geospatial worker is not running'));
+      return Promise.reject(
+        new Error(
+          "Cannot send internal request: geospatial worker is not running"
+        )
+      );
     }
 
     const id = crypto.randomUUID();
@@ -771,7 +843,11 @@ export class GeospatialService {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id);
-        reject(new Error(`Internal request ${id} (${req.type}) timed out after ${timeoutMs}ms`));
+        reject(
+          new Error(
+            `Internal request ${id} (${req.type}) timed out after ${timeoutMs}ms`
+          )
+        );
       }, timeoutMs);
 
       this.pendingRequests.set(id, {
@@ -781,7 +857,7 @@ export class GeospatialService {
         reject,
         timer,
         type: req.type,
-        timeoutMs
+        timeoutMs,
       });
 
       try {
@@ -802,9 +878,12 @@ export class GeospatialService {
    * @param {number} [timeoutMs] - Optional per-request timeout override.
    * @returns {Promise<T>} Promise resolving to the typed result payload.
    */
-  private sendRequest<T>(req: WorkerRequestPayload, timeoutMs?: number): Promise<T> {
+  private sendRequest<T>(
+    req: WorkerRequestPayload,
+    timeoutMs?: number
+  ): Promise<T> {
     if (this.isDisposed) {
-      return Promise.reject(new Error('GeospatialService has been disposed'));
+      return Promise.reject(new Error("GeospatialService has been disposed"));
     }
 
     if (!this.isReady && this.readyPromise) {
@@ -818,7 +897,9 @@ export class GeospatialService {
 
     // Utility process IPC dispatch
     if (!this.worker) {
-      return Promise.reject(new Error('Geospatial worker process is not running'));
+      return Promise.reject(
+        new Error("Geospatial worker process is not running")
+      );
     }
 
     const id = crypto.randomUUID();
@@ -828,7 +909,9 @@ export class GeospatialService {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id);
-        reject(new Error(`Request ${id} (${req.type}) timed out after ${timeout}ms`));
+        reject(
+          new Error(`Request ${id} (${req.type}) timed out after ${timeout}ms`)
+        );
       }, timeout);
 
       this.pendingRequests.set(id, {
@@ -839,7 +922,7 @@ export class GeospatialService {
         timer,
         type: req.type,
         layerId: (req as any).layerId,
-        timeoutMs: timeout
+        timeoutMs: timeout,
       });
 
       try {
@@ -862,7 +945,7 @@ export class GeospatialService {
    */
   private async executeInProcess<T>(req: WorkerRequestPayload): Promise<T> {
     if (!this.engine) {
-      throw new Error('In-process GeospatialEngine is not initialized');
+      throw new Error("In-process GeospatialEngine is not initialized");
     }
 
     const targetLayerId = (req as any).layerId;
@@ -870,21 +953,21 @@ export class GeospatialService {
     try {
       let result: any;
       switch (req.type) {
-        case 'openDataset':
+        case "openDataset":
           result = await this.engine.openDataset(req.layerId, req.filePath);
           this.activeLayers.set(req.layerId, req.filePath);
           break;
 
-        case 'getLayerInfo':
+        case "getLayerInfo":
           result = await this.engine.getLayerInfo(req.layerId);
           break;
 
-        case 'rekeySession':
+        case "rekeySession":
           this.engine.rekeySession(req.oldLayerId, req.newLayerId);
           result = { success: true };
           break;
 
-        case 'queryExtent': {
+        case "queryExtent": {
           const queryOptions = req.options ?? req.extent;
           const queryRes = await this.engine.queryExtent(
             req.layerId,
@@ -895,29 +978,29 @@ export class GeospatialService {
             layerId: queryRes.layerId,
             buffer: queryRes.buffer,
             features: queryRes.features,
-            totalMatched: queryRes.totalMatched
+            totalMatched: queryRes.totalMatched,
           };
           break;
         }
 
-        case 'stageFeatureEdit':
+        case "stageFeatureEdit":
           this.engine.stageFeatureEdit(req.layerId, req.edit);
           result = { success: true };
           break;
 
-        case 'clearLayerEdits':
+        case "clearLayerEdits":
           this.engine.clearLayerEdits(req.layerId);
           result = { success: true };
           break;
 
-        case 'closeDataset':
+        case "closeDataset":
           result = { closed: this.engine.closeDataset(req.layerId) };
           this.activeLayers.delete(req.layerId);
           this.layerEdits.delete(req.layerId);
           this.circuitBreaker.delete(req.layerId);
           break;
 
-        case 'closeAll':
+        case "closeAll":
           this.engine.closeAll();
           this.activeLayers.clear();
           this.layerEdits.clear();
@@ -925,7 +1008,7 @@ export class GeospatialService {
           result = { closed: true };
           break;
 
-        case 'rehydrate': {
+        case "rehydrate": {
           const rehydrateRes = await this.engine.rehydrate(req.layers);
           for (const spec of req.layers) {
             if (rehydrateRes.rehydrated.includes(spec.layerId)) {
@@ -936,19 +1019,22 @@ export class GeospatialService {
           break;
         }
 
-        case 'ping':
+        case "ping":
           result = { pong: true };
           break;
 
-        case 'buildCrsCatalogue': {
-          const { runCrsCatalogueBuild } = await import('../crs/runCrsCatalogueBuild');
+        case "buildCrsCatalogue": {
+          const { runCrsCatalogueBuild } =
+            await import("../crs/runCrsCatalogueBuild");
           const built = await runCrsCatalogueBuild(req.cacheDir);
           result = { entries: built.entries, fromCache: built.fromCache };
           break;
         }
 
         default:
-          throw new Error(`Unsupported in-process operation type: ${(req as any).type}`);
+          throw new Error(
+            `Unsupported in-process operation type: ${(req as any).type}`
+          );
       }
 
       if (targetLayerId) {
@@ -983,7 +1069,7 @@ export class GeospatialService {
     timeoutMs?: number
   ): Promise<GeospatialLayerMetadata> {
     const meta = await this.sendRequest<GeospatialLayerMetadata>(
-      { type: 'openDataset', layerId, filePath },
+      { type: "openDataset", layerId, filePath },
       timeoutMs
     );
     this.activeLayers.set(layerId, filePath);
@@ -1005,10 +1091,10 @@ export class GeospatialService {
     cacheDir: string,
     timeoutMs: number = 15 * 60 * 1000
   ): Promise<{ entries: CrsCatalogueEntry[]; fromCache: boolean }> {
-    return this.sendRequest<{ entries: CrsCatalogueEntry[]; fromCache: boolean }>(
-      { type: 'buildCrsCatalogue', cacheDir },
-      timeoutMs
-    );
+    return this.sendRequest<{
+      entries: CrsCatalogueEntry[];
+      fromCache: boolean;
+    }>({ type: "buildCrsCatalogue", cacheDir }, timeoutMs);
   }
 
   /**
@@ -1021,9 +1107,12 @@ export class GeospatialService {
    * @param {number} [timeoutMs] - Optional timeout override.
    * @returns {Promise<LayerDetailedInfo>} Detailed layer metadata and attribute schema fields.
    */
-  public async getLayerInfo(layerId: string, timeoutMs?: number): Promise<LayerDetailedInfo> {
+  public async getLayerInfo(
+    layerId: string,
+    timeoutMs?: number
+  ): Promise<LayerDetailedInfo> {
     return this.sendRequest<LayerDetailedInfo>(
-      { type: 'getLayerInfo', layerId },
+      { type: "getLayerInfo", layerId },
       timeoutMs
     );
   }
@@ -1038,7 +1127,10 @@ export class GeospatialService {
    * @param {string} newLayerId - Target layer UUID.
    * @returns {Promise<void>}
    */
-  public async rekeySession(oldLayerId: string, newLayerId: string): Promise<void> {
+  public async rekeySession(
+    oldLayerId: string,
+    newLayerId: string
+  ): Promise<void> {
     const path = this.activeLayers.get(oldLayerId);
     if (path) {
       this.activeLayers.delete(oldLayerId);
@@ -1054,7 +1146,7 @@ export class GeospatialService {
       this.circuitBreaker.delete(oldLayerId);
       this.circuitBreaker.set(newLayerId, cb);
     }
-    await this.sendRequest({ type: 'rekeySession', oldLayerId, newLayerId });
+    await this.sendRequest({ type: "rekeySession", oldLayerId, newLayerId });
   }
 
   /**
@@ -1077,7 +1169,7 @@ export class GeospatialService {
     if (!entry) {
       entry = {
         modifiedFeatures: new Map<string, StagedFeatureEdit>(),
-        addedFeatures: []
+        addedFeatures: [],
       };
       this.layerEdits.set(layerId, entry);
     }
@@ -1094,16 +1186,13 @@ export class GeospatialService {
           ...prev,
           ...edit,
           isNew: true,
-          properties: {
-            ...prev.properties,
-            ...edit.properties
-          }
+          properties: { ...prev.properties, ...edit.properties },
         };
       } else {
         entry.addedFeatures.push({
           ...edit,
           isNew: true,
-          properties: { ...edit.properties }
+          properties: { ...edit.properties },
         });
       }
     } else {
@@ -1112,15 +1201,12 @@ export class GeospatialService {
         ...prevMod,
         ...edit,
         id: edit.id,
-        properties: {
-          ...prevMod?.properties,
-          ...edit.properties
-        }
+        properties: { ...prevMod?.properties, ...edit.properties },
       });
     }
 
     await this.sendRequest(
-      { type: 'stageFeatureEdit', layerId, edit },
+      { type: "stageFeatureEdit", layerId, edit },
       timeoutMs
     );
   }
@@ -1135,12 +1221,12 @@ export class GeospatialService {
    * @param {number} [timeoutMs] - Optional timeout override.
    * @returns {Promise<void>}
    */
-  public async clearLayerEdits(layerId: string, timeoutMs?: number): Promise<void> {
+  public async clearLayerEdits(
+    layerId: string,
+    timeoutMs?: number
+  ): Promise<void> {
     this.layerEdits.delete(layerId);
-    await this.sendRequest(
-      { type: 'clearLayerEdits', layerId },
-      timeoutMs
-    );
+    await this.sendRequest({ type: "clearLayerEdits", layerId }, timeoutMs);
   }
 
   /**
@@ -1177,9 +1263,12 @@ export class GeospatialService {
     timeoutMs?: number
   ): Promise<GeospatialQueryResult> {
     const extent = Array.isArray(options) ? options : options?.extent;
-    const proj = Array.isArray(options) ? targetProjection : (options?.targetProjection ?? targetProjection);
+    const proj =
+      Array.isArray(options) ? targetProjection : (
+        (options?.targetProjection ?? targetProjection)
+      );
     return this.sendRequest<GeospatialQueryResult>(
-      { type: 'queryExtent', layerId, options, extent, targetProjection: proj },
+      { type: "queryExtent", layerId, options, extent, targetProjection: proj },
       timeoutMs
     );
   }
@@ -1190,9 +1279,12 @@ export class GeospatialService {
    * @param {number} [timeoutMs] - Optional timeout override.
    * @returns {Promise<boolean>} True if closed.
    */
-  public async closeDataset(layerId: string, timeoutMs?: number): Promise<boolean> {
+  public async closeDataset(
+    layerId: string,
+    timeoutMs?: number
+  ): Promise<boolean> {
     const res = await this.sendRequest<{ closed: boolean }>(
-      { type: 'closeDataset', layerId },
+      { type: "closeDataset", layerId },
       timeoutMs
     );
     this.activeLayers.delete(layerId);
@@ -1207,7 +1299,10 @@ export class GeospatialService {
    * @returns {Promise<void>}
    */
   public async closeAll(timeoutMs?: number): Promise<void> {
-    await this.sendRequest<{ closed: boolean }>({ type: 'closeAll' }, timeoutMs);
+    await this.sendRequest<{ closed: boolean }>(
+      { type: "closeAll" },
+      timeoutMs
+    );
     this.activeLayers.clear();
     this.layerEdits.clear();
     this.circuitBreaker.clear();
@@ -1223,7 +1318,10 @@ export class GeospatialService {
     layers: RehydrateLayerSpec[],
     timeoutMs?: number
   ): Promise<RehydrateResult> {
-    const res = await this.sendRequest<RehydrateResult>({ type: 'rehydrate', layers }, timeoutMs);
+    const res = await this.sendRequest<RehydrateResult>(
+      { type: "rehydrate", layers },
+      timeoutMs
+    );
     for (const spec of layers) {
       if (res.rehydrated.includes(spec.layerId)) {
         this.activeLayers.set(spec.layerId, spec.filePath);
@@ -1242,7 +1340,7 @@ export class GeospatialService {
    * @returns {Promise<{ pong: boolean }>} Promise resolving to pong result.
    */
   public async ping(timeoutMs?: number): Promise<{ pong: boolean }> {
-    return this.sendRequest<{ pong: boolean }>({ type: 'ping' }, timeoutMs);
+    return this.sendRequest<{ pong: boolean }>({ type: "ping" }, timeoutMs);
   }
 
   /**
@@ -1337,20 +1435,23 @@ export class GeospatialService {
    * @param {LayerFieldInfo[]} updatedFields - Array of updated layer field definitions.
    * @returns {void}
    */
-  public handleFieldDemoted(layerId: string, updatedFields: LayerFieldInfo[]): void {
-    import('../api/layers/updateLayerFields')
+  public handleFieldDemoted(
+    layerId: string,
+    updatedFields: LayerFieldInfo[]
+  ): void {
+    import("../api/layers/updateLayerFields")
       .then(({ updateLayerFields }) => {
         updateLayerFields(layerId, updatedFields).catch((err: any) => {
-          logging.warn('Failed to update ProjectStore on field demoted', err, {
+          logging.warn("Failed to update ProjectStore on field demoted", err, {
             layerId,
-            scope: 'GeospatialService'
+            scope: "GeospatialService",
           });
         });
       })
       .catch((err: any) => {
-        logging.warn('Failed to load updateLayerFields module', err, {
+        logging.warn("Failed to load updateLayerFields module", err, {
           layerId,
-          scope: 'GeospatialService'
+          scope: "GeospatialService",
         });
       });
   }
@@ -1371,12 +1472,14 @@ export class GeospatialService {
     }
     if (this.worker && this.isReady) {
       this.sendInternalRequest({
-        type: 'setBackgroundScanEnabled',
-        enabled
+        type: "setBackgroundScanEnabled",
+        enabled,
       }).catch((err: any) => {
-        logging.warn('Failed to forward setBackgroundScanEnabled to worker', err, {
-          scope: 'GeospatialService'
-        });
+        logging.warn(
+          "Failed to forward setBackgroundScanEnabled to worker",
+          err,
+          { scope: "GeospatialService" }
+        );
       });
     }
   }
@@ -1398,7 +1501,7 @@ export class GeospatialService {
 
     for (const pending of this.pendingRequests.values()) {
       clearTimeout(pending.timer);
-      pending.reject(new Error('GeospatialService disposed'));
+      pending.reject(new Error("GeospatialService disposed"));
     }
     this.pendingRequests.clear();
     this.activeLayers.clear();

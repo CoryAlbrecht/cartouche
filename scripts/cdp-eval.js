@@ -15,8 +15,8 @@
  * @see scripts/cdp-client.js
  */
 
-import { readFileSync } from 'node:fs';
-import { connectRenderer, takeTargetArg } from './cdp-client.js';
+import { readFileSync } from "node:fs";
+import { connectRenderer, takeTargetArg } from "./cdp-client.js";
 
 /**
  * @description Reads the function body from `-e <body>` or a file path argument.
@@ -29,13 +29,15 @@ import { connectRenderer, takeTargetArg } from './cdp-client.js';
  * @throws {Error} When no body is supplied.
  */
 function readBody(argv) {
-  if (argv[0] === '-e' && argv[1] !== undefined) {
+  if (argv[0] === "-e" && argv[1] !== undefined) {
     return argv[1];
   }
   if (argv[0]) {
-    return readFileSync(argv[0], 'utf8');
+    return readFileSync(argv[0], "utf8");
   }
-  throw new Error('Usage: node scripts/cdp-eval.js [--target <window title>] <body-file.js> | -e "<body>"');
+  throw new Error(
+    'Usage: node scripts/cdp-eval.js [--target <window title>] <body-file.js> | -e "<body>"'
+  );
 }
 
 /**
@@ -51,21 +53,28 @@ async function main() {
   const body = readBody(rest);
   const session = await connectRenderer(target);
   try {
-    await session.send('Runtime.enable');
-    const { result, exceptionDetails } = await session.send('Runtime.evaluate', {
-      expression: `(async () => {\n${body}\n})()`,
-      awaitPromise: true,
-      returnByValue: true,
-    });
+    await session.send("Runtime.enable");
+    const { result, exceptionDetails } = await session.send(
+      "Runtime.evaluate",
+      {
+        expression: `(async () => {\n${body}\n})()`,
+        awaitPromise: true,
+        returnByValue: true,
+      }
+    );
     let exitCode = 0;
     if (exceptionDetails) {
-      console.log(`EVAL ERROR: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`);
+      console.log(
+        `EVAL ERROR: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`
+      );
       exitCode = 1;
     } else {
       console.log(JSON.stringify(result.value, null, 2));
     }
     const problems = [...new Set(session.problems)];
-    console.log(`--- ${problems.length} console error(s)/warning(s)/exception(s) ---`);
+    console.log(
+      `--- ${problems.length} console error(s)/warning(s)/exception(s) ---`
+    );
     for (const problem of problems) {
       console.log(problem.slice(0, 600));
     }

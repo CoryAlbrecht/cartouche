@@ -15,9 +15,9 @@ import type {
   QueryExtentOptions,
   QueryExtentBinaryResult,
   QueryExtentResult,
-  StagedFeatureEdit
-} from '@shared/types';
-import { geospatialService } from '../../worker/GeospatialService';
+  StagedFeatureEdit,
+} from "@shared/types";
+import { geospatialService } from "../../worker/GeospatialService";
 
 /**
  * @description Executes a spatial query against a layer session via GeospatialService, streaming the contiguous binary WKB packet buffer across IPC.
@@ -35,7 +35,11 @@ export async function queryExtent(
   options?: QueryExtentOptions | BoundingBox,
   targetProjection?: string
 ): Promise<QueryExtentBinaryResult & QueryExtentResult> {
-  return (await geospatialService.queryExtent(layerId, options, targetProjection)) as any;
+  return (await geospatialService.queryExtent(
+    layerId,
+    options,
+    targetProjection
+  )) as any;
 }
 
 /**

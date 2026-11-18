@@ -10,15 +10,18 @@
  * @see {@link ToolbarZone}
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useSignals } from '@preact/signals-react/runtime';
-import Icon from './Icon';
-import { PopupMenu } from './PopupMenu';
-import type { PopupMenuItem } from '@renderer/state/projectSignals';
-import type { ToolbarZone } from '@renderer/state/gisSignals';
-import { getActionFormattedKey, getActionIcon } from '@renderer/state/actionSignals';
-import { useTranslation } from '@renderer/hooks/useTranslation';
-import { mdiMenuDown } from '@mdi/js';
+import React, { useState, useRef, useEffect } from "react";
+import { useSignals } from "@preact/signals-react/runtime";
+import Icon from "./Icon";
+import { PopupMenu } from "./PopupMenu";
+import type { PopupMenuItem } from "@renderer/state/projectSignals";
+import type { ToolbarZone } from "@renderer/state/gisSignals";
+import {
+  getActionFormattedKey,
+  getActionIcon,
+} from "@renderer/state/actionSignals";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import { mdiMenuDown } from "@mdi/js";
 
 /**
  * @typedef {Object} SplitToolOption
@@ -97,15 +100,15 @@ export interface SplitToolButtonProps {
 export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
   activeAction,
   options,
-  zone = 'top',
+  zone = "top",
   disabled = false,
   active = false,
   onSelect,
   onExecute,
-  className = '',
+  className = "",
   chevronIcon,
   title,
-  ariaLabel
+  ariaLabel,
 }) => {
   useSignals();
   const { t } = useTranslation();
@@ -121,18 +124,25 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
     setCurrentAction(activeAction);
   }, [activeAction]);
 
-  const isVertical = zone === 'left' || zone === 'right';
-  const orientationClass = isVertical ? 'vertical' : 'horizontal';
+  const isVertical = zone === "left" || zone === "right";
+  const orientationClass = isVertical ? "vertical" : "horizontal";
 
   // Resolve active option details (icon, label, formatted key combination)
-  const activeOpt = options.find((opt) => (typeof opt === 'string' ? opt : opt.id) === currentAction);
-  const activeOptObj = typeof activeOpt === 'object' ? activeOpt : undefined;
+  const activeOpt = options.find(
+    (opt) => (typeof opt === "string" ? opt : opt.id) === currentAction
+  );
+  const activeOptObj = typeof activeOpt === "object" ? activeOpt : undefined;
 
   const activeLabel = activeOptObj?.label ?? t(currentAction);
   const activeIcon = activeOptObj?.icon ?? getActionIcon(currentAction);
-  const activeFormattedKey = activeOptObj?.formattedKey ?? getActionFormattedKey(currentAction);
+  const activeFormattedKey =
+    activeOptObj?.formattedKey ?? getActionFormattedKey(currentAction);
 
-  const computedTitle = title ?? (activeFormattedKey ? `${activeLabel} (${activeFormattedKey})` : activeLabel);
+  const computedTitle =
+    title
+    ?? (activeFormattedKey ?
+      `${activeLabel} (${activeFormattedKey})`
+    : activeLabel);
   const computedAriaLabel = ariaLabel ?? activeLabel;
 
   /**
@@ -178,18 +188,18 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
         left: e.clientX,
         top: e.clientY,
         right: e.clientX,
-        bottom: e.clientY
+        bottom: e.clientY,
       };
 
       if (isVertical) {
         setMenuPos({
-          x: zone === 'right' ? rect.left : rect.right,
-          y: rect.top
+          x: zone === "right" ? rect.left : rect.right,
+          y: rect.top,
         });
       } else {
         setMenuPos({
           x: rect.left,
-          y: zone === 'bottom' ? rect.top : rect.bottom
+          y: zone === "bottom" ? rect.top : rect.bottom,
         });
       }
     } else {
@@ -222,7 +232,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
 
   // Convert options to PopupMenuItem array
   const menuItems: PopupMenuItem[] = options.map((opt) => {
-    const item = typeof opt === 'string' ? { id: opt } : opt;
+    const item = typeof opt === "string" ? { id: opt } : opt;
     const itemLabel = item.label ?? t(item.id);
     const itemIcon = item.icon ?? getActionIcon(item.id);
     const itemKey = item.formattedKey ?? getActionFormattedKey(item.id);
@@ -233,7 +243,7 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
       icon: itemIcon || undefined,
       formattedKey: itemKey || undefined,
       disabled: Boolean(item.disabled),
-      onClick: () => handleSelectOption(item.id)
+      onClick: () => handleSelectOption(item.id),
     };
   });
 
@@ -241,24 +251,29 @@ export const SplitToolButton: React.FC<SplitToolButtonProps> = ({
     <div className={`split-tool-button ${orientationClass} ${className}`}>
       <button
         type='button'
-        className={`toolbar-btn split-tool-primary ${active ? 'active' : ''} ${disabled ? 'disabled' : ''}`.replace(/\s+/g, ' ').trim()}
+        className={`toolbar-btn split-tool-primary ${active ? "active" : ""} ${disabled ? "disabled" : ""}`
+          .replace(/\s+/g, " ")
+          .trim()}
         title={computedTitle}
         disabled={disabled}
         onClick={handlePrimaryClick}
-        aria-label={computedAriaLabel}
-      >
+        aria-label={computedAriaLabel}>
         <Icon path={activeIcon} />
       </button>
       <button
         ref={chevronRef}
         type='button'
-        className={`toolbar-btn split-tool-chevron ${disabled ? 'disabled' : ''}`.replace(/\s+/g, ' ').trim()}
-        title={t('more_options')}
+        className={`toolbar-btn split-tool-chevron ${disabled ? "disabled" : ""}`
+          .replace(/\s+/g, " ")
+          .trim()}
+        title={t("more_options")}
         disabled={disabled}
         onClick={handleChevronClick}
-        aria-label={t('more_options')}
-      >
-        <Icon path={chevronIcon ?? mdiMenuDown} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+        aria-label={t("more_options")}>
+        <Icon
+          path={chevronIcon ?? mdiMenuDown}
+          size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+        />
       </button>
 
       <PopupMenu

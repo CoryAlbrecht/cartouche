@@ -11,12 +11,15 @@
  * @see {@link extractFeatureTemporalProperties}
  */
 
-import type { LayerTemporalConfig, LayerTemporalMode } from '../../shared/types/project';
+import type {
+  LayerTemporalConfig,
+  LayerTemporalMode,
+} from "../../shared/types/project";
 import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
   timeFilterFrameEndSignal,
-} from '../state/timeFilterSignals';
+} from "../state/timeFilterSignals";
 
 /**
  * @typedef {Object} TemporalPredicateContext
@@ -46,11 +49,11 @@ export interface TemporalPredicateContext {
  * @returns {number | null} Normalized UTC epoch milliseconds, or null if unparseable, null, undefined, or empty.
  */
 export function parseTemporalValue(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return Number.isFinite(value) ? value : null;
   }
 
@@ -59,7 +62,7 @@ export function parseTemporalValue(value: unknown): number | null {
     return Number.isFinite(time) ? time : null;
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) {
       return null;
@@ -96,12 +99,12 @@ export function parseTemporalValue(value: unknown): number | null {
 export function extractFeatureTemporalProperties(
   featureOrProps: unknown
 ): Record<string, unknown> | null {
-  if (!featureOrProps || typeof featureOrProps !== 'object') {
+  if (!featureOrProps || typeof featureOrProps !== "object") {
     return null;
   }
 
   // OpenLayers Feature instance with getProperties()
-  if (typeof (featureOrProps as any).getProperties === 'function') {
+  if (typeof (featureOrProps as any).getProperties === "function") {
     return (featureOrProps as any).getProperties();
   }
 
@@ -136,9 +139,9 @@ export function evaluateTemporalPredicate(
 
   // If global time filtering is not active in the workbench, render unconditionally
   const isGlobalActive =
-    context?.globalEnabled !== undefined
-      ? context.globalEnabled
-      : isTimeFilterActiveSignal.value;
+    context?.globalEnabled !== undefined ?
+      context.globalEnabled
+    : isTimeFilterActiveSignal.value;
 
   if (!isGlobalActive) {
     return true;
@@ -146,25 +149,27 @@ export function evaluateTemporalPredicate(
 
   // Resolve current active frame window [T_frame_start, T_frame_end]
   const frameStart =
-    context?.frameStartUtc !== undefined
-      ? context.frameStartUtc
-      : timeFilterFrameStartSignal.value;
+    context?.frameStartUtc !== undefined ?
+      context.frameStartUtc
+    : timeFilterFrameStartSignal.value;
 
-  if (frameStart === undefined || frameStart === null || !Number.isFinite(frameStart)) {
+  if (
+    frameStart === undefined
+    || frameStart === null
+    || !Number.isFinite(frameStart)
+  ) {
     return false;
   }
 
   const frameEnd =
-    context?.frameEndUtc !== undefined
-      ? context.frameEndUtc
-      : (context?.frameStartUtc !== undefined
-        ? context.frameStartUtc
-        : timeFilterFrameEndSignal.value);
+    context?.frameEndUtc !== undefined ? context.frameEndUtc
+    : context?.frameStartUtc !== undefined ? context.frameStartUtc
+    : timeFilterFrameEndSignal.value;
 
   const effectiveEnd =
-    frameEnd !== undefined && frameEnd !== null && Number.isFinite(frameEnd)
-      ? Math.max(frameStart, frameEnd)
-      : frameStart;
+    frameEnd !== undefined && frameEnd !== null && Number.isFinite(frameEnd) ?
+      Math.max(frameStart, frameEnd)
+    : frameStart;
 
   const props = extractFeatureTemporalProperties(featureOrProps);
   if (!props) {
@@ -172,34 +177,36 @@ export function evaluateTemporalPredicate(
   }
 
   const mode = config.mode as LayerTemporalMode | string;
-  const startOp = config.startOp ?? '>=';
-  const endOp = config.endOp ?? '<=';
+  const startOp = config.startOp ?? ">=";
+  const endOp = config.endOp ?? "<=";
 
-  const fStart = config.startField ? parseTemporalValue(props[config.startField]) : null;
-  const fEnd = config.endField ? parseTemporalValue(props[config.endField]) : null;
+  const fStart =
+    config.startField ? parseTemporalValue(props[config.startField]) : null;
+  const fEnd =
+    config.endField ? parseTemporalValue(props[config.endField]) : null;
 
   // An unreadable date imposes no constraint: a feature lacking only one date is filtered by the other
   // alone, and a feature lacking every configured date is an Undated Feature, always shown.
   const evalStart = (): boolean => {
     if (fStart === null) return true;
-    return startOp === '>=' ? effectiveEnd >= fStart : effectiveEnd > fStart;
+    return startOp === ">=" ? effectiveEnd >= fStart : effectiveEnd > fStart;
   };
 
   const evalEnd = (): boolean => {
     if (fEnd === null) return true;
-    return endOp === '<=' ? frameStart <= fEnd : frameStart < fEnd;
+    return endOp === "<=" ? frameStart <= fEnd : frameStart < fEnd;
   };
 
   // Support both canonical enum keys ('start', 'end', 'start_end') and descriptive labels
-  if (mode === 'start' || mode === 'Start Field') {
+  if (mode === "start" || mode === "Start Field") {
     return evalStart();
   }
 
-  if (mode === 'end' || mode === 'End Field') {
+  if (mode === "end" || mode === "End Field") {
     return evalEnd();
   }
 
-  if (mode === 'start_end' || mode === 'Start and End Fields' || !mode) {
+  if (mode === "start_end" || mode === "Start and End Fields" || !mode) {
     return evalStart() && evalEnd();
   }
 

@@ -44,7 +44,13 @@ export const SelectByValueDialog: React.FC = () => {
       defaultWidth={640}
       defaultHeight={480}
       footer={
-        <div style={{ display: "flex", justifyContent: "flex-end", width: "100%", gap: "8px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            width: "100%",
+            gap: "8px",
+          }}>
           <button
             type='button'
             className='btn btn-secondary dialog-btn dialog-btn-wide dialog-btn-secondary'

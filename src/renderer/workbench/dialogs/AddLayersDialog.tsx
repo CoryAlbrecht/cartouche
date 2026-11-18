@@ -164,7 +164,11 @@ export const AddLayersDialog: React.FC = () => {
             );
           }
         } catch (err: any) {
-          addConsoleLog("error", `Failed to browse vector files: ${err?.message || err}`, "Layers");
+          addConsoleLog(
+            "error",
+            `Failed to browse vector files: ${err?.message || err}`,
+            "Layers"
+          );
         }
       }
     } else {
@@ -184,7 +188,11 @@ export const AddLayersDialog: React.FC = () => {
             filePathSignal.value = selected[0];
           }
         } catch (err: any) {
-          addConsoleLog("error", `Failed to browse ${activeTab} file: ${err?.message || err}`, "Layers");
+          addConsoleLog(
+            "error",
+            `Failed to browse ${activeTab} file: ${err?.message || err}`,
+            "Layers"
+          );
         }
       }
     }
@@ -206,10 +214,10 @@ export const AddLayersDialog: React.FC = () => {
         addConsoleLog("warn", "No vector files selected to add.", "Layers");
         return;
       }
-      
+
       const validFiles: string[] = [];
       const invalidFiles: string[] = [];
-      
+
       for (const file of files) {
         const exists = await window.electronAPI?.pathExists?.(file);
         if (exists) {
@@ -218,20 +226,24 @@ export const AddLayersDialog: React.FC = () => {
           invalidFiles.push(file);
         }
       }
-      
+
       if (invalidFiles.length > 0) {
         invalidFilesSignal.value = invalidFiles;
       }
-      
+
       if (validFiles.length > 0) {
-        const layersToAdd: AddLayerParams[] = validFiles.map(file => ({
+        const layersToAdd: AddLayerParams[] = validFiles.map((file) => ({
           sourceType: "vector",
-          filePath: file
+          filePath: file,
         }));
         await window.electronAPI?.addLayers?.(layersToAdd);
-        addConsoleLog("info", `Added ${validFiles.length} vector layer(s)`, "Layers");
+        addConsoleLog(
+          "info",
+          `Added ${validFiles.length} vector layer(s)`,
+          "Layers"
+        );
       }
-      
+
       if (invalidFiles.length === 0) {
         vectorFilesSignal.value = [];
         vectorInputTextSignal.value = "";
@@ -257,7 +269,13 @@ export const AddLayersDialog: React.FC = () => {
     <Dialog
       name='addLayersWindow'
       title='Add Layers'
-      icon={<Icon name="file:layers-plus-outline.svg" size="calc(var(--cartouche-ui-icon-size, 24px) * 0.75)" color="#ffffff" />}
+      icon={
+        <Icon
+          name='file:layers-plus-outline.svg'
+          size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)'
+          color='#ffffff'
+        />
+      }
       isOpen={isOpen}
       onClose={closeAddLayersDialog}
       onCancel={handleCancel}
@@ -275,7 +293,11 @@ export const AddLayersDialog: React.FC = () => {
             type='button'
             className='add-layers-btn add-layers-btn-primary'
             onClick={handleAdd}>
-            <Icon name="file:layers-plus-outline.svg" size="calc(var(--cartouche-ui-icon-size, 24px) * 0.67)" color="#ffffff" />
+            <Icon
+              name='file:layers-plus-outline.svg'
+              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+              color='#ffffff'
+            />
             <span>Add Layers</span>
           </button>
         </>
@@ -321,7 +343,10 @@ export const AddLayersDialog: React.FC = () => {
                   userSelect: "none",
                   transition: "color 0.15s ease",
                 }}>
-                <Icon path={tab.icon} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+                <Icon
+                  path={tab.icon}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                />
                 <span>{tab.label}</span>
               </div>
             );
@@ -406,7 +431,10 @@ export const AddLayersDialog: React.FC = () => {
                           }}
                           title='Remove file'
                           className='add-layers-chip-remove'>
-                          <Icon path={mdiClose} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)' />
+                          <Icon
+                            path={mdiClose}
+                            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+                          />
                         </button>
                       </span>
                     );
@@ -462,7 +490,10 @@ export const AddLayersDialog: React.FC = () => {
                 type='button'
                 className='add-layers-btn add-layers-btn-browse'
                 onClick={handleBrowse}>
-                <Icon path={mdiFolderOpenOutline} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+                <Icon
+                  path={mdiFolderOpenOutline}
+                  size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                />
                 <span>Browse...</span>
               </button>
             </div>
@@ -470,7 +501,7 @@ export const AddLayersDialog: React.FC = () => {
         </div>
       </div>
       <ModalDialog
-        title="Missing Files"
+        title='Missing Files'
         isOpen={invalidFilesSignal.value.length > 0}
         onClose={() => {
           invalidFilesSignal.value = [];
@@ -483,10 +514,9 @@ export const AddLayersDialog: React.FC = () => {
             onClick: () => {
               invalidFilesSignal.value = [];
               closeAddLayersDialog();
-            }
-          }
-        ]}
-      >
+            },
+          },
+        ]}>
         <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>
           {`The following files could not be found and will be skipped:\n\n${invalidFilesSignal.value.join("\n")}`}
         </p>

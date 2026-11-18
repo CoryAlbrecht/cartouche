@@ -13,7 +13,7 @@
  * @see {@link quoteSqlString}
  */
 
-import gdal from 'gdal-async';
+import gdal from "gdal-async";
 
 /**
  * @typedef {Record<string, unknown>} SqliteRow
@@ -34,8 +34,11 @@ export type SqliteRow = Record<string, unknown>;
  * @returns {T} What `use` returns.
  * @throws {Error} When GDAL cannot open the file, or whatever `use` throws.
  */
-export function withReadOnlySqlite<T>(filePath: string, use: (dataset: gdal.Dataset) => T): T {
-  const dataset = gdal.open(filePath, 'r', 'SQLite');
+export function withReadOnlySqlite<T>(
+  filePath: string,
+  use: (dataset: gdal.Dataset) => T
+): T {
+  const dataset = gdal.open(filePath, "r", "SQLite");
   try {
     return use(dataset);
   } finally {
@@ -56,5 +59,7 @@ export function withReadOnlySqlite<T>(filePath: string, use: (dataset: gdal.Data
  * @throws {Error} When GDAL rejects the statement.
  */
 export function selectRows(dataset: gdal.Dataset, sql: string): SqliteRow[] {
-  return dataset.executeSQL(sql).features.map((feature) => feature.fields.toObject() as SqliteRow);
+  return dataset
+    .executeSQL(sql)
+    .features.map((feature) => feature.fields.toObject() as SqliteRow);
 }

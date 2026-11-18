@@ -8,8 +8,13 @@
  * @since 0.1.0-dev
  */
 
-import { app, ipcMain, type IpcMainInvokeEvent, type IpcMainEvent } from 'electron';
-import { logging } from '../../shared/logging';
+import {
+  app,
+  ipcMain,
+  type IpcMainInvokeEvent,
+  type IpcMainEvent,
+} from "electron";
+import { logging } from "../../shared/logging";
 
 /**
  * Interface representing the minimal IPC main invoker bridge for testing and production.
@@ -18,8 +23,14 @@ import { logging } from '../../shared/logging';
  * @property {(channel: string, listener: (event: IpcMainEvent, ...args: any[]) => void) => void} on - Registers a one-way event listener.
  */
 export interface IpcMainBridge {
-  handle: (channel: string, listener: (event: IpcMainInvokeEvent, ...args: any[]) => any) => void;
-  on: (channel: string, listener: (event: IpcMainEvent, ...args: any[]) => void) => void;
+  handle: (
+    channel: string,
+    listener: (event: IpcMainInvokeEvent, ...args: any[]) => any
+  ) => void;
+  on: (
+    channel: string,
+    listener: (event: IpcMainEvent, ...args: any[]) => void
+  ) => void;
 }
 
 /**
@@ -47,22 +58,28 @@ export function handleIpc(
     const startTime = isDev ? performance.now() : 0;
 
     if (isDev) {
-      logging.debug('IPC request dispatched', { channel, scope: 'registerIpcHandler' });
+      logging.debug("IPC request dispatched", {
+        channel,
+        scope: "registerIpcHandler",
+      });
     }
 
     try {
       const result = await handler(event, ...args);
       if (isDev) {
         const elapsed = (performance.now() - startTime).toFixed(1);
-        logging.debug('IPC response handled', {
+        logging.debug("IPC response handled", {
           channel,
           durationMs: parseFloat(elapsed),
-          scope: 'registerIpcHandler'
+          scope: "registerIpcHandler",
         });
       }
       return result;
     } catch (err) {
-      logging.error('IPC handler invocation failed', err, { channel, scope: 'registerIpcHandler' });
+      logging.error("IPC handler invocation failed", err, {
+        channel,
+        scope: "registerIpcHandler",
+      });
       throw err;
     }
   });
@@ -91,14 +108,19 @@ export function onIpc(
   bridge.on(channel, (event: IpcMainEvent, ...args: any[]) => {
     const isDev = !isPackaged;
     if (isDev) {
-      logging.debug('IPC event received', { channel, scope: 'registerIpcHandler' });
+      logging.debug("IPC event received", {
+        channel,
+        scope: "registerIpcHandler",
+      });
     }
 
     try {
       listener(event, ...args);
     } catch (err) {
-      logging.error('IPC event listener failed', err, { channel, scope: 'registerIpcHandler' });
+      logging.error("IPC event listener failed", err, {
+        channel,
+        scope: "registerIpcHandler",
+      });
     }
   });
 }
-

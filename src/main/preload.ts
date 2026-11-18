@@ -9,8 +9,14 @@
  * @see {@link ElectronAPI}
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
-import type { DropPosition, ElectronAPI, LayerTemporalConfig, ProjectLayerStyleItem, StagedFeatureEdit } from '@shared/types';
+import { contextBridge, ipcRenderer } from "electron";
+import type {
+  DropPosition,
+  ElectronAPI,
+  LayerTemporalConfig,
+  ProjectLayerStyleItem,
+  StagedFeatureEdit,
+} from "@shared/types";
 
 /**
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
@@ -25,204 +31,274 @@ const electronAPI: ElectronAPI = {
   version: process.versions.electron,
   nodeVersion: process.versions.node,
   /** @ipc window-minimize */
-  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  minimizeWindow: () => ipcRenderer.send("window-minimize"),
   /** @ipc window-maximize */
-  maximizeWindow: () => ipcRenderer.send('window-maximize'),
+  maximizeWindow: () => ipcRenderer.send("window-maximize"),
   /** @ipc window-close */
-  closeWindow: () => ipcRenderer.send('window-close'),
+  closeWindow: () => ipcRenderer.send("window-close"),
   /** @ipc window-confirm-close */
-  confirmCloseWindow: () => ipcRenderer.send('window-confirm-close'),
+  confirmCloseWindow: () => ipcRenderer.send("window-confirm-close"),
   /** @ipc app:request-close */
   onRequestClose: (callback: () => void) => {
     const handler = () => callback();
-    ipcRenderer.on('app:request-close', handler);
+    ipcRenderer.on("app:request-close", handler);
     return () => {
-      ipcRenderer.removeListener('app:request-close', handler);
+      ipcRenderer.removeListener("app:request-close", handler);
     };
   },
   /** @ipc window-is-maximized */
-  isWindowMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  isWindowMaximized: () => ipcRenderer.invoke("window-is-maximized"),
   /** @ipc window-maximized-state */
   onMaximizedState: (callback: (isMaximized: boolean) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, isMaximized: boolean) => callback(isMaximized);
-    ipcRenderer.on('window-maximized-state', handler);
+    const handler = (_event: Electron.IpcRendererEvent, isMaximized: boolean) =>
+      callback(isMaximized);
+    ipcRenderer.on("window-maximized-state", handler);
     return () => {
-      ipcRenderer.removeListener('window-maximized-state', handler);
+      ipcRenderer.removeListener("window-maximized-state", handler);
     };
   },
   /** @ipc gis:fetch-layer-flatgeobuf */
-  fetchLayerFlatGeobuf: (layerId: string) => ipcRenderer.invoke('gis:fetch-layer-flatgeobuf', layerId),
+  fetchLayerFlatGeobuf: (layerId: string) =>
+    ipcRenderer.invoke("gis:fetch-layer-flatgeobuf", layerId),
   /** @ipc gis:encode-flatgeobuf */
   encodeFeaturesToFlatGeobuf: (features: any[], geometryKind: any) =>
-    ipcRenderer.invoke('gis:encode-flatgeobuf', features, geometryKind),
+    ipcRenderer.invoke("gis:encode-flatgeobuf", features, geometryKind),
   /** @ipc gis:execute-action */
-  executeAction: (name: string) => ipcRenderer.invoke('gis:execute-action', name),
+  executeAction: (name: string) =>
+    ipcRenderer.invoke("gis:execute-action", name),
   /** @ipc gis:get-actions */
-  getActions: () => ipcRenderer.invoke('gis:get-actions'),
+  getActions: () => ipcRenderer.invoke("gis:get-actions"),
   /** @ipc gis:get-preference */
-  getPreferenceValue: (name?: string) => ipcRenderer.invoke('gis:get-preference', name),
+  getPreferenceValue: (name?: string) =>
+    ipcRenderer.invoke("gis:get-preference", name),
   /** @ipc gis:set-preference */
-  setPreference: (name: string, value: any) => ipcRenderer.invoke('gis:set-preference', name, value),
+  setPreference: (name: string, value: any) =>
+    ipcRenderer.invoke("gis:set-preference", name, value),
   /** @ipc gis:set-preference */
-  setPreferenceValue: (name: string, value: any) => ipcRenderer.invoke('gis:set-preference', name, value),
+  setPreferenceValue: (name: string, value: any) =>
+    ipcRenderer.invoke("gis:set-preference", name, value),
   /** @ipc gis:get-filetypes */
-  getFileTypes: () => ipcRenderer.invoke('gis:get-filetypes'),
+  getFileTypes: () => ipcRenderer.invoke("gis:get-filetypes"),
   /** @ipc gis:identify-file */
-  identifyFile: (filePath: string) => ipcRenderer.invoke('gis:identify-file', filePath),
+  identifyFile: (filePath: string) =>
+    ipcRenderer.invoke("gis:identify-file", filePath),
   /** @ipc dialog:open-files */
   /** @ipc gis:add-layers */
-  addLayers: (layers: any[]) => ipcRenderer.invoke('gis:add-layers', layers),
+  addLayers: (layers: any[]) => ipcRenderer.invoke("gis:add-layers", layers),
   /** @ipc gis:path-exists */
-  pathExists: (filePath: string) => ipcRenderer.invoke('gis:path-exists', filePath),
+  pathExists: (filePath: string) =>
+    ipcRenderer.invoke("gis:path-exists", filePath),
   /** @ipc layers:queryExtent */
   queryExtent: (layerId: string, options?: any, targetProjection?: string) =>
-    ipcRenderer.invoke('layers:queryExtent', layerId, options, targetProjection),
+    ipcRenderer.invoke(
+      "layers:queryExtent",
+      layerId,
+      options,
+      targetProjection
+    ),
   /** @ipc layers:getLayerInfo */
   getLayerInfo: (layerId: string) =>
-    ipcRenderer.invoke('layers:getLayerInfo', layerId),
+    ipcRenderer.invoke("layers:getLayerInfo", layerId),
   /** @ipc layers:updateLayerFields */
   updateLayerFields: (layerId: string, fields: any[]) =>
-    ipcRenderer.invoke('layers:updateLayerFields', layerId, fields),
+    ipcRenderer.invoke("layers:updateLayerFields", layerId, fields),
   /** @ipc layers:updateLayerTemporalConfig */
-  updateLayerTemporalConfig: (layerId: string, temporal?: LayerTemporalConfig, temporalEnabled?: boolean) =>
-    ipcRenderer.invoke('layers:updateLayerTemporalConfig', layerId, temporal, temporalEnabled),
+  updateLayerTemporalConfig: (
+    layerId: string,
+    temporal?: LayerTemporalConfig,
+    temporalEnabled?: boolean
+  ) =>
+    ipcRenderer.invoke(
+      "layers:updateLayerTemporalConfig",
+      layerId,
+      temporal,
+      temporalEnabled
+    ),
   /** @ipc layers:rekeyLayer */
   rekeyLayer: (oldLayerId: string, newLayerId: string) =>
-    ipcRenderer.invoke('layers:rekeyLayer', oldLayerId, newLayerId),
+    ipcRenderer.invoke("layers:rekeyLayer", oldLayerId, newLayerId),
   /** @ipc layers:setLayerStyle */
-  setLayerStyle: (layerIds: string[], style: ProjectLayerStyleItem | undefined, opacity?: number) =>
-    ipcRenderer.invoke('layers:setLayerStyle', layerIds, style, opacity),
+  setLayerStyle: (
+    layerIds: string[],
+    style: ProjectLayerStyleItem | undefined,
+    opacity?: number
+  ) => ipcRenderer.invoke("layers:setLayerStyle", layerIds, style, opacity),
   /** @ipc layers:loadStyleFile */
   loadStyleFile: (filePath?: string) =>
-    ipcRenderer.invoke('layers:loadStyleFile', filePath),
+    ipcRenderer.invoke("layers:loadStyleFile", filePath),
   /** @ipc layers:saveStyleFile */
   saveStyleFile: (style: ProjectLayerStyleItem, defaultPath?: string) =>
-    ipcRenderer.invoke('layers:saveStyleFile', style, defaultPath),
+    ipcRenderer.invoke("layers:saveStyleFile", style, defaultPath),
   /** @ipc layers:stageFeatureEdit */
   stageFeatureEdit: (layerId: string, edit: StagedFeatureEdit) =>
-    ipcRenderer.invoke('layers:stageFeatureEdit', layerId, edit),
+    ipcRenderer.invoke("layers:stageFeatureEdit", layerId, edit),
   /** @ipc layers:clearLayerEdits */
   clearLayerEdits: (layerId: string) =>
-    ipcRenderer.invoke('layers:clearLayerEdits', layerId),
+    ipcRenderer.invoke("layers:clearLayerEdits", layerId),
   /** @ipc layers:getDirtyLayerIds */
-  getDirtyLayerIds: () =>
-    ipcRenderer.invoke('layers:getDirtyLayerIds'),
+  getDirtyLayerIds: () => ipcRenderer.invoke("layers:getDirtyLayerIds"),
 
-  openFiles: (options?: any) => ipcRenderer.invoke('dialog:open-files', options),
+  openFiles: (options?: any) =>
+    ipcRenderer.invoke("dialog:open-files", options),
   /** @ipc crs:get-definition */
-  getCrsDefinition: (authId: string) => ipcRenderer.invoke('crs:get-definition', authId),
+  getCrsDefinition: (authId: string) =>
+    ipcRenderer.invoke("crs:get-definition", authId),
   /** @ipc crs:get-info */
-  getCrsInfo: (authId: string) => ipcRenderer.invoke('crs:get-info', authId),
+  getCrsInfo: (authId: string) => ipcRenderer.invoke("crs:get-info", authId),
   /** @ipc crs:get-catalogue */
-  getCrsCatalogue: () => ipcRenderer.invoke('crs:get-catalogue'),
+  getCrsCatalogue: () => ipcRenderer.invoke("crs:get-catalogue"),
   /** @ipc crs:catalogue-updated */
   onCrsCatalogueUpdated: (callback: (state: any) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, state: any) => callback(state);
-    ipcRenderer.on('crs:catalogue-updated', handler);
+    const handler = (_event: Electron.IpcRendererEvent, state: any) =>
+      callback(state);
+    ipcRenderer.on("crs:catalogue-updated", handler);
     return () => {
-      ipcRenderer.removeListener('crs:catalogue-updated', handler);
+      ipcRenderer.removeListener("crs:catalogue-updated", handler);
     };
   },
   /** @ipc dialog:open-directory */
-  openDirectory: (options?: any) => ipcRenderer.invoke('dialog:open-directory', options),
+  openDirectory: (options?: any) =>
+    ipcRenderer.invoke("dialog:open-directory", options),
   /** @ipc dialog:save-file */
-  saveFile: (options?: any) => ipcRenderer.invoke('dialog:save-file', options),
+  saveFile: (options?: any) => ipcRenderer.invoke("dialog:save-file", options),
   /** @ipc gis:open-project */
-  openProject: (filePath?: string) => ipcRenderer.invoke('gis:open-project', filePath),
+  openProject: (filePath?: string) =>
+    ipcRenderer.invoke("gis:open-project", filePath),
   /** @ipc gis:get-current-project */
-  getCurrentProject: () => ipcRenderer.invoke('gis:get-current-project'),
+  getCurrentProject: () => ipcRenderer.invoke("gis:get-current-project"),
   /** @ipc gis:save-project */
-  saveProject: (filePath?: string, viewport?: any, timeFilter?: any) => ipcRenderer.invoke('gis:save-project', filePath, viewport, timeFilter),
+  saveProject: (filePath?: string, viewport?: any, timeFilter?: any) =>
+    ipcRenderer.invoke("gis:save-project", filePath, viewport, timeFilter),
   /** @ipc project:update-properties */
-  updateProjectProperties: (patch: any) => ipcRenderer.invoke('project:update-properties', patch),
+  updateProjectProperties: (patch: any) =>
+    ipcRenderer.invoke("project:update-properties", patch),
   /** @ipc project:loaded */
   onProjectLoaded: (callback: (project: any) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, project: any) => callback(project);
-    ipcRenderer.on('project:loaded', handler);
+    const handler = (_event: Electron.IpcRendererEvent, project: any) =>
+      callback(project);
+    ipcRenderer.on("project:loaded", handler);
     return () => {
-      ipcRenderer.removeListener('project:loaded', handler);
+      ipcRenderer.removeListener("project:loaded", handler);
     };
   },
   /** @ipc project:layers-tree-updated */
   onProjectLayersTreeUpdated: (callback: (tree: any[]) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, tree: any[]) => callback(tree);
-    ipcRenderer.on('project:layers-tree-updated', handler);
+    const handler = (_event: Electron.IpcRendererEvent, tree: any[]) =>
+      callback(tree);
+    ipcRenderer.on("project:layers-tree-updated", handler);
     return () => {
-      ipcRenderer.removeListener('project:layers-tree-updated', handler);
+      ipcRenderer.removeListener("project:layers-tree-updated", handler);
     };
   },
   /** @ipc project:layer-added */
   onLayerAdded: (callback: (descriptor: any) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, descriptor: any) => callback(descriptor);
-    ipcRenderer.on('project:layer-added', handler);
+    const handler = (_event: Electron.IpcRendererEvent, descriptor: any) =>
+      callback(descriptor);
+    ipcRenderer.on("project:layer-added", handler);
     return () => {
-      ipcRenderer.removeListener('project:layer-added', handler);
+      ipcRenderer.removeListener("project:layer-added", handler);
     };
   },
   /** @ipc project:metadata-updated */
   onProjectMetadataUpdated: (callback: (metadata: any) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, metadata: any) => callback(metadata);
-    ipcRenderer.on('project:metadata-updated', handler);
+    const handler = (_event: Electron.IpcRendererEvent, metadata: any) =>
+      callback(metadata);
+    ipcRenderer.on("project:metadata-updated", handler);
     return () => {
-      ipcRenderer.removeListener('project:metadata-updated', handler);
+      ipcRenderer.removeListener("project:metadata-updated", handler);
     };
   },
   /** @ipc project:crs-updated */
   onProjectCrsUpdated: (callback: (crs: any) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, crs: any) => callback(crs);
-    ipcRenderer.on('project:crs-updated', handler);
+    const handler = (_event: Electron.IpcRendererEvent, crs: any) =>
+      callback(crs);
+    ipcRenderer.on("project:crs-updated", handler);
     return () => {
-      ipcRenderer.removeListener('project:crs-updated', handler);
+      ipcRenderer.removeListener("project:crs-updated", handler);
     };
   },
   /** @ipc project:dirty-state-changed */
   onProjectDirtyStateChanged: (callback: (isDirty: boolean) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, isDirty: boolean) => callback(isDirty);
-    ipcRenderer.on('project:dirty-state-changed', handler);
+    const handler = (_event: Electron.IpcRendererEvent, isDirty: boolean) =>
+      callback(isDirty);
+    ipcRenderer.on("project:dirty-state-changed", handler);
     return () => {
-      ipcRenderer.removeListener('project:dirty-state-changed', handler);
+      ipcRenderer.removeListener("project:dirty-state-changed", handler);
     };
   },
   /** @ipc gis:get-i18n-state */
-  getI18nState: () => ipcRenderer.invoke('gis:get-i18n-state'),
+  getI18nState: () => ipcRenderer.invoke("gis:get-i18n-state"),
   /** @ipc i18n:state-changed */
   onI18nStateChanged: (callback: (state: any) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, state: any) => callback(state);
-    ipcRenderer.on('i18n:state-changed', handler);
+    const handler = (_event: Electron.IpcRendererEvent, state: any) =>
+      callback(state);
+    ipcRenderer.on("i18n:state-changed", handler);
     return () => {
-      ipcRenderer.removeListener('i18n:state-changed', handler);
+      ipcRenderer.removeListener("i18n:state-changed", handler);
     };
   },
   /** @ipc gis:set-node-visibility */
-  setNodeVisibility: (nodeId: string, visible: boolean) => ipcRenderer.invoke('gis:set-node-visibility', nodeId, visible),
+  setNodeVisibility: (nodeId: string, visible: boolean) =>
+    ipcRenderer.invoke("gis:set-node-visibility", nodeId, visible),
   /** @ipc gis:set-node-selection */
-  setNodeSelection: (selectedNodeIds: string[]) => ipcRenderer.invoke('gis:set-node-selection', selectedNodeIds),
+  setNodeSelection: (selectedNodeIds: string[]) =>
+    ipcRenderer.invoke("gis:set-node-selection", selectedNodeIds),
   /** @ipc gis:set-feature-selection */
-  setFeatureSelection: (layerId: string | null, selectedFeatureIds: Array<string | number>) =>
-    ipcRenderer.invoke('gis:set-feature-selection', layerId, selectedFeatureIds),
+  setFeatureSelection: (
+    layerId: string | null,
+    selectedFeatureIds: Array<string | number>
+  ) =>
+    ipcRenderer.invoke(
+      "gis:set-feature-selection",
+      layerId,
+      selectedFeatureIds
+    ),
   /** @ipc gis:remove-nodes */
-  removeNodes: (nodeIds: string[]) => ipcRenderer.invoke('gis:remove-nodes', nodeIds),
+  removeNodes: (nodeIds: string[]) =>
+    ipcRenderer.invoke("gis:remove-nodes", nodeIds),
   /** @ipc gis:create-group */
-  createGroup: (name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) =>
-    ipcRenderer.invoke('gis:create-group', name, targetNodeId, childNodeIds, newGroupId),
+  createGroup: (
+    name: string,
+    targetNodeId: string,
+    childNodeIds: string[],
+    newGroupId?: string
+  ) =>
+    ipcRenderer.invoke(
+      "gis:create-group",
+      name,
+      targetNodeId,
+      childNodeIds,
+      newGroupId
+    ),
   /** @ipc gis:rename-node */
-  renameNode: (nodeId: string, newName: string) => ipcRenderer.invoke('gis:rename-node', nodeId, newName),
+  renameNode: (nodeId: string, newName: string) =>
+    ipcRenderer.invoke("gis:rename-node", nodeId, newName),
   /** @ipc gis:rename-layer-tree-node */
   renameLayerTreeNode: (nodeId: string, newName: string) =>
-    ipcRenderer.invoke('gis:rename-layer-tree-node', nodeId, newName),
+    ipcRenderer.invoke("gis:rename-layer-tree-node", nodeId, newName),
   /** @ipc gis:reorder-nodes */
-  reorderNodes: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) =>
-    ipcRenderer.invoke('gis:reorder-nodes', draggedNodeIds, targetNodeId, position),
+  reorderNodes: (
+    draggedNodeIds: string[],
+    targetNodeId: string,
+    position: DropPosition
+  ) =>
+    ipcRenderer.invoke(
+      "gis:reorder-nodes",
+      draggedNodeIds,
+      targetNodeId,
+      position
+    ),
   /** @ipc gis:execute-renderer-action */
   onExecuteRendererAction: (callback: (actionName: string) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, actionName: string) => callback(actionName);
-    ipcRenderer.on('gis:execute-renderer-action', handler);
+    const handler = (_event: Electron.IpcRendererEvent, actionName: string) =>
+      callback(actionName);
+    ipcRenderer.on("gis:execute-renderer-action", handler);
     return () => {
-      ipcRenderer.removeListener('gis:execute-renderer-action', handler);
+      ipcRenderer.removeListener("gis:execute-renderer-action", handler);
     };
   },
   /** @ipc gis:log */
-  log: (payload: any) => ipcRenderer.send('gis:log', payload)
+  log: (payload: any) => ipcRenderer.send("gis:log", payload),
 };
 
-contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+contextBridge.exposeInMainWorld("electronAPI", electronAPI);

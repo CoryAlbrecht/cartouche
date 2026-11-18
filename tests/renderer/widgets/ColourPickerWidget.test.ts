@@ -11,13 +11,13 @@
  * @see {@link prefsUiBaseFontSize}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import fs from "node:fs";
+import path from "node:path";
+import { createRendererJiti } from "../rendererJiti";
 
 /**
  * @function pickerFieldRule
@@ -25,8 +25,11 @@ import { createRendererJiti } from '../rendererJiti';
  * @returns {string} The rule's declarations.
  */
 function pickerFieldRule(): string {
-  const css = fs.readFileSync(path.resolve(process.cwd(), 'src/renderer/styles/workbench.css'), 'utf8');
-  return css.match(/\n\.picker-field \{([^}]*)\}/)?.[1] ?? '';
+  const css = fs.readFileSync(
+    path.resolve(process.cwd(), "src/renderer/styles/workbench.css"),
+    "utf8"
+  );
+  return css.match(/\n\.picker-field \{([^}]*)\}/)?.[1] ?? "";
 }
 
 // Set React act environment flag
@@ -47,21 +50,24 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
-  value = '';
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
+  value = "";
   disabled = false;
-  title = '';
+  title = "";
   multiple = false;
   selected = false;
   selectedIndex = 0;
 
   get options(): any[] {
-    return this.childNodes.filter((c) => c.tagName === 'OPTION');
+    return this.childNodes.filter((c) => c.tagName === "OPTION");
   }
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -73,23 +79,23 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
-    if (k === 'value') {
+    if (k === "value") {
       this.value = String(v);
     }
-    if (k === 'title') {
+    if (k === "title") {
       this.title = String(v);
     }
-    if (k === 'disabled') {
+    if (k === "disabled") {
       this.disabled = true;
     }
   }
@@ -100,10 +106,10 @@ class MockElement {
 
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
-    if (k === 'disabled') {
+    if (k === "disabled") {
       this.disabled = false;
     }
   }
@@ -131,7 +137,11 @@ class MockElement {
     return newChild;
   }
 
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -140,7 +150,9 @@ class MockElement {
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -177,8 +189,22 @@ class MockElement {
     return false;
   }
 
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
-    return { width: 200, height: 100, top: 0, left: 0, right: 200, bottom: 100 };
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
+    return {
+      width: 200,
+      height: 100,
+      top: 0,
+      left: 0,
+      right: 200,
+      bottom: 100,
+    };
   }
 }
 
@@ -187,8 +213,8 @@ let container: MockElement;
 let root: Root | null = null;
 
 function setupDom(): void {
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -209,17 +235,17 @@ function setupDom(): void {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -232,7 +258,7 @@ function setupDom(): void {
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
   doc.defaultView = win;
 
@@ -240,14 +266,19 @@ function setupDom(): void {
   (globalThis as any).window = win;
   (globalThis as any).HTMLElement = MockElement;
   (globalThis as any).Element = MockElement;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -271,7 +302,10 @@ function teardownDom(): void {
   delete (globalThis as any).ResizeObserver;
 }
 
-function findElementsByClass(el: MockElement, className: string): MockElement[] {
+function findElementsByClass(
+  el: MockElement,
+  className: string
+): MockElement[] {
   const matches: MockElement[] = [];
   if (el.className && el.className.split(/\s+/).includes(className)) {
     matches.push(el);
@@ -286,13 +320,13 @@ function findElementsByClass(el: MockElement, className: string): MockElement[] 
 
 const jiti = createRendererJiti(import.meta.url);
 const { ColourPickerWidget } = jiti(
-  '../../../src/renderer/workbench/widgets/ColourPickerWidget.tsx'
+  "../../../src/renderer/workbench/widgets/ColourPickerWidget.tsx"
 );
 const { prefsUiIconSize, prefsUiBaseFontSize } = jiti(
-  '../../../src/renderer/state/preferencesSignals.ts'
+  "../../../src/renderer/state/preferencesSignals.ts"
 );
 
-describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
+describe("Reusable ColourPickerWidget Component (Ticket #205)", () => {
   beforeEach(() => {
     setupDom();
   });
@@ -301,157 +335,192 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
     teardownDom();
   });
 
-  it('renders default ColourPickerWidget with solid preview box, hex input, surface, and strips', async () => {
+  it("renders default ColourPickerWidget with solid preview box, hex input, surface, and strips", async () => {
     await act(async () => {
       root?.render(
-        React.createElement(ColourPickerWidget, {
-          initialColor: '#00ff00ff'
-        })
+        React.createElement(ColourPickerWidget, { initialColor: "#00ff00ff" })
       );
     });
 
     // 1. BasicWidget wrapper
-    const widgetEls = findElementsByClass(container, 'colour-picker-widget');
-    assert.equal(widgetEls.length, 1, 'ColourPickerWidget should render container with .colour-picker-widget');
+    const widgetEls = findElementsByClass(container, "colour-picker-widget");
+    assert.equal(
+      widgetEls.length,
+      1,
+      "ColourPickerWidget should render container with .colour-picker-widget"
+    );
 
     // 2. Full-Size Solid Preview Box matching surface dimensions (Opaque rgb(0, 255, 0))
-    const previewBoxes = findElementsByClass(container, 'colour-picker-preview-box');
-    assert.equal(previewBoxes.length, 1, 'Must render preview box');
+    const previewBoxes = findElementsByClass(
+      container,
+      "colour-picker-preview-box"
+    );
+    assert.equal(previewBoxes.length, 1, "Must render preview box");
     assert.equal(
       previewBoxes[0].style.backgroundColor,
-      'rgb(0, 255, 0)',
-      'Preview box must render pure opaque color without alpha'
+      "rgb(0, 255, 0)",
+      "Preview box must render pure opaque color without alpha"
     );
-    assert.equal(previewBoxes[0].style.width, '100%');
-    assert.equal(previewBoxes[0].style.height, '140px');
-    assert.equal(previewBoxes[0].style.minHeight, '120px');
+    assert.equal(previewBoxes[0].style.width, "100%");
+    assert.equal(previewBoxes[0].style.height, "140px");
+    assert.equal(previewBoxes[0].style.minHeight, "120px");
 
     // 3. Format Select
-    const formatSelects = findElementsByClass(container, 'colour-picker-format-select');
-    assert.equal(formatSelects.length, 1, 'Must render format selector dropdown');
+    const formatSelects = findElementsByClass(
+      container,
+      "colour-picker-format-select"
+    );
+    assert.equal(
+      formatSelects.length,
+      1,
+      "Must render format selector dropdown"
+    );
 
     // 4. Hex input (default format)
-    const hexInputs = findElementsByClass(container, 'colour-picker-hex-input');
-    assert.equal(hexInputs.length, 1, 'Must render single hex text input');
-    assert.equal(hexInputs[0].value, '#00ff00ff');
+    const hexInputs = findElementsByClass(container, "colour-picker-hex-input");
+    assert.equal(hexInputs.length, 1, "Must render single hex text input");
+    assert.equal(hexInputs[0].value, "#00ff00ff");
 
     // 5. 2D Surface and reticle
-    const surfaces = findElementsByClass(container, 'colour-picker-surface');
-    assert.equal(surfaces.length, 1, 'Must render 2D shade/tint surface');
-    const reticles = findElementsByClass(container, 'colour-picker-reticle');
-    assert.equal(reticles.length, 1, 'Must render surface reticle');
+    const surfaces = findElementsByClass(container, "colour-picker-surface");
+    assert.equal(surfaces.length, 1, "Must render 2D shade/tint surface");
+    const reticles = findElementsByClass(container, "colour-picker-reticle");
+    assert.equal(reticles.length, 1, "Must render surface reticle");
 
     // 6. Hue and Alpha strips
-    const hueStrips = findElementsByClass(container, 'colour-picker-hue-strip');
-    assert.equal(hueStrips.length, 1, 'Must render rainbow hue strip');
-    const alphaStrips = findElementsByClass(container, 'colour-picker-alpha-strip');
-    assert.equal(alphaStrips.length, 1, 'Must render alpha transparency strip');
+    const hueStrips = findElementsByClass(container, "colour-picker-hue-strip");
+    assert.equal(hueStrips.length, 1, "Must render rainbow hue strip");
+    const alphaStrips = findElementsByClass(
+      container,
+      "colour-picker-alpha-strip"
+    );
+    assert.equal(alphaStrips.length, 1, "Must render alpha transparency strip");
   });
 
-  it('handles format dropdown changes and switches to channel input mode', async () => {
-    let lastColor = '';
+  it("handles format dropdown changes and switches to channel input mode", async () => {
+    let lastColor = "";
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: '#ff0000ff',
+          initialColor: "#ff0000ff",
           onChange: (c: string) => {
             lastColor = c;
-          }
+          },
         })
       );
     });
 
-    const formatSelects = findElementsByClass(container, 'colour-picker-format-select');
+    const formatSelects = findElementsByClass(
+      container,
+      "colour-picker-format-select"
+    );
     assert.equal(formatSelects.length, 1);
 
     // Switch to RGB
     await act(async () => {
-      formatSelects[0].value = 'RGB';
-      formatSelects[0].dispatchEvent({
-        type: 'change',
-        bubbles: true
-      });
+      formatSelects[0].value = "RGB";
+      formatSelects[0].dispatchEvent({ type: "change", bubbles: true });
     });
 
     // Verify 4 channel inputs: R, G, B, A
-    const channelInputs = findElementsByClass(container, 'colour-picker-channel-input');
-    assert.equal(channelInputs.length, 4, 'RGB format must render 4 channel inputs');
-    assert.ok(lastColor.startsWith('rgb('), `Callback must return rgb format, got: ${lastColor}`);
+    const channelInputs = findElementsByClass(
+      container,
+      "colour-picker-channel-input"
+    );
+    assert.equal(
+      channelInputs.length,
+      4,
+      "RGB format must render 4 channel inputs"
+    );
+    assert.ok(
+      lastColor.startsWith("rgb("),
+      `Callback must return rgb format, got: ${lastColor}`
+    );
 
     // Switch to HSL
     await act(async () => {
-      formatSelects[0].value = 'HSL';
-      formatSelects[0].dispatchEvent({
-        type: 'change',
-        bubbles: true
-      });
+      formatSelects[0].value = "HSL";
+      formatSelects[0].dispatchEvent({ type: "change", bubbles: true });
     });
 
-    const hslInputs = findElementsByClass(container, 'colour-picker-channel-input');
-    assert.equal(hslInputs.length, 4, 'HSL format must render 4 channel inputs');
-    assert.ok(lastColor.startsWith('hsl('), `Callback must return hsl format, got: ${lastColor}`);
+    const hslInputs = findElementsByClass(
+      container,
+      "colour-picker-channel-input"
+    );
+    assert.equal(
+      hslInputs.length,
+      4,
+      "HSL format must render 4 channel inputs"
+    );
+    assert.ok(
+      lastColor.startsWith("hsl("),
+      `Callback must return hsl format, got: ${lastColor}`
+    );
   });
 
-  it('updates color when channel input is modified', async () => {
-    let emitted = '';
+  it("updates color when channel input is modified", async () => {
+    let emitted = "";
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: 'rgb(255 0 0)',
-          format: 'RGB',
+          initialColor: "rgb(255 0 0)",
+          format: "RGB",
           onChange: (c: string) => {
             emitted = c;
-          }
+          },
         })
       );
     });
 
-    const blueInput = findElementsByClass(container, 'colour-picker-channel-b');
+    const blueInput = findElementsByClass(container, "colour-picker-channel-b");
     assert.equal(blueInput.length, 1);
 
     // Update blue channel to 200
     await act(async () => {
       const tracker = (blueInput[0] as any)._valueTracker;
-      if (tracker) tracker.setValue('0');
-      blueInput[0].value = '200';
-      blueInput[0].dispatchEvent({
-        type: 'input',
-        bubbles: true
-      });
-      blueInput[0].dispatchEvent({
-        type: 'change',
-        bubbles: true
-      });
+      if (tracker) tracker.setValue("0");
+      blueInput[0].value = "200";
+      blueInput[0].dispatchEvent({ type: "input", bubbles: true });
+      blueInput[0].dispatchEvent({ type: "change", bubbles: true });
     });
 
-    assert.ok(emitted.includes('200'), `Emitted color must reflect updated channel: ${emitted}`);
+    assert.ok(
+      emitted.includes("200"),
+      `Emitted color must reflect updated channel: ${emitted}`
+    );
   });
 
-  it('updates hue and alpha when interacting with strips', async () => {
-    let latestColor = '';
+  it("updates hue and alpha when interacting with strips", async () => {
+    let latestColor = "";
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: '#ff0000ff',
-          format: 'HEX',
+          initialColor: "#ff0000ff",
+          format: "HEX",
           onChange: (c: string) => {
             latestColor = c;
-          }
+          },
         })
       );
     });
 
-    const hueStrip = findElementsByClass(container, 'colour-picker-hue-strip')[0];
-    const alphaStrip = findElementsByClass(container, 'colour-picker-alpha-strip')[0];
+    const hueStrip = findElementsByClass(
+      container,
+      "colour-picker-hue-strip"
+    )[0];
+    const alphaStrip = findElementsByClass(
+      container,
+      "colour-picker-alpha-strip"
+    )[0];
 
     // Pointer down at 50% on hue strip (X = 100 on 200px width -> 180 deg hue = cyan)
     await act(async () => {
       hueStrip.dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 100,
         pointerId: 1,
-        currentTarget: hueStrip
+        currentTarget: hueStrip,
       });
     });
 
@@ -460,254 +529,345 @@ describe('Reusable ColourPickerWidget Component (Ticket #205)', () => {
     // Pointer down at 25% on alpha strip (X = 50 on 200px width -> alpha 0.25)
     await act(async () => {
       alphaStrip.dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 50,
         pointerId: 2,
-        currentTarget: alphaStrip
+        currentTarget: alphaStrip,
       });
     });
 
-    assert.ok(latestColor.length === 9, 'Hex with alpha must be 9 chars (#rrggbbaa)');
+    assert.ok(
+      latestColor.length === 9,
+      "Hex with alpha must be 9 chars (#rrggbbaa)"
+    );
   });
 
-  it('updates saturation and value when interacting with 2D surface', async () => {
-    let latestColor = '';
+  it("updates saturation and value when interacting with 2D surface", async () => {
+    let latestColor = "";
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: '#00ff00ff',
-          format: 'HEX',
+          initialColor: "#00ff00ff",
+          format: "HEX",
           onChange: (c: string) => {
             latestColor = c;
-          }
+          },
         })
       );
     });
 
-    const surface = findElementsByClass(container, 'colour-picker-surface')[0];
+    const surface = findElementsByClass(container, "colour-picker-surface")[0];
 
     // Pointer down at center (X=100, Y=50 on 200x100 rect -> S=50%, V=50%)
     await act(async () => {
       surface.dispatchEvent({
-        type: 'pointerdown',
+        type: "pointerdown",
         button: 0,
         clientX: 100,
         clientY: 50,
         pointerId: 1,
-        currentTarget: surface
+        currentTarget: surface,
       });
     });
 
     assert.ok(latestColor.length > 0);
-    const reticle = findElementsByClass(container, 'colour-picker-reticle')[0];
-    assert.equal(reticle.style.left, '50%');
-    assert.equal(reticle.style.top, '50%');
+    const reticle = findElementsByClass(container, "colour-picker-reticle")[0];
+    assert.equal(reticle.style.left, "50%");
+    assert.equal(reticle.style.top, "50%");
   });
 
-  it('hides the transparency strip and forces opaque output when allowAlpha is false (Ticket #272)', async () => {
+  it("hides the transparency strip and forces opaque output when allowAlpha is false (Ticket #272)", async () => {
     const seen: string[] = [];
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: 'rgba(255, 0, 0, 0.5)',
+          initialColor: "rgba(255, 0, 0, 0.5)",
           allowAlpha: false,
-          format: 'HEX',
+          format: "HEX",
           onChange: (c: string) => seen.push(c),
         })
       );
     });
-    const strips = findElementsByClass(container, 'colour-picker-alpha-strip');
-    assert.equal(strips.length, 0, 'alpha strip must not render');
-    const hueStrip = findElementsByClass(container, 'colour-picker-hue-strip')[0];
-    assert.ok(hueStrip, 'hue strip still renders');
+    const strips = findElementsByClass(container, "colour-picker-alpha-strip");
+    assert.equal(strips.length, 0, "alpha strip must not render");
+    const hueStrip = findElementsByClass(
+      container,
+      "colour-picker-hue-strip"
+    )[0];
+    assert.ok(hueStrip, "hue strip still renders");
     await act(async () => {
-      hueStrip.dispatchEvent({ type: 'pointerdown', button: 0, clientX: 100, pointerId: 1, currentTarget: hueStrip });
+      hueStrip.dispatchEvent({
+        type: "pointerdown",
+        button: 0,
+        clientX: 100,
+        pointerId: 1,
+        currentTarget: hueStrip,
+      });
     });
-    assert.ok(seen.length > 0, 'onChange fired');
-    assert.ok(seen.every((c) => /^#[0-9a-f]{6}(ff)?$/i.test(c)), `every colour must be opaque hex, got ${seen.join(',')}`);
+    assert.ok(seen.length > 0, "onChange fired");
+    assert.ok(
+      seen.every((c) => /^#[0-9a-f]{6}(ff)?$/i.test(c)),
+      `every colour must be opaque hex, got ${seen.join(",")}`
+    );
   });
 
-  it('respects showHeader={false} when embedded inside dialogs or other widgets', async () => {
+  it("respects showHeader={false} when embedded inside dialogs or other widgets", async () => {
     await act(async () => {
       root?.render(
-        React.createElement(ColourPickerWidget, {
-          showHeader: false
-        })
+        React.createElement(ColourPickerWidget, { showHeader: false })
       );
     });
 
-    const headers = findElementsByClass(container, 'basic-widget-header');
-    assert.equal(headers.length, 0, 'Header bar should be hidden when showHeader=false');
+    const headers = findElementsByClass(container, "basic-widget-header");
+    assert.equal(
+      headers.length,
+      0,
+      "Header bar should be hidden when showHeader=false"
+    );
   });
 
-  it('verifies eyedropper fallback when unsupported and sampling when supported', async () => {
+  it("verifies eyedropper fallback when unsupported and sampling when supported", async () => {
     // 1. Fallback when unsupported
     await act(async () => {
       root?.render(
-        React.createElement(ColourPickerWidget, {
-          initialColor: '#00ff00ff'
-        })
+        React.createElement(ColourPickerWidget, { initialColor: "#00ff00ff" })
       );
     });
 
-    let eyedropperBtn = findElementsByClass(container, 'colour-picker-eyedropper-btn')[0];
-    assert.ok(eyedropperBtn.disabled, 'Eyedropper must be disabled when window.EyeDropper is not supported');
+    let eyedropperBtn = findElementsByClass(
+      container,
+      "colour-picker-eyedropper-btn"
+    )[0];
     assert.ok(
-      eyedropperBtn.title.includes('not supported'),
-      'Must display explanatory tooltip when EyeDropper is unsupported'
+      eyedropperBtn.disabled,
+      "Eyedropper must be disabled when window.EyeDropper is not supported"
+    );
+    assert.ok(
+      eyedropperBtn.title.includes("not supported"),
+      "Must display explanatory tooltip when EyeDropper is unsupported"
     );
 
     // 2. Supported when window.EyeDropper is present
-    let sampledColor = '';
+    let sampledColor = "";
     (globalThis as any).window.EyeDropper = class {
       async open(): Promise<{ sRGBHex: string }> {
-        return { sRGBHex: '#123456' };
+        return { sRGBHex: "#123456" };
       }
     };
 
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: '#00ff00ff',
+          initialColor: "#00ff00ff",
           onChange: (c: string) => {
             sampledColor = c;
-          }
+          },
         })
       );
     });
 
-    eyedropperBtn = findElementsByClass(container, 'colour-picker-eyedropper-btn')[0];
-    assert.equal(eyedropperBtn.disabled, false, 'Eyedropper must be enabled when EyeDropper API is supported');
+    eyedropperBtn = findElementsByClass(
+      container,
+      "colour-picker-eyedropper-btn"
+    )[0];
+    assert.equal(
+      eyedropperBtn.disabled,
+      false,
+      "Eyedropper must be enabled when EyeDropper API is supported"
+    );
 
     await act(async () => {
-      eyedropperBtn.dispatchEvent({
-        type: 'click',
-        bubbles: true
-      });
+      eyedropperBtn.dispatchEvent({ type: "click", bubbles: true });
     });
 
-    assert.ok(sampledColor.includes('123456'), `Sampled color must be emitted: ${sampledColor}`);
+    assert.ok(
+      sampledColor.includes("123456"),
+      `Sampled color must be emitted: ${sampledColor}`
+    );
     delete (globalThis as any).window.EyeDropper;
   });
 
-  it('reorganizes vertical layout with full-size preview at top and controls at bottom (Ticket #208)', async () => {
+  it("reorganizes vertical layout with full-size preview at top and controls at bottom (Ticket #208)", async () => {
     await act(async () => {
       root?.render(
-        React.createElement(ColourPickerWidget, {
-          initialColor: '#123456ff'
-        })
+        React.createElement(ColourPickerWidget, { initialColor: "#123456ff" })
       );
     });
 
-    const pickerContainer = findElementsByClass(container, 'colour-picker-container')[0];
-    assert.ok(pickerContainer, 'Must render .colour-picker-container');
+    const pickerContainer = findElementsByClass(
+      container,
+      "colour-picker-container"
+    )[0];
+    assert.ok(pickerContainer, "Must render .colour-picker-container");
 
     // Child elements in order
-    const childNodes = pickerContainer.childNodes.filter((c: any) => c.nodeType === 1);
-    assert.equal(childNodes.length, 4, 'Should contain 4 top-level sections: preview, surface, strips, controls');
+    const childNodes = pickerContainer.childNodes.filter(
+      (c: any) => c.nodeType === 1
+    );
+    assert.equal(
+      childNodes.length,
+      4,
+      "Should contain 4 top-level sections: preview, surface, strips, controls"
+    );
 
     // Section 1: Preview box at the top
     assert.ok(
-      childNodes[0].className.includes('colour-picker-preview-box'),
-      'First child must be the full-size solid preview box'
+      childNodes[0].className.includes("colour-picker-preview-box"),
+      "First child must be the full-size solid preview box"
     );
-    assert.equal(childNodes[0].style.width, '100%');
-    assert.equal(childNodes[0].style.height, '140px');
+    assert.equal(childNodes[0].style.width, "100%");
+    assert.equal(childNodes[0].style.height, "140px");
 
     // Section 2: 2D surface directly below preview box
     assert.ok(
-      childNodes[1].className.includes('colour-picker-surface'),
-      'Second child must be the 2D shade/tint surface'
+      childNodes[1].className.includes("colour-picker-surface"),
+      "Second child must be the 2D shade/tint surface"
     );
 
     // Section 3: Rainbow and alpha strips
     assert.ok(
-      childNodes[2].className.includes('colour-picker-strips'),
-      'Third child must be the colour-picker-strips container'
+      childNodes[2].className.includes("colour-picker-strips"),
+      "Third child must be the colour-picker-strips container"
     );
-    const hueStrips = findElementsByClass(childNodes[2], 'colour-picker-hue-strip');
-    const alphaStrips = findElementsByClass(childNodes[2], 'colour-picker-alpha-strip');
-    assert.equal(hueStrips.length, 1, 'Strips section must contain hue strip');
-    assert.equal(alphaStrips.length, 1, 'Strips section must contain alpha strip');
+    const hueStrips = findElementsByClass(
+      childNodes[2],
+      "colour-picker-hue-strip"
+    );
+    const alphaStrips = findElementsByClass(
+      childNodes[2],
+      "colour-picker-alpha-strip"
+    );
+    assert.equal(hueStrips.length, 1, "Strips section must contain hue strip");
+    assert.equal(
+      alphaStrips.length,
+      1,
+      "Strips section must contain alpha strip"
+    );
 
     // Section 4: Bottom controls container
     assert.ok(
-      childNodes[3].className.includes('colour-picker-bottom-controls'),
-      'Fourth child must be the colour-picker-bottom-controls container'
+      childNodes[3].className.includes("colour-picker-bottom-controls"),
+      "Fourth child must be the colour-picker-bottom-controls container"
     );
-    const bottomRows = childNodes[3].childNodes.filter((c: any) => c.nodeType === 1);
-    assert.equal(bottomRows.length, 2, 'Bottom controls must have 2 rows');
+    const bottomRows = childNodes[3].childNodes.filter(
+      (c: any) => c.nodeType === 1
+    );
+    assert.equal(bottomRows.length, 2, "Bottom controls must have 2 rows");
 
     // Row 1: Eyedropper + format select inline
     assert.ok(
-      bottomRows[0].className.includes('colour-picker-format-row'),
-      'First bottom row must be format row'
+      bottomRows[0].className.includes("colour-picker-format-row"),
+      "First bottom row must be format row"
     );
-    const eyedropperBtns = findElementsByClass(bottomRows[0], 'colour-picker-eyedropper-btn');
-    const formatSelects = findElementsByClass(bottomRows[0], 'colour-picker-format-select');
-    assert.equal(eyedropperBtns.length, 1, 'Format row must contain eyedropper button');
-    assert.equal(formatSelects.length, 1, 'Format row must contain format dropdown');
+    const eyedropperBtns = findElementsByClass(
+      bottomRows[0],
+      "colour-picker-eyedropper-btn"
+    );
+    const formatSelects = findElementsByClass(
+      bottomRows[0],
+      "colour-picker-format-select"
+    );
+    assert.equal(
+      eyedropperBtns.length,
+      1,
+      "Format row must contain eyedropper button"
+    );
+    assert.equal(
+      formatSelects.length,
+      1,
+      "Format row must contain format dropdown"
+    );
 
     // Row 2: Inputs row
     assert.ok(
-      bottomRows[1].className.includes('colour-picker-inputs-row'),
-      'Second bottom row must be inputs row'
+      bottomRows[1].className.includes("colour-picker-inputs-row"),
+      "Second bottom row must be inputs row"
     );
-    const hexInputs = findElementsByClass(bottomRows[1], 'colour-picker-hex-input');
-    assert.equal(hexInputs.length, 1, 'Inputs row must contain text input(s)');
+    const hexInputs = findElementsByClass(
+      bottomRows[1],
+      "colour-picker-hex-input"
+    );
+    assert.equal(hexInputs.length, 1, "Inputs row must contain text input(s)");
   });
 
-  it('disables interactive controls, applies pointer-events none, and dims opacity when disabled=true (Ticket #216)', async () => {
+  it("disables interactive controls, applies pointer-events none, and dims opacity when disabled=true (Ticket #216)", async () => {
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: '#123456ff',
-          disabled: true
+          initialColor: "#123456ff",
+          disabled: true,
         })
       );
     });
 
-    const pickerContainer = findElementsByClass(container, 'colour-picker-container')[0];
-    assert.ok(pickerContainer, 'Must render .colour-picker-container');
-    assert.equal(pickerContainer.style.pointerEvents, 'none', 'Container must have pointerEvents none');
-    assert.equal(pickerContainer.style.opacity, '0.55', 'Container must have dimmed opacity 0.55');
+    const pickerContainer = findElementsByClass(
+      container,
+      "colour-picker-container"
+    )[0];
+    assert.ok(pickerContainer, "Must render .colour-picker-container");
+    assert.equal(
+      pickerContainer.style.pointerEvents,
+      "none",
+      "Container must have pointerEvents none"
+    );
+    assert.equal(
+      pickerContainer.style.opacity,
+      "0.55",
+      "Container must have dimmed opacity 0.55"
+    );
 
     // Format select is disabled
-    const formatSelect = findElementsByClass(pickerContainer, 'colour-picker-format-select')[0];
-    assert.ok(formatSelect, 'Must render format dropdown select');
-    assert.equal(formatSelect.disabled, true, 'Format select must be disabled');
+    const formatSelect = findElementsByClass(
+      pickerContainer,
+      "colour-picker-format-select"
+    )[0];
+    assert.ok(formatSelect, "Must render format dropdown select");
+    assert.equal(formatSelect.disabled, true, "Format select must be disabled");
 
     // Eyedropper button is disabled
-    const eyedropperBtn = findElementsByClass(pickerContainer, 'colour-picker-eyedropper-btn')[0];
-    assert.ok(eyedropperBtn, 'Must render eyedropper button');
-    assert.equal(eyedropperBtn.disabled, true, 'Eyedropper button must be disabled');
+    const eyedropperBtn = findElementsByClass(
+      pickerContainer,
+      "colour-picker-eyedropper-btn"
+    )[0];
+    assert.ok(eyedropperBtn, "Must render eyedropper button");
+    assert.equal(
+      eyedropperBtn.disabled,
+      true,
+      "Eyedropper button must be disabled"
+    );
 
     // Hex input is disabled
-    const hexInput = findElementsByClass(pickerContainer, 'colour-picker-hex-input')[0];
-    assert.ok(hexInput, 'Must render hex text input');
-    assert.equal(hexInput.disabled, true, 'Hex input must be disabled');
+    const hexInput = findElementsByClass(
+      pickerContainer,
+      "colour-picker-hex-input"
+    )[0];
+    assert.ok(hexInput, "Must render hex text input");
+    assert.equal(hexInput.disabled, true, "Hex input must be disabled");
 
     // Rerender with RGB format to test channel inputs
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: 'rgb(255, 0, 0)',
-          format: 'RGB',
-          disabled: true
+          initialColor: "rgb(255, 0, 0)",
+          format: "RGB",
+          disabled: true,
         })
       );
     });
 
-    const channelInputs = findElementsByClass(container, 'colour-picker-channel-input');
-    assert.ok(channelInputs.length >= 3, 'Must render RGB channel inputs');
+    const channelInputs = findElementsByClass(
+      container,
+      "colour-picker-channel-input"
+    );
+    assert.ok(channelInputs.length >= 3, "Must render RGB channel inputs");
     for (const input of channelInputs) {
-      assert.equal(input.disabled, true, 'Channel input must be disabled');
+      assert.equal(input.disabled, true, "Channel input must be disabled");
     }
   });
 });
 
-describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)', () => {
+describe("ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)", () => {
   beforeEach(() => {
     setupDom();
     prefsUiIconSize.value = 24;
@@ -720,58 +880,101 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
     prefsUiBaseFontSize.value = undefined;
   });
 
-  it('sizes the format dropdown as the shared Select and the HEX input at 1rem, both following prefsUiBaseFontSize', async () => {
+  it("sizes the format dropdown as the shared Select and the HEX input at 1rem, both following prefsUiBaseFontSize", async () => {
     await act(async () => {
       root?.render(
-        React.createElement(ColourPickerWidget, {
-          initialColor: '#ff0000ff'
-        })
+        React.createElement(ColourPickerWidget, { initialColor: "#ff0000ff" })
       );
     });
 
-    const formatSelect = findElementsByClass(container, 'colour-picker-format-select')[0];
-    const hexInput = findElementsByClass(container, 'colour-picker-hex-input')[0];
+    const formatSelect = findElementsByClass(
+      container,
+      "colour-picker-format-select"
+    )[0];
+    const hexInput = findElementsByClass(
+      container,
+      "colour-picker-hex-input"
+    )[0];
 
-    assert.ok(formatSelect, 'Must render format selector dropdown');
-    assert.ok(hexInput, 'Must render HEX input');
-    assert.ok(formatSelect.className.split(' ').includes('cartouche-select'), 'Format dropdown is the shared Select (Ticket #344)');
-    assert.ok(hexInput.className.split(' ').includes('picker-field'), 'HEX input takes the picker-field class');
-    assert.match(pickerFieldRule(), /font-size:\s*1rem/, '.picker-field font size must be 1rem');
+    assert.ok(formatSelect, "Must render format selector dropdown");
+    assert.ok(hexInput, "Must render HEX input");
+    assert.ok(
+      formatSelect.className.split(" ").includes("cartouche-select"),
+      "Format dropdown is the shared Select (Ticket #344)"
+    );
+    assert.ok(
+      hexInput.className.split(" ").includes("picker-field"),
+      "HEX input takes the picker-field class"
+    );
+    assert.match(
+      pickerFieldRule(),
+      /font-size:\s*1rem/,
+      ".picker-field font size must be 1rem"
+    );
 
     // Dynamically update prefsUiBaseFontSize signal to 16pt
     await act(async () => {
       prefsUiBaseFontSize.value = 16;
     });
 
-    assert.ok(!formatSelect.style.fontSize, 'Format dropdown sets no inline font size over the shared class');
-    assert.ok(!hexInput.style.fontSize, 'HEX input sets no inline font size over the 1rem class');
+    assert.ok(
+      !formatSelect.style.fontSize,
+      "Format dropdown sets no inline font size over the shared class"
+    );
+    assert.ok(
+      !hexInput.style.fontSize,
+      "HEX input sets no inline font size over the 1rem class"
+    );
   });
 
-  it('sets channel number inputs to 1rem and channel labels to 0.9rem in non-HEX formats', async () => {
+  it("sets channel number inputs to 1rem and channel labels to 0.9rem in non-HEX formats", async () => {
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: 'rgb(255, 0, 0)',
-          format: 'RGB'
+          initialColor: "rgb(255, 0, 0)",
+          format: "RGB",
         })
       );
     });
 
-    const channelInputs = findElementsByClass(container, 'colour-picker-channel-input');
-    assert.equal(channelInputs.length, 4, 'Must render 4 channel inputs for RGB format (R, G, B, A)');
+    const channelInputs = findElementsByClass(
+      container,
+      "colour-picker-channel-input"
+    );
+    assert.equal(
+      channelInputs.length,
+      4,
+      "Must render 4 channel inputs for RGB format (R, G, B, A)"
+    );
     for (const input of channelInputs) {
-      assert.ok(input.className.split(' ').includes('picker-field'), 'Channel input takes the 1rem picker-field class');
-      assert.ok(!input.style.fontSize, 'Channel input sets no inline font size');
+      assert.ok(
+        input.className.split(" ").includes("picker-field"),
+        "Channel input takes the 1rem picker-field class"
+      );
+      assert.ok(
+        !input.style.fontSize,
+        "Channel input sets no inline font size"
+      );
     }
-    assert.match(pickerFieldRule(), /font-size:\s*1rem/, '.picker-field font size must be 1rem');
+    assert.match(
+      pickerFieldRule(),
+      /font-size:\s*1rem/,
+      ".picker-field font size must be 1rem"
+    );
 
     // Inspect label span elements (parent container of each channel input has a span child)
     for (const input of channelInputs) {
       const parent = input.parentNode;
-      assert.ok(parent, 'Channel input must have a parent container');
-      const labelSpan = parent.childNodes.find((c: any) => c.tagName === 'SPAN');
-      assert.ok(labelSpan, 'Parent must contain label span');
-      assert.equal(labelSpan.style.fontSize, '0.9rem', 'Channel label font size must be 0.9rem');
+      assert.ok(parent, "Channel input must have a parent container");
+      const labelSpan = parent.childNodes.find(
+        (c: any) => c.tagName === "SPAN"
+      );
+      assert.ok(labelSpan, "Parent must contain label span");
+      assert.equal(
+        labelSpan.style.fontSize,
+        "0.9rem",
+        "Channel label font size must be 0.9rem"
+      );
     }
 
     // Dynamically update prefsUiBaseFontSize signal
@@ -780,72 +983,136 @@ describe('ColourPickerWidget UI Preferences & Typography Scaling (Ticket #229)',
     });
 
     for (const input of channelInputs) {
-      assert.ok(input.className.split(' ').includes('picker-field'));
+      assert.ok(input.className.split(" ").includes("picker-field"));
     }
   });
 
-  it('scales eyedropper button and icon dimensions dynamically with prefsUiIconSize', async () => {
+  it("scales eyedropper button and icon dimensions dynamically with prefsUiIconSize", async () => {
     await act(async () => {
       root?.render(
-        React.createElement(ColourPickerWidget, {
-          initialColor: '#00ff00ff'
-        })
+        React.createElement(ColourPickerWidget, { initialColor: "#00ff00ff" })
       );
     });
 
-    const eyedropperBtn = findElementsByClass(container, 'colour-picker-eyedropper-btn')[0];
-    assert.ok(eyedropperBtn, 'Must render eyedropper button');
-    assert.equal(eyedropperBtn.style.width, '24px', 'Initial eyedropper button width must match iconSize=24');
-    assert.equal(eyedropperBtn.style.height, '24px', 'Initial eyedropper button height must match iconSize=24');
+    const eyedropperBtn = findElementsByClass(
+      container,
+      "colour-picker-eyedropper-btn"
+    )[0];
+    assert.ok(eyedropperBtn, "Must render eyedropper button");
+    assert.equal(
+      eyedropperBtn.style.width,
+      "24px",
+      "Initial eyedropper button width must match iconSize=24"
+    );
+    assert.equal(
+      eyedropperBtn.style.height,
+      "24px",
+      "Initial eyedropper button height must match iconSize=24"
+    );
 
-    const iconSvg = eyedropperBtn.childNodes.find((c: any) => c.tagName?.toUpperCase() === 'SVG');
-    assert.ok(iconSvg, 'Eyedropper button must contain SVG icon');
-    assert.equal(iconSvg.style.width, '24px', 'SVG icon width must match iconSize=24');
-    assert.equal(iconSvg.style.height, '24px', 'SVG icon height must match iconSize=24');
+    const iconSvg = eyedropperBtn.childNodes.find(
+      (c: any) => c.tagName?.toUpperCase() === "SVG"
+    );
+    assert.ok(iconSvg, "Eyedropper button must contain SVG icon");
+    assert.equal(
+      iconSvg.style.width,
+      "24px",
+      "SVG icon width must match iconSize=24"
+    );
+    assert.equal(
+      iconSvg.style.height,
+      "24px",
+      "SVG icon height must match iconSize=24"
+    );
 
     // Dynamically update prefsUiIconSize to 32px
     await act(async () => {
       prefsUiIconSize.value = 32;
     });
 
-    assert.equal(eyedropperBtn.style.width, '32px', 'Eyedropper button width must scale to 32px');
-    assert.equal(eyedropperBtn.style.height, '32px', 'Eyedropper button height must scale to 32px');
-    assert.equal(iconSvg.style.width, '32px', 'SVG icon width must scale to 32px');
-    assert.equal(iconSvg.style.height, '32px', 'SVG icon height must scale to 32px');
+    assert.equal(
+      eyedropperBtn.style.width,
+      "32px",
+      "Eyedropper button width must scale to 32px"
+    );
+    assert.equal(
+      eyedropperBtn.style.height,
+      "32px",
+      "Eyedropper button height must scale to 32px"
+    );
+    assert.equal(
+      iconSvg.style.width,
+      "32px",
+      "SVG icon width must scale to 32px"
+    );
+    assert.equal(
+      iconSvg.style.height,
+      "32px",
+      "SVG icon height must scale to 32px"
+    );
 
     // Dynamically update prefsUiIconSize to 18px
     await act(async () => {
       prefsUiIconSize.value = 18;
     });
 
-    assert.equal(eyedropperBtn.style.width, '18px', 'Eyedropper button width must scale to 18px');
-    assert.equal(eyedropperBtn.style.height, '18px', 'Eyedropper button height must scale to 18px');
-    assert.equal(iconSvg.style.width, '18px', 'SVG icon width must scale to 18px');
-    assert.equal(iconSvg.style.height, '18px', 'SVG icon height must scale to 18px');
+    assert.equal(
+      eyedropperBtn.style.width,
+      "18px",
+      "Eyedropper button width must scale to 18px"
+    );
+    assert.equal(
+      eyedropperBtn.style.height,
+      "18px",
+      "Eyedropper button height must scale to 18px"
+    );
+    assert.equal(
+      iconSvg.style.width,
+      "18px",
+      "SVG icon width must scale to 18px"
+    );
+    assert.equal(
+      iconSvg.style.height,
+      "18px",
+      "SVG icon height must scale to 18px"
+    );
   });
 
-  it('maintains proper flex layout and alignment across rows when preferences vary', async () => {
+  it("maintains proper flex layout and alignment across rows when preferences vary", async () => {
     prefsUiIconSize.value = 30;
     prefsUiBaseFontSize.value = 14;
 
     await act(async () => {
       root?.render(
         React.createElement(ColourPickerWidget, {
-          initialColor: '#123456ff',
-          format: 'RGB'
+          initialColor: "#123456ff",
+          format: "RGB",
         })
       );
     });
 
-    const formatRow = findElementsByClass(container, 'colour-picker-format-row')[0];
-    assert.ok(formatRow, 'Format row must be rendered');
-    assert.equal(formatRow.style.gap, '6px', 'Format row gap must be 6px');
+    const formatRow = findElementsByClass(
+      container,
+      "colour-picker-format-row"
+    )[0];
+    assert.ok(formatRow, "Format row must be rendered");
+    assert.equal(formatRow.style.gap, "6px", "Format row gap must be 6px");
 
-    const inputsRow = findElementsByClass(container, 'colour-picker-inputs-row')[0];
-    assert.ok(inputsRow, 'Inputs row must be rendered');
-    assert.equal(inputsRow.style.gap, '4px', 'Inputs row gap must be 4px');
+    const inputsRow = findElementsByClass(
+      container,
+      "colour-picker-inputs-row"
+    )[0];
+    assert.ok(inputsRow, "Inputs row must be rendered");
+    assert.equal(inputsRow.style.gap, "4px", "Inputs row gap must be 4px");
 
-    const channelInputs = findElementsByClass(inputsRow, 'colour-picker-channel-input');
-    assert.equal(channelInputs.length, 4, 'Must render 4 channels without clipping');
+    const channelInputs = findElementsByClass(
+      inputsRow,
+      "colour-picker-channel-input"
+    );
+    assert.equal(
+      channelInputs.length,
+      4,
+      "Must render 4 channels without clipping"
+    );
   });
 });

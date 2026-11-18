@@ -10,8 +10,8 @@
  * @see {@link ProjectPathMode}
  */
 
-import path from 'node:path';
-import type { ProjectModel } from '@shared/types';
+import path from "node:path";
+import type { ProjectModel } from "@shared/types";
 
 /**
  * @typedef {Object} PathLike
@@ -65,10 +65,12 @@ export const CONNECTION_STRING_PATTERN =
  * @param {string | undefined | null} source - Layer source or style href.
  * @returns {boolean} True when the string is a rewritable file path.
  */
-export function isRewritableFilePath(source: string | undefined | null): boolean {
+export function isRewritableFilePath(
+  source: string | undefined | null
+): boolean {
   if (!source) return false;
   const value = String(source).trim();
-  if (!value || value.startsWith('#')) return false;
+  if (!value || value.startsWith("#")) return false;
   if (URI_SCHEME_PATTERN.test(value)) return false;
   if (/^[A-Za-z]:[\\/]/.test(value)) return true; // Windows drive path
   if (CONNECTION_STRING_PATTERN.test(value)) return false;
@@ -87,7 +89,11 @@ export function isRewritableFilePath(source: string | undefined | null): boolean
  * @param {PathLike} [pathImpl=path] - Path implementation.
  * @returns {string} Absolute path, or the input when it is not a rewritable relative file path.
  */
-export function resolveProjectPath(raw: string, homeDir: string, pathImpl: PathLike = path): string {
+export function resolveProjectPath(
+  raw: string,
+  homeDir: string,
+  pathImpl: PathLike = path
+): string {
   if (!isRewritableFilePath(raw)) return raw;
   if (pathImpl.isAbsolute(raw)) return raw;
   return pathImpl.resolve(homeDir, raw);
@@ -110,15 +116,18 @@ export function toProjectRelativePath(
   homeDir: string,
   pathImpl: PathLike = path
 ): string {
-  if (!isRewritableFilePath(absolutePath) || !pathImpl.isAbsolute(absolutePath)) {
+  if (
+    !isRewritableFilePath(absolutePath)
+    || !pathImpl.isAbsolute(absolutePath)
+  ) {
     return absolutePath;
   }
   const relative = pathImpl.relative(homeDir, absolutePath);
-  if (!relative) return '.';
+  if (!relative) return ".";
   if (pathImpl.isAbsolute(relative) || /^[A-Za-z]:/.test(relative)) {
     return absolutePath;
   }
-  return relative.split(pathImpl.sep).join('/');
+  return relative.split(pathImpl.sep).join("/");
 }
 
 /**
@@ -134,14 +143,16 @@ export function toProjectRelativePath(
  * @returns {string} Absolute Project Home directory.
  */
 export function resolveProjectHomeDirectory(
-  project: Pick<ProjectModel, 'home'>,
+  project: Pick<ProjectModel, "home">,
   projectFilePath: string,
   pathImpl: PathLike = path
 ): string {
   const projectDir = pathImpl.dirname(projectFilePath);
   if (project.home && project.home.trim()) {
     const home = project.home.trim();
-    return pathImpl.isAbsolute(home) ? home : pathImpl.resolve(projectDir, home);
+    return pathImpl.isAbsolute(home) ? home : (
+        pathImpl.resolve(projectDir, home)
+      );
   }
   return projectDir;
 }
@@ -164,9 +175,9 @@ export function toWrittenProjectHome(
   pathImpl: PathLike = path
 ): string {
   const relative = pathImpl.relative(projectDir, homeAbsolute);
-  if (!relative) return '.';
+  if (!relative) return ".";
   if (pathImpl.isAbsolute(relative) || /^[A-Za-z]:/.test(relative)) {
     return homeAbsolute;
   }
-  return relative.split(pathImpl.sep).join('/');
+  return relative.split(pathImpl.sep).join("/");
 }

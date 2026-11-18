@@ -8,8 +8,8 @@
  * @since 0.1.0-dev
  */
 
-import { useSignals } from '@preact/signals-react/runtime';
-import { activeLocaleSignal, t } from '../state/i18nSignals';
+import { useSignals } from "@preact/signals-react/runtime";
+import { activeLocaleSignal, t } from "../state/i18nSignals";
 
 /**
  * @description Provides the core translation function and current locale, reacting automatically to language changes.
@@ -22,7 +22,7 @@ import { activeLocaleSignal, t } from '../state/i18nSignals';
 export function useTranslation() {
   // Opt into tracking signals used in the rendering of the component
   useSignals();
-  
+
   // By reading activeLocaleSignal.value, the component will re-render when the locale changes.
   const locale = activeLocaleSignal.value;
 

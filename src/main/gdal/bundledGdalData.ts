@@ -14,9 +14,9 @@
  * @see {@link applyBundledGdalDataPaths}
  */
 
-import path from 'node:path';
-import gdal from 'gdal-async';
-import { logging } from '../../shared/logging';
+import path from "node:path";
+import gdal from "gdal-async";
+import { logging } from "../../shared/logging";
 
 /**
  * @typedef {Object} BundledGdalDataTarget
@@ -58,7 +58,7 @@ export interface BundledGdalDataDirs {
  * @returns {string} The unpacked path, or `filePath` when it is not inside `app.asar`.
  */
 export function toUnpackedAsarPath(filePath: string): string {
-  return filePath.replace(/([\\/])app\.asar(?=[\\/])/, '$1app.asar.unpacked');
+  return filePath.replace(/([\\/])app\.asar(?=[\\/])/, "$1app.asar.unpacked");
 }
 
 /**
@@ -71,13 +71,23 @@ export function toUnpackedAsarPath(filePath: string): string {
  * @param {string} gdalModuleEntry - Resolved path of gdal-async's main module (`lib/gdal.js`).
  * @returns {BundledGdalDataDirs} The data directories.
  */
-export function bundledGdalDataDirs(gdalModuleEntry: string): BundledGdalDataDirs {
-  const root = path.resolve(path.dirname(gdalModuleEntry), '..');
+export function bundledGdalDataDirs(
+  gdalModuleEntry: string
+): BundledGdalDataDirs {
+  const root = path.resolve(path.dirname(gdalModuleEntry), "..");
   return {
-    projData: toUnpackedAsarPath(path.join(root, 'deps', 'libproj', 'proj', 'data')),
-    gdalData: toUnpackedAsarPath(path.join(root, 'deps', 'libgdal', 'gdal', 'data')),
-    gribResources: toUnpackedAsarPath(path.join(root, 'deps', 'libgdal', 'gdal', 'frmts', 'grib', 'data')),
-    curlCaBundle: toUnpackedAsarPath(path.join(root, 'deps', 'libcurl', 'cacert.pem')),
+    projData: toUnpackedAsarPath(
+      path.join(root, "deps", "libproj", "proj", "data")
+    ),
+    gdalData: toUnpackedAsarPath(
+      path.join(root, "deps", "libgdal", "gdal", "data")
+    ),
+    gribResources: toUnpackedAsarPath(
+      path.join(root, "deps", "libgdal", "gdal", "frmts", "grib", "data")
+    ),
+    curlCaBundle: toUnpackedAsarPath(
+      path.join(root, "deps", "libcurl", "cacert.pem")
+    ),
   };
 }
 
@@ -99,24 +109,35 @@ export function bundledGdalDataDirs(gdalModuleEntry: string): BundledGdalDataDir
  * @param {NodeJS.ProcessEnv} env - Environment to check for user overrides, normally `process.env`.
  * @returns {string[]} Names of the settings applied, in order; empty outside an archive or for a system GDAL.
  */
-export function applyBundledGdalDataPaths(target: BundledGdalDataTarget, gdalModuleEntry: string, env: NodeJS.ProcessEnv): string[] {
-  if (!target.bundled || toUnpackedAsarPath(gdalModuleEntry) === gdalModuleEntry) return [];
+export function applyBundledGdalDataPaths(
+  target: BundledGdalDataTarget,
+  gdalModuleEntry: string,
+  env: NodeJS.ProcessEnv
+): string[] {
+  if (
+    !target.bundled
+    || toUnpackedAsarPath(gdalModuleEntry) === gdalModuleEntry
+  )
+    return [];
   const dirs = bundledGdalDataDirs(gdalModuleEntry);
   const applied: string[] = [];
   if (env.PROJ_LIB === undefined) {
     target.setPROJSearchPath(env.PROJ_DATA ?? dirs.projData);
-    applied.push('PROJ search path');
+    applied.push("PROJ search path");
   }
   if (env.GDAL_DATA === undefined) {
-    target.config.set('GDAL_DATA', dirs.gdalData);
-    applied.push('GDAL_DATA');
+    target.config.set("GDAL_DATA", dirs.gdalData);
+    applied.push("GDAL_DATA");
   }
   if (env.CURL_CA_BUNDLE === undefined) {
-    target.config.set('CURL_CA_BUNDLE', dirs.curlCaBundle);
-    applied.push('CURL_CA_BUNDLE');
+    target.config.set("CURL_CA_BUNDLE", dirs.curlCaBundle);
+    applied.push("CURL_CA_BUNDLE");
   }
-  target.config.set('GRIB_RESOURCE_DIR', env.GRIB_RESOURCE_DIR ?? dirs.gribResources);
-  applied.push('GRIB_RESOURCE_DIR');
+  target.config.set(
+    "GRIB_RESOURCE_DIR",
+    env.GRIB_RESOURCE_DIR ?? dirs.gribResources
+  );
+  applied.push("GRIB_RESOURCE_DIR");
   return applied;
 }
 
@@ -132,9 +153,16 @@ export function applyBundledGdalDataPaths(target: BundledGdalDataTarget, gdalMod
  * @returns {string[]} Names of the settings applied.
  */
 export function configureBundledGdalData(): string[] {
-  if (typeof require === 'undefined') {
-    logging.warn('Cannot resolve gdal-async without require; bundled GDAL data paths left unchanged', { scope: 'bundledGdalData' });
+  if (typeof require === "undefined") {
+    logging.warn(
+      "Cannot resolve gdal-async without require; bundled GDAL data paths left unchanged",
+      { scope: "bundledGdalData" }
+    );
     return [];
   }
-  return applyBundledGdalDataPaths(gdal as unknown as BundledGdalDataTarget, require.resolve('gdal-async'), process.env);
+  return applyBundledGdalDataPaths(
+    gdal as unknown as BundledGdalDataTarget,
+    require.resolve("gdal-async"),
+    process.env
+  );
 }

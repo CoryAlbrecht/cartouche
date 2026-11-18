@@ -9,7 +9,7 @@
  * @see {@link PreferenceMap}
  */
 
-import { type PreferenceMap, DEFAULT_WORKBENCH_WIDGET_DOCKS } from '../types';
+import { type PreferenceMap, DEFAULT_WORKBENCH_WIDGET_DOCKS } from "../types";
 
 /**
  * @description Dropdown options for log line colorization scope pattern preference.
@@ -20,9 +20,9 @@ import { type PreferenceMap, DEFAULT_WORKBENCH_WIDGET_DOCKS } from '../types';
  * @type {Array<{ label: string; value: string }>}
  */
 const LOG_PATTERN_OPTIONS = [
-  { label: 'Level Only', value: 'level-only' },
-  { label: 'Level and Message', value: 'level-and-message' },
-  { label: 'Full Line', value: 'full-line' }
+  { label: "Level Only", value: "level-only" },
+  { label: "Level and Message", value: "level-and-message" },
+  { label: "Full Line", value: "full-line" },
 ];
 
 /**
@@ -34,185 +34,193 @@ const LOG_PATTERN_OPTIONS = [
  * @type {PreferenceMap}
  */
 export const BUILTIN_PREFERENCES: PreferenceMap = {
-  'general.logging.location': {
-    displayName: 'Log File Location',
-    value: '',
-    defaultValue: '',
+  "general.logging.location": {
+    displayName: "Log File Location",
+    value: "",
+    defaultValue: "",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Path to persistent application log file. If omitted or empty, logs are directed to stderr.',
-    type: 'string',
-    controls: ['text'],
-    i18nId: 'prefs_general_logging_location',
-    group: 'logging',
+    category: "general",
+    description:
+      "Path to persistent application log file. If omitted or empty, logs are directed to stderr.",
+    type: "string",
+    controls: ["text"],
+    i18nId: "prefs_general_logging_location",
+    group: "logging",
     groupOrder: 1,
-    order: 1
+    order: 1,
   },
-  'general.logging.colours.console': {
-    displayName: 'Console Colors',
+  "general.logging.colours.console": {
+    displayName: "Console Colors",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Enables or disables ANSI colors when printing log messages to stderr.',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_general_logging_colours_console',
-    group: 'logging',
+    category: "general",
+    description:
+      "Enables or disables ANSI colors when printing log messages to stderr.",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_general_logging_colours_console",
+    group: "logging",
     groupOrder: 1,
-    order: 2
+    order: 2,
   },
-  'general.logging.colours.file': {
-    displayName: 'File Colors',
+  "general.logging.colours.file": {
+    displayName: "File Colors",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Preserves ANSI color escape codes when writing log output to file.',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_general_logging_colours_file',
-    group: 'logging',
+    category: "general",
+    description:
+      "Preserves ANSI color escape codes when writing log output to file.",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_general_logging_colours_file",
+    group: "logging",
     groupOrder: 1,
-    order: 3
+    order: 3,
   },
-  'general.logging.colours.pattern': {
-    displayName: 'Colorization Pattern',
-    value: 'level-only',
-    defaultValue: 'level-only',
+  "general.logging.colours.pattern": {
+    displayName: "Colorization Pattern",
+    value: "level-only",
+    defaultValue: "level-only",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Determines which segments of each log line receive color styling.',
-    type: 'select',
-    controls: ['dropdown'],
-    i18nId: 'prefs_general_logging_colours_pattern',
-    group: 'logging',
+    category: "general",
+    description:
+      "Determines which segments of each log line receive color styling.",
+    type: "select",
+    controls: ["dropdown"],
+    i18nId: "prefs_general_logging_colours_pattern",
+    group: "logging",
     groupOrder: 1,
     order: 4,
-    options: LOG_PATTERN_OPTIONS
+    options: LOG_PATTERN_OPTIONS,
   },
-  'general.logging.colours.level.critical': {
-    displayName: 'Critical Level Color',
-    value: 'red',
-    defaultValue: 'red',
+  "general.logging.colours.level.critical": {
+    displayName: "Critical Level Color",
+    value: "red",
+    defaultValue: "red",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Color styling for critical severity log messages (bold combined automatically).',
-    type: 'string',
-    controls: ['text', 'colour'],
-    i18nId: 'prefs_general_logging_colours_level_critical',
-    group: 'logging_colours',
+    category: "general",
+    description:
+      "Color styling for critical severity log messages (bold combined automatically).",
+    type: "string",
+    controls: ["text", "colour"],
+    i18nId: "prefs_general_logging_colours_level_critical",
+    group: "logging_colours",
     groupOrder: 2,
-    order: 1
+    order: 1,
   },
-  'general.logging.colours.level.error': {
-    displayName: 'Error Level Color',
-    value: 'red',
-    defaultValue: 'red',
+  "general.logging.colours.level.error": {
+    displayName: "Error Level Color",
+    value: "red",
+    defaultValue: "red",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Color styling for error severity log messages.',
-    type: 'string',
-    controls: ['text', 'colour'],
-    i18nId: 'prefs_general_logging_colours_level_error',
-    group: 'logging_colours',
+    category: "general",
+    description: "Color styling for error severity log messages.",
+    type: "string",
+    controls: ["text", "colour"],
+    i18nId: "prefs_general_logging_colours_level_error",
+    group: "logging_colours",
     groupOrder: 2,
-    order: 2
+    order: 2,
   },
-  'general.logging.colours.level.warn': {
-    displayName: 'Warning Level Color',
-    value: 'yellow',
-    defaultValue: 'yellow',
+  "general.logging.colours.level.warn": {
+    displayName: "Warning Level Color",
+    value: "yellow",
+    defaultValue: "yellow",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Color styling for warning severity log messages.',
-    type: 'string',
-    controls: ['text', 'colour'],
-    i18nId: 'prefs_general_logging_colours_level_warn',
-    group: 'logging_colours',
+    category: "general",
+    description: "Color styling for warning severity log messages.",
+    type: "string",
+    controls: ["text", "colour"],
+    i18nId: "prefs_general_logging_colours_level_warn",
+    group: "logging_colours",
     groupOrder: 2,
-    order: 3
+    order: 3,
   },
-  'general.logging.colours.level.info': {
-    displayName: 'Info Level Color',
-    value: 'cyan',
-    defaultValue: 'cyan',
+  "general.logging.colours.level.info": {
+    displayName: "Info Level Color",
+    value: "cyan",
+    defaultValue: "cyan",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Color styling for informational operational log messages.',
-    type: 'string',
-    controls: ['text', 'colour'],
-    i18nId: 'prefs_general_logging_colours_level_info',
-    group: 'logging_colours',
+    category: "general",
+    description: "Color styling for informational operational log messages.",
+    type: "string",
+    controls: ["text", "colour"],
+    i18nId: "prefs_general_logging_colours_level_info",
+    group: "logging_colours",
     groupOrder: 2,
-    order: 4
+    order: 4,
   },
-  'general.logging.colours.level.debug': {
-    displayName: 'Debug Level Color',
-    value: 'gray',
-    defaultValue: 'gray',
+  "general.logging.colours.level.debug": {
+    displayName: "Debug Level Color",
+    value: "gray",
+    defaultValue: "gray",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Color styling for verbose diagnostic log messages.',
-    type: 'string',
-    controls: ['text', 'colour'],
-    i18nId: 'prefs_general_logging_colours_level_debug',
-    group: 'logging_colours',
+    category: "general",
+    description: "Color styling for verbose diagnostic log messages.",
+    type: "string",
+    controls: ["text", "colour"],
+    i18nId: "prefs_general_logging_colours_level_debug",
+    group: "logging_colours",
     groupOrder: 2,
-    order: 5
+    order: 5,
   },
-  'general.autosave.preferences': {
-    displayName: 'Preferences Autosave Timeout',
+  "general.autosave.preferences": {
+    displayName: "Preferences Autosave Timeout",
     value: 5,
     defaultValue: 5,
     minimum: 1,
     maximum: 60,
     step: 1,
-    unit: 's',
+    unit: "s",
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'Time in seconds to wait after editing a preference before automatically saving changes to disk.',
-    type: 'number',
-    controls: ['spinner'],
-    i18nId: 'prefs_general_autosave_preferences',
-    order: 10
+    category: "general",
+    description:
+      "Time in seconds to wait after editing a preference before automatically saving changes to disk.",
+    type: "number",
+    controls: ["spinner"],
+    i18nId: "prefs_general_autosave_preferences",
+    order: 10,
   },
-  'general.paths.absolute': {
-    displayName: 'Use Absolute Paths',
+  "general.paths.absolute": {
+    displayName: "Use Absolute Paths",
     value: false,
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    description: 'When true save all external pathnames as absolute paths. Otherwise save as relative to the project file location.',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_general_paths_absolute',
-    order: 20
+    category: "general",
+    description:
+      "When true save all external pathnames as absolute paths. Otherwise save as relative to the project file location.",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_general_paths_absolute",
+    order: 20,
   },
-  'general.project.defaults.author': {
-    displayName: 'Default Project Author',
-    description: 'The "author" field in project metadata is set to this for new projects.',
+  "general.project.defaults.author": {
+    displayName: "Default Project Author",
+    description:
+      'The "author" field in project metadata is set to this for new projects.',
     value: undefined,
     ephemeral: false,
     hidden: false,
-    category: 'general',
-    type: 'string',
-    controls: ['text'],
-    i18nId: 'prefs_general_project_defaults_author',
-    order: 30
+    category: "general",
+    type: "string",
+    controls: ["text"],
+    i18nId: "prefs_general_project_defaults_author",
+    order: 30,
   },
-  'general.mapViewport.zoomAmount': {
-    displayName: 'Map Zoom Step Amount',
+  "general.mapViewport.zoomAmount": {
+    displayName: "Map Zoom Step Amount",
     value: 1.0,
     defaultValue: 1.0,
     minimum: 0.1,
@@ -220,53 +228,54 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     step: 0.1,
     ephemeral: false,
     hidden: true,
-    category: 'general',
-    description: 'Factor used to scale map resolution during zoom-in and zoom-out operations.',
-    type: 'number',
-    controls: ['spinner'],
-    i18nId: 'prefs_general_mapViewport_zoomAmount',
-    order: 40
+    category: "general",
+    description:
+      "Factor used to scale map resolution during zoom-in and zoom-out operations.",
+    type: "number",
+    controls: ["spinner"],
+    i18nId: "prefs_general_mapViewport_zoomAmount",
+    order: 40,
   },
-  'ui.basefont.size': {
-    displayName: 'Base Font Size',
+  "ui.basefont.size": {
+    displayName: "Base Font Size",
     value: 12,
     defaultValue: 12,
     minimum: 4,
     maximum: 72,
     step: 1,
-    unit: 'pt',
+    unit: "pt",
     ephemeral: false,
     hidden: false,
-    category: 'ui',
-    description: 'Default workbench font size across panels and controls',
-    type: 'number',
-    controls: ['spinner'],
-    i18nId: 'prefs_ui_basefont_size',
-    group: 'display',
+    category: "ui",
+    description: "Default workbench font size across panels and controls",
+    type: "number",
+    controls: ["spinner"],
+    i18nId: "prefs_ui_basefont_size",
+    group: "display",
     groupOrder: 1,
-    order: 1
+    order: 1,
   },
-  'ui.icon.size': {
-    displayName: 'Toolbar Icon Size',
+  "ui.icon.size": {
+    displayName: "Toolbar Icon Size",
     value: 24,
     defaultValue: 24,
     minimum: 4,
     maximum: 64,
     step: 1,
-    unit: 'px',
+    unit: "px",
     ephemeral: false,
     hidden: false,
-    category: 'ui',
-    description: 'Dimensions for toolbar and panel action icons',
-    type: 'number',
-    controls: ['spinner'],
-    i18nId: 'prefs_ui_icon_size',
-    group: 'display',
+    category: "ui",
+    description: "Dimensions for toolbar and panel action icons",
+    type: "number",
+    controls: ["spinner"],
+    i18nId: "prefs_ui_icon_size",
+    group: "display",
     groupOrder: 1,
-    order: 2
+    order: 2,
   },
-  'ui.attributeTable.maxRows': {
-    displayName: 'Attribute Table Maximum Rows',
+  "ui.attributeTable.maxRows": {
+    displayName: "Attribute Table Maximum Rows",
     value: 5000,
     defaultValue: 5000,
     minimum: 100,
@@ -274,608 +283,614 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     step: 100,
     ephemeral: false,
     hidden: false,
-    category: 'ui',
-    description: 'Maximum number of feature rows fetched and displayed per page in the Attribute Table.',
-    type: 'number',
-    controls: ['spinner'],
-    i18nId: 'prefs_ui_attribute_table_max_rows',
-    group: 'display',
+    category: "ui",
+    description:
+      "Maximum number of feature rows fetched and displayed per page in the Attribute Table.",
+    type: "number",
+    controls: ["spinner"],
+    i18nId: "prefs_ui_attribute_table_max_rows",
+    group: "display",
     groupOrder: 1,
-    order: 3
+    order: 3,
   },
-  'ui.workbench.location.x': {
-    displayName: 'Workbench Window X Position',
+  "ui.workbench.location.x": {
+    displayName: "Workbench Window X Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.workbench.location.y': {
-    displayName: 'Workbench Window Y Position',
+  "ui.workbench.location.y": {
+    displayName: "Workbench Window Y Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.workbench.location.width': {
-    displayName: 'Workbench Window Width',
+  "ui.workbench.location.width": {
+    displayName: "Workbench Window Width",
     value: 1400,
     defaultValue: 1400,
     minimum: 960,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.workbench.location.height': {
-    displayName: 'Workbench Window Height',
+  "ui.workbench.location.height": {
+    displayName: "Workbench Window Height",
     value: 900,
     defaultValue: 900,
     minimum: 640,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.workbench.location.maximized': {
-    displayName: 'Workbench Window Maximized State',
+  "ui.workbench.location.maximized": {
+    displayName: "Workbench Window Maximized State",
     value: false,
     defaultValue: false,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'boolean'
+    category: "ui",
+    type: "boolean",
   },
-  'ui.workbench.widgetDocks': {
-    displayName: 'Workbench Widget Docks Configuration',
+  "ui.workbench.widgetDocks": {
+    displayName: "Workbench Widget Docks Configuration",
     value: DEFAULT_WORKBENCH_WIDGET_DOCKS,
     defaultValue: DEFAULT_WORKBENCH_WIDGET_DOCKS,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'object',
-    description: 'Flex-proportional dock layout assignments, ratios, order, and overlap containers for workbench panels.'
+    category: "ui",
+    type: "object",
+    description:
+      "Flex-proportional dock layout assignments, ratios, order, and overlap containers for workbench panels.",
   },
-  'ui.preferencesDialog.location.x': {
-    displayName: 'Preferences Dialog X Position',
+  "ui.preferencesDialog.location.x": {
+    displayName: "Preferences Dialog X Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.preferencesDialog.location.y': {
-    displayName: 'Preferences Dialog Y Position',
+  "ui.preferencesDialog.location.y": {
+    displayName: "Preferences Dialog Y Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.preferencesDialog.location.width': {
-    displayName: 'Preferences Dialog Width',
+  "ui.preferencesDialog.location.width": {
+    displayName: "Preferences Dialog Width",
     value: 720,
     defaultValue: 720,
     minimum: 480,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.preferencesDialog.location.height': {
-    displayName: 'Preferences Dialog Height',
+  "ui.preferencesDialog.location.height": {
+    displayName: "Preferences Dialog Height",
     value: 520,
     defaultValue: 520,
     minimum: 360,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.addLayers.location.x': {
-    displayName: 'Add Layers Dialog X Position',
+  "ui.addLayers.location.x": {
+    displayName: "Add Layers Dialog X Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.addLayers.location.y': {
-    displayName: 'Add Layers Dialog Y Position',
+  "ui.addLayers.location.y": {
+    displayName: "Add Layers Dialog Y Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.addLayers.location.width': {
-    displayName: 'Add Layers Dialog Width',
+  "ui.addLayers.location.width": {
+    displayName: "Add Layers Dialog Width",
     value: 640,
     defaultValue: 640,
     minimum: 400,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.addLayers.location.height': {
-    displayName: 'Add Layers Dialog Height',
+  "ui.addLayers.location.height": {
+    displayName: "Add Layers Dialog Height",
     value: 480,
     defaultValue: 480,
     minimum: 300,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.layerProperties.location.x': {
-    displayName: 'Layer Properties Dialog X Position',
+  "ui.layerProperties.location.x": {
+    displayName: "Layer Properties Dialog X Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.layerProperties.location.y': {
-    displayName: 'Layer Properties Dialog Y Position',
+  "ui.layerProperties.location.y": {
+    displayName: "Layer Properties Dialog Y Position",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.layerProperties.location.width': {
-    displayName: 'Layer Properties Dialog Width',
+  "ui.layerProperties.location.width": {
+    displayName: "Layer Properties Dialog Width",
     value: 860,
     defaultValue: 860,
     minimum: 600,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.layerProperties.location.height': {
-    displayName: 'Layer Properties Dialog Height',
+  "ui.layerProperties.location.height": {
+    displayName: "Layer Properties Dialog Height",
     value: 620,
     defaultValue: 620,
     minimum: 400,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'crs.hideDeprecated': {
-    displayName: 'Hide Deprecated CRSs',
+  "crs.hideDeprecated": {
+    displayName: "Hide Deprecated CRSs",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: true,
-    category: 'general',
-    description: 'Hides deprecated coordinate reference systems in every CRS chooser; the current CRS and Recently Used entries are always shown.',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_crs_hide_deprecated'
+    category: "general",
+    description:
+      "Hides deprecated coordinate reference systems in every CRS chooser; the current CRS and Recently Used entries are always shown.",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_crs_hide_deprecated",
   },
-  'ui.layerProperties.fields.showNativeType': {
-    displayName: 'Show Native Type in Layer Fields',
+  "ui.layerProperties.fields.showNativeType": {
+    displayName: "Show Native Type in Layer Fields",
     value: false,
     defaultValue: false,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    description: 'Toggles visibility of raw native storage types in the Layer Properties Fields tab.',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_ui_layer_properties_fields_show_native_type'
+    category: "ui",
+    description:
+      "Toggles visibility of raw native storage types in the Layer Properties Fields tab.",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_ui_layer_properties_fields_show_native_type",
   },
-  'ui.projectProperties.location.x': {
-    displayName: 'Project Properties Dialog X Coordinate',
+  "ui.projectProperties.location.x": {
+    displayName: "Project Properties Dialog X Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.projectProperties.location.y': {
-    displayName: 'Project Properties Dialog Y Coordinate',
+  "ui.projectProperties.location.y": {
+    displayName: "Project Properties Dialog Y Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.projectProperties.location.width': {
-    displayName: 'Project Properties Dialog Width',
+  "ui.projectProperties.location.width": {
+    displayName: "Project Properties Dialog Width",
     value: 720,
     defaultValue: 720,
     minimum: 480,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.projectProperties.location.height': {
-    displayName: 'Project Properties Dialog Height',
+  "ui.projectProperties.location.height": {
+    displayName: "Project Properties Dialog Height",
     value: 520,
     defaultValue: 520,
     minimum: 360,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.selectByValue.location.x': {
-    displayName: 'Select Features by Value Dialog X Coordinate',
+  "ui.selectByValue.location.x": {
+    displayName: "Select Features by Value Dialog X Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.selectByValue.location.y': {
-    displayName: 'Select Features by Value Dialog Y Coordinate',
+  "ui.selectByValue.location.y": {
+    displayName: "Select Features by Value Dialog Y Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.selectByValue.location.width': {
-    displayName: 'Select Features by Value Dialog Width',
+  "ui.selectByValue.location.width": {
+    displayName: "Select Features by Value Dialog Width",
     value: 640,
     defaultValue: 640,
     minimum: 400,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.selectByValue.location.height': {
-    displayName: 'Select Features by Value Dialog Height',
+  "ui.selectByValue.location.height": {
+    displayName: "Select Features by Value Dialog Height",
     value: 480,
     defaultValue: 480,
     minimum: 300,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.snappingOptions.location.x': {
-    displayName: 'Snapping Options Dialog X Coordinate',
+  "ui.snappingOptions.location.x": {
+    displayName: "Snapping Options Dialog X Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.snappingOptions.location.y': {
-    displayName: 'Snapping Options Dialog Y Coordinate',
+  "ui.snappingOptions.location.y": {
+    displayName: "Snapping Options Dialog Y Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.snappingOptions.location.width': {
-    displayName: 'Snapping Options Dialog Width',
+  "ui.snappingOptions.location.width": {
+    displayName: "Snapping Options Dialog Width",
     value: 600,
     defaultValue: 600,
     minimum: 400,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.snappingOptions.location.height': {
-    displayName: 'Snapping Options Dialog Height',
+  "ui.snappingOptions.location.height": {
+    displayName: "Snapping Options Dialog Height",
     value: 450,
     defaultValue: 450,
     minimum: 300,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.newField.location.x': {
-    displayName: 'New Field Dialog X Coordinate',
+  "ui.newField.location.x": {
+    displayName: "New Field Dialog X Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.newField.location.y': {
-    displayName: 'New Field Dialog Y Coordinate',
+  "ui.newField.location.y": {
+    displayName: "New Field Dialog Y Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.newField.location.width': {
-    displayName: 'New Field Dialog Width',
+  "ui.newField.location.width": {
+    displayName: "New Field Dialog Width",
     value: 420,
     defaultValue: 420,
     minimum: 360,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.newField.location.height': {
-    displayName: 'New Field Dialog Height',
+  "ui.newField.location.height": {
+    displayName: "New Field Dialog Height",
     value: 320,
     defaultValue: 320,
     minimum: 240,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.createLayer.location.x': {
-    displayName: 'Create Layer Dialog X Coordinate',
+  "ui.createLayer.location.x": {
+    displayName: "Create Layer Dialog X Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.createLayer.location.y': {
-    displayName: 'Create Layer Dialog Y Coordinate',
+  "ui.createLayer.location.y": {
+    displayName: "Create Layer Dialog Y Coordinate",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.createLayer.location.width': {
-    displayName: 'Create Layer Dialog Width',
+  "ui.createLayer.location.width": {
+    displayName: "Create Layer Dialog Width",
     value: 640,
     defaultValue: 640,
     minimum: 400,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.createLayer.location.height': {
-    displayName: 'Create Layer Dialog Height',
+  "ui.createLayer.location.height": {
+    displayName: "Create Layer Dialog Height",
     value: 480,
     defaultValue: 480,
     minimum: 300,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.systemDialogs.openFile.location': {
-    displayName: 'Open File Dialog Location',
-    value: ':Recent',
-    defaultValue: ':Recent',
+  "ui.systemDialogs.openFile.location": {
+    displayName: "Open File Dialog Location",
+    value: ":Recent",
+    defaultValue: ":Recent",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    description: 'Last-used directory or named location token for system file open dialogs',
-    type: 'string'
+    category: "ui",
+    description:
+      "Last-used directory or named location token for system file open dialogs",
+    type: "string",
   },
-  'ui.systemDialogs.saveFile.location': {
-    displayName: 'Save File Dialog Location',
-    value: ':Recent',
-    defaultValue: ':Recent',
+  "ui.systemDialogs.saveFile.location": {
+    displayName: "Save File Dialog Location",
+    value: ":Recent",
+    defaultValue: ":Recent",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    description: 'Last-used directory or named location token for system file save dialogs',
-    type: 'string'
+    category: "ui",
+    description:
+      "Last-used directory or named location token for system file save dialogs",
+    type: "string",
   },
   // Modular Toolbar Layout Coordinates (Ticket #113, ADR 0020)
-  'ui.toolbars.project.visible': {
-    displayName: 'Project Toolbar Visibility',
+  "ui.toolbars.project.visible": {
+    displayName: "Project Toolbar Visibility",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'boolean'
+    category: "ui",
+    type: "boolean",
   },
-  'ui.toolbars.project.dock': {
-    displayName: 'Project Toolbar Dock Zone',
-    value: 'top',
-    defaultValue: 'top',
+  "ui.toolbars.project.dock": {
+    displayName: "Project Toolbar Dock Zone",
+    value: "top",
+    defaultValue: "top",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'string'
+    category: "ui",
+    type: "string",
   },
-  'ui.toolbars.project.row': {
-    displayName: 'Project Toolbar Row Index',
+  "ui.toolbars.project.row": {
+    displayName: "Project Toolbar Row Index",
     value: 0,
     defaultValue: 0,
     minimum: 0,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.project.order': {
-    displayName: 'Project Toolbar Sequence Order',
+  "ui.toolbars.project.order": {
+    displayName: "Project Toolbar Sequence Order",
     value: 0,
     defaultValue: 0,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.map_view.visible': {
-    displayName: 'Map View Toolbar Visibility',
+  "ui.toolbars.map_view.visible": {
+    displayName: "Map View Toolbar Visibility",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'boolean'
+    category: "ui",
+    type: "boolean",
   },
-  'ui.toolbars.map_view.dock': {
-    displayName: 'Map View Toolbar Dock Zone',
-    value: 'top',
-    defaultValue: 'top',
+  "ui.toolbars.map_view.dock": {
+    displayName: "Map View Toolbar Dock Zone",
+    value: "top",
+    defaultValue: "top",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'string'
+    category: "ui",
+    type: "string",
   },
-  'ui.toolbars.map_view.row': {
-    displayName: 'Map View Toolbar Row Index',
+  "ui.toolbars.map_view.row": {
+    displayName: "Map View Toolbar Row Index",
     value: 0,
     defaultValue: 0,
     minimum: 0,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.map_view.order': {
-    displayName: 'Map View Toolbar Sequence Order',
+  "ui.toolbars.map_view.order": {
+    displayName: "Map View Toolbar Sequence Order",
     value: 1,
     defaultValue: 1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.selection.visible': {
-    displayName: 'Selection Toolbar Visibility',
+  "ui.toolbars.selection.visible": {
+    displayName: "Selection Toolbar Visibility",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'boolean'
+    category: "ui",
+    type: "boolean",
   },
-  'ui.toolbars.selection.dock': {
-    displayName: 'Selection Toolbar Dock Zone',
-    value: 'top',
-    defaultValue: 'top',
+  "ui.toolbars.selection.dock": {
+    displayName: "Selection Toolbar Dock Zone",
+    value: "top",
+    defaultValue: "top",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'string'
+    category: "ui",
+    type: "string",
   },
-  'ui.toolbars.selection.row': {
-    displayName: 'Selection Toolbar Row Index',
+  "ui.toolbars.selection.row": {
+    displayName: "Selection Toolbar Row Index",
     value: 0,
     defaultValue: 0,
     minimum: 0,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.selection.order': {
-    displayName: 'Selection Toolbar Sequence Order',
+  "ui.toolbars.selection.order": {
+    displayName: "Selection Toolbar Sequence Order",
     value: 2,
     defaultValue: 2,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.digitizing.visible': {
-    displayName: 'Digitizing Toolbar Visibility',
+  "ui.toolbars.digitizing.visible": {
+    displayName: "Digitizing Toolbar Visibility",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'boolean'
+    category: "ui",
+    type: "boolean",
   },
-  'ui.toolbars.digitizing.dock': {
-    displayName: 'Digitizing Toolbar Dock Zone',
-    value: 'top',
-    defaultValue: 'top',
+  "ui.toolbars.digitizing.dock": {
+    displayName: "Digitizing Toolbar Dock Zone",
+    value: "top",
+    defaultValue: "top",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'string'
+    category: "ui",
+    type: "string",
   },
-  'ui.toolbars.digitizing.row': {
-    displayName: 'Digitizing Toolbar Row Index',
+  "ui.toolbars.digitizing.row": {
+    displayName: "Digitizing Toolbar Row Index",
     value: 0,
     defaultValue: 0,
     minimum: 0,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.digitizing.order': {
-    displayName: 'Digitizing Toolbar Sequence Order',
+  "ui.toolbars.digitizing.order": {
+    displayName: "Digitizing Toolbar Sequence Order",
     value: 3,
     defaultValue: 3,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.snapping.visible': {
-    displayName: 'Snapping Toolbar Visibility',
+  "ui.toolbars.snapping.visible": {
+    displayName: "Snapping Toolbar Visibility",
     value: false,
     defaultValue: false,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'boolean'
+    category: "ui",
+    type: "boolean",
   },
-  'ui.toolbars.snapping.dock': {
-    displayName: 'Snapping Toolbar Dock Zone',
-    value: 'top',
-    defaultValue: 'top',
+  "ui.toolbars.snapping.dock": {
+    displayName: "Snapping Toolbar Dock Zone",
+    value: "top",
+    defaultValue: "top",
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'string'
+    category: "ui",
+    type: "string",
   },
-  'ui.toolbars.snapping.row': {
-    displayName: 'Snapping Toolbar Row Index',
+  "ui.toolbars.snapping.row": {
+    displayName: "Snapping Toolbar Row Index",
     value: 0,
     defaultValue: 0,
     minimum: 0,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'ui.toolbars.snapping.order': {
-    displayName: 'Snapping Toolbar Sequence Order',
+  "ui.toolbars.snapping.order": {
+    displayName: "Snapping Toolbar Sequence Order",
     value: -1,
     defaultValue: -1,
     ephemeral: false,
     hidden: true,
-    category: 'ui',
-    type: 'number'
+    category: "ui",
+    type: "number",
   },
-  'rendering.simplification.threshold': {
-    displayName: 'Simplification Threshold',
+  "rendering.simplification.threshold": {
+    displayName: "Simplification Threshold",
     value: 1.0,
     defaultValue: 1.0,
     minimum: 0.0,
@@ -883,41 +898,43 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     step: 0.1,
     ephemeral: false,
     hidden: false,
-    category: 'rendering',
-    description: 'Tolerance threshold for rendering vector feature geometries',
-    type: 'number',
-    controls: ['range', 'spinner'],
-    i18nId: 'prefs_rendering_simplification_threshold',
-    order: 1
+    category: "rendering",
+    description: "Tolerance threshold for rendering vector feature geometries",
+    type: "number",
+    controls: ["range", "spinner"],
+    i18nId: "prefs_rendering_simplification_threshold",
+    order: 1,
   },
-  'prefsLayerScanBackgroundValidation': {
-    displayName: 'Background Field Validation',
+  "prefsLayerScanBackgroundValidation": {
+    displayName: "Background Field Validation",
     value: true,
     defaultValue: true,
     ephemeral: false,
     hidden: false,
-    category: 'rendering',
-    description: 'Enables cooperative background scanning to verify and refine inferred field types across vector layer features.',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_rendering_layer_scan_background_validation',
-    order: 2
+    category: "rendering",
+    description:
+      "Enables cooperative background scanning to verify and refine inferred field types across vector layer features.",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_rendering_layer_scan_background_validation",
+    order: 2,
   },
-  'plugin.debug.enable': {
-    displayName: 'Enable Plugin Debug Mode',
+  "plugin.debug.enable": {
+    displayName: "Enable Plugin Debug Mode",
     value: false,
     defaultValue: false,
     ephemeral: false,
     hidden: false,
-    category: 'plugins',
-    description: 'Enable verbose logging for extension host execution and RPC channels',
-    type: 'boolean',
-    controls: ['checkbox'],
-    i18nId: 'prefs_plugin_debug_enable',
-    order: 1
+    category: "plugins",
+    description:
+      "Enable verbose logging for extension host execution and RPC channels",
+    type: "boolean",
+    controls: ["checkbox"],
+    i18nId: "prefs_plugin_debug_enable",
+    order: 1,
   },
-  'mapTools.mapViewport.zoomAmount': {
-    displayName: 'Zoom Step Factor',
+  "mapTools.mapViewport.zoomAmount": {
+    displayName: "Zoom Step Factor",
     value: 1.0,
     defaultValue: 1.0,
     minimum: 0.1,
@@ -927,17 +944,18 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     step: 0.1,
     ephemeral: false,
     hidden: false,
-    category: 'map_tools',
-    description: 'Factor determining viewport resolution scaling on zoom in or zoom out operations.',
-    type: 'number',
-    controls: ['slider', 'number'],
-    i18nId: 'prefs_mapTools_mapViewport_zoomAmount',
-    group: 'scaling',
+    category: "map_tools",
+    description:
+      "Factor determining viewport resolution scaling on zoom in or zoom out operations.",
+    type: "number",
+    controls: ["slider", "number"],
+    i18nId: "prefs_mapTools_mapViewport_zoomAmount",
+    group: "scaling",
     groupOrder: 3,
-    order: 1
+    order: 1,
   },
-  'mapTools.snapping.distance': {
-    displayName: 'Snapping Distance',
+  "mapTools.snapping.distance": {
+    displayName: "Snapping Distance",
     value: 10,
     defaultValue: 10,
     minimum: 0,
@@ -945,18 +963,19 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     min: 0,
     max: 256,
     step: 1,
-    unit: 'px',
+    unit: "px",
     ephemeral: false,
     hidden: false,
-    category: 'map_tools',
-    description: 'Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.',
-    type: 'number',
-    controls: ['number'],
-    i18nId: 'prefs_mapTools_snapping_distance',
-    group: 'snapping',
+    category: "map_tools",
+    description:
+      "Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.",
+    type: "number",
+    controls: ["number"],
+    i18nId: "prefs_mapTools_snapping_distance",
+    group: "snapping",
     groupOrder: 2,
-    order: 1
-  }
+    order: 1,
+  },
 };
 
 /**

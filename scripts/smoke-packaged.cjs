@@ -19,11 +19,11 @@
  * @see {@link runPackagedChecks}
  */
 
-'use strict';
+"use strict";
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 /**
  * @typedef {Object} SmokeCheckResult
@@ -42,7 +42,7 @@ const { spawnSync } = require('node:child_process');
  * @description PROJ string fragment that `EPSG:4326` must produce; it comes from the datum definition in `proj.db`.
  * @type {string}
  */
-const EXPECTED_EPSG_4326_FRAGMENT = '+datum=WGS84';
+const EXPECTED_EPSG_4326_FRAGMENT = "+datum=WGS84";
 
 /**
  * @description Tells whether a path lies inside an `app.asar` archive, where native code cannot open files.
@@ -70,16 +70,24 @@ function runPackagedChecks(gdal) {
   /** @type {SmokeCheckResult[]} */
   const results = [];
   try {
-    const proj4 = gdal.SpatialReference.fromUserInput('EPSG:4326').toProj4();
-    results.push({ name: 'EPSG:4326 from proj.db', ok: proj4.includes(EXPECTED_EPSG_4326_FRAGMENT), detail: proj4 });
+    const proj4 = gdal.SpatialReference.fromUserInput("EPSG:4326").toProj4();
+    results.push({
+      name: "EPSG:4326 from proj.db",
+      ok: proj4.includes(EXPECTED_EPSG_4326_FRAGMENT),
+      detail: proj4,
+    });
   } catch (err) {
-    results.push({ name: 'EPSG:4326 from proj.db', ok: false, detail: String(err && err.message ? err.message : err) });
+    results.push({
+      name: "EPSG:4326 from proj.db",
+      ok: false,
+      detail: String(err && err.message ? err.message : err),
+    });
   }
-  for (const key of ['GDAL_DATA', 'CURL_CA_BUNDLE']) {
+  for (const key of ["GDAL_DATA", "CURL_CA_BUNDLE"]) {
     const value = gdal.config.get(key);
     results.push({
       name: `${key} outside app.asar`,
-      ok: typeof value === 'string' && value !== '' && !isInsideAsar(value),
+      ok: typeof value === "string" && value !== "" && !isInsideAsar(value),
       detail: String(value),
     });
   }
@@ -97,8 +105,10 @@ function runPackagedChecks(gdal) {
  * @returns {string | null} Executable path, or null on a platform without a packaged smoke target.
  */
 function defaultPackagedExecutable(platform, cwd) {
-  if (platform === 'linux') return path.join(cwd, 'release', 'linux-unpacked', 'cartouche');
-  if (platform === 'win32') return path.join(cwd, 'release', 'win-unpacked', 'Cartouche.exe');
+  if (platform === "linux")
+    return path.join(cwd, "release", "linux-unpacked", "cartouche");
+  if (platform === "win32")
+    return path.join(cwd, "release", "win-unpacked", "Cartouche.exe");
   return null;
 }
 
@@ -112,22 +122,31 @@ function defaultPackagedExecutable(platform, cwd) {
  * @returns {number} Child exit code; 1 when the executable is missing or the child was killed by a signal.
  */
 function relaunchInPackagedApp(executableArg) {
-  const executable = executableArg ? path.resolve(executableArg) : defaultPackagedExecutable(process.platform, process.cwd());
+  const executable =
+    executableArg ?
+      path.resolve(executableArg)
+    : defaultPackagedExecutable(process.platform, process.cwd());
   if (!executable || !fs.existsSync(executable)) {
-    console.error(`[smoke:packaged] FAIL packaged executable not found: ${executable ?? `no default for ${process.platform}`}`);
+    console.error(
+      `[smoke:packaged] FAIL packaged executable not found: ${executable ?? `no default for ${process.platform}`}`
+    );
     return 1;
   }
-  const resourcesDir = path.join(path.dirname(executable), 'resources');
+  const resourcesDir = path.join(path.dirname(executable), "resources");
   const child = spawnSync(executable, [__filename, resourcesDir], {
-    stdio: 'inherit',
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    stdio: "inherit",
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
   if (child.error) {
-    console.error(`[smoke:packaged] Failed to launch ${executable}: ${child.error.message}`);
+    console.error(
+      `[smoke:packaged] Failed to launch ${executable}: ${child.error.message}`
+    );
     return 1;
   }
   if (child.signal) {
-    console.error(`[smoke:packaged] ${executable} terminated by ${child.signal} (native crash)`);
+    console.error(
+      `[smoke:packaged] ${executable} terminated by ${child.signal} (native crash)`
+    );
     return 1;
   }
   return child.status ?? 1;
@@ -145,19 +164,23 @@ function main() {
   if (!process.versions.electron) {
     return relaunchInPackagedApp(process.argv[2]);
   }
-  const asar = path.join(process.argv[2], 'app.asar');
+  const asar = path.join(process.argv[2], "app.asar");
   let gdal;
   try {
     // The worker bundle's startup applies the app.asar.unpacked data paths to the gdal-async instance it loads, the same one required next.
-    require(path.join(asar, 'dist-electron', 'worker', 'geospatialWorker.cjs'));
-    gdal = require(path.join(asar, 'node_modules', 'gdal-async'));
+    require(path.join(asar, "dist-electron", "worker", "geospatialWorker.cjs"));
+    gdal = require(path.join(asar, "node_modules", "gdal-async"));
   } catch (err) {
-    console.error(`[smoke:packaged] FAIL loading the packaged worker or gdal-async: ${err && err.message}`);
+    console.error(
+      `[smoke:packaged] FAIL loading the packaged worker or gdal-async: ${err && err.message}`
+    );
     return 1;
   }
   const results = runPackagedChecks(gdal);
   for (const r of results) {
-    console.log(`[smoke:packaged] ${r.ok ? 'PASS' : 'FAIL'} ${r.name}: ${r.detail}`);
+    console.log(
+      `[smoke:packaged] ${r.ok ? "PASS" : "FAIL"} ${r.name}: ${r.detail}`
+    );
   }
   return results.every((r) => r.ok) ? 0 : 1;
 }
@@ -166,4 +189,9 @@ if (require.main === module) {
   process.exitCode = main();
 }
 
-module.exports = { runPackagedChecks, defaultPackagedExecutable, isInsideAsar, EXPECTED_EPSG_4326_FRAGMENT };
+module.exports = {
+  runPackagedChecks,
+  defaultPackagedExecutable,
+  isInsideAsar,
+  EXPECTED_EPSG_4326_FRAGMENT,
+};

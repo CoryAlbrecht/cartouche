@@ -10,29 +10,29 @@
  * @see {@link FileTypeRegistry}
  */
 
-import { isReservedStyleId } from '../../../shared/styles/projectDefaultStyles';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { dialog } from 'electron';
-import { projectStore } from '../../project/ProjectStore';
-import { Layer } from '../../project/models/Layer';
-import { LayerGroup } from '../../project/models/LayerGroup';
-import { LayerTreeNode } from '../../project/models/LayerTreeNode';
+import { isReservedStyleId } from "../../../shared/styles/projectDefaultStyles";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { dialog } from "electron";
+import { projectStore } from "../../project/ProjectStore";
+import { Layer } from "../../project/models/Layer";
+import { LayerGroup } from "../../project/models/LayerGroup";
+import { LayerTreeNode } from "../../project/models/LayerTreeNode";
 import {
   broadcastProjectLayersTree,
-  serializeProjectLayersTree
-} from '../../project/ProjectBroadcaster';
-import { fileTypeRegistry } from '../../filetypes/FileTypeRegistry';
+  serializeProjectLayersTree,
+} from "../../project/ProjectBroadcaster";
+import { fileTypeRegistry } from "../../filetypes/FileTypeRegistry";
 import {
   resolveDialogDefaultPath,
-  updateDialogLocation
-} from '../dialog/dialogLocation';
+  updateDialogLocation,
+} from "../dialog/dialogLocation";
 import {
   isProjectLayerStyleWrapper,
   type ProjectLayerStyleItem,
   type ProjectStyleFormat,
-  type SldStyleVersion
-} from '../../../shared/types';
+  type SldStyleVersion,
+} from "../../../shared/types";
 
 /**
  * @typedef {Object} OpenStyleDialogInvoker
@@ -109,14 +109,19 @@ export function cleanupOrphanedSharedStyles(): void {
     if (layer.styleId) {
       referencedIds.add(layer.styleId);
     }
-    if (isProjectLayerStyleWrapper(layer.style) && layer.style.href?.startsWith('#')) {
+    if (
+      isProjectLayerStyleWrapper(layer.style)
+      && layer.style.href?.startsWith("#")
+    ) {
       referencedIds.add(layer.style.href.slice(1));
     }
   }
 
   if (Array.isArray(project.styles)) {
     // Reserved application styles (Project Default Styles) are never referenced by layers but must be kept.
-    project.styles = project.styles.filter((s) => referencedIds.has(s.id) || isReservedStyleId(s.id));
+    project.styles = project.styles.filter(
+      (s) => referencedIds.has(s.id) || isReservedStyleId(s.id)
+    );
   }
 
   project.layers = serializeProjectLayersTree();
@@ -137,43 +142,40 @@ function resolveConcreteStyle(style: ProjectLayerStyleItem): {
   version?: SldStyleVersion;
 } {
   const project = projectStore.getProject();
-  if (style.href?.startsWith('#') && Array.isArray(project?.styles)) {
+  if (style.href?.startsWith("#") && Array.isArray(project?.styles)) {
     const targetId = style.href.slice(1);
     const matched = project.styles.find((s) => s.id === targetId);
     if (matched) {
       const format: ProjectStyleFormat =
-        matched.format === 'sld' ? 'sld'
-        : matched.format === 'cartouche' ? 'cartouche'
-        : 'openlayers';
+        matched.format === "sld" ? "sld"
+        : matched.format === "cartouche" ? "cartouche"
+        : "openlayers";
       const version: SldStyleVersion | undefined =
-        matched.version === '1.0.0' || matched.version === '1.1.0'
-          ? matched.version
-          : format === 'sld'
-            ? '1.0.0'
-            : undefined;
+        matched.version === "1.0.0" || matched.version === "1.1.0" ?
+          matched.version
+        : format === "sld" ? "1.0.0"
+        : undefined;
       return {
         content: matched.content,
         format,
-        ...(version ? { version } : {})
+        ...(version ? { version } : {}),
       };
     }
   }
 
   const format: ProjectStyleFormat =
-    style.format === 'sld' ? 'sld'
-    : style.format === 'cartouche' ? 'cartouche'
-    : 'openlayers';
+    style.format === "sld" ? "sld"
+    : style.format === "cartouche" ? "cartouche"
+    : "openlayers";
   const version: SldStyleVersion | undefined =
-    style.version === '1.0.0' || style.version === '1.1.0'
-      ? style.version
-      : format === 'sld'
-        ? '1.0.0'
-        : undefined;
+    style.version === "1.0.0" || style.version === "1.1.0" ? style.version
+    : format === "sld" ? "1.0.0"
+    : undefined;
 
   return {
-    content: style.content ?? '',
+    content: style.content ?? "",
     format,
-    ...(version ? { version } : {})
+    ...(version ? { version } : {}),
   };
 }
 
@@ -199,7 +201,9 @@ export async function setLayerStyle(
     return;
   }
   if (style?.href && isReservedStyleId(style.href)) {
-    throw new Error(`Shared style id "${style.href}" is reserved for application use.`);
+    throw new Error(
+      `Shared style id "${style.href}" is reserved for application use.`
+    );
   }
 
   const idSet = new Set(layerIds);
@@ -233,7 +237,7 @@ export async function setLayerStyle(
         id: sharedId,
         content: resolved.content,
         format: resolved.format,
-        ...(resolved.version ? { version: resolved.version } : {})
+        ...(resolved.version ? { version: resolved.version } : {}),
       });
 
       for (const layer of targetLayers) {
@@ -241,7 +245,7 @@ export async function setLayerStyle(
           href: `#${sharedId}`,
           content: resolved.content,
           format: resolved.format,
-          ...(resolved.version ? { version: resolved.version } : {})
+          ...(resolved.version ? { version: resolved.version } : {}),
         };
         layer.styleId = sharedId;
         if (opacity !== undefined && Number.isFinite(opacity)) {
@@ -253,7 +257,7 @@ export async function setLayerStyle(
         layer.style = {
           content: resolved.content,
           format: resolved.format,
-          ...(resolved.version ? { version: resolved.version } : {})
+          ...(resolved.version ? { version: resolved.version } : {}),
         };
         layer.styleId = undefined;
         if (opacity !== undefined && Number.isFinite(opacity)) {
@@ -286,24 +290,24 @@ export function parseStyleFileContent(
   const ext = path.extname(filePath).toLowerCase();
   const trimmed = rawContent.trim();
 
-  if (ext === '.sld' || ext === '.se' || trimmed.startsWith('<')) {
+  if (ext === ".sld" || ext === ".se" || trimmed.startsWith("<")) {
     if (
-      !trimmed.startsWith('<') ||
-      !trimmed.endsWith('>') ||
-      (!trimmed.includes('StyledLayerDescriptor') &&
-        !trimmed.includes('FeatureTypeStyle') &&
-        !trimmed.includes('UserStyle'))
+      !trimmed.startsWith("<")
+      || !trimmed.endsWith(">")
+      || (!trimmed.includes("StyledLayerDescriptor")
+        && !trimmed.includes("FeatureTypeStyle")
+        && !trimmed.includes("UserStyle"))
     ) {
       throw new Error(`Invalid or malformed SLD XML style file: "${filePath}"`);
     }
 
     const is11 =
-      /\bversion\s*=\s*["']1\.1\.0["']/i.test(rawContent) ||
-      rawContent.includes('http://www.opengis.net/se');
+      /\bversion\s*=\s*["']1\.1\.0["']/i.test(rawContent)
+      || rawContent.includes("http://www.opengis.net/se");
     return {
-      format: 'sld',
-      version: is11 ? '1.1.0' : '1.0.0',
-      content: rawContent
+      format: "sld",
+      version: is11 ? "1.1.0" : "1.0.0",
+      content: rawContent,
     };
   }
 
@@ -311,24 +315,25 @@ export function parseStyleFileContent(
   try {
     parsed = JSON.parse(rawContent);
   } catch {
-    throw new Error(`Invalid OpenLayers Flat Style JSON syntax in file: "${filePath}"`);
+    throw new Error(
+      `Invalid OpenLayers Flat Style JSON syntax in file: "${filePath}"`
+    );
   }
 
   if (
-    parsed === null ||
-    typeof parsed !== 'object' ||
-    (Array.isArray(parsed) && parsed.length === 0) ||
-    (!Array.isArray(parsed) &&
-      ((parsed as Record<string, unknown>).type === 'FeatureCollection' ||
-        (parsed as Record<string, unknown>).type === 'Feature'))
+    parsed === null
+    || typeof parsed !== "object"
+    || (Array.isArray(parsed) && parsed.length === 0)
+    || (!Array.isArray(parsed)
+      && ((parsed as Record<string, unknown>).type === "FeatureCollection"
+        || (parsed as Record<string, unknown>).type === "Feature"))
   ) {
-    throw new Error(`Invalid OpenLayers Flat Style structure in file: "${filePath}"`);
+    throw new Error(
+      `Invalid OpenLayers Flat Style structure in file: "${filePath}"`
+    );
   }
 
-  return {
-    format: 'openlayers',
-    content: rawContent
-  };
+  return { format: "openlayers", content: rawContent };
 }
 
 /**
@@ -348,13 +353,13 @@ export async function loadStyleFile(
   let targetPath = filePath;
 
   if (!targetPath) {
-    const filters = fileTypeRegistry.getFileFilters('style');
-    const defaultPath = resolveDialogDefaultPath('open');
+    const filters = fileTypeRegistry.getFileFilters("style");
+    const defaultPath = resolveDialogDefaultPath("open");
     const result = await dialogInvoker.showOpenDialog({
-      title: 'Load Layer Style',
+      title: "Load Layer Style",
       ...(defaultPath ? { defaultPath } : {}),
-      properties: ['openFile'],
-      filters
+      properties: ["openFile"],
+      filters,
     });
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -362,10 +367,10 @@ export async function loadStyleFile(
     }
 
     targetPath = result.filePaths[0];
-    updateDialogLocation('open', targetPath);
+    updateDialogLocation("open", targetPath);
   }
 
-  const rawContent = await fs.readFile(targetPath, 'utf-8');
+  const rawContent = await fs.readFile(targetPath, "utf-8");
   return parseStyleFileContent(rawContent, targetPath);
 }
 
@@ -389,21 +394,19 @@ export async function saveStyleFile(
   let targetPath = defaultPath;
 
   const shouldPromptDialog =
-    Boolean(dialogInvoker) ||
-    !targetPath ||
-    !path.isAbsolute(targetPath);
+    Boolean(dialogInvoker) || !targetPath || !path.isAbsolute(targetPath);
 
   if (shouldPromptDialog) {
     const invoker = dialogInvoker ?? dialog;
-    const defaultExt = resolved.format === 'sld' ? 'sld' : 'json';
+    const defaultExt = resolved.format === "sld" ? "sld" : "json";
     const suggested = targetPath || `style.${defaultExt}`;
-    const resolvedDefault = resolveDialogDefaultPath('save', suggested);
-    const filters = fileTypeRegistry.getFileFilters('style');
+    const resolvedDefault = resolveDialogDefaultPath("save", suggested);
+    const filters = fileTypeRegistry.getFileFilters("style");
 
     const result = await invoker.showSaveDialog({
-      title: 'Export Layer Style',
+      title: "Export Layer Style",
       ...(resolvedDefault ? { defaultPath: resolvedDefault } : {}),
-      filters
+      filters,
     });
 
     if (result.canceled || !result.filePath) {
@@ -411,9 +414,9 @@ export async function saveStyleFile(
     }
 
     targetPath = result.filePath;
-    updateDialogLocation('save', targetPath);
+    updateDialogLocation("save", targetPath);
   }
 
-  await fs.writeFile(targetPath!, resolved.content, 'utf-8');
+  await fs.writeFile(targetPath!, resolved.content, "utf-8");
   return targetPath!;
 }

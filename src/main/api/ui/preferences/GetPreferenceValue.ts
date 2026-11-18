@@ -9,8 +9,8 @@
  * @see {@link PreferencesStore}
  */
 
-import type { PreferenceMap } from '@shared/types';
-import { PreferencesStore } from './PreferencesStore';
+import type { PreferenceMap } from "@shared/types";
+import { PreferencesStore } from "./PreferencesStore";
 
 /**
  * @description Returns a preference descriptor object matching the requested preference name, or all registered preference descriptors if name is omitted.

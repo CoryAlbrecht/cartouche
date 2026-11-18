@@ -9,10 +9,13 @@
  * @see {@link PreferenceMap}
  */
 
-import { signal, type Signal } from '@preact/signals-react';
-import type { PreferenceMap } from '@shared/types';
-import { addConsoleLog, hydrateToolbarSignalsFromPreferences } from './gisSignals';
-import { logging } from '../../shared/logging';
+import { signal, type Signal } from "@preact/signals-react";
+import type { PreferenceMap } from "@shared/types";
+import {
+  addConsoleLog,
+  hydrateToolbarSignalsFromPreferences,
+} from "./gisSignals";
+import { logging } from "../../shared/logging";
 
 /**
  * @signal isPreferencesOpenSignal
@@ -45,7 +48,7 @@ export const preferencesMapSignal = signal<PreferenceMap>({});
  * @since 0.1.0-dev
  * @type {Signal<string>}
  */
-export const activeCategorySignal = signal<string>('general');
+export const activeCategorySignal = signal<string>("general");
 
 /**
  * @signal prefsUiBaseFontSize
@@ -78,7 +81,9 @@ export const prefsUiIconSize = signal<number | undefined>(undefined);
  * @since 0.1.0-dev
  * @type {Signal<number | undefined>}
  */
-export const prefsGeneralMapViewportZoomAmount = signal<number | undefined>(undefined);
+export const prefsGeneralMapViewportZoomAmount = signal<number | undefined>(
+  undefined
+);
 
 /**
  * @signal prefsAttributeTableMaxRows
@@ -95,10 +100,10 @@ export const prefsAttributeTableMaxRows = signal<number>(5000);
  * @description Lookup dictionary mapping preference key strings to exported Preact Signal instances.
  */
 const PREFERENCE_SIGNALS_MAP: Record<string, Signal<any>> = {
-  'ui.basefont.size': prefsUiBaseFontSize,
-  'ui.icon.size': prefsUiIconSize,
-  'general.mapViewport.zoomAmount': prefsGeneralMapViewportZoomAmount,
-  'ui.attributeTable.maxRows': prefsAttributeTableMaxRows
+  "ui.basefont.size": prefsUiBaseFontSize,
+  "ui.icon.size": prefsUiIconSize,
+  "general.mapViewport.zoomAmount": prefsGeneralMapViewportZoomAmount,
+  "ui.attributeTable.maxRows": prefsAttributeTableMaxRows,
 };
 
 /**
@@ -133,11 +138,8 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
     if (window.electronAPI?.getPreferenceValue) {
       const prefs = await window.electronAPI.getPreferenceValue(name);
       let merged: PreferenceMap;
-      if (name && name.trim() !== '') {
-        merged = {
-          ...preferencesMapSignal.value,
-          ...prefs
-        };
+      if (name && name.trim() !== "") {
+        merged = { ...preferencesMapSignal.value, ...prefs };
       } else {
         merged = { ...prefs };
       }
@@ -147,7 +149,9 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
       return prefs;
     }
   } catch (err) {
-    logging.error('Error loading preferences from Main Process', err, { scope: 'preferencesSignals' });
+    logging.error("Error loading preferences from Main Process", err, {
+      scope: "preferencesSignals",
+    });
   }
   return preferencesMapSignal.value;
 }
@@ -162,22 +166,36 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
  * @param {any} value - New preference value to set.
  * @returns {Promise<void>}
  */
-export async function updatePreference(name: string, value: any): Promise<void> {
+export async function updatePreference(
+  name: string,
+  value: any
+): Promise<void> {
   try {
     if (window.electronAPI?.setPreferenceValue) {
-      const updatedMap = await window.electronAPI.setPreferenceValue(name, value);
-      const merged = {
-        ...preferencesMapSignal.value,
-        ...updatedMap
-      };
+      const updatedMap = await window.electronAPI.setPreferenceValue(
+        name,
+        value
+      );
+      const merged = { ...preferencesMapSignal.value, ...updatedMap };
       attachAndSyncSignals(merged);
       preferencesMapSignal.value = merged;
       hydrateToolbarSignalsFromPreferences(merged);
-      addConsoleLog('info', `Preference updated: "${name}" = ${JSON.stringify(value)}`, 'Preferences');
+      addConsoleLog(
+        "info",
+        `Preference updated: "${name}" = ${JSON.stringify(value)}`,
+        "Preferences"
+      );
     }
   } catch (err) {
-    logging.error('Error setting preference value', err, { preference: name, scope: 'preferencesSignals' });
-    addConsoleLog('error', `Failed to update preference: ${name}`, 'Preferences');
+    logging.error("Error setting preference value", err, {
+      preference: name,
+      scope: "preferencesSignals",
+    });
+    addConsoleLog(
+      "error",
+      `Failed to update preference: ${name}`,
+      "Preferences"
+    );
   }
 }
 
@@ -192,7 +210,7 @@ export async function updatePreference(name: string, value: any): Promise<void> 
 export function openPreferencesDialog(): void {
   loadPreferences();
   isPreferencesOpenSignal.value = true;
-  addConsoleLog('info', 'Preferences dialog opened.', 'Preferences');
+  addConsoleLog("info", "Preferences dialog opened.", "Preferences");
 }
 
 /**
@@ -223,5 +241,5 @@ export function cancelPreferencesEdits(): void {
     }
   }
   closePreferencesDialog();
-  addConsoleLog('info', 'Preferences changes cancelled.', 'Preferences');
+  addConsoleLog("info", "Preferences changes cancelled.", "Preferences");
 }

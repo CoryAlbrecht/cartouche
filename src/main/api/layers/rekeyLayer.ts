@@ -11,11 +11,11 @@
  * @see {@link geospatialService}
  */
 
-import { projectStore } from '../../project/ProjectStore';
-import { layerSessionRegistry } from '../../project/LayerSessionRegistry';
-import { geospatialService } from '../../worker/GeospatialService';
-import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
-import { findNode } from '../project/layerTreeOperations';
+import { projectStore } from "../../project/ProjectStore";
+import { layerSessionRegistry } from "../../project/LayerSessionRegistry";
+import { geospatialService } from "../../worker/GeospatialService";
+import { broadcastProjectLayersTree } from "../../project/ProjectBroadcaster";
+import { findNode } from "../project/layerTreeOperations";
 
 /**
  * @description Atomically re-keys a layer identifier across ProjectStore, LayerSessionRegistry, and GeospatialService.
@@ -33,16 +33,16 @@ export async function rekeyLayer(
   oldLayerId: string,
   newLayerId: string
 ): Promise<{ success: boolean; layerId: string }> {
-  if (!oldLayerId || typeof oldLayerId !== 'string') {
-    throw new Error('Original Layer ID is required.');
+  if (!oldLayerId || typeof oldLayerId !== "string") {
+    throw new Error("Original Layer ID is required.");
   }
-  if (!newLayerId || typeof newLayerId !== 'string') {
-    throw new Error('New Layer ID cannot be empty.');
+  if (!newLayerId || typeof newLayerId !== "string") {
+    throw new Error("New Layer ID cannot be empty.");
   }
 
   const trimmed = newLayerId.trim();
   if (!trimmed) {
-    throw new Error('New Layer ID cannot be empty or whitespace-only.');
+    throw new Error("New Layer ID cannot be empty or whitespace-only.");
   }
 
   // If identifier is unchanged, succeed immediately without mutating registries
@@ -81,4 +81,3 @@ export async function rekeyLayer(
 }
 
 export default rekeyLayer;
-

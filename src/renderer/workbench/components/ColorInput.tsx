@@ -10,6 +10,9 @@
  * @see {@link CssColorsDatalist}
  */
 
-export { ColorInput, CssColorsDatalist, default } from '@renderer/components/common/ColorInput';
-export type { ColorInputProps } from '@renderer/components/common/ColorInput';
-
+export {
+  ColorInput,
+  CssColorsDatalist,
+  default,
+} from "@renderer/components/common/ColorInput";
+export type { ColorInputProps } from "@renderer/components/common/ColorInput";

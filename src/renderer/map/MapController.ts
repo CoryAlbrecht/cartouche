@@ -260,16 +260,33 @@ export function resolveFeatureQueryParameters(
   displayCode: string
 ): FeatureQueryParameters {
   if (displayCode === NO_CRS_CODE) {
-    return { queryExtent: extent, targetProjection: undefined, dataProjection: NO_CRS_CODE, featureProjection: NO_CRS_CODE };
+    return {
+      queryExtent: extent,
+      targetProjection: undefined,
+      dataProjection: NO_CRS_CODE,
+      featureProjection: NO_CRS_CODE,
+    };
   }
   const dataProjection = resolveLayerDataCrs(descriptor.crs);
   if (!descriptor.crs?.authId) {
     const finite = extent.every((v) => Number.isFinite(v));
     const queryExtent =
-      finite && displayCode !== dataProjection ? transformExtent(extent, displayCode, dataProjection) : extent;
-    return { queryExtent, targetProjection: undefined, dataProjection, featureProjection: displayCode };
+      finite && displayCode !== dataProjection ?
+        transformExtent(extent, displayCode, dataProjection)
+      : extent;
+    return {
+      queryExtent,
+      targetProjection: undefined,
+      dataProjection,
+      featureProjection: displayCode,
+    };
   }
-  return { queryExtent: extent, targetProjection: displayCode, dataProjection, featureProjection: displayCode };
+  return {
+    queryExtent: extent,
+    targetProjection: displayCode,
+    dataProjection,
+    featureProjection: displayCode,
+  };
 }
 
 /**
@@ -363,7 +380,8 @@ export class MapController {
   private selectionHighlightSource: VectorSource | null = null;
   private displayCrs: DisplayCrs = { code: DEFAULT_DISPLAY_CRS, none: false };
   private displayCrsTask: Promise<void> = Promise.resolve();
-  private pendingProjectViewport: Parameters<MapController["setViewport"]>[0] | null = null;
+  private pendingProjectViewport:
+    Parameters<MapController["setViewport"]>[0] | null = null;
   private viewListenerKeys: Array<() => void> = [];
 
   /**
@@ -380,18 +398,23 @@ export class MapController {
   constructor(container: HTMLElement, options?: { view?: View }) {
     this.container = container;
 
-    const initialCrs = resolveDisplayCrs(projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs);
+    const initialCrs = resolveDisplayCrs(
+      projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs
+    );
     const canUseInitial =
       initialCrs.none
       || isProjectionRegistered(initialCrs.code)
-      || (initialCrs.proj4 ? registerProjectionDefinition(initialCrs.code, initialCrs.proj4) : false);
+      || (initialCrs.proj4 ?
+        registerProjectionDefinition(initialCrs.code, initialCrs.proj4)
+      : false);
     if (canUseInitial && !options?.view) {
       this.displayCrs = initialCrs;
     }
 
     this.view = options?.view ?? this.createDefaultView(this.displayCrs);
     if (options?.view) {
-      const code = options.view.getProjection()?.getCode?.() ?? DEFAULT_DISPLAY_CRS;
+      const code =
+        options.view.getProjection()?.getCode?.() ?? DEFAULT_DISPLAY_CRS;
       this.displayCrs = { code, none: code === NO_CRS_CODE };
     }
 
@@ -522,7 +545,10 @@ export class MapController {
     const disposeProjectCrs = effect(() => {
       const crs = projectCrsSignal.value;
       const next = resolveDisplayCrs(crs);
-      if (next.code !== this.displayCrs.code || this.view.getProjection()?.getCode?.() !== next.code) {
+      if (
+        next.code !== this.displayCrs.code
+        || this.view.getProjection()?.getCode?.() !== next.code
+      ) {
         void this.setDisplayCrs(next);
       }
     });
@@ -664,8 +690,10 @@ export class MapController {
     );
 
     const activeLayerId = activeLayerIdSignal.value;
-    const activeEntry = activeLayerId ? this.vectorLayers.get(activeLayerId) : undefined;
-    const entries = activeEntry ? [activeEntry] : Array.from(this.vectorLayers.values());
+    const activeEntry =
+      activeLayerId ? this.vectorLayers.get(activeLayerId) : undefined;
+    const entries =
+      activeEntry ? [activeEntry] : Array.from(this.vectorLayers.values());
 
     const highlightFeatures: Feature[] = [];
     for (const entry of entries) {
@@ -807,11 +835,13 @@ export class MapController {
       const rawStyle =
         styles[id] !== undefined ? styles[id] : entry.activeRawStyle;
       const temporalConfig =
-        entry.descriptor.temporal ??
-        (entry.descriptor.temporalEnabled ?
+        entry.descriptor.temporal
+        ?? (entry.descriptor.temporalEnabled ?
           { enabled: true, mode: "start_end" as const }
         : undefined);
-      const prevTemporalJson = JSON.stringify(entry.activeTemporalConfig ?? null);
+      const prevTemporalJson = JSON.stringify(
+        entry.activeTemporalConfig ?? null
+      );
       const curTemporalJson = JSON.stringify(temporalConfig ?? null);
       const temporalChanged = prevTemporalJson !== curTemporalJson;
       const styleChanged =
@@ -887,10 +917,8 @@ export class MapController {
     const viewCrs = this.view.getProjection() || "EPSG:3857";
     const size = this.map.getSize();
     const extent =
-      entry.loadsFullExtent ?
-        [-Infinity, -Infinity, Infinity, Infinity]
-      : size && size[0] > 0 && size[1] > 0 ?
-        this.view.calculateExtent(size)
+      entry.loadsFullExtent ? [-Infinity, -Infinity, Infinity, Infinity]
+      : size && size[0] > 0 && size[1] > 0 ? this.view.calculateExtent(size)
       : entry.descriptor.extent || [-180, -90, 180, 90];
 
     await this.loadFeaturesForExtent(
@@ -926,15 +954,17 @@ export class MapController {
     const sharedStyles = currentProjectSignal.value?.styles;
     const isCartouche = isCartoucheStyleDescriptor(rawStyle, sharedStyles);
     const temporalConfig =
-      entry.descriptor.temporal ??
-      (entry.descriptor.temporalEnabled ?
+      entry.descriptor.temporal
+      ?? (entry.descriptor.temporalEnabled ?
         { enabled: true, mode: "start_end" as const }
       : undefined);
-    entry.activeTemporalConfig = temporalConfig ? { ...temporalConfig } : undefined;
+    entry.activeTemporalConfig =
+      temporalConfig ? { ...temporalConfig } : undefined;
 
     const temporalFields: string[] = [];
     if (temporalConfig?.enabled) {
-      if (temporalConfig.startField) temporalFields.push(temporalConfig.startField);
+      if (temporalConfig.startField)
+        temporalFields.push(temporalConfig.startField);
       if (temporalConfig.endField) temporalFields.push(temporalConfig.endField);
     }
 
@@ -990,13 +1020,7 @@ export class MapController {
         ...temporalFields,
       ]);
 
-      if (
-        !this.requiresFieldReload(
-          entry,
-          requiredFields,
-          isInitialCreate
-        )
-      ) {
+      if (!this.requiresFieldReload(entry, requiredFields, isInitialCreate)) {
         entry.layer.setStyle(flatResult.compiledStyle as any);
         return;
       }
@@ -1033,13 +1057,7 @@ export class MapController {
         ...compiledResult.requiredFields,
         ...temporalFields,
       ]);
-      if (
-        this.requiresFieldReload(
-          entry,
-          requiredFields,
-          isInitialCreate
-        )
-      ) {
+      if (this.requiresFieldReload(entry, requiredFields, isInitialCreate)) {
         const mergedFields = Array.from(
           new Set([...entry.loadedFields, ...requiredFields])
         );
@@ -1217,7 +1235,11 @@ export class MapController {
           viewCrs?.getCode?.() || "EPSG:3857"
         );
 
-      const queryParams = resolveFeatureQueryParameters(descriptor, extent as number[], projectionCode);
+      const queryParams = resolveFeatureQueryParameters(
+        descriptor,
+        extent as number[],
+        projectionCode
+      );
       const queryBox: BoundingBox = [
         queryParams.queryExtent[0],
         queryParams.queryExtent[1],
@@ -1270,19 +1292,27 @@ export class MapController {
         if (
           queryParams.dataProjection !== NO_CRS_CODE
           && !isProjectionRegistered(queryParams.dataProjection)
-          && !(await ensureProjectionRegistered(queryParams.dataProjection, descriptor.crs?.proj4))
+          && !(await ensureProjectionRegistered(
+            queryParams.dataProjection,
+            descriptor.crs?.proj4
+          ))
         ) {
-          logging.warn("Layer CRS cannot be registered for display; skipping layer", {
-            scope: "MapController",
-            layerId: descriptor.id,
-            crs: queryParams.dataProjection,
-          });
+          logging.warn(
+            "Layer CRS cannot be registered for display; skipping layer",
+            {
+              scope: "MapController",
+              layerId: descriptor.id,
+              crs: queryParams.dataProjection,
+            }
+          );
           return [];
         }
 
         const options: QueryExtentOptions = {
           extent: queryBox,
-          ...(queryParams.targetProjection ? { targetProjection: queryParams.targetProjection } : {}),
+          ...(queryParams.targetProjection ?
+            { targetProjection: queryParams.targetProjection }
+          : {}),
           includeGeometry: true,
           fields,
         };
@@ -1304,11 +1334,11 @@ export class MapController {
         const entry = this.vectorLayers.get(descriptor.id);
         const fieldSchema =
           entry?.fieldSchema
-          ?? (descriptor.fields && descriptor.fields.length > 0
-            ? Object.fromEntries(
-                descriptor.fields.map((f) => [f.name, f.inferredType])
-              )
-            : undefined);
+          ?? (descriptor.fields && descriptor.fields.length > 0 ?
+            Object.fromEntries(
+              descriptor.fields.map((f) => [f.name, f.inferredType])
+            )
+          : undefined);
 
         const dataProjection = queryParams.dataProjection;
 
@@ -1557,7 +1587,9 @@ export class MapController {
     if (!extent3857 || extent3857.some((val) => !isFinite(val))) return;
 
     const [minLon, minLat, maxLon, maxLat] =
-      this.displayCrs.none ? extent3857 : transformExtent(extent3857, this.view.getProjection(), "EPSG:4326");
+      this.displayCrs.none ?
+        extent3857
+      : transformExtent(extent3857, this.view.getProjection(), "EPSG:4326");
 
     viewportExtentSignal.value = [
       Math.round(minLon * 100000) / 100000,
@@ -1703,7 +1735,11 @@ export class MapController {
       return;
     }
     if (this.displayCrs.code === DEFAULT_DISPLAY_CRS) {
-      this.view.animate({ center: fromLonLat([15, 35]), zoom: 3, duration: 300 });
+      this.view.animate({
+        center: fromLonLat([15, 35]),
+        zoom: 3,
+        duration: 300,
+      });
       return;
     }
     try {
@@ -1734,7 +1770,9 @@ export class MapController {
 
     const viewCrs = this.view.getProjection() || "EPSG:3857";
     const extentCrs =
-      !Array.isArray(optionsOrSize) && optionsOrSize?.extentCrs ? optionsOrSize.extentCrs : "EPSG:4326";
+      !Array.isArray(optionsOrSize) && optionsOrSize?.extentCrs ?
+        optionsOrSize.extentCrs
+      : "EPSG:4326";
     const projected =
       this.displayCrs.none || extentCrs.toUpperCase() === this.displayCrs.code ?
         extent
@@ -1827,7 +1865,9 @@ export class MapController {
   }): void {
     const units = payload.units ?? "lonlat";
     if (units === "project") {
-      const target = resolveDisplayCrs(projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs);
+      const target = resolveDisplayCrs(
+        projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs
+      );
       if (target.code !== this.displayCrs.code) {
         // The view is still switching to the Project CRS; apply once it has.
         this.pendingProjectViewport = payload;
@@ -1842,12 +1882,15 @@ export class MapController {
       this.fitExtent(payload.extent, {
         padding: payload.padding,
         duration: payload.duration,
-        extentCrs: payload.extentCrs ?? (units === "project" ? viewCode : "EPSG:4326"),
+        extentCrs:
+          payload.extentCrs ?? (units === "project" ? viewCode : "EPSG:4326"),
       });
     } else if (payload.center) {
       const center = [payload.center.x, payload.center.y];
       this.view.setCenter(
-        units === "project" || this.displayCrs.none ? center : transform(center, "EPSG:4326", this.view.getProjection())
+        units === "project" || this.displayCrs.none ?
+          center
+        : transform(center, "EPSG:4326", this.view.getProjection())
       );
     }
   }
@@ -1865,9 +1908,13 @@ export class MapController {
     if (!size || size[0] <= 0 || size[1] <= 0) return null;
     const viewExtent = this.view.calculateExtent(size);
     if (!viewExtent || viewExtent.some((v) => !isFinite(v))) return null;
-    const hasProjectCrs = Boolean(projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs);
+    const hasProjectCrs = Boolean(
+      projectCrsSignal.peek() ?? currentProjectSignal.peek()?.crs
+    );
     const extent =
-      hasProjectCrs || this.displayCrs.none ? viewExtent : transformExtent(viewExtent, this.view.getProjection(), "EPSG:4326");
+      hasProjectCrs || this.displayCrs.none ?
+        viewExtent
+      : transformExtent(viewExtent, this.view.getProjection(), "EPSG:4326");
     const round = (v: number) => Math.round(v * 100000) / 100000;
     const [xmin, ymin, xmax, ymax] = extent.map(round);
     return {
@@ -1912,65 +1959,90 @@ export class MapController {
    * @returns {Promise<void>}
    */
   public setDisplayCrs(next: DisplayCrs): Promise<void> {
-    this.displayCrsTask = this.displayCrsTask.then(async () => {
-      const currentCode = this.view.getProjection()?.getCode?.();
-      if (currentCode === next.code) {
-        this.displayCrs = next;
-        return;
-      }
-      if (!next.none && !(await ensureProjectionRegistered(next.code, next.proj4))) {
-        logging.warn("Project CRS cannot be registered; keeping the current display CRS", {
-          scope: "MapController",
-          crs: next.code,
-        });
-        addConsoleLog("warn", `Cannot display in ${next.code}: no CRS definition available.`, "Map");
-        return;
-      }
-      if (next.none) ensureNoCrsProjection();
-
-      const previous = this.displayCrs;
-      const size = this.map.getSize();
-      const oldExtent =
-        size && size[0] > 0 && size[1] > 0 ? this.view.calculateExtent(size) : null;
-      const rotation = this.view.getRotation() || 0;
-
-      const newView = this.createDefaultView(next);
-      newView.setRotation(rotation);
-      this.unbindViewEvents();
-      this.view = newView;
-      this.displayCrs = next;
-      this.map.setView(newView);
-      this.bindViewEvents(newView);
-
-      const pending = this.pendingProjectViewport;
-      this.pendingProjectViewport = null;
-      if (pending) {
-        this.setViewport(pending);
-      } else if (previous.none || next.none) {
-        this.fitAllLayers();
-      } else if (oldExtent && oldExtent.every((v) => isFinite(v))) {
-        try {
-          const reprojected = transformExtent(oldExtent, previous.code, next.code);
-          if (reprojected.every((v) => isFinite(v))) {
-            newView.fit(reprojected, size ? { size } : undefined);
-          }
-        } catch (err) {
-          logging.warn("Failed to reproject camera into the new display CRS", err, { scope: "MapController" });
-          this.fitAllLayers();
+    this.displayCrsTask = this.displayCrsTask
+      .then(async () => {
+        const currentCode = this.view.getProjection()?.getCode?.();
+        if (currentCode === next.code) {
+          this.displayCrs = next;
+          return;
         }
-      }
+        if (
+          !next.none
+          && !(await ensureProjectionRegistered(next.code, next.proj4))
+        ) {
+          logging.warn(
+            "Project CRS cannot be registered; keeping the current display CRS",
+            { scope: "MapController", crs: next.code }
+          );
+          addConsoleLog(
+            "warn",
+            `Cannot display in ${next.code}: no CRS definition available.`,
+            "Map"
+          );
+          return;
+        }
+        if (next.none) ensureNoCrsProjection();
 
-      for (const entry of this.vectorLayers.values()) {
-        entry.source.clear(true);
-        entry.source.refresh();
-      }
-      this.refreshSelectionHighlight();
-      this.updateViewportSignals();
-      this.updateScaleSignal(true);
-      addConsoleLog("info", `Map display CRS set to ${next.none ? "No CRS" : next.code}.`, "Map");
-    }).catch((err) => {
-      logging.error("Display CRS switch failed", err, { scope: "MapController" });
-    });
+        const previous = this.displayCrs;
+        const size = this.map.getSize();
+        const oldExtent =
+          size && size[0] > 0 && size[1] > 0 ?
+            this.view.calculateExtent(size)
+          : null;
+        const rotation = this.view.getRotation() || 0;
+
+        const newView = this.createDefaultView(next);
+        newView.setRotation(rotation);
+        this.unbindViewEvents();
+        this.view = newView;
+        this.displayCrs = next;
+        this.map.setView(newView);
+        this.bindViewEvents(newView);
+
+        const pending = this.pendingProjectViewport;
+        this.pendingProjectViewport = null;
+        if (pending) {
+          this.setViewport(pending);
+        } else if (previous.none || next.none) {
+          this.fitAllLayers();
+        } else if (oldExtent && oldExtent.every((v) => isFinite(v))) {
+          try {
+            const reprojected = transformExtent(
+              oldExtent,
+              previous.code,
+              next.code
+            );
+            if (reprojected.every((v) => isFinite(v))) {
+              newView.fit(reprojected, size ? { size } : undefined);
+            }
+          } catch (err) {
+            logging.warn(
+              "Failed to reproject camera into the new display CRS",
+              err,
+              { scope: "MapController" }
+            );
+            this.fitAllLayers();
+          }
+        }
+
+        for (const entry of this.vectorLayers.values()) {
+          entry.source.clear(true);
+          entry.source.refresh();
+        }
+        this.refreshSelectionHighlight();
+        this.updateViewportSignals();
+        this.updateScaleSignal(true);
+        addConsoleLog(
+          "info",
+          `Map display CRS set to ${next.none ? "No CRS" : next.code}.`,
+          "Map"
+        );
+      })
+      .catch((err) => {
+        logging.error("Display CRS switch failed", err, {
+          scope: "MapController",
+        });
+      });
     return this.displayCrsTask;
   }
 
@@ -1987,9 +2059,15 @@ export class MapController {
     for (const entry of this.vectorLayers.values()) {
       const ext = this.layerExtentInDisplayCrs(entry.descriptor);
       if (!ext) continue;
-      union = union ?
-        [Math.min(union[0], ext[0]), Math.min(union[1], ext[1]), Math.max(union[2], ext[2]), Math.max(union[3], ext[3])]
-      : [...ext];
+      union =
+        union ?
+          [
+            Math.min(union[0], ext[0]),
+            Math.min(union[1], ext[1]),
+            Math.max(union[2], ext[2]),
+            Math.max(union[3], ext[3]),
+          ]
+        : [...ext];
     }
     if (!union) return;
     const size = this.map.getSize();
@@ -2013,13 +2091,21 @@ export class MapController {
    * @param {LayerDescriptor} descriptor - Layer descriptor.
    * @returns {number[] | null} Extent.
    */
-  private layerExtentInDisplayCrs(descriptor: LayerDescriptor): number[] | null {
+  private layerExtentInDisplayCrs(
+    descriptor: LayerDescriptor
+  ): number[] | null {
     const ext = descriptor.extent;
     if (!ext || !Array.isArray(ext) || ext.length !== 4) return null;
     if (ext.every((v) => v === 0) || ext.some((v) => !isFinite(v))) return null;
     if (this.displayCrs.none) return [...ext];
     const dataCrs = resolveLayerDataCrs(descriptor.crs);
-    if (!isProjectionRegistered(dataCrs) && !(descriptor.crs?.proj4 && registerProjectionDefinition(dataCrs, descriptor.crs.proj4))) {
+    if (
+      !isProjectionRegistered(dataCrs)
+      && !(
+        descriptor.crs?.proj4
+        && registerProjectionDefinition(dataCrs, descriptor.crs.proj4)
+      )
+    ) {
       return null;
     }
     const out = transformExtent(ext, dataCrs, this.view.getProjection());
@@ -2058,7 +2144,11 @@ export class MapController {
   private createDefaultView(crs: DisplayCrs): View {
     if (crs.none) {
       ensureNoCrsProjection();
-      return new View({ projection: NO_CRS_CODE, center: [0, 0], resolution: 1 });
+      return new View({
+        projection: NO_CRS_CODE,
+        center: [0, 0],
+        resolution: 1,
+      });
     }
     if (crs.code === DEFAULT_DISPLAY_CRS) {
       return new View({ center: fromLonLat([15, 35]), zoom: 3 });

@@ -9,16 +9,18 @@
  * @see {@link SimpleModeEditor}
  */
 
-import { describe, it, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createRendererJiti } from "../rendererJiti";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { SimpleModeEditor } = jiti('@renderer/workbench/dialogs/SimpleModeEditor.tsx');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
+const { SimpleModeEditor } = jiti(
+  "@renderer/workbench/dialogs/SimpleModeEditor.tsx"
+);
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals.ts");
 
 /**
  * @function render
@@ -27,12 +29,19 @@ const { dictionarySignal } = jiti('@renderer/state/i18nSignals.ts');
  * @param {string} geometryKind - Geometry kind of the layer.
  * @returns {string} HTML.
  */
-function render(component: Record<string, unknown>, geometryKind: string): string {
+function render(
+  component: Record<string, unknown>,
+  geometryKind: string
+): string {
   return renderToStaticMarkup(
     React.createElement(SimpleModeEditor, {
-      styleContent: JSON.stringify({ format: 'simple', version: 1, components: [{ id: 'c1', enabled: true, ...component }] }),
+      styleContent: JSON.stringify({
+        format: "simple",
+        version: 1,
+        components: [{ id: "c1", enabled: true, ...component }],
+      }),
       geometryKind,
-      onChange: () => {}
+      onChange: () => {},
     })
   );
 }
@@ -47,38 +56,75 @@ function render(component: Record<string, unknown>, geometryKind: string): strin
  */
 function row(id: string, label: string, controlClass: string): RegExp {
   return new RegExp(
-    `<div id="${id}" class="${id}" style="display:flex;align-items:center;gap:1rem">` +
-    `<span style="width:9rem;font-size:0.8125rem;color:#334155">${label}:</span>` +
-    `<button type="button"[^>]* class="${controlClass}"[^>]*>`
+    `<div id="${id}" class="${id}" style="display:flex;align-items:center;gap:1rem">`
+      + `<span style="width:9rem;font-size:0.8125rem;color:#334155">${label}:</span>`
+      + `<button type="button"[^>]* class="${controlClass}"[^>]*>`
   );
 }
 
-describe('SimpleModeEditor labelled option rows (Ticket #311)', () => {
+describe("SimpleModeEditor labelled option rows (Ticket #311)", () => {
   afterEach(() => {
     dictionarySignal.value = {};
   });
 
-  it('renders the Fill Colour row', () => {
-    dictionarySignal.value = { layer_properties_styling_fill_color: 'Fill Colour' };
-    const html = render({ type: 'simple-fill', color: '#ff0000ff' }, 'Polygon');
-    assert.match(html, row('layer-prop-fill-colour-row', 'Fill Colour', 'picker-button colour-button'));
+  it("renders the Fill Colour row", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_fill_color: "Fill Colour",
+    };
+    const html = render({ type: "simple-fill", color: "#ff0000ff" }, "Polygon");
+    assert.match(
+      html,
+      row(
+        "layer-prop-fill-colour-row",
+        "Fill Colour",
+        "picker-button colour-button"
+      )
+    );
   });
 
-  it('renders the Stroke Colour row', () => {
-    dictionarySignal.value = { layer_properties_styling_stroke_color: 'Stroke Colour' };
-    const html = render({ type: 'simple-line', color: '#000000ff', width: 1 }, 'LineString');
-    assert.match(html, row('layer-prop-stroke-colour-row', 'Stroke Colour', 'picker-button colour-button'));
+  it("renders the Stroke Colour row", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_stroke_color: "Stroke Colour",
+    };
+    const html = render(
+      { type: "simple-line", color: "#000000ff", width: 1 },
+      "LineString"
+    );
+    assert.match(
+      html,
+      row(
+        "layer-prop-stroke-colour-row",
+        "Stroke Colour",
+        "picker-button colour-button"
+      )
+    );
   });
 
-  it('renders the Gradient Stops row', () => {
-    dictionarySignal.value = { layer_properties_styling_gradient_stops: 'Gradient Stops' };
-    const html = render({ type: 'gradient-fill', angle: 0, stops: ['#ff0000ff 0%', '#0000ffff 100%'] }, 'Polygon');
-    assert.match(html, row('layer-prop-gradient-stops-row', 'Gradient Stops', 'picker-button gradient-button'));
+  it("renders the Gradient Stops row", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_gradient_stops: "Gradient Stops",
+    };
+    const html = render(
+      {
+        type: "gradient-fill",
+        angle: 0,
+        stops: ["#ff0000ff 0%", "#0000ffff 100%"],
+      },
+      "Polygon"
+    );
+    assert.match(
+      html,
+      row(
+        "layer-prop-gradient-stops-row",
+        "Gradient Stops",
+        "picker-button gradient-button"
+      )
+    );
   });
 });
 
 /** Inline style of the 9rem label column. */
-const LABEL_STYLE = 'width:9rem;font-size:0.8125rem;color:#334155';
+const LABEL_STYLE = "width:9rem;font-size:0.8125rem;color:#334155";
 
 /**
  * @function labelledRow
@@ -88,11 +134,15 @@ const LABEL_STYLE = 'width:9rem;font-size:0.8125rem;color:#334155';
  * @param {string} controlStart - Literal opening markup of the row's control.
  * @returns {string} Literal markup for the row's opening.
  */
-function labelledRow(htmlFor: string, label: string, controlStart: string): string {
+function labelledRow(
+  htmlFor: string,
+  label: string,
+  controlStart: string
+): string {
   return (
-    '<div style="display:flex;align-items:center;gap:1rem">' +
-    `<label for="${htmlFor}" style="${LABEL_STYLE}">${label}:</label>` +
-    controlStart
+    '<div style="display:flex;align-items:center;gap:1rem">'
+    + `<label for="${htmlFor}" style="${LABEL_STYLE}">${label}:</label>`
+    + controlStart
   );
 }
 
@@ -117,109 +167,204 @@ function numberInput(id: string, attrs: string): string {
   return `<input class="styling-editor-field styling-editor-number" id="${id}" type="number" ${attrs}`;
 }
 
-describe('SimpleModeEditor Simple Line option rows (Ticket #315)', () => {
+describe("SimpleModeEditor Simple Line option rows (Ticket #315)", () => {
   afterEach(() => {
     dictionarySignal.value = {};
   });
 
-  const LINE = { type: 'simple-line', color: '#000000ff', width: 2 };
+  const LINE = { type: "simple-line", color: "#000000ff", width: 2 };
 
-  it('renders Stroke Width, Line Offset and Dash Offset as labelled number inputs', () => {
+  it("renders Stroke Width, Line Offset and Dash Offset as labelled number inputs", () => {
     dictionarySignal.value = {
-      layer_properties_styling_stroke_width: 'Stroke Width',
-      layer_properties_styling_line_offset: 'Line Offset',
-      layer_properties_styling_dash_offset: 'Dash Offset'
+      layer_properties_styling_stroke_width: "Stroke Width",
+      layer_properties_styling_line_offset: "Line Offset",
+      layer_properties_styling_dash_offset: "Dash Offset",
     };
-    const html = render(LINE, 'LineString');
-    includesRow(html, labelledRow('layer-prop-stroke-width', 'Stroke Width', numberInput('layer-prop-stroke-width', 'min="0" step="0.1"')));
-    includesRow(html, labelledRow('layer-prop-line-offset', 'Line Offset', numberInput('layer-prop-line-offset', 'step="0.1"')));
-    includesRow(html, labelledRow('layer-prop-dash-offset', 'Dash Offset', numberInput('layer-prop-dash-offset', 'min="0" step="0.1"')));
-  });
-
-  it('renders Line Cap and Line Join as labelled selects', () => {
-    dictionarySignal.value = {
-      layer_properties_styling_line_cap: 'Line Cap',
-      layer_properties_styling_line_join: 'Line Join'
-    };
-    const html = render(LINE, 'LineString');
-    includesRow(html, labelledRow('layer-prop-line-cap', 'Line Cap', '<select class="cartouche-select" id="layer-prop-line-cap">'));
-    includesRow(html, labelledRow('layer-prop-line-join', 'Line Join', '<select class="cartouche-select" id="layer-prop-line-join">'));
-  });
-
-  it('renders the Dash Pattern row labelling its pattern select', () => {
-    dictionarySignal.value = { layer_properties_styling_dash_pattern: 'Dash Pattern' };
-    const html = render(LINE, 'LineString');
-    includesRow(html, labelledRow('layer-prop-dash-pattern', 'Dash Pattern', '<select class="cartouche-select dash-pattern-select" id="layer-prop-dash-pattern">'));
-  });
-
-  it('renders the Dash Array row top-aligned, its padded label naming the Dash Array table (#332)', () => {
-    dictionarySignal.value = { layer_properties_styling_dash_array: 'Dash Array' };
-    const html = render({ ...LINE, dashPattern: 'custom', dashArray: [5, 2, 1, 3] }, 'LineString');
+    const html = render(LINE, "LineString");
     includesRow(
       html,
-      '<div style="display:flex;align-items:flex-start;gap:1rem">' +
-      `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>` +
-      '<div class="dash-array-control">'
+      labelledRow(
+        "layer-prop-stroke-width",
+        "Stroke Width",
+        numberInput("layer-prop-stroke-width", 'min="0" step="0.1"')
+      )
     );
-    assert.match(html, /<table class="table-widget-table" id="layer-prop-dash-array-table" aria-labelledby="layer-prop-dash-array-label" tabindex="0"/);
-    const cells = [...html.matchAll(/<td class="table-widget-cell"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
-    assert.deepEqual(cells, ['5', '2', '1', '3']);
-  });
-
-  it('renders only the Dash Array header row when there are no dashes (#332)', () => {
-    dictionarySignal.value = { layer_properties_styling_dash_array: 'Dash Array' };
-    const html = render(LINE, 'LineString');
     includesRow(
       html,
-      '<div style="display:flex;align-items:flex-start;gap:1rem">' +
-      `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
+      labelledRow(
+        "layer-prop-line-offset",
+        "Line Offset",
+        numberInput("layer-prop-line-offset", 'step="0.1"')
+      )
     );
-    assert.match(html, /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/);
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-dash-offset",
+        "Dash Offset",
+        numberInput("layer-prop-dash-offset", 'min="0" step="0.1"')
+      )
+    );
   });
 
-  it('keeps the disabled state of a locked component', () => {
-    const html = render({ ...LINE, locked: true }, 'LineString');
-    includesRow(html, numberInput('layer-prop-stroke-width', 'min="0" step="0.1" disabled=""'));
+  it("renders Line Cap and Line Join as labelled selects", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_line_cap: "Line Cap",
+      layer_properties_styling_line_join: "Line Join",
+    };
+    const html = render(LINE, "LineString");
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-line-cap",
+        "Line Cap",
+        '<select class="cartouche-select" id="layer-prop-line-cap">'
+      )
+    );
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-line-join",
+        "Line Join",
+        '<select class="cartouche-select" id="layer-prop-line-join">'
+      )
+    );
+  });
+
+  it("renders the Dash Pattern row labelling its pattern select", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_dash_pattern: "Dash Pattern",
+    };
+    const html = render(LINE, "LineString");
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-dash-pattern",
+        "Dash Pattern",
+        '<select class="cartouche-select dash-pattern-select" id="layer-prop-dash-pattern">'
+      )
+    );
+  });
+
+  it("renders the Dash Array row top-aligned, its padded label naming the Dash Array table (#332)", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_dash_array: "Dash Array",
+    };
+    const html = render(
+      { ...LINE, dashPattern: "custom", dashArray: [5, 2, 1, 3] },
+      "LineString"
+    );
+    includesRow(
+      html,
+      '<div style="display:flex;align-items:flex-start;gap:1rem">'
+        + `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
+        + '<div class="dash-array-control">'
+    );
+    assert.match(
+      html,
+      /<table class="table-widget-table" id="layer-prop-dash-array-table" aria-labelledby="layer-prop-dash-array-label" tabindex="0"/
+    );
+    const cells = [
+      ...html.matchAll(/<td class="table-widget-cell"[^>]*>([^<]*)<\/td>/g),
+    ].map((m) => m[1]);
+    assert.deepEqual(cells, ["5", "2", "1", "3"]);
+  });
+
+  it("renders only the Dash Array header row when there are no dashes (#332)", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_dash_array: "Dash Array",
+    };
+    const html = render(LINE, "LineString");
+    includesRow(
+      html,
+      '<div style="display:flex;align-items:flex-start;gap:1rem">'
+        + `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
+    );
+    assert.match(
+      html,
+      /id="layer-prop-dash-array-table"[^>]*>[\s\S]*?<tbody><\/tbody>/
+    );
+  });
+
+  it("keeps the disabled state of a locked component", () => {
+    const html = render({ ...LINE, locked: true }, "LineString");
+    includesRow(
+      html,
+      numberInput("layer-prop-stroke-width", 'min="0" step="0.1" disabled=""')
+    );
   });
 });
 
-describe('SimpleModeEditor Simple Marker option rows (Ticket #315)', () => {
+describe("SimpleModeEditor Simple Marker option rows (Ticket #315)", () => {
   afterEach(() => {
     dictionarySignal.value = {};
   });
 
-  const MARKER = { type: 'simple-marker', fillColor: '#ff0000', strokeColor: '#0000ff', radius: 4, strokeWidth: 2 };
+  const MARKER = {
+    type: "simple-marker",
+    fillColor: "#ff0000",
+    strokeColor: "#0000ff",
+    radius: 4,
+    strokeWidth: 2,
+  };
 
-  it('renders Point Shape as a labelled select', () => {
-    dictionarySignal.value = { layer_properties_styling_point_shape: 'Point Shape' };
+  it("renders Point Shape as a labelled select", () => {
+    dictionarySignal.value = {
+      layer_properties_styling_point_shape: "Point Shape",
+    };
     includesRow(
-      render(MARKER, 'Point'),
+      render(MARKER, "Point"),
       labelledRow(
-        'layer-prop-point-shape',
-        'Point Shape',
+        "layer-prop-point-shape",
+        "Point Shape",
         '<select class="cartouche-select" id="layer-prop-point-shape">'
       )
     );
   });
 
-  it('renders Radius and Stroke Width as labelled number inputs', () => {
+  it("renders Radius and Stroke Width as labelled number inputs", () => {
     dictionarySignal.value = {
-      layer_properties_styling_point_radius: 'Radius',
-      layer_properties_styling_stroke_width: 'Stroke Width'
+      layer_properties_styling_point_radius: "Radius",
+      layer_properties_styling_stroke_width: "Stroke Width",
     };
-    const html = render(MARKER, 'Point');
-    includesRow(html, labelledRow('layer-prop-marker-radius', 'Radius', numberInput('layer-prop-marker-radius', 'min="1" max="100"')));
-    includesRow(html, labelledRow('layer-prop-marker-stroke-width', 'Stroke Width', numberInput('layer-prop-marker-stroke-width', 'min="0" max="50"')));
+    const html = render(MARKER, "Point");
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-marker-radius",
+        "Radius",
+        numberInput("layer-prop-marker-radius", 'min="1" max="100"')
+      )
+    );
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-marker-stroke-width",
+        "Stroke Width",
+        numberInput("layer-prop-marker-stroke-width", 'min="0" max="50"')
+      )
+    );
   });
 
-  it('renders Fill Colour and Stroke Colour as labelled colour inputs', () => {
+  it("renders Fill Colour and Stroke Colour as labelled colour inputs", () => {
     dictionarySignal.value = {
-      layer_properties_styling_fill_color: 'Fill Colour',
-      layer_properties_styling_stroke_color: 'Stroke Colour'
+      layer_properties_styling_fill_color: "Fill Colour",
+      layer_properties_styling_stroke_color: "Stroke Colour",
     };
-    const html = render(MARKER, 'Point');
-    const colourInput = '<div class="color-input-container" style="display:inline-flex;align-items:center;gap:0.375rem">';
-    includesRow(html, labelledRow('layer-prop-marker-fill-color', 'Fill Colour', colourInput));
-    includesRow(html, labelledRow('layer-prop-marker-stroke-color', 'Stroke Colour', colourInput));
+    const html = render(MARKER, "Point");
+    const colourInput =
+      '<div class="color-input-container" style="display:inline-flex;align-items:center;gap:0.375rem">';
+    includesRow(
+      html,
+      labelledRow("layer-prop-marker-fill-color", "Fill Colour", colourInput)
+    );
+    includesRow(
+      html,
+      labelledRow(
+        "layer-prop-marker-stroke-color",
+        "Stroke Colour",
+        colourInput
+      )
+    );
   });
 });

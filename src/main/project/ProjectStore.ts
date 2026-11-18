@@ -9,12 +9,16 @@
  * @see {@link ProjectModel}
  */
 
-import type { ProjectModel, ProjectLayerItem, ProjectGroupItem } from '@shared/types';
-import { LayerGroup } from './models/LayerGroup';
-import { Layer } from './models/Layer';
-import { LayerTreeNode } from './models/LayerTreeNode';
-import { fileTypeRegistry } from '../filetypes/FileTypeRegistry';
-import { logging } from '../../shared/logging';
+import type {
+  ProjectModel,
+  ProjectLayerItem,
+  ProjectGroupItem,
+} from "@shared/types";
+import { LayerGroup } from "./models/LayerGroup";
+import { Layer } from "./models/Layer";
+import { LayerTreeNode } from "./models/LayerTreeNode";
+import { fileTypeRegistry } from "../filetypes/FileTypeRegistry";
+import { logging } from "../../shared/logging";
 
 /**
  * @class ProjectStore
@@ -29,8 +33,9 @@ export class ProjectStore {
   private currentProject: ProjectModel | null = null;
   private projectFilePath: string | null = null;
   private isProjectDirtyState: boolean = false;
-  private rootGroup: LayerGroup = new LayerGroup('root', 'root');
-  private selectedFeaturesByLayer: Map<string, Array<string | number>> = new Map();
+  private rootGroup: LayerGroup = new LayerGroup("root", "root");
+  private selectedFeaturesByLayer: Map<string, Array<string | number>> =
+    new Map();
 
   private constructor() {}
 
@@ -72,8 +77,13 @@ export class ProjectStore {
    * @param {ProjectLayerItem | ProjectGroupItem} item - Serialized layer or group DTO.
    * @returns {LayerTreeNode} Deserialized runtime layer or group node.
    */
-  private deserializeNode(item: ProjectLayerItem | ProjectGroupItem): LayerTreeNode {
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+  private deserializeNode(
+    item: ProjectLayerItem | ProjectGroupItem
+  ): LayerTreeNode {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       const groupItem = item as ProjectGroupItem;
       const group = new LayerGroup(groupItem.name, groupItem.id);
       group.visible = groupItem.visible !== false;
@@ -86,8 +96,15 @@ export class ProjectStore {
     }
 
     const layerItem = item as ProjectLayerItem;
-    const layerKind = (layerItem.layerKind || (layerItem.type === 'raster' ? 'raster' : 'vector')) as 'vector' | 'raster';
-    const layer = new Layer(layerItem.name, layerItem.source, layerKind, layerItem.id);
+    const layerKind = (layerItem.layerKind
+      || (layerItem.type === "raster" ? "raster" : "vector")) as
+      "vector" | "raster";
+    const layer = new Layer(
+      layerItem.name,
+      layerItem.source,
+      layerKind,
+      layerItem.id
+    );
     layer.visible = layerItem.visible !== false;
     layer.selected = layerItem.selected === true;
     layer.opacity = layerItem.opacity !== undefined ? layerItem.opacity : 1.0;
@@ -103,8 +120,10 @@ export class ProjectStore {
     layer.temporal = layerItem.temporal;
 
     // Resolve file format descriptor if registered
-    const descriptor = (layerItem.type ? fileTypeRegistry.getDescriptorById(layerItem.type) : undefined)
-      || fileTypeRegistry.identifyByExtension(layerItem.source);
+    const descriptor =
+      (layerItem.type ?
+        fileTypeRegistry.getDescriptorById(layerItem.type)
+      : undefined) || fileTypeRegistry.identifyByExtension(layerItem.source);
     if (descriptor) {
       layer.fileType = descriptor;
     }
@@ -147,9 +166,9 @@ export class ProjectStore {
    */
   public closeProject(): void {
     this.rootGroup[Symbol.dispose]();
-    this.rootGroup = new LayerGroup('root', 'root');
+    this.rootGroup = new LayerGroup("root", "root");
     this.selectedFeaturesByLayer.clear();
-    
+
     this.currentProject = null;
     this.projectFilePath = null;
     this.setProjectDirty(false);
@@ -245,7 +264,9 @@ export class ProjectStore {
   public onDirtyChange(listener: (dirty: boolean) => void): () => void {
     this.dirtyChangeListeners.push(listener);
     return () => {
-      this.dirtyChangeListeners = this.dirtyChangeListeners.filter((l) => l !== listener);
+      this.dirtyChangeListeners = this.dirtyChangeListeners.filter(
+        (l) => l !== listener
+      );
     };
   }
 
@@ -266,7 +287,10 @@ export class ProjectStore {
         try {
           listener(dirty);
         } catch (err) {
-          logging.error('Error in onDirtyChange listener', err, { scope: 'ProjectStore', isDirty: dirty });
+          logging.error("Error in onDirtyChange listener", err, {
+            scope: "ProjectStore",
+            isDirty: dirty,
+          });
         }
       }
     }
@@ -295,7 +319,10 @@ export class ProjectStore {
    * @param {Array<string | number>} selectedFeatureIds - Selected feature identifiers.
    * @returns {void}
    */
-  public setFeatureSelection(layerId: string | null, selectedFeatureIds: Array<string | number>): void {
+  public setFeatureSelection(
+    layerId: string | null,
+    selectedFeatureIds: Array<string | number>
+  ): void {
     if (!layerId) {
       if (selectedFeatureIds.length === 0) {
         this.selectedFeaturesByLayer.clear();

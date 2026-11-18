@@ -9,8 +9,8 @@
  * @see {@link setNodeSelection}
  */
 
-import { setNodeSelection } from '../project/layerTreeOperations';
-import { logging } from '../../../shared/logging';
+import { setNodeSelection } from "../project/layerTreeOperations";
+import { logging } from "../../../shared/logging";
 
 /**
  * @description Cancels active operations, clearing node selections in the authoritative ProjectStore.
@@ -22,6 +22,5 @@ import { logging } from '../../../shared/logging';
  */
 export default function cancelAction(): void {
   setNodeSelection([]);
-  logging.debug('Cancel action executed', { scope: 'cancelAction' });
+  logging.debug("Cancel action executed", { scope: "cancelAction" });
 }
-

@@ -9,7 +9,11 @@
  * @see {@link LayerTreeWidget}
  */
 
-import type { DropPosition, ProjectGroupItem, ProjectLayerItem } from '@shared/types';
+import type {
+  DropPosition,
+  ProjectGroupItem,
+  ProjectLayerItem,
+} from "@shared/types";
 
 export type { DropPosition };
 
@@ -78,8 +82,10 @@ interface AncestorPathEntry {
  * @param {ProjectLayerItem | ProjectGroupItem} node - Layer or group tree item.
  * @returns {string} Resolved node identifier.
  */
-export function getTreeNodeId(node: ProjectLayerItem | ProjectGroupItem): string {
-  return node.id || ('children' in node ? `group-${node.name}` : '');
+export function getTreeNodeId(
+  node: ProjectLayerItem | ProjectGroupItem
+): string {
+  return node.id || ("children" in node ? `group-${node.name}` : "");
 }
 
 /**
@@ -105,7 +111,10 @@ export function collectNodesByIds(
       if (itemId && targetSet.has(itemId)) {
         matched.push(item);
       }
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      if (
+        "children" in item
+        && Array.isArray((item as ProjectGroupItem).children)
+      ) {
         traverse((item as ProjectGroupItem).children);
       }
     }
@@ -125,12 +134,18 @@ export function collectNodesByIds(
  * @param {string} candidateId - Node ID to test.
  * @returns {boolean} True if `candidateId` is inside `candidateParent`.
  */
-export function isDescendantNode(candidateParent: ProjectGroupItem, candidateId: string): boolean {
+export function isDescendantNode(
+  candidateParent: ProjectGroupItem,
+  candidateId: string
+): boolean {
   if (!Array.isArray(candidateParent.children)) return false;
   for (const child of candidateParent.children) {
     const childId = getTreeNodeId(child);
     if (childId === candidateId) return true;
-    if ('children' in child && isDescendantNode(child as ProjectGroupItem, candidateId)) {
+    if (
+      "children" in child
+      && isDescendantNode(child as ProjectGroupItem, candidateId)
+    ) {
       return true;
     }
   }
@@ -163,19 +178,23 @@ function findNodePath(
     const allSubsequentDragged = items
       .slice(i + 1)
       .every((sibling) => draggedIdSet.has(getTreeNodeId(sibling)));
-    const isLastChildOfParent = hasParentGroup && (i === items.length - 1 || allSubsequentDragged);
+    const isLastChildOfParent =
+      hasParentGroup && (i === items.length - 1 || allSubsequentDragged);
     const entry: AncestorPathEntry = {
       node: item,
       id: itemId,
       indentLevel,
-      isLastChildOfParent
+      isLastChildOfParent,
     };
 
     if (itemId === targetNodeId) {
       return [entry];
     }
 
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       const subPath = findNodePath(
         (item as ProjectGroupItem).children,
         targetNodeId,
@@ -200,8 +219,11 @@ function findNodePath(
  * @param {ResolveNodeDropTargetParams} params - Tree state, dragged node IDs, hovered node ID, and pointer coordinates.
  * @returns {TreeDropTarget | null} Resolved drop target descriptor, or null when the drop is invalid (e.g. self-drop or ancestor-into-descendant cycle).
  */
-export function resolveNodeDropTarget(params: ResolveNodeDropTargetParams): TreeDropTarget | null {
-  const { tree, draggedIds, hoveredNodeId, offsetY, rowHeight, offsetX } = params;
+export function resolveNodeDropTarget(
+  params: ResolveNodeDropTargetParams
+): TreeDropTarget | null {
+  const { tree, draggedIds, hoveredNodeId, offsetY, rowHeight, offsetX } =
+    params;
 
   if (!hoveredNodeId || draggedIds.length === 0) {
     return null;
@@ -213,19 +235,18 @@ export function resolveNodeDropTarget(params: ResolveNodeDropTargetParams): Tree
   }
 
   // Project root row (`.tree-node-project`) always inserts into `root` at index 0 (`indentLevel = 1`)
-  if (hoveredNodeId === 'root' || hoveredNodeId === 'project') {
-    return {
-      targetId: 'root',
-      position: 'into',
-      indentLevel: 1
-    };
+  if (hoveredNodeId === "root" || hoveredNodeId === "project") {
+    return { targetId: "root", position: "into", indentLevel: 1 };
   }
 
   const draggedIdSet = new Set(draggedIds);
 
   // Reject dropping any dragged group into its own descendant
   for (const dragged of draggedNodes) {
-    if ('children' in dragged && isDescendantNode(dragged as ProjectGroupItem, hoveredNodeId)) {
+    if (
+      "children" in dragged
+      && isDescendantNode(dragged as ProjectGroupItem, hoveredNodeId)
+    ) {
       return null;
     }
   }
@@ -242,46 +263,49 @@ export function resolveNodeDropTarget(params: ResolveNodeDropTargetParams): Tree
   const effectiveHeight = rowHeight > 0 ? rowHeight : 24;
   const ratio = Math.max(0, Math.min(1, offsetY / effectiveHeight));
 
-  const isGroup = 'children' in hoveredNode && Array.isArray((hoveredNode as ProjectGroupItem).children);
-  let rawPosition: 'before' | 'into' | 'after';
+  const isGroup =
+    "children" in hoveredNode
+    && Array.isArray((hoveredNode as ProjectGroupItem).children);
+  let rawPosition: "before" | "into" | "after";
 
   if (isGroup) {
     const groupNode = hoveredNode as ProjectGroupItem;
-    const isExpandedAndNonEmpty = groupNode.expanded !== false && groupNode.children.length > 0;
+    const isExpandedAndNonEmpty =
+      groupNode.expanded !== false && groupNode.children.length > 0;
     if (isExpandedAndNonEmpty) {
-      rawPosition = ratio < 0.5 ? 'before' : 'into';
+      rawPosition = ratio < 0.5 ? "before" : "into";
     } else {
       if (ratio < 1 / 3) {
-        rawPosition = 'before';
+        rawPosition = "before";
       } else if (ratio <= 2 / 3) {
-        rawPosition = 'into';
+        rawPosition = "into";
       } else {
-        rawPosition = 'after';
+        rawPosition = "after";
       }
     }
   } else {
-    rawPosition = ratio < 0.5 ? 'before' : 'after';
+    rawPosition = ratio < 0.5 ? "before" : "after";
   }
 
-  if (rawPosition === 'before') {
+  if (rawPosition === "before") {
     if (draggedIdSet.has(hoveredEntry.id)) {
       return null;
     }
     return {
       targetId: hoveredEntry.id,
-      position: 'before',
-      indentLevel: nodeIndentLevel
+      position: "before",
+      indentLevel: nodeIndentLevel,
     };
   }
 
-  if (rawPosition === 'into') {
+  if (rawPosition === "into") {
     if (draggedIdSet.has(hoveredEntry.id)) {
       return null;
     }
     return {
       targetId: hoveredEntry.id,
-      position: 'into',
-      indentLevel: nodeIndentLevel + 1
+      position: "into",
+      indentLevel: nodeIndentLevel + 1,
     };
   }
 
@@ -308,9 +332,7 @@ export function resolveNodeDropTarget(params: ResolveNodeDropTargetParams): Tree
 
   return {
     targetId: targetEntry.id,
-    position: 'after',
-    indentLevel: targetEntry.indentLevel
+    position: "after",
+    indentLevel: targetEntry.indentLevel,
   };
 }
-
-

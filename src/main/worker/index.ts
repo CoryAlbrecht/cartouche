@@ -8,7 +8,6 @@
  * @since 0.1.0-dev
  */
 
-export * from './types';
-export * from './GeospatialEngine';
-export * from './GeospatialService';
-
+export * from "./types";
+export * from "./GeospatialEngine";
+export * from "./GeospatialService";

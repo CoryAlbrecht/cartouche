@@ -17,7 +17,7 @@
  * @updated 2026-11-10
  * @since 0.1.0-dev
  */
-export type WidgetDockId = 'left' | 'right' | 'top' | 'bottom';
+export type WidgetDockId = "left" | "right" | "top" | "bottom";
 
 /**
  * @typedef {Object} WidgetDockDimensions
@@ -84,8 +84,8 @@ export type WorkbenchWidgetDocksState = Record<WidgetDockId, WidgetDockItem[]>;
 export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
   left: [
     {
-      id: 'layer-tree',
-      dock: 'left',
+      id: "layer-tree",
+      dock: "left",
       order: 0,
       axisRatio: 1,
       dimensions: { width: 260 },
@@ -96,8 +96,8 @@ export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
   right: [],
   top: [
     {
-      id: 'time-filter',
-      dock: 'top',
+      id: "time-filter",
+      dock: "top",
       order: 0,
       axisRatio: 1,
       dimensions: { height: 74 },
@@ -107,8 +107,8 @@ export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
   ],
   bottom: [
     {
-      id: 'attribute-table',
-      dock: 'bottom',
+      id: "attribute-table",
+      dock: "bottom",
       order: 0,
       axisRatio: 1,
       dimensions: { height: 200 },
@@ -116,8 +116,8 @@ export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
       isOverlapContainer: false,
     },
     {
-      id: 'console',
-      dock: 'bottom',
+      id: "console",
+      dock: "bottom",
       order: 1,
       axisRatio: 1,
       dimensions: { height: 160 },
@@ -126,4 +126,3 @@ export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
     },
   ],
 };
-

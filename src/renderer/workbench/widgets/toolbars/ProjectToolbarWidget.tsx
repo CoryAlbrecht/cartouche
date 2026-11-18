@@ -86,7 +86,9 @@ export function isProjectToolbarSaveDisabled(
  * @param {boolean} hasProject - Whether an active project is open.
  * @returns {boolean} True if button should be disabled, false otherwise.
  */
-export function isProjectToolbarPropertiesDisabled(hasProject: boolean): boolean {
+export function isProjectToolbarPropertiesDisabled(
+  hasProject: boolean
+): boolean {
   return !hasProject;
 }
 
@@ -107,33 +109,39 @@ export const ProjectToolbarWidget: React.FC<ProjectToolbarWidgetProps> = ({
   const { t } = useTranslation();
 
   const newProjectShortcut = getActionFormattedKey("new_project");
-  const newProjectTitle = newProjectShortcut
-    ? `${t("new_project")} (${newProjectShortcut})`
+  const newProjectTitle =
+    newProjectShortcut ?
+      `${t("new_project")} (${newProjectShortcut})`
     : t("new_project");
 
   const openProjectShortcut = getActionFormattedKey("open_project");
-  const openProjectTitle = openProjectShortcut
-    ? `${t("open_project")} (${openProjectShortcut})`
+  const openProjectTitle =
+    openProjectShortcut ?
+      `${t("open_project")} (${openProjectShortcut})`
     : t("open_project");
 
   const saveProjectShortcut = getActionFormattedKey("save_project");
-  const saveProjectTitle = saveProjectShortcut
-    ? `${t("save_project")} (${saveProjectShortcut})`
+  const saveProjectTitle =
+    saveProjectShortcut ?
+      `${t("save_project")} (${saveProjectShortcut})`
     : t("save_project");
 
   const projectPropertiesShortcut = getActionFormattedKey("project_properties");
-  const projectPropertiesTitle = projectPropertiesShortcut
-    ? `${t("project_properties")} (${projectPropertiesShortcut})`
+  const projectPropertiesTitle =
+    projectPropertiesShortcut ?
+      `${t("project_properties")} (${projectPropertiesShortcut})`
     : t("project_properties");
 
   const toggleLayersShortcut = getActionFormattedKey("toggle_layers_widget");
-  const toggleLayersTitle = toggleLayersShortcut
-    ? `${t("toggle_layers_widget")} (${toggleLayersShortcut})`
+  const toggleLayersTitle =
+    toggleLayersShortcut ?
+      `${t("toggle_layers_widget")} (${toggleLayersShortcut})`
     : t("toggle_layers_widget");
 
   const addLayersShortcut = getActionFormattedKey("add_layers");
-  const addLayersTitle = addLayersShortcut
-    ? `${t("add_layers")} (${addLayersShortcut})`
+  const addLayersTitle =
+    addLayersShortcut ?
+      `${t("add_layers")} (${addLayersShortcut})`
     : t("add_layers");
 
   const isSaveDisabled = isProjectToolbarSaveDisabled(

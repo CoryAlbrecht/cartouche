@@ -9,11 +9,11 @@
  * @see {@link projectStore}
  */
 
-import { projectStore } from '../../project/ProjectStore';
-import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
-import { findNode } from '../project/layerTreeOperations';
-import { Layer } from '../../project/models/Layer';
-import type { LayerTemporalConfig } from '../../../shared/types';
+import { projectStore } from "../../project/ProjectStore";
+import { broadcastProjectLayersTree } from "../../project/ProjectBroadcaster";
+import { findNode } from "../project/layerTreeOperations";
+import { Layer } from "../../project/models/Layer";
+import type { LayerTemporalConfig } from "../../../shared/types";
 
 /**
  * @description Updates dynamic temporal configuration and enabled status on a layer in ProjectStore, setting Project Dirty State.
@@ -32,8 +32,8 @@ export async function updateLayerTemporalConfig(
   temporal?: LayerTemporalConfig,
   temporalEnabled?: boolean
 ): Promise<boolean> {
-  if (!layerId || typeof layerId !== 'string') {
-    throw new Error('Layer ID is required.');
+  if (!layerId || typeof layerId !== "string") {
+    throw new Error("Layer ID is required.");
   }
 
   const root = projectStore.getRootGroup();
@@ -44,9 +44,9 @@ export async function updateLayerTemporalConfig(
 
   targetNode.temporal = temporal;
   targetNode.temporalEnabled =
-    temporalEnabled !== undefined
-      ? temporalEnabled
-      : (temporal ? temporal.enabled : false);
+    temporalEnabled !== undefined ? temporalEnabled
+    : temporal ? temporal.enabled
+    : false;
 
   projectStore.setProjectDirty(true);
   broadcastProjectLayersTree();

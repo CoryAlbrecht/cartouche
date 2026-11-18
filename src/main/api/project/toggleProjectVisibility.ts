@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @description Toggles visibility of all active project layers on the map canvas.
@@ -28,5 +28,7 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function toggleProjectVisibility(): void {
-  logging.debug('Toggle project visibility action executed', { scope: 'toggleProjectVisibility' });
+  logging.debug("Toggle project visibility action executed", {
+    scope: "toggleProjectVisibility",
+  });
 }

@@ -10,7 +10,4 @@
  * @see {@link LogCliConfig}
  */
 
-export {
-  parseLogArgs,
-  type LogCliConfig
-} from '../cli/cliArgs';
+export { parseLogArgs, type LogCliConfig } from "../cli/cliArgs";

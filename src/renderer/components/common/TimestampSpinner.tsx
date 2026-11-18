@@ -18,15 +18,16 @@
  * @see {@link formatUtcTimestamp}
  */
 
-import React, { useState, useRef, useEffect, type JSX } from 'react';
-import Icon from '@renderer/components/common/Icon';
-import { mdiChevronUp, mdiChevronDown } from '@mdi/js';
+import React, { useState, useRef, useEffect, type JSX } from "react";
+import Icon from "@renderer/components/common/Icon";
+import { mdiChevronUp, mdiChevronDown } from "@mdi/js";
 
 /**
  * @typedef {'year' | 'month' | 'day' | 'hour' | 'minute' | 'second'} TimestampSegmentType
  * @description Discrete identifier for individual calendar and clock segments in the timestamp spinner.
  */
-export type TimestampSegmentType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
+export type TimestampSegmentType =
+  "year" | "month" | "day" | "hour" | "minute" | "second";
 
 /**
  * @description Ordered sequence of discrete calendar and clock segments in display presentation order.
@@ -37,12 +38,12 @@ export type TimestampSegmentType = 'year' | 'month' | 'day' | 'hour' | 'minute' 
  * @type {readonly TimestampSegmentType[]}
  */
 export const SEGMENT_ORDER: readonly TimestampSegmentType[] = [
-  'year',
-  'month',
-  'day',
-  'hour',
-  'minute',
-  'second',
+  "year",
+  "month",
+  "day",
+  "hour",
+  "minute",
+  "second",
 ];
 
 /**
@@ -110,13 +111,15 @@ export function getDaysInMonthUtc(year: number, month: number): number {
  * @param {number | string | Date} value - Timestamp value to parse.
  * @returns {UtcTimestampParts} Discrete UTC calendar parts.
  */
-export function parseUtcTimestamp(value: number | string | Date): UtcTimestampParts {
+export function parseUtcTimestamp(
+  value: number | string | Date
+): UtcTimestampParts {
   let ms: number;
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     ms = Number.isNaN(value) ? 0 : value;
   } else if (value instanceof Date) {
     ms = Number.isNaN(value.getTime()) ? 0 : value.getTime();
-  } else if (typeof value === 'string') {
+  } else if (typeof value === "string") {
     const parsed = Date.parse(value);
     ms = Number.isNaN(parsed) ? 0 : parsed;
   } else {
@@ -177,24 +180,24 @@ export function setSegmentValue(
   const truncated = Math.trunc(value);
 
   switch (segment) {
-    case 'year':
+    case "year":
       result.year = Math.max(0, Math.min(9999, truncated));
       break;
-    case 'month':
+    case "month":
       result.month = Math.max(1, Math.min(12, truncated));
       break;
-    case 'day': {
+    case "day": {
       const maxDay = getDaysInMonthUtc(result.year, result.month);
       result.day = Math.max(1, Math.min(maxDay, truncated));
       break;
     }
-    case 'hour':
+    case "hour":
       result.hour = Math.max(0, Math.min(23, truncated));
       break;
-    case 'minute':
+    case "minute":
       result.minute = Math.max(0, Math.min(59, truncated));
       break;
-    case 'second':
+    case "second":
       result.second = Math.max(0, Math.min(59, truncated));
       break;
   }
@@ -240,12 +243,12 @@ export function adjustSegmentValue(
  */
 export function formatUtcTimestamp(value: number | string | Date): string {
   const p = parseUtcTimestamp(value);
-  const yyyy = String(p.year).padStart(4, '0');
-  const mm = String(p.month).padStart(2, '0');
-  const dd = String(p.day).padStart(2, '0');
-  const hh = String(p.hour).padStart(2, '0');
-  const min = String(p.minute).padStart(2, '0');
-  const ss = String(p.second).padStart(2, '0');
+  const yyyy = String(p.year).padStart(4, "0");
+  const mm = String(p.month).padStart(2, "0");
+  const dd = String(p.day).padStart(2, "0");
+  const hh = String(p.hour).padStart(2, "0");
+  const min = String(p.minute).padStart(2, "0");
+  const ss = String(p.second).padStart(2, "0");
   return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
 }
 
@@ -258,17 +261,17 @@ export function formatUtcTimestamp(value: number | string | Date): string {
  * @type {React.CSSProperties}
  */
 const SPINNER_BUTTON_BASE_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 'none',
-  background: 'transparent',
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "none",
+  background: "transparent",
   padding: 0,
   margin: 0,
   lineHeight: 1,
-  color: 'inherit',
-  height: '0.65rem',
-  width: '0.9rem',
+  color: "inherit",
+  height: "0.65rem",
+  width: "0.9rem",
 };
 
 /**
@@ -286,14 +289,15 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
   value,
   onChange,
   disabled = false,
-  ariaLabel = 'Timestamp Spinner',
-  className = '',
+  ariaLabel = "Timestamp Spinner",
+  className = "",
   style,
   inputStyle,
 }): JSX.Element => {
-  const [focusedSegment, setFocusedSegment] = useState<TimestampSegmentType | null>(null);
-  const lastActiveSegmentRef = useRef<TimestampSegmentType>('second');
-  const typingBufferRef = useRef<string>('');
+  const [focusedSegment, setFocusedSegment] =
+    useState<TimestampSegmentType | null>(null);
+  const lastActiveSegmentRef = useRef<TimestampSegmentType>("second");
+  const typingBufferRef = useRef<string>("");
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const yearInputRef = useRef<HTMLInputElement | null>(null);
@@ -314,19 +318,21 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     };
   }, []);
 
-  const getSegmentInputRef = (seg: TimestampSegmentType): React.RefObject<HTMLInputElement | null> => {
+  const getSegmentInputRef = (
+    seg: TimestampSegmentType
+  ): React.RefObject<HTMLInputElement | null> => {
     switch (seg) {
-      case 'year':
+      case "year":
         return yearInputRef;
-      case 'month':
+      case "month":
         return monthInputRef;
-      case 'day':
+      case "day":
         return dayInputRef;
-      case 'hour':
+      case "hour":
         return hourInputRef;
-      case 'minute':
+      case "minute":
         return minuteInputRef;
-      case 'second':
+      case "second":
         return secondInputRef;
     }
   };
@@ -355,24 +361,31 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     }
   };
 
-  const handleStep = (delta: number, explicitSegment?: TimestampSegmentType) => {
+  const handleStep = (
+    delta: number,
+    explicitSegment?: TimestampSegmentType
+  ) => {
     if (disabled) return;
-    const targetSegment = explicitSegment ?? focusedSegment ?? lastActiveSegmentRef.current;
+    const targetSegment =
+      explicitSegment ?? focusedSegment ?? lastActiveSegmentRef.current;
     const currentParts = parseUtcTimestamp(value);
     const updatedParts = adjustSegmentValue(currentParts, targetSegment, delta);
     onChange(buildUtcTimestamp(updatedParts));
   };
 
-  const handleSegmentFocus = (seg: TimestampSegmentType, e: React.FocusEvent<HTMLInputElement>) => {
+  const handleSegmentFocus = (
+    seg: TimestampSegmentType,
+    e: React.FocusEvent<HTMLInputElement>
+  ) => {
     setFocusedSegment(seg);
     lastActiveSegmentRef.current = seg;
-    typingBufferRef.current = '';
+    typingBufferRef.current = "";
     e.target.select();
   };
 
   const handleSegmentBlur = () => {
     setFocusedSegment(null);
-    typingBufferRef.current = '';
+    typingBufferRef.current = "";
   };
 
   const handleSegmentKeyDown = (
@@ -381,36 +394,36 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
   ) => {
     if (disabled) return;
 
-    if (e.key === 'ArrowUp') {
+    if (e.key === "ArrowUp") {
       e.preventDefault();
       lastActiveSegmentRef.current = seg;
       handleStep(1, seg);
       return;
     }
 
-    if (e.key === 'ArrowDown') {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       lastActiveSegmentRef.current = seg;
       handleStep(-1, seg);
       return;
     }
 
-    if (e.key === 'ArrowLeft') {
+    if (e.key === "ArrowLeft") {
       e.preventDefault();
       focusPrevSegment(seg);
       return;
     }
 
-    if (e.key === 'ArrowRight') {
+    if (e.key === "ArrowRight") {
       e.preventDefault();
       focusNextSegment(seg);
       return;
     }
 
-    if (e.key === 'Backspace') {
+    if (e.key === "Backspace") {
       e.preventDefault();
-      typingBufferRef.current = '';
-      const minVal = (seg === 'month' || seg === 'day') ? 1 : 0;
+      typingBufferRef.current = "";
+      const minVal = seg === "month" || seg === "day" ? 1 : 0;
       const currentParts = parseUtcTimestamp(value);
       const nextParts = setSegmentValue(currentParts, seg, minVal);
       onChange(buildUtcTimestamp(nextParts));
@@ -418,16 +431,16 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     }
 
     // Direct numeric typing
-    if (e.key >= '0' && e.key <= '9') {
+    if (e.key >= "0" && e.key <= "9") {
       e.preventDefault();
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
       }
       typingTimerRef.current = setTimeout(() => {
-        typingBufferRef.current = '';
+        typingBufferRef.current = "";
       }, 1200);
 
-      const maxLen = seg === 'year' ? 4 : 2;
+      const maxLen = seg === "year" ? 4 : 2;
       let nextBuffer = typingBufferRef.current + e.key;
       if (nextBuffer.length > maxLen) {
         nextBuffer = e.key;
@@ -443,14 +456,15 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       // Auto-advance heuristics
       let shouldAdvance = nextBuffer.length >= maxLen;
       if (!shouldAdvance && nextBuffer.length === 1) {
-        if (seg === 'month' && typedNumber >= 2) shouldAdvance = true;
-        if (seg === 'day' && typedNumber >= 4) shouldAdvance = true;
-        if (seg === 'hour' && typedNumber >= 3) shouldAdvance = true;
-        if ((seg === 'minute' || seg === 'second') && typedNumber >= 6) shouldAdvance = true;
+        if (seg === "month" && typedNumber >= 2) shouldAdvance = true;
+        if (seg === "day" && typedNumber >= 4) shouldAdvance = true;
+        if (seg === "hour" && typedNumber >= 3) shouldAdvance = true;
+        if ((seg === "minute" || seg === "second") && typedNumber >= 6)
+          shouldAdvance = true;
       }
 
       if (shouldAdvance) {
-        typingBufferRef.current = '';
+        typingBufferRef.current = "";
         focusNextSegment(seg);
       }
     }
@@ -460,10 +474,10 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     seg: TimestampSegmentType,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const rawDigits = e.target.value.replace(/\D/g, '');
+    const rawDigits = e.target.value.replace(/\D/g, "");
     const currentParts = parseUtcTimestamp(value);
-    const maxLen = seg === 'year' ? 4 : 2;
-    const currentValStr = String(currentParts[seg]).padStart(maxLen, '0');
+    const maxLen = seg === "year" ? 4 : 2;
+    const currentValStr = String(currentParts[seg]).padStart(maxLen, "0");
     if (rawDigits.length === 0 || rawDigits === currentValStr) return;
 
     const num = parseInt(rawDigits, 10);
@@ -481,13 +495,13 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     label: string
   ) => {
     const isFocused = focusedSegment === seg;
-    const displayVal = String(val).padStart(len, '0');
+    const displayVal = String(val).padStart(len, "0");
 
     return (
       <input
         ref={ref}
-        type="text"
-        inputMode="numeric"
+        type='text'
+        inputMode='numeric'
         data-segment={seg}
         aria-label={label}
         value={displayVal}
@@ -498,10 +512,12 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
         onKeyDown={(e) => handleSegmentKeyDown(seg, e)}
         onChange={(e) => handleSegmentChange(seg, e)}
         className={[
-          'timestamp-spinner-segment',
-          len === 4 ? 'timestamp-spinner-segment-year' : '',
-          isFocused ? 'is-focused' : '',
-        ].filter(Boolean).join(' ')}
+          "timestamp-spinner-segment",
+          len === 4 ? "timestamp-spinner-segment-year" : "",
+          isFocused ? "is-focused" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         style={inputStyle}
       />
     );
@@ -510,88 +526,121 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
   return (
     <div
       id={id}
-      className={`timestamp-spinner ${className} ${disabled ? 'disabled' : ''}`.trim()}
-      role="group"
+      className={`timestamp-spinner ${className} ${disabled ? "disabled" : ""}`.trim()}
+      role='group'
       aria-label={ariaLabel}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        border: '1px solid var(--cartouche-input-border, #ccc)',
-        borderRadius: '0.2rem',
-        backgroundColor: 'var(--cartouche-input-bg, #ffffff)',
-        color: 'var(--cartouche-input-fg, #000000)',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-        fontSize: '0.85rem',
-        padding: '0.1rem 0.25rem',
-        boxSizing: 'border-box',
+        display: "inline-flex",
+        alignItems: "center",
+        border: "1px solid var(--cartouche-input-border, #ccc)",
+        borderRadius: "0.2rem",
+        backgroundColor: "var(--cartouche-input-bg, #ffffff)",
+        color: "var(--cartouche-input-fg, #000000)",
+        fontFamily:
+          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        fontSize: "0.85rem",
+        padding: "0.1rem 0.25rem",
+        boxSizing: "border-box",
         opacity: disabled ? 0.5 : 1,
-        pointerEvents: disabled ? 'none' : 'auto',
+        pointerEvents: disabled ? "none" : "auto",
         ...style,
-      }}
-    >
+      }}>
       {/* Year segment */}
-      {renderSegmentInput('year', parts.year, 4, yearInputRef, 'Year')}
-      <span className="timestamp-spinner-divider" style={{ userSelect: 'none', padding: '0 0.05rem', color: 'var(--cartouche-theme-fg-muted, #666666)' }}>-</span>
+      {renderSegmentInput("year", parts.year, 4, yearInputRef, "Year")}
+      <span
+        className='timestamp-spinner-divider'
+        style={{
+          userSelect: "none",
+          padding: "0 0.05rem",
+          color: "var(--cartouche-theme-fg-muted, #666666)",
+        }}>
+        -
+      </span>
 
       {/* Month segment */}
-      {renderSegmentInput('month', parts.month, 2, monthInputRef, 'Month')}
-      <span className="timestamp-spinner-divider" style={{ userSelect: 'none', padding: '0 0.05rem', color: 'var(--cartouche-theme-fg-muted, #666666)' }}>-</span>
+      {renderSegmentInput("month", parts.month, 2, monthInputRef, "Month")}
+      <span
+        className='timestamp-spinner-divider'
+        style={{
+          userSelect: "none",
+          padding: "0 0.05rem",
+          color: "var(--cartouche-theme-fg-muted, #666666)",
+        }}>
+        -
+      </span>
 
       {/* Day segment */}
-      {renderSegmentInput('day', parts.day, 2, dayInputRef, 'Day')}
-      <span className="timestamp-spinner-divider timestamp-spinner-divider-space" style={{ userSelect: 'none', padding: '0 0.2rem' }}>&nbsp;</span>
+      {renderSegmentInput("day", parts.day, 2, dayInputRef, "Day")}
+      <span
+        className='timestamp-spinner-divider timestamp-spinner-divider-space'
+        style={{ userSelect: "none", padding: "0 0.2rem" }}>
+        &nbsp;
+      </span>
 
       {/* Hour segment */}
-      {renderSegmentInput('hour', parts.hour, 2, hourInputRef, 'Hour')}
-      <span className="timestamp-spinner-divider" style={{ userSelect: 'none', padding: '0 0.05rem', color: 'var(--cartouche-theme-fg-muted, #666666)' }}>:</span>
+      {renderSegmentInput("hour", parts.hour, 2, hourInputRef, "Hour")}
+      <span
+        className='timestamp-spinner-divider'
+        style={{
+          userSelect: "none",
+          padding: "0 0.05rem",
+          color: "var(--cartouche-theme-fg-muted, #666666)",
+        }}>
+        :
+      </span>
 
       {/* Minute segment */}
-      {renderSegmentInput('minute', parts.minute, 2, minuteInputRef, 'Minute')}
-      <span className="timestamp-spinner-divider" style={{ userSelect: 'none', padding: '0 0.05rem', color: 'var(--cartouche-theme-fg-muted, #666666)' }}>:</span>
+      {renderSegmentInput("minute", parts.minute, 2, minuteInputRef, "Minute")}
+      <span
+        className='timestamp-spinner-divider'
+        style={{
+          userSelect: "none",
+          padding: "0 0.05rem",
+          color: "var(--cartouche-theme-fg-muted, #666666)",
+        }}>
+        :
+      </span>
 
       {/* Second segment */}
-      {renderSegmentInput('second', parts.second, 2, secondInputRef, 'Second')}
+      {renderSegmentInput("second", parts.second, 2, secondInputRef, "Second")}
 
       {/* Vertical Spinner Up/Down Buttons */}
       <div
-        className="timestamp-spinner-buttons"
+        className='timestamp-spinner-buttons'
         style={{
-          display: 'inline-flex',
-          flexDirection: 'column',
-          marginLeft: '0.25rem',
-          justifyContent: 'center',
-          userSelect: 'none',
-        }}
-      >
+          display: "inline-flex",
+          flexDirection: "column",
+          marginLeft: "0.25rem",
+          justifyContent: "center",
+          userSelect: "none",
+        }}>
         <button
-          type="button"
+          type='button'
           tabIndex={-1}
-          aria-label="Increment segment"
-          className="timestamp-spinner-btn timestamp-spinner-btn-up"
+          aria-label='Increment segment'
+          className='timestamp-spinner-btn timestamp-spinner-btn-up'
           disabled={disabled}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => handleStep(1)}
           style={{
             ...SPINNER_BUTTON_BASE_STYLE,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-          }}
-        >
-          <Icon path={mdiChevronUp} size="0.65rem" />
+            cursor: disabled ? "not-allowed" : "pointer",
+          }}>
+          <Icon path={mdiChevronUp} size='0.65rem' />
         </button>
         <button
-          type="button"
+          type='button'
           tabIndex={-1}
-          aria-label="Decrement segment"
-          className="timestamp-spinner-btn timestamp-spinner-btn-down"
+          aria-label='Decrement segment'
+          className='timestamp-spinner-btn timestamp-spinner-btn-down'
           disabled={disabled}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => handleStep(-1)}
           style={{
             ...SPINNER_BUTTON_BASE_STYLE,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-          }}
-        >
-          <Icon path={mdiChevronDown} size="0.65rem" />
+            cursor: disabled ? "not-allowed" : "pointer",
+          }}>
+          <Icon path={mdiChevronDown} size='0.65rem' />
         </button>
       </div>
     </div>

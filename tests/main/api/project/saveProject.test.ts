@@ -8,27 +8,27 @@
  * @since 0.1.0-dev
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { Layer } from '../../../../src/main/project/models/Layer';
-import saveProject from '../../../../src/main/api/project/saveProject';
-import saveAsProject from '../../../../src/main/api/project/saveAsProject';
-import closeProject from '../../../../src/main/api/project/closeProject';
-import newProject from '../../../../src/main/api/project/newProject';
-import { setNodeSelection } from '../../../../src/main/api/project/layerTreeOperations';
-import { serializeProjectLayersTree } from '../../../../src/main/project/ProjectBroadcaster';
-import { CartoucheXmlLoader } from '../../../../src/main/project/loaders/CartoucheXmlLoader';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { projectStore } from "../../../../src/main/project/ProjectStore";
+import { Layer } from "../../../../src/main/project/models/Layer";
+import saveProject from "../../../../src/main/api/project/saveProject";
+import saveAsProject from "../../../../src/main/api/project/saveAsProject";
+import closeProject from "../../../../src/main/api/project/closeProject";
+import newProject from "../../../../src/main/api/project/newProject";
+import { setNodeSelection } from "../../../../src/main/api/project/layerTreeOperations";
+import { serializeProjectLayersTree } from "../../../../src/main/project/ProjectBroadcaster";
+import { CartoucheXmlLoader } from "../../../../src/main/project/loaders/CartoucheXmlLoader";
 
-describe('saveProject, saveAsProject, closeProject Main API', () => {
+describe("saveProject, saveAsProject, closeProject Main API", () => {
   let tempDir: string;
 
   beforeEach(() => {
     projectStore.closeProject();
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-test-"));
   });
 
   afterEach(() => {
@@ -41,17 +41,17 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     }
   });
 
-  it('saveProject returns false when no project is open', async () => {
+  it("saveProject returns false when no project is open", async () => {
     assert.equal(projectStore.hasProject(), false);
     const result = await saveProject();
     assert.equal(result, false);
   });
 
-  it('saveProject returns false when project is untitled and no targetPath is provided', async () => {
+  it("saveProject returns false when project is untitled and no targetPath is provided", async () => {
     projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Untitled Project' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Untitled Project" },
+      layers: [],
     });
     assert.equal(projectStore.hasProject(), true);
     assert.equal(projectStore.getFilePath(), null);
@@ -60,21 +60,26 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(result, false);
   });
 
-  it('saveProject saves an existing project back to its disk path and resets dirty state', async () => {
-    const tempPath = path.join(tempDir, 'temp-save-existing.cproj');
+  it("saveProject saves an existing project back to its disk path and resets dirty state", async () => {
+    const tempPath = path.join(tempDir, "temp-save-existing.cproj");
 
     projectStore.setProject(
       {
-        format: 'cartouche-xml',
-        metadata: { title: 'Existing Project' },
-        layers: []
+        format: "cartouche-xml",
+        metadata: { title: "Existing Project" },
+        layers: [],
       },
       tempPath
     );
     projectStore.setProjectDirty(true);
     assert.equal(projectStore.isProjectDirty(), true);
 
-    const layer = new Layer('Roads', '/data/roads.shp', 'vector', 'layer-roads');
+    const layer = new Layer(
+      "Roads",
+      "/data/roads.shp",
+      "vector",
+      "layer-roads"
+    );
     projectStore.getRootGroup().addChild(layer);
 
     const saved = await saveProject();
@@ -82,18 +87,18 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(projectStore.isProjectDirty(), false);
     assert.equal(fs.existsSync(tempPath), true);
 
-    const content = fs.readFileSync(tempPath, 'utf-8');
-    assert.ok(content.includes('<dc:title>Existing Project</dc:title>'));
+    const content = fs.readFileSync(tempPath, "utf-8");
+    assert.ok(content.includes("<dc:title>Existing Project</dc:title>"));
     assert.ok(content.includes('layer id="layer-roads"'));
   });
 
-  it('saveProject with targetPath updates destination path and resets dirty state', async () => {
-    const tempPath = path.join(tempDir, 'temp-save-as.cproj');
+  it("saveProject with targetPath updates destination path and resets dirty state", async () => {
+    const tempPath = path.join(tempDir, "temp-save-as.cproj");
 
     projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Untitled Project' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Untitled Project" },
+      layers: [],
     });
     projectStore.setProjectDirty(true);
 
@@ -104,13 +109,13 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(fs.existsSync(tempPath), true);
   });
 
-  it('saveAsProject delegates to saveProject and saves to specified path', async () => {
-    const tempPath = path.join(tempDir, 'temp-save-as-delegated.cproj');
+  it("saveAsProject delegates to saveProject and saves to specified path", async () => {
+    const tempPath = path.join(tempDir, "temp-save-as-delegated.cproj");
 
     projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Original Project' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Original Project" },
+      layers: [],
     });
 
     const saved = await saveAsProject(tempPath);
@@ -119,15 +124,20 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(projectStore.isProjectDirty(), false);
   });
 
-  it('closeProject resets projectStore state and disposes layers', () => {
+  it("closeProject resets projectStore state and disposes layers", () => {
     projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Closing Project' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Closing Project" },
+      layers: [],
     });
     projectStore.setProjectDirty(true);
 
-    const layer = new Layer('Parcels', '/data/parcels.shp', 'vector', 'layer-parcels');
+    const layer = new Layer(
+      "Parcels",
+      "/data/parcels.shp",
+      "vector",
+      "layer-parcels"
+    );
     projectStore.getRootGroup().addChild(layer);
 
     closeProject();
@@ -137,40 +147,44 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(projectStore.getRootGroup().getChildCount(), 0);
   });
 
-  it('preserves layers and does not clear them when selecting a layer and saving project', async () => {
-    const tempPath = path.join(tempDir, 'temp-repro-layers.cproj');
+  it("preserves layers and does not clear them when selecting a layer and saving project", async () => {
+    const tempPath = path.join(tempDir, "temp-repro-layers.cproj");
 
     projectStore.setProject(
       {
-        format: 'cartouche-xml',
-        metadata: { title: 'Repro Project' },
+        format: "cartouche-xml",
+        metadata: { title: "Repro Project" },
         layers: [
           {
-            id: 'layer-roads',
-            name: 'Roads',
-            type: 'vector',
-            source: '/data/roads.shp',
+            id: "layer-roads",
+            name: "Roads",
+            type: "vector",
+            source: "/data/roads.shp",
             visible: true,
             selected: false,
             opacity: 1.0,
             selectable: true,
-            readOnly: false
-          }
-        ]
+            readOnly: false,
+          },
+        ],
       },
       tempPath
     );
 
     // User clicks on a layer, triggering setNodeSelection
-    setNodeSelection(['layer-roads']);
+    setNodeSelection(["layer-roads"]);
 
     // The runtime layer tree must retain the layer
     const root = projectStore.getRootGroup();
-    assert.equal(root.getChildCount(), 1, 'Root group should contain 1 layer');
+    assert.equal(root.getChildCount(), 1, "Root group should contain 1 layer");
 
     const tree = serializeProjectLayersTree();
-    assert.equal(tree.length, 1, 'Serialized layer tree should contain 1 layer');
-    assert.equal(tree[0].id, 'layer-roads');
+    assert.equal(
+      tree.length,
+      1,
+      "Serialized layer tree should contain 1 layer"
+    );
+    assert.equal(tree[0].id, "layer-roads");
     assert.equal(tree[0].selected, true);
 
     // Save project must not erase layers
@@ -179,131 +193,151 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
 
     const project = projectStore.getProject();
     assert.equal(project?.layers?.length, 1);
-    assert.equal(project?.layers?.[0]?.id, 'layer-roads');
+    assert.equal(project?.layers?.[0]?.id, "layer-roads");
   });
 
-  it('preserves nested groups and multiple layers when selecting nodes and saving', async () => {
-    const tempPath = path.join(tempDir, 'temp-nested-groups.cproj');
+  it("preserves nested groups and multiple layers when selecting nodes and saving", async () => {
+    const tempPath = path.join(tempDir, "temp-nested-groups.cproj");
 
     projectStore.setProject(
       {
-        format: 'cartouche-xml',
-        metadata: { title: 'Nested Groups Project' },
+        format: "cartouche-xml",
+        metadata: { title: "Nested Groups Project" },
         layers: [
           {
-            id: 'group-env',
-            name: 'Environment',
+            id: "group-env",
+            name: "Environment",
             visible: true,
             selected: false,
             expanded: true,
             children: [
               {
-                id: 'layer-rivers',
-                name: 'Rivers',
-                type: 'vector',
-                source: '/data/rivers.geojson',
+                id: "layer-rivers",
+                name: "Rivers",
+                type: "vector",
+                source: "/data/rivers.geojson",
                 visible: true,
-                selected: false
+                selected: false,
               },
               {
-                id: 'layer-forests',
-                name: 'Forests',
-                type: 'vector',
-                source: '/data/forests.shp',
+                id: "layer-forests",
+                name: "Forests",
+                type: "vector",
+                source: "/data/forests.shp",
                 visible: true,
-                selected: false
-              }
-            ]
+                selected: false,
+              },
+            ],
           },
           {
-            id: 'layer-labels',
-            name: 'Labels',
-            type: 'vector',
-            source: '/data/labels.geojson',
+            id: "layer-labels",
+            name: "Labels",
+            type: "vector",
+            source: "/data/labels.geojson",
             visible: true,
-            selected: false
-          }
-        ]
+            selected: false,
+          },
+        ],
       },
       tempPath
     );
 
     // Select rivers inside the group
-    setNodeSelection(['layer-rivers']);
+    setNodeSelection(["layer-rivers"]);
 
     const root = projectStore.getRootGroup();
-    assert.equal(root.getChildCount(), 2, 'Root should have group-env and layer-labels');
+    assert.equal(
+      root.getChildCount(),
+      2,
+      "Root should have group-env and layer-labels"
+    );
 
     const tree = serializeProjectLayersTree();
     assert.equal(tree.length, 2);
     assert.equal((tree[0] as any).children?.length, 2);
-    assert.equal((tree[0] as any).children[0].id, 'layer-rivers');
+    assert.equal((tree[0] as any).children[0].id, "layer-rivers");
     assert.equal((tree[0] as any).children[0].selected, true);
 
     const saved = await saveProject();
     assert.equal(saved, true);
 
-    const content = fs.readFileSync(tempPath, 'utf-8');
+    const content = fs.readFileSync(tempPath, "utf-8");
     assert.ok(content.includes('group id="group-env"'));
     assert.ok(content.includes('layer id="layer-rivers"'));
     assert.ok(content.includes('layer id="layer-forests"'));
     assert.ok(content.includes('layer id="layer-labels"'));
   });
 
-  it('serializes viewport extent and camera configuration when viewport is provided on saveProject', async () => {
-    const tempPath = path.join(tempDir, 'temp-save-viewport.cproj');
+  it("serializes viewport extent and camera configuration when viewport is provided on saveProject", async () => {
+    const tempPath = path.join(tempDir, "temp-save-viewport.cproj");
 
     projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Viewport Test Project' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Viewport Test Project" },
+      layers: [],
     });
 
     const viewport = {
       extent: { xmin: -122.5, ymin: 37.7, xmax: -122.3, ymax: 37.9 },
       center: { x: -122.4, y: 37.8 },
       scale: 25000,
-      rotation: 0
+      rotation: 0,
     };
 
     const saved = await saveProject(tempPath, viewport);
     assert.equal(saved, true);
     assert.equal(fs.existsSync(tempPath), true);
 
-    const content = fs.readFileSync(tempPath, 'utf-8');
-    assert.ok(content.includes('<viewport>'), 'Saved XML must contain <viewport> root element');
+    const content = fs.readFileSync(tempPath, "utf-8");
     assert.ok(
-      content.includes('<extent xmin="-122.5" ymin="37.7" xmax="-122.3" ymax="37.9" />'),
-      'Saved XML must contain formatted <extent> element with exact coordinates'
+      content.includes("<viewport>"),
+      "Saved XML must contain <viewport> root element"
+    );
+    assert.ok(
+      content.includes(
+        '<extent xmin="-122.5" ymin="37.7" xmax="-122.3" ymax="37.9" />'
+      ),
+      "Saved XML must contain formatted <extent> element with exact coordinates"
     );
     assert.ok(
       content.includes('<center x="-122.4" y="37.8" />'),
-      'Saved XML must contain formatted <center> element'
+      "Saved XML must contain formatted <center> element"
     );
-    assert.ok(!content.includes('<zoom>'), 'Saved XML must not contain <zoom> element');
-    assert.ok(content.includes('<scale>25000</scale>'), 'Saved XML must contain <scale> element');
+    assert.ok(
+      !content.includes("<zoom>"),
+      "Saved XML must not contain <zoom> element"
+    );
+    assert.ok(
+      content.includes("<scale>25000</scale>"),
+      "Saved XML must contain <scale> element"
+    );
 
     // Deserialization check via CartoucheXmlLoader
     const loader = new CartoucheXmlLoader();
     const reloaded = await loader.load(tempPath);
-    assert.ok(reloaded.viewport, 'Loaded project must contain viewport');
-    assert.deepEqual(reloaded.viewport?.extent, { xmin: -122.5, ymin: 37.7, xmax: -122.3, ymax: 37.9 });
+    assert.ok(reloaded.viewport, "Loaded project must contain viewport");
+    assert.deepEqual(reloaded.viewport?.extent, {
+      xmin: -122.5,
+      ymin: 37.7,
+      xmax: -122.3,
+      ymax: 37.9,
+    });
     assert.deepEqual(reloaded.viewport?.center, { x: -122.4, y: 37.8 });
     assert.equal(reloaded.viewport?.scale, 25000);
   });
 
-  it('preserves existing project.viewport when saveProject is invoked without explicit viewport override', async () => {
-    const tempPath = path.join(tempDir, 'temp-preserve-viewport.cproj');
+  it("preserves existing project.viewport when saveProject is invoked without explicit viewport override", async () => {
+    const tempPath = path.join(tempDir, "temp-preserve-viewport.cproj");
 
     projectStore.setProject(
       {
-        format: 'cartouche-xml',
-        metadata: { title: 'Preserve Viewport Project' },
+        format: "cartouche-xml",
+        metadata: { title: "Preserve Viewport Project" },
         viewport: {
           extent: { xmin: 10, ymin: 20, xmax: 30, ymax: 40 },
-          center: { x: 20, y: 30 }
+          center: { x: 20, y: 30 },
         },
-        layers: []
+        layers: [],
       },
       tempPath
     );
@@ -311,13 +345,18 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     const saved = await saveProject();
     assert.equal(saved, true);
 
-    const content = fs.readFileSync(tempPath, 'utf-8');
-    assert.ok(content.includes('<extent xmin="10" ymin="20" xmax="30" ymax="40" />'));
-    assert.ok(!content.includes('<zoom>'), 'Saved XML must not contain <zoom> element');
+    const content = fs.readFileSync(tempPath, "utf-8");
+    assert.ok(
+      content.includes('<extent xmin="10" ymin="20" xmax="30" ymax="40" />')
+    );
+    assert.ok(
+      !content.includes("<zoom>"),
+      "Saved XML must not contain <zoom> element"
+    );
   });
 
-  it('newProject initializes empty project model in projectStore and saves empty <layers> element', async () => {
-    const tempPath = path.join(tempDir, 'temp-save-new-empty.cproj');
+  it("newProject initializes empty project model in projectStore and saves empty <layers> element", async () => {
+    const tempPath = path.join(tempDir, "temp-save-new-empty.cproj");
 
     newProject();
     assert.equal(projectStore.hasProject(), true);
@@ -328,14 +367,23 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(saved, true);
     assert.equal(fs.existsSync(tempPath), true);
 
-    const content = fs.readFileSync(tempPath, 'utf-8');
-    assert.ok(content.includes('<layers>'), 'Saved XML must contain opening <layers> tag');
-    assert.ok(content.includes('</layers>'), 'Saved XML must contain closing </layers> tag');
-    assert.ok(!content.includes('<layer '), 'Saved XML must not contain layer tags');
+    const content = fs.readFileSync(tempPath, "utf-8");
+    assert.ok(
+      content.includes("<layers>"),
+      "Saved XML must contain opening <layers> tag"
+    );
+    assert.ok(
+      content.includes("</layers>"),
+      "Saved XML must contain closing </layers> tag"
+    );
+    assert.ok(
+      !content.includes("<layer "),
+      "Saved XML must not contain layer tags"
+    );
   });
 
-  it('saveProject with targetPath creates and saves empty project even if projectStore was uninitialized', async () => {
-    const tempPath = path.join(tempDir, 'temp-save-uninitialized.cproj');
+  it("saveProject with targetPath creates and saves empty project even if projectStore was uninitialized", async () => {
+    const tempPath = path.join(tempDir, "temp-save-uninitialized.cproj");
 
     assert.equal(projectStore.hasProject(), false);
 
@@ -343,37 +391,63 @@ describe('saveProject, saveAsProject, closeProject Main API', () => {
     assert.equal(saved, true);
     assert.equal(fs.existsSync(tempPath), true);
 
-    const content = fs.readFileSync(tempPath, 'utf-8');
-    assert.ok(content.includes('<layers>'));
-    assert.ok(content.includes('</layers>'));
+    const content = fs.readFileSync(tempPath, "utf-8");
+    assert.ok(content.includes("<layers>"));
+    assert.ok(content.includes("</layers>"));
   });
 
-  it('every save writes the Project CRS proj4 and WKT, even when the Project CRS was not changed, keeping a proj4 already present (Ticket #298)', async () => {
-    const filePath = path.join(tempDir, 'old-format.cproj');
-    projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Old Format' },
-      crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93' },
-      layers: []
-    }, filePath);
+  it("every save writes the Project CRS proj4 and WKT, even when the Project CRS was not changed, keeping a proj4 already present (Ticket #298)", async () => {
+    const filePath = path.join(tempDir, "old-format.cproj");
+    projectStore.setProject(
+      {
+        format: "cartouche-xml",
+        metadata: { title: "Old Format" },
+        crs: { authId: "EPSG:2154", description: "RGF93 v1 / Lambert-93" },
+        layers: [],
+      },
+      filePath
+    );
     assert.equal(await saveProject(), true);
-    const content = fs.readFileSync(filePath, 'utf-8');
-    assert.match(content, /<crs>\s*<authId>EPSG:2154<\/authId>\s*<description>RGF93 v1 \/ Lambert-93<\/description>\s*<proj4>\+proj=lcc[^<]*<\/proj4>\s*<wkt>PROJCS\[/);
-    assert.equal(projectStore.isProjectDirty(), false, 'completing the definition on save leaves the Project Dirty State clear');
+    const content = fs.readFileSync(filePath, "utf-8");
+    assert.match(
+      content,
+      /<crs>\s*<authId>EPSG:2154<\/authId>\s*<description>RGF93 v1 \/ Lambert-93<\/description>\s*<proj4>\+proj=lcc[^<]*<\/proj4>\s*<wkt>PROJCS\[/
+    );
+    assert.equal(
+      projectStore.isProjectDirty(),
+      false,
+      "completing the definition on save leaves the Project Dirty State clear"
+    );
 
-    projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Custom' },
-      crs: { authId: 'EPSG:2154', proj4: '+proj=hand-written' },
-      layers: []
-    }, filePath);
+    projectStore.setProject(
+      {
+        format: "cartouche-xml",
+        metadata: { title: "Custom" },
+        crs: { authId: "EPSG:2154", proj4: "+proj=hand-written" },
+        layers: [],
+      },
+      filePath
+    );
     assert.equal(await saveProject(), true);
-    const custom = fs.readFileSync(filePath, 'utf-8');
-    assert.ok(custom.includes('<proj4>+proj=hand-written</proj4>'));
-    assert.ok(!custom.includes('<wkt>'), 'no looked-up WKT is paired with a hand-written proj4');
+    const custom = fs.readFileSync(filePath, "utf-8");
+    assert.ok(custom.includes("<proj4>+proj=hand-written</proj4>"));
+    assert.ok(
+      !custom.includes("<wkt>"),
+      "no looked-up WKT is paired with a hand-written proj4"
+    );
 
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'None' }, crs: { authId: '', none: true }, layers: [] }, filePath);
+    projectStore.setProject(
+      {
+        format: "cartouche-xml",
+        metadata: { title: "None" },
+        crs: { authId: "", none: true },
+        layers: [],
+      },
+      filePath
+    );
     assert.equal(await saveProject(), true);
-    assert.ok(fs.readFileSync(filePath, 'utf-8').includes('<crs none="true" />'));
+    assert.ok(
+      fs.readFileSync(filePath, "utf-8").includes('<crs none="true" />')
+    );
   });
 });

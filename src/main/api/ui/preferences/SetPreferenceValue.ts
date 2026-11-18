@@ -9,9 +9,9 @@
  * @see {@link PreferencesStore}
  */
 
-import type { PreferenceMap } from '@shared/types';
-import { PreferencesStore } from './PreferencesStore';
-import { logging } from '../../../../shared/logging';
+import type { PreferenceMap } from "@shared/types";
+import { PreferencesStore } from "./PreferencesStore";
+import { logging } from "../../../../shared/logging";
 
 /**
  * @description Saves the preference value for the given preference name and persists changes to disk.
@@ -34,7 +34,14 @@ import { logging } from '../../../../shared/logging';
  * @param {any} value - New preference value.
  * @returns {PreferenceMap} Updated preference map dictionary.
  */
-export default function setPreferenceValue(name: string, value: any): PreferenceMap {
-  logging.debug('Setting preference value', { preference: name, value, scope: 'SetPreferenceValue' });
+export default function setPreferenceValue(
+  name: string,
+  value: any
+): PreferenceMap {
+  logging.debug("Setting preference value", {
+    preference: name,
+    value,
+    scope: "SetPreferenceValue",
+  });
   return PreferencesStore.set(name, value);
 }

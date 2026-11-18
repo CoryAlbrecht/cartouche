@@ -8,10 +8,18 @@
  * @since 0.1.0-dev
  */
 
-import { LayerTreeNode } from './LayerTreeNode';
-import type { GeometryKind, FileTypeDescriptor, ProjectLayerStyleItem, OlLayerStyle, BoundingBox, LayerFieldInfo, LayerTemporalConfig } from '@shared/types';
-import { layerSessionRegistry } from '../LayerSessionRegistry';
-import { geospatialService } from '../../worker/GeospatialService';
+import { LayerTreeNode } from "./LayerTreeNode";
+import type {
+  GeometryKind,
+  FileTypeDescriptor,
+  ProjectLayerStyleItem,
+  OlLayerStyle,
+  BoundingBox,
+  LayerFieldInfo,
+  LayerTemporalConfig,
+} from "@shared/types";
+import { layerSessionRegistry } from "../LayerSessionRegistry";
+import { geospatialService } from "../../worker/GeospatialService";
 
 /**
  * @class Layer
@@ -27,19 +35,19 @@ export class Layer extends LayerTreeNode implements Disposable {
   public readOnly: boolean;
   public filePath: string;
   public fileType: FileTypeDescriptor | null;
-  public layerKind: 'vector' | 'raster';
+  public layerKind: "vector" | "raster";
   public geometryKind?: GeometryKind;
   public opacity: number = 1.0;
   public selectable: boolean = true;
   public style?: string | ProjectLayerStyleItem | OlLayerStyle;
   public styleId?: string;
-  public crs?: import('@shared/types').ProjectCrs;
+  public crs?: import("@shared/types").ProjectCrs;
   public fields?: LayerFieldInfo[];
   public customProperties?: Record<string, unknown>;
   public extent?: BoundingBox;
   public featureCount?: number;
   public fidColumn?: string;
-  public capabilities?: import('@shared/types/layers').LayerCapabilities;
+  public capabilities?: import("@shared/types/layers").LayerCapabilities;
   public temporalEnabled?: boolean;
   public temporal?: LayerTemporalConfig;
 
@@ -52,7 +60,12 @@ export class Layer extends LayerTreeNode implements Disposable {
    * @param {'vector' | 'raster'} layerKind - Type of layer.
    * @param {string} [id] - Optional ID.
    */
-  constructor(name: string, filePath: string, layerKind: 'vector' | 'raster', id?: string) {
+  constructor(
+    name: string,
+    filePath: string,
+    layerKind: "vector" | "raster",
+    id?: string
+  ) {
     super(name, id);
     this.filePath = filePath;
     this.layerKind = layerKind;
@@ -65,7 +78,9 @@ export class Layer extends LayerTreeNode implements Disposable {
    * @returns {string} File format type string.
    */
   get type(): string {
-    return this.fileType?.id || (this.layerKind === 'raster' ? 'raster' : 'vector');
+    return (
+      this.fileType?.id || (this.layerKind === "raster" ? "raster" : "vector")
+    );
   }
 
   /**
@@ -96,11 +111,11 @@ export class Layer extends LayerTreeNode implements Disposable {
     if (this.nativeObject) {
       const obj = this.nativeObject as any;
       try {
-        if (typeof obj.close === 'function') {
+        if (typeof obj.close === "function") {
           obj.close();
-        } else if (obj.ds && typeof obj.ds.close === 'function') {
+        } else if (obj.ds && typeof obj.ds.close === "function") {
           obj.ds.close();
-        } else if (typeof obj.dispose === 'function') {
+        } else if (typeof obj.dispose === "function") {
           obj.dispose();
         }
       } catch {

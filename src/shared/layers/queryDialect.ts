@@ -9,7 +9,7 @@
  * @see {@link ProviderQueryDialect}
  */
 
-import type { ProviderQueryDialect } from '../types/layers';
+import type { ProviderQueryDialect } from "../types/layers";
 
 /**
  * @description Categorizes a GDAL/OGR provider driver description into its authoritative query dialect tier.
@@ -22,50 +22,51 @@ import type { ProviderQueryDialect } from '../types/layers';
  * @param {string} [driverName] - GDAL driver description name.
  * @returns {ProviderQueryDialect} The resolved query dialect tier.
  */
-export function classifyDriverDialect(driverName?: string): ProviderQueryDialect {
-  if (!driverName || typeof driverName !== 'string') {
-    return 'generic';
+export function classifyDriverDialect(
+  driverName?: string
+): ProviderQueryDialect {
+  if (!driverName || typeof driverName !== "string") {
+    return "generic";
   }
 
   const normalized = driverName.trim().toLowerCase();
 
   // Relational database servers (native_sql)
   if (
-    normalized === 'gpkg' ||
-    normalized.includes('geopackage') ||
-    normalized.includes('sqlite') ||
-    normalized.includes('postgres') ||
-    normalized.includes('postgis') ||
-    normalized.includes('mssql') ||
-    normalized.includes('mysql') ||
-    normalized.includes('oracle')
+    normalized === "gpkg"
+    || normalized.includes("geopackage")
+    || normalized.includes("sqlite")
+    || normalized.includes("postgres")
+    || normalized.includes("postgis")
+    || normalized.includes("mssql")
+    || normalized.includes("mysql")
+    || normalized.includes("oracle")
   ) {
-    return 'native_sql';
+    return "native_sql";
   }
 
   // Document and search engines (nosql)
   if (
-    normalized.includes('mongo') ||
-    normalized.includes('elasticsearch') ||
-    normalized.includes('couch')
+    normalized.includes("mongo")
+    || normalized.includes("elasticsearch")
+    || normalized.includes("couch")
   ) {
-    return 'nosql';
+    return "nosql";
   }
 
   // Flat file formats (ogr_sql)
   if (
-    normalized.includes('shapefile') ||
-    normalized.includes('geojson') ||
-    normalized.includes('flatgeobuf') ||
-    normalized === 'kml' ||
-    normalized === 'libkml' ||
-    normalized === 'csv' ||
-    normalized.includes('gml') ||
-    normalized.includes('dxf')
+    normalized.includes("shapefile")
+    || normalized.includes("geojson")
+    || normalized.includes("flatgeobuf")
+    || normalized === "kml"
+    || normalized === "libkml"
+    || normalized === "csv"
+    || normalized.includes("gml")
+    || normalized.includes("dxf")
   ) {
-    return 'ogr_sql';
+    return "ogr_sql";
   }
 
-  return 'generic';
+  return "generic";
 }
-

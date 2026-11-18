@@ -9,7 +9,7 @@
  * @see {@link projectProperties}
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @function projectProperties
@@ -21,5 +21,5 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function projectProperties(): void {
-  logging.debug('Project properties requested', { scope: 'projectProperties' });
+  logging.debug("Project properties requested", { scope: "projectProperties" });
 }

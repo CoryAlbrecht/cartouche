@@ -13,14 +13,14 @@
  *
  * @type {string}
  */
-export const ANSI_BLACK_ON_RED = '\x1b[30;41m';
+export const ANSI_BLACK_ON_RED = "\x1b[30;41m";
 
 /**
  * ANSI escape code resetting text formatting and colors.
  *
  * @type {string}
  */
-export const ANSI_RESET = '\x1b[0m';
+export const ANSI_RESET = "\x1b[0m";
 
 /**
  * Determines whether the specified stream and current environment support ANSI colors.
@@ -36,10 +36,13 @@ export const ANSI_RESET = '\x1b[0m';
  * @returns {boolean} True if ANSI colors are supported and enabled.
  */
 export function supportsColor(stream = process.stderr) {
-  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') {
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== "") {
     return false;
   }
-  if (process.env.FORCE_COLOR !== undefined && process.env.FORCE_COLOR !== '0') {
+  if (
+    process.env.FORCE_COLOR !== undefined
+    && process.env.FORCE_COLOR !== "0"
+  ) {
     return true;
   }
   return Boolean(stream && stream.isTTY);
@@ -66,17 +69,17 @@ export function supportsColor(stream = process.stderr) {
  */
 export function formatBlockerText(text, options = {}) {
   const upper = String(text).toUpperCase();
-  const enableColor = options.forceColor !== undefined
-    ? options.forceColor
+  const enableColor =
+    options.forceColor !== undefined ?
+      options.forceColor
     : supportsColor(options.stream);
 
   if (!enableColor) {
     return upper;
   }
 
-  const lines = upper.split('\n');
+  const lines = upper.split("\n");
   return lines
     .map((line) => `${ANSI_BLACK_ON_RED} ${line} ${ANSI_RESET}`)
-    .join('\n');
+    .join("\n");
 }
-

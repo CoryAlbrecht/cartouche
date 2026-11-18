@@ -107,7 +107,10 @@ import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { SelectByValueDialog } from "./dialogs/SelectByValueDialog";
 import { SnappingOptionsDialog } from "./dialogs/SnappingOptionsDialog";
 import { UnsavedChangesModal } from "./dialogs/ModalDialog";
-import { handleWorkbenchKeyDown, executeWorkbenchAction } from "./workbenchShortcuts";
+import {
+  handleWorkbenchKeyDown,
+  executeWorkbenchAction,
+} from "./workbenchShortcuts";
 import logoSvg from "../../../assets/svg/logo.svg";
 import { logging } from "../../shared/logging";
 import type { WidgetDockId } from "../../shared/types";
@@ -412,9 +415,11 @@ export const Workbench: React.FC = () => {
     loadActionsFromMain();
 
     window.addEventListener("keydown", handleWorkbenchKeyDown, true);
-    const unsubscribeAction = window.electronAPI?.onExecuteRendererAction?.((actionName) => {
-      executeWorkbenchAction(actionName);
-    });
+    const unsubscribeAction = window.electronAPI?.onExecuteRendererAction?.(
+      (actionName) => {
+        executeWorkbenchAction(actionName);
+      }
+    );
     const unsubscribeRequestClose = window.electronAPI?.onRequestClose?.(() => {
       void requestAppExitAction();
     });
@@ -456,7 +461,9 @@ export const Workbench: React.FC = () => {
           savedPanelStatesRef.current.set(key, val);
         });
       } catch (err) {
-        logging.warn("Failed to parse saved panel states", err, { scope: "Workbench" });
+        logging.warn("Failed to parse saved panel states", err, {
+          scope: "Workbench",
+        });
       }
     }
   }, []);
@@ -483,8 +490,7 @@ export const Workbench: React.FC = () => {
         !!(panel.api as any).isFloating
         || !!(panel.group as any)?.api?.isFloating;
       let floatingBounds:
-        | { x: number; y: number; width: number; height: number }
-        | undefined;
+        { x: number; y: number; width: number; height: number } | undefined;
       if (isFloating) {
         const groupEl = (panel as any).group?.element;
         if (groupEl) {
@@ -532,7 +538,9 @@ export const Workbench: React.FC = () => {
       );
       localStorage.setItem(SAVED_PANEL_STATES_KEY, JSON.stringify(obj));
     } catch (err) {
-      logging.warn("Failed to persist saved panel states", err, { scope: "Workbench" });
+      logging.warn("Failed to persist saved panel states", err, {
+        scope: "Workbench",
+      });
     }
   }, []);
 
@@ -618,10 +626,16 @@ export const Workbench: React.FC = () => {
       } else {
         const dockItemMatch = getWidgetDockItem(id);
         if (dockItemMatch?.containerId) {
-          const containerPanel = dockviewApi.getPanel(dockItemMatch.containerId);
+          const containerPanel = dockviewApi.getPanel(
+            dockItemMatch.containerId
+          );
           if (containerPanel) {
             containerPanel.api.setActive();
-            addConsoleLog("info", `Focused existing tab container for panel: ${title}`, "Dockview");
+            addConsoleLog(
+              "info",
+              `Focused existing tab container for panel: ${title}`,
+              "Dockview"
+            );
             return;
           }
           // If container is not active in Dockview, restore as independent widget with axisRatio = 1
@@ -632,7 +646,9 @@ export const Workbench: React.FC = () => {
             if (item.id === dockItemMatch.containerId) {
               return {
                 ...item,
-                tabChildren: (item.tabChildren || []).filter((cid: string) => cid !== id),
+                tabChildren: (item.tabChildren || []).filter(
+                  (cid: string) => cid !== id
+                ),
               };
             }
             return item;
@@ -673,7 +689,9 @@ export const Workbench: React.FC = () => {
           const dock = dockItemMatch.dock;
           const isVertical = dock === "left" || dock === "right";
           const openPanelsInDock = (widgetDocksSignal.value[dock] || [])
-            .filter((d) => d.id !== id && dockviewApi.getPanel(d.id) !== undefined)
+            .filter(
+              (d) => d.id !== id && dockviewApi.getPanel(d.id) !== undefined
+            )
             .sort((a, b) => a.order - b.order);
 
           if (openPanelsInDock.length > 0) {
@@ -719,17 +737,24 @@ export const Workbench: React.FC = () => {
           setWidgetDockItemVisibility(id, true);
           const isVertical =
             dockItemMatch.dock === "left" || dockItemMatch.dock === "right";
-          const openInDock = (widgetDocksSignal.value[dockItemMatch.dock] || []).filter(
-            (d) => dockviewApi.getPanel(d.id) !== undefined
-          );
+          const openInDock = (
+            widgetDocksSignal.value[dockItemMatch.dock] || []
+          ).filter((d) => dockviewApi.getPanel(d.id) !== undefined);
           if (openInDock.length > 1) {
             setTimeout(() => {
               const totalLength = openInDock.reduce((sum, item) => {
                 const p = dockviewApi.getPanel(item.id);
-                return sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0));
+                return (
+                  sum
+                  + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0))
+                );
               }, 0);
               if (totalLength > 0) {
-                rebalanceDockOnResize(dockItemMatch.dock, totalLength, dockviewApi);
+                rebalanceDockOnResize(
+                  dockItemMatch.dock,
+                  totalLength,
+                  dockviewApi
+                );
               }
             }, 0);
           }
@@ -741,7 +766,10 @@ export const Workbench: React.FC = () => {
                 height: savedState?.height,
               });
             } catch (err) {
-              logging.warn('Failed to set size for panel', err, { panelId: id, scope: 'Workbench' });
+              logging.warn("Failed to set size for panel", err, {
+                panelId: id,
+                scope: "Workbench",
+              });
             }
           }, 0);
         }
@@ -791,7 +819,9 @@ export const Workbench: React.FC = () => {
           const isVertical = dock === "left" || dock === "right";
           const totalLength = items.reduce((sum, item) => {
             const p = dockviewApi.getPanel(item.id);
-            return sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0));
+            return (
+              sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0))
+            );
           }, 0);
           if (totalLength > 0) {
             rebalanceDockOnResize(dock, totalLength, dockviewApi);
@@ -820,7 +850,11 @@ export const Workbench: React.FC = () => {
             "Dockview"
           );
         } catch (err) {
-          logging.warn("Failed to parse saved layout, resetting to default", err, { scope: "Workbench" });
+          logging.warn(
+            "Failed to parse saved layout, resetting to default",
+            err,
+            { scope: "Workbench" }
+          );
           loadDefaultLayout(api);
         }
       } else {
@@ -854,14 +888,19 @@ export const Workbench: React.FC = () => {
           const match = getWidgetDockItem(panel.id);
           if (match) {
             const isVertical = match.dock === "left" || match.dock === "right";
-            const remainingOpen = (widgetDocksSignal.value[match.dock] || []).filter(
+            const remainingOpen = (
+              widgetDocksSignal.value[match.dock] || []
+            ).filter(
               (d) => d.id !== panel.id && api.getPanel(d.id) !== undefined
             );
             if (remainingOpen.length > 0) {
               setTimeout(() => {
                 const totalLength = remainingOpen.reduce((sum, item) => {
                   const p = api.getPanel(item.id);
-                  return sum + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0));
+                  return (
+                    sum
+                    + (isVertical ? (p?.api.height ?? 0) : (p?.api.width ?? 0))
+                  );
                 }, 0);
                 if (totalLength > 0) {
                   rebalanceDockOnResize(match.dock, totalLength, api);
@@ -927,7 +966,10 @@ export const Workbench: React.FC = () => {
         const docks: WidgetDockId[] = ["left", "right", "top", "bottom"];
         for (const d of docks) {
           detectAndSyncSashDrag(d, api).catch((err) => {
-            logging.warn("Failed to sync sash drag for dock", err, { dock: d, scope: "Workbench" });
+            logging.warn("Failed to sync sash drag for dock", err, {
+              dock: d,
+              scope: "Workbench",
+            });
           });
         }
 
@@ -1028,7 +1070,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("new_project")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("new_project")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("new_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1045,7 +1090,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("open_project")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("open_project")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("open_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1063,7 +1111,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("close_project")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("close_project")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("close_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1108,7 +1159,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("save_project")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("save_project")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("save_project")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1126,7 +1180,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("save_as_project")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("save_as_project")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>
                     {t("save_as_project")}
@@ -1217,7 +1274,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("undo_action")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("undo_action")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("undo_action")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1236,7 +1296,10 @@ export const Workbench: React.FC = () => {
                     })
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("redo_action")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("redo_action")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("redo_action")}</span>
                   <span className='menu-shortcut-slot'>
@@ -1365,7 +1428,10 @@ export const Workbench: React.FC = () => {
                     });
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={getActionIcon("new_map_view")} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={getActionIcon("new_map_view")}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>{t("new_map_view")}</span>
                   <span className='menu-shortcut-slot' />
@@ -1379,7 +1445,10 @@ export const Workbench: React.FC = () => {
                     handleMenuClick(() => triggerMapAction("zoomIn"))
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiMagnifyPlusOutline} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={mdiMagnifyPlusOutline}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>Zoom In</span>
                   <span className='menu-shortcut-slot' />
@@ -1393,7 +1462,10 @@ export const Workbench: React.FC = () => {
                     handleMenuClick(() => triggerMapAction("zoomOut"))
                   }>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiMagnifyMinusOutline} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={mdiMagnifyMinusOutline}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>Zoom Out</span>
                   <span className='menu-shortcut-slot' />
@@ -1752,7 +1824,10 @@ export const Workbench: React.FC = () => {
                     handleMenuClick(() => setShowAboutModal(true));
                   }}>
                   <span className='menu-item-icon-slot'>
-                    <Icon path={mdiInformationOutline} size={MENU_ITEM_ICON_SIZE} />
+                    <Icon
+                      path={mdiInformationOutline}
+                      size={MENU_ITEM_ICON_SIZE}
+                    />
                   </span>
                   <span className='menu-item-label'>About</span>
                   <span className='menu-shortcut-slot' />

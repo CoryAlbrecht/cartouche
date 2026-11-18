@@ -32,7 +32,11 @@ export interface RunJsdocLinkLinterResult {
 }
 
 export function isFilePathTarget(target: string): boolean;
-export function checkJsdocLinks(filePath: string, content: string): JsdocLinkViolation[];
+export function checkJsdocLinks(
+  filePath: string,
+  content: string
+): JsdocLinkViolation[];
 export function collectFiles(dir: string): string[];
-export function runJsdocLinkLinter(options?: RunJsdocLinkLinterOptions): RunJsdocLinkLinterResult;
-
+export function runJsdocLinkLinter(
+  options?: RunJsdocLinkLinterOptions
+): RunJsdocLinkLinterResult;

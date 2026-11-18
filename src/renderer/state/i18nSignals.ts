@@ -8,15 +8,15 @@
  * @since 0.1.0-dev
  */
 
-import { signal } from '@preact/signals-react';
-import type { I18nDictionary, I18nState } from '@shared/types';
+import { signal } from "@preact/signals-react";
+import type { I18nDictionary, I18nState } from "@shared/types";
 
 /**
  * @signal activeLocaleSignal
  * @description Signal holding the currently active locale string.
  * @type {Signal<string>}
  */
-export const activeLocaleSignal = signal<string>('en');
+export const activeLocaleSignal = signal<string>("en");
 
 /**
  * @signal dictionarySignal
@@ -58,7 +58,10 @@ export async function initializeI18n(): Promise<void> {
  * @param {Record<string, string | number>} [params] - Dynamic parameters to interpolate using `{paramName}`.
  * @returns {string} The translated and interpolated string, or the raw key if not found.
  */
-export function t(key: string, params?: Record<string, string | number>): string {
+export function t(
+  key: string,
+  params?: Record<string, string | number>
+): string {
   const dict = dictionarySignal.value;
   let text = dict[key];
 

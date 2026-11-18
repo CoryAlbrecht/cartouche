@@ -12,11 +12,15 @@
  * @see {@link DEFAULT_GRADIENT_STOPS}
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { PickerDialogFrame } from './PickerDialogFrame';
-import { GradientPickerWidget } from '@renderer/workbench/widgets/GradientPickerWidget';
-import { type ColorFormat, DEFAULT_GRADIENT_STOPS, serializeGradientStops } from '@shared/colors';
-import { useTranslation } from '@renderer/hooks/useTranslation';
+import React, { useState, useEffect, useMemo } from "react";
+import { PickerDialogFrame } from "./PickerDialogFrame";
+import { GradientPickerWidget } from "@renderer/workbench/widgets/GradientPickerWidget";
+import {
+  type ColorFormat,
+  DEFAULT_GRADIENT_STOPS,
+  serializeGradientStops,
+} from "@shared/colors";
+import { useTranslation } from "@renderer/hooks/useTranslation";
 
 /**
  * @typedef {Object} GradientPickerDialogProps
@@ -55,19 +59,19 @@ export const GradientPickerDialog: React.FC<GradientPickerDialogProps> = ({
   title,
   container,
   onApply,
-  onCancel
+  onCancel,
 }) => {
   const { t } = useTranslation();
-  const resolvedTitle = title ?? t('gradient_picker_dialog_title');
+  const resolvedTitle = title ?? t("gradient_picker_dialog_title");
 
   // Keyed on content, not array identity, so a parent re-render with an equal
   // array never discards the user's in-progress edits.
-  const startKey = initialStops?.join('|') ?? '';
+  const startKey = initialStops?.join("|") ?? "";
   const startStops = useMemo(
     () =>
       initialStops && initialStops.length > 0 ?
         initialStops
-      : serializeGradientStops(DEFAULT_GRADIENT_STOPS, format ?? 'HEX'),
+      : serializeGradientStops(DEFAULT_GRADIENT_STOPS, format ?? "HEX"),
     [startKey, format]
   );
   const [draftStops, setDraftStops] = useState<string[]>(startStops);
@@ -88,18 +92,13 @@ export const GradientPickerDialog: React.FC<GradientPickerDialogProps> = ({
       width='420px'
       container={container}
       onApply={() => onApply(draftStops)}
-      onCancel={onCancel}
-    >
+      onCancel={onCancel}>
       <GradientPickerWidget
         showHeader={false}
         initialStops={draftStops}
         format={format}
         onChange={(stops) => setDraftStops(stops)}
-        style={{
-          border: 'none',
-          background: 'transparent',
-          boxShadow: 'none'
-        }}
+        style={{ border: "none", background: "transparent", boxShadow: "none" }}
       />
     </PickerDialogFrame>
   );

@@ -8,23 +8,23 @@
  * @since 0.1.0-dev
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { geospatialService } from '../../../../src/main/worker/GeospatialService';
-import { addLayer, addLayers } from '../../../../src/main/api/layers/addLayer';
-import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
-import { onBroadcast } from '../../../../src/main/project/ProjectBroadcaster';
-import type { LayerDescriptor } from '../../../../src/shared/types';
-import { isProjectLayerStyleWrapper } from '../../../../src/shared/styles/defaultLayerStyles';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import { projectStore } from "../../../../src/main/project/ProjectStore";
+import { geospatialService } from "../../../../src/main/worker/GeospatialService";
+import { addLayer, addLayers } from "../../../../src/main/api/layers/addLayer";
+import { queryExtent } from "../../../../src/main/api/layers/queryExtent";
+import { onBroadcast } from "../../../../src/main/project/ProjectBroadcaster";
+import type { LayerDescriptor } from "../../../../src/shared/types";
+import { isProjectLayerStyleWrapper } from "../../../../src/shared/styles/defaultLayerStyles";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sampleShpPath = path.resolve(__dirname, '../../../data/ne_10m_lakes.shp');
+const sampleShpPath = path.resolve(__dirname, "../../../data/ne_10m_lakes.shp");
 
-describe('addLayer API & Ingestion Pipeline', () => {
+describe("addLayer API & Ingestion Pipeline", () => {
   let sentEvents: Array<{ channel: string; payload: any }> = [];
   let unsubscribeBroadcast: (() => void) | null = null;
 
@@ -47,18 +47,18 @@ describe('addLayer API & Ingestion Pipeline', () => {
     projectStore.closeProject();
   });
 
-  it('inspects vector files via GeospatialService and extracts LayerDescriptor', async () => {
+  it("inspects vector files via GeospatialService and extracts LayerDescriptor", async () => {
     const layer = await addLayer({
-      sourceType: 'vector',
+      sourceType: "vector",
       filePath: sampleShpPath,
-      layerName: 'Natural Earth Lakes'
+      layerName: "Natural Earth Lakes",
     });
 
-    assert.ok(layer, 'Layer should be instantiated');
-    assert.equal(layer.name, 'Natural Earth Lakes');
-    assert.equal(layer.layerKind, 'vector');
-    assert.equal(layer.geometryKind, 'Polygon');
-    assert.equal(layer.crs?.authId, 'EPSG:4326');
+    assert.ok(layer, "Layer should be instantiated");
+    assert.equal(layer.name, "Natural Earth Lakes");
+    assert.equal(layer.layerKind, "vector");
+    assert.equal(layer.geometryKind, "Polygon");
+    assert.equal(layer.crs?.authId, "EPSG:4326");
 
     // Verify session registered in GeospatialService by querying extent
     const queryRes = await queryExtent(layer.id, [-100, 40, -80, 50]);
@@ -66,54 +66,81 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.equal(queryRes.features.length, 34);
 
     // Verify default Cartouche Symbology styling attached
-    assert.ok(layer.style, 'Default styling must be attached to layer');
-    assert.equal(typeof layer.style, 'object');
-    assert.equal((layer.style as any).format, 'cartouche');
+    assert.ok(layer.style, "Default styling must be attached to layer");
+    assert.equal(typeof layer.style, "object");
+    assert.equal((layer.style as any).format, "cartouche");
     const styleObj = JSON.parse((layer.style as any).content);
-    assert.equal(styleObj.format, 'simple');
+    assert.equal(styleObj.format, "simple");
     assert.equal(styleObj.version, 1);
     assert.equal(styleObj.components.length, 2);
-    assert.equal(styleObj.components[0].type, 'simple-fill');
-    assert.equal(styleObj.components[1].type, 'simple-line');
+    assert.equal(styleObj.components[0].type, "simple-fill");
+    assert.equal(styleObj.components[1].type, "simple-line");
     assert.ok(styleObj.components[0].color);
 
     // Verify IPC broadcasts dispatched
-    const addedEvents = sentEvents.filter((e) => e.channel === 'project:layer-added');
-    assert.equal(addedEvents.length, 1, 'project:layer-added IPC event must be broadcast');
+    const addedEvents = sentEvents.filter(
+      (e) => e.channel === "project:layer-added"
+    );
+    assert.equal(
+      addedEvents.length,
+      1,
+      "project:layer-added IPC event must be broadcast"
+    );
 
     const descriptor: LayerDescriptor = addedEvents[0].payload;
     assert.equal(descriptor.id, layer.id);
-    assert.equal(descriptor.name, 'Natural Earth Lakes');
-    assert.equal(descriptor.geometryKind, 'Polygon');
-    assert.equal(descriptor.featureCount, 1353, 'Feature count must match shapefile records');
-    assert.ok(Array.isArray(descriptor.extent), 'Extent must be BoundingBox array');
+    assert.equal(descriptor.name, "Natural Earth Lakes");
+    assert.equal(descriptor.geometryKind, "Polygon");
+    assert.equal(
+      descriptor.featureCount,
+      1353,
+      "Feature count must match shapefile records"
+    );
+    assert.ok(
+      Array.isArray(descriptor.extent),
+      "Extent must be BoundingBox array"
+    );
     assert.equal(descriptor.extent.length, 4);
     assert.ok(descriptor.extent[0] < -160 && descriptor.extent[0] > -170); // minX ~ -165.96
     assert.ok(descriptor.extent[2] > 170 && descriptor.extent[2] < 180); // maxX ~ 177.15
 
-    const treeEvents = sentEvents.filter((e) => e.channel === 'project:layers-tree-updated');
-    assert.ok(treeEvents.length >= 1, 'project:layers-tree-updated must be broadcast');
-    const treeLayer = treeEvents[treeEvents.length - 1].payload.find((node: any) => node.id === layer.id);
-    assert.ok(treeLayer, 'Layer must be in broadcast tree');
-    assert.equal(treeLayer.featureCount, 1353, 'Broadcast tree layer must include featureCount');
-    assert.ok(Array.isArray(treeLayer.extent), 'Broadcast tree layer must include extent');
+    const treeEvents = sentEvents.filter(
+      (e) => e.channel === "project:layers-tree-updated"
+    );
+    assert.ok(
+      treeEvents.length >= 1,
+      "project:layers-tree-updated must be broadcast"
+    );
+    const treeLayer = treeEvents[treeEvents.length - 1].payload.find(
+      (node: any) => node.id === layer.id
+    );
+    assert.ok(treeLayer, "Layer must be in broadcast tree");
+    assert.equal(
+      treeLayer.featureCount,
+      1353,
+      "Broadcast tree layer must include featureCount"
+    );
+    assert.ok(
+      Array.isArray(treeLayer.extent),
+      "Broadcast tree layer must include extent"
+    );
 
     // Verify resource disposal
     layer[Symbol.dispose]();
   });
 
-  it('addLayers sequentially ingests multiple layers and updates tree and registry', async () => {
+  it("addLayers sequentially ingests multiple layers and updates tree and registry", async () => {
     const layers = await addLayers([
       {
-        sourceType: 'vector',
+        sourceType: "vector",
         filePath: sampleShpPath,
-        layerName: 'Lakes Batch 1'
+        layerName: "Lakes Batch 1",
       },
       {
-        sourceType: 'vector',
+        sourceType: "vector",
         filePath: sampleShpPath,
-        layerName: 'Lakes Batch 2'
-      }
+        layerName: "Lakes Batch 2",
+      },
     ]);
 
     assert.equal(layers.length, 2);
@@ -124,45 +151,51 @@ describe('addLayer API & Ingestion Pipeline', () => {
     assert.equal(q1.features.length, 34);
     assert.equal(q2.features.length, 34);
 
-    const addedEvents = sentEvents.filter((e) => e.channel === 'project:layer-added');
+    const addedEvents = sentEvents.filter(
+      (e) => e.channel === "project:layer-added"
+    );
     assert.equal(addedEvents.length, 2);
-    assert.equal(addedEvents[0].payload.name, 'Lakes Batch 1');
-    assert.equal(addedEvents[1].payload.name, 'Lakes Batch 2');
+    assert.equal(addedEvents[0].payload.name, "Lakes Batch 1");
+    assert.equal(addedEvents[1].payload.name, "Lakes Batch 2");
   });
 
-  it('excludes raster layers from vector style template generation', async () => {
+  it("excludes raster layers from vector style template generation", async () => {
     const layer = await addLayer({
-      sourceType: 'raster',
-      filePath: '/path/to/elevation.tif',
-      layerName: 'Elevation Raster'
+      sourceType: "raster",
+      filePath: "/path/to/elevation.tif",
+      layerName: "Elevation Raster",
     });
 
-    assert.equal(layer.layerKind, 'raster');
-    assert.equal(layer.geometryKind, 'Raster');
-    assert.equal(layer.style, undefined, 'Raster layer must not receive vector style template');
+    assert.equal(layer.layerKind, "raster");
+    assert.equal(layer.geometryKind, "Raster");
+    assert.equal(
+      layer.style,
+      undefined,
+      "Raster layer must not receive vector style template"
+    );
   });
 
-  it('assigns independent random color sets across consecutively added vector layers', async () => {
+  it("assigns independent random color sets across consecutively added vector layers", async () => {
     const l1 = await addLayer({
-      sourceType: 'vector',
+      sourceType: "vector",
       filePath: sampleShpPath,
-      layerName: 'Lakes One'
+      layerName: "Lakes One",
     });
     const l2 = await addLayer({
-      sourceType: 'vector',
+      sourceType: "vector",
       filePath: sampleShpPath,
-      layerName: 'Lakes Two'
+      layerName: "Lakes Two",
     });
 
     assert.ok(isProjectLayerStyleWrapper(l1.style));
     assert.ok(isProjectLayerStyleWrapper(l2.style));
-    assert.equal(l1.style.format, 'cartouche');
-    assert.equal(l2.style.format, 'cartouche');
+    assert.equal(l1.style.format, "cartouche");
+    assert.equal(l2.style.format, "cartouche");
 
-    const style1 = JSON.parse(l1.style.content || '{}');
-    const style2 = JSON.parse(l2.style.content || '{}');
-    assert.equal(style1.format, 'simple');
-    assert.equal(style2.format, 'simple');
+    const style1 = JSON.parse(l1.style.content || "{}");
+    const style2 = JSON.parse(l2.style.content || "{}");
+    assert.equal(style1.format, "simple");
+    assert.equal(style2.format, "simple");
     assert.equal(style1.components.length, 2);
     assert.equal(style2.components.length, 2);
     assert.ok(style1.components[0].color);

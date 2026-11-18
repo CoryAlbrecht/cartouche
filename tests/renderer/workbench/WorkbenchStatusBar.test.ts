@@ -10,20 +10,20 @@
  * @see {@link Workbench}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const require = createRequire(import.meta.url);
-require.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+require.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
-require.extensions['.css'] = (mod: any) => {
+require.extensions[".css"] = (mod: any) => {
   mod.exports = {};
 };
 
@@ -34,9 +34,9 @@ const {
   scaleDenominatorSignal,
   selectedFeatureIdsSignal,
   selectedFeaturesCountSignal,
-} = jiti('@renderer/state/gisSignals');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals');
-const { setProjectCrs } = jiti('@renderer/state/projectSignals');
+} = jiti("@renderer/state/gisSignals");
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals");
+const { setProjectCrs } = jiti("@renderer/state/projectSignals");
 
 /**
  * @class MockElement
@@ -55,7 +55,7 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   classList = {
     add: () => {},
     remove: () => {},
@@ -63,48 +63,51 @@ class MockElement {
     toggle: () => false,
   };
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
   disabled = false;
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || '',
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
-    if (key === 'disabled') {
+    if (key === "disabled") {
       this.disabled = true;
     }
   }
 
   getAttribute(key: string): string | null {
-    if (key === 'disabled' && this.disabled) return '';
+    if (key === "disabled" && this.disabled) return "";
     return this.attributes[key] ?? null;
   }
 
   hasAttribute(key: string): boolean {
-    if (key === 'disabled') return this.disabled;
+    if (key === "disabled") return this.disabled;
     return key in this.attributes;
   }
 
   removeAttribute(key: string): void {
     delete this.attributes[key];
-    if (key === 'disabled') {
+    if (key === "disabled") {
       this.disabled = false;
     }
   }
@@ -139,14 +142,16 @@ class MockElement {
   }
 
   addEventListener(type: string, cb: (e: any) => void, opts?: any): void {
-    const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+    const capture = typeof opts === "boolean" ? opts : Boolean(opts?.capture);
     if (!this.eventListeners[type]) this.eventListeners[type] = [];
     this.eventListeners[type].push({ cb, capture });
   }
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -173,10 +178,14 @@ class MockElement {
   get textContent(): string {
     if (this.childNodes.length > 0) {
       return this.childNodes
-        .map((c) => (c.nodeType === 3 ? c.nodeValue || c.textContent || '' : c.textContent || ''))
-        .join('');
+        .map((c) =>
+          c.nodeType === 3 ?
+            c.nodeValue || c.textContent || ""
+          : c.textContent || ""
+        )
+        .join("");
     }
-    return (this as any)._textContent || '';
+    return (this as any)._textContent || "";
   }
 
   set textContent(val: string) {
@@ -191,7 +200,10 @@ class MockElement {
  * @param {(el: MockElement) => boolean} predicate - Match predicate.
  * @returns {MockElement[]} Matching elements.
  */
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -212,8 +224,8 @@ let root: Root | null = null;
  * @returns {void}
  */
 function setupDom(): void {
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -264,7 +276,7 @@ function setupDom(): void {
     innerHeight: 800,
     addEventListener: () => {},
     removeEventListener: () => {},
-    getComputedStyle: () => ({ getPropertyValue: () => '' }),
+    getComputedStyle: () => ({ getPropertyValue: () => "" }),
     ResizeObserver: MockResizeObserver,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
@@ -291,10 +303,10 @@ function setupDom(): void {
   (globalThis as any).localStorage = win.localStorage;
 }
 
-describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
+describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
   beforeEach(() => {
     setupDom();
-    container = doc.createElement('div');
+    container = doc.createElement("div");
     doc.body.appendChild(container);
     root = createRoot(container as any);
 
@@ -318,30 +330,46 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
     selectedFeatureIdsSignal.value = new Set();
   });
 
-  it('renders default status bar items when cursorCoordsSignal is null', async () => {
-    const { WorkbenchStatusBar } = jiti('@renderer/workbench/WorkbenchStatusBar') as {
-      WorkbenchStatusBar: React.FC;
-    };
+  it("renders default status bar items when cursorCoordsSignal is null", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    ) as { WorkbenchStatusBar: React.FC };
 
     await act(async () => {
       root!.render(React.createElement(WorkbenchStatusBar));
     });
 
-    const footers = findAllNodes(container, (el) => el.tagName === 'FOOTER' && el.className === 'workbench-statusbar');
-    assert.equal(footers.length, 1, 'Expected footer.workbench-statusbar element');
+    const footers = findAllNodes(
+      container,
+      (el) => el.tagName === "FOOTER" && el.className === "workbench-statusbar"
+    );
+    assert.equal(
+      footers.length,
+      1,
+      "Expected footer.workbench-statusbar element"
+    );
 
     const text = footers[0].textContent;
-    assert.ok(text.includes('Coordinate: 0.0000°, 0.0000°'), 'Expected fallback coordinate text');
-    assert.ok(text.includes(`Scale: 1 : ${(25000000).toLocaleString()}`), 'Expected formatted cartographic scale');
-    assert.ok(text.includes('Selected: 0'), 'Expected selected features count');
-    assert.ok(text.includes('EPSG:3857'), 'Expected default drawing CRS when no Project CRS is set');
-    assert.ok(text.includes('● Ready'), 'Expected application core status');
+    assert.ok(
+      text.includes("Coordinate: 0.0000°, 0.0000°"),
+      "Expected fallback coordinate text"
+    );
+    assert.ok(
+      text.includes(`Scale: 1 : ${(25000000).toLocaleString()}`),
+      "Expected formatted cartographic scale"
+    );
+    assert.ok(text.includes("Selected: 0"), "Expected selected features count");
+    assert.ok(
+      text.includes("EPSG:3857"),
+      "Expected default drawing CRS when no Project CRS is set"
+    );
+    assert.ok(text.includes("● Ready"), "Expected application core status");
   });
 
-  it('updates reactively when cursorCoordsSignal, scaleDenominatorSignal, the Project CRS, and selectedFeaturesCountSignal change', async () => {
-    const { WorkbenchStatusBar } = jiti('@renderer/workbench/WorkbenchStatusBar') as {
-      WorkbenchStatusBar: React.FC;
-    };
+  it("updates reactively when cursorCoordsSignal, scaleDenominatorSignal, the Project CRS, and selectedFeaturesCountSignal change", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    ) as { WorkbenchStatusBar: React.FC };
 
     await act(async () => {
       root!.render(React.createElement(WorkbenchStatusBar));
@@ -351,37 +379,51 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       cursorCoordsSignal.value = { lon: 12.3456, lat: 45.6789, x: 100, y: 200 };
     });
     assert.ok(
-      container.textContent.includes('12.3456°E, 45.6789°N'),
+      container.textContent.includes("12.3456°E, 45.6789°N"),
       `Expected positive E/N coordinates in status bar, got: ${container.textContent}`
     );
 
     await act(async () => {
-      cursorCoordsSignal.value = { lon: -75.6972, lat: -33.4489, x: 300, y: 400 };
+      cursorCoordsSignal.value = {
+        lon: -75.6972,
+        lat: -33.4489,
+        x: 300,
+        y: 400,
+      };
     });
     assert.ok(
-      container.textContent.includes('75.6972°W, 33.4489°S'),
+      container.textContent.includes("75.6972°W, 33.4489°S"),
       `Expected negative W/S coordinates in status bar, got: ${container.textContent}`
     );
 
     await act(async () => {
       scaleDenominatorSignal.value = 50000;
-      setProjectCrs({ authId: 'EPSG:2003', description: 'Grenada 1953 / British West Indies Grid' });
-      selectedFeatureIdsSignal.value = new Set(['feat-1', 'feat-2', 'feat-3']);
+      setProjectCrs({
+        authId: "EPSG:2003",
+        description: "Grenada 1953 / British West Indies Grid",
+      });
+      selectedFeatureIdsSignal.value = new Set(["feat-1", "feat-2", "feat-3"]);
     });
 
     assert.equal(selectedFeaturesCountSignal.value, 3);
     assert.ok(
       container.textContent.includes(`Scale: 1 : ${(50000).toLocaleString()}`),
-      'Expected updated scale denominator'
+      "Expected updated scale denominator"
     );
-    assert.ok(container.textContent.includes('Selected: 3'), 'Expected updated selected feature count');
-    assert.ok(container.textContent.includes('EPSG:2003'), 'Expected updated Project CRS');
+    assert.ok(
+      container.textContent.includes("Selected: 3"),
+      "Expected updated selected feature count"
+    );
+    assert.ok(
+      container.textContent.includes("EPSG:2003"),
+      "Expected updated Project CRS"
+    );
   });
 
-  it('shows the Project CRS display rules with their tooltips', async () => {
-    const { WorkbenchStatusBar } = jiti('@renderer/workbench/WorkbenchStatusBar') as {
-      WorkbenchStatusBar: React.FC;
-    };
+  it("shows the Project CRS display rules with their tooltips", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    ) as { WorkbenchStatusBar: React.FC };
 
     await act(async () => {
       root!.render(React.createElement(WorkbenchStatusBar));
@@ -392,52 +434,66 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
      * @description Finds the status bar CRS item.
      * @returns {any} The CRS item element.
      */
-    const crsItem = () => findAllNodes(container, (el) => String(el.className).split(' ').includes('statusbar-crs'))[0];
+    const crsItem = () =>
+      findAllNodes(container, (el) =>
+        String(el.className).split(" ").includes("statusbar-crs")
+      )[0];
 
-    assert.equal(crsItem().textContent, 'EPSG:3857');
-    assert.match(crsItem().getAttribute('title') ?? '', /default drawing CRS.*no Project CRS is set/i);
+    assert.equal(crsItem().textContent, "EPSG:3857");
+    assert.match(
+      crsItem().getAttribute("title") ?? "",
+      /default drawing CRS.*no Project CRS is set/i
+    );
 
     await act(async () => {
-      setProjectCrs({ authId: 'EPSG:2003', description: 'Grenada 1953 / British West Indies Grid' });
+      setProjectCrs({
+        authId: "EPSG:2003",
+        description: "Grenada 1953 / British West Indies Grid",
+      });
     });
-    assert.equal(crsItem().textContent, 'EPSG:2003');
-    assert.equal(crsItem().getAttribute('title'), 'Grenada 1953 / British West Indies Grid');
+    assert.equal(crsItem().textContent, "EPSG:2003");
+    assert.equal(
+      crsItem().getAttribute("title"),
+      "Grenada 1953 / British West Indies Grid"
+    );
 
     await act(async () => {
-      setProjectCrs({ authId: '', none: true });
+      setProjectCrs({ authId: "", none: true });
     });
-    assert.equal(crsItem().textContent, 'No CRS');
-    assert.match(crsItem().getAttribute('title') ?? '', /no reprojection/i);
+    assert.equal(crsItem().textContent, "No CRS");
+    assert.match(crsItem().getAttribute("title") ?? "", /no reprojection/i);
   });
 
-  it('isolates coordinate and status bar signal mutations from Workbench and ToolbarPanel re-renders', async () => {
+  it("isolates coordinate and status bar signal mutations from Workbench and ToolbarPanel re-renders", async () => {
     let workbenchRenderCount = 0;
     let toolbarPanelRenderCount = 0;
     let statusBarRenderCount = 0;
 
-    const { Workbench } = jiti('@renderer/workbench/Workbench') as {
+    const { Workbench } = jiti("@renderer/workbench/Workbench") as {
       Workbench: React.FC;
     };
-    const { DockviewReact } = jiti('dockview-react');
+    const { DockviewReact } = jiti("dockview-react");
     const { ToolbarContainerWidget } = jiti(
-      '@renderer/workbench/widgets/ToolbarContainerWidget'
-    ) as {
-      ToolbarContainerWidget: React.FC<any>;
-    };
+      "@renderer/workbench/widgets/ToolbarContainerWidget"
+    ) as { ToolbarContainerWidget: React.FC<any> };
 
     const origCreateElement = React.createElement;
-    (React as any).createElement = function (type: any, props: any, ...children: any[]) {
-      if (type === 'div' && props?.className === 'workbench-container') {
+    (React as any).createElement = function (
+      type: any,
+      props: any,
+      ...children: any[]
+    ) {
+      if (type === "div" && props?.className === "workbench-container") {
         workbenchRenderCount++;
       }
       if (type === ToolbarContainerWidget) {
         toolbarPanelRenderCount++;
       }
-      if (type === 'footer' && props?.className === 'workbench-statusbar') {
+      if (type === "footer" && props?.className === "workbench-statusbar") {
         statusBarRenderCount++;
       }
       if (type === DockviewReact) {
-        return origCreateElement('div', { className: 'mock-dockview' });
+        return origCreateElement("div", { className: "mock-dockview" });
       }
       return origCreateElement(type, props, ...children);
     };
@@ -450,9 +506,18 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       const initialWorkbenchRenders = workbenchRenderCount;
       const initialToolbarRenders = toolbarPanelRenderCount;
       const initialStatusBarRenders = statusBarRenderCount;
-      assert.ok(initialWorkbenchRenders >= 1, 'Workbench must render on initial mount');
-      assert.ok(initialToolbarRenders >= 4, 'All 4 outer ToolbarPanel zones must render on initial mount');
-      assert.ok(initialStatusBarRenders >= 1, 'WorkbenchStatusBar must render on initial mount');
+      assert.ok(
+        initialWorkbenchRenders >= 1,
+        "Workbench must render on initial mount"
+      );
+      assert.ok(
+        initialToolbarRenders >= 4,
+        "All 4 outer ToolbarPanel zones must render on initial mount"
+      );
+      assert.ok(
+        initialStatusBarRenders >= 1,
+        "WorkbenchStatusBar must render on initial mount"
+      );
 
       // Mutate cursorCoordsSignal, scaleDenominatorSignal, and the Project CRS repeatedly (simulating pointermove and pan/zoom frames)
       await act(async () => {
@@ -464,30 +529,38 @@ describe('WorkbenchStatusBar Reactivity and Workbench Render Isolation', () => {
       await act(async () => {
         cursorCoordsSignal.value = { lon: 12.3456, lat: 22.789, x: 60, y: 70 };
         scaleDenominatorSignal.value = 100000;
-        setProjectCrs({ authId: 'EPSG:2003' });
+        setProjectCrs({ authId: "EPSG:2003" });
       });
 
       // Verify WorkbenchStatusBar inside Workbench updated its rendered output and re-rendered
-      const footers = findAllNodes(container, (el) => el.tagName === 'FOOTER' && el.className === 'workbench-statusbar');
+      const footers = findAllNodes(
+        container,
+        (el) =>
+          el.tagName === "FOOTER" && el.className === "workbench-statusbar"
+      );
       assert.equal(footers.length, 1);
-      assert.ok(footers[0].textContent.includes('12.3456°E, 22.7890°N'));
-      assert.ok(footers[0].textContent.includes(`Scale: 1 : ${(100000).toLocaleString()}`));
-      assert.ok(footers[0].textContent.includes('EPSG:2003'));
+      assert.ok(footers[0].textContent.includes("12.3456°E, 22.7890°N"));
+      assert.ok(
+        footers[0].textContent.includes(
+          `Scale: 1 : ${(100000).toLocaleString()}`
+        )
+      );
+      assert.ok(footers[0].textContent.includes("EPSG:2003"));
       assert.ok(
         statusBarRenderCount > initialStatusBarRenders,
-        'WorkbenchStatusBar must re-render when status bar signals mutate'
+        "WorkbenchStatusBar must re-render when status bar signals mutate"
       );
 
       // Verify Workbench and ToolbarPanel render counts remained completely constant
       assert.equal(
         workbenchRenderCount,
         initialWorkbenchRenders,
-        'Workbench must not re-render when cursor coordinates, scale, or CRS signals mutate'
+        "Workbench must not re-render when cursor coordinates, scale, or CRS signals mutate"
       );
       assert.equal(
         toolbarPanelRenderCount,
         initialToolbarRenders,
-        'Outer ToolbarPanel components must not re-render when cursor coordinates, scale, or CRS signals mutate'
+        "Outer ToolbarPanel components must not re-render when cursor coordinates, scale, or CRS signals mutate"
       );
     } finally {
       (React as any).createElement = origCreateElement;

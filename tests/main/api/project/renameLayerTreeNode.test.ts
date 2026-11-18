@@ -9,128 +9,147 @@
  * @see {@link renameLayerTreeNode}
  */
 
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { LayerGroup } from '../../../../src/main/project/models/LayerGroup';
-import { Layer } from '../../../../src/main/project/models/Layer';
-import { renameLayerTreeNode } from '../../../../src/main/api/project/renameLayerTreeNode';
+import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { projectStore } from "../../../../src/main/project/ProjectStore";
+import { LayerGroup } from "../../../../src/main/project/models/LayerGroup";
+import { Layer } from "../../../../src/main/project/models/Layer";
+import { renameLayerTreeNode } from "../../../../src/main/api/project/renameLayerTreeNode";
 
-describe('renameLayerTreeNode', () => {
+describe("renameLayerTreeNode", () => {
   beforeEach(() => {
     projectStore.closeProject();
     projectStore.setProject({
-      format: 'cartouche-xml',
-      metadata: { title: 'Initial Project Title' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Initial Project Title" },
+      layers: [],
     });
   });
 
-  it('renames a layer node, trims whitespace, and marks project dirty', () => {
+  it("renames a layer node, trims whitespace, and marks project dirty", () => {
     const root = projectStore.getRootGroup();
-    const layer = new Layer('Roads', '/path/to/roads.shp', 'vector', 'layer-roads');
+    const layer = new Layer(
+      "Roads",
+      "/path/to/roads.shp",
+      "vector",
+      "layer-roads"
+    );
     root.addChild(layer);
 
     projectStore.setProjectDirty(false);
     assert.equal(projectStore.isProjectDirty(), false);
 
-    renameLayerTreeNode('layer-roads', '  Highways & Freeways  ');
+    renameLayerTreeNode("layer-roads", "  Highways & Freeways  ");
 
-    assert.equal(layer.name, 'Highways & Freeways');
-    assert.equal(layer.filePath, '/path/to/roads.shp');
+    assert.equal(layer.name, "Highways & Freeways");
+    assert.equal(layer.filePath, "/path/to/roads.shp");
     assert.equal(projectStore.isProjectDirty(), true);
   });
 
-  it('renames a group node and marks project dirty', () => {
+  it("renames a group node and marks project dirty", () => {
     const root = projectStore.getRootGroup();
-    const group = new LayerGroup('Old Group', 'group-1');
+    const group = new LayerGroup("Old Group", "group-1");
     root.addChild(group);
 
     projectStore.setProjectDirty(false);
 
-    renameLayerTreeNode('group-1', 'Renamed Group');
+    renameLayerTreeNode("group-1", "Renamed Group");
 
-    assert.equal(group.name, 'Renamed Group');
+    assert.equal(group.name, "Renamed Group");
     assert.equal(projectStore.isProjectDirty(), true);
   });
 
   it('renames the project root metadata title and marks project dirty when nodeId is "project"', () => {
     projectStore.setProjectDirty(false);
 
-    renameLayerTreeNode('project', 'My Awesome Project');
+    renameLayerTreeNode("project", "My Awesome Project");
 
     const project = projectStore.getProject();
     assert.ok(project);
-    assert.equal(project.metadata.title, 'My Awesome Project');
+    assert.equal(project.metadata.title, "My Awesome Project");
     assert.equal(projectStore.isProjectDirty(), true);
   });
 
-  it('does nothing and preserves dirty state if name is empty or whitespace-only', () => {
+  it("does nothing and preserves dirty state if name is empty or whitespace-only", () => {
     const root = projectStore.getRootGroup();
-    const layer = new Layer('Rivers', '/path/to/rivers.shp', 'vector', 'layer-rivers');
+    const layer = new Layer(
+      "Rivers",
+      "/path/to/rivers.shp",
+      "vector",
+      "layer-rivers"
+    );
     root.addChild(layer);
 
     projectStore.setProjectDirty(false);
 
-    renameLayerTreeNode('layer-rivers', '   ');
-    assert.equal(layer.name, 'Rivers');
+    renameLayerTreeNode("layer-rivers", "   ");
+    assert.equal(layer.name, "Rivers");
     assert.equal(projectStore.isProjectDirty(), false);
 
-    renameLayerTreeNode('project', '');
+    renameLayerTreeNode("project", "");
     const project = projectStore.getProject();
     assert.ok(project);
-    assert.equal(project.metadata.title, 'Initial Project Title');
+    assert.equal(project.metadata.title, "Initial Project Title");
     assert.equal(projectStore.isProjectDirty(), false);
   });
 
-  it('does nothing and preserves dirty state if the trimmed name is identical to existing name', () => {
+  it("does nothing and preserves dirty state if the trimmed name is identical to existing name", () => {
     const root = projectStore.getRootGroup();
-    const layer = new Layer('Lakes', '/path/to/lakes.shp', 'vector', 'layer-lakes');
+    const layer = new Layer(
+      "Lakes",
+      "/path/to/lakes.shp",
+      "vector",
+      "layer-lakes"
+    );
     root.addChild(layer);
 
     projectStore.setProjectDirty(false);
 
-    renameLayerTreeNode('layer-lakes', 'Lakes');
+    renameLayerTreeNode("layer-lakes", "Lakes");
     assert.equal(projectStore.isProjectDirty(), false);
 
-    renameLayerTreeNode('project', 'Initial Project Title');
+    renameLayerTreeNode("project", "Initial Project Title");
     assert.equal(projectStore.isProjectDirty(), false);
   });
 
-  it('does not alter or move the physical dataset file path when renaming a layer', () => {
+  it("does not alter or move the physical dataset file path when renaming a layer", () => {
     const root = projectStore.getRootGroup();
-    const filePath = '/data/spatial/waterways.gpkg';
-    const layer = new Layer('Waterways', filePath, 'vector', 'layer-water');
+    const filePath = "/data/spatial/waterways.gpkg";
+    const layer = new Layer("Waterways", filePath, "vector", "layer-water");
     root.addChild(layer);
 
-    renameLayerTreeNode('layer-water', 'Hydrology Network');
+    renameLayerTreeNode("layer-water", "Hydrology Network");
 
-    assert.equal(layer.name, 'Hydrology Network');
+    assert.equal(layer.name, "Hydrology Network");
     assert.equal(layer.filePath, filePath);
   });
 
-  it('sanitizes newlines and carriage returns, converting multiline input to a clean single line', () => {
+  it("sanitizes newlines and carriage returns, converting multiline input to a clean single line", () => {
     const root = projectStore.getRootGroup();
-    const layer = new Layer('Parcels', '/path/to/parcels.shp', 'vector', 'layer-parcels');
+    const layer = new Layer(
+      "Parcels",
+      "/path/to/parcels.shp",
+      "vector",
+      "layer-parcels"
+    );
     root.addChild(layer);
 
-    renameLayerTreeNode('layer-parcels', 'Cadastral\r\nParcels\n2026');
-    assert.equal(layer.name, 'Cadastral Parcels 2026');
+    renameLayerTreeNode("layer-parcels", "Cadastral\r\nParcels\n2026");
+    assert.equal(layer.name, "Cadastral Parcels 2026");
 
-    renameLayerTreeNode('project', 'Metro\r\nRegion\nMaster');
+    renameLayerTreeNode("project", "Metro\r\nRegion\nMaster");
     const project = projectStore.getProject();
     assert.ok(project);
-    assert.equal(project.metadata.title, 'Metro Region Master');
+    assert.equal(project.metadata.title, "Metro Region Master");
   });
 
-  it('does nothing and safely returns when called with missing or invalid parameters', () => {
+  it("does nothing and safely returns when called with missing or invalid parameters", () => {
     projectStore.setProjectDirty(false);
     assert.doesNotThrow(() => {
       // Testing parameterless execution matching ActionRegistry functionCall signature
       renameLayerTreeNode();
-      renameLayerTreeNode('layer-parcels', undefined as unknown as string);
+      renameLayerTreeNode("layer-parcels", undefined as unknown as string);
     });
     assert.equal(projectStore.isProjectDirty(), false);
   });
 });
-

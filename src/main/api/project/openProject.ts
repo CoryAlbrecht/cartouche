@@ -111,7 +111,7 @@ function ensureVectorLayerStyle(layer: Layer): void {
   ) {
     layer.style = {
       content: generateDefaultVectorStyleJson(layer.geometryKind),
-      format: "openlayers"
+      format: "openlayers",
     };
   }
 }

@@ -317,25 +317,22 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               title='Auto-calculate Range from Active Temporal Layers'
               aria-label='Auto-calculate Range from Active Temporal Layers'
               onClick={handleAutoRange}
-              style={{
-                width: '28px',
-                height: '24px',
-              }}>
+              style={{ width: "28px", height: "24px" }}>
               <Icon path={mdiMapClockOutline} size='16px' />
             </button>
           </div>
 
           <div
             style={{
-              width: '1px',
-              height: '18px',
-              background: '#cbd5e1',
-              margin: '0 2px',
+              width: "1px",
+              height: "18px",
+              background: "#cbd5e1",
+              margin: "0 2px",
             }}
           />
 
           {/* VCR Transport Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
             <button
               type='button'
               className='time-filter-btn'
@@ -343,10 +340,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               aria-label='Jump to Start'
               disabled={isAtStart}
               onClick={handleJumpToStart}
-              style={{
-                width: '26px',
-                height: '24px',
-              }}>
+              style={{ width: "26px", height: "24px" }}>
               <Icon path={mdiSkipBackwardOutline} size='16px' />
             </button>
             <button
@@ -356,10 +350,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               aria-label='Step Backward'
               disabled={isAtStart}
               onClick={handleStepBackward}
-              style={{
-                width: '26px',
-                height: '24px',
-              }}>
+              style={{ width: "26px", height: "24px" }}>
               <Icon path={mdiSkipPreviousOutline} size='16px' />
             </button>
             <button
@@ -369,10 +360,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               aria-label='Step Forward'
               disabled={isAtEnd}
               onClick={handleStepForward}
-              style={{
-                width: '26px',
-                height: '24px',
-              }}>
+              style={{ width: "26px", height: "24px" }}>
               <Icon path={mdiSkipNextOutline} size='16px' />
             </button>
             <button
@@ -382,10 +370,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               aria-label='Jump to End'
               disabled={isAtEnd}
               onClick={handleJumpToEnd}
-              style={{
-                width: '26px',
-                height: '24px',
-              }}>
+              style={{ width: "26px", height: "24px" }}>
               <Icon path={mdiSkipForwardOutline} size='16px' />
             </button>
           </div>

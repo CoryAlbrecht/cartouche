@@ -10,11 +10,15 @@
  * @see {@link PickerDialogFrame}
  */
 
-import React, { useState, useEffect } from 'react';
-import { PickerDialogFrame } from './PickerDialogFrame';
-import { ColourPickerWidget } from '@renderer/workbench/widgets/ColourPickerWidget';
-import { formatCssColor, parseCssColor, type ColorFormat } from '@shared/colors';
-import { useTranslation } from '@renderer/hooks/useTranslation';
+import React, { useState, useEffect } from "react";
+import { PickerDialogFrame } from "./PickerDialogFrame";
+import { ColourPickerWidget } from "@renderer/workbench/widgets/ColourPickerWidget";
+import {
+  formatCssColor,
+  parseCssColor,
+  type ColorFormat,
+} from "@shared/colors";
+import { useTranslation } from "@renderer/hooks/useTranslation";
 
 /**
  * @typedef {Object} ColourPickerDialogProps
@@ -66,19 +70,20 @@ function toOpaqueColor(color: string, format?: ColorFormat): string {
  */
 export const ColourPickerDialog: React.FC<ColourPickerDialogProps> = ({
   isOpen,
-  initialColor = '#00ff00ff',
+  initialColor = "#00ff00ff",
   format,
   title,
   allowAlpha = true,
   container,
   onApply,
-  onCancel
+  onCancel,
 }) => {
   const { t } = useTranslation();
-  const resolvedTitle = title ?? t('colour_picker_dialog_title');
+  const resolvedTitle = title ?? t("colour_picker_dialog_title");
   // Opaque-only dialogs normalise the starting colour once, so the preview and an
   // untouched Apply are both opaque; the hosted widget keeps later edits opaque.
-  const startColor = allowAlpha ? initialColor : toOpaqueColor(initialColor, format);
+  const startColor =
+    allowAlpha ? initialColor : toOpaqueColor(initialColor, format);
   const [draftColor, setDraftColor] = useState<string>(startColor);
 
   // Synchronize draft color whenever dialog opens or initialColor changes
@@ -96,8 +101,7 @@ export const ColourPickerDialog: React.FC<ColourPickerDialogProps> = ({
       classPrefix='colour-picker-dialog'
       container={container}
       onApply={() => onApply(draftColor)}
-      onCancel={onCancel}
-    >
+      onCancel={onCancel}>
       <ColourPickerWidget
         showHeader={false}
         initialColor={draftColor}
@@ -105,10 +109,10 @@ export const ColourPickerDialog: React.FC<ColourPickerDialogProps> = ({
         allowAlpha={allowAlpha}
         onChange={(c) => setDraftColor(c)}
         style={{
-          border: 'none',
-          background: 'transparent',
-          minHeight: '280px',
-          boxShadow: 'none'
+          border: "none",
+          background: "transparent",
+          minHeight: "280px",
+          boxShadow: "none",
         }}
       />
     </PickerDialogFrame>

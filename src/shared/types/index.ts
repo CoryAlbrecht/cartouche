@@ -8,19 +8,19 @@
  * @since 0.1.0-dev
  */
 
-import type { Signal } from '@preact/signals-react';
-import type { ActionDefinition } from './actions';
-import type { FileCategory, FileTypeDescriptor } from './filetypes';
+import type { Signal } from "@preact/signals-react";
+import type { ActionDefinition } from "./actions";
+import type { FileCategory, FileTypeDescriptor } from "./filetypes";
 
-export * from './actions';
-export * from './filetypes';
-export * from './project';
-export * from './crs';
-export * from './styling';
-export * from './i18n';
-export * from './layers';
-export * from './docks';
-export * from '../dialogs';
+export * from "./actions";
+export * from "./filetypes";
+export * from "./project";
+export * from "./crs";
+export * from "./styling";
+export * from "./i18n";
+export * from "./layers";
+export * from "./docks";
+export * from "../dialogs";
 
 /**
  * @typedef {Object} Coordinate
@@ -44,7 +44,12 @@ export interface Coordinate {
  * @updated 2026-10-08
  * @since 0.1.0-dev
  */
-export type BoundingBox = [minX: number, minY: number, maxX: number, maxY: number];
+export type BoundingBox = [
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+];
 
 /**
  * @typedef {Object} CRS
@@ -70,7 +75,8 @@ export interface CRS {
  * @updated 2026-10-21
  * @since 0.1.0-dev
  */
-export type GeometryKind = 'Point' | 'LineString' | 'Polygon' | 'Raster' | 'Unknown';
+export type GeometryKind =
+  "Point" | "LineString" | "Polygon" | "Raster" | "Unknown";
 
 /**
  * @typedef {Record<string, any>} OlFlatStyle
@@ -133,7 +139,7 @@ export interface GisLayer {
   dataName?: string;
   projectSettingsName?: string;
   groupId?: string | null;
-  kind: 'vector' | 'raster' | 'tile';
+  kind: "vector" | "raster" | "tile";
   geometryKind?: GeometryKind;
   visible: boolean;
   opacity: number;
@@ -141,9 +147,9 @@ export interface GisLayer {
   featureCount: number;
   flatStyle?: OlFlatStyle;
   flatGeobufBuffer?: ArrayBuffer;
-  fields?: import('./layers').LayerFieldInfo[];
+  fields?: import("./layers").LayerFieldInfo[];
   fidColumn?: string;
-  capabilities?: import('./layers').LayerCapabilities;
+  capabilities?: import("./layers").LayerCapabilities;
 }
 
 /**
@@ -197,7 +203,7 @@ export interface FlatGeobufLayerPayload {
 export interface ConsoleLogEntry {
   id: string;
   timestamp: string;
-  level: 'info' | 'warn' | 'error' | 'success';
+  level: "info" | "warn" | "error" | "success";
   message: string;
   source?: string;
 }
@@ -211,22 +217,22 @@ export interface ConsoleLogEntry {
  * @since 0.1.0-dev
  */
 export type PreferenceControlType =
-  | 'text'
-  | 'multiline-text'
-  | 'colour'
-  | 'color'
-  | 'checkbox'
-  | 'button'
-  | 'toggle'
-  | 'range'
-  | 'spinner'
-  | 'number'
-  | 'slider'
-  | 'dropdown'
-  | 'image'
-  | 'radio-button'
-  | 'button-group'
-  | 'checkbox-group';
+  | "text"
+  | "multiline-text"
+  | "colour"
+  | "color"
+  | "checkbox"
+  | "button"
+  | "toggle"
+  | "range"
+  | "spinner"
+  | "number"
+  | "slider"
+  | "dropdown"
+  | "image"
+  | "radio-button"
+  | "button-group"
+  | "checkbox-group";
 
 /**
  * @typedef {Object} PreferenceItem
@@ -271,9 +277,9 @@ export interface PreferenceItem<T = any> {
   max?: number;
   step?: number;
   unit?: string;
-  category?: 'ui' | 'rendering' | 'plugins' | 'general' | 'map_tools';
+  category?: "ui" | "rendering" | "plugins" | "general" | "map_tools";
   description?: string;
-  type?: 'string' | 'number' | 'boolean' | 'select' | 'object';
+  type?: "string" | "number" | "boolean" | "select" | "object";
   controls?: PreferenceControlType[];
   i18nId?: string;
   patterns?: string[];
@@ -301,7 +307,7 @@ export type PreferenceMap = Record<string, PreferenceItem>;
  * @updated 2026-10-19
  * @since 0.1.0-dev
  */
-export type DropPosition = 'before' | 'after' | 'into' | 'append-root';
+export type DropPosition = "before" | "after" | "into" | "append-root";
 
 /**
  * @typedef {Object} ElectronAPI
@@ -366,9 +372,14 @@ export interface ElectronAPI {
   /** @ipc window-maximized-state */
   onMaximizedState: (callback: (isMaximized: boolean) => void) => () => void;
   /** @ipc gis:fetch-layer-flatgeobuf */
-  fetchLayerFlatGeobuf: (layerId: string) => Promise<FlatGeobufLayerPayload | null>;
+  fetchLayerFlatGeobuf: (
+    layerId: string
+  ) => Promise<FlatGeobufLayerPayload | null>;
   /** @ipc gis:encode-flatgeobuf */
-  encodeFeaturesToFlatGeobuf: (features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>;
+  encodeFeaturesToFlatGeobuf: (
+    features: GisFeature[],
+    geometryKind: GeometryKind
+  ) => Promise<ArrayBuffer>;
   /** @ipc gis:execute-action */
   executeAction: (name: string) => Promise<void>;
   /** @ipc gis:get-actions */
@@ -391,15 +402,22 @@ export interface ElectronAPI {
     multiSelections?: boolean;
   }) => Promise<string[]>;
   /** @ipc dialog:open-directory */
-  openDirectory?: (options?: { title?: string; defaultPath?: string }) => Promise<string | null>;
+  openDirectory?: (options?: {
+    title?: string;
+    defaultPath?: string;
+  }) => Promise<string | null>;
   /** @ipc crs:get-definition */
-  getCrsDefinition?: (authId: string) => Promise<{ authId: string; proj4: string; wkt?: string } | null>;
+  getCrsDefinition?: (
+    authId: string
+  ) => Promise<{ authId: string; proj4: string; wkt?: string } | null>;
   /** @ipc crs:get-info */
-  getCrsInfo?: (authId: string) => Promise<import('./crs').CrsInfo | null>;
+  getCrsInfo?: (authId: string) => Promise<import("./crs").CrsInfo | null>;
   /** @ipc crs:get-catalogue */
-  getCrsCatalogue?: () => Promise<import('./crs').CrsCatalogueState>;
+  getCrsCatalogue?: () => Promise<import("./crs").CrsCatalogueState>;
   /** @ipc crs:catalogue-updated */
-  onCrsCatalogueUpdated?: (callback: (state: import('./crs').CrsCatalogueState) => void) => () => void;
+  onCrsCatalogueUpdated?: (
+    callback: (state: import("./crs").CrsCatalogueState) => void
+  ) => () => void;
   /** @ipc dialog:save-file */
   saveFile?: (options?: {
     title?: string;
@@ -408,41 +426,67 @@ export interface ElectronAPI {
     filters?: Array<{ name: string; extensions: string[] }>;
   }) => Promise<string | null>;
   /** @ipc gis:open-project */
-  openProject?: (filePath?: string) => Promise<import('./project').ProjectModel | null>;
+  openProject?: (
+    filePath?: string
+  ) => Promise<import("./project").ProjectModel | null>;
   /** @ipc gis:get-current-project */
-  getCurrentProject?: () => Promise<import('./project').ProjectModel | null>;
+  getCurrentProject?: () => Promise<import("./project").ProjectModel | null>;
   /** @ipc gis:save-project */
   saveProject?: (
     filePath?: string,
-    viewport?: import('./project').ProjectViewport,
-    timeFilter?: import('./project').ProjectTimeFilterConfig
+    viewport?: import("./project").ProjectViewport,
+    timeFilter?: import("./project").ProjectTimeFilterConfig
   ) => Promise<boolean>;
   /** @ipc project:update-properties */
-  updateProjectProperties?: (patch: import('./project').ProjectPropertiesPatch) => Promise<boolean>;
+  updateProjectProperties?: (
+    patch: import("./project").ProjectPropertiesPatch
+  ) => Promise<boolean>;
   /** @ipc project:loaded */
-  onProjectLoaded?: (callback: (project: import('./project').ProjectModel) => void) => () => void;
+  onProjectLoaded?: (
+    callback: (project: import("./project").ProjectModel) => void
+  ) => () => void;
   /** @ipc project:layers-tree-updated */
-  onProjectLayersTreeUpdated?: (callback: (tree: Array<import('./project').ProjectLayerItem | import('./project').ProjectGroupItem>) => void) => () => void;
+  onProjectLayersTreeUpdated?: (
+    callback: (
+      tree: Array<
+        | import("./project").ProjectLayerItem
+        | import("./project").ProjectGroupItem
+      >
+    ) => void
+  ) => () => void;
   /** @ipc project:layer-added */
-  onLayerAdded?: (callback: (descriptor: import('./project').LayerDescriptor) => void) => () => void;
+  onLayerAdded?: (
+    callback: (descriptor: import("./project").LayerDescriptor) => void
+  ) => () => void;
   /** @ipc layers:queryExtent */
   queryExtent?: (
     layerId: string,
-    options?: import('./project').QueryExtentOptions | BoundingBox,
+    options?: import("./project").QueryExtentOptions | BoundingBox,
     targetProjection?: string
-  ) => Promise<import('./project').QueryExtentBinaryResult | import('./project').QueryExtentResult>;
+  ) => Promise<
+    | import("./project").QueryExtentBinaryResult
+    | import("./project").QueryExtentResult
+  >;
   /** @ipc project:metadata-updated */
-  onProjectMetadataUpdated?: (callback: (metadata: import('./project').ProjectMetadata) => void) => () => void;
+  onProjectMetadataUpdated?: (
+    callback: (metadata: import("./project").ProjectMetadata) => void
+  ) => () => void;
   /** @ipc project:crs-updated */
-  onProjectCrsUpdated?: (callback: (crs: import('./project').ProjectCrs | null) => void) => () => void;
+  onProjectCrsUpdated?: (
+    callback: (crs: import("./project").ProjectCrs | null) => void
+  ) => () => void;
   /** @ipc project:dirty-state-changed */
-  onProjectDirtyStateChanged?: (callback: (isDirty: boolean) => void) => () => void;
+  onProjectDirtyStateChanged?: (
+    callback: (isDirty: boolean) => void
+  ) => () => void;
   /** @ipc gis:get-i18n-state */
-  getI18nState?: () => Promise<import('./i18n').I18nState>;
+  getI18nState?: () => Promise<import("./i18n").I18nState>;
   /** @ipc i18n:state-changed */
-  onI18nStateChanged?: (callback: (state: import('./i18n').I18nState) => void) => () => void;
+  onI18nStateChanged?: (
+    callback: (state: import("./i18n").I18nState) => void
+  ) => () => void;
   /** @ipc gis:add-layers */
-  addLayers?: (layers: import('./project').AddLayerParams[]) => Promise<void>;
+  addLayers?: (layers: import("./project").AddLayerParams[]) => Promise<void>;
   /** @ipc gis:path-exists */
   pathExists?: (filePath: string) => Promise<boolean>;
   /** @ipc gis:set-node-visibility */
@@ -450,55 +494,79 @@ export interface ElectronAPI {
   /** @ipc gis:set-node-selection */
   setNodeSelection?: (selectedNodeIds: string[]) => Promise<void>;
   /** @ipc gis:set-feature-selection */
-  setFeatureSelection?: (layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>;
+  setFeatureSelection?: (
+    layerId: string | null,
+    selectedFeatureIds: Array<string | number>
+  ) => Promise<void>;
   /** @ipc gis:remove-nodes */
   removeNodes?: (nodeIds: string[]) => Promise<void>;
   /** @ipc gis:create-group */
-  createGroup?: (name: string, targetNodeId: string, childNodeIds: string[], newGroupId?: string) => Promise<void>;
+  createGroup?: (
+    name: string,
+    targetNodeId: string,
+    childNodeIds: string[],
+    newGroupId?: string
+  ) => Promise<void>;
   /** @ipc gis:rename-node */
   renameNode?: (nodeId: string, newName: string) => Promise<void>;
   /** @ipc gis:rename-layer-tree-node */
   renameLayerTreeNode?: (nodeId: string, newName: string) => Promise<void>;
   /** @ipc gis:reorder-nodes */
-  reorderNodes?: (draggedNodeIds: string[], targetNodeId: string, position: DropPosition) => Promise<void>;
+  reorderNodes?: (
+    draggedNodeIds: string[],
+    targetNodeId: string,
+    position: DropPosition
+  ) => Promise<void>;
   /** @ipc layers:getLayerInfo */
-  getLayerInfo?: (layerId: string) => Promise<import('./layers').LayerDetailedInfo>;
+  getLayerInfo?: (
+    layerId: string
+  ) => Promise<import("./layers").LayerDetailedInfo>;
   /** @ipc layers:updateLayerFields */
-  updateLayerFields?: (layerId: string, fields: import('./layers').LayerFieldInfo[]) => Promise<boolean>;
+  updateLayerFields?: (
+    layerId: string,
+    fields: import("./layers").LayerFieldInfo[]
+  ) => Promise<boolean>;
   /** @ipc layers:updateLayerTemporalConfig */
   updateLayerTemporalConfig?: (
     layerId: string,
-    temporal?: import('./project').LayerTemporalConfig,
+    temporal?: import("./project").LayerTemporalConfig,
     temporalEnabled?: boolean
   ) => Promise<boolean>;
   /** @ipc layers:rekeyLayer */
-  rekeyLayer?: (oldLayerId: string, newLayerId: string) => Promise<{ success: boolean; layerId: string }>;
+  rekeyLayer?: (
+    oldLayerId: string,
+    newLayerId: string
+  ) => Promise<{ success: boolean; layerId: string }>;
   /** @ipc layers:setLayerStyle */
   setLayerStyle?: (
     layerIds: string[],
-    style: import('./project').ProjectLayerStyleItem | undefined,
+    style: import("./project").ProjectLayerStyleItem | undefined,
     opacity?: number
   ) => Promise<void>;
   /** @ipc layers:loadStyleFile */
-  loadStyleFile?: (filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>;
+  loadStyleFile?: (
+    filePath?: string
+  ) => Promise<import("./project").ProjectLayerStyleItem | null>;
   /** @ipc layers:saveStyleFile */
   saveStyleFile?: (
-    style: import('./project').ProjectLayerStyleItem,
+    style: import("./project").ProjectLayerStyleItem,
     defaultPath?: string
   ) => Promise<string | null>;
   /** @ipc layers:stageFeatureEdit */
   stageFeatureEdit?: (
     layerId: string,
-    edit: import('./project').StagedFeatureEdit
+    edit: import("./project").StagedFeatureEdit
   ) => Promise<void>;
   /** @ipc layers:clearLayerEdits */
   clearLayerEdits?: (layerId: string) => Promise<void>;
   /** @ipc layers:getDirtyLayerIds */
   getDirtyLayerIds?: () => Promise<string[]>;
   /** @ipc gis:execute-renderer-action */
-  onExecuteRendererAction?: (callback: (actionName: string) => void) => () => void;
+  onExecuteRendererAction?: (
+    callback: (actionName: string) => void
+  ) => () => void;
   /** @ipc gis:log */
-  log?: (payload: import('../logging').LogPayload) => void;
+  log?: (payload: import("../logging").LogPayload) => void;
 }
 
 declare global {

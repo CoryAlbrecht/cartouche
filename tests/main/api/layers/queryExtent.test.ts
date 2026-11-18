@@ -8,37 +8,37 @@
  * @since 0.1.0-dev
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import WKB from 'ol/format/WKB.js';
-import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { geospatialService } from '../../../../src/main/worker/GeospatialService';
-import { addLayer } from '../../../../src/main/api/layers/addLayer';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import WKB from "ol/format/WKB.js";
+import { projectStore } from "../../../../src/main/project/ProjectStore";
+import { geospatialService } from "../../../../src/main/worker/GeospatialService";
+import { addLayer } from "../../../../src/main/api/layers/addLayer";
 import {
   queryExtent,
   stageFeatureEdit,
   clearLayerEdits,
-  getDirtyLayerIds
-} from '../../../../src/main/api/layers/queryExtent';
-import type { BoundingBox } from '../../../../src/shared/types';
+  getDirtyLayerIds,
+} from "../../../../src/main/api/layers/queryExtent";
+import type { BoundingBox } from "../../../../src/shared/types";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sampleShpPath = path.resolve(__dirname, '../../../data/ne_10m_lakes.shp');
+const sampleShpPath = path.resolve(__dirname, "../../../data/ne_10m_lakes.shp");
 
-describe('queryExtent Spatial Pipeline', () => {
-  let layerId = '';
+describe("queryExtent Spatial Pipeline", () => {
+  let layerId = "";
 
   beforeEach(async () => {
     projectStore.closeProject();
     await geospatialService.closeAll();
 
     const layer = await addLayer({
-      sourceType: 'vector',
+      sourceType: "vector",
       filePath: sampleShpPath,
-      layerName: 'Natural Earth Lakes'
+      layerName: "Natural Earth Lakes",
     });
     layerId = layer.id;
   });
@@ -48,54 +48,76 @@ describe('queryExtent Spatial Pipeline', () => {
     projectStore.closeProject();
   });
 
-  it('filters features within native EPSG:4326 bounding box and extracts OGC WKB buffers', async () => {
+  it("filters features within native EPSG:4326 bounding box and extracts OGC WKB buffers", async () => {
     // Spatial extent covering Great Lakes region in EPSG:4326 (longitude/latitude)
     const bbox: BoundingBox = [-100, 40, -80, 50];
     const result = await queryExtent(layerId, bbox);
 
     assert.equal(result.layerId, layerId);
-    assert.equal(result.features.length, 34, 'Must return exactly 34 intersecting lake features');
+    assert.equal(
+      result.features.length,
+      34,
+      "Must return exactly 34 intersecting lake features"
+    );
 
     const first = result.features[0];
-    assert.ok(typeof first.id === 'number', 'Feature fid must be numeric');
-    assert.ok(first.wkb instanceof Uint8Array, 'Geometry must be raw OGC WKB Uint8Array');
-    assert.ok(first.wkb.byteLength > 0, 'WKB buffer must not be empty');
-    assert.ok(first.properties, 'Attributes must be present');
-    assert.equal(typeof first.properties.name, 'string', 'Feature should have name attribute');
+    assert.ok(typeof first.id === "number", "Feature fid must be numeric");
+    assert.ok(
+      first.wkb instanceof Uint8Array,
+      "Geometry must be raw OGC WKB Uint8Array"
+    );
+    assert.ok(first.wkb.byteLength > 0, "WKB buffer must not be empty");
+    assert.ok(first.properties, "Attributes must be present");
+    assert.equal(
+      typeof first.properties.name,
+      "string",
+      "Feature should have name attribute"
+    );
 
     // Verify OpenLayers can deserialize the raw WKB buffer into an OL Geometry instance
     const olWkb = new WKB();
     const olGeom = olWkb.readGeometry(first.wkb);
-    assert.ok(olGeom, 'OpenLayers WKB reader must parse geometry');
-    assert.ok(olGeom.getType().includes('Polygon'), 'Geometry type must be Polygon or MultiPolygon');
+    assert.ok(olGeom, "OpenLayers WKB reader must parse geometry");
+    assert.ok(
+      olGeom.getType().includes("Polygon"),
+      "Geometry type must be Polygon or MultiPolygon"
+    );
   });
 
-  it('reprojects bounding box from EPSG:3857 to layer native CRS before filtering', async () => {
+  it("reprojects bounding box from EPSG:3857 to layer native CRS before filtering", async () => {
     // Same Great Lakes region expressed in EPSG:3857 (Web Mercator meters)
     // -100 deg lon = ~ -11131949m, -80 deg lon = ~ -8905559m
     // 40 deg lat = ~ 4865942m, 50 deg lat = ~ 6446275m
     const bbox3857: BoundingBox = [-11131949, 4865942, -8905559, 6446275];
-    const result = await queryExtent(layerId, bbox3857, 'EPSG:3857');
+    const result = await queryExtent(layerId, bbox3857, "EPSG:3857");
 
     assert.equal(result.layerId, layerId);
-    assert.equal(result.features.length, 34, 'Reprojected query must match native CRS subset');
+    assert.equal(
+      result.features.length,
+      34,
+      "Reprojected query must match native CRS subset"
+    );
   });
 
-  it('returns all features when extent is omitted or empty', async () => {
+  it("returns all features when extent is omitted or empty", async () => {
     const result = await queryExtent(layerId);
 
     assert.equal(result.layerId, layerId);
-    assert.equal(result.features.length, 1353, 'Unbounded query must return all features');
+    assert.equal(
+      result.features.length,
+      1353,
+      "Unbounded query must return all features"
+    );
   });
 
-  it('executes concurrent queries sequentially without corrupting spatial filter state', async () => {
+  it("executes concurrent queries sequentially without corrupting spatial filter state", async () => {
     // 10 concurrent queries with alternating spatial filters
     const extents: BoundingBox[] = [
       [-100, 40, -80, 50], // 34 features
       [-160, 60, -140, 70], // Alaska region
       [-100, 40, -80, 50], // 34 features
-      [0, 0, 10, 10],      // Africa / equator region
-      [-100, 40, -80, 50]  // 34 features
+      [0, 0, 10, 10], // Africa / equator region
+      [-100, 40, -80, 50], // 34 features
     ];
 
     const promises = extents.map((ext) => queryExtent(layerId, ext));
@@ -107,16 +129,13 @@ describe('queryExtent Spatial Pipeline', () => {
     assert.equal(results[4].features.length, 34);
   });
 
-  it('throws descriptive error if layerId is not registered in GeospatialService', async () => {
-    await assert.rejects(
-      async () => {
-        await queryExtent('non-existent-layer-id', [-100, 40, -80, 50]);
-      },
-      /Layer session not found/
-    );
+  it("throws descriptive error if layerId is not registered in GeospatialService", async () => {
+    await assert.rejects(async () => {
+      await queryExtent("non-existent-layer-id", [-100, 40, -80, 50]);
+    }, /Layer session not found/);
   });
 
-  it('stages feature edits, tracks dirty layer IDs, intercepts paginated queries, and clears edits via API handlers', async () => {
+  it("stages feature edits, tracks dirty layer IDs, intercepts paginated queries, and clears edits via API handlers", async () => {
     assert.deepEqual(getDirtyLayerIds(), []);
 
     const beforeChunk = await queryExtent(layerId, { start: 0, max: 3 });
@@ -126,15 +145,14 @@ describe('queryExtent Spatial Pipeline', () => {
 
     await stageFeatureEdit(layerId, {
       id: targetId,
-      properties: { name: 'API Staged Lake' }
+      properties: { name: "API Staged Lake" },
     });
     assert.deepEqual(getDirtyLayerIds(), [layerId]);
 
     const afterChunk = await queryExtent(layerId, { start: 0, max: 3 });
-    assert.equal(afterChunk.features[0].properties?.name, 'API Staged Lake');
+    assert.equal(afterChunk.features[0].properties?.name, "API Staged Lake");
 
     await clearLayerEdits(layerId);
     assert.deepEqual(getDirtyLayerIds(), []);
   });
 });
-

@@ -12,11 +12,11 @@
  * @see {@link ProjectBroadcaster}
  */
 
-import { projectStore } from '../../project/ProjectStore';
-import { LayerGroup } from '../../project/models/LayerGroup';
-import { LayerTreeNode } from '../../project/models/LayerTreeNode';
-import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
-import { cleanupOrphanedSharedStyles } from '../layers/layerStyles';
+import { projectStore } from "../../project/ProjectStore";
+import { LayerGroup } from "../../project/models/LayerGroup";
+import { LayerTreeNode } from "../../project/models/LayerTreeNode";
+import { broadcastProjectLayersTree } from "../../project/ProjectBroadcaster";
+import { cleanupOrphanedSharedStyles } from "../layers/layerStyles";
 
 /**
  * @description Recursively searches for a LayerTreeNode by its identifier within a parent LayerGroup.
@@ -166,7 +166,10 @@ export function removeNodes(nodeIds: string[]): void {
     const node = findNode(root, id);
     if (node && node.parent) {
       node.parent.removeChild(node);
-      if (Symbol.dispose in node && typeof (node as any)[Symbol.dispose] === 'function') {
+      if (
+        Symbol.dispose in node
+        && typeof (node as any)[Symbol.dispose] === "function"
+      ) {
         (node as any)[Symbol.dispose]();
       }
       changed = true;
@@ -182,7 +185,7 @@ export function removeNodes(nodeIds: string[]): void {
 
 /**
  * @description Bundles actionable nodes into a new group, positioned immediately before the target node.
-  * Automatically prunes redundant descendant nodes whose ancestor is already included.
+ * Automatically prunes redundant descendant nodes whose ancestor is already included.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
  * @updated 2026-10-12
@@ -213,7 +216,7 @@ export function createGroup(
   }
 
   // Prune descendants if an ancestor is also in the set
-  const filteredNodes = nodesToMove.filter(node => {
+  const filteredNodes = nodesToMove.filter((node) => {
     let curr = node.parent;
     while (curr && curr !== root) {
       if (nodesToMove.includes(curr)) {
@@ -289,7 +292,7 @@ export function renameNode(nodeId: string, newName: string): void {
 export function reorderNodes(
   draggedNodeIds: string[],
   targetNodeId: string,
-  position: import('@shared/types').DropPosition
+  position: import("@shared/types").DropPosition
 ): void {
   const root = projectStore.getRootGroup();
 
@@ -316,23 +319,34 @@ export function reorderNodes(
   }
 
   // Cycle and self-drop prevention
-  if (position !== 'append-root' && targetNodeId !== 'root') {
+  if (position !== "append-root" && targetNodeId !== "root") {
     for (const dragged of draggedNodes) {
       if (dragged.id === targetNodeId) {
         return;
       }
-      if (dragged instanceof LayerGroup && isDescendant(dragged, targetNodeId)) {
+      if (
+        dragged instanceof LayerGroup
+        && isDescendant(dragged, targetNodeId)
+      ) {
         return; // Abort invalid cyclical move
       }
     }
   }
 
   const targetNode =
-    position === 'append-root' || (targetNodeId === 'root' && position === 'into')
-      ? root
-      : findNode(root, targetNodeId);
+    (
+      position === "append-root"
+      || (targetNodeId === "root" && position === "into")
+    ) ?
+      root
+    : findNode(root, targetNodeId);
 
-  if (!targetNode || (targetNode === root && position !== 'append-root' && position !== 'into')) {
+  if (
+    !targetNode
+    || (targetNode === root
+      && position !== "append-root"
+      && position !== "into")
+  ) {
     return;
   }
 
@@ -343,15 +357,15 @@ export function reorderNodes(
     }
   }
 
-  if (position === 'append-root') {
+  if (position === "append-root") {
     for (const node of draggedNodes) {
       root.addChild(node);
     }
-  } else if (targetNodeId === 'root' && position === 'into') {
+  } else if (targetNodeId === "root" && position === "into") {
     for (let i = 0; i < draggedNodes.length; i++) {
       root.addChild(draggedNodes[i], i);
     }
-  } else if (position === 'into' && targetNode instanceof LayerGroup) {
+  } else if (position === "into" && targetNode instanceof LayerGroup) {
     targetNode.expanded = true;
     for (let i = 0; i < draggedNodes.length; i++) {
       targetNode.addChild(draggedNodes[i], i);
@@ -361,11 +375,11 @@ export function reorderNodes(
     const parent = targetNode.parent || root;
     const targetIndex = parent.getAllChildren().indexOf(targetNode);
     const insertPos =
-      targetIndex !== -1
-        ? position === 'after'
-          ? targetIndex + 1
-          : targetIndex
-        : parent.getAllChildren().length;
+      targetIndex !== -1 ?
+        position === "after" ?
+          targetIndex + 1
+        : targetIndex
+      : parent.getAllChildren().length;
 
     for (let i = 0; i < draggedNodes.length; i++) {
       parent.addChild(draggedNodes[i], insertPos + i);
@@ -375,5 +389,3 @@ export function reorderNodes(
   projectStore.setProjectDirty(true);
   broadcastProjectLayersTree();
 }
-
-

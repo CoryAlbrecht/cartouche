@@ -10,29 +10,30 @@
  * @see {@link cancelLayerPropertiesEdits}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { LayerPropertiesDialog } = jiti('@renderer/workbench/dialogs/LayerPropertiesDialog');
+const { LayerPropertiesDialog } = jiti(
+  "@renderer/workbench/dialogs/LayerPropertiesDialog"
+);
 const {
   activeLayerPropertiesIdSignal,
   layerPropertiesDraftSignal,
   openLayerPropertiesDialog,
   cancelLayerPropertiesEdits,
-  updateLayerPropertiesDraft
-} = jiti('@renderer/state/layerPropertiesSignals');
-const {
-  activeDialogStackSignal,
-  cancelTopDialog
-} = jiti('@renderer/state/dialogSignals');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals');
+  updateLayerPropertiesDraft,
+} = jiti("@renderer/state/layerPropertiesSignals");
+const { activeDialogStackSignal, cancelTopDialog } = jiti(
+  "@renderer/state/dialogSignals"
+);
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals");
 
 class MockElement {
   nodeType = 1;
@@ -47,29 +48,32 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
   }
@@ -121,9 +125,15 @@ class MockElement {
     this.eventListeners[type].push({ cb, capture });
   }
 
-  removeEventListener(type: string, cb: (e: any) => void, _capture = false): void {
+  removeEventListener(
+    type: string,
+    cb: (e: any) => void,
+    _capture = false
+  ): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -133,7 +143,11 @@ class MockElement {
     for (const l of listeners) {
       l.cb(event);
     }
-    if (!event._bubblesStopped && this.parentNode && typeof this.parentNode.dispatchEvent === 'function') {
+    if (
+      !event._bubblesStopped
+      && this.parentNode
+      && typeof this.parentNode.dispatchEvent === "function"
+    ) {
       this.parentNode.dispatchEvent(event);
     }
     return true;
@@ -163,13 +177,16 @@ class MockElement {
   }
 }
 
-describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
+describe("LayerPropertiesDialog Escape & Cancel Handling", () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalMutationObserver: typeof globalThis.MutationObserver;
   let originalResizeObserver: typeof globalThis.ResizeObserver;
   let mockChildWindow: any;
-  let childListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>>;
+  let childListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  >;
   let root: Root | null = null;
   let container: MockElement;
 
@@ -184,15 +201,15 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
     originalResizeObserver = globalThis.ResizeObserver;
 
     childListeners = {};
-    const childDocElement = new MockElement('html');
-    const childBody = new MockElement('body');
-    const childHead = new MockElement('head');
+    const childDocElement = new MockElement("html");
+    const childBody = new MockElement("body");
+    const childHead = new MockElement("head");
     childDocElement.appendChild(childHead);
     childDocElement.appendChild(childBody);
 
     const childDoc: any = {
       nodeType: 9,
-      title: '',
+      title: "",
       documentElement: childDocElement,
       body: childBody,
       head: childHead,
@@ -212,16 +229,16 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
         nodeValue: String(text),
         textContent: String(text),
         ownerDocument: childDoc,
-        parentNode: null
+        parentNode: null,
       }),
       createComment: (data?: string) => ({
         nodeType: 8,
-        data: String(data || ''),
+        data: String(data || ""),
         ownerDocument: childDoc,
-        parentNode: null
+        parentNode: null,
       }),
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     childHead.ownerDocument = childDoc;
     childBody.ownerDocument = childDoc;
@@ -229,11 +246,19 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
     mockChildWindow = {
       closed: false,
       document: childDoc,
-      addEventListener: (type: string, cb: (e: any) => void, capture = false) => {
+      addEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        capture = false
+      ) => {
         if (!childListeners[type]) childListeners[type] = [];
         childListeners[type].push({ cb, capture });
       },
-      removeEventListener: (type: string, cb: (e: any) => void, _capture = false) => {
+      removeEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        _capture = false
+      ) => {
         if (!childListeners[type]) return;
         childListeners[type] = childListeners[type].filter((l) => l.cb !== cb);
       },
@@ -246,12 +271,12 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
       },
       close: () => {
         mockChildWindow.closed = true;
-      }
+      },
     };
 
-    const mainDocElement = new MockElement('html');
-    const mainBody = new MockElement('body');
-    const mainHead = new MockElement('head');
+    const mainDocElement = new MockElement("html");
+    const mainBody = new MockElement("body");
+    const mainHead = new MockElement("head");
     mainDocElement.appendChild(mainHead);
     mainDocElement.appendChild(mainBody);
 
@@ -275,17 +300,17 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
         nodeValue: String(text),
         textContent: String(text),
         ownerDocument: mainDoc,
-        parentNode: null
+        parentNode: null,
       }),
       createComment: (data?: string) => ({
         nodeType: 8,
-        data: String(data || ''),
+        data: String(data || ""),
         ownerDocument: mainDoc,
-        parentNode: null
+        parentNode: null,
       }),
       querySelectorAll: () => [],
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     mainHead.ownerDocument = mainDoc;
     mainBody.ownerDocument = mainDoc;
@@ -301,10 +326,10 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
       electronAPI: {
         getLayerInfo: async (layerId: string) => ({
           layerId,
-          name: 'Lakes',
-          fields: []
-        })
-      }
+          name: "Lakes",
+          fields: [],
+        }),
+      },
     };
 
     mainDoc.defaultView = win;
@@ -315,7 +340,12 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
 
     (globalThis as any).document = mainDoc;
     (globalThis as any).window = win;
-    (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+    (globalThis as any).Node = {
+      ELEMENT_NODE: 1,
+      TEXT_NODE: 3,
+      COMMENT_NODE: 8,
+      DOCUMENT_NODE: 9,
+    };
 
     (globalThis as any).MutationObserver = class {
       observe() {}
@@ -328,7 +358,7 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
       disconnect() {}
     };
 
-    container = new MockElement('div');
+    container = new MockElement("div");
     container.ownerDocument = mainDoc;
     mainBody.appendChild(container);
     root = createRoot(container as any);
@@ -365,63 +395,104 @@ describe('LayerPropertiesDialog Escape & Cancel Handling', () => {
     }
   });
 
-  it('cancelLayerPropertiesEdits reverts pending draft changes and closes dialog', () => {
-    openLayerPropertiesDialog('layer-1');
-    assert.equal(activeLayerPropertiesIdSignal.value, 'layer-1');
+  it("cancelLayerPropertiesEdits reverts pending draft changes and closes dialog", () => {
+    openLayerPropertiesDialog("layer-1");
+    assert.equal(activeLayerPropertiesIdSignal.value, "layer-1");
 
-    updateLayerPropertiesDraft({ layerName: 'Draft Modified Name' });
-    assert.equal(layerPropertiesDraftSignal.value.layerName, 'Draft Modified Name');
+    updateLayerPropertiesDraft({ layerName: "Draft Modified Name" });
+    assert.equal(
+      layerPropertiesDraftSignal.value.layerName,
+      "Draft Modified Name"
+    );
 
     cancelLayerPropertiesEdits();
 
-    assert.equal(activeLayerPropertiesIdSignal.value, null, 'activeLayerPropertiesIdSignal should be null');
-    assert.equal(layerPropertiesDraftSignal.value.layerName, '', 'draft changes should be reset');
+    assert.equal(
+      activeLayerPropertiesIdSignal.value,
+      null,
+      "activeLayerPropertiesIdSignal should be null"
+    );
+    assert.equal(
+      layerPropertiesDraftSignal.value.layerName,
+      "",
+      "draft changes should be reset"
+    );
   });
 
-  it('cancelTopDialog prioritizes LayerPropertiesDialog cancellation when active', () => {
-    openLayerPropertiesDialog('layer-1');
-    assert.equal(activeLayerPropertiesIdSignal.value, 'layer-1');
+  it("cancelTopDialog prioritizes LayerPropertiesDialog cancellation when active", () => {
+    openLayerPropertiesDialog("layer-1");
+    assert.equal(activeLayerPropertiesIdSignal.value, "layer-1");
 
-    updateLayerPropertiesDraft({ layerName: 'Unsaved Edits' });
-    assert.equal(layerPropertiesDraftSignal.value.layerName, 'Unsaved Edits');
+    updateLayerPropertiesDraft({ layerName: "Unsaved Edits" });
+    assert.equal(layerPropertiesDraftSignal.value.layerName, "Unsaved Edits");
 
     const handled = cancelTopDialog();
-    assert.equal(handled, true, 'cancelTopDialog must handle open layer properties dialog');
-    assert.equal(activeLayerPropertiesIdSignal.value, null, 'dialog should be closed');
-    assert.equal(layerPropertiesDraftSignal.value.layerName, '', 'draft should be cleared');
+    assert.equal(
+      handled,
+      true,
+      "cancelTopDialog must handle open layer properties dialog"
+    );
+    assert.equal(
+      activeLayerPropertiesIdSignal.value,
+      null,
+      "dialog should be closed"
+    );
+    assert.equal(
+      layerPropertiesDraftSignal.value.layerName,
+      "",
+      "draft should be cleared"
+    );
   });
 
-  it('pressing Escape while LayerPropertiesDialog is focused cancels edits and closes dialog', async () => {
-    openLayerPropertiesDialog('layer-1');
-    assert.equal(activeLayerPropertiesIdSignal.value, 'layer-1');
+  it("pressing Escape while LayerPropertiesDialog is focused cancels edits and closes dialog", async () => {
+    openLayerPropertiesDialog("layer-1");
+    assert.equal(activeLayerPropertiesIdSignal.value, "layer-1");
 
     await act(async () => {
       root!.render(React.createElement(LayerPropertiesDialog));
     });
 
     await act(async () => {
-      updateLayerPropertiesDraft({ layerName: 'Changed Name In Draft' });
+      updateLayerPropertiesDraft({ layerName: "Changed Name In Draft" });
     });
-    assert.equal(layerPropertiesDraftSignal.value.layerName, 'Changed Name In Draft');
+    assert.equal(
+      layerPropertiesDraftSignal.value.layerName,
+      "Changed Name In Draft"
+    );
 
-    assert.equal(activeDialogStackSignal.value.length, 1, 'LayerPropertiesDialog should register in activeDialogStackSignal');
-    assert.equal(activeDialogStackSignal.value[0].name, 'layerPropertiesWindow');
+    assert.equal(
+      activeDialogStackSignal.value.length,
+      1,
+      "LayerPropertiesDialog should register in activeDialogStackSignal"
+    );
+    assert.equal(
+      activeDialogStackSignal.value[0].name,
+      "layerPropertiesWindow"
+    );
 
     // Dispatch Escape in child window inside act
     await act(async () => {
       const escapeEvent = {
-        type: 'keydown',
-        key: 'Escape',
+        type: "keydown",
+        key: "Escape",
         defaultPrevented: false,
         preventDefault() {
           this.defaultPrevented = true;
         },
-        stopPropagation() {}
+        stopPropagation() {},
       };
       mockChildWindow.dispatchEvent(escapeEvent);
     });
 
-    assert.equal(activeLayerPropertiesIdSignal.value, null, 'LayerPropertiesDialog should be closed after Escape');
-    assert.equal(layerPropertiesDraftSignal.value.layerName, '', 'Draft should be reverted');
+    assert.equal(
+      activeLayerPropertiesIdSignal.value,
+      null,
+      "LayerPropertiesDialog should be closed after Escape"
+    );
+    assert.equal(
+      layerPropertiesDraftSignal.value.layerName,
+      "",
+      "Draft should be reverted"
+    );
   });
 });

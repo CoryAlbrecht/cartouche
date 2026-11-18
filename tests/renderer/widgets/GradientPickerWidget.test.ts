@@ -26,9 +26,14 @@ import { createRendererJiti } from "../rendererJiti";
  * @returns {string} The rule's declarations, or an empty string.
  */
 function cssRule(selector: string): string {
-  const css = fs.readFileSync(path.resolve(process.cwd(), 'src/renderer/styles/workbench.css'), 'utf8');
+  const css = fs.readFileSync(
+    path.resolve(process.cwd(), "src/renderer/styles/workbench.css"),
+    "utf8"
+  );
   const start = css.indexOf(`\n${selector} {`);
-  return start < 0 ? '' : css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
+  return start < 0 ? "" : (
+      css.slice(css.indexOf("{", start) + 1, css.indexOf("}", start))
+    );
 }
 
 /**
@@ -38,10 +43,11 @@ function cssRule(selector: string): string {
  * @returns {string} Concatenated text.
  */
 function optionText(el: any): string {
-  if (el.nodeType === 3) return String(el.nodeValue ?? el.textContent ?? '');
+  if (el.nodeType === 3) return String(el.nodeValue ?? el.textContent ?? "");
   const children = el.childNodes ?? [];
-  if (children.length === 0) return typeof el.textContent === 'string' ? el.textContent : '';
-  return children.map(optionText).join('');
+  if (children.length === 0)
+    return typeof el.textContent === "string" ? el.textContent : "";
+  return children.map(optionText).join("");
 }
 
 // Set React act environment flag
@@ -100,7 +106,12 @@ class MockElement {
 
   set selected(val: boolean) {
     this._selected = Boolean(val);
-    if (this._selected && this.parentNode && this.parentNode.tagName === "SELECT" && !this.parentNode.multiple) {
+    if (
+      this._selected
+      && this.parentNode
+      && this.parentNode.tagName === "SELECT"
+      && !this.parentNode.multiple
+    ) {
       for (const opt of this.parentNode.options) {
         if (opt !== this) {
           opt._selected = false;
@@ -397,8 +408,9 @@ function getStopButtonsSorted(el: MockElement): MockElement[] {
 // Load GradientPickerWidget using jiti
 const jiti = createRendererJiti(import.meta.url);
 
-const { GradientPickerWidget } =
-  jiti("../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx");
+const { GradientPickerWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/GradientPickerWidget.tsx"
+);
 
 const { prefsUiIconSize, prefsUiBaseFontSize } = jiti(
   "../../../src/renderer/state/preferencesSignals.ts"
@@ -1272,7 +1284,9 @@ describe("GradientPickerWidget Inline Boundary Stops & Intermediate Pin Track (T
       "100% stop must take the active ring class when active"
     );
     assert.ok(
-      !boundaryBtns[0].className.split(" ").includes("gradient-stop-btn-active"),
+      !boundaryBtns[0].className
+        .split(" ")
+        .includes("gradient-stop-btn-active"),
       "0% stop must drop the active ring class"
     );
   });
@@ -1338,13 +1352,26 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     });
 
     // 1. Actions row exists and top header is removed
-    const actionsRow = findElementsByClass(container, "gradient-picker-actions-row");
-    assert.equal(actionsRow.length, 1, "Must render combined stop controls container");
-    const topHeader = findElementsByClass(container, "gradient-picker-stops-header");
+    const actionsRow = findElementsByClass(
+      container,
+      "gradient-picker-actions-row"
+    );
+    assert.equal(
+      actionsRow.length,
+      1,
+      "Must render combined stop controls container"
+    );
+    const topHeader = findElementsByClass(
+      container,
+      "gradient-picker-stops-header"
+    );
     assert.equal(topHeader.length, 0, "Top stops header must be removed");
 
     // 2. Dropdown exists with aria-label
-    const stopSelects = findElementsByClass(container, "gradient-picker-stop-select");
+    const stopSelects = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    );
     assert.equal(stopSelects.length, 1, "Must render stop selector select");
     const selectEl = stopSelects[0];
     assert.equal(selectEl.getAttribute("aria-label"), "Select gradient stop");
@@ -1358,7 +1385,11 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     assert.equal(optionText(options[1]), "50% — #ff0000ff");
     assert.equal(options[2].value, "stop-100");
     assert.equal(optionText(options[2]), "100% — #00ff00ff");
-    assert.equal(selectEl.value, "stop-0", "0% stop must be selected initially");
+    assert.equal(
+      selectEl.value,
+      "stop-0",
+      "0% stop must be selected initially"
+    );
   });
 
   it("selecting option from dropdown activates that stop and synchronizes ColourPickerWidget", async () => {
@@ -1370,8 +1401,14 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
       );
     });
 
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
-    const hexInput = findElementsByClass(container, "colour-picker-hex-input")[0];
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
+    const hexInput = findElementsByClass(
+      container,
+      "colour-picker-hex-input"
+    )[0];
     const stopBtns = getStopButtonsSorted(container);
 
     // Initial state: 0% active
@@ -1387,9 +1424,20 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     });
 
     assert.equal(stopBtns[0].getAttribute("aria-pressed"), "false");
-    assert.equal(stopBtns[1].getAttribute("aria-pressed"), "true", "50% stop button must be active");
-    const updatedHexInput = findElementsByClass(container, "colour-picker-hex-input")[0];
-    assert.equal(updatedHexInput.value, "#ff0000ff", "Embedded colour picker must update to 50% stop color");
+    assert.equal(
+      stopBtns[1].getAttribute("aria-pressed"),
+      "true",
+      "50% stop button must be active"
+    );
+    const updatedHexInput = findElementsByClass(
+      container,
+      "colour-picker-hex-input"
+    )[0];
+    assert.equal(
+      updatedHexInput.value,
+      "#ff0000ff",
+      "Embedded colour picker must update to 50% stop color"
+    );
 
     // Select 100% stop via dropdown
     await act(async () => {
@@ -1398,9 +1446,20 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     });
 
     assert.equal(stopBtns[1].getAttribute("aria-pressed"), "false");
-    assert.equal(stopBtns[2].getAttribute("aria-pressed"), "true", "100% stop button must be active");
-    const finalHexInput = findElementsByClass(container, "colour-picker-hex-input")[0];
-    assert.equal(finalHexInput.value, "#00ff00ff", "Embedded colour picker must update to 100% stop color");
+    assert.equal(
+      stopBtns[2].getAttribute("aria-pressed"),
+      "true",
+      "100% stop button must be active"
+    );
+    const finalHexInput = findElementsByClass(
+      container,
+      "colour-picker-hex-input"
+    )[0];
+    assert.equal(
+      finalHexInput.value,
+      "#00ff00ff",
+      "Embedded colour picker must update to 100% stop color"
+    );
   });
 
   it("clicking stop buttons or preview bar synchronizes the dropdown selection", async () => {
@@ -1412,31 +1471,53 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
       );
     });
 
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
     const stopBtns = getStopButtonsSorted(container);
-    const previewBar = findElementsByClass(container, "gradient-picker-preview-bar")[0];
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
 
     // Click 50% intermediate stop button
     await act(async () => {
       stopBtns[1].dispatchEvent({ type: "click", button: 0, bubbles: true });
     });
 
-
-    assert.equal(selectEl.value, "stop-50", "Dropdown must synchronize to stop-50 on button click");
+    assert.equal(
+      selectEl.value,
+      "stop-50",
+      "Dropdown must synchronize to stop-50 on button click"
+    );
 
     // Click 100% boundary stop button
     await act(async () => {
       stopBtns[2].dispatchEvent({ type: "click", bubbles: true });
     });
 
-    assert.equal(selectEl.value, "stop-100", "Dropdown must synchronize to stop-100 on button click");
+    assert.equal(
+      selectEl.value,
+      "stop-100",
+      "Dropdown must synchronize to stop-100 on button click"
+    );
 
     // Click preview bar at 10px (near 0% stop)
     await act(async () => {
-      previewBar.dispatchEvent({ type: "click", button: 0, clientX: 10, bubbles: true });
+      previewBar.dispatchEvent({
+        type: "click",
+        button: 0,
+        clientX: 10,
+        bubbles: true,
+      });
     });
 
-    assert.equal(selectEl.value, "stop-0", "Dropdown must synchronize to stop-0 on preview bar click");
+    assert.equal(
+      selectEl.value,
+      "stop-0",
+      "Dropdown must synchronize to stop-0 on preview bar click"
+    );
   });
 
   it("option label dynamically updates offset during pin drag", async () => {
@@ -1448,7 +1529,10 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
       );
     });
 
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
     const stopBtns = getStopButtonsSorted(container);
 
     // Pointer down on 50% stop button
@@ -1486,18 +1570,36 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
       );
     });
 
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
     assert.equal(selectEl.options.length, 2);
 
-    const previewBar = findElementsByClass(container, "gradient-picker-preview-bar")[0];
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
 
     // Double click at 50% (clientX = 100 on 200px bar)
     await act(async () => {
-      previewBar.dispatchEvent({ type: "dblclick", clientX: 100, bubbles: true });
+      previewBar.dispatchEvent({
+        type: "dblclick",
+        clientX: 100,
+        bubbles: true,
+      });
     });
 
-    assert.equal(selectEl.options.length, 3, "Must now have 3 options in dropdown");
-    assert.equal(selectEl.value, "stop-50", "Newly created stop must be selected in dropdown");
+    assert.equal(
+      selectEl.options.length,
+      3,
+      "Must now have 3 options in dropdown"
+    );
+    assert.equal(
+      selectEl.value,
+      "stop-50",
+      "Newly created stop must be selected in dropdown"
+    );
   });
 
   it("relocated delete button enforces boundary stop guards and deletes intermediate stop", async () => {
@@ -1514,21 +1616,38 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
       );
     });
 
-    const actionsRow = findElementsByClass(container, "gradient-picker-actions-row")[0];
-    const deleteBtn = findElementsByClass(actionsRow, "gradient-picker-delete-btn")[0];
+    const actionsRow = findElementsByClass(
+      container,
+      "gradient-picker-actions-row"
+    )[0];
+    const deleteBtn = findElementsByClass(
+      actionsRow,
+      "gradient-picker-delete-btn"
+    )[0];
     assert.ok(deleteBtn, "Delete button must be in actions row");
 
     // Initially at stop-0: delete button is disabled
-    assert.equal(deleteBtn.disabled, true, "Delete button must be disabled for 0% boundary stop");
+    assert.equal(
+      deleteBtn.disabled,
+      true,
+      "Delete button must be disabled for 0% boundary stop"
+    );
 
     // Select 50% intermediate stop
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
     await act(async () => {
       selectEl.value = "stop-50";
       selectEl.dispatchEvent({ type: "change", bubbles: true });
     });
 
-    assert.equal(deleteBtn.disabled, false, "Delete button must be enabled for intermediate stop");
+    assert.equal(
+      deleteBtn.disabled,
+      false,
+      "Delete button must be enabled for intermediate stop"
+    );
 
     // Click delete button
     await act(async () => {
@@ -1536,9 +1655,20 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
     });
 
     assert.equal(latestStops.length, 2);
-    assert.equal(selectEl.options.length, 2, "Dropdown must update to 2 options after deletion");
-    assert.equal(deleteBtn.disabled, true, "Delete button must be disabled when only 2 boundary stops remain");
-    assert.ok(selectEl.value === "stop-0" || selectEl.value === "stop-100", "Selection must roll over to adjacent stop");
+    assert.equal(
+      selectEl.options.length,
+      2,
+      "Dropdown must update to 2 options after deletion"
+    );
+    assert.equal(
+      deleteBtn.disabled,
+      true,
+      "Delete button must be disabled when only 2 boundary stops remain"
+    );
+    assert.ok(
+      selectEl.value === "stop-0" || selectEl.value === "stop-100",
+      "Selection must roll over to adjacent stop"
+    );
   });
 
   it("cascades disabled prop to stop select dropdown and delete button", async () => {
@@ -1551,11 +1681,25 @@ describe("GradientPickerWidget Stop Dropdown & Delete Controls (Ticket #226)", (
       );
     });
 
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
-    const deleteBtn = findElementsByClass(container, "gradient-picker-delete-btn")[0];
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
+    const deleteBtn = findElementsByClass(
+      container,
+      "gradient-picker-delete-btn"
+    )[0];
 
-    assert.equal(selectEl.disabled, true, "Stop select must be disabled when widget is disabled");
-    assert.equal(deleteBtn.disabled, true, "Delete button must be disabled when widget is disabled");
+    assert.equal(
+      selectEl.disabled,
+      true,
+      "Stop select must be disabled when widget is disabled"
+    );
+    assert.equal(
+      deleteBtn.disabled,
+      true,
+      "Delete button must be disabled when widget is disabled"
+    );
   });
 });
 
@@ -1581,30 +1725,78 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
       );
     });
 
-    const previewRow = findElementsByClass(container, "gradient-picker-preview-row")[0];
-    const actionsRow = findElementsByClass(container, "gradient-picker-actions-row")[0];
+    const previewRow = findElementsByClass(
+      container,
+      "gradient-picker-preview-row"
+    )[0];
+    const actionsRow = findElementsByClass(
+      container,
+      "gradient-picker-actions-row"
+    )[0];
     assert.ok(previewRow, "Preview row must be present");
     assert.ok(actionsRow, "Actions row must be present");
 
-    const boundaryBtns = findElementsByClass(previewRow, "gradient-stop-boundary-btn");
-    assert.equal(boundaryBtns.length, 2, "Preview row must have 2 boundary buttons");
+    const boundaryBtns = findElementsByClass(
+      previewRow,
+      "gradient-stop-boundary-btn"
+    );
+    assert.equal(
+      boundaryBtns.length,
+      2,
+      "Preview row must have 2 boundary buttons"
+    );
 
-    const spacer = findElementsByClass(actionsRow, "gradient-picker-actions-spacer")[0];
+    const spacer = findElementsByClass(
+      actionsRow,
+      "gradient-picker-actions-spacer"
+    )[0];
     assert.ok(spacer, "Actions row must have alignment spacer on the left");
-    assert.equal(spacer.style.width, "24px", "Spacer width must match ui.icon.size");
+    assert.equal(
+      spacer.style.width,
+      "24px",
+      "Spacer width must match ui.icon.size"
+    );
     assert.equal(spacer.style.flexShrink, "0", "Spacer must not shrink");
 
-    const selectEl = findElementsByClass(actionsRow, "gradient-picker-stop-select")[0];
+    const selectEl = findElementsByClass(
+      actionsRow,
+      "gradient-picker-stop-select"
+    )[0];
     assert.ok(selectEl, "Stop selector select must be present");
-    assert.ok(selectEl.className.split(" ").includes("cartouche-select"), "Stop selector is the shared Select (Ticket #344)");
-    assert.match(cssRule(".gradient-picker-stop-select"), /flex:\s*1;/, "Select must fill space between spacer and delete button");
+    assert.ok(
+      selectEl.className.split(" ").includes("cartouche-select"),
+      "Stop selector is the shared Select (Ticket #344)"
+    );
+    assert.match(
+      cssRule(".gradient-picker-stop-select"),
+      /flex:\s*1;/,
+      "Select must fill space between spacer and delete button"
+    );
 
-    const deleteBtn = findElementsByClass(actionsRow, "gradient-picker-delete-btn")[0];
+    const deleteBtn = findElementsByClass(
+      actionsRow,
+      "gradient-picker-delete-btn"
+    )[0];
     assert.ok(deleteBtn, "Delete button must be present");
-    assert.equal(deleteBtn.style.width, "24px", "Delete button width must match ui.icon.size");
-    assert.equal(deleteBtn.style.height, "24px", "Delete button height must match ui.icon.size");
-    assert.ok(deleteBtn.className.split(" ").includes("picker-icon-btn"), "Delete button takes the picker-icon-btn class");
-    assert.match(cssRule(".picker-icon-btn"), /flex-shrink:\s*0;/, "Delete button must not shrink");
+    assert.equal(
+      deleteBtn.style.width,
+      "24px",
+      "Delete button width must match ui.icon.size"
+    );
+    assert.equal(
+      deleteBtn.style.height,
+      "24px",
+      "Delete button height must match ui.icon.size"
+    );
+    assert.ok(
+      deleteBtn.className.split(" ").includes("picker-icon-btn"),
+      "Delete button takes the picker-icon-btn class"
+    );
+    assert.match(
+      cssRule(".picker-icon-btn"),
+      /flex-shrink:\s*0;/,
+      "Delete button must not shrink"
+    );
 
     // Both rows must feature 6px gap to preserve identical column alignment
     assert.equal(previewRow.style.gap, "6px", "Preview row gap must be 6px");
@@ -1620,7 +1812,10 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
       );
     });
 
-    const boundaryBtns = findElementsByClass(container, "gradient-stop-boundary-btn");
+    const boundaryBtns = findElementsByClass(
+      container,
+      "gradient-stop-boundary-btn"
+    );
     assert.equal(boundaryBtns[0].style.width, "24px");
     assert.equal(boundaryBtns[0].style.height, "24px");
     assert.equal(boundaryBtns[1].style.width, "24px");
@@ -1664,16 +1859,29 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
       );
     });
 
-    const selectEl = findElementsByClass(container, "gradient-picker-stop-select")[0];
-    assert.ok(selectEl.className.split(" ").includes("cartouche-select"), "Stop selector is the shared Select (Ticket #344)");
-    assert.match(cssRule(".cartouche-select"), /font-size:\s*[\d.]+rem;/, ".cartouche-select font size must be in rem");
+    const selectEl = findElementsByClass(
+      container,
+      "gradient-picker-stop-select"
+    )[0];
+    assert.ok(
+      selectEl.className.split(" ").includes("cartouche-select"),
+      "Stop selector is the shared Select (Ticket #344)"
+    );
+    assert.match(
+      cssRule(".cartouche-select"),
+      /font-size:\s*[\d.]+rem;/,
+      ".cartouche-select font size must be in rem"
+    );
 
     // Changing prefsUiBaseFontSize signal triggers reactive re-render
     await act(async () => {
       prefsUiBaseFontSize.value = 16;
     });
 
-    assert.ok(!selectEl.style.fontSize, "Select sets no inline font size over the shared class");
+    assert.ok(
+      !selectEl.style.fontSize,
+      "Select sets no inline font size over the shared class"
+    );
   });
 
   it("scales delete button and trash can icon dynamically with prefsUiIconSize", async () => {
@@ -1685,24 +1893,61 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
       );
     });
 
-    const deleteBtn = findElementsByClass(container, "gradient-picker-delete-btn")[0];
-    assert.equal(deleteBtn.style.width, "24px", "Initial delete button width must be 24px");
-    assert.equal(deleteBtn.style.height, "24px", "Initial delete button height must be 24px");
+    const deleteBtn = findElementsByClass(
+      container,
+      "gradient-picker-delete-btn"
+    )[0];
+    assert.equal(
+      deleteBtn.style.width,
+      "24px",
+      "Initial delete button width must be 24px"
+    );
+    assert.equal(
+      deleteBtn.style.height,
+      "24px",
+      "Initial delete button height must be 24px"
+    );
 
-    const deleteIcon = deleteBtn.childNodes.find((c: any) => c.tagName?.toUpperCase() === "SVG");
+    const deleteIcon = deleteBtn.childNodes.find(
+      (c: any) => c.tagName?.toUpperCase() === "SVG"
+    );
     assert.ok(deleteIcon, "Delete button must contain SVG icon");
-    assert.equal(deleteIcon.style.width, "24px", "Initial icon width must match ui.icon.size");
-    assert.equal(deleteIcon.style.height, "24px", "Initial icon height must match ui.icon.size");
+    assert.equal(
+      deleteIcon.style.width,
+      "24px",
+      "Initial icon width must match ui.icon.size"
+    );
+    assert.equal(
+      deleteIcon.style.height,
+      "24px",
+      "Initial icon height must match ui.icon.size"
+    );
 
     // Dynamically update prefsUiIconSize signal to 28px
     await act(async () => {
       prefsUiIconSize.value = 28;
     });
 
-    assert.equal(deleteBtn.style.width, "28px", "Delete button width must update to 28px");
-    assert.equal(deleteBtn.style.height, "28px", "Delete button height must update to 28px");
-    assert.equal(deleteIcon.style.width, "28px", "Icon width must update to 28px");
-    assert.equal(deleteIcon.style.height, "28px", "Icon height must update to 28px");
+    assert.equal(
+      deleteBtn.style.width,
+      "28px",
+      "Delete button width must update to 28px"
+    );
+    assert.equal(
+      deleteBtn.style.height,
+      "28px",
+      "Delete button height must update to 28px"
+    );
+    assert.equal(
+      deleteIcon.style.width,
+      "28px",
+      "Icon width must update to 28px"
+    );
+    assert.equal(
+      deleteIcon.style.height,
+      "28px",
+      "Icon height must update to 28px"
+    );
   });
 
   it("adjusts intermediate pin track horizontal margins dynamically to keep stops aligned with preview bar across icon size changes", async () => {
@@ -1715,18 +1960,30 @@ describe("GradientPickerWidget UI Preferences & Actions Row Alignment (Ticket #2
     });
 
     const track = findElementsByClass(container, "gradient-picker-track")[0];
-    assert.equal(track.style.margin, "0 30px", "Track margin with iconSize=24 is 24 + 6 = 30px");
+    assert.equal(
+      track.style.margin,
+      "0 30px",
+      "Track margin with iconSize=24 is 24 + 6 = 30px"
+    );
 
     // Change icon size to 32px
     await act(async () => {
       prefsUiIconSize.value = 32;
     });
-    assert.equal(track.style.margin, "0 38px", "Track margin with iconSize=32 is 32 + 6 = 38px");
+    assert.equal(
+      track.style.margin,
+      "0 38px",
+      "Track margin with iconSize=32 is 32 + 6 = 38px"
+    );
 
     // Change icon size to 16px
     await act(async () => {
       prefsUiIconSize.value = 16;
     });
-    assert.equal(track.style.margin, "0 22px", "Track margin with iconSize=16 is 16 + 6 = 22px");
+    assert.equal(
+      track.style.margin,
+      "0 22px",
+      "Track margin with iconSize=16 is 16 + 6 = 22px"
+    );
   });
 });

@@ -217,7 +217,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
       },
       {
         value: "gradient-fill",
-        label: t("layer_properties_component_type_gradient_fill") || "Gradient Fill",
+        label:
+          t("layer_properties_component_type_gradient_fill") || "Gradient Fill",
       },
       {
         value: "simple-line",
@@ -463,7 +464,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
       case "simple-fill":
         return t("layer_properties_component_type_fill");
       case "gradient-fill":
-        return t("layer_properties_component_type_gradient_fill") || "Gradient Fill";
+        return (
+          t("layer_properties_component_type_gradient_fill") || "Gradient Fill"
+        );
       case "simple-line":
         return t("layer_properties_component_type_line");
       case "simple-marker":
@@ -485,7 +488,13 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
   const renderOptionRow = (
     label: string,
     control: React.ReactNode,
-    { rowId, htmlFor, alignTop = false, labelId, onLabelClick }: OptionRowOptions = {}
+    {
+      rowId,
+      htmlFor,
+      alignTop = false,
+      labelId,
+      onLabelClick,
+    }: OptionRowOptions = {}
   ) => {
     const labelStyle: React.CSSProperties = {
       width: "9rem",
@@ -825,69 +834,82 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
         )}
 
         {/* 2. Gradient Fill Options */}
-        {activeComponent?.type === "gradient-fill" && (() => {
-          const gradComp = activeComponent as GradientFillComponent;
-          return (
-            <div
-              id='layer-prop-gradient-options-container'
-              className='layer-prop-gradient-options-container'
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-              }}>
-              {/* Angle Spinner Control */}
+        {activeComponent?.type === "gradient-fill"
+          && (() => {
+            const gradComp = activeComponent as GradientFillComponent;
+            return (
               <div
+                id='layer-prop-gradient-options-container'
+                className='layer-prop-gradient-options-container'
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.5rem",
+                  flexDirection: "column",
+                  gap: "0.75rem",
                 }}>
-                <label
-                  htmlFor='layer-prop-gradient-angle'
+                {/* Angle Spinner Control */}
+                <div
                   style={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 500,
-                    color: "#334155",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
                   }}>
-                  {t("layer_properties_styling_gradient_angle") || "Gradient Angle"}:
-                </label>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                  <input
-                    className='styling-editor-field styling-editor-angle'
-                    id='layer-prop-gradient-angle'
-                    type='number'
-                    min='0'
-                    max='360'
-                    step='1'
-                    disabled={activeComponent.locked}
-                    value={gradComp.angle ?? 0}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      updateActiveComponent({
-                        angle: isNaN(val) ? 0 : Math.min(360, Math.max(0, val)),
-                      });
-                    }}
-                  />
-                  <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>°</span>
+                  <label
+                    htmlFor='layer-prop-gradient-angle'
+                    style={{
+                      fontSize: "0.8125rem",
+                      fontWeight: 500,
+                      color: "#334155",
+                    }}>
+                    {t("layer_properties_styling_gradient_angle")
+                      || "Gradient Angle"}
+                    :
+                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                    }}>
+                    <input
+                      className='styling-editor-field styling-editor-angle'
+                      id='layer-prop-gradient-angle'
+                      type='number'
+                      min='0'
+                      max='360'
+                      step='1'
+                      disabled={activeComponent.locked}
+                      value={gradComp.angle ?? 0}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        updateActiveComponent({
+                          angle:
+                            isNaN(val) ? 0 : Math.min(360, Math.max(0, val)),
+                        });
+                      }}
+                    />
+                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      °
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Gradient Stops: GradientButton opening a GradientPickerDialog */}
-              {renderOptionRow(
-                t("layer_properties_styling_gradient_stops"),
-                <GradientButton
-                  value={gradComp.stops}
-                  dialogTitle={t("layer_properties_styling_gradient_stops")}
-                  disabled={Boolean(activeComponent.locked)}
-                  onChange={(newStops) => updateActiveComponent({ stops: newStops })}
-                />,
-                { rowId: "layer-prop-gradient-stops-row" }
-              )}
-            </div>
-          );
-        })()}
+                {/* Gradient Stops: GradientButton opening a GradientPickerDialog */}
+                {renderOptionRow(
+                  t("layer_properties_styling_gradient_stops"),
+                  <GradientButton
+                    value={gradComp.stops}
+                    dialogTitle={t("layer_properties_styling_gradient_stops")}
+                    disabled={Boolean(activeComponent.locked)}
+                    onChange={(newStops) =>
+                      updateActiveComponent({ stops: newStops })
+                    }
+                  />,
+                  { rowId: "layer-prop-gradient-stops-row" }
+                )}
+              </div>
+            );
+          })()}
 
         {/* 2. Simple Line Options */}
         {activeComponent?.type === "simple-line"
@@ -968,7 +990,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         value={lineComp.offset ?? 0}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value);
-                          updateActiveComponent({ offset: isNaN(val) ? 0 : val });
+                          updateActiveComponent({
+                            offset: isNaN(val) ? 0 : val,
+                          });
                         }}
                       />
                       <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
@@ -985,9 +1009,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       disabled={activeComponent.locked}
                       value={lineComp.cap ?? "round"}
                       options={[
-                        { value: "butt", label: t("layer_properties_line_cap_butt") },
-                        { value: "round", label: t("layer_properties_line_cap_round") },
-                        { value: "square", label: t("layer_properties_line_cap_square") },
+                        {
+                          value: "butt",
+                          label: t("layer_properties_line_cap_butt"),
+                        },
+                        {
+                          value: "round",
+                          label: t("layer_properties_line_cap_round"),
+                        },
+                        {
+                          value: "square",
+                          label: t("layer_properties_line_cap_square"),
+                        },
                       ]}
                       onChange={(cap) => updateActiveComponent({ cap })}
                     />,
@@ -1001,9 +1034,18 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       disabled={activeComponent.locked}
                       value={lineComp.join ?? "round"}
                       options={[
-                        { value: "bevel", label: t("layer_properties_line_join_bevel") },
-                        { value: "miter", label: t("layer_properties_line_join_miter") },
-                        { value: "round", label: t("layer_properties_line_join_round") },
+                        {
+                          value: "bevel",
+                          label: t("layer_properties_line_join_bevel"),
+                        },
+                        {
+                          value: "miter",
+                          label: t("layer_properties_line_join_miter"),
+                        },
+                        {
+                          value: "round",
+                          label: t("layer_properties_line_join_round"),
+                        },
                       ]}
                       onChange={(join) => updateActiveComponent({ join })}
                     />,
@@ -1121,8 +1163,15 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     id='layer-prop-point-shape'
                     disabled={activeComponent.locked}
                     value={markerShape}
-                    options={[{ value: "circle", label: t("layer_properties_shape_circle") }]}
-                    onChange={(nextShape) => updateActiveComponent({ shape: nextShape })}
+                    options={[
+                      {
+                        value: "circle",
+                        label: t("layer_properties_shape_circle"),
+                      },
+                    ]}
+                    onChange={(nextShape) =>
+                      updateActiveComponent({ shape: nextShape })
+                    }
                   />,
                   { htmlFor: "layer-prop-point-shape" }
                 )}
@@ -1142,7 +1191,10 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                       }
                       onChange={(e) =>
                         updateActiveComponent({
-                          radius: Math.max(1, parseInt(e.target.value, 10) || 1),
+                          radius: Math.max(
+                            1,
+                            parseInt(e.target.value, 10) || 1
+                          ),
                         })
                       }
                     />

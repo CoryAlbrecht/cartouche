@@ -9,7 +9,7 @@
  * @see {@link vertexEditor}
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @function vertexEditor
@@ -21,5 +21,5 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function vertexEditor(): void {
-  logging.debug('Vertex editor mode toggled', { scope: 'vertexEditor' });
+  logging.debug("Vertex editor mode toggled", { scope: "vertexEditor" });
 }

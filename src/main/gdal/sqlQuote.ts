@@ -47,7 +47,8 @@ const SQLITE_DIALECT_DRIVERS: ReadonlySet<string> = new Set(["GPKG", "SQLite"]);
  * @since 0.1.0-dev
  * @type {RegExp}
  */
-const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 /**
  * @description Resolves the dialect GDAL's `executeSQL` runs by default for a driver.
@@ -58,8 +59,14 @@ const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[
  * @param {string | undefined} driverName - GDAL driver short name (`dataset.driver.description`).
  * @returns {SqlDialect} `SQLITE` for the GeoPackage and SQLite drivers, otherwise `OGRSQL`.
  */
-export function sqlDialectForDriver(driverName: string | undefined): SqlDialect {
-  return typeof driverName === "string" && SQLITE_DIALECT_DRIVERS.has(driverName) ? "SQLITE" : "OGRSQL";
+export function sqlDialectForDriver(
+  driverName: string | undefined
+): SqlDialect {
+  return (
+      typeof driverName === "string" && SQLITE_DIALECT_DRIVERS.has(driverName)
+    ) ?
+      "SQLITE"
+    : "OGRSQL";
 }
 
 /**
@@ -78,7 +85,9 @@ function assertRepresentable(value: string, kind: string): void {
     throw new RangeError(`SQL ${kind} contains NUL: ${JSON.stringify(value)}`);
   }
   if (LONE_SURROGATE.test(value)) {
-    throw new RangeError(`SQL ${kind} contains a lone UTF-16 surrogate: ${JSON.stringify(value)}`);
+    throw new RangeError(
+      `SQL ${kind} contains a lone UTF-16 surrogate: ${JSON.stringify(value)}`
+    );
   }
 }
 
@@ -96,7 +105,10 @@ function assertRepresentable(value: string, kind: string): void {
  */
 export function quoteSqlIdentifier(name: string, dialect: SqlDialect): string {
   assertRepresentable(name, "identifier");
-  const escaped = dialect === "OGRSQL" ? name.replace(/[\\"]/g, "\\$&") : name.split("\"").join("\"\"");
+  const escaped =
+    dialect === "OGRSQL" ?
+      name.replace(/[\\"]/g, "\\$&")
+    : name.split('"').join('""');
   return `"${escaped}"`;
 }
 

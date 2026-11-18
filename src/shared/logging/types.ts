@@ -23,7 +23,8 @@
  * @since 0.1.0-dev
  * @see docs/adr/0008-logging-severity-taxonomy-and-operational-guidelines.md (ADR 0008)
  */
-export type LogLevel = 'none' | 'critical' | 'error' | 'warn' | 'info' | 'debug';
+export type LogLevel =
+  "none" | "critical" | "error" | "warn" | "info" | "debug";
 
 /**
  * @description Mapping of numeric log levels (0-5) to canonical textual log level names.
@@ -34,12 +35,12 @@ export type LogLevel = 'none' | 'critical' | 'error' | 'warn' | 'info' | 'debug'
  * @type {Record<number, LogLevel>}
  */
 export const LOG_LEVEL_NAMES: Record<number, LogLevel> = {
-  0: 'none',
-  1: 'critical',
-  2: 'error',
-  3: 'warn',
-  4: 'info',
-  5: 'debug'
+  0: "none",
+  1: "critical",
+  2: "error",
+  3: "warn",
+  4: "info",
+  5: "debug",
 };
 
 /**
@@ -56,7 +57,7 @@ export const LOG_LEVEL_VALUES: Record<LogLevel, number> = {
   error: 2,
   warn: 3,
   info: 4,
-  debug: 5
+  debug: 5,
 };
 
 /**
@@ -141,5 +142,9 @@ export interface LoggingMethodMap {
  * @updated 2026-10-23
  * @since 0.1.0-dev
  */
-export type LoggingFunction = ((level: LogLevel | number, message: string, ...meta: any[]) => void) & LoggingMethodMap;
-
+export type LoggingFunction = ((
+  level: LogLevel | number,
+  message: string,
+  ...meta: any[]
+) => void)
+  & LoggingMethodMap;

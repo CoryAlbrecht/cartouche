@@ -9,14 +9,14 @@
  * @see {@link loadOrBuildCrsCatalogue}
  */
 
-import gdal from 'gdal-async';
+import gdal from "gdal-async";
 import {
   loadOrBuildCrsCatalogue,
   resolveBundledProjDbPath,
   findLoadedGdalBindingPath,
   createGdalCrsValidator,
   type CrsCatalogueLoadResult,
-} from './CrsCatalogue';
+} from "./CrsCatalogue";
 
 /**
  * @function runCrsCatalogueBuild
@@ -28,14 +28,19 @@ import {
  * @param {string} cacheDir - App preferences directory holding `crs-catalogue.json`.
  * @returns {Promise<CrsCatalogueLoadResult>} Entries and whether the cache was reused.
  */
-export async function runCrsCatalogueBuild(cacheDir: string): Promise<CrsCatalogueLoadResult> {
-  const req: NodeJS.Require | undefined = typeof require !== 'undefined' ? require : undefined;
-  const gdalEntry = req ? req.resolve('gdal-async') : '';
+export async function runCrsCatalogueBuild(
+  cacheDir: string
+): Promise<CrsCatalogueLoadResult> {
+  const req: NodeJS.Require | undefined =
+    typeof require !== "undefined" ? require : undefined;
+  const gdalEntry = req ? req.resolve("gdal-async") : "";
   return loadOrBuildCrsCatalogue({
     projDbPath: resolveBundledProjDbPath(gdalEntry),
     cacheDir,
     validator: createGdalCrsValidator(gdal as any),
-    bindingPath: findLoadedGdalBindingPath((req?.cache ?? {}) as Record<string, unknown>),
-    gdalVersion: String((gdal as any).version ?? ''),
+    bindingPath: findLoadedGdalBindingPath(
+      (req?.cache ?? {}) as Record<string, unknown>
+    ),
+    gdalVersion: String((gdal as any).version ?? ""),
   });
 }

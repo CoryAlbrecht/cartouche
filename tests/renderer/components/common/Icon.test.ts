@@ -9,11 +9,11 @@
  * @see {@link Icon}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../../rendererJiti";
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -38,9 +38,12 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
   /**
    * @constructor
@@ -51,7 +54,7 @@ class MockElement {
    * @since 0.1.0-dev
    * @param {string} [tag='div'] - HTML element tag name.
    */
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -63,8 +66,8 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
@@ -80,7 +83,7 @@ class MockElement {
    */
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
   }
@@ -123,7 +126,7 @@ class MockElement {
    * @returns {any} The removed child node.
    */
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -177,7 +180,9 @@ class MockElement {
    */
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 }
 
@@ -192,7 +197,10 @@ class MockElement {
  * @param {(el: MockElement) => boolean} predicate - Search predicate.
  * @returns {MockElement[]} Array of matching elements.
  */
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -217,8 +225,8 @@ let root: Root | null = null;
  * @returns {void}
  */
 function setupDom(): void {
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -239,17 +247,17 @@ function setupDom(): void {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -258,23 +266,28 @@ function setupDom(): void {
     document: doc,
     addEventListener: () => {},
     removeEventListener: () => {},
-    getComputedStyle: () => ({ getPropertyValue: () => '' }),
+    getComputedStyle: () => ({ getPropertyValue: () => "" }),
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
 
   doc.defaultView = win;
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -307,12 +320,17 @@ function tearDownDom(): void {
 
 // Instantiate jiti with JSX and aliases
 const jiti = createRendererJiti(import.meta.url);
-const { default: Icon, BUILTIN_CUSTOM_SVG_ICONS } = jiti('../../../../src/renderer/components/common/Icon.tsx') as {
+const { default: Icon, BUILTIN_CUSTOM_SVG_ICONS } = jiti(
+  "../../../../src/renderer/components/common/Icon.tsx"
+) as {
   default: React.FC<any>;
-  BUILTIN_CUSTOM_SVG_ICONS: Record<string, { viewBox: string; paths: string[] }>;
+  BUILTIN_CUSTOM_SVG_ICONS: Record<
+    string,
+    { viewBox: string; paths: string[] }
+  >;
 };
 
-describe('Icon Component CSS Custom Property & Sizing Support', () => {
+describe("Icon Component CSS Custom Property & Sizing Support", () => {
   beforeEach(() => {
     setupDom();
   });
@@ -321,23 +339,23 @@ describe('Icon Component CSS Custom Property & Sizing Support', () => {
     tearDownDom();
   });
 
-  it('defaults to var(--cartouche-ui-icon-size, 24px) when size prop is omitted, setting style.width and style.height', async () => {
+  it("defaults to var(--cartouche-ui-icon-size, 24px) when size prop is omitted, setting style.width and style.height", async () => {
     await act(async () => {
-      root!.render(React.createElement(Icon, { path: 'M0,0 L10,10' }));
+      root!.render(React.createElement(Icon, { path: "M0,0 L10,10" }));
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
-    assert.strictEqual(svgs.length, 1, 'Should render 1 SVG element');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
+    assert.strictEqual(svgs.length, 1, "Should render 1 SVG element");
     const svg = svgs[0];
     assert.strictEqual(
       svg.style.width,
-      'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))',
-      'style.width should default to scaled icon size expression'
+      "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))",
+      "style.width should default to scaled icon size expression"
     );
     assert.strictEqual(
       svg.style.height,
-      'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))',
-      'style.height should default to scaled icon size expression'
+      "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))",
+      "style.height should default to scaled icon size expression"
     );
   });
 
@@ -345,130 +363,163 @@ describe('Icon Component CSS Custom Property & Sizing Support', () => {
     await act(async () => {
       root!.render(
         React.createElement(Icon, {
-          path: 'M0,0 L10,10',
-          size: 'var(--cartouche-ui-icon-size)'
+          path: "M0,0 L10,10",
+          size: "var(--cartouche-ui-icon-size)",
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
     assert.strictEqual(svgs.length, 1);
     const svg = svgs[0];
-    assert.strictEqual(svg.style.width, 'var(--cartouche-ui-icon-size)');
-    assert.strictEqual(svg.style.height, 'var(--cartouche-ui-icon-size)');
+    assert.strictEqual(svg.style.width, "var(--cartouche-ui-icon-size)");
+    assert.strictEqual(svg.style.height, "var(--cartouche-ui-icon-size)");
   });
 
   it('supports calc expressions such as size="calc(var(--cartouche-ui-icon-size) * 0.8)" on both style dimensions', async () => {
     await act(async () => {
       root!.render(
         React.createElement(Icon, {
-          path: 'M0,0 L10,10',
-          size: 'calc(var(--cartouche-ui-icon-size) * 0.8)'
+          path: "M0,0 L10,10",
+          size: "calc(var(--cartouche-ui-icon-size) * 0.8)",
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
     assert.strictEqual(svgs.length, 1);
     const svg = svgs[0];
-    assert.strictEqual(svg.style.width, 'calc(var(--cartouche-ui-icon-size) * 0.8)');
-    assert.strictEqual(svg.style.height, 'calc(var(--cartouche-ui-icon-size) * 0.8)');
+    assert.strictEqual(
+      svg.style.width,
+      "calc(var(--cartouche-ui-icon-size) * 0.8)"
+    );
+    assert.strictEqual(
+      svg.style.height,
+      "calc(var(--cartouche-ui-icon-size) * 0.8)"
+    );
   });
 
-  it('preserves numeric multiplier scaling and literal numbers', async () => {
+  it("preserves numeric multiplier scaling and literal numbers", async () => {
+    await act(async () => {
+      root!.render(
+        React.createElement(Icon, { path: "M0,0 L10,10", size: 18 })
+      );
+    });
+
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
+    assert.strictEqual(svgs.length, 1);
+    const svg = svgs[0];
+    assert.strictEqual(svg.style.width, "18px");
+    assert.strictEqual(svg.style.height, "18px");
+  });
+
+  it("applies custom CSS property dimensions to custom file SVG icons (file: prefix)", async () => {
     await act(async () => {
       root!.render(
         React.createElement(Icon, {
-          path: 'M0,0 L10,10',
-          size: 18
+          name: "file:layers-plus-outline.svg",
+          size: "calc(var(--cartouche-ui-icon-size) * 0.75)",
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
     assert.strictEqual(svgs.length, 1);
     const svg = svgs[0];
-    assert.strictEqual(svg.style.width, '18px');
-    assert.strictEqual(svg.style.height, '18px');
+    assert.strictEqual(
+      svg.style.width,
+      "calc(var(--cartouche-ui-icon-size) * 0.75)"
+    );
+    assert.strictEqual(
+      svg.style.height,
+      "calc(var(--cartouche-ui-icon-size) * 0.75)"
+    );
   });
 
-  it('applies custom CSS property dimensions to custom file SVG icons (file: prefix)', async () => {
+  it("preserves caller style overrides without dropping dimension styles", async () => {
     await act(async () => {
       root!.render(
         React.createElement(Icon, {
-          name: 'file:layers-plus-outline.svg',
-          size: 'calc(var(--cartouche-ui-icon-size) * 0.75)'
+          path: "M0,0 L10,10",
+          style: { opacity: "0.8", margin: "2px" },
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
     assert.strictEqual(svgs.length, 1);
     const svg = svgs[0];
-    assert.strictEqual(svg.style.width, 'calc(var(--cartouche-ui-icon-size) * 0.75)');
-    assert.strictEqual(svg.style.height, 'calc(var(--cartouche-ui-icon-size) * 0.75)');
+    assert.strictEqual(svg.style.opacity, "0.8");
+    assert.strictEqual(svg.style.margin, "2px");
+    assert.strictEqual(
+      svg.style.width,
+      "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))"
+    );
+    assert.strictEqual(
+      svg.style.height,
+      "calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))"
+    );
   });
 
-  it('preserves caller style overrides without dropping dimension styles', async () => {
+  it("pre-caches select-primary-click in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments", async () => {
+    assert.ok(
+      BUILTIN_CUSTOM_SVG_ICONS["select-primary-click"],
+      "select-primary-click must exist in BUILTIN_CUSTOM_SVG_ICONS"
+    );
+    assert.strictEqual(
+      BUILTIN_CUSTOM_SVG_ICONS["select-primary-click"].viewBox,
+      "0 0 24 24"
+    );
+    assert.strictEqual(
+      BUILTIN_CUSTOM_SVG_ICONS["select-primary-click"].paths.length,
+      2
+    );
+
     await act(async () => {
       root!.render(
         React.createElement(Icon, {
-          path: 'M0,0 L10,10',
-          style: { opacity: '0.8', margin: '2px' }
+          name: "file:select-primary-click.svg",
+          size: 20,
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
     assert.strictEqual(svgs.length, 1);
-    const svg = svgs[0];
-    assert.strictEqual(svg.style.opacity, '0.8');
-    assert.strictEqual(svg.style.margin, '2px');
-    assert.strictEqual(svg.style.width, 'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))');
-    assert.strictEqual(svg.style.height, 'calc(var(--cartouche-ui-icon-size, 24px) * var(--cartouche-ui-icon-scaling, 1.0))');
-  });
-
-  it('pre-caches select-primary-click in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments', async () => {
-    assert.ok(BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'], 'select-primary-click must exist in BUILTIN_CUSTOM_SVG_ICONS');
-    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'].viewBox, '0 0 24 24');
-    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['select-primary-click'].paths.length, 2);
-
-    await act(async () => {
-      root!.render(
-        React.createElement(Icon, {
-          name: 'file:select-primary-click.svg',
-          size: 20
-        })
-      );
-    });
-
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
-    assert.strictEqual(svgs.length, 1);
-    const paths = findAllNodes(svgs[0], el => el.tagName === 'PATH');
+    const paths = findAllNodes(svgs[0], (el) => el.tagName === "PATH");
     assert.strictEqual(paths.length, 2);
-    assert.ok(paths[1].attributes.d.includes('m14.0066 18.4021'));
+    assert.ok(paths[1].attributes.d.includes("m14.0066 18.4021"));
   });
 
-  it('pre-caches layers-cog-outline in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments with currentColor', async () => {
-    assert.ok(BUILTIN_CUSTOM_SVG_ICONS['layers-cog-outline'], 'layers-cog-outline must exist in BUILTIN_CUSTOM_SVG_ICONS');
-    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['layers-cog-outline'].viewBox, '0 0 24 24');
-    assert.strictEqual(BUILTIN_CUSTOM_SVG_ICONS['layers-cog-outline'].paths.length, 4);
+  it("pre-caches layers-cog-outline in BUILTIN_CUSTOM_SVG_ICONS and renders multiple path segments with currentColor", async () => {
+    assert.ok(
+      BUILTIN_CUSTOM_SVG_ICONS["layers-cog-outline"],
+      "layers-cog-outline must exist in BUILTIN_CUSTOM_SVG_ICONS"
+    );
+    assert.strictEqual(
+      BUILTIN_CUSTOM_SVG_ICONS["layers-cog-outline"].viewBox,
+      "0 0 24 24"
+    );
+    assert.strictEqual(
+      BUILTIN_CUSTOM_SVG_ICONS["layers-cog-outline"].paths.length,
+      4
+    );
 
     await act(async () => {
       root!.render(
         React.createElement(Icon, {
-          name: 'file:layers-cog-outline.svg',
+          name: "file:layers-cog-outline.svg",
           size: 24,
-          color: '#ffffff'
+          color: "#ffffff",
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
     assert.strictEqual(svgs.length, 1);
-    assert.strictEqual(svgs[0].attributes.fill, '#ffffff');
-    const paths = findAllNodes(svgs[0], el => el.tagName === 'PATH');
+    assert.strictEqual(svgs[0].attributes.fill, "#ffffff");
+    const paths = findAllNodes(svgs[0], (el) => el.tagName === "PATH");
     assert.strictEqual(paths.length, 4);
-    assert.ok(paths[0].attributes.d.includes('m12 16-9-7'));
+    assert.ok(paths[0].attributes.d.includes("m12 16-9-7"));
   });
 });

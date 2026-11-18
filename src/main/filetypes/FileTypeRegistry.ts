@@ -8,11 +8,11 @@
  * @since 0.1.0-dev
  */
 
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import type { FileCategory, FileTypeDescriptor } from '@shared/types';
-import { BUILTIN_FILE_TYPES } from '../../shared/filetypes/index';
-import { gdalVectorLoader, gdalRasterLoader } from './loaders/gdalLoaders';
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import type { FileCategory, FileTypeDescriptor } from "@shared/types";
+import { BUILTIN_FILE_TYPES } from "../../shared/filetypes/index";
+import { gdalVectorLoader, gdalRasterLoader } from "./loaders/gdalLoaders";
 
 /**
  * @typedef {(filePath: string, descriptor: FileTypeDescriptor, options?: Record<string, unknown>) => Promise<unknown>} FileLoaderFn
@@ -62,8 +62,8 @@ export class FileTypeRegistry {
    * @returns {void}
    */
   private registerDefaultLoaders(): void {
-    this.registerLoader('gdal:vector', gdalVectorLoader);
-    this.registerLoader('gdal:raster', gdalRasterLoader);
+    this.registerLoader("gdal:vector", gdalVectorLoader);
+    this.registerLoader("gdal:raster", gdalRasterLoader);
   }
 
   /**
@@ -185,7 +185,9 @@ export class FileTypeRegistry {
    * @param {FileCategory} [category] - Optional category filter to restrict descriptors.
    * @returns {Array<{ name: string; extensions: string[] }>} Array of native file dialog filter objects.
    */
-  public getFileFilters(category?: FileCategory): Array<{ name: string; extensions: string[] }> {
+  public getFileFilters(
+    category?: FileCategory
+  ): Array<{ name: string; extensions: string[] }> {
     const descriptors = Array.from(this.descriptors.values()).filter(
       (desc) => !category || desc.category === category
     );
@@ -196,8 +198,10 @@ export class FileTypeRegistry {
     for (const desc of descriptors) {
       const cleanedExts = desc.primaryExtensions
         .map((ext) => {
-          const stripped = ext.replace(/^[*.]+/, '').trim();
-          return stripped.includes('.') ? stripped.split('.').pop() || stripped : stripped;
+          const stripped = ext.replace(/^[*.]+/, "").trim();
+          return stripped.includes(".") ?
+              stripped.split(".").pop() || stripped
+            : stripped;
         })
         .filter((ext): ext is string => ext.length > 0);
 
@@ -205,25 +209,19 @@ export class FileTypeRegistry {
         allExtensionsSet.add(ext);
       }
       if (cleanedExts.length > 0) {
-        filters.push({
-          name: desc.name,
-          extensions: cleanedExts
-        });
+        filters.push({ name: desc.name, extensions: cleanedExts });
       }
     }
 
     const allExtensions = Array.from(allExtensionsSet);
     if (allExtensions.length > 0) {
       filters.unshift({
-        name: 'All Supported Formats',
-        extensions: allExtensions
+        name: "All Supported Formats",
+        extensions: allExtensions,
       });
     }
 
-    filters.push({
-      name: 'All Files (*.*)',
-      extensions: ['*']
-    });
+    filters.push({ name: "All Files (*.*)", extensions: ["*"] });
 
     return filters;
   }
@@ -239,7 +237,9 @@ export class FileTypeRegistry {
    * @param {string} targetPath - Absolute path of file or directory container to inspect.
    * @returns {Promise<FileTypeDescriptor | undefined>} Matched format descriptor or undefined if unidentifiable.
    */
-  public async identifyFile(targetPath: string): Promise<FileTypeDescriptor | undefined> {
+  public async identifyFile(
+    targetPath: string
+  ): Promise<FileTypeDescriptor | undefined> {
     try {
       const stats = await fs.stat(targetPath);
 
@@ -247,7 +247,10 @@ export class FileTypeRegistry {
       if (stats.isDirectory()) {
         const ext = path.extname(targetPath).toLowerCase();
         for (const desc of this.descriptors.values()) {
-          if (desc.isDirectoryContainer && desc.primaryExtensions.includes(ext)) {
+          if (
+            desc.isDirectoryContainer
+            && desc.primaryExtensions.includes(ext)
+          ) {
             return desc;
           }
         }
@@ -319,7 +322,7 @@ export class FileTypeRegistry {
     // Check composite extensions first (e.g. .osm.pbf)
     for (const desc of this.descriptors.values()) {
       for (const ext of desc.primaryExtensions) {
-        if (ext.includes('.') && lowerName.endsWith(ext.toLowerCase())) {
+        if (ext.includes(".") && lowerName.endsWith(ext.toLowerCase())) {
           return desc;
         }
       }
@@ -353,7 +356,7 @@ export class FileTypeRegistry {
     filePath: string,
     fileSize: number
   ): Promise<FileTypeDescriptor | undefined> {
-    const handle = await fs.open(filePath, 'r');
+    const handle = await fs.open(filePath, "r");
     const headerBuffer = Buffer.alloc(Math.min(128, fileSize));
 
     try {

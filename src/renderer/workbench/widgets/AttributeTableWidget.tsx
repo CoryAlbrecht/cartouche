@@ -82,10 +82,7 @@ export { parseNumericInput };
  * @typedef {'all' | 'selected' | 'visible' | 'edited_new'} AttributeTableFilterMode
  */
 export type AttributeTableFilterMode =
-  | "all"
-  | "selected"
-  | "visible"
-  | "edited_new";
+  "all" | "selected" | "visible" | "edited_new";
 
 /**
  * Recursively traverses coordinate arrays or structures to compute a feature's spatial extent envelope [minX, minY, maxX, maxY].
@@ -108,9 +105,9 @@ export function getFeatureBoundingBox(coords: unknown): BoundingBox | null {
   function traverse(item: unknown) {
     if (!Array.isArray(item)) return;
     if (
-      item.length >= 2 &&
-      typeof item[0] === "number" &&
-      typeof item[1] === "number"
+      item.length >= 2
+      && typeof item[0] === "number"
+      && typeof item[1] === "number"
     ) {
       const x = item[0];
       const y = item[1];
@@ -128,10 +125,10 @@ export function getFeatureBoundingBox(coords: unknown): BoundingBox | null {
   traverse(coords);
 
   if (
-    minX === Infinity ||
-    minY === Infinity ||
-    maxX === -Infinity ||
-    maxY === -Infinity
+    minX === Infinity
+    || minY === Infinity
+    || maxX === -Infinity
+    || maxY === -Infinity
   ) {
     return null;
   }
@@ -175,13 +172,13 @@ export function isFeatureInExtent(
  */
 export function computeAttributeTableMinHeight(): string {
   return (
-    "calc(" +
-    "var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px + " +
-    "var(--cartouche-ui-icon-size, 24px) * 0.667 + 12px + " +
-    "var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 8px + " +
-    "2 * (var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 8px) + " +
-    "var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 16px" +
-    ")"
+    "calc("
+    + "var(--cartouche-ui-icon-size, 24px) * 0.8 + 8px + "
+    + "var(--cartouche-ui-icon-size, 24px) * 0.667 + 12px + "
+    + "var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 8px + "
+    + "2 * (var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 8px) + "
+    + "var(--cartouche-ui-basefont-size, 12pt) * 1.5 + 16px"
+    + ")"
   );
 }
 
@@ -250,9 +247,9 @@ export function deserializeQueryExtentFeatures(
           try {
             const geom = wkbFormat.readGeometry(bytes);
             if (geom) {
-              geometryType = (geom.getType?.() ||
-                fallbackGeometryKind ||
-                "Unknown") as GeometryKind;
+              geometryType = (geom.getType?.()
+                || fallbackGeometryKind
+                || "Unknown") as GeometryKind;
               coordinates = (geom as any).getCoordinates?.() ?? null;
             }
           } catch {
@@ -260,9 +257,9 @@ export function deserializeQueryExtentFeatures(
           }
         }
       } else if (f.geojson && typeof f.geojson === "object") {
-        geometryType = (f.geojson.type ||
-          fallbackGeometryKind ||
-          "Unknown") as GeometryKind;
+        geometryType = (f.geojson.type
+          || fallbackGeometryKind
+          || "Unknown") as GeometryKind;
         coordinates = f.geojson.coordinates ?? null;
       }
 
@@ -281,8 +278,8 @@ export function deserializeQueryExtentFeatures(
     if (result.buffer instanceof ArrayBuffer) {
       buffer = result.buffer;
     } else if (
-      typeof ArrayBuffer !== "undefined" &&
-      ArrayBuffer.isView(result.buffer)
+      typeof ArrayBuffer !== "undefined"
+      && ArrayBuffer.isView(result.buffer)
     ) {
       const view = result.buffer as ArrayBufferView;
       const copy = new Uint8Array(view.byteLength);
@@ -316,9 +313,9 @@ export function deserializeQueryExtentFeatures(
           try {
             const geom = wkbFormat.readGeometry(wkbSlice);
             if (geom) {
-              geometryType = (geom.getType?.() ||
-                fallbackGeometryKind ||
-                "Unknown") as GeometryKind;
+              geometryType = (geom.getType?.()
+                || fallbackGeometryKind
+                || "Unknown") as GeometryKind;
               coordinates = (geom as any).getCoordinates?.() ?? null;
             }
           } catch {
@@ -678,7 +675,10 @@ function pad2(n: number): string {
  * @param {TemporalFieldType} fieldType - The field's temporal type.
  * @returns {string} The input's initial text.
  */
-function temporalInputText(value: unknown, fieldType: TemporalFieldType): string {
+function temporalInputText(
+  value: unknown,
+  fieldType: TemporalFieldType
+): string {
   const parsed =
     fieldType === "date" ? parseDateValue(value)
     : fieldType === "time" ? parseTimeValue(value)
@@ -745,7 +745,9 @@ function TemporalEditor({
  * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
  * @returns {React.ReactElement} The editor.
  */
-function DateEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+function DateEditor(
+  props: TableCellEditorProps<AttributeTableRow>
+): React.ReactElement {
   return <TemporalEditor {...props} fieldType='date' />;
 }
 
@@ -759,7 +761,9 @@ function DateEditor(props: TableCellEditorProps<AttributeTableRow>): React.React
  * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
  * @returns {React.ReactElement} The editor.
  */
-function TimeEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+function TimeEditor(
+  props: TableCellEditorProps<AttributeTableRow>
+): React.ReactElement {
   return <TemporalEditor {...props} fieldType='time' />;
 }
 
@@ -773,7 +777,9 @@ function TimeEditor(props: TableCellEditorProps<AttributeTableRow>): React.React
  * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
  * @returns {React.ReactElement} The editor.
  */
-function DateTimeEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+function DateTimeEditor(
+  props: TableCellEditorProps<AttributeTableRow>
+): React.ReactElement {
   return <TemporalEditor {...props} fieldType='datetime' />;
 }
 
@@ -805,7 +811,8 @@ function BooleanEditor({
    * @param {TableEditMove} [move] - Where to move after committing.
    * @returns {void}
    */
-  const commit = (move?: TableEditMove): void => onCommit(text === "true", move);
+  const commit = (move?: TableEditMove): void =>
+    onCommit(text === "true", move);
   return (
     <Select<"true" | "false">
       ref={selectRef}
@@ -833,13 +840,18 @@ function BooleanEditor({
  * @param {TableCellEditorProps<AttributeTableRow>} props - Component properties.
  * @returns {React.ReactElement} The editor.
  */
-function IntegerEditor(props: TableCellEditorProps<AttributeTableRow>): React.ReactElement {
+function IntegerEditor(
+  props: TableCellEditorProps<AttributeTableRow>
+): React.ReactElement {
   const { onCommit } = props;
   return (
     <TableNumberEditor
       {...props}
       onCommit={(newValue, move) =>
-        onCommit(typeof newValue === "number" ? Math.trunc(newValue) : newValue, move)
+        onCommit(
+          typeof newValue === "number" ? Math.trunc(newValue) : newValue,
+          move
+        )
       }
     />
   );
@@ -887,7 +899,10 @@ function editorForField(
  * @param {ReadonlySet<TableRowId>} b - Second set.
  * @returns {boolean} True when both hold the same IDs.
  */
-function sameIds(a: ReadonlySet<TableRowId>, b: ReadonlySet<TableRowId>): boolean {
+function sameIds(
+  a: ReadonlySet<TableRowId>,
+  b: ReadonlySet<TableRowId>
+): boolean {
   if (a.size !== b.size) return false;
   for (const id of a) if (!b.has(id)) return false;
   return true;
@@ -910,7 +925,10 @@ const ROW_INDEX_COLUMN_KEY = "__counter__";
  * @param {string} fidColumnName - The layer's stored ID column name, empty when it has none.
  * @returns {string | null} The field name, or null when the column cannot be sorted by a field.
  */
-function sortFieldForColumn(columnKey: string, fidColumnName: string): string | null {
+function sortFieldForColumn(
+  columnKey: string,
+  fidColumnName: string
+): string | null {
   if (columnKey === ID_COLUMN_KEY) return fidColumnName || null;
   if (columnKey === ROW_INDEX_COLUMN_KEY) return null;
   return columnKey;
@@ -955,8 +973,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const selectedIds = selectedFeatureIdsSignal.value;
   const maxRows = Math.max(1, prefsAttributeTableMaxRows.value || 5000);
 
-  const [filterMode, setFilterMode] =
-    useState<AttributeTableFilterMode>("all");
+  const [filterMode, setFilterMode] = useState<AttributeTableFilterMode>("all");
   const [pageStart, setPageStart] = useState<number>(0);
   const [chunkTotalMatched, setChunkTotalMatched] = useState<number | null>(
     null
@@ -1029,11 +1046,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const viewportKey =
     filterMode === "visible" ? viewportExtentSignal.value.join(",") : "";
   const filterIdsKey =
-    filterMode === "selected"
-      ? Array.from(selectedIds).join(",")
-      : filterMode === "edited_new"
-      ? Array.from(editedFeatureIdsSignal.value).join(",")
-      : "";
+    filterMode === "selected" ? Array.from(selectedIds).join(",")
+    : filterMode === "edited_new" ?
+      Array.from(editedFeatureIdsSignal.value).join(",")
+    : "";
 
   // Hydrate single chunk from Geospatial Worker via window.electronAPI.queryExtent when available
   useEffect(() => {
@@ -1044,7 +1060,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     let cancelled = false;
     const targetLayerId = activeLayer.id;
     const querySort = tableSort;
-    const fallbackKind = (activeLayer.geometryKind || "Unknown") as GeometryKind;
+    const fallbackKind = (activeLayer.geometryKind
+      || "Unknown") as GeometryKind;
 
     Promise.resolve(
       queryFn(targetLayerId, {
@@ -1052,15 +1069,15 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
         max: maxRows,
         includeGeometry: true,
         fields: undefined,
-        ...(filterMode === "visible"
-          ? { extent: viewportExtentSignal.value }
-          : {}),
-        ...(filterMode === "selected"
-          ? { featureIds: Array.from(selectedFeatureIdsSignal.value) }
-          : {}),
-        ...(filterMode === "edited_new"
-          ? { featureIds: Array.from(editedFeatureIdsSignal.value) }
-          : {}),
+        ...(filterMode === "visible" ?
+          { extent: viewportExtentSignal.value }
+        : {}),
+        ...(filterMode === "selected" ?
+          { featureIds: Array.from(selectedFeatureIdsSignal.value) }
+        : {}),
+        ...(filterMode === "edited_new" ?
+          { featureIds: Array.from(editedFeatureIdsSignal.value) }
+        : {}),
         ...(orderBy.length > 0 ? { orderBy } : {}),
       })
     )
@@ -1095,7 +1112,15 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     return () => {
       cancelled = true;
     };
-  }, [activeLayer?.id, pageStart, maxRows, filterMode, viewportKey, filterIdsKey, orderByKey]);
+  }, [
+    activeLayer?.id,
+    pageStart,
+    maxRows,
+    filterMode,
+    viewportKey,
+    filterIdsKey,
+    orderByKey,
+  ]);
 
   const filteredFeatures = features.filter((feature) => {
     switch (filterMode) {
@@ -1113,19 +1138,22 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const hasIpcQueryExtent =
     typeof (globalThis as any).window?.electronAPI?.queryExtent === "function";
-  const sortField = sort ? sortFieldForColumn(sort.columnKey, fidColumnName) : null;
+  const sortField =
+    sort ? sortFieldForColumn(sort.columnKey, fidColumnName) : null;
   const displayedFeatures =
-    hasIpcQueryExtent
-      ? filteredFeatures
-      : (sort && sortField
-          ? sortTableRows(
-              filteredFeatures,
-              (feature) =>
-                sort.columnKey === ID_COLUMN_KEY ? feature.id : feature.properties[sortField],
-              sort.direction
-            )
-          : filteredFeatures
-        ).slice(pageStart, pageStart + maxRows);
+    hasIpcQueryExtent ? filteredFeatures : (
+      (sort && sortField ?
+        sortTableRows(
+          filteredFeatures,
+          (feature) =>
+            sort.columnKey === ID_COLUMN_KEY ?
+              feature.id
+            : feature.properties[sortField],
+          sort.direction
+        )
+      : filteredFeatures
+      ).slice(pageStart, pageStart + maxRows)
+    );
 
   // When a chunk loads or the feature selection changes (e.g. on the map), show the displayed part of the selection
   useEffect(() => {
@@ -1141,14 +1169,13 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   const layerTotalCount = (activeLayer as any)?.featureCount;
   const totalFeatureCount =
-    filterMode === "all"
-      ? chunkTotalMatched ??
-        (typeof layerTotalCount === "number" && layerTotalCount > 0
-          ? layerTotalCount
-          : features.length)
-      : chunkTotalMatched !== null
-      ? chunkTotalMatched
-      : filteredFeatures.length;
+    filterMode === "all" ?
+      (chunkTotalMatched
+      ?? (typeof layerTotalCount === "number" && layerTotalCount > 0 ?
+        layerTotalCount
+      : features.length))
+    : chunkTotalMatched !== null ? chunkTotalMatched
+    : filteredFeatures.length;
 
   const displayName =
     activeLayer ?
@@ -1159,8 +1186,7 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
     : t("attribute_table_title");
 
   const schemaFields = (activeLayer as any)?.fields as
-    | LayerFieldInfo[]
-    | undefined;
+    LayerFieldInfo[] | undefined;
 
   const fieldTypesMap = useMemo(() => {
     const map: Record<string, InferredFieldType> = {};
@@ -1174,7 +1200,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
 
   /** Names of the layer's Virtual Fields, whose columns cannot be sorted: a Virtual Field cannot be a Sort Key (Ticket #330). */
   const virtualFieldNames = useMemo(
-    () => new Set((schemaFields ?? []).filter((f) => f.isVirtual).map((f) => f.name)),
+    () =>
+      new Set(
+        (schemaFields ?? []).filter((f) => f.isVirtual).map((f) => f.name)
+      ),
     [schemaFields]
   );
 
@@ -1203,7 +1232,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const isLayerEditable =
     activeLayer ? editableLayerIdsSignal.value.has(activeLayer.id) : false;
 
-  const identityColKey = hasGuaranteedFid ? ID_COLUMN_KEY : ROW_INDEX_COLUMN_KEY;
+  const identityColKey =
+    hasGuaranteedFid ? ID_COLUMN_KEY : ROW_INDEX_COLUMN_KEY;
   const identityTitle =
     hasGuaranteedFid ?
       fidColumnName.toLowerCase() === "id" ?
@@ -1265,7 +1295,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
    * @param {TableSelectionChange} change - The embedded table's selection change.
    * @returns {void}
    */
-  const handleSelectionChange = ({ kind, rowIds }: TableSelectionChange): void => {
+  const handleSelectionChange = ({
+    kind,
+    rowIds,
+  }: TableSelectionChange): void => {
     const current = selectedFeatureIdsSignal.peek();
     let next: Set<string | number>;
     if (kind === "replace") {
@@ -1312,7 +1345,11 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
    * @param {TableCellEdit} edit - The committed edit.
    * @returns {boolean} False when the edit is rejected (the layer is not editable).
    */
-  const handleCellEdit = ({ rowId, columnKey, newValue }: TableCellEdit): boolean => {
+  const handleCellEdit = ({
+    rowId,
+    columnKey,
+    newValue,
+  }: TableCellEdit): boolean => {
     if (!activeLayer || !isLayerEditable) return false;
     const layerId = activeLayer.id;
 
@@ -1352,8 +1389,8 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
   const isFirstDisabled = pageStart <= 0;
   const isPrevDisabled = pageStart <= 0;
   const isNextDisabled =
-    pageStart + maxRows >= totalFeatureCount ||
-    displayedFeatures.length < maxRows;
+    pageStart + maxRows >= totalFeatureCount
+    || displayedFeatures.length < maxRows;
   const isLastDisabled =
     pageStart + maxRows >= totalFeatureCount || totalFeatureCount <= 0;
   const lastPageStart = Math.max(
@@ -1497,7 +1534,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_first")}
                   disabled={isFirstDisabled}
                   onClick={() => setPageStart(0)}>
-                  <Icon path={mdiPageFirst} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+                  <Icon
+                    path={mdiPageFirst}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1508,7 +1548,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   onClick={() =>
                     setPageStart(Math.max(0, pageStart - maxRows))
                   }>
-                  <Icon path={mdiChevronLeft} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+                  <Icon
+                    path={mdiChevronLeft}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1517,7 +1560,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_next")}
                   disabled={isNextDisabled}
                   onClick={() => setPageStart(pageStart + maxRows)}>
-                  <Icon path={mdiChevronRight} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+                  <Icon
+                    path={mdiChevronRight}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  />
                 </button>
                 <button
                   type='button'
@@ -1526,7 +1572,10 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
                   title={t("attribute_table_page_last")}
                   disabled={isLastDisabled}
                   onClick={() => setPageStart(lastPageStart)}>
-                  <Icon path={mdiPageLast} size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)' />
+                  <Icon
+                    path={mdiPageLast}
+                    size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
+                  />
                 </button>
               </div>
             </div>

@@ -11,14 +11,17 @@
  * @see {@link ProjectLoaderRegistry}
  */
 
-import path from 'node:path';
-import { projectStore } from '../../project/ProjectStore';
-import { projectLoaderRegistry } from '../../project/loaders/ProjectLoaderRegistry';
-import { serializeProjectLayersTree, broadcastProjectMetadata } from '../../project/ProjectBroadcaster';
-import type { ProjectViewport, ProjectTimeFilterConfig } from '@shared/types';
-import { logging } from '../../../shared/logging';
-import { isDefaultProjectTitle } from '../../../shared/project/projectTitle';
-import { completeProjectCrs } from '../../project/projectCrs';
+import path from "node:path";
+import { projectStore } from "../../project/ProjectStore";
+import { projectLoaderRegistry } from "../../project/loaders/ProjectLoaderRegistry";
+import {
+  serializeProjectLayersTree,
+  broadcastProjectMetadata,
+} from "../../project/ProjectBroadcaster";
+import type { ProjectViewport, ProjectTimeFilterConfig } from "@shared/types";
+import { logging } from "../../../shared/logging";
+import { isDefaultProjectTitle } from "../../../shared/project/projectTitle";
+import { completeProjectCrs } from "../../project/projectCrs";
 
 /**
  * @description Saves current active Cartouche project state to its destination file path.
@@ -41,30 +44,37 @@ export default async function saveProject(
 ): Promise<boolean> {
   const destination = targetPath || projectStore.getFilePath();
   if (!destination) {
-    logging.warn('Save project failed: no destination file path specified for untitled project', { scope: 'saveProject' });
+    logging.warn(
+      "Save project failed: no destination file path specified for untitled project",
+      { scope: "saveProject" }
+    );
     return false;
   }
 
   let project = projectStore.getProject();
   if (!project) {
-    const baseName = path.basename(destination, path.extname(destination)) || 'Untitled Project';
+    const baseName =
+      path.basename(destination, path.extname(destination))
+      || "Untitled Project";
     project = {
-      format: 'cartouche-xml',
-      pathMode: 'relative',
+      format: "cartouche-xml",
+      pathMode: "relative",
       metadata: {
         title: baseName,
-        appVersion: '0.1.0-dev',
+        appVersion: "0.1.0-dev",
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       },
-      layers: []
+      layers: [],
     };
     projectStore.setProject(project, destination);
   }
 
   const saver = await projectLoaderRegistry.getSaverForFile(destination);
   if (!saver) {
-    throw new Error(`No compatible saver found for destination: "${destination}".`);
+    throw new Error(
+      `No compatible saver found for destination: "${destination}".`
+    );
   }
 
   // Update in-memory project model layers from runtime layer tree
@@ -99,10 +109,10 @@ export default async function saveProject(
   // Broadcast updated metadata if title or updatedAt changed
   broadcastProjectMetadata(project.metadata);
 
-  logging.info('Project saved successfully', {
+  logging.info("Project saved successfully", {
     title: project.metadata.title,
     path: destination,
-    scope: 'saveProject'
+    scope: "saveProject",
   });
   return true;
 }

@@ -8,21 +8,21 @@
  * @since 0.1.0-dev
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { CartoucheXmlLoader } from '../../../src/main/project/loaders/CartoucheXmlLoader';
-import { projectLoaderRegistry } from '../../../src/main/project/loaders/ProjectLoaderRegistry';
-import type { ProjectModel } from '../../../src/shared/types';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { CartoucheXmlLoader } from "../../../src/main/project/loaders/CartoucheXmlLoader";
+import { projectLoaderRegistry } from "../../../src/main/project/loaders/ProjectLoaderRegistry";
+import type { ProjectModel } from "../../../src/shared/types";
 
-describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
+describe("CartoucheXmlLoader & ProjectLoaderRegistry", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-test-"));
   });
 
   afterEach(() => {
@@ -38,219 +38,232 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
   /**
    * Helper to validate XML string against project.xsd schema via xmllint.
    */
-  function validateXmlAgainstSchema(xml: string): { valid: boolean; error?: string } {
-    const res = spawnSync('xmllint', ['--noout', '--schema', 'assets/xml/schemas/project.xsd', '-'], {
-      input: xml,
-      encoding: 'utf-8'
-    });
+  function validateXmlAgainstSchema(xml: string): {
+    valid: boolean;
+    error?: string;
+  } {
+    const res = spawnSync(
+      "xmllint",
+      ["--noout", "--schema", "assets/xml/schemas/project.xsd", "-"],
+      { input: xml, encoding: "utf-8" }
+    );
     if (res.status === 0) {
       return { valid: true };
     }
     return { valid: false, error: res.stderr || res.stdout };
   }
 
-  it('canLoad and canSave identify supported Cartouche project extensions', () => {
+  it("canLoad and canSave identify supported Cartouche project extensions", () => {
     const loader = new CartoucheXmlLoader();
-    assert.equal(loader.canLoad('/path/to/project.cproj'), true);
-    assert.equal(loader.canLoad('/path/to/project.cartouche'), true);
-    assert.equal(loader.canLoad('/path/to/project.xml'), false); // Without inspectable header, returns false
-    assert.equal(loader.canLoad('/path/to/project.txt'), false);
+    assert.equal(loader.canLoad("/path/to/project.cproj"), true);
+    assert.equal(loader.canLoad("/path/to/project.cartouche"), true);
+    assert.equal(loader.canLoad("/path/to/project.xml"), false); // Without inspectable header, returns false
+    assert.equal(loader.canLoad("/path/to/project.txt"), false);
 
-    assert.equal(loader.canSave('/path/to/project.cproj'), true);
-    assert.equal(loader.canSave('/path/to/project.cartouche'), true);
-    assert.equal(loader.canSave('/path/to/project.xml'), true);
-    assert.equal(loader.canSave('/path/to/project.txt'), false);
+    assert.equal(loader.canSave("/path/to/project.cproj"), true);
+    assert.equal(loader.canSave("/path/to/project.cartouche"), true);
+    assert.equal(loader.canSave("/path/to/project.xml"), true);
+    assert.equal(loader.canSave("/path/to/project.txt"), false);
   });
 
-  it('ProjectLoaderRegistry resolves loader and saver for project paths', async () => {
-    const loader = await projectLoaderRegistry.getLoaderForFile('test.cproj');
+  it("ProjectLoaderRegistry resolves loader and saver for project paths", async () => {
+    const loader = await projectLoaderRegistry.getLoaderForFile("test.cproj");
     assert.ok(loader);
-    assert.equal(loader.id, 'cartouche-xml');
+    assert.equal(loader.id, "cartouche-xml");
 
-    const saver = await projectLoaderRegistry.getSaverForFile('test.cproj');
+    const saver = await projectLoaderRegistry.getSaverForFile("test.cproj");
     assert.ok(saver);
-    assert.equal(saver.id, 'cartouche-xml');
+    assert.equal(saver.id, "cartouche-xml");
 
-    const unknownSaver = await projectLoaderRegistry.getSaverForFile('test.unsupported');
+    const unknownSaver =
+      await projectLoaderRegistry.getSaverForFile("test.unsupported");
     assert.equal(unknownSaver, null);
   });
 
-  it('serializes ProjectModel strictly conforming to project.xsd', () => {
+  it("serializes ProjectModel strictly conforming to project.xsd", () => {
     const loader = new CartoucheXmlLoader();
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Schema Test Project',
-        creator: 'Cory Albrecht',
-        description: 'Test project description conforming to Dublin Core.',
-        date: '2026-10-13',
-        createdAt: '2026-10-13T12:00:00.000Z',
-        updatedAt: '2026-10-13T13:00:00.000Z',
-        appVersion: '0.1.0-dev'
+        title: "Schema Test Project",
+        creator: "Cory Albrecht",
+        description: "Test project description conforming to Dublin Core.",
+        date: "2026-10-13",
+        createdAt: "2026-10-13T12:00:00.000Z",
+        updatedAt: "2026-10-13T13:00:00.000Z",
+        appVersion: "0.1.0-dev",
       },
       crs: {
-        authId: 'EPSG:4326',
+        authId: "EPSG:4326",
         srid: 4326,
-        description: 'WGS 84',
-        proj4: '+proj=longlat +datum=WGS84 +no_defs',
-        wkt: 'GEOGCS["WGS 84"]'
+        description: "WGS 84",
+        proj4: "+proj=longlat +datum=WGS84 +no_defs",
+        wkt: 'GEOGCS["WGS 84"]',
       },
       viewport: {
         extent: { xmin: -180, ymin: -90, xmax: 180, ymax: 90 },
         center: { x: 0, y: 0 },
         scale: 1000000,
-        rotation: 0
+        rotation: 0,
       },
       layers: [
         {
-          id: 'layer-1',
-          name: 'World Coastlines',
-          type: 'esri-shapefile',
-          source: '../test/files/ne_10m_coastline.shp',
+          id: "layer-1",
+          name: "World Coastlines",
+          type: "esri-shapefile",
+          source: "../test/files/ne_10m_coastline.shp",
           visible: true,
           readOnly: false,
-          layerKind: 'vector',
-          geometryKind: 'Polygon',
+          layerKind: "vector",
+          geometryKind: "Polygon",
           opacity: 0.9,
           selectable: true,
-          style: { href: '#coastline-style' }
+          style: { href: "#coastline-style" },
         },
         {
-          id: 'group-water',
-          name: 'Water Features',
+          id: "group-water",
+          name: "Water Features",
           visible: true,
           expanded: true,
           children: [
             {
-              id: 'layer-2',
-              name: 'Lakes',
-              type: 'esri-shapefile',
-              source: '../test/files/ne_10m_lakes.shp',
+              id: "layer-2",
+              name: "Lakes",
+              type: "esri-shapefile",
+              source: "../test/files/ne_10m_lakes.shp",
               visible: false,
               opacity: 0.75,
               selectable: true,
-              style: { content: '{"color": "blue"}' }
-            }
-          ]
-        }
+              style: { content: '{"color": "blue"}' },
+            },
+          ],
+        },
       ],
       styles: [
-        {
-          id: 'coastline-style',
-          content: '{"stroke": "#000", "width": 1}'
-        }
+        { id: "coastline-style", content: '{"stroke": "#000", "width": 1}' },
       ],
-      customProperties: {
-        theme: 'light',
-        autoSaveIntervalMinutes: 5
-      }
+      customProperties: { theme: "light", autoSaveIntervalMinutes: 5 },
     };
 
     const xml = loader.serializeToXml(model);
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error: ${validation.error}`
+    );
   });
 
-  it('serializes empty layers collection strictly conforming to project.xsd', () => {
+  it("serializes empty layers collection strictly conforming to project.xsd", () => {
     const loader = new CartoucheXmlLoader();
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: {
-        title: 'Empty Layers Template',
-        appVersion: '0.1.0-dev'
-      },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Empty Layers Template", appVersion: "0.1.0-dev" },
+      layers: [],
     };
 
     const xml = loader.serializeToXml(model);
-    assert.ok(xml.includes('<layers>'), 'XML must contain opening <layers> tag');
-    assert.ok(xml.includes('</layers>'), 'XML must contain closing </layers> tag');
+    assert.ok(
+      xml.includes("<layers>"),
+      "XML must contain opening <layers> tag"
+    );
+    assert.ok(
+      xml.includes("</layers>"),
+      "XML must contain closing </layers> tag"
+    );
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error for empty layers: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error for empty layers: ${validation.error}`
+    );
   });
 
-  it('losslessly roundtrips metadata, viewport, CRS, nested layers, and styles through save() and load()', async () => {
+  it("losslessly roundtrips metadata, viewport, CRS, nested layers, and styles through save() and load()", async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.join(tempDir, 'temp-roundtrip-test.cproj');
+    const tempPath = path.join(tempDir, "temp-roundtrip-test.cproj");
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Roundtrip Test',
-        creator: 'Cory Albrecht',
-        description: 'Testing bidirectional persistence.',
-        date: '2026-10-13',
-        createdAt: '2026-10-13T10:00:00.000Z',
-        updatedAt: '2026-10-13T14:30:00.000Z',
-        appVersion: '0.1.0-dev'
+        title: "Roundtrip Test",
+        creator: "Cory Albrecht",
+        description: "Testing bidirectional persistence.",
+        date: "2026-10-13",
+        createdAt: "2026-10-13T10:00:00.000Z",
+        updatedAt: "2026-10-13T14:30:00.000Z",
+        appVersion: "0.1.0-dev",
       },
       crs: {
-        authId: 'EPSG:3857',
+        authId: "EPSG:3857",
         srid: 3857,
-        description: 'Pseudo-Mercator',
-        proj4: '+proj=merc +a=6378137 +b=6378137',
-        wkt: 'PROJCS["WGS 84 / Pseudo-Mercator"]'
+        description: "Pseudo-Mercator",
+        proj4: "+proj=merc +a=6378137 +b=6378137",
+        wkt: 'PROJCS["WGS 84 / Pseudo-Mercator"]',
       },
       viewport: {
         extent: { xmin: -120, ymin: 30, xmax: -80, ymax: 60 },
         center: { x: -100, y: 45 },
         scale: 250000,
-        rotation: 0.25
+        rotation: 0.25,
       },
       layers: [
         {
-          id: 'layer-rivers',
-          name: 'Rivers',
-          type: 'geojson',
-          source: '/data/rivers.geojson',
+          id: "layer-rivers",
+          name: "Rivers",
+          type: "geojson",
+          source: "/data/rivers.geojson",
           visible: true,
           readOnly: true,
-          layerKind: 'vector',
-          geometryKind: 'LineString',
+          layerKind: "vector",
+          geometryKind: "LineString",
           opacity: 0.85,
           selectable: false,
           style: { content: '{"stroke": "cyan"}' },
-          crs: { authId: 'EPSG:4326', srid: 4326 },
-          customProperties: { sourceUrl: 'https://example.com/rivers', maxFeatureCount: 500 }
+          crs: { authId: "EPSG:4326", srid: 4326 },
+          customProperties: {
+            sourceUrl: "https://example.com/rivers",
+            maxFeatureCount: 500,
+          },
         },
         {
-          id: 'group-admin',
-          name: 'Administrative Boundaries',
+          id: "group-admin",
+          name: "Administrative Boundaries",
           visible: true,
           expanded: false,
           children: [
             {
-              id: 'group-states',
-              name: 'States & Provinces',
+              id: "group-states",
+              name: "States & Provinces",
               visible: false,
               expanded: true,
               children: [
                 {
-                  id: 'layer-provinces',
-                  name: 'Provinces',
-                  type: 'esri-shapefile',
-                  source: '/data/provinces.shp',
+                  id: "layer-provinces",
+                  name: "Provinces",
+                  type: "esri-shapefile",
+                  source: "/data/provinces.shp",
                   visible: false,
                   opacity: 0.5,
                   selectable: true,
-                  style: { href: '#admin-style' }
-                }
-              ]
-            }
-          ]
-        }
+                  style: { href: "#admin-style" },
+                },
+              ],
+            },
+          ],
+        },
       ],
       styles: [
         {
-          id: 'admin-style',
-          content: '{"stroke": "#333", "fill": "rgba(200, 200, 200, 0.5)"}'
-        }
+          id: "admin-style",
+          content: '{"stroke": "#333", "fill": "rgba(200, 200, 200, 0.5)"}',
+        },
       ],
       customProperties: {
-        projectAuthorEmail: 'cory@albrecht.name',
+        projectAuthorEmail: "cory@albrecht.name",
         versionCode: 42,
-        isPublic: false
-      }
+        isPublic: false,
+      },
     };
 
     // Save to disk
@@ -259,28 +272,38 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(model.filePath, tempPath);
 
     // Verify disk content passes XSD schema
-    const rawXml = fs.readFileSync(tempPath, 'utf-8');
-    assert.ok(!rawXml.includes('<zoom>'), 'Serialized XML must not contain <zoom> element');
+    const rawXml = fs.readFileSync(tempPath, "utf-8");
+    assert.ok(
+      !rawXml.includes("<zoom>"),
+      "Serialized XML must not contain <zoom> element"
+    );
     const validation = validateXmlAgainstSchema(rawXml);
-    assert.equal(validation.valid, true, `Saved XML did not validate: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Saved XML did not validate: ${validation.error}`
+    );
 
     // Load from disk
     const loaded = await loader.load(tempPath);
 
     // Assert Metadata
-    assert.equal(loaded.metadata.title, 'Roundtrip Test');
-    assert.equal(loaded.metadata.creator, 'Cory Albrecht');
-    assert.equal(loaded.metadata.description, 'Testing bidirectional persistence.');
-    assert.equal(loaded.metadata.date, '2026-10-13');
-    assert.equal(loaded.metadata.createdAt, '2026-10-13T10:00:00.000Z');
-    assert.equal(loaded.metadata.updatedAt, '2026-10-13T14:30:00.000Z');
-    assert.equal(loaded.metadata.appVersion, '0.1.0-dev');
+    assert.equal(loaded.metadata.title, "Roundtrip Test");
+    assert.equal(loaded.metadata.creator, "Cory Albrecht");
+    assert.equal(
+      loaded.metadata.description,
+      "Testing bidirectional persistence."
+    );
+    assert.equal(loaded.metadata.date, "2026-10-13");
+    assert.equal(loaded.metadata.createdAt, "2026-10-13T10:00:00.000Z");
+    assert.equal(loaded.metadata.updatedAt, "2026-10-13T14:30:00.000Z");
+    assert.equal(loaded.metadata.appVersion, "0.1.0-dev");
 
     // Assert CRS
-    assert.equal(loaded.crs?.authId, 'EPSG:3857');
+    assert.equal(loaded.crs?.authId, "EPSG:3857");
     assert.equal(loaded.crs?.srid, 3857);
-    assert.equal(loaded.crs?.description, 'Pseudo-Mercator');
-    assert.equal(loaded.crs?.proj4, '+proj=merc +a=6378137 +b=6378137');
+    assert.equal(loaded.crs?.description, "Pseudo-Mercator");
+    assert.equal(loaded.crs?.proj4, "+proj=merc +a=6378137 +b=6378137");
     assert.equal(loaded.crs?.wkt, 'PROJCS["WGS 84 / Pseudo-Mercator"]');
 
     // Assert Viewport
@@ -298,140 +321,158 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(loaded.layers.length, 2);
 
     // Assert Layer 1
-    const l1 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l1.id, 'layer-rivers');
-    assert.equal(l1.name, 'Rivers');
-    assert.equal(l1.type, 'geojson');
-    assert.equal(l1.source, '/data/rivers.geojson');
+    const l1 = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l1.id, "layer-rivers");
+    assert.equal(l1.name, "Rivers");
+    assert.equal(l1.type, "geojson");
+    assert.equal(l1.source, "/data/rivers.geojson");
     assert.equal(l1.visible, true);
     assert.equal(l1.readOnly, true);
-    assert.equal(l1.layerKind, 'vector');
-    assert.equal(l1.geometryKind, 'LineString');
+    assert.equal(l1.layerKind, "vector");
+    assert.equal(l1.geometryKind, "LineString");
     assert.equal(l1.opacity, 0.85);
     assert.equal(l1.selectable, false);
-    assert.deepEqual(l1.style, { content: '{"stroke": "cyan"}', format: 'openlayers' });
-    assert.equal(l1.crs?.authId, 'EPSG:4326');
-    assert.equal(l1.customProperties?.sourceUrl, 'https://example.com/rivers');
+    assert.deepEqual(l1.style, {
+      content: '{"stroke": "cyan"}',
+      format: "openlayers",
+    });
+    assert.equal(l1.crs?.authId, "EPSG:4326");
+    assert.equal(l1.customProperties?.sourceUrl, "https://example.com/rivers");
     assert.equal(l1.customProperties?.maxFeatureCount, 500);
 
     // Assert Nested Group hierarchy
-    const gParent = loaded.layers[1] as import('../../../src/shared/types').ProjectGroupItem;
-    assert.equal(gParent.id, 'group-admin');
-    assert.equal(gParent.name, 'Administrative Boundaries');
+    const gParent = loaded
+      .layers[1] as import("../../../src/shared/types").ProjectGroupItem;
+    assert.equal(gParent.id, "group-admin");
+    assert.equal(gParent.name, "Administrative Boundaries");
     assert.equal(gParent.visible, true);
     assert.equal(gParent.expanded, false);
     assert.equal(gParent.children.length, 1);
 
-    const gSub = gParent.children[0] as import('../../../src/shared/types').ProjectGroupItem;
-    assert.equal(gSub.id, 'group-states');
-    assert.equal(gSub.name, 'States & Provinces');
+    const gSub = gParent
+      .children[0] as import("../../../src/shared/types").ProjectGroupItem;
+    assert.equal(gSub.id, "group-states");
+    assert.equal(gSub.name, "States & Provinces");
     assert.equal(gSub.visible, false);
     assert.equal(gSub.expanded, true);
     assert.equal(gSub.children.length, 1);
 
-    const lProvinces = gSub.children[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(lProvinces.id, 'layer-provinces');
-    assert.equal(lProvinces.name, 'Provinces');
-    assert.equal(lProvinces.source, '/data/provinces.shp');
+    const lProvinces = gSub
+      .children[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(lProvinces.id, "layer-provinces");
+    assert.equal(lProvinces.name, "Provinces");
+    assert.equal(lProvinces.source, "/data/provinces.shp");
     assert.equal(lProvinces.visible, false);
     assert.equal(lProvinces.opacity, 0.5);
     assert.equal(lProvinces.selectable, true);
-    assert.deepEqual(lProvinces.style, { href: '#admin-style', format: 'openlayers' });
+    assert.deepEqual(lProvinces.style, {
+      href: "#admin-style",
+      format: "openlayers",
+    });
 
     // Assert Styles
     assert.equal(loaded.styles?.length, 1);
-    assert.equal(loaded.styles?.[0].id, 'admin-style');
-    assert.equal(loaded.styles?.[0].format, 'openlayers');
-    assert.equal(loaded.styles?.[0].content, '{"stroke": "#333", "fill": "rgba(200, 200, 200, 0.5)"}');
+    assert.equal(loaded.styles?.[0].id, "admin-style");
+    assert.equal(loaded.styles?.[0].format, "openlayers");
+    assert.equal(
+      loaded.styles?.[0].content,
+      '{"stroke": "#333", "fill": "rgba(200, 200, 200, 0.5)"}'
+    );
 
     // Assert Custom Properties
-    assert.equal(loaded.customProperties?.projectAuthorEmail, 'cory@albrecht.name');
+    assert.equal(
+      loaded.customProperties?.projectAuthorEmail,
+      "cory@albrecht.name"
+    );
     assert.equal(loaded.customProperties?.versionCode, 42);
     assert.equal(loaded.customProperties?.isPublic, false);
   });
 
-  it('preserves interleaved <group> and <layer> sibling order across save() and load() at root and nested levels', async () => {
+  it("preserves interleaved <group> and <layer> sibling order across save() and load() at root and nested levels", async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.join(tempDir, 'temp-interleaved-order-test.cproj');
+    const tempPath = path.join(tempDir, "temp-interleaved-order-test.cproj");
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: {
-        title: 'Interleaved Order Test',
-        appVersion: '0.1.0-dev'
-      },
+      format: "cartouche-xml",
+      metadata: { title: "Interleaved Order Test", appVersion: "0.1.0-dev" },
       layers: [
         {
-          id: 'group-water',
-          name: 'Water',
+          id: "group-water",
+          name: "Water",
           visible: true,
           expanded: true,
           children: [
             {
-              id: 'subgroup-rivers',
-              name: 'Rivers Subgroup',
+              id: "subgroup-rivers",
+              name: "Rivers Subgroup",
               visible: true,
               expanded: true,
-              children: []
+              children: [],
             },
             {
-              id: 'layer-lakes',
-              name: 'Lakes',
-              type: 'esri-shapefile',
-              source: '/data/lakes.shp',
+              id: "layer-lakes",
+              name: "Lakes",
+              type: "esri-shapefile",
+              source: "/data/lakes.shp",
               visible: true,
               opacity: 1,
-              selectable: true
+              selectable: true,
             },
             {
-              id: 'subgroup-marine',
-              name: 'Marine Subgroup',
+              id: "subgroup-marine",
+              name: "Marine Subgroup",
               visible: true,
               expanded: false,
-              children: []
-            }
-          ]
+              children: [],
+            },
+          ],
         },
         {
-          id: 'layer-l0',
-          name: 'timeline_level_0',
-          type: 'geopackage-vector',
-          source: '/data/timeline_level_0.gpkg',
+          id: "layer-l0",
+          name: "timeline_level_0",
+          type: "geopackage-vector",
+          source: "/data/timeline_level_0.gpkg",
           visible: true,
           opacity: 1,
-          selectable: true
+          selectable: true,
         },
         {
-          id: 'group-land',
-          name: 'Land',
+          id: "group-land",
+          name: "Land",
           visible: true,
           expanded: true,
-          children: []
-        }
-      ]
+          children: [],
+        },
+      ],
     };
 
     await loader.save(model, tempPath);
-    const rawXml = fs.readFileSync(tempPath, 'utf-8');
+    const rawXml = fs.readFileSync(tempPath, "utf-8");
     const validation = validateXmlAgainstSchema(rawXml);
-    assert.equal(validation.valid, true, `Saved XML did not validate: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Saved XML did not validate: ${validation.error}`
+    );
 
     const loaded = await loader.load(tempPath);
     assert.deepEqual(
       loaded.layers.map((item) => item.id),
-      ['group-water', 'layer-l0', 'group-land']
+      ["group-water", "layer-l0", "group-land"]
     );
 
-    const waterGroup = loaded.layers[0] as import('../../../src/shared/types').ProjectGroupItem;
+    const waterGroup = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectGroupItem;
     assert.deepEqual(
       waterGroup.children.map((item) => item.id),
-      ['subgroup-rivers', 'layer-lakes', 'subgroup-marine']
+      ["subgroup-rivers", "layer-lakes", "subgroup-marine"]
     );
   });
 
-  it('supports backward-compatible reading of legacy xlink:href on <style>', async () => {
+  it("supports backward-compatible reading of legacy xlink:href on <style>", async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.join(tempDir, 'legacy-xlink-test.cproj');
+    const tempPath = path.join(tempDir, "legacy-xlink-test.cproj");
     const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
 <cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
   xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
@@ -453,150 +494,185 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
   </styles>
 </cartouche:project>`;
 
-    fs.writeFileSync(tempPath, legacyXml, 'utf-8');
+    fs.writeFileSync(tempPath, legacyXml, "utf-8");
     const loaded = await loader.load(tempPath);
     assert.equal(loaded.layers.length, 1);
-    const layer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.deepEqual(layer.style, { href: '#shared-legacy', format: 'openlayers' });
+    const layer = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.deepEqual(layer.style, {
+      href: "#shared-legacy",
+      format: "openlayers",
+    });
     assert.equal(loaded.styles?.length, 1);
-    assert.equal(loaded.styles?.[0].id, 'shared-legacy');
+    assert.equal(loaded.styles?.[0].id, "shared-legacy");
   });
 
   it('parses and serializes format attribute ("openlayers" and "sld") with schema validation', async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.join(tempDir, 'format-attribute-test.cproj');
+    const tempPath = path.join(tempDir, "format-attribute-test.cproj");
 
-    const sldXmlPayload = '<StyledLayerDescriptor version="1.1.0"><NamedLayer><Name>Test</Name></NamedLayer></StyledLayerDescriptor>';
+    const sldXmlPayload =
+      '<StyledLayerDescriptor version="1.1.0"><NamedLayer><Name>Test</Name></NamedLayer></StyledLayerDescriptor>';
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'SLD and OpenLayers Styles Test',
-        appVersion: '0.1.0-dev'
+        title: "SLD and OpenLayers Styles Test",
+        appVersion: "0.1.0-dev",
       },
       layers: [
         {
-          id: 'layer-sld',
-          name: 'SLD Layer',
-          type: 'geojson',
-          source: '/data/sld.geojson',
-          style: {
-            content: sldXmlPayload,
-            format: 'sld'
-          }
+          id: "layer-sld",
+          name: "SLD Layer",
+          type: "geojson",
+          source: "/data/sld.geojson",
+          style: { content: sldXmlPayload, format: "sld" },
         },
         {
-          id: 'layer-ref',
-          name: 'Referenced Style Layer',
-          type: 'geojson',
-          source: '/data/ref.geojson',
-          style: {
-            href: '#shared-sld',
-            format: 'sld'
-          }
-        }
+          id: "layer-ref",
+          name: "Referenced Style Layer",
+          type: "geojson",
+          source: "/data/ref.geojson",
+          style: { href: "#shared-sld", format: "sld" },
+        },
       ],
-      styles: [
-        {
-          id: 'shared-sld',
-          format: 'sld',
-          content: sldXmlPayload
-        }
-      ]
+      styles: [{ id: "shared-sld", format: "sld", content: sldXmlPayload }],
     };
 
     const xml = loader.serializeToXml(model);
-    assert.ok(xml.includes('format="sld"'), 'Serialized XML must include format="sld"');
-    assert.ok(xml.includes('href="#shared-sld"'), 'Serialized XML must include standard href attribute');
-    assert.ok(!xml.includes('xmlns:xlink'), 'Serialized XML must not include xlink namespace');
+    assert.ok(
+      xml.includes('format="sld"'),
+      'Serialized XML must include format="sld"'
+    );
+    assert.ok(
+      xml.includes('href="#shared-sld"'),
+      "Serialized XML must include standard href attribute"
+    );
+    assert.ok(
+      !xml.includes("xmlns:xlink"),
+      "Serialized XML must not include xlink namespace"
+    );
 
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error for format attribute: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error for format attribute: ${validation.error}`
+    );
 
     await loader.save(model, tempPath);
     const loaded = await loader.load(tempPath);
 
-    const lSld = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.deepEqual(lSld.style, { content: sldXmlPayload, format: 'sld' });
+    const lSld = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.deepEqual(lSld.style, { content: sldXmlPayload, format: "sld" });
 
-    const lRef = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.deepEqual(lRef.style, { href: '#shared-sld', format: 'sld' });
+    const lRef = loaded
+      .layers[1] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.deepEqual(lRef.style, { href: "#shared-sld", format: "sld" });
 
     assert.equal(loaded.styles?.length, 1);
-    assert.equal(loaded.styles?.[0].format, 'sld');
+    assert.equal(loaded.styles?.[0].format, "sld");
     assert.equal(loaded.styles?.[0].content, sldXmlPayload);
   });
 
   it('parses and serializes format="cartouche" on inline and shared styles with schema validation', async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.join(tempDir, 'format-cartouche-test.cproj');
+    const tempPath = path.join(tempDir, "format-cartouche-test.cproj");
 
-    const cartoucheJson = JSON.stringify({
-      format: 'simple',
-      version: 1,
-      components: [
-        { id: 'fill-1', type: 'simple-fill', enabled: true, color: '#e06666' },
-        { id: 'line-1', type: 'simple-line', enabled: true, color: '#000000', width: 2 }
-      ]
-    }, null, 2);
+    const cartoucheJson = JSON.stringify(
+      {
+        format: "simple",
+        version: 1,
+        components: [
+          {
+            id: "fill-1",
+            type: "simple-fill",
+            enabled: true,
+            color: "#e06666",
+          },
+          {
+            id: "line-1",
+            type: "simple-line",
+            enabled: true,
+            color: "#000000",
+            width: 2,
+          },
+        ],
+      },
+      null,
+      2
+    );
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Cartouche Symbology Project' },
+      format: "cartouche-xml",
+      metadata: { title: "Cartouche Symbology Project" },
       layers: [
         {
-          id: 'cartouche-inline-layer',
-          name: 'Inline Cartouche Layer',
-          type: 'geojson',
-          source: 'layers/polygons.geojson',
+          id: "cartouche-inline-layer",
+          name: "Inline Cartouche Layer",
+          type: "geojson",
+          source: "layers/polygons.geojson",
           visible: true,
-          style: {
-            content: cartoucheJson,
-            format: 'cartouche'
-          }
+          style: { content: cartoucheJson, format: "cartouche" },
         },
         {
-          id: 'cartouche-ref-layer',
-          name: 'Shared Cartouche Ref Layer',
-          type: 'geojson',
-          source: 'layers/more_polygons.geojson',
+          id: "cartouche-ref-layer",
+          name: "Shared Cartouche Ref Layer",
+          type: "geojson",
+          source: "layers/more_polygons.geojson",
           visible: true,
-          style: {
-            href: '#shared-cartouche-style',
-            format: 'cartouche'
-          }
-        }
+          style: { href: "#shared-cartouche-style", format: "cartouche" },
+        },
       ],
       styles: [
         {
-          id: 'shared-cartouche-style',
-          format: 'cartouche',
-          content: cartoucheJson
-        }
-      ]
+          id: "shared-cartouche-style",
+          format: "cartouche",
+          content: cartoucheJson,
+        },
+      ],
     };
 
     const xml = loader.serializeToXml(model);
-    assert.ok(xml.includes('format="cartouche"'), 'Serialized XML must include format="cartouche"');
-    assert.ok(xml.includes('href="#shared-cartouche-style"'), 'Serialized XML must include href attribute');
+    assert.ok(
+      xml.includes('format="cartouche"'),
+      'Serialized XML must include format="cartouche"'
+    );
+    assert.ok(
+      xml.includes('href="#shared-cartouche-style"'),
+      "Serialized XML must include href attribute"
+    );
 
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error for format="cartouche": ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error for format="cartouche": ${validation.error}`
+    );
 
     await loader.save(model, tempPath);
     const loaded = await loader.load(tempPath);
 
-    const lInline = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.deepEqual(lInline.style, { content: cartoucheJson, format: 'cartouche' });
+    const lInline = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.deepEqual(lInline.style, {
+      content: cartoucheJson,
+      format: "cartouche",
+    });
 
-    const lRef = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.deepEqual(lRef.style, { href: '#shared-cartouche-style', format: 'cartouche' });
+    const lRef = loaded
+      .layers[1] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.deepEqual(lRef.style, {
+      href: "#shared-cartouche-style",
+      format: "cartouche",
+    });
 
     assert.equal(loaded.styles?.length, 1);
-    assert.equal(loaded.styles?.[0].format, 'cartouche');
+    assert.equal(loaded.styles?.[0].format, "cartouche");
     assert.equal(loaded.styles?.[0].content, cartoucheJson);
   });
 
-  it('enforces non-redirection constraint and rejects shared styles or references with chained href', async () => {
+  it("enforces non-redirection constraint and rejects shared styles or references with chained href", async () => {
     const loader = new CartoucheXmlLoader();
 
     // Case 1: Shared style in <styles> specifies an href attribute
@@ -611,47 +687,60 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
   </styles>
 </cartouche:project>`;
 
-    const path1 = path.join(tempDir, 'invalid-shared-style.cproj');
-    fs.writeFileSync(path1, invalidSharedStyleXml, 'utf-8');
+    const path1 = path.join(tempDir, "invalid-shared-style.cproj");
+    fs.writeFileSync(path1, invalidSharedStyleXml, "utf-8");
 
     await assert.rejects(
       async () => loader.load(path1),
       (err: Error) => {
-        assert.match(err.message, /shared styles in <styles> cannot reference another style via href/);
+        assert.match(
+          err.message,
+          /shared styles in <styles> cannot reference another style via href/
+        );
         return true;
       }
     );
   });
 
-  it('always serializes <styles /> collection following <layers> and validates against project.xsd', () => {
+  it("always serializes <styles /> collection following <layers> and validates against project.xsd", () => {
     const loader = new CartoucheXmlLoader();
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Project Without Shared Styles',
-        appVersion: '0.1.0-dev'
+        title: "Project Without Shared Styles",
+        appVersion: "0.1.0-dev",
       },
       layers: [
         {
-          id: 'layer-solo',
-          name: 'Solo Layer',
-          type: 'geojson',
-          source: '/data/solo.geojson'
-        }
-      ]
+          id: "layer-solo",
+          name: "Solo Layer",
+          type: "geojson",
+          source: "/data/solo.geojson",
+        },
+      ],
     };
 
     const xml = loader.serializeToXml(model);
-    assert.ok(xml.includes('<styles />'), 'XML must serialize empty <styles /> element');
-    const layersIdx = xml.indexOf('</layers>');
-    const stylesIdx = xml.indexOf('<styles />');
-    assert.ok(layersIdx > 0 && stylesIdx > layersIdx, '<styles /> must follow immediately after <layers>');
+    assert.ok(
+      xml.includes("<styles />"),
+      "XML must serialize empty <styles /> element"
+    );
+    const layersIdx = xml.indexOf("</layers>");
+    const stylesIdx = xml.indexOf("<styles />");
+    assert.ok(
+      layersIdx > 0 && stylesIdx > layersIdx,
+      "<styles /> must follow immediately after <layers>"
+    );
 
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error for empty <styles />: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error for empty <styles />: ${validation.error}`
+    );
   });
 
-  it('ignores legacy <zoom> elements in project XML when deserializing into ProjectModel', async () => {
+  it("ignores legacy <zoom> elements in project XML when deserializing into ProjectModel", async () => {
     const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.org/schema/project" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0">
   <metadata>
@@ -667,105 +756,118 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
   <styles />
 </project>`;
 
-    const tempPath = path.join(tempDir, 'legacy-zoom-test.cproj');
-    fs.writeFileSync(tempPath, legacyXml, 'utf-8');
+    const tempPath = path.join(tempDir, "legacy-zoom-test.cproj");
+    fs.writeFileSync(tempPath, legacyXml, "utf-8");
 
     const loader = new CartoucheXmlLoader();
     const model = await loader.load(tempPath);
 
-    assert.ok(model.viewport, 'Viewport must be loaded');
-    assert.deepEqual(model.viewport?.extent, { xmin: -10, ymin: -10, xmax: 10, ymax: 10 });
+    assert.ok(model.viewport, "Viewport must be loaded");
+    assert.deepEqual(model.viewport?.extent, {
+      xmin: -10,
+      ymin: -10,
+      xmax: 10,
+      ymax: 10,
+    });
     assert.deepEqual(model.viewport?.center, { x: 0, y: 0 });
     assert.equal(model.viewport?.scale, 50000);
-    assert.equal((model.viewport as any)?.zoom, undefined, 'Legacy zoom must be ignored and not present on model');
+    assert.equal(
+      (model.viewport as any)?.zoom,
+      undefined,
+      "Legacy zoom must be ignored and not present on model"
+    );
   });
 
   it('round-trips SLD version attribute ("1.0.0" and "1.1.0") on inline and shared <style> elements with project.xsd validation', async () => {
     const loader = new CartoucheXmlLoader();
-    const tempPath = path.join(tempDir, 'sld-version-roundtrip.cproj');
-    const sld100 = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>L100</Name></NamedLayer></StyledLayerDescriptor>';
-    const sld110 = '<StyledLayerDescriptor version="1.1.0"><NamedLayer><Name>L110</Name></NamedLayer></StyledLayerDescriptor>';
+    const tempPath = path.join(tempDir, "sld-version-roundtrip.cproj");
+    const sld100 =
+      '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>L100</Name></NamedLayer></StyledLayerDescriptor>';
+    const sld110 =
+      '<StyledLayerDescriptor version="1.1.0"><NamedLayer><Name>L110</Name></NamedLayer></StyledLayerDescriptor>';
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: {
-        title: 'SLD Version Roundtrip',
-        appVersion: '0.1.0-dev',
-      },
+      format: "cartouche-xml",
+      metadata: { title: "SLD Version Roundtrip", appVersion: "0.1.0-dev" },
       layers: [
         {
-          id: 'layer-sld-100',
-          name: 'SLD 1.0.0 Layer',
-          type: 'geojson',
-          source: '/data/l100.geojson',
-          style: {
-            content: sld100,
-            format: 'sld',
-            version: '1.0.0',
-          },
+          id: "layer-sld-100",
+          name: "SLD 1.0.0 Layer",
+          type: "geojson",
+          source: "/data/l100.geojson",
+          style: { content: sld100, format: "sld", version: "1.0.0" },
         },
         {
-          id: 'layer-sld-ref-110',
-          name: 'SLD 1.1.0 Shared Ref Layer',
-          type: 'geojson',
-          source: '/data/l110.geojson',
-          style: {
-            href: '#shared-sld-110',
-            format: 'sld',
-            version: '1.1.0',
-          },
+          id: "layer-sld-ref-110",
+          name: "SLD 1.1.0 Shared Ref Layer",
+          type: "geojson",
+          source: "/data/l110.geojson",
+          style: { href: "#shared-sld-110", format: "sld", version: "1.1.0" },
         },
       ],
       styles: [
         {
-          id: 'shared-sld-110',
-          format: 'sld',
-          version: '1.1.0',
+          id: "shared-sld-110",
+          format: "sld",
+          version: "1.1.0",
           content: sld110,
         },
       ],
     };
 
     const xml = loader.serializeToXml(model);
-    assert.ok(xml.includes('version="1.0.0"'), 'Serialized XML must include version="1.0.0"');
-    assert.ok(xml.includes('version="1.1.0"'), 'Serialized XML must include version="1.1.0"');
+    assert.ok(
+      xml.includes('version="1.0.0"'),
+      'Serialized XML must include version="1.0.0"'
+    );
+    assert.ok(
+      xml.includes('version="1.1.0"'),
+      'Serialized XML must include version="1.1.0"'
+    );
 
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error for SLD version attribute: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error for SLD version attribute: ${validation.error}`
+    );
 
     await loader.save(model, tempPath);
     const loaded = await loader.load(tempPath);
 
-    const l100 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    const l100 = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
     assert.deepEqual(l100.style, {
       content: sld100,
-      format: 'sld',
-      version: '1.0.0',
+      format: "sld",
+      version: "1.0.0",
     });
 
-    const l110 = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
+    const l110 = loaded
+      .layers[1] as import("../../../src/shared/types").ProjectLayerItem;
     assert.deepEqual(l110.style, {
-      href: '#shared-sld-110',
-      format: 'sld',
-      version: '1.1.0',
+      href: "#shared-sld-110",
+      format: "sld",
+      version: "1.1.0",
     });
 
     assert.equal(loaded.styles?.length, 1);
     assert.deepEqual(loaded.styles?.[0], {
-      id: 'shared-sld-110',
-      format: 'sld',
-      version: '1.1.0',
+      id: "shared-sld-110",
+      format: "sld",
+      version: "1.1.0",
       content: sld110,
     });
   });
 
-  it('populates style.content from external href file on disk when inline content is omitted', async () => {
+  it("populates style.content from external href file on disk when inline content is omitted", async () => {
     const loader = new CartoucheXmlLoader();
-    const externalSldPath = path.join(tempDir, 'rivers.sld');
-    const externalSldContent = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>ExternalRivers</Name></NamedLayer></StyledLayerDescriptor>';
-    fs.writeFileSync(externalSldPath, externalSldContent, 'utf-8');
+    const externalSldPath = path.join(tempDir, "rivers.sld");
+    const externalSldContent =
+      '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>ExternalRivers</Name></NamedLayer></StyledLayerDescriptor>';
+    fs.writeFileSync(externalSldPath, externalSldContent, "utf-8");
 
-    const projPath = path.join(tempDir, 'external-href-project.cproj');
+    const projPath = path.join(tempDir, "external-href-project.cproj");
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
   xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
@@ -784,70 +886,83 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
   <styles />
 </cartouche:project>`;
 
-    fs.writeFileSync(projPath, xml, 'utf-8');
+    fs.writeFileSync(projPath, xml, "utf-8");
     const loaded = await loader.load(projPath);
-    const layer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    const layer = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
     // Since Ticket #274 paths in memory are always absolute: the href is resolved against the Project Home on load.
     assert.deepEqual(layer.style, {
       href: externalSldPath,
       content: externalSldContent,
-      format: 'sld',
-      version: '1.0.0',
+      format: "sld",
+      version: "1.0.0",
     });
   });
 
-  it('serializes and deserializes layer fields across all 10 scalar types and 10 array types with strict xmllint validation (Ticket #137)', async () => {
+  it("serializes and deserializes layer fields across all 10 scalar types and 10 array types with strict xmllint validation (Ticket #137)", async () => {
     const loader = new CartoucheXmlLoader();
-    const scalarTypes: import('../../../src/shared/types').InferredScalarFieldType[] = [
-      'string',
-      'integer',
-      'real',
-      'boolean',
-      'date',
-      'time',
-      'datetime',
-      'uuid',
-      'json',
-      'binary',
-    ];
+    const scalarTypes: import("../../../src/shared/types").InferredScalarFieldType[] =
+      [
+        "string",
+        "integer",
+        "real",
+        "boolean",
+        "date",
+        "time",
+        "datetime",
+        "uuid",
+        "json",
+        "binary",
+      ];
 
-    const arrayTypes: import('../../../src/shared/types').InferredArrayFieldType[] = [
-      'string[]',
-      'integer[]',
-      'real[]',
-      'boolean[]',
-      'date[]',
-      'time[]',
-      'datetime[]',
-      'uuid[]',
-      'json[]',
-      'binary[]',
-    ];
+    const arrayTypes: import("../../../src/shared/types").InferredArrayFieldType[] =
+      [
+        "string[]",
+        "integer[]",
+        "real[]",
+        "boolean[]",
+        "date[]",
+        "time[]",
+        "datetime[]",
+        "uuid[]",
+        "json[]",
+        "binary[]",
+      ];
 
-    const fields: import('../../../src/shared/types').LayerFieldInfo[] = [];
+    const fields: import("../../../src/shared/types").LayerFieldInfo[] = [];
 
     // Add all 10 scalar fields with metadata attributes
     for (const t of scalarTypes) {
       fields.push({
-        name: `f_${t.replace(/[^a-z0-9]/gi, '_')}`,
+        name: `f_${t.replace(/[^a-z0-9]/gi, "_")}`,
         nativeType: `OGR_${t.toUpperCase()}`,
         inferredType: t,
-        nativeSubType: t === 'boolean' ? 'OFSTBoolean' : t === 'uuid' ? 'OFSTUUID' : t === 'json' ? 'OFSTJSON' : undefined,
+        nativeSubType:
+          t === "boolean" ? "OFSTBoolean"
+          : t === "uuid" ? "OFSTUUID"
+          : t === "json" ? "OFSTJSON"
+          : undefined,
         alternativeName: `Alias for ${t}`,
-        domainName: t === 'integer' ? 'CodeDomain' : undefined,
-        defaultValue: t === 'datetime' ? 'CURRENT_TIMESTAMP' : t === 'boolean' ? 'true' : undefined,
-        width: t === 'string' ? 80 : t === 'real' ? 10 : undefined,
-        precision: t === 'real' ? 3 : undefined,
+        domainName: t === "integer" ? "CodeDomain" : undefined,
+        defaultValue:
+          t === "datetime" ? "CURRENT_TIMESTAMP"
+          : t === "boolean" ? "true"
+          : undefined,
+        width:
+          t === "string" ? 80
+          : t === "real" ? 10
+          : undefined,
+        precision: t === "real" ? 3 : undefined,
         nullable: true,
-        userOverridden: t === 'uuid',
+        userOverridden: t === "uuid",
       });
     }
 
     // Add all 10 array fields
     for (const t of arrayTypes) {
       fields.push({
-        name: `f_${t.replace(/[^a-z0-9]/gi, '_')}`,
-        nativeType: `OGR_LIST_${t.replace('[]', '').toUpperCase()}`,
+        name: `f_${t.replace(/[^a-z0-9]/gi, "_")}`,
+        nativeType: `OGR_LIST_${t.replace("[]", "").toUpperCase()}`,
         inferredType: t,
         nullable: false,
         userOverridden: false,
@@ -857,17 +972,17 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     assert.equal(fields.length, 20);
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Fields Schema Roundtrip Project',
-        appVersion: '0.1.0-dev',
+        title: "Fields Schema Roundtrip Project",
+        appVersion: "0.1.0-dev",
       },
       layers: [
         {
-          id: 'layer-with-fields',
-          name: 'Parcels',
-          type: 'gpkg',
-          source: '/data/parcels.gpkg',
+          id: "layer-with-fields",
+          name: "Parcels",
+          type: "gpkg",
+          source: "/data/parcels.gpkg",
           visible: true,
           fields,
         },
@@ -877,16 +992,21 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     // 1. Serialize to XML and validate with xmllint against project.xsd
     const xml = loader.serializeToXml(model);
     const validation = validateXmlAgainstSchema(xml);
-    assert.equal(validation.valid, true, `Schema validation error: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation error: ${validation.error}`
+    );
 
     // 2. Save to disk and re-load
-    const filePath = path.join(tempDir, 'fields-test.cproj');
+    const filePath = path.join(tempDir, "fields-test.cproj");
     await loader.save(model, filePath);
 
     const loaded = await loader.load(filePath);
     assert.equal(loaded.layers.length, 1);
 
-    const loadedLayer = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
+    const loadedLayer = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
     assert.ok(loadedLayer.fields);
     assert.equal(loadedLayer.fields?.length, 20);
 
@@ -909,7 +1029,7 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     }
   });
 
-  it('rejects invalid inferredType values via xmllint schema validation (Ticket #137)', () => {
+  it("rejects invalid inferredType values via xmllint schema validation (Ticket #137)", () => {
     const xmlWithInvalidType = `<?xml version="1.0" encoding="UTF-8"?>
 <cartouche:project xmlns="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
   xmlns:cartouche="http://maps.hanfastolfe.com/cartouche/schemas/project/1.0"
@@ -930,156 +1050,170 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 </cartouche:project>`;
 
     const validation = validateXmlAgainstSchema(xmlWithInvalidType);
-    assert.equal(validation.valid, false, 'Schema validation should fail for invalid inferredType "timestamp"');
-    assert.match(validation.error || '', /inferredType|timestamp/);
+    assert.equal(
+      validation.valid,
+      false,
+      'Schema validation should fail for invalid inferredType "timestamp"'
+    );
+    assert.match(validation.error || "", /inferredType|timestamp/);
   });
 
-  it('serializes, deserializes, and validates temporalEnabled attribute against schema (Ticket #162)', async () => {
+  it("serializes, deserializes, and validates temporalEnabled attribute against schema (Ticket #162)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'temporal-test.cproj');
+    const testFile = path.join(tempDir, "temporal-test.cproj");
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Temporal Test Project',
-        creator: 'Cory Albrecht',
-        description: 'Verifies dynamic temporal control persistence.',
-        date: '2026-11-04',
-        createdAt: '2026-11-04T12:00:00.000Z',
-        updatedAt: '2026-11-04T12:00:00.000Z',
-        appVersion: '0.1.0-dev'
+        title: "Temporal Test Project",
+        creator: "Cory Albrecht",
+        description: "Verifies dynamic temporal control persistence.",
+        date: "2026-11-04",
+        createdAt: "2026-11-04T12:00:00.000Z",
+        updatedAt: "2026-11-04T12:00:00.000Z",
+        appVersion: "0.1.0-dev",
       },
-      crs: {
-        authId: 'EPSG:4326',
-        srid: 4326,
-        description: 'WGS 84'
-      },
+      crs: { authId: "EPSG:4326", srid: 4326, description: "WGS 84" },
       layers: [
         {
-          id: 'layer-temporal-on',
-          name: 'Temporal Enabled Layer',
-          type: 'geojson',
-          source: '/data/temporal-on.geojson',
+          id: "layer-temporal-on",
+          name: "Temporal Enabled Layer",
+          type: "geojson",
+          source: "/data/temporal-on.geojson",
           visible: true,
-          temporalEnabled: true
+          temporalEnabled: true,
         },
         {
-          id: 'layer-temporal-off',
-          name: 'Temporal Disabled Layer',
-          type: 'geojson',
-          source: '/data/temporal-off.geojson',
+          id: "layer-temporal-off",
+          name: "Temporal Disabled Layer",
+          type: "geojson",
+          source: "/data/temporal-off.geojson",
           visible: true,
-          temporalEnabled: false
+          temporalEnabled: false,
         },
         {
-          id: 'layer-temporal-omitted',
-          name: 'Temporal Omitted Layer',
-          type: 'geojson',
-          source: '/data/temporal-omitted.geojson',
-          visible: true
-        }
-      ]
+          id: "layer-temporal-omitted",
+          name: "Temporal Omitted Layer",
+          type: "geojson",
+          source: "/data/temporal-omitted.geojson",
+          visible: true,
+        },
+      ],
     };
 
     await loader.save(model, testFile);
-    const xmlContent = fs.readFileSync(testFile, 'utf-8');
+    const xmlContent = fs.readFileSync(testFile, "utf-8");
 
     // 1. Verify schema validity
     const validation = validateXmlAgainstSchema(xmlContent);
-    assert.equal(validation.valid, true, `Schema validation failed: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation failed: ${validation.error}`
+    );
 
     // 2. Verify serialized attributes
-    assert.match(xmlContent, /<layer[^>]*id="layer-temporal-on"[^>]*temporalEnabled="true"/);
-    assert.match(xmlContent, /<layer[^>]*id="layer-temporal-off"[^>]*temporalEnabled="false"/);
+    assert.match(
+      xmlContent,
+      /<layer[^>]*id="layer-temporal-on"[^>]*temporalEnabled="true"/
+    );
+    assert.match(
+      xmlContent,
+      /<layer[^>]*id="layer-temporal-off"[^>]*temporalEnabled="false"/
+    );
 
     // 3. Verify deserialization roundtrip
     const loaded = await loader.load(testFile);
     assert.equal(loaded.layers.length, 3);
 
-    const l1 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l1.id, 'layer-temporal-on');
+    const l1 = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l1.id, "layer-temporal-on");
     assert.equal(l1.temporalEnabled, true);
 
-    const l2 = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l2.id, 'layer-temporal-off');
+    const l2 = loaded
+      .layers[1] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l2.id, "layer-temporal-off");
     assert.equal(l2.temporalEnabled, false);
 
-    const l3 = loaded.layers[2] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l3.id, 'layer-temporal-omitted');
+    const l3 = loaded
+      .layers[2] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l3.id, "layer-temporal-omitted");
     assert.equal(l3.temporalEnabled, false); // Defaults to false
   });
 
-  it('serializes, deserializes, and validates structured <temporal> configuration with mode, field, and operator attributes against project.xsd (Ticket #231)', async () => {
+  it("serializes, deserializes, and validates structured <temporal> configuration with mode, field, and operator attributes against project.xsd (Ticket #231)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'temporal-config-test.cproj');
+    const testFile = path.join(tempDir, "temporal-config-test.cproj");
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Temporal Configuration Test Project',
-        creator: 'Cory Albrecht',
-        description: 'Verifies structured <temporal> tag persistence and backward compatibility.',
-        date: '2026-11-10',
-        createdAt: '2026-11-10T12:00:00.000Z',
-        updatedAt: '2026-11-10T12:00:00.000Z',
-        appVersion: '0.1.0-dev'
+        title: "Temporal Configuration Test Project",
+        creator: "Cory Albrecht",
+        description:
+          "Verifies structured <temporal> tag persistence and backward compatibility.",
+        date: "2026-11-10",
+        createdAt: "2026-11-10T12:00:00.000Z",
+        updatedAt: "2026-11-10T12:00:00.000Z",
+        appVersion: "0.1.0-dev",
       },
-      crs: {
-        authId: 'EPSG:4326',
-        srid: 4326,
-        description: 'WGS 84'
-      },
+      crs: { authId: "EPSG:4326", srid: 4326, description: "WGS 84" },
       layers: [
         {
-          id: 'layer-temporal-start-end',
-          name: 'Start and End Layer',
-          type: 'geojson',
-          source: '/data/events.geojson',
+          id: "layer-temporal-start-end",
+          name: "Start and End Layer",
+          type: "geojson",
+          source: "/data/events.geojson",
           visible: true,
           temporal: {
             enabled: true,
-            mode: 'start_end',
-            startField: 'event_start',
-            startOp: '>=',
-            endField: 'event_end',
-            endOp: '<='
-          }
+            mode: "start_end",
+            startField: "event_start",
+            startOp: ">=",
+            endField: "event_end",
+            endOp: "<=",
+          },
         },
         {
-          id: 'layer-temporal-start-only',
-          name: 'Start Only Layer',
-          type: 'geojson',
-          source: '/data/sightings.geojson',
+          id: "layer-temporal-start-only",
+          name: "Start Only Layer",
+          type: "geojson",
+          source: "/data/sightings.geojson",
           visible: true,
           temporal: {
             enabled: true,
-            mode: 'start',
-            startField: 'sighted_at',
-            startOp: '>'
-          }
+            mode: "start",
+            startField: "sighted_at",
+            startOp: ">",
+          },
         },
         {
-          id: 'layer-temporal-disabled',
-          name: 'Disabled Temporal Layer',
-          type: 'geojson',
-          source: '/data/boundary.geojson',
+          id: "layer-temporal-disabled",
+          name: "Disabled Temporal Layer",
+          type: "geojson",
+          source: "/data/boundary.geojson",
           visible: true,
           temporal: {
             enabled: false,
-            mode: 'end',
-            endField: 'valid_until',
-            endOp: '<'
-          }
-        }
-      ]
+            mode: "end",
+            endField: "valid_until",
+            endOp: "<",
+          },
+        },
+      ],
     };
 
     await loader.save(model, testFile);
-    const xmlContent = fs.readFileSync(testFile, 'utf-8');
+    const xmlContent = fs.readFileSync(testFile, "utf-8");
 
     // 1. Verify schema validity against project.xsd
     const validation = validateXmlAgainstSchema(xmlContent);
-    assert.equal(validation.valid, true, `Schema validation failed: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation failed: ${validation.error}`
+    );
 
     // 2. Verify serialized XML tags
     assert.match(
@@ -1099,57 +1233,56 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const loaded = await loader.load(testFile);
     assert.equal(loaded.layers.length, 3);
 
-    const l1 = loaded.layers[0] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l1.id, 'layer-temporal-start-end');
+    const l1 = loaded
+      .layers[0] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l1.id, "layer-temporal-start-end");
     assert.equal(l1.temporalEnabled, true);
     assert.ok(l1.temporal);
     assert.equal(l1.temporal.enabled, true);
-    assert.equal(l1.temporal.mode, 'start_end');
-    assert.equal(l1.temporal.startField, 'event_start');
-    assert.equal(l1.temporal.startOp, '>=');
-    assert.equal(l1.temporal.endField, 'event_end');
-    assert.equal(l1.temporal.endOp, '<=');
+    assert.equal(l1.temporal.mode, "start_end");
+    assert.equal(l1.temporal.startField, "event_start");
+    assert.equal(l1.temporal.startOp, ">=");
+    assert.equal(l1.temporal.endField, "event_end");
+    assert.equal(l1.temporal.endOp, "<=");
 
-    const l2 = loaded.layers[1] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l2.id, 'layer-temporal-start-only');
+    const l2 = loaded
+      .layers[1] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l2.id, "layer-temporal-start-only");
     assert.equal(l2.temporalEnabled, true);
     assert.ok(l2.temporal);
     assert.equal(l2.temporal.enabled, true);
-    assert.equal(l2.temporal.mode, 'start');
-    assert.equal(l2.temporal.startField, 'sighted_at');
-    assert.equal(l2.temporal.startOp, '>');
+    assert.equal(l2.temporal.mode, "start");
+    assert.equal(l2.temporal.startField, "sighted_at");
+    assert.equal(l2.temporal.startOp, ">");
     assert.equal(l2.temporal.endField, undefined);
 
-    const l3 = loaded.layers[2] as import('../../../src/shared/types').ProjectLayerItem;
-    assert.equal(l3.id, 'layer-temporal-disabled');
+    const l3 = loaded
+      .layers[2] as import("../../../src/shared/types").ProjectLayerItem;
+    assert.equal(l3.id, "layer-temporal-disabled");
     assert.equal(l3.temporalEnabled, false);
     assert.ok(l3.temporal);
     assert.equal(l3.temporal.enabled, false);
-    assert.equal(l3.temporal.mode, 'end');
-    assert.equal(l3.temporal.endField, 'valid_until');
-    assert.equal(l3.temporal.endOp, '<');
+    assert.equal(l3.temporal.mode, "end");
+    assert.equal(l3.temporal.endField, "valid_until");
+    assert.equal(l3.temporal.endOp, "<");
   });
 
-  it('serializes, deserializes, and validates workbench <timeFilter> configuration against project.xsd (Ticket #235)', async () => {
+  it("serializes, deserializes, and validates workbench <timeFilter> configuration against project.xsd (Ticket #235)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'timefilter-config-test.cproj');
+    const testFile = path.join(tempDir, "timefilter-config-test.cproj");
 
     const model: ProjectModel = {
-      format: 'cartouche-xml',
+      format: "cartouche-xml",
       metadata: {
-        title: 'Time Filter Persistence Test Project',
-        creator: 'Cory Albrecht',
-        description: 'Verifies project-level <timeFilter> tag persistence.',
-        date: '2026-11-10',
-        createdAt: '2026-11-10T12:00:00.000Z',
-        updatedAt: '2026-11-10T12:00:00.000Z',
-        appVersion: '0.1.0-dev'
+        title: "Time Filter Persistence Test Project",
+        creator: "Cory Albrecht",
+        description: "Verifies project-level <timeFilter> tag persistence.",
+        date: "2026-11-10",
+        createdAt: "2026-11-10T12:00:00.000Z",
+        updatedAt: "2026-11-10T12:00:00.000Z",
+        appVersion: "0.1.0-dev",
       },
-      crs: {
-        authId: 'EPSG:4326',
-        srid: 4326,
-        description: 'WGS 84'
-      },
+      crs: { authId: "EPSG:4326", srid: 4326, description: "WGS 84" },
       layers: [],
       timeFilter: {
         enabled: true,
@@ -1157,16 +1290,20 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
         to: 2000000000000,
         current: 1500000000000,
         step: 0.000000031623,
-        unit: 'Years'
-      }
+        unit: "Years",
+      },
     };
 
     await loader.save(model, testFile);
-    const xmlContent = fs.readFileSync(testFile, 'utf-8');
+    const xmlContent = fs.readFileSync(testFile, "utf-8");
 
     // 1. Verify schema validity against project.xsd
     const validation = validateXmlAgainstSchema(xmlContent);
-    assert.equal(validation.valid, true, `Schema validation failed: ${validation.error}`);
+    assert.equal(
+      validation.valid,
+      true,
+      `Schema validation failed: ${validation.error}`
+    );
 
     // 2. Verify serialized XML tags
     assert.match(
@@ -1176,83 +1313,96 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 
     // 3. Verify deserialization fidelity
     const loaded = await loader.load(testFile);
-    assert.ok(loaded.timeFilter, 'Loaded project must contain timeFilter');
+    assert.ok(loaded.timeFilter, "Loaded project must contain timeFilter");
     assert.equal(loaded.timeFilter.enabled, true);
     assert.equal(loaded.timeFilter.from, 1000000000000);
     assert.equal(loaded.timeFilter.to, 2000000000000);
     assert.equal(loaded.timeFilter.current, 1500000000000);
     assert.equal(loaded.timeFilter.step, 0.000000031623);
-    assert.equal(loaded.timeFilter.unit, 'Years');
+    assert.equal(loaded.timeFilter.unit, "Years");
   });
-  it('round-trips the Project Title through <dc:title> independently of the file name (Ticket #271)', async () => {
+  it("round-trips the Project Title through <dc:title> independently of the file name (Ticket #271)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'some-other-file-name.cproj');
+    const testFile = path.join(tempDir, "some-other-file-name.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'World Atlas & Friends', appVersion: '0.1.0-dev' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "World Atlas & Friends", appVersion: "0.1.0-dev" },
+      layers: [],
     };
     const xml = loader.serializeToXml(model);
-    assert.ok(xml.includes('<dc:title>World Atlas &amp; Friends</dc:title>'));
+    assert.ok(xml.includes("<dc:title>World Atlas &amp; Friends</dc:title>"));
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.equal(loaded.metadata.title, 'World Atlas & Friends');
+    assert.equal(loaded.metadata.title, "World Atlas & Friends");
   });
 
-  it('omits <dc:title> for an empty title and loads a missing <dc:title> as an empty title, never the file name (Ticket #271)', async () => {
+  it("omits <dc:title> for an empty title and loads a missing <dc:title> as an empty title, never the file name (Ticket #271)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'untitled-on-disk.cproj');
+    const testFile = path.join(tempDir, "untitled-on-disk.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: '', appVersion: '0.1.0-dev' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "", appVersion: "0.1.0-dev" },
+      layers: [],
     };
     const xml = loader.serializeToXml(model);
-    assert.ok(!xml.includes('<dc:title'), 'empty title must not be written');
+    assert.ok(!xml.includes("<dc:title"), "empty title must not be written");
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.equal(loaded.metadata.title, '', 'missing <dc:title> loads as an empty title so the display name falls back to the file base name');
+    assert.equal(
+      loaded.metadata.title,
+      "",
+      "missing <dc:title> loads as an empty title so the display name falls back to the file base name"
+    );
   });
-  it('round-trips the <display backgroundColour> element after <crs> and before <viewport>, validated against project.xsd (Ticket #272)', async () => {
+  it("round-trips the <display backgroundColour> element after <crs> and before <viewport>, validated against project.xsd (Ticket #272)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'display-background.cproj');
+    const testFile = path.join(tempDir, "display-background.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Display Test', appVersion: '0.1.0-dev' },
-      crs: { authId: 'EPSG:4326' },
-      display: { backgroundColour: '#1b446c' },
+      format: "cartouche-xml",
+      metadata: { title: "Display Test", appVersion: "0.1.0-dev" },
+      crs: { authId: "EPSG:4326" },
+      display: { backgroundColour: "#1b446c" },
       viewport: { center: { x: 0, y: 0 }, scale: 1000 },
-      layers: []
+      layers: [],
     };
     const xml = loader.serializeToXml(model);
     assert.ok(xml.includes('<display backgroundColour="#1b446c" />'));
-    assert.ok(xml.indexOf('</crs>') < xml.indexOf('<display'), '<display> follows <crs>');
-    assert.ok(xml.indexOf('<display') < xml.indexOf('<viewport>'), '<display> precedes <viewport>');
+    assert.ok(
+      xml.indexOf("</crs>") < xml.indexOf("<display"),
+      "<display> follows <crs>"
+    );
+    assert.ok(
+      xml.indexOf("<display") < xml.indexOf("<viewport>"),
+      "<display> precedes <viewport>"
+    );
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.equal(loaded.display?.backgroundColour, '#1b446c');
+    assert.equal(loaded.display?.backgroundColour, "#1b446c");
   });
 
-  it('omits <display> when no display setting is set and loads a missing <display> as undefined so #ffffff applies (Ticket #272)', async () => {
+  it("omits <display> when no display setting is set and loads a missing <display> as undefined so #ffffff applies (Ticket #272)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'display-missing.cproj');
+    const testFile = path.join(tempDir, "display-missing.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'No Display', appVersion: '0.1.0-dev' },
+      format: "cartouche-xml",
+      metadata: { title: "No Display", appVersion: "0.1.0-dev" },
       display: {},
-      layers: []
+      layers: [],
     };
     const xml = loader.serializeToXml(model);
-    assert.ok(!xml.includes('<display'), 'empty display settings must not be written');
+    assert.ok(
+      !xml.includes("<display"),
+      "empty display settings must not be written"
+    );
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
@@ -1260,14 +1410,17 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     const loaded = await loader.load(testFile);
     assert.equal(loaded.display, undefined);
   });
-  it('round-trips <display selectionColour> alongside backgroundColour, validated against project.xsd (Ticket #273)', async () => {
+  it("round-trips <display selectionColour> alongside backgroundColour, validated against project.xsd (Ticket #273)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'display-selection.cproj');
+    const testFile = path.join(tempDir, "display-selection.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Selection Display Test', appVersion: '0.1.0-dev' },
-      display: { backgroundColour: '#000000', selectionColour: 'rgba(0,128,255,0.4)' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Selection Display Test", appVersion: "0.1.0-dev" },
+      display: {
+        backgroundColour: "#000000",
+        selectionColour: "rgba(0,128,255,0.4)",
+      },
+      layers: [],
     };
     const xml = loader.serializeToXml(model);
     assert.ok(xml.includes('backgroundColour="#000000"'));
@@ -1277,90 +1430,162 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.equal(loaded.display?.selectionColour, 'rgba(0,128,255,0.4)');
-    assert.equal(loaded.display?.backgroundColour, '#000000');
+    assert.equal(loaded.display?.selectionColour, "rgba(0,128,255,0.4)");
+    assert.equal(loaded.display?.backgroundColour, "#000000");
 
     // Selection colour alone is also written, and a missing attribute loads as undefined so the default applies.
     const onlySelection: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Only Selection', appVersion: '0.1.0-dev' },
-      display: { selectionColour: '#ffff00' },
-      layers: []
+      format: "cartouche-xml",
+      metadata: { title: "Only Selection", appVersion: "0.1.0-dev" },
+      display: { selectionColour: "#ffff00" },
+      layers: [],
     };
     const xml2 = loader.serializeToXml(onlySelection);
     assert.ok(xml2.includes('<display selectionColour="#ffff00" />'));
     assert.equal(validateXmlAgainstSchema(xml2).valid, true);
-    const file2 = path.join(tempDir, 'display-selection-only.cproj');
+    const file2 = path.join(tempDir, "display-selection-only.cproj");
     await loader.save(onlySelection, file2);
     const loaded2 = await loader.load(file2);
-    assert.equal(loaded2.display?.selectionColour, '#ffff00');
+    assert.equal(loaded2.display?.selectionColour, "#ffff00");
     assert.equal(loaded2.display?.backgroundColour, undefined);
   });
-  it('writes layer sources, style hrefs and <home> relative to the Project Home in relative mode and resolves them back to absolute on load (Ticket #274)', async () => {
+  it("writes layer sources, style hrefs and <home> relative to the Project Home in relative mode and resolves them back to absolute on load (Ticket #274)", async () => {
     const loader = new CartoucheXmlLoader();
-    const projectDir = path.join(tempDir, 'maps');
-    const homeDir = path.join(tempDir, 'gisdata');
+    const projectDir = path.join(tempDir, "maps");
+    const homeDir = path.join(tempDir, "gisdata");
     fs.mkdirSync(projectDir, { recursive: true });
-    fs.mkdirSync(path.join(homeDir, 'styles'), { recursive: true });
-    fs.writeFileSync(path.join(homeDir, 'styles', 'lakes.json'), '[{"style":{"fill-color":"#00f"}}]');
-    const testFile = path.join(projectDir, 'atlas.cproj');
+    fs.mkdirSync(path.join(homeDir, "styles"), { recursive: true });
+    fs.writeFileSync(
+      path.join(homeDir, "styles", "lakes.json"),
+      '[{"style":{"fill-color":"#00f"}}]'
+    );
+    const testFile = path.join(projectDir, "atlas.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      pathMode: 'relative',
+      format: "cartouche-xml",
+      pathMode: "relative",
       home: homeDir,
-      metadata: { title: 'Relative Paths', appVersion: '0.1.0-dev' },
+      metadata: { title: "Relative Paths", appVersion: "0.1.0-dev" },
       layers: [
         {
-          id: 'lakes', name: 'Lakes', type: 'esri-shapefile',
-          source: path.join(homeDir, 'vectors', 'lakes.shp'),
-          style: { href: path.join(homeDir, 'styles', 'lakes.json'), format: 'openlayers' }
+          id: "lakes",
+          name: "Lakes",
+          type: "esri-shapefile",
+          source: path.join(homeDir, "vectors", "lakes.shp"),
+          style: {
+            href: path.join(homeDir, "styles", "lakes.json"),
+            format: "openlayers",
+          },
         },
-        { id: 'wfs', name: 'WFS Layer', type: 'wfs', source: 'https://example.com/wfs?service=WFS' },
-        { id: 'pg', name: 'PostGIS', type: 'postgis', source: 'PG:dbname=gis host=localhost' },
-        { id: 'shared', name: 'Shared Style Ref', type: 'esri-shapefile', source: path.join(homeDir, 'rivers.shp'), style: { href: '#river-style', format: 'openlayers' } }
+        {
+          id: "wfs",
+          name: "WFS Layer",
+          type: "wfs",
+          source: "https://example.com/wfs?service=WFS",
+        },
+        {
+          id: "pg",
+          name: "PostGIS",
+          type: "postgis",
+          source: "PG:dbname=gis host=localhost",
+        },
+        {
+          id: "shared",
+          name: "Shared Style Ref",
+          type: "esri-shapefile",
+          source: path.join(homeDir, "rivers.shp"),
+          style: { href: "#river-style", format: "openlayers" },
+        },
       ],
-      styles: [{ id: 'river-style', content: '{"stroke":"#000"}' }]
+      styles: [{ id: "river-style", content: '{"stroke":"#000"}' }],
     };
 
     const xml = loader.serializeToXml(model, testFile);
-    assert.ok(xml.includes('pathMode="relative"'), 'root carries pathMode');
-    assert.ok(xml.includes('<home>../gisdata</home>'), '<home> is relative to the project file');
-    assert.ok(xml.indexOf('</metadata>') < xml.indexOf('<home>'), '<home> follows <metadata>');
-    assert.ok(xml.includes('<source>vectors/lakes.shp</source>'), 'layer source relative to the Project Home');
-    assert.ok(xml.includes('href="styles/lakes.json"'), 'style href relative to the Project Home');
-    assert.ok(xml.includes('<source>https://example.com/wfs?service=WFS</source>'), 'URI untouched');
-    assert.ok(xml.includes('<source>PG:dbname=gis host=localhost</source>'), 'connection string untouched');
-    assert.ok(xml.includes('href="#river-style"'), 'shared style reference untouched');
+    assert.ok(xml.includes('pathMode="relative"'), "root carries pathMode");
+    assert.ok(
+      xml.includes("<home>../gisdata</home>"),
+      "<home> is relative to the project file"
+    );
+    assert.ok(
+      xml.indexOf("</metadata>") < xml.indexOf("<home>"),
+      "<home> follows <metadata>"
+    );
+    assert.ok(
+      xml.includes("<source>vectors/lakes.shp</source>"),
+      "layer source relative to the Project Home"
+    );
+    assert.ok(
+      xml.includes('href="styles/lakes.json"'),
+      "style href relative to the Project Home"
+    );
+    assert.ok(
+      xml.includes("<source>https://example.com/wfs?service=WFS</source>"),
+      "URI untouched"
+    );
+    assert.ok(
+      xml.includes("<source>PG:dbname=gis host=localhost</source>"),
+      "connection string untouched"
+    );
+    assert.ok(
+      xml.includes('href="#river-style"'),
+      "shared style reference untouched"
+    );
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.equal(loaded.pathMode, 'relative');
-    assert.equal(loaded.home, homeDir, 'home is absolute in memory');
+    assert.equal(loaded.pathMode, "relative");
+    assert.equal(loaded.home, homeDir, "home is absolute in memory");
     const lakes = loaded.layers[0] as any;
-    assert.equal(lakes.source, path.join(homeDir, 'vectors', 'lakes.shp'), 'source resolved against the Project Home');
-    assert.equal(lakes.style.href, path.join(homeDir, 'styles', 'lakes.json'), 'href resolved against the Project Home');
-    assert.ok(lakes.style.content?.includes('#00f'), 'external style content read through the resolved href');
-    assert.equal((loaded.layers[1] as any).source, 'https://example.com/wfs?service=WFS');
-    assert.equal((loaded.layers[2] as any).source, 'PG:dbname=gis host=localhost');
-    assert.equal((loaded.layers[3] as any).style.href, '#river-style');
+    assert.equal(
+      lakes.source,
+      path.join(homeDir, "vectors", "lakes.shp"),
+      "source resolved against the Project Home"
+    );
+    assert.equal(
+      lakes.style.href,
+      path.join(homeDir, "styles", "lakes.json"),
+      "href resolved against the Project Home"
+    );
+    assert.ok(
+      lakes.style.content?.includes("#00f"),
+      "external style content read through the resolved href"
+    );
+    assert.equal(
+      (loaded.layers[1] as any).source,
+      "https://example.com/wfs?service=WFS"
+    );
+    assert.equal(
+      (loaded.layers[2] as any).source,
+      "PG:dbname=gis host=localhost"
+    );
+    assert.equal((loaded.layers[3] as any).style.href, "#river-style");
   });
 
-  it('keeps absolute paths in absolute mode, writes <home> absolute when requested, and reads a missing pathMode as absolute (Ticket #274)', async () => {
+  it("keeps absolute paths in absolute mode, writes <home> absolute when requested, and reads a missing pathMode as absolute (Ticket #274)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'absolute.cproj');
-    const absSource = path.join(tempDir, 'data', 'roads.shp');
+    const testFile = path.join(tempDir, "absolute.cproj");
+    const absSource = path.join(tempDir, "data", "roads.shp");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      pathMode: 'absolute',
-      metadata: { title: 'Absolute Paths', appVersion: '0.1.0-dev' },
-      layers: [{ id: 'roads', name: 'Roads', type: 'esri-shapefile', source: absSource }]
+      format: "cartouche-xml",
+      pathMode: "absolute",
+      metadata: { title: "Absolute Paths", appVersion: "0.1.0-dev" },
+      layers: [
+        {
+          id: "roads",
+          name: "Roads",
+          type: "esri-shapefile",
+          source: absSource,
+        },
+      ],
     };
     const xml = loader.serializeToXml(model, testFile);
     assert.ok(xml.includes('pathMode="absolute"'));
-    assert.ok(xml.includes(`<source>${absSource}</source>`), 'absolute mode writes the absolute path');
-    assert.ok(!xml.includes('<home>'), 'no <home> when unset');
+    assert.ok(
+      xml.includes(`<source>${absSource}</source>`),
+      "absolute mode writes the absolute path"
+    );
+    assert.ok(!xml.includes("<home>"), "no <home> when unset");
     assert.equal(validateXmlAgainstSchema(xml).valid, true);
 
     // Legacy document: no pathMode attribute, relative source resolved against the file directory
@@ -1379,65 +1604,120 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
   <styles />
 </cartouche:project>`;
     assert.equal(validateXmlAgainstSchema(legacyXml).valid, true);
-    const legacyFile = path.join(tempDir, 'legacy.cproj');
-    fs.writeFileSync(legacyFile, legacyXml, 'utf-8');
+    const legacyFile = path.join(tempDir, "legacy.cproj");
+    fs.writeFileSync(legacyFile, legacyXml, "utf-8");
     const legacy = await loader.load(legacyFile);
-    assert.equal(legacy.pathMode, undefined, 'missing pathMode stays unset (treated as absolute)');
+    assert.equal(
+      legacy.pathMode,
+      undefined,
+      "missing pathMode stays unset (treated as absolute)"
+    );
     assert.equal(legacy.home, undefined);
-    assert.equal((legacy.layers[0] as any).source, path.join(tempDir, 'data', 'legacy.shp'));
+    assert.equal(
+      (legacy.layers[0] as any).source,
+      path.join(tempDir, "data", "legacy.shp")
+    );
 
     // Re-saving a legacy project writes absolute paths (no pathMode => absolute behaviour)
     const resaved = loader.serializeToXml(legacy, legacyFile);
-    assert.ok(!resaved.includes('pathMode='));
-    assert.ok(resaved.includes(`<source>${path.join(tempDir, 'data', 'legacy.shp')}</source>`));
+    assert.ok(!resaved.includes("pathMode="));
+    assert.ok(
+      resaved.includes(
+        `<source>${path.join(tempDir, "data", "legacy.shp")}</source>`
+      )
+    );
   });
-  it('round-trips <measurement> after <display> and before <viewport>, validated against project.xsd, with defaults when missing (Ticket #275)', async () => {
+  it("round-trips <measurement> after <display> and before <viewport>, validated against project.xsd, with defaults when missing (Ticket #275)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'measurement.cproj');
+    const testFile = path.join(tempDir, "measurement.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Measurement Test', appVersion: '0.1.0-dev' },
-      display: { backgroundColour: '#ffffff' },
-      measurement: { distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' },
+      format: "cartouche-xml",
+      metadata: { title: "Measurement Test", appVersion: "0.1.0-dev" },
+      display: { backgroundColour: "#ffffff" },
+      measurement: {
+        distanceUnit: "kilometres",
+        areaUnit: "square-kilometres",
+        scaleMethod: "average",
+      },
       viewport: { center: { x: 0, y: 0 }, scale: 1000 },
-      layers: []
+      layers: [],
     };
     const xml = loader.serializeToXml(model, testFile);
-    assert.ok(xml.includes('<measurement distanceUnit="kilometres" areaUnit="square-kilometres" scaleMethod="average" />'));
-    assert.ok(xml.indexOf('<display') < xml.indexOf('<measurement'), '<measurement> follows <display>');
-    assert.ok(xml.indexOf('<measurement') < xml.indexOf('<viewport>'), '<measurement> precedes <viewport>');
+    assert.ok(
+      xml.includes(
+        '<measurement distanceUnit="kilometres" areaUnit="square-kilometres" scaleMethod="average" />'
+      )
+    );
+    assert.ok(
+      xml.indexOf("<display") < xml.indexOf("<measurement"),
+      "<measurement> follows <display>"
+    );
+    assert.ok(
+      xml.indexOf("<measurement") < xml.indexOf("<viewport>"),
+      "<measurement> precedes <viewport>"
+    );
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.deepEqual(loaded.measurement, { distanceUnit: 'kilometres', areaUnit: 'square-kilometres', scaleMethod: 'average' });
+    assert.deepEqual(loaded.measurement, {
+      distanceUnit: "kilometres",
+      areaUnit: "square-kilometres",
+      scaleMethod: "average",
+    });
 
     // Missing element loads as undefined (defaults: degrees / square-degrees / middle apply downstream); empty settings are not written.
-    const bare: ProjectModel = { format: 'cartouche-xml', metadata: { title: 'Bare', appVersion: '0.1.0-dev' }, measurement: {}, layers: [] };
+    const bare: ProjectModel = {
+      format: "cartouche-xml",
+      metadata: { title: "Bare", appVersion: "0.1.0-dev" },
+      measurement: {},
+      layers: [],
+    };
     const bareXml = loader.serializeToXml(bare);
-    assert.ok(!bareXml.includes('<measurement'));
+    assert.ok(!bareXml.includes("<measurement"));
     assert.equal(validateXmlAgainstSchema(bareXml).valid, true);
-    const bareFile = path.join(tempDir, 'bare-measurement.cproj');
+    const bareFile = path.join(tempDir, "bare-measurement.cproj");
     await loader.save(bare, bareFile);
     assert.equal((await loader.load(bareFile)).measurement, undefined);
 
     // An invalid token is rejected by the schema
-    const invalid = bareXml.replace('</metadata>', '</metadata>\n  <measurement scaleMethod="sideways" />');
-    assert.equal(validateXmlAgainstSchema(invalid).valid, false, 'unknown scaleMethod must fail schema validation');
+    const invalid = bareXml.replace(
+      "</metadata>",
+      '</metadata>\n  <measurement scaleMethod="sideways" />'
+    );
+    assert.equal(
+      validateXmlAgainstSchema(invalid).valid,
+      false,
+      "unknown scaleMethod must fail schema validation"
+    );
   });
   it('round-trips the Project CRS "No CRS" flag, keeps each Layer CRS unchanged, and stores <viewport> as given (Ticket #278)', async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'no-crs.cproj');
+    const testFile = path.join(tempDir, "no-crs.cproj");
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'No CRS Project', appVersion: '0.1.0-dev' },
-      crs: { authId: '', none: true },
-      viewport: { extent: { xmin: 100, ymin: 200, xmax: 300, ymax: 400 }, center: { x: 200, y: 300 } },
+      format: "cartouche-xml",
+      metadata: { title: "No CRS Project", appVersion: "0.1.0-dev" },
+      crs: { authId: "", none: true },
+      viewport: {
+        extent: { xmin: 100, ymin: 200, xmax: 300, ymax: 400 },
+        center: { x: 200, y: 300 },
+      },
       layers: [
-        { id: 'lambert', name: 'Lambert', type: 'esri-shapefile', source: '/data/l93.shp', crs: { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93' } },
-        { id: 'plain', name: 'No Layer CRS', type: 'esri-shapefile', source: '/data/plain.shp' },
-      ]
+        {
+          id: "lambert",
+          name: "Lambert",
+          type: "esri-shapefile",
+          source: "/data/l93.shp",
+          crs: { authId: "EPSG:2154", description: "RGF93 / Lambert-93" },
+        },
+        {
+          id: "plain",
+          name: "No Layer CRS",
+          type: "esri-shapefile",
+          source: "/data/plain.shp",
+        },
+      ],
     };
     const xml = loader.serializeToXml(model, testFile);
     assert.ok(xml.includes('<crs none="true" />'));
@@ -1447,125 +1727,270 @@ describe('CartoucheXmlLoader & ProjectLoaderRegistry', () => {
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
     assert.equal(loaded.crs?.none, true);
-    assert.deepEqual(loaded.viewport?.extent, { xmin: 100, ymin: 200, xmax: 300, ymax: 400 }, 'viewport kept in Project CRS units');
-    assert.equal((loaded.layers[0] as any).crs.authId, 'EPSG:2154', 'Layer CRS saved unchanged, separate from the Project CRS');
-    assert.equal((loaded.layers[1] as any).crs, undefined, 'unknown Layer CRS is never written');
+    assert.deepEqual(
+      loaded.viewport?.extent,
+      { xmin: 100, ymin: 200, xmax: 300, ymax: 400 },
+      "viewport kept in Project CRS units"
+    );
+    assert.equal(
+      (loaded.layers[0] as any).crs.authId,
+      "EPSG:2154",
+      "Layer CRS saved unchanged, separate from the Project CRS"
+    );
+    assert.equal(
+      (loaded.layers[1] as any).crs,
+      undefined,
+      "unknown Layer CRS is never written"
+    );
 
     // A projected Project CRS round-trips without the none flag
-    const projected: ProjectModel = { ...model, crs: { authId: 'EPSG:2154' } };
+    const projected: ProjectModel = { ...model, crs: { authId: "EPSG:2154" } };
     const projectedXml = loader.serializeToXml(projected, testFile);
-    assert.ok(projectedXml.includes('<authId>EPSG:2154</authId>') && !projectedXml.includes('none='));
+    assert.ok(
+      projectedXml.includes("<authId>EPSG:2154</authId>")
+        && !projectedXml.includes("none=")
+    );
     assert.equal(validateXmlAgainstSchema(projectedXml).valid, true);
   });
-  it('round-trips <recentCrs> (at most 20, most recent first) after <crs> and before <display>, validated against project.xsd (Ticket #280)', async () => {
+  it("round-trips <recentCrs> (at most 20, most recent first) after <crs> and before <display>, validated against project.xsd (Ticket #280)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'recent-crs.cproj');
-    const recent = Array.from({ length: 22 }, (_, i) => ({ authId: `EPSG:${32601 + i}`, description: `WGS 84 / UTM zone ${i + 1}N` }));
+    const testFile = path.join(tempDir, "recent-crs.cproj");
+    const recent = Array.from({ length: 22 }, (_, i) => ({
+      authId: `EPSG:${32601 + i}`,
+      description: `WGS 84 / UTM zone ${i + 1}N`,
+    }));
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Recent CRS', appVersion: '0.1.0-dev' },
-      crs: { authId: 'EPSG:32601' },
+      format: "cartouche-xml",
+      metadata: { title: "Recent CRS", appVersion: "0.1.0-dev" },
+      crs: { authId: "EPSG:32601" },
       recentCrs: recent,
-      display: { backgroundColour: '#ffffff' },
-      layers: []
+      display: { backgroundColour: "#ffffff" },
+      layers: [],
     };
     const xml = loader.serializeToXml(model, testFile);
-    assert.ok(xml.indexOf('</crs>') < xml.indexOf('<recentCrs>'), '<recentCrs> follows <crs>');
-    assert.ok(xml.indexOf('</recentCrs>') < xml.indexOf('<display'), '<recentCrs> precedes <display>');
-    assert.equal((xml.match(/<recentCrs>[\s\S]*<\/recentCrs>/)![0].match(/<authId>/g) || []).length, 20, 'trimmed to 20');
+    assert.ok(
+      xml.indexOf("</crs>") < xml.indexOf("<recentCrs>"),
+      "<recentCrs> follows <crs>"
+    );
+    assert.ok(
+      xml.indexOf("</recentCrs>") < xml.indexOf("<display"),
+      "<recentCrs> precedes <display>"
+    );
+    assert.equal(
+      (
+        xml.match(/<recentCrs>[\s\S]*<\/recentCrs>/)![0].match(/<authId>/g)
+        || []
+      ).length,
+      20,
+      "trimmed to 20"
+    );
     const validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
     assert.equal(loaded.recentCrs?.length, 20);
-    assert.deepEqual(loaded.recentCrs?.[0], { authId: 'EPSG:32601', description: 'WGS 84 / UTM zone 1N' });
-    assert.equal(loaded.recentCrs?.[19].authId, 'EPSG:32620', 'most recent first, oldest dropped');
+    assert.deepEqual(loaded.recentCrs?.[0], {
+      authId: "EPSG:32601",
+      description: "WGS 84 / UTM zone 1N",
+    });
+    assert.equal(
+      loaded.recentCrs?.[19].authId,
+      "EPSG:32620",
+      "most recent first, oldest dropped"
+    );
 
-    const overflow = xml.replace('</recentCrs>', '<crs><authId>EPSG:1</authId></crs></recentCrs>');
-    assert.equal(validateXmlAgainstSchema(overflow).valid, false, 'more than 20 entries fail validation');
+    const overflow = xml.replace(
+      "</recentCrs>",
+      "<crs><authId>EPSG:1</authId></crs></recentCrs>"
+    );
+    assert.equal(
+      validateXmlAgainstSchema(overflow).valid,
+      false,
+      "more than 20 entries fail validation"
+    );
   });
-  it('round-trips Project Default Styles under the reserved ids with no XSD change and rejects other _ ids (Ticket #282)', async () => {
+  it("round-trips Project Default Styles under the reserved ids with no XSD change and rejects other _ ids (Ticket #282)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'default-styles.cproj');
+    const testFile = path.join(tempDir, "default-styles.cproj");
     const pointStyle = '{"format":"simple","version":1,"components":[]}';
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'Defaults', appVersion: '0.1.0-dev' },
+      format: "cartouche-xml",
+      metadata: { title: "Defaults", appVersion: "0.1.0-dev" },
       layers: [],
-      styles: [{ id: '_project_default_point', format: 'cartouche', content: pointStyle }]
+      styles: [
+        {
+          id: "_project_default_point",
+          format: "cartouche",
+          content: pointStyle,
+        },
+      ],
     };
     const xml = loader.serializeToXml(model, testFile);
-    assert.ok(xml.includes('<style id="_project_default_point" format="cartouche">'));
-    assert.ok(!xml.includes('_project_default_line'), 'unset slots are not written');
+    assert.ok(
+      xml.includes('<style id="_project_default_point" format="cartouche">')
+    );
+    assert.ok(
+      !xml.includes("_project_default_line"),
+      "unset slots are not written"
+    );
     assert.equal(validateXmlAgainstSchema(xml).valid, true);
     await loader.save(model, testFile);
     const loaded = await loader.load(testFile);
-    assert.deepEqual(loaded.styles, [{ id: '_project_default_point', format: 'cartouche', content: pointStyle }]);
+    assert.deepEqual(loaded.styles, [
+      {
+        id: "_project_default_point",
+        format: "cartouche",
+        content: pointStyle,
+      },
+    ]);
 
-    const badStyle = xml.replace('_project_default_point', '_my_style');
-    const badFile = path.join(tempDir, 'bad-reserved.cproj');
-    fs.writeFileSync(badFile, badStyle, 'utf-8');
-    await assert.rejects(() => loader.load(badFile), /reserved for application use/);
+    const badStyle = xml.replace("_project_default_point", "_my_style");
+    const badFile = path.join(tempDir, "bad-reserved.cproj");
+    fs.writeFileSync(badFile, badStyle, "utf-8");
+    await assert.rejects(
+      () => loader.load(badFile),
+      /reserved for application use/
+    );
 
-    const badRef = xml.replace(/<layers>\s*<\/layers>/, '<layers><layer id="l"><name>L</name><type>vector</type><source>/x.shp</source><style href="#_project_default_point" /></layer></layers>');
-    assert.ok(badRef.includes('href="#_project_default_point"'), 'fixture references a reserved style');
-    const badRefFile = path.join(tempDir, 'bad-ref.cproj');
-    fs.writeFileSync(badRefFile, badRef, 'utf-8');
-    await assert.rejects(() => loader.load(badRefFile), /reserved for application use/);
+    const badRef = xml.replace(
+      /<layers>\s*<\/layers>/,
+      '<layers><layer id="l"><name>L</name><type>vector</type><source>/x.shp</source><style href="#_project_default_point" /></layer></layers>'
+    );
+    assert.ok(
+      badRef.includes('href="#_project_default_point"'),
+      "fixture references a reserved style"
+    );
+    const badRefFile = path.join(tempDir, "bad-ref.cproj");
+    fs.writeFileSync(badRefFile, badRef, "utf-8");
+    await assert.rejects(
+      () => loader.load(badRefFile),
+      /reserved for application use/
+    );
   });
-  it('project.xsd compiles and defines CrsType and ProjectCrsType from one shared CRS base type (Ticket #298)', () => {
-    const xsdPath = 'assets/xml/schemas/project.xsd';
-    const wellFormed = spawnSync('xmllint', ['--noout', xsdPath], { encoding: 'utf-8' });
+  it("project.xsd compiles and defines CrsType and ProjectCrsType from one shared CRS base type (Ticket #298)", () => {
+    const xsdPath = "assets/xml/schemas/project.xsd";
+    const wellFormed = spawnSync("xmllint", ["--noout", xsdPath], {
+      encoding: "utf-8",
+    });
     assert.equal(wellFormed.status, 0, wellFormed.stderr);
     // xmllint compiles the schema before validating any document, so a valid minimal project proves project.xsd is a sound schema.
-    const minimal = new CartoucheXmlLoader().serializeToXml({ format: 'cartouche-xml', metadata: { title: 'Schema', appVersion: '0.1.0-dev' }, layers: [] });
+    const minimal = new CartoucheXmlLoader().serializeToXml({
+      format: "cartouche-xml",
+      metadata: { title: "Schema", appVersion: "0.1.0-dev" },
+      layers: [],
+    });
     const validation = validateXmlAgainstSchema(minimal);
     assert.equal(validation.valid, true, validation.error);
 
-    const xsd = fs.readFileSync(xsdPath, 'utf-8');
-    const crsType = xsd.match(/<xs:complexType name="CrsType">[\s\S]*?<\/xs:complexType>/)?.[0] ?? '';
-    const projectCrsType = xsd.match(/<xs:complexType name="ProjectCrsType">[\s\S]*?<\/xs:complexType>/)?.[0] ?? '';
-    const restrictionBase = crsType.match(/<xs:restriction base="([^"]+)"/)?.[1];
-    const extensionBase = projectCrsType.match(/<xs:extension base="([^"]+)"/)?.[1];
-    assert.ok(restrictionBase, 'CrsType is derived by restriction');
-    assert.equal(extensionBase, restrictionBase, 'ProjectCrsType extends the same base type CrsType restricts');
-    assert.match(projectCrsType, /<xs:attribute name="none" type="xs:boolean" default="false"/);
+    const xsd = fs.readFileSync(xsdPath, "utf-8");
+    const crsType =
+      xsd.match(
+        /<xs:complexType name="CrsType">[\s\S]*?<\/xs:complexType>/
+      )?.[0] ?? "";
+    const projectCrsType =
+      xsd.match(
+        /<xs:complexType name="ProjectCrsType">[\s\S]*?<\/xs:complexType>/
+      )?.[0] ?? "";
+    const restrictionBase = crsType.match(
+      /<xs:restriction base="([^"]+)"/
+    )?.[1];
+    const extensionBase = projectCrsType.match(
+      /<xs:extension base="([^"]+)"/
+    )?.[1];
+    assert.ok(restrictionBase, "CrsType is derived by restriction");
+    assert.equal(
+      extensionBase,
+      restrictionBase,
+      "ProjectCrsType extends the same base type CrsType restricts"
+    );
+    assert.match(
+      projectCrsType,
+      /<xs:attribute name="none" type="xs:boolean" default="false"/
+    );
   });
 
-  it('validates a Project CRS with proj4, No CRS, a Layer CRS with proj4, and rejects a Layer CRS without authId (Ticket #298)', () => {
+  it("validates a Project CRS with proj4, No CRS, a Layer CRS with proj4, and rejects a Layer CRS without authId (Ticket #298)", () => {
     const loader = new CartoucheXmlLoader();
     const model: ProjectModel = {
-      format: 'cartouche-xml',
-      metadata: { title: 'CRS Schema', appVersion: '0.1.0-dev' },
-      crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93', proj4: '+proj=lcc +lat_0=46.5', wkt: 'PROJCS["RGF93 v1 / Lambert-93"]' },
+      format: "cartouche-xml",
+      metadata: { title: "CRS Schema", appVersion: "0.1.0-dev" },
+      crs: {
+        authId: "EPSG:2154",
+        description: "RGF93 v1 / Lambert-93",
+        proj4: "+proj=lcc +lat_0=46.5",
+        wkt: 'PROJCS["RGF93 v1 / Lambert-93"]',
+      },
       layers: [
-        { id: 'l93', name: 'Lambert', type: 'esri-shapefile', source: '/data/l93.shp', crs: { authId: 'EPSG:2154', proj4: '+proj=lcc +lat_0=46.5' } },
-      ]
+        {
+          id: "l93",
+          name: "Lambert",
+          type: "esri-shapefile",
+          source: "/data/l93.shp",
+          crs: { authId: "EPSG:2154", proj4: "+proj=lcc +lat_0=46.5" },
+        },
+      ],
     };
     const xml = loader.serializeToXml(model);
-    assert.match(xml, /<crs>\s*<authId>EPSG:2154<\/authId>\s*<description>RGF93 v1 \/ Lambert-93<\/description>\s*<proj4>\+proj=lcc \+lat_0=46\.5<\/proj4>\s*<wkt>/);
+    assert.match(
+      xml,
+      /<crs>\s*<authId>EPSG:2154<\/authId>\s*<description>RGF93 v1 \/ Lambert-93<\/description>\s*<proj4>\+proj=lcc \+lat_0=46\.5<\/proj4>\s*<wkt>/
+    );
     let validation = validateXmlAgainstSchema(xml);
     assert.equal(validation.valid, true, validation.error);
 
-    const noCrs = loader.serializeToXml({ ...model, crs: { authId: '', none: true } });
+    const noCrs = loader.serializeToXml({
+      ...model,
+      crs: { authId: "", none: true },
+    });
     assert.ok(noCrs.includes('<crs none="true" />'));
     validation = validateXmlAgainstSchema(noCrs);
     assert.equal(validation.valid, true, validation.error);
 
-    const layerWithoutAuthId = xml.replace(/(<layer\b[\s\S]*?<crs>\s*)<authId>EPSG:2154<\/authId>/, '$1');
-    assert.notEqual(layerWithoutAuthId, xml, 'fixture removed the layer authId');
-    assert.equal(validateXmlAgainstSchema(layerWithoutAuthId).valid, false, 'a Layer CRS without authId is rejected');
+    const layerWithoutAuthId = xml.replace(
+      /(<layer\b[\s\S]*?<crs>\s*)<authId>EPSG:2154<\/authId>/,
+      "$1"
+    );
+    assert.notEqual(
+      layerWithoutAuthId,
+      xml,
+      "fixture removed the layer authId"
+    );
+    assert.equal(
+      validateXmlAgainstSchema(layerWithoutAuthId).valid,
+      false,
+      "a Layer CRS without authId is rejected"
+    );
 
-    const layerWithNone = xml.replace(/(<layer\b[\s\S]*?)<crs>/, '$1<crs none="true">');
-    assert.equal(validateXmlAgainstSchema(layerWithNone).valid, false, 'the none flag belongs to the Project CRS only');
+    const layerWithNone = xml.replace(
+      /(<layer\b[\s\S]*?)<crs>/,
+      '$1<crs none="true">'
+    );
+    assert.equal(
+      validateXmlAgainstSchema(layerWithNone).valid,
+      false,
+      "the none flag belongs to the Project CRS only"
+    );
   });
 
-  it('round-trips the Project CRS proj4 and WKT through save() and load() (Ticket #298)', async () => {
+  it("round-trips the Project CRS proj4 and WKT through save() and load() (Ticket #298)", async () => {
     const loader = new CartoucheXmlLoader();
-    const testFile = path.join(tempDir, 'crs-definition.cproj');
-    const crs = { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93', proj4: '+proj=lcc +lat_0=46.5 +units=m', wkt: 'PROJCS["RGF93 v1 / Lambert-93",UNIT["metre",1]]' };
-    await loader.save({ format: 'cartouche-xml', metadata: { title: 'Definition', appVersion: '0.1.0-dev' }, crs, layers: [] }, testFile);
+    const testFile = path.join(tempDir, "crs-definition.cproj");
+    const crs = {
+      authId: "EPSG:2154",
+      description: "RGF93 v1 / Lambert-93",
+      proj4: "+proj=lcc +lat_0=46.5 +units=m",
+      wkt: 'PROJCS["RGF93 v1 / Lambert-93",UNIT["metre",1]]',
+    };
+    await loader.save(
+      {
+        format: "cartouche-xml",
+        metadata: { title: "Definition", appVersion: "0.1.0-dev" },
+        crs,
+        layers: [],
+      },
+      testFile
+    );
     const loaded = await loader.load(testFile);
     assert.equal(loaded.crs?.authId, crs.authId);
     assert.equal(loaded.crs?.proj4, crs.proj4);

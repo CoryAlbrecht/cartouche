@@ -12,14 +12,17 @@
  * @see {@link rebalanceDockOnResize}
  */
 
-import type { DockviewApi } from 'dockview-react';
-import type { WidgetDockId, WorkbenchWidgetDocksState } from '../../shared/types';
+import type { DockviewApi } from "dockview-react";
+import type {
+  WidgetDockId,
+  WorkbenchWidgetDocksState,
+} from "../../shared/types";
 import {
   widgetDocksSignal,
   reorderWidgetInDock,
   moveWidgetToDock,
-} from '../state/widgetDockSignals';
-import { updatePreference } from '../state/preferencesSignals';
+} from "../state/widgetDockSignals";
+import { updatePreference } from "../state/preferencesSignals";
 
 /**
  * @typedef {Object} ProportionalItemInput
@@ -229,12 +232,12 @@ export function recalculateSashRatios(
 
   // Round to 4 decimal places for clean storage
   const rounded1 = Math.max(0.01, Math.round(raw1 * 10000) / 10000);
-  const rounded2 = Math.max(0.01, Math.round((combinedRatio - rounded1) * 10000) / 10000);
+  const rounded2 = Math.max(
+    0.01,
+    Math.round((combinedRatio - rounded1) * 10000) / 10000
+  );
 
-  return {
-    ratio1: rounded1,
-    ratio2: rounded2,
-  };
+  return { ratio1: rounded1, ratio2: rounded2 };
 }
 
 /**
@@ -261,7 +264,7 @@ export function syncDockCrossAxis(
     const panel = api.getPanel(item.id);
     if (!panel) continue;
 
-    if (dock === 'left' || dock === 'right') {
+    if (dock === "left" || dock === "right") {
       if (panel.api.width !== boundedSize) {
         panel.api.setSize({ width: boundedSize });
       }
@@ -296,14 +299,10 @@ export function rebalanceDockOnResize(
 
   if (dockItems.length === 0) return;
 
-  const isVertical = dock === 'left' || dock === 'right';
+  const isVertical = dock === "left" || dock === "right";
   const inputs: ProportionalItemInput[] = dockItems.map((item) => {
     const minSize = isVertical ? 120 : 150;
-    return {
-      id: item.id,
-      axisRatio: item.axisRatio,
-      minSize,
-    };
+    return { id: item.id, axisRatio: item.axisRatio, minSize };
   });
 
   const allocations = calculateProportionalSizes(inputs, availableLength);
@@ -343,14 +342,15 @@ export async function detectAndSyncSashDrag(
 
   if (dockItems.length === 0) return false;
 
-  const isVertical = dock === 'left' || dock === 'right';
+  const isVertical = dock === "left" || dock === "right";
   let stateModified = false;
   let nextState: WorkbenchWidgetDocksState = { ...current };
 
   // 1. Cross-axis check (dock width for left/right; dock height for top/bottom)
   const firstPanel = api.getPanel(dockItems[0].id);
   if (firstPanel) {
-    const currentCrossAxis = isVertical ? firstPanel.api.width : firstPanel.api.height;
+    const currentCrossAxis =
+      isVertical ? firstPanel.api.width : firstPanel.api.height;
     const storedCrossAxis =
       isVertical ?
         dockItems[0].dimensions.width
@@ -364,14 +364,11 @@ export async function detectAndSyncSashDrag(
         ...item,
         dimensions: {
           ...item.dimensions,
-          [isVertical ? 'width' : 'height']: currentCrossAxis,
+          [isVertical ? "width" : "height"]: currentCrossAxis,
         },
       }));
 
-      nextState = {
-        ...nextState,
-        [dock]: updatedItems,
-      };
+      nextState = { ...nextState, [dock]: updatedItems };
       stateModified = true;
     }
   }
@@ -410,10 +407,7 @@ export async function detectAndSyncSashDrag(
           return item;
         });
 
-        nextState = {
-          ...nextState,
-          [dock]: updatedItems,
-        };
+        nextState = { ...nextState, [dock]: updatedItems };
         stateModified = true;
       }
     }
@@ -421,7 +415,7 @@ export async function detectAndSyncSashDrag(
 
   if (stateModified) {
     widgetDocksSignal.value = nextState;
-    await updatePreference('ui.workbench.widgetDocks', nextState);
+    await updatePreference("ui.workbench.widgetDocks", nextState);
     return true;
   }
 

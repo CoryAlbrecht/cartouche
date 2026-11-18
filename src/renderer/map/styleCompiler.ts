@@ -854,9 +854,8 @@ export function wrapStyleWithTemporalFilter(
 
   // Not @api in OpenLayers, but it is the converter OpenLayers' own
   // BaseVectorLayer.setStyle uses for Flat Styles, so it tracks layer semantics exactly.
-  const styleFunction = isOlStyle ?
-      () => baseStyle
-    : flatStyleLikeToStyleFunction(baseStyle);
+  const styleFunction =
+    isOlStyle ? () => baseStyle : flatStyleLikeToStyleFunction(baseStyle);
   return wrapStyleWithTemporalFilter(styleFunction, temporal);
 }
 

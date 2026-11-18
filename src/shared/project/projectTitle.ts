@@ -18,7 +18,10 @@
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export const DEFAULT_PROJECT_TITLES: readonly string[] = ['New Project', 'Untitled Project'];
+export const DEFAULT_PROJECT_TITLES: readonly string[] = [
+  "New Project",
+  "Untitled Project",
+];
 
 /**
  * @constant {string} UNSAVED_PROJECT_DISPLAY_NAME
@@ -28,7 +31,7 @@ export const DEFAULT_PROJECT_TITLES: readonly string[] = ['New Project', 'Untitl
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export const UNSAVED_PROJECT_DISPLAY_NAME = 'Untitled Project';
+export const UNSAVED_PROJECT_DISPLAY_NAME = "Untitled Project";
 
 /**
  * @function isDefaultProjectTitle
@@ -40,8 +43,12 @@ export const UNSAVED_PROJECT_DISPLAY_NAME = 'Untitled Project';
  * @param {string | null | undefined} title - Title to test.
  * @returns {boolean} True for a placeholder title.
  */
-export function isDefaultProjectTitle(title: string | null | undefined): boolean {
-  return typeof title === 'string' && DEFAULT_PROJECT_TITLES.includes(title.trim());
+export function isDefaultProjectTitle(
+  title: string | null | undefined
+): boolean {
+  return (
+    typeof title === "string" && DEFAULT_PROJECT_TITLES.includes(title.trim())
+  );
 }
 
 /**
@@ -54,11 +61,13 @@ export function isDefaultProjectTitle(title: string | null | undefined): boolean
  * @param {string | null | undefined} filePath - Absolute or relative project file path, with `/` or `\` separators.
  * @returns {string | null} The base name, or null when no path is given.
  */
-export function projectFileBaseName(filePath: string | null | undefined): string | null {
+export function projectFileBaseName(
+  filePath: string | null | undefined
+): string | null {
   if (!filePath) return null;
   const leaf = filePath.split(/[/\\]/).pop();
   if (!leaf) return null;
-  const base = leaf.replace(/\.[^/.]+$/, '');
+  const base = leaf.replace(/\.[^/.]+$/, "");
   return base || null;
 }
 
@@ -77,7 +86,7 @@ export function resolveProjectDisplayName(
   title: string | null | undefined,
   filePath: string | null | undefined
 ): string {
-  const trimmed = typeof title === 'string' ? title.trim() : '';
+  const trimmed = typeof title === "string" ? title.trim() : "";
   if (trimmed) return trimmed;
   return projectFileBaseName(filePath) ?? UNSAVED_PROJECT_DISPLAY_NAME;
 }

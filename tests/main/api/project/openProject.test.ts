@@ -10,29 +10,32 @@
  * @see {@link GeospatialService}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import * as fs from 'node:fs';
-import os from 'node:os';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import openProject from '../../../../src/main/api/project/openProject';
-import { projectStore } from '../../../../src/main/project/ProjectStore';
-import { geospatialService } from '../../../../src/main/worker/GeospatialService';
-import { queryExtent } from '../../../../src/main/api/layers/queryExtent';
-import { isProjectLayerStyleWrapper, type ProjectLayerItem } from '../../../../src/shared/types';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import os from "node:os";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import openProject from "../../../../src/main/api/project/openProject";
+import { projectStore } from "../../../../src/main/project/ProjectStore";
+import { geospatialService } from "../../../../src/main/worker/GeospatialService";
+import { queryExtent } from "../../../../src/main/api/layers/queryExtent";
+import {
+  isProjectLayerStyleWrapper,
+  type ProjectLayerItem,
+} from "../../../../src/shared/types";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const sampleShpPath = path.resolve(__dirname, '../../../data/ne_10m_lakes.shp');
+const sampleShpPath = path.resolve(__dirname, "../../../data/ne_10m_lakes.shp");
 
-describe('openProject Native Session Hydration', () => {
+describe("openProject Native Session Hydration", () => {
   let tempDir: string;
 
   beforeEach(async () => {
     projectStore.closeProject();
     await geospatialService.closeAll();
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-test-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-test-"));
   });
 
   afterEach(async () => {
@@ -47,8 +50,11 @@ describe('openProject Native Session Hydration', () => {
     }
   });
 
-  it('hydrates native layer sessions in GeospatialService and enriches layer extents when opening project XML', async () => {
-    const tempProjPath = path.join(tempDir, `temp_open_project_${Date.now()}.cproj`);
+  it("hydrates native layer sessions in GeospatialService and enriches layer extents when opening project XML", async () => {
+    const tempProjPath = path.join(
+      tempDir,
+      `temp_open_project_${Date.now()}.cproj`
+    );
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
@@ -63,38 +69,50 @@ describe('openProject Native Session Hydration', () => {
   </layers>
 </project>`;
 
-    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+    fs.writeFileSync(tempProjPath, xmlContent, "utf-8");
 
     const project = await openProject(tempProjPath);
-    assert.ok(project, 'Project must be loaded');
-    assert.equal(project.metadata.title, 'Integration Test Project');
+    assert.ok(project, "Project must be loaded");
+    assert.equal(project.metadata.title, "Integration Test Project");
 
     // Verify enriched layer metadata
     assert.ok(Array.isArray(project.layers));
     assert.equal(project.layers.length, 1);
     const layerItem = project.layers[0] as ProjectLayerItem;
-    assert.equal(layerItem.id, 'test-lake-layer');
-    assert.equal(layerItem.geometryKind, 'Polygon');
-    assert.ok((layerItem as any).extent, 'Bounding extent must be enriched');
+    assert.equal(layerItem.id, "test-lake-layer");
+    assert.equal(layerItem.geometryKind, "Polygon");
+    assert.ok((layerItem as any).extent, "Bounding extent must be enriched");
     assert.ok(Array.isArray((layerItem as any).extent));
     assert.equal((layerItem as any).extent.length, 4);
-    assert.ok((layerItem as any).featureCount > 0, 'Feature count must be enriched');
+    assert.ok(
+      (layerItem as any).featureCount > 0,
+      "Feature count must be enriched"
+    );
 
     // Verify queryExtent works against the hydrated session in GeospatialService
-    const extentResult = await queryExtent('test-lake-layer', [-100, 40, -80, 50]);
-    assert.equal(extentResult.layerId, 'test-lake-layer');
+    const extentResult = await queryExtent(
+      "test-lake-layer",
+      [-100, 40, -80, 50]
+    );
+    assert.equal(extentResult.layerId, "test-lake-layer");
     assert.equal(extentResult.features.length, 34);
     assert.ok(extentResult.features[0].wkb instanceof Uint8Array);
     assert.ok(extentResult.buffer instanceof ArrayBuffer);
-    assert.equal(new DataView(extentResult.buffer).getUint32(0, true), 0x43415254);
+    assert.equal(
+      new DataView(extentResult.buffer).getUint32(0, true),
+      0x43415254
+    );
   });
 
-  it('updates non-matching <layer geometryKind> from authoritative dataset on openProject while keeping project clean', async () => {
+  it("updates non-matching <layer geometryKind> from authoritative dataset on openProject while keeping project clean", async () => {
     const centrelinesPath = path.resolve(
       __dirname,
-      '../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+      "../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson"
     );
-    const tempProjPath = path.join(tempDir, `temp_mismatch_project_${Date.now()}.cproj`);
+    const tempProjPath = path.join(
+      tempDir,
+      `temp_mismatch_project_${Date.now()}.cproj`
+    );
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
@@ -112,24 +130,43 @@ describe('openProject Native Session Hydration', () => {
   </layers>
 </project>`;
 
-    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+    fs.writeFileSync(tempProjPath, xmlContent, "utf-8");
 
     const project = await openProject(tempProjPath);
-    assert.ok(project, 'Project must be loaded');
+    assert.ok(project, "Project must be loaded");
     const layerItem = project.layers[0] as ProjectLayerItem;
-    assert.equal(layerItem.id, 'centrelines-mismatch');
-    assert.equal(layerItem.geometryKind, 'LineString', 'Authoritative dataset geometryKind must overwrite mismatched XML attribute');
+    assert.equal(layerItem.id, "centrelines-mismatch");
+    assert.equal(
+      layerItem.geometryKind,
+      "LineString",
+      "Authoritative dataset geometryKind must overwrite mismatched XML attribute"
+    );
     assert.ok(isProjectLayerStyleWrapper(layerItem.style));
-    assert.equal(layerItem.style.format, 'openlayers');
-    const styleRules = JSON.parse(layerItem.style.content || '');
+    assert.equal(layerItem.style.format, "openlayers");
+    const styleRules = JSON.parse(layerItem.style.content || "");
     assert.equal(Array.isArray(styleRules), true);
-    assert.equal(styleRules.length, 1, 'LineString layer must receive exactly 1 geometry-specific rule');
-    assert.deepEqual(styleRules[0].filter, ['==', ['geometry-type'], 'LineString']);
-    assert.equal(projectStore.isProjectDirty(), false, 'Project must remain clean after initial load');
+    assert.equal(
+      styleRules.length,
+      1,
+      "LineString layer must receive exactly 1 geometry-specific rule"
+    );
+    assert.deepEqual(styleRules[0].filter, [
+      "==",
+      ["geometry-type"],
+      "LineString",
+    ]);
+    assert.equal(
+      projectStore.isProjectDirty(),
+      false,
+      "Project must remain clean after initial load"
+    );
   });
 
-  it('assigns geometry-specific default style for Polygon layers when opening project (Ticket #155)', async () => {
-    const tempProjPath = path.join(tempDir, `temp_poly_style_project_${Date.now()}.cproj`);
+  it("assigns geometry-specific default style for Polygon layers when opening project (Ticket #155)", async () => {
+    const tempProjPath = path.join(
+      tempDir,
+      `temp_poly_style_project_${Date.now()}.cproj`
+    );
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
@@ -144,30 +181,41 @@ describe('openProject Native Session Hydration', () => {
   </layers>
 </project>`;
 
-    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+    fs.writeFileSync(tempProjPath, xmlContent, "utf-8");
 
     const project = await openProject(tempProjPath);
-    assert.ok(project, 'Project must be loaded');
+    assert.ok(project, "Project must be loaded");
     const layerItem = project.layers[0] as ProjectLayerItem;
-    assert.equal(layerItem.id, 'polygon-layer');
-    assert.equal(layerItem.geometryKind, 'Polygon');
+    assert.equal(layerItem.id, "polygon-layer");
+    assert.equal(layerItem.geometryKind, "Polygon");
     assert.ok(isProjectLayerStyleWrapper(layerItem.style));
-    assert.equal(layerItem.style.format, 'openlayers');
-    const styleRules = JSON.parse(layerItem.style.content || '');
+    assert.equal(layerItem.style.format, "openlayers");
+    const styleRules = JSON.parse(layerItem.style.content || "");
     assert.equal(Array.isArray(styleRules), true);
-    assert.equal(styleRules.length, 1, 'Polygon layer must receive exactly 1 geometry-specific rule');
-    assert.deepEqual(styleRules[0].filter, ['==', ['geometry-type'], 'Polygon']);
-    assert.equal(styleRules[0].style['stroke-color'], '#000000');
-    assert.equal(styleRules[0].style['stroke-width'], 1);
-    assert.ok(styleRules[0].style['fill-color'], 'Must have fill color');
+    assert.equal(
+      styleRules.length,
+      1,
+      "Polygon layer must receive exactly 1 geometry-specific rule"
+    );
+    assert.deepEqual(styleRules[0].filter, [
+      "==",
+      ["geometry-type"],
+      "Polygon",
+    ]);
+    assert.equal(styleRules[0].style["stroke-color"], "#000000");
+    assert.equal(styleRules[0].style["stroke-width"], 1);
+    assert.ok(styleRules[0].style["fill-color"], "Must have fill color");
   });
 
-  it('opening a legacy .cproj lacking <fields> infers fields on load and marks projectStore as dirty (Ticket #138)', async () => {
+  it("opening a legacy .cproj lacking <fields> infers fields on load and marks projectStore as dirty (Ticket #138)", async () => {
     const centrelinesPath = path.resolve(
       __dirname,
-      '../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+      "../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson"
     );
-    const legacyProjPath = path.join(tempDir, `legacy_project_${Date.now()}.cproj`);
+    const legacyProjPath = path.join(
+      tempDir,
+      `legacy_project_${Date.now()}.cproj`
+    );
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
@@ -182,60 +230,92 @@ describe('openProject Native Session Hydration', () => {
   </layers>
 </project>`;
 
-    fs.writeFileSync(legacyProjPath, xmlContent, 'utf-8');
+    fs.writeFileSync(legacyProjPath, xmlContent, "utf-8");
 
     const project = await openProject(legacyProjPath);
-    assert.ok(project, 'Project must be loaded');
+    assert.ok(project, "Project must be loaded");
     const layerItem = project.layers[0] as ProjectLayerItem;
-    assert.ok(layerItem.fields, 'Layer fields must be attached on openProject');
-    assert.ok(layerItem.fields.length > 0, 'Inferred fields count must be positive');
-    assert.equal(projectStore.isProjectDirty(), true, 'ProjectStore must be marked dirty when migrating legacy schema');
+    assert.ok(layerItem.fields, "Layer fields must be attached on openProject");
+    assert.ok(
+      layerItem.fields.length > 0,
+      "Inferred fields count must be positive"
+    );
+    assert.equal(
+      projectStore.isProjectDirty(),
+      true,
+      "ProjectStore must be marked dirty when migrating legacy schema"
+    );
   });
 
-  it('loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors', async () => {
-    const project4Path = path.resolve(__dirname, '../../../data/project-4.cproj');
+  it("loads test/projects/project-1/project-4.cproj and queries extents without V8 pointer cage errors", async () => {
+    const project4Path = path.resolve(
+      __dirname,
+      "../../../data/project-4.cproj"
+    );
     const project = await openProject(project4Path);
 
-    assert.ok(project, 'project-4.cproj must load successfully');
-    assert.equal(project.metadata.title, 'project-4');
+    assert.ok(project, "project-4.cproj must load successfully");
+    assert.equal(project.metadata.title, "project-4");
 
     // Query features from top-level layer in project-4.cproj
-    const topLayer = project.layers.find((item) => !('children' in item)) as ProjectLayerItem | undefined;
-    assert.ok(topLayer, 'project-4.cproj must contain a top-level layer');
+    const topLayer = project.layers.find((item) => !("children" in item)) as
+      ProjectLayerItem | undefined;
+    assert.ok(topLayer, "project-4.cproj must contain a top-level layer");
     const l0Result = await queryExtent(topLayer.id, [-180, -90, 180, 90]);
     assert.equal(l0Result.layerId, topLayer.id);
     assert.ok(l0Result.buffer instanceof ArrayBuffer);
     assert.equal(new DataView(l0Result.buffer).getUint32(0, true), 0x43415254);
 
     // Query features from nested group layers
-    const lakesResult = await queryExtent('ne_10m_lakes_9ssg', [-100, 40, -80, 50]);
-    assert.equal(lakesResult.layerId, 'ne_10m_lakes_9ssg');
+    const lakesResult = await queryExtent(
+      "ne_10m_lakes_9ssg",
+      [-100, 40, -80, 50]
+    );
+    assert.equal(lakesResult.layerId, "ne_10m_lakes_9ssg");
     assert.equal(lakesResult.features.length, 34);
     assert.ok(lakesResult.features[0].wkb instanceof Uint8Array);
     assert.ok(lakesResult.buffer instanceof ArrayBuffer);
-    assert.equal(new DataView(lakesResult.buffer).getUint32(0, true), 0x43415254);
+    assert.equal(
+      new DataView(lakesResult.buffer).getUint32(0, true),
+      0x43415254
+    );
 
-    const riversResult = await queryExtent('ne_10m_rivers_lake_centerline_scale_rank_ggcu', [-100, 40, -80, 50]);
-    assert.equal(riversResult.layerId, 'ne_10m_rivers_lake_centerline_scale_rank_ggcu');
+    const riversResult = await queryExtent(
+      "ne_10m_rivers_lake_centerline_scale_rank_ggcu",
+      [-100, 40, -80, 50]
+    );
+    assert.equal(
+      riversResult.layerId,
+      "ne_10m_rivers_lake_centerline_scale_rank_ggcu"
+    );
     assert.ok(riversResult.features.length > 0);
     assert.ok(riversResult.features[0].wkb instanceof Uint8Array);
     assert.ok(riversResult.buffer instanceof ArrayBuffer);
-    assert.equal(new DataView(riversResult.buffer).getUint32(0, true), 0x43415254);
+    assert.equal(
+      new DataView(riversResult.buffer).getUint32(0, true),
+      0x43415254
+    );
 
-    const coastlinesResult = await queryExtent('ne_10m_coastline_w9bh');
-    assert.equal(coastlinesResult.layerId, 'ne_10m_coastline_w9bh');
+    const coastlinesResult = await queryExtent("ne_10m_coastline_w9bh");
+    assert.equal(coastlinesResult.layerId, "ne_10m_coastline_w9bh");
     assert.ok(coastlinesResult.features.length > 0);
     assert.ok(coastlinesResult.features[0].wkb instanceof Uint8Array);
     assert.ok(coastlinesResult.buffer instanceof ArrayBuffer);
-    assert.equal(new DataView(coastlinesResult.buffer).getUint32(0, true), 0x43415254);
+    assert.equal(
+      new DataView(coastlinesResult.buffer).getUint32(0, true),
+      0x43415254
+    );
   });
 
-  it('initializes empty project.styles = [] if absent and assigns distinct colors across multiple unstyled vector layers, excluding raster layers', async () => {
+  it("initializes empty project.styles = [] if absent and assigns distinct colors across multiple unstyled vector layers, excluding raster layers", async () => {
     const riversPath = path.resolve(
       __dirname,
-      '../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson'
+      "../../../data/ne_10m_rivers_lake_centerline_scale_rank.geojson"
     );
-    const tempProjPath = path.join(tempDir, `temp_styles_init_project_${Date.now()}.cproj`);
+    const tempProjPath = path.join(
+      tempDir,
+      `temp_styles_init_project_${Date.now()}.cproj`
+    );
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
@@ -258,13 +338,16 @@ describe('openProject Native Session Hydration', () => {
   </layers>
 </project>`;
 
-    fs.writeFileSync(tempProjPath, xmlContent, 'utf-8');
+    fs.writeFileSync(tempProjPath, xmlContent, "utf-8");
 
     const project = await openProject(tempProjPath);
     assert.ok(project);
 
     // Verify project.styles is initialized to empty array
-    assert.ok(Array.isArray(project.styles), 'project.styles must be initialized to an array');
+    assert.ok(
+      Array.isArray(project.styles),
+      "project.styles must be initialized to an array"
+    );
     assert.equal(project.styles.length, 0);
 
     // Verify vector layers receive geometry-specific templates (Ticket #155)
@@ -274,20 +357,38 @@ describe('openProject Native Session Hydration', () => {
 
     assert.ok(isProjectLayerStyleWrapper(v1.style));
     assert.ok(isProjectLayerStyleWrapper(v2.style));
-    assert.equal(v1.style.format, 'openlayers');
-    assert.equal(v2.style.format, 'openlayers');
+    assert.equal(v1.style.format, "openlayers");
+    assert.equal(v2.style.format, "openlayers");
 
-    const rules1 = JSON.parse(v1.style.content || '');
-    const rules2 = JSON.parse(v2.style.content || '');
-    assert.equal(rules1.length, 1, 'Polygon layer must receive single-rule Polygon style');
-    assert.equal(rules2.length, 1, 'LineString layer must receive single-rule LineString style');
-    assert.deepEqual(rules1[0].filter, ['==', ['geometry-type'], 'Polygon']);
-    assert.deepEqual(rules2[0].filter, ['==', ['geometry-type'], 'LineString']);
+    const rules1 = JSON.parse(v1.style.content || "");
+    const rules2 = JSON.parse(v2.style.content || "");
+    assert.equal(
+      rules1.length,
+      1,
+      "Polygon layer must receive single-rule Polygon style"
+    );
+    assert.equal(
+      rules2.length,
+      1,
+      "LineString layer must receive single-rule LineString style"
+    );
+    assert.deepEqual(rules1[0].filter, ["==", ["geometry-type"], "Polygon"]);
+    assert.deepEqual(rules2[0].filter, ["==", ["geometry-type"], "LineString"]);
 
-    assert.ok(rules1[0].style['fill-color'], 'Polygon layer must have fill color');
-    assert.ok(rules2[0].style['stroke-color'], 'LineString layer must have stroke color');
+    assert.ok(
+      rules1[0].style["fill-color"],
+      "Polygon layer must have fill color"
+    );
+    assert.ok(
+      rules2[0].style["stroke-color"],
+      "LineString layer must have stroke color"
+    );
 
     // Verify raster layer is excluded from vector style generation
-    assert.equal(r1.style, undefined, 'Raster layer must not receive vector style template');
+    assert.equal(
+      r1.style,
+      undefined,
+      "Raster layer must not receive vector style template"
+    );
   });
 });

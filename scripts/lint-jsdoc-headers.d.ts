@@ -17,5 +17,11 @@ export interface JsdocHeaderViolation {
 }
 
 export function fileHeader(content: string): string | null;
-export function checkJsdocHeader(filePath: string, content: string): JsdocHeaderViolation[];
-export function runJsdocHeaderLinter(options?: { rootDir?: string }): { violations: JsdocHeaderViolation[]; totalFiles: number };
+export function checkJsdocHeader(
+  filePath: string,
+  content: string
+): JsdocHeaderViolation[];
+export function runJsdocHeaderLinter(options?: { rootDir?: string }): {
+  violations: JsdocHeaderViolation[];
+  totalFiles: number;
+};

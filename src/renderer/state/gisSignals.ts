@@ -12,9 +12,9 @@
  * @see {@link resetToolbarsToDefault}
  */
 
-import { signal, computed, batch } from '@preact/signals-react';
-import { logging } from '../../shared/logging';
-import { transformExtent } from 'ol/proj.js';
+import { signal, computed, batch } from "@preact/signals-react";
+import { logging } from "../../shared/logging";
+import { transformExtent } from "ol/proj.js";
 import type {
   GisLayer,
   GisLayerGroup,
@@ -26,10 +26,13 @@ import type {
   ProjectLayerItem,
   ProjectGroupItem,
   ProjectStyleItem,
-  LayerDescriptor
-} from '../../shared/types';
-import { getDefaultLayerStyle, resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
-import { BUILTIN_PREFERENCES } from '../../shared/preferences/index';
+  LayerDescriptor,
+} from "../../shared/types";
+import {
+  getDefaultLayerStyle,
+  resolveLayerStyle,
+} from "../../shared/styles/defaultLayerStyles";
+import { BUILTIN_PREFERENCES } from "../../shared/preferences/index";
 
 // Clean initial state (no hardcoded project or default layers)
 const initialLayers: GisLayer[] = [];
@@ -61,12 +64,12 @@ import {
   activeLayerIdSignal,
   updateLayerFeatureCount,
   clearNodeSelection,
-  findItemInTree
-} from './projectSignals';
+  findItemInTree,
+} from "./projectSignals";
 import {
   hasUnappliedFieldChanges,
-  isDiscardFieldChangesModalOpenSignal
-} from './layerPropertiesSignals';
+  isDiscardFieldChangesModalOpenSignal,
+} from "./layerPropertiesSignals";
 import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
@@ -79,12 +82,12 @@ import {
   setTimeFilterRange,
   setTimeFilterStep,
   resetTimeFilterState,
-} from './timeFilterSignals';
+} from "./timeFilterSignals";
 import {
   autoDetectTemporalRange,
   computeFrameEnd,
-} from '../map/timeFilterMath';
-import type { ProjectTimeFilterConfig } from '../../shared/types';
+} from "../map/timeFilterMath";
+import type { ProjectTimeFilterConfig } from "../../shared/types";
 import {
   getLayerToolbarPreference,
   setLayerToolbarPreference,
@@ -92,15 +95,22 @@ import {
   restoreLayerToolbarState,
   handleActiveLayerChange,
   resetLayerToolbarMemoryState,
-  type LayerToolbarState
-} from './layerToolbarMemory';
+  type LayerToolbarState,
+} from "./layerToolbarMemory";
 import {
   closeProjectPropertiesDialog,
   applyProjectPropertiesEdits,
   beginProjectPropertiesDraft,
-} from './projectPropertiesSignals';
-import { resolveProjectDisplayName, isDefaultProjectTitle } from '../../shared/project/projectTitle';
-import { DEFAULT_MAP_BACKGROUND_COLOUR, DEFAULT_SELECTION_COLOUR, DEFAULT_NEW_PROJECT_PATH_MODE } from '../../shared/types/project';
+} from "./projectPropertiesSignals";
+import {
+  resolveProjectDisplayName,
+  isDefaultProjectTitle,
+} from "../../shared/project/projectTitle";
+import {
+  DEFAULT_MAP_BACKGROUND_COLOUR,
+  DEFAULT_SELECTION_COLOUR,
+  DEFAULT_NEW_PROJECT_PATH_MODE,
+} from "../../shared/types/project";
 
 export {
   getLayerToolbarPreference,
@@ -109,7 +119,7 @@ export {
   restoreLayerToolbarState,
   handleActiveLayerChange,
   resetLayerToolbarMemoryState,
-  type LayerToolbarState
+  type LayerToolbarState,
 };
 
 export {
@@ -125,10 +135,10 @@ export {
   projectLayersSignal,
   layerStylesSignal,
   activeLayerIdSignal,
-  updateLayerFeatureCount
+  updateLayerFeatureCount,
 };
 
-export type { GeometryKind, GisLayer } from '../../shared/types';
+export type { GeometryKind, GisLayer } from "../../shared/types";
 
 /**
  * @signal undoStackSignal
@@ -172,7 +182,15 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
  * @updated 2026-10-27
  * @since 0.1.0-dev
  */
-export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor';
+export type ActiveTool =
+  | "pan"
+  | "select"
+  | "select_drag"
+  | "select_freehand"
+  | "point"
+  | "line"
+  | "polygon"
+  | "vertex_editor";
 
 /**
  * @signal activeToolSignal
@@ -183,7 +201,7 @@ export type ActiveTool = 'pan' | 'select' | 'select_drag' | 'select_freehand' | 
  * @since 0.1.0-dev
  * @type {Signal<ActiveTool>}
  */
-export const activeToolSignal = signal<ActiveTool>('pan');
+export const activeToolSignal = signal<ActiveTool>("pan");
 
 /**
  * @signal editableLayerIdsSignal
@@ -223,7 +241,8 @@ export function isLayerInEditMode(
  * @updated 2026-10-27
  * @since 0.1.0-dev
  */
-export type SelectionMode = 'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand';
+export type SelectionMode =
+  "select_feature" | "select_features_by_drag" | "select_features_by_freehand";
 
 /**
  * @signal activeSelectionModeSignal
@@ -234,20 +253,21 @@ export type SelectionMode = 'select_feature' | 'select_features_by_drag' | 'sele
  * @since 0.1.0-dev
  * @type {Signal<SelectionMode>}
  */
-export const activeSelectionModeSignal = signal<SelectionMode>('select_feature');
+export const activeSelectionModeSignal =
+  signal<SelectionMode>("select_feature");
 
 export { activeSelectionModeSignal as selectionModeSignal };
 
 // Automatically revert activeToolSignal to 'pan' if active layer is cleared while digitizing
 activeLayerIdSignal.subscribe((activeId) => {
   if (
-    activeId === null &&
-    (activeToolSignal.value === 'point' ||
-      activeToolSignal.value === 'line' ||
-      activeToolSignal.value === 'polygon' ||
-      activeToolSignal.value === 'vertex_editor')
+    activeId === null
+    && (activeToolSignal.value === "point"
+      || activeToolSignal.value === "line"
+      || activeToolSignal.value === "polygon"
+      || activeToolSignal.value === "vertex_editor")
   ) {
-    activeToolSignal.value = 'pan';
+    activeToolSignal.value = "pan";
   }
 });
 
@@ -256,13 +276,14 @@ activeLayerIdSignal.subscribe((activeId) => {
  * @typedef {'project' | 'map_view' | 'selection' | 'digitizing' | 'snapping'} ToolbarId
  * @description Identifier string for registered toolbar widgets.
  */
-export type ToolbarId = 'project' | 'map_view' | 'selection' | 'digitizing' | 'snapping';
+export type ToolbarId =
+  "project" | "map_view" | "selection" | "digitizing" | "snapping";
 
 /**
  * @typedef {'top' | 'bottom' | 'left' | 'right'} ToolbarZone
  * @description Identifier string for 4-edge outer panel dock zones.
  */
-export type ToolbarZone = 'top' | 'bottom' | 'left' | 'right';
+export type ToolbarZone = "top" | "bottom" | "left" | "right";
 
 /**
  * @typedef {Object} ToolbarCoordinates
@@ -294,14 +315,14 @@ export interface MoveToolbarOptions {
   targetOrder?: number;
   hoveredId?: ToolbarId;
   position?:
-    | 'before'
-    | 'after'
-    | 'new-row-above'
-    | 'new-row-below'
-    | 'new-row-before'
-    | 'new-row-after'
-    | 'prepend-new-row'
-    | 'append-new-row';
+    | "before"
+    | "after"
+    | "new-row-above"
+    | "new-row-below"
+    | "new-row-before"
+    | "new-row-after"
+    | "prepend-new-row"
+    | "append-new-row";
   targetIndex?: number;
 }
 
@@ -313,12 +334,15 @@ export interface MoveToolbarOptions {
  * @since 0.1.0-dev
  * @type {Record<ToolbarId, ToolbarCoordinates>}
  */
-export const DEFAULT_TOOLBAR_COORDINATES: Record<ToolbarId, ToolbarCoordinates> = {
-  project: { visible: true, dock: 'top', row: 0, order: 0 },
-  map_view: { visible: true, dock: 'top', row: 0, order: 1 },
-  selection: { visible: true, dock: 'top', row: 0, order: 2 },
-  digitizing: { visible: true, dock: 'top', row: 0, order: 3 },
-  snapping: { visible: false, dock: 'top', row: 0, order: -1 }
+export const DEFAULT_TOOLBAR_COORDINATES: Record<
+  ToolbarId,
+  ToolbarCoordinates
+> = {
+  project: { visible: true, dock: "top", row: 0, order: 0 },
+  map_view: { visible: true, dock: "top", row: 0, order: 1 },
+  selection: { visible: true, dock: "top", row: 0, order: 2 },
+  digitizing: { visible: true, dock: "top", row: 0, order: 3 },
+  snapping: { visible: false, dock: "top", row: 0, order: -1 },
 };
 
 /**
@@ -335,7 +359,7 @@ export const visibleToolbarsSignal = signal<Record<ToolbarId, boolean>>({
   map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.visible,
   selection: DEFAULT_TOOLBAR_COORDINATES.selection.visible,
   digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.visible,
-  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible,
 });
 
 /**
@@ -352,7 +376,7 @@ export const toolbarLocationsSignal = signal<Record<ToolbarId, ToolbarZone>>({
   map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.dock,
   selection: DEFAULT_TOOLBAR_COORDINATES.selection.dock,
   digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.dock,
-  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock,
 });
 
 /**
@@ -369,7 +393,7 @@ export const toolbarRowsSignal = signal<Record<ToolbarId, number>>({
   map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.row,
   selection: DEFAULT_TOOLBAR_COORDINATES.selection.row,
   digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.row,
-  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row,
 });
 
 /**
@@ -386,7 +410,7 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
   map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.order,
   selection: DEFAULT_TOOLBAR_COORDINATES.selection.order,
   digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.order,
-  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order
+  snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order,
 });
 
 /**
@@ -399,10 +423,10 @@ export const toolbarOrdersSignal = signal<Record<ToolbarId, number>>({
  * @type {Signal<Record<ToolbarZone, ToolbarId[]>>}
  */
 export const toolbarOrderSignal = signal<Record<ToolbarZone, ToolbarId[]>>({
-  top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
+  top: ["project", "map_view", "selection", "digitizing", "snapping"],
   bottom: [],
   left: [],
-  right: []
+  right: [],
 });
 
 /**
@@ -426,34 +450,62 @@ export const activeDraggedToolbarSignal = signal<ToolbarId | null>(null);
  * @param {Record<string, any>} prefs - Preference map or key-value dictionary loaded from preferences.
  * @returns {void}
  */
-export function hydrateToolbarSignalsFromPreferences(prefs: Record<string, any>) {
+export function hydrateToolbarSignalsFromPreferences(
+  prefs: Record<string, any>
+) {
   if (!prefs) return;
-  const toolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
-  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  const toolbarIds: ToolbarId[] = [
+    "project",
+    "map_view",
+    "selection",
+    "digitizing",
+    "snapping",
+  ];
+  const validZones: ToolbarZone[] = ["top", "bottom", "left", "right"];
 
-  const nextVisible: Record<ToolbarId, boolean> = { ...visibleToolbarsSignal.value };
-  const nextLocations: Record<ToolbarId, ToolbarZone> = { ...toolbarLocationsSignal.value };
+  const nextVisible: Record<ToolbarId, boolean> = {
+    ...visibleToolbarsSignal.value,
+  };
+  const nextLocations: Record<ToolbarId, ToolbarZone> = {
+    ...toolbarLocationsSignal.value,
+  };
   const nextRows: Record<ToolbarId, number> = { ...toolbarRowsSignal.value };
-  const nextOrders: Record<ToolbarId, number> = { ...toolbarOrdersSignal.value };
+  const nextOrders: Record<ToolbarId, number> = {
+    ...toolbarOrdersSignal.value,
+  };
 
   for (const id of toolbarIds) {
     const defaultCoords = DEFAULT_TOOLBAR_COORDINATES[id];
 
     // Read visible
-    const visibleRaw = prefs[`ui.toolbars.${id}.visible`]?.value ?? prefs[`ui.toolbars.${id}.visible`];
-    nextVisible[id] = typeof visibleRaw === 'boolean' ? visibleRaw : defaultCoords.visible;
+    const visibleRaw =
+      prefs[`ui.toolbars.${id}.visible`]?.value
+      ?? prefs[`ui.toolbars.${id}.visible`];
+    nextVisible[id] =
+      typeof visibleRaw === "boolean" ? visibleRaw : defaultCoords.visible;
 
     // Read dock
-    const dockRaw = prefs[`ui.toolbars.${id}.dock`]?.value ?? prefs[`ui.toolbars.${id}.dock`];
-    nextLocations[id] = validZones.includes(dockRaw) ? dockRaw : defaultCoords.dock;
+    const dockRaw =
+      prefs[`ui.toolbars.${id}.dock`]?.value ?? prefs[`ui.toolbars.${id}.dock`];
+    nextLocations[id] =
+      validZones.includes(dockRaw) ? dockRaw : defaultCoords.dock;
 
     // Read row
-    const rowRaw = prefs[`ui.toolbars.${id}.row`]?.value ?? prefs[`ui.toolbars.${id}.row`];
-    nextRows[id] = typeof rowRaw === 'number' && !Number.isNaN(rowRaw) && rowRaw >= 0 ? Math.floor(rowRaw) : defaultCoords.row;
+    const rowRaw =
+      prefs[`ui.toolbars.${id}.row`]?.value ?? prefs[`ui.toolbars.${id}.row`];
+    nextRows[id] =
+      typeof rowRaw === "number" && !Number.isNaN(rowRaw) && rowRaw >= 0 ?
+        Math.floor(rowRaw)
+      : defaultCoords.row;
 
     // Read order
-    const orderRaw = prefs[`ui.toolbars.${id}.order`]?.value ?? prefs[`ui.toolbars.${id}.order`];
-    nextOrders[id] = typeof orderRaw === 'number' && !Number.isNaN(orderRaw) ? Math.floor(orderRaw) : defaultCoords.order;
+    const orderRaw =
+      prefs[`ui.toolbars.${id}.order`]?.value
+      ?? prefs[`ui.toolbars.${id}.order`];
+    nextOrders[id] =
+      typeof orderRaw === "number" && !Number.isNaN(orderRaw) ?
+        Math.floor(orderRaw)
+      : defaultCoords.order;
   }
 
   visibleToolbarsSignal.value = nextVisible;
@@ -466,15 +518,17 @@ export function hydrateToolbarSignalsFromPreferences(prefs: Record<string, any>)
     top: [],
     bottom: [],
     left: [],
-    right: []
+    right: [],
   };
 
   for (const zone of validZones) {
     const inZone = toolbarIds.filter((id) => nextLocations[id] === zone);
     inZone.sort((a, b) => {
       if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
-      const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
-      const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+      const orderA =
+        nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+      const orderB =
+        nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
       return orderA - orderB;
     });
     nextOrder[zone] = inZone;
@@ -497,12 +551,12 @@ export function hydrateToolbarSignalsFromPreferences(prefs: Record<string, any>)
 export function migrateToolbarLayout(
   storedOrder: Record<ToolbarZone, string[]>
 ): Record<ToolbarZone, ToolbarId[]> {
-  const zones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  const zones: ToolbarZone[] = ["top", "bottom", "left", "right"];
   const result: Record<ToolbarZone, ToolbarId[]> = {
     top: [],
     bottom: [],
     left: [],
-    right: []
+    right: [],
   };
 
   const seen = new Set<ToolbarId>();
@@ -511,15 +565,15 @@ export function migrateToolbarLayout(
     const list = storedOrder[zone] || [];
     for (const item of list) {
       let mapped: ToolbarId | null = null;
-      if (item === 'basic' || item === 'project') {
-        mapped = 'project';
-      } else if (item === 'layer') {
+      if (item === "basic" || item === "project") {
+        mapped = "project";
+      } else if (item === "layer") {
         mapped = null;
       } else if (
-        item === 'map_view' ||
-        item === 'selection' ||
-        item === 'digitizing' ||
-        item === 'snapping'
+        item === "map_view"
+        || item === "selection"
+        || item === "digitizing"
+        || item === "snapping"
       ) {
         mapped = item;
       }
@@ -537,9 +591,9 @@ let isMigratingToolbarOrder = false;
 toolbarOrderSignal.subscribe((order) => {
   if (isMigratingToolbarOrder || !order) return;
   let hasLegacy = false;
-  for (const zone of ['top', 'bottom', 'left', 'right'] as ToolbarZone[]) {
+  for (const zone of ["top", "bottom", "left", "right"] as ToolbarZone[]) {
     const list = order[zone] as any[];
-    if (list && (list.includes('basic') || list.includes('layer'))) {
+    if (list && (list.includes("basic") || list.includes("layer"))) {
       hasLegacy = true;
       break;
     }
@@ -574,7 +628,8 @@ export const snappingEnabledSignal = signal<boolean>(false);
  * @updated 2026-10-27
  * @since 0.1.0-dev
  */
-export type SnappingScope = 'snap_to_active' | 'snap_to_all' | 'snap_to_advanced';
+export type SnappingScope =
+  "snap_to_active" | "snap_to_all" | "snap_to_advanced";
 
 /**
  * @signal snappingScopeSignal
@@ -585,7 +640,7 @@ export type SnappingScope = 'snap_to_active' | 'snap_to_all' | 'snap_to_advanced
  * @since 0.1.0-dev
  * @type {Signal<SnappingScope>}
  */
-export const snappingScopeSignal = signal<SnappingScope>('snap_to_active');
+export const snappingScopeSignal = signal<SnappingScope>("snap_to_active");
 
 /**
  * @signal snapToVerticesSignal
@@ -621,11 +676,14 @@ export const snapToMidpointSignal = signal<boolean>(false);
 export const snapToSegmentSignal = signal<boolean>(false);
 
 const initialSnappingDistance =
-  typeof (globalThis as any).PreferencesStore?.get === 'function'
-    ? ((globalThis as any).PreferencesStore.get('mapTools.snapping.distance')?.['mapTools.snapping.distance']?.value ??
-       (globalThis as any).PreferencesStore.get('mapTools.snapping.distance') ??
-       10)
-    : ((BUILTIN_PREFERENCES['mapTools.snapping.distance']?.value as number) ?? 10);
+  typeof (globalThis as any).PreferencesStore?.get === "function" ?
+    ((globalThis as any).PreferencesStore.get("mapTools.snapping.distance")?.[
+      "mapTools.snapping.distance"
+    ]?.value
+    ?? (globalThis as any).PreferencesStore.get("mapTools.snapping.distance")
+    ?? 10)
+  : ((BUILTIN_PREFERENCES["mapTools.snapping.distance"]?.value as number)
+    ?? 10);
 
 /**
  * @signal snappingDistanceSignal
@@ -660,7 +718,7 @@ export const isSnappingOptionsOpenSignal = signal<boolean>(false);
  */
 export function openSnappingOptionsDialog(): void {
   isSnappingOptionsOpenSignal.value = true;
-  addConsoleLog('info', 'Snapping Options dialog opened.', 'Snapping');
+  addConsoleLog("info", "Snapping Options dialog opened.", "Snapping");
 }
 
 /**
@@ -674,7 +732,7 @@ export function openSnappingOptionsDialog(): void {
  */
 export function closeSnappingOptionsDialog(): void {
   isSnappingOptionsOpenSignal.value = false;
-  addConsoleLog('info', 'Snapping Options dialog closed.', 'Snapping');
+  addConsoleLog("info", "Snapping Options dialog closed.", "Snapping");
 }
 
 // Workbench window geometry & panel layout signals
@@ -698,18 +756,18 @@ export const isWindowMaximizedSignal = signal<boolean>(false);
  * @since 0.1.0-dev
  * @type {Signal<{ attributes: boolean; layers: boolean; timeFilter?: boolean }>}
  */
-export const openDockPanelsSignal = signal<{ attributes: boolean; layers: boolean; timeFilter?: boolean }>({
-  attributes: false,
-  layers: true,
-  timeFilter: true,
-});
+export const openDockPanelsSignal = signal<{
+  attributes: boolean;
+  layers: boolean;
+  timeFilter?: boolean;
+}>({ attributes: false, layers: true, timeFilter: true });
 
 // Map command action triggers (Zoom In, Zoom Out, Reset, Set Viewport, etc.)
 /**
  * @typedef {'zoomIn' | 'zoomOut' | 'reset' | 'setViewport'} MapActionType
  * @description Action trigger type for imperative map viewport commands.
  */
-export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
+export type MapActionType = "zoomIn" | "zoomOut" | "reset" | "setViewport";
 
 /**
  * @typedef {Object} MapActionPayload
@@ -725,7 +783,7 @@ export type MapActionType = 'zoomIn' | 'zoomOut' | 'reset' | 'setViewport';
  */
 export interface MapActionPayload {
   action: MapActionType;
-  units?: 'lonlat' | 'project';
+  units?: "lonlat" | "project";
   extentCrs?: string;
   extent?: BoundingBox;
   center?: { x: number; y: number };
@@ -776,7 +834,9 @@ export interface ActiveMapController {
  * @since 0.1.0-dev
  * @type {Signal<ActiveMapController | null>}
  */
-export const activeMapControllerSignal = signal<ActiveMapController | null>(null);
+export const activeMapControllerSignal = signal<ActiveMapController | null>(
+  null
+);
 
 /**
  * @function isValidExtent
@@ -790,7 +850,8 @@ export const activeMapControllerSignal = signal<ActiveMapController | null>(null
  */
 export function isValidExtent(extent: unknown): extent is BoundingBox {
   if (!Array.isArray(extent) || extent.length !== 4) return false;
-  if (!extent.every((val) => typeof val === 'number' && Number.isFinite(val))) return false;
+  if (!extent.every((val) => typeof val === "number" && Number.isFinite(val)))
+    return false;
   const [minX, minY, maxX, maxY] = extent;
   if (minX === 0 && minY === 0 && maxX === 0 && maxY === 0) return false;
   if (minX > maxX || minY > maxY) return false;
@@ -818,7 +879,12 @@ export const mapActionSignal = signal<MapActionPayload | null>(null);
  * @since 0.1.0-dev
  * @type {Signal<{ lon: number; lat: number; x: number; y: number } | null>}
  */
-export const cursorCoordsSignal = signal<{ lon: number; lat: number; x: number; y: number } | null>(null);
+export const cursorCoordsSignal = signal<{
+  lon: number;
+  lat: number;
+  x: number;
+  y: number;
+} | null>(null);
 
 /**
  * @signal viewportExtentSignal
@@ -883,8 +949,10 @@ selectedFeatureIdsSignal.subscribe((ids) => {
     return;
   }
   const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.setFeatureSelection === 'function') {
-    api.setFeatureSelection(activeLayerIdSignal.value, Array.from(ids))?.catch?.(() => {});
+  if (typeof api?.setFeatureSelection === "function") {
+    api
+      .setFeatureSelection(activeLayerIdSignal.value, Array.from(ids))
+      ?.catch?.(() => {});
   }
 });
 
@@ -921,7 +989,13 @@ export const featuresSignal = signal<GisFeature[]>(initialFeatures);
  * @type {Signal<ConsoleLogEntry[]>}
  */
 export const consoleLogsSignal = signal<ConsoleLogEntry[]>([
-  { id: 'log-1', timestamp: new Date().toLocaleTimeString(), level: 'info', message: 'Cartouche Desktop Workbench initialized.', source: 'Kernel' }
+  {
+    id: "log-1",
+    timestamp: new Date().toLocaleTimeString(),
+    level: "info",
+    message: "Cartouche Desktop Workbench initialized.",
+    source: "Kernel",
+  },
 ]);
 
 /**
@@ -934,16 +1008,16 @@ export const consoleLogsSignal = signal<ConsoleLogEntry[]>([
  * @returns {string} Resolved layer display name string.
  */
 export function getLayerDisplayName(layer: GisLayer): string {
-  if (layer.projectSettingsName && layer.projectSettingsName.trim() !== '') {
+  if (layer.projectSettingsName && layer.projectSettingsName.trim() !== "") {
     return layer.projectSettingsName;
   }
-  if (layer.dataName && layer.dataName.trim() !== '') {
+  if (layer.dataName && layer.dataName.trim() !== "") {
     return layer.dataName;
   }
-  if (layer.baseFileName && layer.baseFileName.trim() !== '') {
+  if (layer.baseFileName && layer.baseFileName.trim() !== "") {
     return layer.baseFileName;
   }
-  return layer.name || 'Unnamed Layer';
+  return layer.name || "Unnamed Layer";
 }
 
 // Computed derivations
@@ -957,65 +1031,92 @@ export function getLayerDisplayName(layer: GisLayer): string {
  * @since 0.1.0-dev
  * @type {ReadonlySignal<GisLayer | ProjectLayerItem | null>}
  */
-export const activeLayerSignal = computed<GisLayer | ProjectLayerItem | null>(() => {
-  const activeId = activeLayerIdSignal.value;
-  if (!activeId) return null;
+export const activeLayerSignal = computed<GisLayer | ProjectLayerItem | null>(
+  () => {
+    const activeId = activeLayerIdSignal.value;
+    if (!activeId) return null;
 
-  const inLayers = layersSignal.value.find((l) => l.id === activeId);
-  if (inLayers) {
-    const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
-    const inTree = findItemInTree(projectTreeSignal.value, activeId);
-    const inTreeLayer = inTree && !('children' in inTree) ? (inTree as ProjectLayerItem) : undefined;
+    const inLayers = layersSignal.value.find((l) => l.id === activeId);
+    if (inLayers) {
+      const inProjectLayers = projectLayersSignal.value.find(
+        (l) => l.id === activeId
+      );
+      const inTree = findItemInTree(projectTreeSignal.value, activeId);
+      const inTreeLayer =
+        inTree && !("children" in inTree) ?
+          (inTree as ProjectLayerItem)
+        : undefined;
 
-    const geometryKind = inLayers.geometryKind || inProjectLayers?.geometryKind || inTreeLayer?.geometryKind;
-    const fields = inTreeLayer?.fields ?? inProjectLayers?.fields ?? inLayers.fields;
-    const featureCount =
-      inProjectLayers?.featureCount ??
-      inTreeLayer?.featureCount ??
-      inLayers.featureCount;
-    const fidColumn = inTreeLayer?.fidColumn ?? inProjectLayers?.fidColumn ?? inLayers.fidColumn;
-    const capabilities = inTreeLayer?.capabilities ?? inProjectLayers?.capabilities ?? inLayers.capabilities;
+      const geometryKind =
+        inLayers.geometryKind
+        || inProjectLayers?.geometryKind
+        || inTreeLayer?.geometryKind;
+      const fields =
+        inTreeLayer?.fields ?? inProjectLayers?.fields ?? inLayers.fields;
+      const featureCount =
+        inProjectLayers?.featureCount
+        ?? inTreeLayer?.featureCount
+        ?? inLayers.featureCount;
+      const fidColumn =
+        inTreeLayer?.fidColumn
+        ?? inProjectLayers?.fidColumn
+        ?? inLayers.fidColumn;
+      const capabilities =
+        inTreeLayer?.capabilities
+        ?? inProjectLayers?.capabilities
+        ?? inLayers.capabilities;
 
-    if (
-      (geometryKind && geometryKind !== inLayers.geometryKind) ||
-      (fields !== undefined && fields !== inLayers.fields) ||
-      (featureCount !== undefined && featureCount !== inLayers.featureCount) ||
-      (fidColumn !== undefined && fidColumn !== inLayers.fidColumn) ||
-      (capabilities !== undefined && capabilities !== inLayers.capabilities)
-    ) {
+      if (
+        (geometryKind && geometryKind !== inLayers.geometryKind)
+        || (fields !== undefined && fields !== inLayers.fields)
+        || (featureCount !== undefined
+          && featureCount !== inLayers.featureCount)
+        || (fidColumn !== undefined && fidColumn !== inLayers.fidColumn)
+        || (capabilities !== undefined
+          && capabilities !== inLayers.capabilities)
+      ) {
+        return {
+          ...inLayers,
+          ...(geometryKind ? { geometryKind } : {}),
+          ...(fields !== undefined ? { fields } : {}),
+          ...(featureCount !== undefined ? { featureCount } : {}),
+          ...(fidColumn !== undefined ? { fidColumn } : {}),
+          ...(capabilities !== undefined ? { capabilities } : {}),
+        };
+      }
+      return inLayers;
+    }
+
+    const inProjectLayers = projectLayersSignal.value.find(
+      (l) => l.id === activeId
+    );
+    if (inProjectLayers) {
+      const inTree = findItemInTree(projectTreeSignal.value, activeId);
+      const inTreeLayer =
+        inTree && !("children" in inTree) ?
+          (inTree as ProjectLayerItem)
+        : undefined;
+      const fidColumn = inTreeLayer?.fidColumn ?? inProjectLayers.fidColumn;
+      const capabilities =
+        inTreeLayer?.capabilities ?? inProjectLayers.capabilities;
       return {
-        ...inLayers,
-        ...(geometryKind ? { geometryKind } : {}),
-        ...(fields !== undefined ? { fields } : {}),
-        ...(featureCount !== undefined ? { featureCount } : {}),
+        ...inProjectLayers,
+        ...(inTreeLayer?.fields && !inProjectLayers.fields ?
+          { fields: inTreeLayer.fields }
+        : {}),
         ...(fidColumn !== undefined ? { fidColumn } : {}),
         ...(capabilities !== undefined ? { capabilities } : {}),
       };
     }
-    return inLayers;
-  }
 
-  const inProjectLayers = projectLayersSignal.value.find((l) => l.id === activeId);
-  if (inProjectLayers) {
     const inTree = findItemInTree(projectTreeSignal.value, activeId);
-    const inTreeLayer = inTree && !('children' in inTree) ? (inTree as ProjectLayerItem) : undefined;
-    const fidColumn = inTreeLayer?.fidColumn ?? inProjectLayers.fidColumn;
-    const capabilities = inTreeLayer?.capabilities ?? inProjectLayers.capabilities;
-    return {
-      ...inProjectLayers,
-      ...(inTreeLayer?.fields && !inProjectLayers.fields ? { fields: inTreeLayer.fields } : {}),
-      ...(fidColumn !== undefined ? { fidColumn } : {}),
-      ...(capabilities !== undefined ? { capabilities } : {}),
-    };
-  }
+    if (inTree && !("children" in inTree)) {
+      return inTree as ProjectLayerItem;
+    }
 
-  const inTree = findItemInTree(projectTreeSignal.value, activeId);
-  if (inTree && !('children' in inTree)) {
-    return inTree as ProjectLayerItem;
+    return null;
   }
-
-  return null;
-});
+);
 
 /**
  * @signal effectiveVisibleLayersSignal
@@ -1033,7 +1134,9 @@ export const effectiveVisibleLayersSignal = computed(() => {
     layerGroupsSignal.value.map((g) => [g.id, g])
   );
 
-  const isGroupHierarchyVisible = (groupId: string | null | undefined): boolean => {
+  const isGroupHierarchyVisible = (
+    groupId: string | null | undefined
+  ): boolean => {
     if (!groupId) return true;
     let currentId: string | null | undefined = groupId;
     while (currentId) {
@@ -1178,13 +1281,17 @@ export function clearSelection() {
  * @param {string} [source='App'] - Log entry source subsystem name.
  * @returns {void}
  */
-export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, source: string = 'App') {
+export function addConsoleLog(
+  level: ConsoleLogEntry["level"],
+  message: string,
+  source: string = "App"
+) {
   const entry: ConsoleLogEntry = {
     id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     timestamp: new Date().toLocaleTimeString(),
     level,
     message,
-    source
+    source,
   };
   consoleLogsSignal.value = [...consoleLogsSignal.value.slice(-199), entry];
 }
@@ -1204,11 +1311,17 @@ export function addConsoleLog(level: ConsoleLogEntry['level'], message: string, 
 export function toggleToolbar(id: ToolbarId): void {
   const isCurrentlyVisible = !!visibleToolbarsSignal.value[id];
   const nextVisible = !isCurrentlyVisible;
-  const currentDock = toolbarLocationsSignal.value[id] || 'top';
+  const currentDock = toolbarLocationsSignal.value[id] || "top";
   const currentRow = toolbarRowsSignal.value[id] ?? 0;
   const currentOrder = toolbarOrdersSignal.value[id] ?? 0;
 
-  const allToolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const allToolbarIds: ToolbarId[] = [
+    "project",
+    "map_view",
+    "selection",
+    "digitizing",
+    "snapping",
+  ];
 
   let nextOrder: number;
   if (!nextVisible) {
@@ -1219,10 +1332,10 @@ export function toggleToolbar(id: ToolbarId): void {
     const visibleOrdersInRow = allToolbarIds
       .filter(
         (tId) =>
-          tId !== id &&
-          toolbarLocationsSignal.value[tId] === currentDock &&
-          toolbarRowsSignal.value[tId] === currentRow &&
-          visibleToolbarsSignal.value[tId]
+          tId !== id
+          && toolbarLocationsSignal.value[tId] === currentDock
+          && toolbarRowsSignal.value[tId] === currentRow
+          && visibleToolbarsSignal.value[tId]
       )
       .map((tId) => toolbarOrdersSignal.value[tId]);
     nextOrder = Math.max(0, ...visibleOrdersInRow) + 1;
@@ -1231,23 +1344,22 @@ export function toggleToolbar(id: ToolbarId): void {
   // Update reactive signals
   visibleToolbarsSignal.value = {
     ...visibleToolbarsSignal.value,
-    [id]: nextVisible
+    [id]: nextVisible,
   };
-  toolbarOrdersSignal.value = {
-    ...toolbarOrdersSignal.value,
-    [id]: nextOrder
-  };
+  toolbarOrdersSignal.value = { ...toolbarOrdersSignal.value, [id]: nextOrder };
 
   // Re-sort toolbarOrderSignal for backwards-compatibility and zone ordering
   const nextOrderSignal: Record<ToolbarZone, ToolbarId[]> = {
     top: [],
     bottom: [],
     left: [],
-    right: []
+    right: [],
   };
-  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  const validZones: ToolbarZone[] = ["top", "bottom", "left", "right"];
   for (const zone of validZones) {
-    const inZone = allToolbarIds.filter((tId) => toolbarLocationsSignal.value[tId] === zone);
+    const inZone = allToolbarIds.filter(
+      (tId) => toolbarLocationsSignal.value[tId] === zone
+    );
     inZone.sort((a, b) => {
       if (toolbarRowsSignal.value[a] !== toolbarRowsSignal.value[b]) {
         return toolbarRowsSignal.value[a] - toolbarRowsSignal.value[b];
@@ -1259,15 +1371,23 @@ export function toggleToolbar(id: ToolbarId): void {
   toolbarOrderSignal.value = nextOrderSignal;
 
   // Persist visibility and order changes to PreferencesStore via IPC
-  if (typeof (globalThis as any).window !== 'undefined') {
+  if (typeof (globalThis as any).window !== "undefined") {
     const api = (globalThis as any).window?.electronAPI;
     if (api) {
-      if (typeof api.setPreference === 'function') {
-        api.setPreference(`ui.toolbars.${id}.visible`, nextVisible)?.catch?.(() => {});
-        api.setPreference(`ui.toolbars.${id}.order`, nextOrder)?.catch?.(() => {});
-      } else if (typeof api.setPreferenceValue === 'function') {
-        api.setPreferenceValue(`ui.toolbars.${id}.visible`, nextVisible)?.catch?.(() => {});
-        api.setPreferenceValue(`ui.toolbars.${id}.order`, nextOrder)?.catch?.(() => {});
+      if (typeof api.setPreference === "function") {
+        api
+          .setPreference(`ui.toolbars.${id}.visible`, nextVisible)
+          ?.catch?.(() => {});
+        api
+          .setPreference(`ui.toolbars.${id}.order`, nextOrder)
+          ?.catch?.(() => {});
+      } else if (typeof api.setPreferenceValue === "function") {
+        api
+          .setPreferenceValue(`ui.toolbars.${id}.visible`, nextVisible)
+          ?.catch?.(() => {});
+        api
+          .setPreferenceValue(`ui.toolbars.${id}.order`, nextOrder)
+          ?.catch?.(() => {});
       }
     }
   }
@@ -1293,12 +1413,22 @@ export function moveToolbar(
   targetRowOrIndexOrOptions?: number | MoveToolbarOptions,
   targetOrder?: number
 ): void {
-  const allToolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
-  const validZones: ToolbarZone[] = ['top', 'bottom', 'left', 'right'];
+  const allToolbarIds: ToolbarId[] = [
+    "project",
+    "map_view",
+    "selection",
+    "digitizing",
+    "snapping",
+  ];
+  const validZones: ToolbarZone[] = ["top", "bottom", "left", "right"];
 
-  const initialLocations: Record<ToolbarId, ToolbarZone> = { ...toolbarLocationsSignal.value };
+  const initialLocations: Record<ToolbarId, ToolbarZone> = {
+    ...toolbarLocationsSignal.value,
+  };
   const initialRows: Record<ToolbarId, number> = { ...toolbarRowsSignal.value };
-  const initialOrders: Record<ToolbarId, number> = { ...toolbarOrdersSignal.value };
+  const initialOrders: Record<ToolbarId, number> = {
+    ...toolbarOrdersSignal.value,
+  };
 
   // Synchronize orders with toolbarOrderSignal for backwards-compatibility when toolbarOrderSignal was set externally
   for (const zone of validZones) {
@@ -1318,10 +1448,13 @@ export function moveToolbar(
 
   // Parse options
   let options: MoveToolbarOptions | undefined;
-  if (typeof targetRowOrIndexOrOptions === 'object' && targetRowOrIndexOrOptions !== null) {
+  if (
+    typeof targetRowOrIndexOrOptions === "object"
+    && targetRowOrIndexOrOptions !== null
+  ) {
     options = targetRowOrIndexOrOptions;
-  } else if (typeof targetRowOrIndexOrOptions === 'number') {
-    if (typeof targetOrder === 'number') {
+  } else if (typeof targetRowOrIndexOrOptions === "number") {
+    if (typeof targetOrder === "number") {
       options = { targetRow: targetRowOrIndexOrOptions, targetOrder };
     } else {
       options = { targetIndex: targetRowOrIndexOrOptions };
@@ -1339,25 +1472,33 @@ export function moveToolbar(
     const hoveredId = options.hoveredId;
     const hoveredZone = destZone;
     const hoveredRow = initialRows[hoveredId];
-    const pos = options.position || 'after';
+    const pos = options.position || "after";
 
-    if (pos === 'new-row-above' || pos === 'new-row-before') {
+    if (pos === "new-row-above" || pos === "new-row-before") {
       // Create new row before hoveredRow
       const destRow = hoveredRow;
       // Shift all other toolbars in hoveredZone with row >= destRow up by 1
       for (const tId of allToolbarIds) {
-        if (tId !== id && nextLocations[tId] === hoveredZone && nextRows[tId] >= destRow) {
+        if (
+          tId !== id
+          && nextLocations[tId] === hoveredZone
+          && nextRows[tId] >= destRow
+        ) {
           nextRows[tId] += 1;
         }
       }
       nextRows[id] = destRow;
       nextOrders[id] = 0;
-    } else if (pos === 'new-row-below' || pos === 'new-row-after') {
+    } else if (pos === "new-row-below" || pos === "new-row-after") {
       // Create new row after hoveredRow
       const destRow = hoveredRow + 1;
       // Shift all other toolbars in hoveredZone with row >= destRow up by 1
       for (const tId of allToolbarIds) {
-        if (tId !== id && nextLocations[tId] === hoveredZone && nextRows[tId] >= destRow) {
+        if (
+          tId !== id
+          && nextLocations[tId] === hoveredZone
+          && nextRows[tId] >= destRow
+        ) {
           nextRows[tId] += 1;
         }
       }
@@ -1371,22 +1512,23 @@ export function moveToolbar(
       const inRow = allToolbarIds
         .filter(
           (tId) =>
-            tId !== id &&
-            nextLocations[tId] === hoveredZone &&
-            nextRows[tId] === hoveredRow &&
-            nextOrders[tId] >= 0
+            tId !== id
+            && nextLocations[tId] === hoveredZone
+            && nextRows[tId] === hoveredRow
+            && nextOrders[tId] >= 0
         )
         .sort((a, b) => nextOrders[a] - nextOrders[b]);
 
       const hoveredIndex = inRow.indexOf(hoveredId);
-      const insertIndex = pos === 'before' ? Math.max(0, hoveredIndex) : hoveredIndex + 1;
+      const insertIndex =
+        pos === "before" ? Math.max(0, hoveredIndex) : hoveredIndex + 1;
       inRow.splice(insertIndex, 0, id);
 
       inRow.forEach((tId, idx) => {
         nextOrders[tId] = idx;
       });
     }
-  } else if (options?.position === 'prepend-new-row') {
+  } else if (options?.position === "prepend-new-row") {
     // Shift all other toolbars in destZone up by 1
     for (const tId of allToolbarIds) {
       if (tId !== id && nextLocations[tId] === destZone) {
@@ -1395,7 +1537,7 @@ export function moveToolbar(
     }
     nextRows[id] = 0;
     nextOrders[id] = 0;
-  } else if (options?.position === 'append-new-row') {
+  } else if (options?.position === "append-new-row") {
     // Append as a new row at end of destZone
     const rowsInTarget = allToolbarIds
       .filter((tId) => tId !== id && nextLocations[tId] === destZone)
@@ -1403,33 +1545,40 @@ export function moveToolbar(
     const maxRow = rowsInTarget.length > 0 ? Math.max(...rowsInTarget) : -1;
     nextRows[id] = maxRow + 1;
     nextOrders[id] = 0;
-  } else if (typeof options?.targetRow === 'number') {
+  } else if (typeof options?.targetRow === "number") {
     const destRow = Math.max(0, Math.floor(options.targetRow));
     nextRows[id] = destRow;
 
     // Collect toolbars in destRow (excluding id)
     const zoneOrder = toolbarOrderSignal.value[destZone] || [];
     const inRow = allToolbarIds
-      .filter((tId) => tId !== id && nextLocations[tId] === destZone && nextRows[tId] === destRow)
+      .filter(
+        (tId) =>
+          tId !== id
+          && nextLocations[tId] === destZone
+          && nextRows[tId] === destRow
+      )
       .sort((a, b) => {
         const idxA = zoneOrder.indexOf(a);
         const idxB = zoneOrder.indexOf(b);
         if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
-        const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+        const orderA =
+          nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+        const orderB =
+          nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
         return orderA - orderB;
       });
 
     const destOrder =
-      typeof options.targetOrder === 'number'
-        ? Math.min(Math.max(0, Math.floor(options.targetOrder)), inRow.length)
-        : inRow.length;
+      typeof options.targetOrder === "number" ?
+        Math.min(Math.max(0, Math.floor(options.targetOrder)), inRow.length)
+      : inRow.length;
 
     inRow.splice(destOrder, 0, id);
     inRow.forEach((tId, idx) => {
       nextOrders[tId] = idx;
     });
-  } else if (typeof options?.targetIndex === 'number') {
+  } else if (typeof options?.targetIndex === "number") {
     // Flat index within destZone (backwards-compatible reordering)
     const inZone = allToolbarIds
       .filter((tId) => tId !== id && nextLocations[tId] === destZone)
@@ -1438,14 +1587,19 @@ export function moveToolbar(
         return nextOrders[a] - nextOrders[b];
       });
 
-    const clampedIndex = Math.min(Math.max(0, options.targetIndex), inZone.length);
+    const clampedIndex = Math.min(
+      Math.max(0, options.targetIndex),
+      inZone.length
+    );
     if (inZone.length === 0) {
       nextRows[id] = 0;
       nextOrders[id] = 0;
     } else if (clampedIndex === 0) {
       nextRows[id] = nextRows[inZone[0]];
       inZone.splice(0, 0, id);
-      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      const rowToolbars = inZone.filter(
+        (tId) => nextRows[tId] === nextRows[id]
+      );
       rowToolbars.forEach((tId, idx) => {
         nextOrders[tId] = idx;
       });
@@ -1453,7 +1607,9 @@ export function moveToolbar(
       const last = inZone[inZone.length - 1];
       nextRows[id] = nextRows[last];
       inZone.push(id);
-      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      const rowToolbars = inZone.filter(
+        (tId) => nextRows[tId] === nextRows[id]
+      );
       rowToolbars.forEach((tId, idx) => {
         nextOrders[tId] = idx;
       });
@@ -1461,7 +1617,9 @@ export function moveToolbar(
       const neighbor = inZone[clampedIndex];
       nextRows[id] = nextRows[neighbor];
       inZone.splice(clampedIndex, 0, id);
-      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      const rowToolbars = inZone.filter(
+        (tId) => nextRows[tId] === nextRows[id]
+      );
       rowToolbars.forEach((tId, idx) => {
         nextOrders[tId] = idx;
       });
@@ -1482,7 +1640,9 @@ export function moveToolbar(
       const last = inZone[inZone.length - 1];
       nextRows[id] = nextRows[last];
       inZone.push(id);
-      const rowToolbars = inZone.filter((tId) => nextRows[tId] === nextRows[id]);
+      const rowToolbars = inZone.filter(
+        (tId) => nextRows[tId] === nextRows[id]
+      );
       rowToolbars.forEach((tId, idx) => {
         nextOrders[tId] = idx;
       });
@@ -1493,7 +1653,9 @@ export function moveToolbar(
   const affectedZones = Array.from(new Set([currentZone, destZone]));
   for (const zone of affectedZones) {
     const inZone = allToolbarIds.filter((tId) => nextLocations[tId] === zone);
-    const uniqueRows = Array.from(new Set(inZone.map((tId) => nextRows[tId]))).sort((a, b) => a - b);
+    const uniqueRows = Array.from(
+      new Set(inZone.map((tId) => nextRows[tId]))
+    ).sort((a, b) => a - b);
     const rowMap = new Map<number, number>();
     uniqueRows.forEach((oldRow, newRow) => {
       rowMap.set(oldRow, newRow);
@@ -1523,14 +1685,16 @@ export function moveToolbar(
     top: [],
     bottom: [],
     left: [],
-    right: []
+    right: [],
   };
   for (const zone of validZones) {
     const inZone = allToolbarIds.filter((tId) => nextLocations[tId] === zone);
     inZone.sort((a, b) => {
       if (nextRows[a] !== nextRows[b]) return nextRows[a] - nextRows[b];
-      const orderA = nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
-      const orderB = nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
+      const orderA =
+        nextOrders[a] >= 0 ? nextOrders[a] : 10000 + Math.abs(nextOrders[a]);
+      const orderB =
+        nextOrders[b] >= 0 ? nextOrders[b] : 10000 + Math.abs(nextOrders[b]);
       return orderA - orderB;
     });
     nextOrderSignal[zone] = inZone;
@@ -1538,19 +1702,23 @@ export function moveToolbar(
   toolbarOrderSignal.value = nextOrderSignal;
 
   // 4. Dispatch IPC preference updates for any changed coordinates
-  if (typeof (globalThis as any).window !== 'undefined') {
+  if (typeof (globalThis as any).window !== "undefined") {
     const api = (globalThis as any).window?.electronAPI;
     const setPref = api?.setPreference || api?.setPreferenceValue;
-    if (typeof setPref === 'function') {
+    if (typeof setPref === "function") {
       for (const tId of allToolbarIds) {
         if (nextLocations[tId] !== initialLocations[tId]) {
-          setPref(`ui.toolbars.${tId}.dock`, nextLocations[tId])?.catch?.(() => {});
+          setPref(`ui.toolbars.${tId}.dock`, nextLocations[tId])?.catch?.(
+            () => {}
+          );
         }
         if (nextRows[tId] !== initialRows[tId]) {
           setPref(`ui.toolbars.${tId}.row`, nextRows[tId])?.catch?.(() => {});
         }
         if (nextOrders[tId] !== initialOrders[tId]) {
-          setPref(`ui.toolbars.${tId}.order`, nextOrders[tId])?.catch?.(() => {});
+          setPref(`ui.toolbars.${tId}.order`, nextOrders[tId])?.catch?.(
+            () => {}
+          );
         }
       }
     }
@@ -1567,34 +1735,40 @@ export function moveToolbar(
  * @returns {void}
  */
 export function resetToolbarsToDefault(): void {
-  const toolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+  const toolbarIds: ToolbarId[] = [
+    "project",
+    "map_view",
+    "selection",
+    "digitizing",
+    "snapping",
+  ];
   const nextVisible: Record<ToolbarId, boolean> = {
     project: DEFAULT_TOOLBAR_COORDINATES.project.visible,
     map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.visible,
     selection: DEFAULT_TOOLBAR_COORDINATES.selection.visible,
     digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.visible,
-    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.visible,
   };
   const nextLocations: Record<ToolbarId, ToolbarZone> = {
     project: DEFAULT_TOOLBAR_COORDINATES.project.dock,
     map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.dock,
     selection: DEFAULT_TOOLBAR_COORDINATES.selection.dock,
     digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.dock,
-    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.dock,
   };
   const nextRows: Record<ToolbarId, number> = {
     project: DEFAULT_TOOLBAR_COORDINATES.project.row,
     map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.row,
     selection: DEFAULT_TOOLBAR_COORDINATES.selection.row,
     digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.row,
-    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.row,
   };
   const nextOrders: Record<ToolbarId, number> = {
     project: DEFAULT_TOOLBAR_COORDINATES.project.order,
     map_view: DEFAULT_TOOLBAR_COORDINATES.map_view.order,
     selection: DEFAULT_TOOLBAR_COORDINATES.selection.order,
     digitizing: DEFAULT_TOOLBAR_COORDINATES.digitizing.order,
-    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order
+    snapping: DEFAULT_TOOLBAR_COORDINATES.snapping.order,
   };
 
   batch(() => {
@@ -1604,17 +1778,17 @@ export function resetToolbarsToDefault(): void {
     toolbarOrdersSignal.value = nextOrders;
 
     toolbarOrderSignal.value = {
-      top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
+      top: ["project", "map_view", "selection", "digitizing", "snapping"],
       bottom: [],
       left: [],
-      right: []
+      right: [],
     };
   });
 
-  if (typeof (globalThis as any).window !== 'undefined') {
+  if (typeof (globalThis as any).window !== "undefined") {
     const api = (globalThis as any).window?.electronAPI;
     const setPref = api?.setPreference || api?.setPreferenceValue;
-    if (typeof setPref === 'function') {
+    if (typeof setPref === "function") {
       for (const tId of toolbarIds) {
         const def = DEFAULT_TOOLBAR_COORDINATES[tId];
         setPref(`ui.toolbars.${tId}.visible`, def.visible)?.catch?.(() => {});
@@ -1636,15 +1810,12 @@ export function resetToolbarsToDefault(): void {
  * @param {string} [name='New Project'] - Project name string.
  * @returns {void}
  */
-export function createNewProject(name: string = 'New Project') {
+export function createNewProject(name: string = "New Project") {
   currentProjectSignal.value = {
-    format: 'cartouche-xml',
+    format: "cartouche-xml",
     pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
-    metadata: {
-      title: name,
-      appVersion: '0.1.0-dev'
-    },
-    layers: []
+    metadata: { title: name, appVersion: "0.1.0-dev" },
+    layers: [],
   };
   hasProjectSignal.value = true;
   projectTitleSignal.value = name;
@@ -1668,7 +1839,7 @@ export function createNewProject(name: string = 'New Project') {
   undoStackSignal.value = [];
   redoStackSignal.value = [];
   viewportExtentSignal.value = [-180, -90, 180, 90];
-  addConsoleLog('info', `Project "${name}" initialized.`, 'Project');
+  addConsoleLog("info", `Project "${name}" initialized.`, "Project");
 }
 
 /**
@@ -1692,7 +1863,9 @@ export function toggleProjectVisibility() {
  * @param {string} [geometryKind] - Optional geometry kind string ('Point' | 'LineString' | 'Polygon' | 'Raster' | 'Unknown').
  * @returns {Record<string, any>} Flat style object definition.
  */
-export function getDefaultOlFlatStyle(geometryKind?: string): Record<string, any> {
+export function getDefaultOlFlatStyle(
+  geometryKind?: string
+): Record<string, any> {
   return getDefaultLayerStyle(geometryKind);
 }
 
@@ -1705,21 +1878,30 @@ export function getDefaultOlFlatStyle(geometryKind?: string): Record<string, any
  * @param {Omit<GisLayer, 'id'> & { id?: string }} layerInput - Layer properties object.
  * @returns {GisLayer} Created GisLayer instance.
  */
-export function addLayerAction(layerInput: Omit<GisLayer, 'id'> & { id?: string }) {
+export function addLayerAction(
+  layerInput: Omit<GisLayer, "id"> & { id?: string }
+) {
   if (!hasProjectSignal.value) {
-    createNewProject('New Project');
+    createNewProject("New Project");
   }
-  const id = layerInput.id || `layer-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const id =
+    layerInput.id
+    || `layer-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   const newLayer: GisLayer = {
     ...layerInput,
     id,
-    flatStyle: layerInput.flatStyle || getDefaultOlFlatStyle(layerInput.geometryKind)
+    flatStyle:
+      layerInput.flatStyle || getDefaultOlFlatStyle(layerInput.geometryKind),
   };
   layersSignal.value = [...layersSignal.value, newLayer];
   if (!activeLayerIdSignal.value) {
     activeLayerIdSignal.value = id;
   }
-  addConsoleLog('info', `Added layer "${getLayerDisplayName(newLayer)}".`, 'Layers');
+  addConsoleLog(
+    "info",
+    `Added layer "${getLayerDisplayName(newLayer)}".`,
+    "Layers"
+  );
   return newLayer;
 }
 
@@ -1733,19 +1915,22 @@ export function addLayerAction(layerInput: Omit<GisLayer, 'id'> & { id?: string 
  * @param {string | null} [parentId=null] - Optional parent group ID for nested groups.
  * @returns {GisLayerGroup} Created GisLayerGroup instance.
  */
-export function addLayerGroupAction(name: string = 'New Group', parentId: string | null = null) {
+export function addLayerGroupAction(
+  name: string = "New Group",
+  parentId: string | null = null
+) {
   if (!hasProjectSignal.value) {
-    createNewProject('New Project');
+    createNewProject("New Project");
   }
   const newGroup: GisLayerGroup = {
     id: `group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     name,
     visible: true,
     expanded: true,
-    parentId
+    parentId,
   };
   layerGroupsSignal.value = [...layerGroupsSignal.value, newGroup];
-  addConsoleLog('info', `Added layer group "${name}".`, 'Layers');
+  addConsoleLog("info", `Added layer group "${name}".`, "Layers");
   return newGroup;
 }
 
@@ -1788,39 +1973,50 @@ export function toggleLayerGroupExpanded(groupId: string) {
  * @param {ProjectModel} project - The source ProjectModel to convert.
  * @returns {{ groups: GisLayerGroup[]; layers: GisLayer[] }} Flattened groups and layers arrays.
  */
-export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayerGroup[]; layers: GisLayer[] } {
+export function projectToGisHierarchy(project: ProjectModel): {
+  groups: GisLayerGroup[];
+  layers: GisLayer[];
+} {
   const groups: GisLayerGroup[] = [];
   const layers: GisLayer[] = [];
 
-  function walkItems(items: Array<ProjectLayerItem | ProjectGroupItem>, parentId: string | null = null) {
+  function walkItems(
+    items: Array<ProjectLayerItem | ProjectGroupItem>,
+    parentId: string | null = null
+  ) {
     for (const item of items) {
-      if ('children' in item) {
+      if ("children" in item) {
         // It's a ProjectGroupItem
-        const groupId = item.id || `group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const groupId =
+          item.id
+          || `group-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         groups.push({
           id: groupId,
           name: item.name,
           visible: item.visible !== false,
           expanded: item.expanded !== false,
-          parentId
+          parentId,
         });
         walkItems(item.children, groupId);
       } else {
         // It's a ProjectLayerItem
-        const baseFileName = item.source ? item.source.split(/[/\\]/).pop() || item.source : undefined;
+        const baseFileName =
+          item.source ?
+            item.source.split(/[/\\]/).pop() || item.source
+          : undefined;
         layers.push({
           id: item.id,
           name: item.name,
           baseFileName,
           dataName: item.source,
           groupId: parentId,
-          kind: 'vector',
-          geometryKind: item.geometryKind || 'Unknown',
+          kind: "vector",
+          geometryKind: item.geometryKind || "Unknown",
           visible: item.visible !== false,
           opacity: item.opacity ?? 1.0,
-          color: '#2563eb',
+          color: "#2563eb",
           featureCount: (item as any).featureCount || 0,
-          ...(item.fields ? { fields: item.fields } : {})
+          ...(item.fields ? { fields: item.fields } : {}),
         });
       }
     }
@@ -1845,43 +2041,47 @@ export function projectToGisHierarchy(project: ProjectModel): { groups: GisLayer
 function extractDescriptorsAndStyles(
   items: Array<ProjectLayerItem | ProjectGroupItem>,
   sharedStyles?: ProjectStyleItem[]
-): {
-  descriptors: LayerDescriptor[];
-  styles: Record<string, any>;
-} {
+): { descriptors: LayerDescriptor[]; styles: Record<string, any> } {
   const descriptors: LayerDescriptor[] = [];
   const styles: Record<string, any> = {};
 
   function walk(nodes: Array<ProjectLayerItem | ProjectGroupItem>) {
     for (const node of nodes) {
-      if ('children' in node && Array.isArray((node as any).children)) {
+      if ("children" in node && Array.isArray((node as any).children)) {
         walk((node as any).children);
       } else {
         const item = node as ProjectLayerItem;
         const descriptor: LayerDescriptor = {
           id: item.id,
           name: item.name,
-          type: item.type || 'vector',
+          type: item.type || "vector",
           source: item.source,
           visible: item.visible !== false,
           selected: item.selected === true,
           opacity: item.opacity ?? 1.0,
           selectable: item.selectable !== false,
           readOnly: item.readOnly === true,
-          layerKind: item.layerKind || (item.type === 'raster' ? 'raster' : 'vector'),
-          geometryKind: item.geometryKind || 'Unknown',
+          layerKind:
+            item.layerKind || (item.type === "raster" ? "raster" : "vector"),
+          geometryKind: item.geometryKind || "Unknown",
           style: item.style,
           crs: item.crs,
           ...(item.fields ? { fields: item.fields } : {}),
           ...(item.temporal ? { temporal: item.temporal } : {}),
-          ...((item as any).temporalEnabled !== undefined ? { temporalEnabled: (item as any).temporalEnabled } : {}),
+          ...((item as any).temporalEnabled !== undefined ?
+            { temporalEnabled: (item as any).temporalEnabled }
+          : {}),
           customProperties: item.customProperties,
           extent: (item as any).extent || [0, 0, 0, 0],
-          featureCount: (item as any).featureCount || 0
+          featureCount: (item as any).featureCount || 0,
         };
         descriptors.push(descriptor);
 
-        const resolvedStyle = resolveLayerStyle(item.style, sharedStyles, item.geometryKind || 'Unknown');
+        const resolvedStyle = resolveLayerStyle(
+          item.style,
+          sharedStyles,
+          item.geometryKind || "Unknown"
+        );
         styles[item.id] = resolvedStyle;
       }
     }
@@ -1906,22 +2106,32 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
     currentProjectSignal.value = project;
     hasProjectSignal.value = true;
     projectFilePathSignal.value = project.filePath || null;
-    projectTitleSignal.value = project.metadata?.title || '';
-    mapBackgroundColourSignal.value = project.display?.backgroundColour || DEFAULT_MAP_BACKGROUND_COLOUR;
-    selectionColourSignal.value = project.display?.selectionColour || DEFAULT_SELECTION_COLOUR;
+    projectTitleSignal.value = project.metadata?.title || "";
+    mapBackgroundColourSignal.value =
+      project.display?.backgroundColour || DEFAULT_MAP_BACKGROUND_COLOUR;
+    selectionColourSignal.value =
+      project.display?.selectionColour || DEFAULT_SELECTION_COLOUR;
     projectHomeSignal.value = project.home?.trim() || null;
-    projectPathModeSignal.value = project.pathMode ?? 'absolute';
-    measurementSettingsSignal.value = resolveMeasurementSettings(project.measurement);
+    projectPathModeSignal.value = project.pathMode ?? "absolute";
+    measurementSettingsSignal.value = resolveMeasurementSettings(
+      project.measurement
+    );
     projectCrsSignal.value = project.crs ? { ...project.crs } : null;
     projectRecentCrsSignal.value = (project.recentCrs ?? []).slice(0, 20);
-    projectNameSignal.value = resolveProjectDisplayName(project.metadata?.title, project.filePath);
+    projectNameSignal.value = resolveProjectDisplayName(
+      project.metadata?.title,
+      project.filePath
+    );
     projectVisibleSignal.value = true;
     projectTreeSignal.value = project.layers || [];
     layerGroupsSignal.value = groups;
     layersSignal.value = layers;
 
     // Populate layerStylesSignal before projectLayersSignal so vector layers have active styles upon instantiation
-    const { descriptors, styles } = extractDescriptorsAndStyles(project.layers || [], project.styles);
+    const { descriptors, styles } = extractDescriptorsAndStyles(
+      project.layers || [],
+      project.styles
+    );
     layerStylesSignal.value = styles;
     projectLayersSignal.value = descriptors;
 
@@ -1933,25 +2143,28 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
           project.viewport.extent.xmin,
           project.viewport.extent.ymin,
           project.viewport.extent.xmax,
-          project.viewport.extent.ymax
+          project.viewport.extent.ymax,
         ];
       }
       if (project.viewport.scale !== undefined) {
         scaleDenominatorSignal.value = project.viewport.scale;
       }
       mapActionSignal.value = {
-        action: 'setViewport',
+        action: "setViewport",
         // ADR 0033: <viewport> is in Project CRS units; files without <crs> keep the legacy lon/lat reading.
-        units: project.crs ? 'project' : 'lonlat',
-        extent: project.viewport.extent ? [
-          project.viewport.extent.xmin,
-          project.viewport.extent.ymin,
-          project.viewport.extent.xmax,
-          project.viewport.extent.ymax
-        ] : undefined,
+        units: project.crs ? "project" : "lonlat",
+        extent:
+          project.viewport.extent ?
+            [
+              project.viewport.extent.xmin,
+              project.viewport.extent.ymin,
+              project.viewport.extent.xmax,
+              project.viewport.extent.ymax,
+            ]
+          : undefined,
         center: project.viewport.center,
         rotation: project.viewport.rotation,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     }
 
@@ -1963,48 +2176,71 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
       const tf = project.timeFilter;
       setTimeFilterActive(tf.enabled === true);
       const isRangeUninitialized =
-        tf.from === undefined || tf.to === undefined || (tf.from === 0 && tf.to === 0);
+        tf.from === undefined
+        || tf.to === undefined
+        || (tf.from === 0 && tf.to === 0);
 
       if (!isRangeUninitialized) {
         setTimeFilterRange(tf.from!, tf.to!);
         const stepVal = tf.step !== undefined ? tf.step : 1.0;
-        const unitVal = tf.unit || 'Days';
+        const unitVal = tf.unit || "Days";
         const curStart = tf.current !== undefined ? tf.current : tf.from!;
         const curEnd = computeFrameEnd(curStart, stepVal, unitVal, tf.to!);
         setTimeFilterFrame(curStart, curEnd);
       } else if (hasTemporalLayer) {
-        void autoDetectTemporalRange(descriptors).then((range) => {
-          if (range) {
-            setTimeFilterRange(range.from, range.to);
-            const stepVal = tf.step !== undefined ? tf.step : 1.0;
-            const unitVal = tf.unit || 'Days';
-            const curStart = range.from;
-            const curEnd = computeFrameEnd(curStart, stepVal, unitVal, range.to);
-            setTimeFilterFrame(curStart, curEnd);
-          }
-        }).catch((err) => {
-          logging.warn("Failed to auto-detect temporal range on project load", err, { scope: "gisSignals" });
-        });
+        void autoDetectTemporalRange(descriptors)
+          .then((range) => {
+            if (range) {
+              setTimeFilterRange(range.from, range.to);
+              const stepVal = tf.step !== undefined ? tf.step : 1.0;
+              const unitVal = tf.unit || "Days";
+              const curStart = range.from;
+              const curEnd = computeFrameEnd(
+                curStart,
+                stepVal,
+                unitVal,
+                range.to
+              );
+              setTimeFilterFrame(curStart, curEnd);
+            }
+          })
+          .catch((err) => {
+            logging.warn(
+              "Failed to auto-detect temporal range on project load",
+              err,
+              { scope: "gisSignals" }
+            );
+          });
       }
       if (tf.step !== undefined) {
-        setTimeFilterStep(tf.step, tf.unit || 'Days');
+        setTimeFilterStep(tf.step, tf.unit || "Days");
       }
     } else if (hasTemporalLayer) {
-      void autoDetectTemporalRange(descriptors).then((range) => {
-        if (range) {
-          setTimeFilterRange(range.from, range.to);
-          const curStart = range.from;
-          const curEnd = computeFrameEnd(curStart, 1.0, 'Days', range.to);
-          setTimeFilterFrame(curStart, curEnd);
-        }
-      }).catch((err) => {
-        logging.warn("Failed to auto-detect temporal range on project load", err, { scope: "gisSignals" });
-      });
+      void autoDetectTemporalRange(descriptors)
+        .then((range) => {
+          if (range) {
+            setTimeFilterRange(range.from, range.to);
+            const curStart = range.from;
+            const curEnd = computeFrameEnd(curStart, 1.0, "Days", range.to);
+            setTimeFilterFrame(curStart, curEnd);
+          }
+        })
+        .catch((err) => {
+          logging.warn(
+            "Failed to auto-detect temporal range on project load",
+            err,
+            { scope: "gisSignals" }
+          );
+        });
     } else {
       resetTimeFilterState();
     }
   });
-  addConsoleLog('info', `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`, 'Project');
+  addConsoleLog(
+    "info",
+    `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`,
+    "Project"
+  );
 }
 
 /**
@@ -2023,10 +2259,10 @@ export async function newProjectAction(): Promise<boolean> {
   }
 
   if (window.electronAPI?.executeAction) {
-    await window.electronAPI.executeAction('new_project');
+    await window.electronAPI.executeAction("new_project");
   }
 
-  createNewProject('New Project');
+  createNewProject("New Project");
   return true;
 }
 
@@ -2040,16 +2276,18 @@ export async function newProjectAction(): Promise<boolean> {
  * @returns {Promise<void>}
  */
 export async function openProjectAction(): Promise<void> {
-  addConsoleLog('info', 'Open project requested.', 'Project');
+  addConsoleLog("info", "Open project requested.", "Project");
   try {
     if (!window.electronAPI?.openFiles) {
-      logging.warn('Electron openFiles API is unavailable', { scope: 'gisSignals' });
+      logging.warn("Electron openFiles API is unavailable", {
+        scope: "gisSignals",
+      });
       return;
     }
     const filePaths = await window.electronAPI.openFiles({
-      title: 'Open Cartouche Project',
-      category: 'project',
-      multiSelections: false
+      title: "Open Cartouche Project",
+      category: "project",
+      multiSelections: false,
     });
     if (!filePaths || filePaths.length === 0) {
       return;
@@ -2060,7 +2298,11 @@ export async function openProjectAction(): Promise<void> {
     if (hasProjectSignal.value) {
       const closed = await closeProjectAction();
       if (!closed) {
-        addConsoleLog('info', 'Open project aborted: previous project close was canceled.', 'Project');
+        addConsoleLog(
+          "info",
+          "Open project aborted: previous project close was canceled.",
+          "Project"
+        );
         return;
       }
     }
@@ -2072,8 +2314,8 @@ export async function openProjectAction(): Promise<void> {
       }
     }
   } catch (err) {
-    logging.error('Failed to open project', err, { scope: 'gisSignals' });
-    addConsoleLog('error', `Failed to open project: ${err}`, 'Project');
+    logging.error("Failed to open project", err, { scope: "gisSignals" });
+    addConsoleLog("error", `Failed to open project: ${err}`, "Project");
   }
 }
 
@@ -2086,17 +2328,19 @@ export async function openProjectAction(): Promise<void> {
  * @returns {ProjectViewport} Viewport to save.
  */
 export function resolveViewportForSave(): ProjectViewport {
-  const fromMap = (activeMapControllerSignal.value as any)?.getViewportForSave?.();
+  const fromMap = (
+    activeMapControllerSignal.value as any
+  )?.getViewportForSave?.();
   if (fromMap) return fromMap;
   const [xmin, ymin, xmax, ymax] = viewportExtentSignal.value;
   return {
     extent: { xmin, ymin, xmax, ymax },
     center: {
       x: Math.round(((xmin + xmax) / 2) * 100000) / 100000,
-      y: Math.round(((ymin + ymax) / 2) * 100000) / 100000
+      y: Math.round(((ymin + ymax) / 2) * 100000) / 100000,
     },
     scale: scaleDenominatorSignal.value,
-    rotation: 0
+    rotation: 0,
   };
 }
 
@@ -2112,7 +2356,7 @@ export function resolveViewportForSave(): ProjectViewport {
 function adoptFileNameForDefaultTitle(savedPath: string): void {
   const title = projectTitleSignal.value;
   if (isDefaultProjectTitle(title)) {
-    setProjectTitle(resolveProjectDisplayName('', savedPath), savedPath);
+    setProjectTitle(resolveProjectDisplayName("", savedPath), savedPath);
   } else {
     setProjectTitle(title, savedPath);
   }
@@ -2134,18 +2378,20 @@ export async function saveProjectAction(): Promise<boolean> {
   // If untitled / new project, prompt for path via saveFile dialog
   if (!targetPath) {
     if (!window.electronAPI?.saveFile) {
-      logging.warn('Electron saveFile API is unavailable', { scope: 'gisSignals' });
+      logging.warn("Electron saveFile API is unavailable", {
+        scope: "gisSignals",
+      });
       return false;
     }
-    const defaultName = `${projectNameSignal.value || 'Untitled'}.cproj`;
+    const defaultName = `${projectNameSignal.value || "Untitled"}.cproj`;
     const chosenPath = await window.electronAPI.saveFile({
-      title: 'Save Cartouche Project',
-      category: 'project',
-      defaultPath: defaultName
+      title: "Save Cartouche Project",
+      category: "project",
+      defaultPath: defaultName,
     });
 
     if (!chosenPath) {
-      addConsoleLog('info', 'Save project canceled.', 'Project');
+      addConsoleLog("info", "Save project canceled.", "Project");
       return false;
     }
     targetPath = chosenPath;
@@ -2166,17 +2412,28 @@ export async function saveProjectAction(): Promise<boolean> {
       currentProjectSignal.value.timeFilter = timeFilterConfig;
     }
     if (window.electronAPI?.saveProject) {
-      const success = await window.electronAPI.saveProject(targetPath, viewport, timeFilterConfig);
+      const success = await window.electronAPI.saveProject(
+        targetPath,
+        viewport,
+        timeFilterConfig
+      );
       if (!success) return false;
     }
     projectFilePathSignal.value = targetPath;
     adoptFileNameForDefaultTitle(targetPath);
     isProjectDirtySignal.value = false;
-    addConsoleLog('info', `Project "${projectNameSignal.value || 'Untitled'}" saved successfully.`, 'Project');
+    addConsoleLog(
+      "info",
+      `Project "${projectNameSignal.value || "Untitled"}" saved successfully.`,
+      "Project"
+    );
     return true;
   } catch (err) {
-    logging.error('Failed to save project', err, { scope: 'gisSignals', targetPath });
-    addConsoleLog('error', `Failed to save project: ${String(err)}`, 'Project');
+    logging.error("Failed to save project", err, {
+      scope: "gisSignals",
+      targetPath,
+    });
+    addConsoleLog("error", `Failed to save project: ${String(err)}`, "Project");
     return false;
   }
 }
@@ -2193,19 +2450,23 @@ export async function saveAsProjectAction(): Promise<boolean> {
   if (!hasProjectSignal.value) return false;
 
   if (!window.electronAPI?.saveFile) {
-    logging.warn('Electron saveFile API is unavailable', { scope: 'gisSignals' });
+    logging.warn("Electron saveFile API is unavailable", {
+      scope: "gisSignals",
+    });
     return false;
   }
 
-  const defaultPath = projectFilePathSignal.value || `${projectNameSignal.value || 'Untitled'}.cproj`;
+  const defaultPath =
+    projectFilePathSignal.value
+    || `${projectNameSignal.value || "Untitled"}.cproj`;
   const chosenPath = await window.electronAPI.saveFile({
-    title: 'Save Cartouche Project As...',
-    category: 'project',
-    defaultPath
+    title: "Save Cartouche Project As...",
+    category: "project",
+    defaultPath,
   });
 
   if (!chosenPath) {
-    addConsoleLog('info', 'Save As project canceled.', 'Project');
+    addConsoleLog("info", "Save As project canceled.", "Project");
     return false;
   }
 
@@ -2224,17 +2485,32 @@ export async function saveAsProjectAction(): Promise<boolean> {
       currentProjectSignal.value.timeFilter = timeFilterConfig;
     }
     if (window.electronAPI?.saveProject) {
-      const success = await window.electronAPI.saveProject(chosenPath, viewport, timeFilterConfig);
+      const success = await window.electronAPI.saveProject(
+        chosenPath,
+        viewport,
+        timeFilterConfig
+      );
       if (!success) return false;
     }
     projectFilePathSignal.value = chosenPath;
     adoptFileNameForDefaultTitle(chosenPath);
     isProjectDirtySignal.value = false;
-    addConsoleLog('info', `Project saved as "${projectNameSignal.value}" (${chosenPath}).`, 'Project');
+    addConsoleLog(
+      "info",
+      `Project saved as "${projectNameSignal.value}" (${chosenPath}).`,
+      "Project"
+    );
     return true;
   } catch (err) {
-    logging.error('Failed to save project as', err, { scope: 'gisSignals', chosenPath });
-    addConsoleLog('error', `Failed to save project as: ${String(err)}`, 'Project');
+    logging.error("Failed to save project as", err, {
+      scope: "gisSignals",
+      chosenPath,
+    });
+    addConsoleLog(
+      "error",
+      `Failed to save project as: ${String(err)}`,
+      "Project"
+    );
     return false;
   }
 }
@@ -2247,7 +2523,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
  * @updated 2026-11-06
  * @since 0.1.0-dev
  */
-export type UnsavedChangesChoice = 'cancel' | 'discard' | 'save';
+export type UnsavedChangesChoice = "cancel" | "discard" | "save";
 
 /**
  * @typedef {Object} UnsavedChangesPromptState
@@ -2261,7 +2537,7 @@ export type UnsavedChangesChoice = 'cancel' | 'discard' | 'save';
  * @since 0.1.0-dev
  */
 export interface UnsavedChangesPromptState {
-  targetType: 'layer' | 'project';
+  targetType: "layer" | "project";
   layerId?: string;
   targetName: string;
   resolve: (choice: UnsavedChangesChoice) => void;
@@ -2287,7 +2563,8 @@ export const dirtyLayerIdsSignal = signal<Set<string>>(new Set());
  * @since 0.1.0-dev
  * @type {Signal<UnsavedChangesPromptState | null>}
  */
-export const unsavedChangesModalSignal = signal<UnsavedChangesPromptState | null>(null);
+export const unsavedChangesModalSignal =
+  signal<UnsavedChangesPromptState | null>(null);
 
 /**
  * @function resolveUnsavedChangesModal
@@ -2319,7 +2596,7 @@ export function resolveUnsavedChangesModal(choice: UnsavedChangesChoice): void {
  * @returns {Promise<UnsavedChangesChoice>} Resolved user choice.
  */
 export function promptUnsavedChanges(
-  targetType: 'layer' | 'project',
+  targetType: "layer" | "project",
   targetName: string,
   layerId?: string
 ): Promise<UnsavedChangesChoice> {
@@ -2328,7 +2605,7 @@ export function promptUnsavedChanges(
       targetType,
       layerId,
       targetName,
-      resolve
+      resolve,
     };
   });
 }
@@ -2343,7 +2620,9 @@ export function promptUnsavedChanges(
  * @param {string} layerId - Target layer identifier.
  * @returns {Promise<void>}
  */
-export async function discardLayerChangesAction(layerId: string): Promise<void> {
+export async function discardLayerChangesAction(
+  layerId: string
+): Promise<void> {
   const nextDirty = new Set(dirtyLayerIdsSignal.value);
   nextDirty.delete(layerId);
   dirtyLayerIdsSignal.value = nextDirty;
@@ -2351,10 +2630,14 @@ export async function discardLayerChangesAction(layerId: string): Promise<void> 
     editedFeatureIdsSignal.value = new Set();
   }
   const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.clearLayerEdits === 'function') {
+  if (typeof api?.clearLayerEdits === "function") {
     await api.clearLayerEdits(layerId);
   }
-  addConsoleLog('info', `Discarded uncommitted edits for layer "${layerId}".`, 'Layers');
+  addConsoleLog(
+    "info",
+    `Discarded uncommitted edits for layer "${layerId}".`,
+    "Layers"
+  );
 }
 
 /**
@@ -2375,10 +2658,14 @@ export async function saveLayerChangesAction(layerId: string): Promise<void> {
     editedFeatureIdsSignal.value = new Set();
   }
   const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.clearLayerEdits === 'function') {
+  if (typeof api?.clearLayerEdits === "function") {
     await api.clearLayerEdits(layerId);
   }
-  addConsoleLog('info', `Saved changes (stub) for layer "${layerId}".`, 'Layers');
+  addConsoleLog(
+    "info",
+    `Saved changes (stub) for layer "${layerId}".`,
+    "Layers"
+  );
 }
 
 /**
@@ -2393,7 +2680,7 @@ export async function saveLayerChangesAction(layerId: string): Promise<void> {
 export async function confirmUnsavedChangesFlow(): Promise<boolean> {
   const api = (globalThis as any).window?.electronAPI;
   let ipcDirtyIds: string[] = [];
-  if (typeof api?.getDirtyLayerIds === 'function') {
+  if (typeof api?.getDirtyLayerIds === "function") {
     try {
       const res = await api.getDirtyLayerIds();
       if (Array.isArray(res)) {
@@ -2406,7 +2693,7 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
 
   const combinedDirtySet = new Set<string>([
     ...ipcDirtyIds,
-    ...dirtyLayerIdsSignal.value
+    ...dirtyLayerIdsSignal.value,
   ]);
   if (editedFeatureIdsSignal.value.size > 0 && activeLayerIdSignal.value) {
     combinedDirtySet.add(activeLayerIdSignal.value);
@@ -2427,35 +2714,48 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
   // 1. Sequential per-layer confirmation modals
   for (const layerId of orderedDirtyLayerIds) {
     const layer = layersSignal.value.find((l) => l.id === layerId);
-    const layerName = layer ? (layer.name || getLayerDisplayName(layer)) : layerId;
-    const choice = await promptUnsavedChanges('layer', layerName, layerId);
+    const layerName =
+      layer ? layer.name || getLayerDisplayName(layer) : layerId;
+    const choice = await promptUnsavedChanges("layer", layerName, layerId);
 
-    if (choice === 'cancel') {
-      addConsoleLog('info', `Close/exit aborted by user at layer "${layerName}".`, 'Layers');
+    if (choice === "cancel") {
+      addConsoleLog(
+        "info",
+        `Close/exit aborted by user at layer "${layerName}".`,
+        "Layers"
+      );
       return false;
     }
-    if (choice === 'discard') {
+    if (choice === "discard") {
       await discardLayerChangesAction(layerId);
-    } else if (choice === 'save') {
+    } else if (choice === "save") {
       await saveLayerChangesAction(layerId);
     }
   }
 
   // 2. Project confirmation modal (if project has Project Dirty State)
   if (isProjectDirtySignal.value) {
-    const projName = projectNameSignal.value || 'Untitled Project';
-    const choice = await promptUnsavedChanges('project', projName);
+    const projName = projectNameSignal.value || "Untitled Project";
+    const choice = await promptUnsavedChanges("project", projName);
 
-    if (choice === 'cancel') {
-      addConsoleLog('info', 'Close/exit aborted by user at project prompt.', 'Project');
+    if (choice === "cancel") {
+      addConsoleLog(
+        "info",
+        "Close/exit aborted by user at project prompt.",
+        "Project"
+      );
       return false;
     }
-    if (choice === 'discard') {
+    if (choice === "discard") {
       isProjectDirtySignal.value = false;
-    } else if (choice === 'save') {
+    } else if (choice === "save") {
       const saved = await saveProjectAction();
       if (!saved) {
-        addConsoleLog('info', 'Close/exit aborted: unsaved project changes were not saved.', 'Project');
+        addConsoleLog(
+          "info",
+          "Close/exit aborted: unsaved project changes were not saved.",
+          "Project"
+        );
         return false;
       }
     }
@@ -2474,7 +2774,11 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
  * @returns {Promise<boolean>} True if project closed, false if aborted.
  */
 export async function closeProjectAction(): Promise<boolean> {
-  if (!hasProjectSignal.value && dirtyLayerIdsSignal.value.size === 0 && !isProjectDirtySignal.value) {
+  if (
+    !hasProjectSignal.value
+    && dirtyLayerIdsSignal.value.size === 0
+    && !isProjectDirtySignal.value
+  ) {
     return true;
   }
 
@@ -2484,12 +2788,12 @@ export async function closeProjectAction(): Promise<boolean> {
   }
 
   if (window.electronAPI?.executeAction) {
-    await window.electronAPI.executeAction('close_project');
+    await window.electronAPI.executeAction("close_project");
   }
 
   hasProjectSignal.value = false;
   projectNameSignal.value = null;
-  projectTitleSignal.value = '';
+  projectTitleSignal.value = "";
   mapBackgroundColourSignal.value = DEFAULT_MAP_BACKGROUND_COLOUR;
   selectionColourSignal.value = DEFAULT_SELECTION_COLOUR;
   projectHomeSignal.value = null;
@@ -2515,7 +2819,7 @@ export async function closeProjectAction(): Promise<boolean> {
   viewportExtentSignal.value = [-180, -90, 180, 90];
   resetTimeFilterState();
 
-  addConsoleLog('info', 'Project closed. Returned to blank slate.', 'Project');
+  addConsoleLog("info", "Project closed. Returned to blank slate.", "Project");
   return true;
 }
 
@@ -2540,9 +2844,9 @@ export async function requestAppExitAction(): Promise<boolean> {
   }
 
   const api = (globalThis as any).window?.electronAPI;
-  if (typeof api?.confirmCloseWindow === 'function') {
+  if (typeof api?.confirmCloseWindow === "function") {
     api.confirmCloseWindow();
-  } else if (typeof api?.closeWindow === 'function') {
+  } else if (typeof api?.closeWindow === "function") {
     api.closeWindow();
   }
   return true;
@@ -2572,7 +2876,11 @@ export function saveActiveLayerAction(): void {
  */
 export function saveActiveLayerAsAction(): void {
   if (!activeLayerIdSignal.value) return;
-  addConsoleLog('info', `Save Active Layer As requested for "${activeLayerIdSignal.value}".`, 'Layers');
+  addConsoleLog(
+    "info",
+    `Save Active Layer As requested for "${activeLayerIdSignal.value}".`,
+    "Layers"
+  );
 }
 
 // Edit Actions
@@ -2586,7 +2894,7 @@ export function saveActiveLayerAsAction(): void {
  */
 export function undoAction() {
   if (undoStackSignal.value.length === 0) return;
-  addConsoleLog('info', 'Undo performed.', 'Edit');
+  addConsoleLog("info", "Undo performed.", "Edit");
 }
 
 /**
@@ -2599,7 +2907,7 @@ export function undoAction() {
  */
 export function redoAction() {
   if (redoStackSignal.value.length === 0) return;
-  addConsoleLog('info', 'Redo performed.', 'Edit');
+  addConsoleLog("info", "Redo performed.", "Edit");
 }
 
 /**
@@ -2612,11 +2920,19 @@ export function redoAction() {
  */
 export function cutAction() {
   if (selectedFeatureIdsSignal.value.size === 0) return;
-  const selected = featuresSignal.value.filter((f) => selectedFeatureIdsSignal.value.has(f.id));
+  const selected = featuresSignal.value.filter((f) =>
+    selectedFeatureIdsSignal.value.has(f.id)
+  );
   clipboardFeaturesSignal.value = selected;
-  featuresSignal.value = featuresSignal.value.filter((f) => !selectedFeatureIdsSignal.value.has(f.id));
+  featuresSignal.value = featuresSignal.value.filter(
+    (f) => !selectedFeatureIdsSignal.value.has(f.id)
+  );
   selectedFeatureIdsSignal.value = new Set();
-  addConsoleLog('info', `Cut ${selected.length} feature(s) to clipboard.`, 'Edit');
+  addConsoleLog(
+    "info",
+    `Cut ${selected.length} feature(s) to clipboard.`,
+    "Edit"
+  );
 }
 
 /**
@@ -2629,9 +2945,15 @@ export function cutAction() {
  */
 export function copyAction() {
   if (selectedFeatureIdsSignal.value.size === 0) return;
-  const selected = featuresSignal.value.filter((f) => selectedFeatureIdsSignal.value.has(f.id));
+  const selected = featuresSignal.value.filter((f) =>
+    selectedFeatureIdsSignal.value.has(f.id)
+  );
   clipboardFeaturesSignal.value = selected;
-  addConsoleLog('info', `Copied ${selected.length} feature(s) to clipboard.`, 'Edit');
+  addConsoleLog(
+    "info",
+    `Copied ${selected.length} feature(s) to clipboard.`,
+    "Edit"
+  );
 }
 
 /**
@@ -2646,10 +2968,10 @@ export function pasteAction() {
   if (clipboardFeaturesSignal.value.length === 0) return;
   const pasted = clipboardFeaturesSignal.value.map((f) => ({
     ...f,
-    id: `feature-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`
+    id: `feature-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
   }));
   featuresSignal.value = [...featuresSignal.value, ...pasted];
-  addConsoleLog('info', `Pasted ${pasted.length} feature(s).`, 'Edit');
+  addConsoleLog("info", `Pasted ${pasted.length} feature(s).`, "Edit");
 }
 
 /**
@@ -2662,7 +2984,11 @@ export function pasteAction() {
  */
 export function editAttributesAction() {
   if (selectedFeatureIdsSignal.value.size === 0) return;
-  addConsoleLog('info', 'Edit Attributes requested for selected feature(s).', 'Edit');
+  addConsoleLog(
+    "info",
+    "Edit Attributes requested for selected feature(s).",
+    "Edit"
+  );
 }
 
 // View / Canvas actions
@@ -2675,7 +3001,7 @@ export function editAttributesAction() {
  * @param {'zoomIn' | 'zoomOut' | 'reset'} action - Target map viewport action name.
  * @returns {void}
  */
-export function triggerMapAction(action: 'zoomIn' | 'zoomOut' | 'reset') {
+export function triggerMapAction(action: "zoomIn" | "zoomOut" | "reset") {
   mapActionSignal.value = { action, timestamp: Date.now() };
 }
 
@@ -2687,7 +3013,12 @@ export function triggerMapAction(action: 'zoomIn' | 'zoomOut' | 'reset') {
  * @param {string} title - Tab header title text.
  * @param {'left' | 'right' | 'above' | 'below'} direction - Dock direction relative to center.
  */
-type TogglePanelFn = (id: string, component: string, title: string, direction: 'left' | 'right' | 'above' | 'below') => void;
+type TogglePanelFn = (
+  id: string,
+  component: string,
+  title: string,
+  direction: "left" | "right" | "above" | "below"
+) => void;
 let togglePanelHandler: TogglePanelFn | null = null;
 
 /**
@@ -2713,7 +3044,7 @@ export function registerTogglePanelHandler(handler: TogglePanelFn): void {
  */
 export function toggleLayersWidgetAction(): void {
   if (togglePanelHandler) {
-    togglePanelHandler('layer-tree', 'layer-tree', 'Layers', 'left');
+    togglePanelHandler("layer-tree", "layer-tree", "Layers", "left");
   }
 }
 
@@ -2738,7 +3069,7 @@ export const isAddLayersOpenSignal = signal<boolean>(false);
  */
 export function openAddLayersDialog(): void {
   isAddLayersOpenSignal.value = true;
-  addConsoleLog('info', 'Add Layers dialog opened.', 'Layers');
+  addConsoleLog("info", "Add Layers dialog opened.", "Layers");
 }
 
 /**
@@ -2751,7 +3082,7 @@ export function openAddLayersDialog(): void {
  */
 export function closeAddLayersDialog(): void {
   isAddLayersOpenSignal.value = false;
-  addConsoleLog('info', 'Add Layers dialog closed.', 'Layers');
+  addConsoleLog("info", "Add Layers dialog closed.", "Layers");
 }
 
 /**
@@ -2763,17 +3094,17 @@ export function closeAddLayersDialog(): void {
  * @returns {void}
  */
 export function cancelAction(): void {
-  if (activeToolSignal.value !== 'pan') {
-    activeToolSignal.value = 'pan';
+  if (activeToolSignal.value !== "pan") {
+    activeToolSignal.value = "pan";
   }
   if (selectedFeatureIdsSignal.value.size > 0) {
     selectedFeatureIdsSignal.value = new Set();
   }
   clearNodeSelection();
-  if (typeof window !== 'undefined' && window.electronAPI?.executeAction) {
-    window.electronAPI.executeAction('cancel_action');
+  if (typeof window !== "undefined" && window.electronAPI?.executeAction) {
+    window.electronAPI.executeAction("cancel_action");
   }
-  addConsoleLog('info', 'Cancelled active operation.', 'Workbench');
+  addConsoleLog("info", "Cancelled active operation.", "Workbench");
 }
 
 /**
@@ -2788,7 +3119,7 @@ export function zoomInAction(): void {
   if (activeMapControllerSignal.value) {
     activeMapControllerSignal.value.zoomIn();
   } else {
-    triggerMapAction('zoomIn');
+    triggerMapAction("zoomIn");
   }
 }
 
@@ -2804,7 +3135,7 @@ export function zoomOutAction(): void {
   if (activeMapControllerSignal.value) {
     activeMapControllerSignal.value.zoomOut();
   } else {
-    triggerMapAction('zoomOut');
+    triggerMapAction("zoomOut");
   }
 }
 
@@ -2818,7 +3149,9 @@ export function zoomOutAction(): void {
  * @param {unknown[]} coordinatesList - Array of geometry coordinate hierarchies.
  * @returns {BoundingBox | null} Computed spatial extent envelope or null if no valid coordinates found.
  */
-export function computeCoordinatesExtent(coordinatesList: unknown[]): BoundingBox | null {
+export function computeCoordinatesExtent(
+  coordinatesList: unknown[]
+): BoundingBox | null {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -2828,7 +3161,7 @@ export function computeCoordinatesExtent(coordinatesList: unknown[]): BoundingBo
   const extractCoords = (coords: unknown): void => {
     if (!coords) return;
     if (Array.isArray(coords)) {
-      if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+      if (typeof coords[0] === "number" && typeof coords[1] === "number") {
         minX = Math.min(minX, coords[0]);
         minY = Math.min(minY, coords[1]);
         maxX = Math.max(maxX, coords[0]);
@@ -2846,7 +3179,12 @@ export function computeCoordinatesExtent(coordinatesList: unknown[]): BoundingBo
     extractCoords(coords);
   }
 
-  if (found && minX <= maxX && minY <= maxY && isValidExtent([minX, minY, maxX, maxY])) {
+  if (
+    found
+    && minX <= maxX
+    && minY <= maxY
+    && isValidExtent([minX, minY, maxX, maxY])
+  ) {
     return [minX, minY, maxX, maxY];
   }
   return null;
@@ -2872,9 +3210,12 @@ export function zoomToSelectionAction(): void {
 
   if (controller) {
     const layerEntry = activeId ? controller.getLayer(activeId) : undefined;
-    const sourcesToSearch = layerEntry
-      ? [layerEntry.source]
-      : Array.from(controller.getVectorLayers().values()).map((e: any) => e.source);
+    const sourcesToSearch =
+      layerEntry ?
+        [layerEntry.source]
+      : Array.from(controller.getVectorLayers().values()).map(
+          (e: any) => e.source
+        );
 
     let minX = Infinity;
     let minY = Infinity;
@@ -2890,7 +3231,10 @@ export function zoomToSelectionAction(): void {
           const geom = feat.getGeometry?.();
           if (geom) {
             const featExtent = geom.getExtent?.();
-            if (featExtent && featExtent.every((v: number) => Number.isFinite(v))) {
+            if (
+              featExtent
+              && featExtent.every((v: number) => Number.isFinite(v))
+            ) {
               minX = Math.min(minX, featExtent[0]);
               minY = Math.min(minY, featExtent[1]);
               maxX = Math.max(maxX, featExtent[2]);
@@ -2904,9 +3248,13 @@ export function zoomToSelectionAction(): void {
 
     if (found && minX <= maxX && minY <= maxY) {
       const view = controller.getView?.();
-      const viewCrs = view?.getProjection?.()?.getCode?.() || 'EPSG:3857';
+      const viewCrs = view?.getProjection?.()?.getCode?.() || "EPSG:3857";
       try {
-        const [minLon, minLat, maxLon, maxLat] = transformExtent([minX, minY, maxX, maxY], viewCrs, 'EPSG:4326');
+        const [minLon, minLat, maxLon, maxLat] = transformExtent(
+          [minX, minY, maxX, maxY],
+          viewCrs,
+          "EPSG:4326"
+        );
         extent = [minLon, minLat, maxLon, maxLat];
       } catch {
         extent = [minX, minY, maxX, maxY];
@@ -2919,7 +3267,9 @@ export function zoomToSelectionAction(): void {
       (f) => selectedIds.has(f.id) && (!activeId || f.layerId === activeId)
     );
     if (targetFeatures.length > 0) {
-      extent = computeCoordinatesExtent(targetFeatures.map((f) => f.coordinates));
+      extent = computeCoordinatesExtent(
+        targetFeatures.map((f) => f.coordinates)
+      );
     }
   }
 
@@ -2928,16 +3278,24 @@ export function zoomToSelectionAction(): void {
       controller.fitExtent(extent, { padding: [8, 8, 8, 8], duration: 200 });
     } else {
       mapActionSignal.value = {
-        action: 'setViewport',
+        action: "setViewport",
         extent,
         padding: [8, 8, 8, 8],
         duration: 200,
         timestamp: Date.now(),
       };
     }
-    addConsoleLog('info', 'Fitted viewport to selected features with 8px margin.', 'Map');
+    addConsoleLog(
+      "info",
+      "Fitted viewport to selected features with 8px margin.",
+      "Map"
+    );
   } else {
-    addConsoleLog('info', 'No spatial extent resolved for selected features.', 'Map');
+    addConsoleLog(
+      "info",
+      "No spatial extent resolved for selected features.",
+      "Map"
+    );
   }
 }
 
@@ -2958,10 +3316,10 @@ export function zoomToLayerAction(): void {
 
   const descriptor = projectLayersSignal.value.find((l) => l.id === activeId);
   // Descriptor extents are in the Layer CRS (EPSG:3857 when the layer declares none, ADR 0033).
-  let layerExtentCrs = 'EPSG:4326';
+  let layerExtentCrs = "EPSG:4326";
   if (descriptor && isValidExtent(descriptor.extent)) {
     layerExtent = descriptor.extent;
-    layerExtentCrs = descriptor.crs?.authId || 'EPSG:3857';
+    layerExtentCrs = descriptor.crs?.authId || "EPSG:3857";
   }
 
   if (!layerExtent && controller) {
@@ -2969,14 +3327,21 @@ export function zoomToLayerAction(): void {
     if (entry) {
       if (isValidExtent(entry.descriptor?.extent)) {
         layerExtent = entry.descriptor.extent;
-        layerExtentCrs = entry.descriptor.crs?.authId || 'EPSG:3857';
+        layerExtentCrs = entry.descriptor.crs?.authId || "EPSG:3857";
       } else if (entry.source?.getExtent) {
         const sourceExtent = entry.source.getExtent();
-        if (sourceExtent && sourceExtent.every((v: number) => Number.isFinite(v))) {
+        if (
+          sourceExtent
+          && sourceExtent.every((v: number) => Number.isFinite(v))
+        ) {
           const view = controller.getView?.();
-          const viewCrs = view?.getProjection?.()?.getCode?.() || 'EPSG:3857';
+          const viewCrs = view?.getProjection?.()?.getCode?.() || "EPSG:3857";
           try {
-            const [minLon, minLat, maxLon, maxLat] = transformExtent(sourceExtent, viewCrs, 'EPSG:4326');
+            const [minLon, minLat, maxLon, maxLat] = transformExtent(
+              sourceExtent,
+              viewCrs,
+              "EPSG:4326"
+            );
             if (isValidExtent([minLon, minLat, maxLon, maxLat])) {
               layerExtent = [minLon, minLat, maxLon, maxLat];
             }
@@ -2991,18 +3356,26 @@ export function zoomToLayerAction(): void {
   }
 
   if (!layerExtent) {
-    const layerFeatures = featuresSignal.value.filter((f) => f.layerId === activeId);
+    const layerFeatures = featuresSignal.value.filter(
+      (f) => f.layerId === activeId
+    );
     if (layerFeatures.length > 0) {
-      layerExtent = computeCoordinatesExtent(layerFeatures.map((f) => f.coordinates));
+      layerExtent = computeCoordinatesExtent(
+        layerFeatures.map((f) => f.coordinates)
+      );
     }
   }
 
   if (layerExtent && isValidExtent(layerExtent)) {
     if (controller) {
-      controller.fitExtent(layerExtent, { padding: [8, 8, 8, 8], duration: 200, extentCrs: layerExtentCrs });
+      controller.fitExtent(layerExtent, {
+        padding: [8, 8, 8, 8],
+        duration: 200,
+        extentCrs: layerExtentCrs,
+      });
     } else {
       mapActionSignal.value = {
-        action: 'setViewport',
+        action: "setViewport",
         extentCrs: layerExtentCrs,
         extent: layerExtent,
         padding: [8, 8, 8, 8],
@@ -3010,9 +3383,17 @@ export function zoomToLayerAction(): void {
         timestamp: Date.now(),
       };
     }
-    addConsoleLog('info', `Fitted viewport to active layer ${activeId} with 8px margin.`, 'Map');
+    addConsoleLog(
+      "info",
+      `Fitted viewport to active layer ${activeId} with 8px margin.`,
+      "Map"
+    );
   } else {
-    addConsoleLog('warn', `Cannot zoom to layer ${activeId}: invalid or missing spatial bounds.`, 'Map');
+    addConsoleLog(
+      "warn",
+      `Cannot zoom to layer ${activeId}: invalid or missing spatial bounds.`,
+      "Map"
+    );
   }
 }
 
@@ -3026,11 +3407,16 @@ export function zoomToLayerAction(): void {
  */
 export function selectAllFeaturesAction(): void {
   const activeId = activeLayerIdSignal.value;
-  const targetFeatures = activeId
-    ? featuresSignal.value.filter((f) => f.layerId === activeId)
+  const targetFeatures =
+    activeId ?
+      featuresSignal.value.filter((f) => f.layerId === activeId)
     : featuresSignal.value;
   selectedFeatureIdsSignal.value = new Set(targetFeatures.map((f) => f.id));
-  addConsoleLog('info', `Selected ${targetFeatures.length} feature(s).`, 'Selection');
+  addConsoleLog(
+    "info",
+    `Selected ${targetFeatures.length} feature(s).`,
+    "Selection"
+  );
 }
 
 /**
@@ -3043,7 +3429,7 @@ export function selectAllFeaturesAction(): void {
  */
 export function deselectAllFeaturesAction(): void {
   selectedFeatureIdsSignal.value = new Set();
-  addConsoleLog('info', 'Deselected all features.', 'Selection');
+  addConsoleLog("info", "Deselected all features.", "Selection");
 }
 
 /**
@@ -3057,9 +3443,11 @@ export function deselectAllFeaturesAction(): void {
 export function deleteSelectedFeaturesAction(): void {
   if (selectedFeatureIdsSignal.value.size === 0) return;
   const count = selectedFeatureIdsSignal.value.size;
-  featuresSignal.value = featuresSignal.value.filter((f) => !selectedFeatureIdsSignal.value.has(f.id));
+  featuresSignal.value = featuresSignal.value.filter(
+    (f) => !selectedFeatureIdsSignal.value.has(f.id)
+  );
   selectedFeatureIdsSignal.value = new Set();
-  addConsoleLog('info', `Deleted ${count} selected feature(s).`, 'Edit');
+  addConsoleLog("info", `Deleted ${count} selected feature(s).`, "Edit");
 }
 
 /**
@@ -3126,26 +3514,40 @@ export function toggleLayerEditingAction(
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
     if (
-      activeLayerIdSignal.value === targetId &&
-      (activeToolSignal.value === 'point' ||
-        activeToolSignal.value === 'line' ||
-        activeToolSignal.value === 'polygon' ||
-        activeToolSignal.value === 'vertex_editor')
+      activeLayerIdSignal.value === targetId
+      && (activeToolSignal.value === "point"
+        || activeToolSignal.value === "line"
+        || activeToolSignal.value === "polygon"
+        || activeToolSignal.value === "vertex_editor")
     ) {
       captureLayerToolbarState(targetId);
-      activeToolSignal.value = 'pan';
+      activeToolSignal.value = "pan";
     }
-    addConsoleLog('info', `Layer editing disabled for "${targetId}".`, 'Digitizing');
+    addConsoleLog(
+      "info",
+      `Layer editing disabled for "${targetId}".`,
+      "Digitizing"
+    );
   } else {
     current.add(targetId);
     editableLayerIdsSignal.value = current;
-    if (activeLayerIdSignal.value === targetId && activeToolSignal.value === 'pan') {
-      const cached = getLayerToolbarPreference<ActiveTool>(targetId, 'digitizingTool');
+    if (
+      activeLayerIdSignal.value === targetId
+      && activeToolSignal.value === "pan"
+    ) {
+      const cached = getLayerToolbarPreference<ActiveTool>(
+        targetId,
+        "digitizingTool"
+      );
       if (cached) {
         activeToolSignal.value = cached;
       }
     }
-    addConsoleLog('info', `Layer editing enabled for "${targetId}".`, 'Digitizing');
+    addConsoleLog(
+      "info",
+      `Layer editing enabled for "${targetId}".`,
+      "Digitizing"
+    );
   }
 }
 
@@ -3158,12 +3560,12 @@ export function toggleLayerEditingAction(
  * @returns {void}
  */
 export function vertexEditorAction(): void {
-  if (activeToolSignal.value === 'vertex_editor') {
-    activeToolSignal.value = 'pan';
+  if (activeToolSignal.value === "vertex_editor") {
+    activeToolSignal.value = "pan";
   } else {
-    activeToolSignal.value = 'vertex_editor';
+    activeToolSignal.value = "vertex_editor";
   }
-  addConsoleLog('info', 'Vertex editor toggled.', 'Digitizing');
+  addConsoleLog("info", "Vertex editor toggled.", "Digitizing");
 }
 
 /**
@@ -3187,7 +3589,7 @@ export const isSelectByValueOpenSignal = signal<boolean>(false);
  */
 export function openSelectByValueDialog(): void {
   isSelectByValueOpenSignal.value = true;
-  addConsoleLog('info', 'Select Features by Value dialog opened.', 'Selection');
+  addConsoleLog("info", "Select Features by Value dialog opened.", "Selection");
 }
 
 /**
@@ -3200,7 +3602,7 @@ export function openSelectByValueDialog(): void {
  */
 export function closeSelectByValueDialog(): void {
   isSelectByValueOpenSignal.value = false;
-  addConsoleLog('info', 'Select Features by Value dialog closed.', 'Selection');
+  addConsoleLog("info", "Select Features by Value dialog closed.", "Selection");
 }
 
 /**
@@ -3238,7 +3640,7 @@ export {
   openProjectPropertiesDialog,
   closeProjectPropertiesDialog,
   projectPropertiesAction,
-} from './projectPropertiesSignals';
+} from "./projectPropertiesSignals";
 
 /**
  * @signal isCreateLayerOpenSignal
@@ -3261,7 +3663,7 @@ export const isCreateLayerOpenSignal = signal<boolean>(false);
  */
 export function openCreateLayerDialog(): void {
   isCreateLayerOpenSignal.value = true;
-  addConsoleLog('info', 'Create Layer dialog opened.', 'Layers');
+  addConsoleLog("info", "Create Layer dialog opened.", "Layers");
 }
 
 /**
@@ -3274,7 +3676,7 @@ export function openCreateLayerDialog(): void {
  */
 export function closeCreateLayerDialog(): void {
   isCreateLayerOpenSignal.value = false;
-  addConsoleLog('info', 'Create Layer dialog closed.', 'Layers');
+  addConsoleLog("info", "Create Layer dialog closed.", "Layers");
 }
 
 /**
@@ -3288,4 +3690,3 @@ export function closeCreateLayerDialog(): void {
 export function createLayerAction(): void {
   openCreateLayerDialog();
 }
-

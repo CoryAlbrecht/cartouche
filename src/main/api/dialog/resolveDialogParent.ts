@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import * as electron from 'electron';
+import * as electron from "electron";
 
 const defaultBrowserWindow = (electron as any)?.BrowserWindow;
 
@@ -22,7 +22,9 @@ const defaultBrowserWindow = (electron as any)?.BrowserWindow;
  * @since 0.1.0-dev
  */
 export interface BrowserWindowResolver {
-  fromWebContents?: (contents: Electron.WebContents) => Electron.BrowserWindow | null;
+  fromWebContents?: (
+    contents: Electron.WebContents
+  ) => Electron.BrowserWindow | null;
   getFocusedWindow?: () => Electron.BrowserWindow | null;
 }
 
@@ -37,7 +39,9 @@ export interface BrowserWindowResolver {
  * @param {Electron.BrowserWindow | null | undefined} win - Window candidate to check.
  * @returns {boolean} True if window exists and is interactive; false otherwise.
  */
-function isWindowAlive(win?: Electron.BrowserWindow | null): win is Electron.BrowserWindow {
+function isWindowAlive(
+  win?: Electron.BrowserWindow | null
+): win is Electron.BrowserWindow {
   if (!win) return false;
   try {
     return !win.isDestroyed();

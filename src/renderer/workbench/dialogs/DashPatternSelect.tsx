@@ -114,7 +114,11 @@ export const DashPatternSample: React.FC<DashPatternSampleProps> = ({
       width={128}
       height={14}
       viewBox='0 0 128 14'
-      style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}
+      style={{
+        display: "inline-block",
+        verticalAlign: "middle",
+        flexShrink: 0,
+      }}
       className={className}
       aria-hidden='true'>
       <line
@@ -169,11 +173,15 @@ export const DashPatternSelect: React.FC<DashPatternSelectProps> = ({
   onChange,
   t,
 }) => {
-  const options: SelectOption<DashPatternPreset>[] = PATTERN_OPTIONS.map((opt) => ({
-    value: opt.value,
-    label: t(opt.labelKey),
-    adornment: <DashPatternSample pattern={opt.value} dashArray={dashArray} />,
-  }));
+  const options: SelectOption<DashPatternPreset>[] = PATTERN_OPTIONS.map(
+    (opt) => ({
+      value: opt.value,
+      label: t(opt.labelKey),
+      adornment: (
+        <DashPatternSample pattern={opt.value} dashArray={dashArray} />
+      ),
+    })
+  );
   return (
     <Select<DashPatternPreset>
       id={id}

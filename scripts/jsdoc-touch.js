@@ -12,11 +12,11 @@
  * @see scripts/lint-jsdoc-headers.js
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { fileHeader } from './lint-jsdoc-headers.js';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { fileHeader } from "./lint-jsdoc-headers.js";
 
 /**
  * @description File extensions whose headers are touched.
@@ -26,7 +26,13 @@ import { fileHeader } from './lint-jsdoc-headers.js';
  * @since 0.1.0-dev
  * @type {readonly string[]}
  */
-export const TOUCHED_EXTENSIONS = Object.freeze(['.ts', '.tsx', '.js', '.cjs', '.mjs']);
+export const TOUCHED_EXTENSIONS = Object.freeze([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".cjs",
+  ".mjs",
+]);
 
 /**
  * @function localIsoDate
@@ -39,7 +45,7 @@ export const TOUCHED_EXTENSIONS = Object.freeze(['.ts', '.tsx', '.js', '.cjs', '
  * @returns {string} The ISO calendar date.
  */
 export function localIsoDate(date = new Date()) {
-  const pad = (n) => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
@@ -57,7 +63,10 @@ export function localIsoDate(date = new Date()) {
 export function touchHeader(content, today) {
   const header = fileHeader(content);
   if (!header) return content;
-  const touched = header.replace(/(@updated\s+)\d{4}-\d{2}-\d{2}/, `$1${today}`);
+  const touched = header.replace(
+    /(@updated\s+)\d{4}-\d{2}-\d{2}/,
+    `$1${today}`
+  );
   return touched === header ? content : content.replace(header, () => touched);
 }
 
@@ -73,38 +82,57 @@ export function touchHeader(content, today) {
  * @returns {string[]} The paths.
  */
 export function changedFiles(repoRoot, stagedOnly) {
-  const git = (...args) => execFileSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8' }).split('\n').filter(Boolean);
-  const files = stagedOnly
-    ? git('diff', '--cached', '--name-only', '--diff-filter=ACMR')
-    : [...git('diff', 'HEAD', '--name-only', '--diff-filter=ACMR'), ...git('ls-files', '--others', '--exclude-standard')];
+  const git = (...args) =>
+    execFileSync("git", ["-C", repoRoot, ...args], { encoding: "utf8" })
+      .split("\n")
+      .filter(Boolean);
+  const files =
+    stagedOnly ?
+      git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
+    : [
+        ...git("diff", "HEAD", "--name-only", "--diff-filter=ACMR"),
+        ...git("ls-files", "--others", "--exclude-standard"),
+      ];
   return [...new Set(files)].filter(
-    (file) => /^(src|scripts|tests)\//.test(file) && TOUCHED_EXTENSIONS.includes(path.extname(file)) && !file.endsWith('.d.ts')
+    (file) =>
+      /^(src|scripts|tests)\//.test(file)
+      && TOUCHED_EXTENSIONS.includes(path.extname(file))
+      && !file.endsWith(".d.ts")
   );
 }
 
-const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const isDirectExecution =
+  process.argv[1]
+  && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isDirectExecution) {
   const args = process.argv.slice(2);
-  const dateIndex = args.indexOf('--date');
+  const dateIndex = args.indexOf("--date");
   const today = dateIndex >= 0 ? args[dateIndex + 1] : localIsoDate();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(today ?? '')) {
-    console.error('Usage: node scripts/jsdoc-touch.js [--staged] [--date YYYY-MM-DD]');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today ?? "")) {
+    console.error(
+      "Usage: node scripts/jsdoc-touch.js [--staged] [--date YYYY-MM-DD]"
+    );
     process.exit(1);
   }
-  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const repoRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    ".."
+  );
   const touched = [];
-  for (const file of changedFiles(repoRoot, args.includes('--staged'))) {
+  for (const file of changedFiles(repoRoot, args.includes("--staged"))) {
     const full = path.join(repoRoot, file);
-    const content = fs.readFileSync(full, 'utf8');
+    const content = fs.readFileSync(full, "utf8");
     const next = touchHeader(content, today);
     if (next !== content) {
       fs.writeFileSync(full, next);
       touched.push(file);
     }
   }
-  if (args.includes('--staged') && touched.length > 0) {
-    execFileSync('git', ['-C', repoRoot, 'add', '--', ...touched]);
+  if (args.includes("--staged") && touched.length > 0) {
+    execFileSync("git", ["-C", repoRoot, "add", "--", ...touched]);
   }
-  console.log(`[jsdoc:touch] Advanced @updated to ${today} in ${touched.length} file header(s)${touched.length ? ':' : '.'}`);
+  console.log(
+    `[jsdoc:touch] Advanced @updated to ${today} in ${touched.length} file header(s)${touched.length ? ":" : "."}`
+  );
   for (const file of touched) console.log(`  ${file}`);
 }

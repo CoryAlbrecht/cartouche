@@ -10,13 +10,16 @@
  * @see {@link loadOrBuildCrsCatalogue}
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { selectRows, withReadOnlySqlite } from '../gdal/readOnlySqlite';
-import { quoteSqlString } from '../gdal/sqlQuote';
-import { bundledGdalDataDirs } from '../gdal/bundledGdalData';
-import type { CrsCatalogueEntry, CrsCatalogueType } from '../../shared/types/crs';
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { selectRows, withReadOnlySqlite } from "../gdal/readOnlySqlite";
+import { quoteSqlString } from "../gdal/sqlQuote";
+import { bundledGdalDataDirs } from "../gdal/bundledGdalData";
+import type {
+  CrsCatalogueEntry,
+  CrsCatalogueType,
+} from "../../shared/types/crs";
 
 /**
  * @constant {string} CRS_CATALOGUE_CACHE_FILE
@@ -26,7 +29,7 @@ import type { CrsCatalogueEntry, CrsCatalogueType } from '../../shared/types/crs
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const CRS_CATALOGUE_CACHE_FILE = 'crs-catalogue.json';
+export const CRS_CATALOGUE_CACHE_FILE = "crs-catalogue.json";
 
 /**
  * @constant {number} CRS_CATALOGUE_CACHE_FORMAT
@@ -47,7 +50,10 @@ export const CRS_CATALOGUE_CACHE_FORMAT = 2;
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const CRS_CATALOGUE_TYPES: readonly CrsCatalogueType[] = ['geographic 2D', 'projected'];
+export const CRS_CATALOGUE_TYPES: readonly CrsCatalogueType[] = [
+  "geographic 2D",
+  "projected",
+];
 
 /**
  * @callback CrsValidator
@@ -100,7 +106,10 @@ export interface CrsCatalogueCacheKeyParts {
  * @since 0.1.0-dev
  * @property {string} cacheDir - Directory holding `crs-catalogue.json` (the app preferences directory).
  */
-export interface CrsCatalogueLoadOptions extends CrsCatalogueBuildOptions, Omit<CrsCatalogueCacheKeyParts, 'projDbPath'> {
+export interface CrsCatalogueLoadOptions
+  extends
+    CrsCatalogueBuildOptions,
+    Omit<CrsCatalogueCacheKeyParts, "projDbPath"> {
   cacheDir: string;
 }
 
@@ -132,13 +141,13 @@ export interface CrsCatalogueLoadResult {
  * @returns {string} Hex digest.
  */
 export function sha256File(filePath: string | null): string {
-  const hash = crypto.createHash('sha256');
+  const hash = crypto.createHash("sha256");
   try {
     if (filePath) hash.update(fs.readFileSync(filePath));
   } catch {
     // Unreadable files hash as empty so the key still changes when the file appears.
   }
-  return hash.digest('hex');
+  return hash.digest("hex");
 }
 
 /**
@@ -151,13 +160,15 @@ export function sha256File(filePath: string | null): string {
  * @param {CrsCatalogueCacheKeyParts} parts - Key inputs.
  * @returns {string} Cache key.
  */
-export function computeCrsCatalogueCacheKey(parts: CrsCatalogueCacheKeyParts): string {
+export function computeCrsCatalogueCacheKey(
+  parts: CrsCatalogueCacheKeyParts
+): string {
   return [
     `v${CRS_CATALOGUE_CACHE_FORMAT}`,
     `proj:${sha256File(parts.projDbPath)}`,
     `binding:${sha256File(parts.bindingPath)}`,
     `gdal:${parts.gdalVersion}`,
-  ].join('|');
+  ].join("|");
 }
 
 /**
@@ -175,7 +186,7 @@ export function readCrsCandidates(projDbPath: string): CrsCatalogueEntry[] {
     selectRows(
       dataset,
       `SELECT auth_name, code, name, type, deprecated FROM crs_view
-       WHERE type IN (${CRS_CATALOGUE_TYPES.map((type) => quoteSqlString(type)).join(', ')})
+       WHERE type IN (${CRS_CATALOGUE_TYPES.map((type) => quoteSqlString(type)).join(", ")})
        ORDER BY auth_name, code`
     )
   );
@@ -210,7 +221,9 @@ function yieldToEventLoop(): Promise<void> {
  * @param {CrsCatalogueBuildOptions} options - Build inputs.
  * @returns {Promise<CrsCatalogueEntry[]>} Validated entries.
  */
-export async function buildCrsCatalogue(options: CrsCatalogueBuildOptions): Promise<CrsCatalogueEntry[]> {
+export async function buildCrsCatalogue(
+  options: CrsCatalogueBuildOptions
+): Promise<CrsCatalogueEntry[]> {
   const candidates = readCrsCandidates(options.projDbPath);
   const batchSize = Math.max(1, options.batchSize ?? 250);
   const entries: CrsCatalogueEntry[] = [];
@@ -241,9 +254,14 @@ export async function buildCrsCatalogue(options: CrsCatalogueBuildOptions): Prom
  * @param {string} cacheKey - Expected key.
  * @returns {CrsCatalogueEntry[] | null} Cached entries, or null on a miss.
  */
-export function readCrsCatalogueCache(cacheDir: string, cacheKey: string): CrsCatalogueEntry[] | null {
+export function readCrsCatalogueCache(
+  cacheDir: string,
+  cacheKey: string
+): CrsCatalogueEntry[] | null {
   try {
-    const raw = JSON.parse(fs.readFileSync(path.join(cacheDir, CRS_CATALOGUE_CACHE_FILE), 'utf-8'));
+    const raw = JSON.parse(
+      fs.readFileSync(path.join(cacheDir, CRS_CATALOGUE_CACHE_FILE), "utf-8")
+    );
     if (raw && raw.key === cacheKey && Array.isArray(raw.entries)) {
       return raw.entries as CrsCatalogueEntry[];
     }
@@ -265,12 +283,20 @@ export function readCrsCatalogueCache(cacheDir: string, cacheKey: string): CrsCa
  * @param {CrsCatalogueEntry[]} entries - Entries to cache.
  * @returns {void}
  */
-export function writeCrsCatalogueCache(cacheDir: string, cacheKey: string, entries: CrsCatalogueEntry[]): void {
+export function writeCrsCatalogueCache(
+  cacheDir: string,
+  cacheKey: string,
+  entries: CrsCatalogueEntry[]
+): void {
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.writeFileSync(
     path.join(cacheDir, CRS_CATALOGUE_CACHE_FILE),
-    JSON.stringify({ key: cacheKey, builtAt: new Date().toISOString(), entries }),
-    'utf-8'
+    JSON.stringify({
+      key: cacheKey,
+      builtAt: new Date().toISOString(),
+      entries,
+    }),
+    "utf-8"
   );
 }
 
@@ -284,7 +310,9 @@ export function writeCrsCatalogueCache(cacheDir: string, cacheKey: string, entri
  * @param {CrsCatalogueLoadOptions} options - Load inputs.
  * @returns {Promise<CrsCatalogueLoadResult>} Entries and whether the cache was reused.
  */
-export async function loadOrBuildCrsCatalogue(options: CrsCatalogueLoadOptions): Promise<CrsCatalogueLoadResult> {
+export async function loadOrBuildCrsCatalogue(
+  options: CrsCatalogueLoadOptions
+): Promise<CrsCatalogueLoadResult> {
   const cacheKey = computeCrsCatalogueCacheKey({
     projDbPath: options.projDbPath,
     bindingPath: options.bindingPath,
@@ -310,7 +338,7 @@ export async function loadOrBuildCrsCatalogue(options: CrsCatalogueLoadOptions):
  * @returns {string} Absolute path of `proj.db`.
  */
 export function resolveBundledProjDbPath(gdalModuleEntry: string): string {
-  return path.join(bundledGdalDataDirs(gdalModuleEntry).projData, 'proj.db');
+  return path.join(bundledGdalDataDirs(gdalModuleEntry).projData, "proj.db");
 }
 
 /**
@@ -323,7 +351,9 @@ export function resolveBundledProjDbPath(gdalModuleEntry: string): string {
  * @param {Record<string, unknown>} moduleCache - `require.cache`.
  * @returns {string | null} Binding path, or null when not found.
  */
-export function findLoadedGdalBindingPath(moduleCache: Record<string, unknown>): string | null {
+export function findLoadedGdalBindingPath(
+  moduleCache: Record<string, unknown>
+): string | null {
   const key = Object.keys(moduleCache).find((k) => /[\\/]gdal\.node$/.test(k));
   return key ?? null;
 }
@@ -338,7 +368,9 @@ export function findLoadedGdalBindingPath(moduleCache: Record<string, unknown>):
  * @param {{ SpatialReference: { fromUserInput: (input: string) => unknown } }} gdal - gdal-async module.
  * @returns {CrsValidator} Validator.
  */
-export function createGdalCrsValidator(gdal: { SpatialReference: { fromUserInput: (input: string) => unknown } }): CrsValidator {
+export function createGdalCrsValidator(gdal: {
+  SpatialReference: { fromUserInput: (input: string) => unknown };
+}): CrsValidator {
   return (authId: string) => {
     try {
       return Boolean(gdal.SpatialReference.fromUserInput(authId));

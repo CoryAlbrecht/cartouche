@@ -14,7 +14,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import type { IProjectLoader } from "./IProjectLoader";
-import { isReservedStyleId, PROJECT_DEFAULT_STYLE_IDS } from "../../../shared/styles/projectDefaultStyles";
+import {
+  isReservedStyleId,
+  PROJECT_DEFAULT_STYLE_IDS,
+} from "../../../shared/styles/projectDefaultStyles";
 
 /**
  * @constant {ReadonlySet<string>} RESERVED_DEFAULT_STYLE_ID_SET
@@ -24,7 +27,9 @@ import { isReservedStyleId, PROJECT_DEFAULT_STYLE_IDS } from "../../../shared/st
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-const RESERVED_DEFAULT_STYLE_ID_SET: ReadonlySet<string> = new Set(Object.values(PROJECT_DEFAULT_STYLE_IDS));
+const RESERVED_DEFAULT_STYLE_ID_SET: ReadonlySet<string> = new Set(
+  Object.values(PROJECT_DEFAULT_STYLE_IDS)
+);
 import {
   isRewritableFilePath,
   resolveProjectPath,
@@ -157,7 +162,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
       attributeNamePrefix: "@_",
       cdataPropName: "__cdata",
       trimValues: true,
-      isArray: (name) => ["layer", "group", "style", "property", "field"].includes(name),
+      isArray: (name) =>
+        ["layer", "group", "style", "property", "field"].includes(name),
     });
 
     const parsed = parser.parse(content);
@@ -174,7 +180,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
     const rawTitle = rawMeta["dc:title"] ?? rawMeta.title;
     const metadata: ProjectMetadata = {
       // The Project Title is independent of the file name: a missing <dc:title> loads as an empty title.
-      title: rawTitle === undefined || rawTitle === null ? "" : String(rawTitle),
+      title:
+        rawTitle === undefined || rawTitle === null ? "" : String(rawTitle),
       creator: rawMeta["dc:creator"] || rawMeta.creator,
       description: rawMeta["dc:description"] || rawMeta.description,
       date: rawMeta["dc:date"] || rawMeta.date,
@@ -191,9 +198,14 @@ export class CartoucheXmlLoader implements IProjectLoader {
       : undefined;
     const projectDir = path.dirname(filePath);
     let home: string | undefined;
-    if (root.home !== undefined && root.home !== null && String(root.home).trim()) {
+    if (
+      root.home !== undefined
+      && root.home !== null
+      && String(root.home).trim()
+    ) {
       const rawHome = String(root.home).trim();
-      home = path.isAbsolute(rawHome) ? rawHome : path.resolve(projectDir, rawHome);
+      home =
+        path.isAbsolute(rawHome) ? rawHome : path.resolve(projectDir, rawHome);
     }
     const homeDir = home ?? projectDir;
 
@@ -203,7 +215,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
       const rawNone = root.crs["@_none"];
       const isNone = rawNone === true || rawNone === "true" || rawNone === "1";
       crs = {
-        authId: isNone ? String(root.crs.authId ?? "") : root.crs.authId || "EPSG:4326",
+        authId:
+          isNone ?
+            String(root.crs.authId ?? "")
+          : root.crs.authId || "EPSG:4326",
         ...(isNone ? { none: true } : {}),
         srid: root.crs.srid ? parseInt(root.crs.srid, 10) : undefined,
         description: root.crs.description,
@@ -215,7 +230,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
     // Parse Recently Used CRSs (optional, most recent first, at most 20)
     let recentCrs: ProjectCrs[] | undefined;
     if (root.recentCrs && root.recentCrs.crs) {
-      const rawList = Array.isArray(root.recentCrs.crs) ? root.recentCrs.crs : [root.recentCrs.crs];
+      const rawList =
+        Array.isArray(root.recentCrs.crs) ?
+          root.recentCrs.crs
+        : [root.recentCrs.crs];
       recentCrs = rawList
         .filter((c: any) => c && c.authId)
         .slice(0, 20)
@@ -242,12 +260,26 @@ export class CartoucheXmlLoader implements IProjectLoader {
     // Parse Measurement settings (optional); unknown tokens are dropped so defaults apply
     let measurement: ProjectMeasurementSettings | undefined;
     if (root.measurement) {
-      const pick = <T extends string>(value: unknown, allowed: readonly T[]): T | undefined =>
-        typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+      const pick = <T extends string>(
+        value: unknown,
+        allowed: readonly T[]
+      ): T | undefined =>
+        (
+          typeof value === "string"
+          && (allowed as readonly string[]).includes(value)
+        ) ?
+          (value as T)
+        : undefined;
       measurement = {
-        distanceUnit: pick(root.measurement["@_distanceUnit"], PROJECT_DISTANCE_UNITS),
+        distanceUnit: pick(
+          root.measurement["@_distanceUnit"],
+          PROJECT_DISTANCE_UNITS
+        ),
         areaUnit: pick(root.measurement["@_areaUnit"], PROJECT_AREA_UNITS),
-        scaleMethod: pick(root.measurement["@_scaleMethod"], SCALE_CALCULATION_METHODS),
+        scaleMethod: pick(
+          root.measurement["@_scaleMethod"],
+          SCALE_CALCULATION_METHODS
+        ),
       };
     }
 
@@ -338,16 +370,15 @@ export class CartoucheXmlLoader implements IProjectLoader {
               const cleanHref = String(href).replace(/^file:\/\//i, "");
               const extStylePath = resolveProjectPath(cleanHref, homeDir);
               if (fs.existsSync(extStylePath)) {
-                resolvedContent = fs
-                  .readFileSync(extStylePath, "utf-8")
-                  .trim();
+                resolvedContent = fs.readFileSync(extStylePath, "utf-8").trim();
               }
             } catch {
               // Ignore external style file read failures; fallback handled downstream
             }
           }
           const storedHref =
-            String(href).startsWith("#") ? String(href)
+            String(href).startsWith("#") ?
+              String(href)
             : resolveProjectPath(String(href), homeDir);
           style = {
             href: storedHref,
@@ -379,7 +410,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
         };
       }
 
-      const resolvedSource = resolveProjectPath(String(raw.source || ""), homeDir);
+      const resolvedSource = resolveProjectPath(
+        String(raw.source || ""),
+        homeDir
+      );
 
       let layerFields: LayerFieldInfo[] | undefined;
       if (raw.fields && raw.fields.field) {
@@ -402,7 +436,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
           if (f["@_domainName"]) {
             fieldDef.domainName = String(f["@_domainName"]);
           }
-          if (f["@_defaultValue"] !== undefined && f["@_defaultValue"] !== null) {
+          if (
+            f["@_defaultValue"] !== undefined
+            && f["@_defaultValue"] !== null
+          ) {
             fieldDef.defaultValue = String(f["@_defaultValue"]);
           }
           if (f["@_width"] !== undefined && f["@_width"] !== "") {
@@ -423,7 +460,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
           }
           if (f["@_userOverridden"] !== undefined) {
             fieldDef.userOverridden =
-              f["@_userOverridden"] === "true" || f["@_userOverridden"] === true;
+              f["@_userOverridden"] === "true"
+              || f["@_userOverridden"] === true;
           }
           return fieldDef;
         });
@@ -600,7 +638,10 @@ export class CartoucheXmlLoader implements IProjectLoader {
             `Invalid shared style "${styleId}": shared styles in <styles> cannot reference another style via href.`
           );
         }
-        if (isReservedStyleId(styleId) && !RESERVED_DEFAULT_STYLE_ID_SET.has(styleId)) {
+        if (
+          isReservedStyleId(styleId)
+          && !RESERVED_DEFAULT_STYLE_ID_SET.has(styleId)
+        ) {
           throw new Error(
             `Invalid shared style "${styleId}": ids starting with "_" are reserved for application use.`
           );
@@ -677,7 +718,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
         || tf["@_enabled"] === "1";
       const parseNum = (val: unknown): number | undefined => {
         if (val === undefined || val === null || val === "") return undefined;
-        if (typeof val === "number") return Number.isFinite(val) ? val : undefined;
+        if (typeof val === "number")
+          return Number.isFinite(val) ? val : undefined;
         const parsed = Number(val);
         if (Number.isFinite(parsed)) return parsed;
         const d = Date.parse(String(val));
@@ -748,12 +790,15 @@ export class CartoucheXmlLoader implements IProjectLoader {
     const lines: string[] = [];
 
     const anchorPath = targetPath || project.filePath;
-    const projectDir = anchorPath ? path.dirname(path.resolve(anchorPath)) : undefined;
+    const projectDir =
+      anchorPath ? path.dirname(path.resolve(anchorPath)) : undefined;
     const homeDir =
-      projectDir !== undefined ? resolveProjectHomeDirectory(project, path.resolve(anchorPath as string))
+      projectDir !== undefined ?
+        resolveProjectHomeDirectory(project, path.resolve(anchorPath as string))
       : project.home && path.isAbsolute(project.home) ? project.home
       : undefined;
-    const writeRelative = project.pathMode === "relative" && homeDir !== undefined;
+    const writeRelative =
+      project.pathMode === "relative" && homeDir !== undefined;
     const writePath = (value: string): string =>
       writeRelative && isRewritableFilePath(value) && path.isAbsolute(value) ?
         toProjectRelativePath(value, homeDir as string)
@@ -773,7 +818,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
     // 1. Metadata
     lines.push("  <metadata>");
     if (project.metadata.title) {
-      lines.push(`    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`);
+      lines.push(
+        `    <dc:title>${escapeXml(project.metadata.title)}</dc:title>`
+      );
     }
     if (project.metadata.creator) {
       lines.push(
@@ -844,7 +891,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
           lines.push(`      <srid>${recent.srid}</srid>`);
         }
         if (recent.description) {
-          lines.push(`      <description>${escapeXml(recent.description)}</description>`);
+          lines.push(
+            `      <description>${escapeXml(recent.description)}</description>`
+          );
         }
         lines.push("    </crs>");
       }
@@ -852,13 +901,20 @@ export class CartoucheXmlLoader implements IProjectLoader {
     }
 
     // 2b. Display settings (optional; written only when something is set)
-    if (project.display && (project.display.backgroundColour || project.display.selectionColour)) {
+    if (
+      project.display
+      && (project.display.backgroundColour || project.display.selectionColour)
+    ) {
       const displayAttrs: string[] = [];
       if (project.display.backgroundColour) {
-        displayAttrs.push(`backgroundColour="${escapeXml(project.display.backgroundColour)}"`);
+        displayAttrs.push(
+          `backgroundColour="${escapeXml(project.display.backgroundColour)}"`
+        );
       }
       if (project.display.selectionColour) {
-        displayAttrs.push(`selectionColour="${escapeXml(project.display.selectionColour)}"`);
+        displayAttrs.push(
+          `selectionColour="${escapeXml(project.display.selectionColour)}"`
+        );
       }
       lines.push(`  <display ${displayAttrs.join(" ")} />`);
     }
@@ -941,7 +997,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
       res.push(`${pad}<layer ${attrs.join(" ")}>`);
       res.push(`${pad}  <name>${escapeXml(layer.name)}</name>`);
       res.push(`${pad}  <type>${escapeXml(layer.type || "vector")}</type>`);
-      res.push(`${pad}  <source>${escapeXml(writePath(layer.source || ""))}</source>`);
+      res.push(
+        `${pad}  <source>${escapeXml(writePath(layer.source || ""))}</source>`
+      );
 
       if (layer.style) {
         if (typeof layer.style === "string") {
@@ -1010,7 +1068,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
             `inferredType="${escapeXml(field.inferredType)}"`,
           ];
           if (field.nativeSubType) {
-            fieldAttrs.push(`nativeSubType="${escapeXml(field.nativeSubType)}"`);
+            fieldAttrs.push(
+              `nativeSubType="${escapeXml(field.nativeSubType)}"`
+            );
           }
           if (field.alternativeName) {
             fieldAttrs.push(
@@ -1020,13 +1080,8 @@ export class CartoucheXmlLoader implements IProjectLoader {
           if (field.domainName) {
             fieldAttrs.push(`domainName="${escapeXml(field.domainName)}"`);
           }
-          if (
-            field.defaultValue !== undefined
-            && field.defaultValue !== null
-          ) {
-            fieldAttrs.push(
-              `defaultValue="${escapeXml(field.defaultValue)}"`
-            );
+          if (field.defaultValue !== undefined && field.defaultValue !== null) {
+            fieldAttrs.push(`defaultValue="${escapeXml(field.defaultValue)}"`);
           }
           if (field.width !== undefined && field.width > 0) {
             fieldAttrs.push(`width="${field.width}"`);
@@ -1068,7 +1123,9 @@ export class CartoucheXmlLoader implements IProjectLoader {
           `mode="${escapeXml(layer.temporal.mode || "start_end")}"`,
         ];
         if (layer.temporal.startField) {
-          tempAttrs.push(`startField="${escapeXml(layer.temporal.startField)}"`);
+          tempAttrs.push(
+            `startField="${escapeXml(layer.temporal.startField)}"`
+          );
         }
         if (layer.temporal.startOp) {
           tempAttrs.push(`startOp="${escapeXml(layer.temporal.startOp)}"`);
@@ -1150,9 +1207,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
     // 6. Time Filter (optional)
     if (project.timeFilter) {
       const tf = project.timeFilter;
-      const tfAttrs: string[] = [
-        `enabled="${tf.enabled === true}"`,
-      ];
+      const tfAttrs: string[] = [`enabled="${tf.enabled === true}"`];
       if (tf.from !== undefined) {
         tfAttrs.push(`from="${escapeXml(String(tf.from))}"`);
       }

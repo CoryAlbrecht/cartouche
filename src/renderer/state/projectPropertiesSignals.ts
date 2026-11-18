@@ -12,8 +12,12 @@
  * @see {@link ProjectPropertiesPatch}
  */
 
-import { signal, batch, type Signal } from '@preact/signals-react';
-import type { ProjectPropertiesPatch, TimeFilterUnit, ProjectCrs } from '@shared/types';
+import { signal, batch, type Signal } from "@preact/signals-react";
+import type {
+  ProjectPropertiesPatch,
+  TimeFilterUnit,
+  ProjectCrs,
+} from "@shared/types";
 import {
   isTimeFilterActiveSignal,
   timeFilterRangeStartSignal,
@@ -23,9 +27,9 @@ import {
   setTimeFilterActive,
   setTimeFilterRange,
   setTimeFilterStep,
-} from './timeFilterSignals';
-import { MIN_TIME_FILTER_STEP } from '../map/timeFilterMath';
-import { logging } from '../../shared/logging';
+} from "./timeFilterSignals";
+import { MIN_TIME_FILTER_STEP } from "../map/timeFilterMath";
+import { logging } from "../../shared/logging";
 import {
   currentProjectSignal,
   hasProjectSignal,
@@ -50,19 +54,22 @@ import {
   projectCrsSignal,
   projectRecentCrsSignal,
   setProjectRecentCrs,
-} from './projectSignals';
-import { findCrsCatalogueEntry } from './crsCatalogueSignals';
-import { MAX_RECENT_CRS, addToRecentCrsIfMissing } from '../../shared/types/crs';
+} from "./projectSignals";
+import { findCrsCatalogueEntry } from "./crsCatalogueSignals";
+import {
+  MAX_RECENT_CRS,
+  addToRecentCrsIfMissing,
+} from "../../shared/types/crs";
 import {
   DEFAULT_STYLE_SLOTS,
   DEFAULT_STYLE_SLOT_GEOMETRY,
   getProjectDefaultStyles,
   setProjectDefaultStyles,
   type DefaultStyleSlot,
-} from '../../shared/styles/projectDefaultStyles';
-import { createDefaultCartoucheLayerStyleJson } from '../../shared/styles/defaultLayerStyles';
-import { convertStyleFormat } from '../../shared/styles/flatStyleConverter';
-import type { StyleEditorValue } from '../../shared/styles/styleFormatSwitch';
+} from "../../shared/styles/projectDefaultStyles";
+import { createDefaultCartoucheLayerStyleJson } from "../../shared/styles/defaultLayerStyles";
+import { convertStyleFormat } from "../../shared/styles/flatStyleConverter";
+import type { StyleEditorValue } from "../../shared/styles/styleFormatSwitch";
 import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
@@ -75,12 +82,12 @@ import {
   type ProjectDistanceUnit,
   type ProjectAreaUnit,
   type ScaleCalculationMethod,
-} from '../../shared/types/project';
+} from "../../shared/types/project";
 import {
   projectFileDirectory,
   resolveEffectiveProjectHome,
   normalizeDirectoryPath,
-} from '../../shared/project/projectHome';
+} from "../../shared/project/projectHome";
 
 /**
  * @typedef {'general' | 'measurements' | 'crs' | 'default_styles' | 'time_filter'} ProjectPropertiesTabId
@@ -90,7 +97,8 @@ import {
  * @updated 2026-11-12
  * @since 0.1.0-dev
  */
-export type ProjectPropertiesTabId = 'general' | 'measurements' | 'crs' | 'default_styles' | 'time_filter';
+export type ProjectPropertiesTabId =
+  "general" | "measurements" | "crs" | "default_styles" | "time_filter";
 
 /**
  * @typedef {Object} ProjectPropertiesDraft
@@ -148,19 +156,19 @@ export interface ProjectPropertiesDraft {
  */
 function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
   return {
-    title: '',
+    title: "",
     backgroundColour: DEFAULT_MAP_BACKGROUND_COLOUR,
     selectionColour: DEFAULT_SELECTION_COLOUR,
-    home: '',
+    home: "",
     pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
     ...DEFAULT_MEASUREMENT_SETTINGS,
     timeFilterEnabled: false,
     timeFilterFrom: 0,
     timeFilterTo: 0,
     timeFilterStep: 1,
-    timeFilterUnit: 'Days',
+    timeFilterUnit: "Days",
     crsNone: false,
-    crsAuthId: '',
+    crsAuthId: "",
     recentCrs: [],
     defaultStyles: { point: null, line: null, polygon: null },
   };
@@ -175,7 +183,8 @@ function createEmptyProjectPropertiesDraft(): ProjectPropertiesDraft {
  * @since 0.1.0-dev
  * @type {Signal<boolean>}
  */
-export const isProjectPropertiesOpenSignal: Signal<boolean> = signal<boolean>(false);
+export const isProjectPropertiesOpenSignal: Signal<boolean> =
+  signal<boolean>(false);
 
 /**
  * @signal activeProjectPropertiesTabSignal
@@ -187,7 +196,7 @@ export const isProjectPropertiesOpenSignal: Signal<boolean> = signal<boolean>(fa
  * @type {Signal<ProjectPropertiesTabId>}
  */
 export const activeProjectPropertiesTabSignal: Signal<ProjectPropertiesTabId> =
-  signal<ProjectPropertiesTabId>('general');
+  signal<ProjectPropertiesTabId>("general");
 
 /**
  * @signal projectPropertiesDraftSignal
@@ -210,7 +219,7 @@ export const projectPropertiesDraftSignal: Signal<ProjectPropertiesDraft> =
  * @since 0.1.0-dev
  * @type {Signal<string>}
  */
-export const crsTabFilterSignal: Signal<string> = signal<string>('');
+export const crsTabFilterSignal: Signal<string> = signal<string>("");
 
 /**
  * @function beginProjectPropertiesDraft
@@ -224,10 +233,15 @@ export const crsTabFilterSignal: Signal<string> = signal<string>('');
 export function beginProjectPropertiesDraft(): void {
   batch(() => {
     projectPropertiesDraftSignal.value = {
-      title: projectTitleSignal.value ?? '',
-      backgroundColour: mapBackgroundColourSignal.value || DEFAULT_MAP_BACKGROUND_COLOUR,
+      title: projectTitleSignal.value ?? "",
+      backgroundColour:
+        mapBackgroundColourSignal.value || DEFAULT_MAP_BACKGROUND_COLOUR,
       selectionColour: selectionColourSignal.value || DEFAULT_SELECTION_COLOUR,
-      home: resolveEffectiveProjectHome(projectHomeSignal.value, projectFilePathSignal.value) ?? '',
+      home:
+        resolveEffectiveProjectHome(
+          projectHomeSignal.value,
+          projectFilePathSignal.value
+        ) ?? "",
       pathMode: projectPathModeSignal.value,
       ...measurementSettingsSignal.value,
       timeFilterEnabled: isTimeFilterActiveSignal.value,
@@ -236,7 +250,10 @@ export function beginProjectPropertiesDraft(): void {
       timeFilterStep: timeFilterStepSignal.value,
       timeFilterUnit: timeFilterUnitSignal.value,
       crsNone: Boolean(projectCrsSignal.value?.none),
-      crsAuthId: projectCrsSignal.value?.none ? '' : projectCrsSignal.value?.authId ?? '',
+      crsAuthId:
+        projectCrsSignal.value?.none ?
+          ""
+        : (projectCrsSignal.value?.authId ?? ""),
       recentCrs: projectRecentCrsSignal.value.map((c) => c.authId),
       defaultStyles: seedDefaultStylesDraft(),
     };
@@ -253,7 +270,9 @@ export function beginProjectPropertiesDraft(): void {
  * @param {Partial<ProjectPropertiesDraft>} updates - Draft members to change.
  * @returns {void}
  */
-export function updateProjectPropertiesDraft(updates: Partial<ProjectPropertiesDraft>): void {
+export function updateProjectPropertiesDraft(
+  updates: Partial<ProjectPropertiesDraft>
+): void {
   projectPropertiesDraftSignal.value = {
     ...projectPropertiesDraftSignal.value,
     ...updates,
@@ -273,10 +292,12 @@ export function openProjectPropertiesDialog(): void {
   if (!hasProjectSignal.value) return;
   batch(() => {
     beginProjectPropertiesDraft();
-    crsTabFilterSignal.value = '';
+    crsTabFilterSignal.value = "";
     isProjectPropertiesOpenSignal.value = true;
   });
-  logging.info('Project Properties dialog opened.', { scope: 'projectProperties' });
+  logging.info("Project Properties dialog opened.", {
+    scope: "projectProperties",
+  });
 }
 
 /**
@@ -293,7 +314,9 @@ export function closeProjectPropertiesDialog(): void {
     isProjectPropertiesOpenSignal.value = false;
     projectPropertiesDraftSignal.value = createEmptyProjectPropertiesDraft();
   });
-  logging.info('Project Properties dialog closed.', { scope: 'projectProperties' });
+  logging.info("Project Properties dialog closed.", {
+    scope: "projectProperties",
+  });
 }
 
 /**
@@ -319,20 +342,35 @@ export function cancelProjectPropertiesEdits(): void {
  * @param {ProjectPropertiesDraft} draft - Draft to convert.
  * @returns {ProjectPropertiesPatch} Patch with every editable property.
  */
-export function buildProjectPropertiesPatch(draft: ProjectPropertiesDraft): ProjectPropertiesPatch {
+export function buildProjectPropertiesPatch(
+  draft: ProjectPropertiesDraft
+): ProjectPropertiesPatch {
   // A home equal to the project file's directory is the default and is stored as "unset".
-  const defaultHome = normalizeDirectoryPath(projectFileDirectory(projectFilePathSignal.value));
+  const defaultHome = normalizeDirectoryPath(
+    projectFileDirectory(projectFilePathSignal.value)
+  );
   const draftHome = normalizeDirectoryPath(draft.home);
-  const home = draftHome && draftHome !== defaultHome ? draftHome : '';
+  const home = draftHome && draftHome !== defaultHome ? draftHome : "";
   return {
-    title: (draft.title ?? '').trim(),
-    backgroundColour: (draft.backgroundColour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR,
-    selectionColour: (draft.selectionColour ?? '').trim() || DEFAULT_SELECTION_COLOUR,
+    title: (draft.title ?? "").trim(),
+    backgroundColour:
+      (draft.backgroundColour ?? "").trim() || DEFAULT_MAP_BACKGROUND_COLOUR,
+    selectionColour:
+      (draft.selectionColour ?? "").trim() || DEFAULT_SELECTION_COLOUR,
     home,
-    pathMode: draft.pathMode === 'absolute' ? 'absolute' : 'relative',
-    distanceUnit: PROJECT_DISTANCE_UNITS.includes(draft.distanceUnit) ? draft.distanceUnit : DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
-    areaUnit: PROJECT_AREA_UNITS.includes(draft.areaUnit) ? draft.areaUnit : DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
-    scaleMethod: SCALE_CALCULATION_METHODS.includes(draft.scaleMethod) ? draft.scaleMethod : DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
+    pathMode: draft.pathMode === "absolute" ? "absolute" : "relative",
+    distanceUnit:
+      PROJECT_DISTANCE_UNITS.includes(draft.distanceUnit) ?
+        draft.distanceUnit
+      : DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
+    areaUnit:
+      PROJECT_AREA_UNITS.includes(draft.areaUnit) ?
+        draft.areaUnit
+      : DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
+    scaleMethod:
+      SCALE_CALCULATION_METHODS.includes(draft.scaleMethod) ?
+        draft.scaleMethod
+      : DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
     ...buildCrsPatch(draft),
   };
 }
@@ -351,8 +389,11 @@ function describeCrs(authId: string): ProjectCrs {
   const key = authId.toUpperCase();
   const known =
     findCrsCatalogueEntry(authId)?.name
-    ?? projectRecentCrsSignal.value.find((c) => c.authId.toUpperCase() === key)?.description
-    ?? (projectCrsSignal.value?.authId?.toUpperCase() === key ? projectCrsSignal.value?.description : undefined);
+    ?? projectRecentCrsSignal.value.find((c) => c.authId.toUpperCase() === key)
+      ?.description
+    ?? (projectCrsSignal.value?.authId?.toUpperCase() === key ?
+      projectCrsSignal.value?.description
+    : undefined);
   return { authId, ...(known ? { description: known } : {}) };
 }
 
@@ -366,15 +407,21 @@ function describeCrs(authId: string): ProjectCrs {
  * @param {ProjectPropertiesDraft} draft - Draft.
  * @returns {Pick<ProjectPropertiesPatch, 'crs' | 'recentCrs'>} Patch members.
  */
-export function buildCrsPatch(draft: ProjectPropertiesDraft): Pick<ProjectPropertiesPatch, 'crs' | 'recentCrs'> {
+export function buildCrsPatch(
+  draft: ProjectPropertiesDraft
+): Pick<ProjectPropertiesPatch, "crs" | "recentCrs"> {
   const committed = projectCrsSignal.value;
-  const patch: Pick<ProjectPropertiesPatch, 'crs' | 'recentCrs'> = {
-    recentCrs: (draft.recentCrs ?? []).slice(0, MAX_RECENT_CRS).map(describeCrs),
+  const patch: Pick<ProjectPropertiesPatch, "crs" | "recentCrs"> = {
+    recentCrs: (draft.recentCrs ?? [])
+      .slice(0, MAX_RECENT_CRS)
+      .map(describeCrs),
   };
   if (draft.crsNone) {
-    if (!committed?.none) patch.crs = { authId: '', none: true };
+    if (!committed?.none) patch.crs = { authId: "", none: true };
   } else if (draft.crsAuthId) {
-    const same = !committed?.none && committed?.authId?.toUpperCase() === draft.crsAuthId.toUpperCase();
+    const same =
+      !committed?.none
+      && committed?.authId?.toUpperCase() === draft.crsAuthId.toUpperCase();
     if (!same) patch.crs = describeCrs(draft.crsAuthId);
   }
   return patch;
@@ -392,8 +439,8 @@ export function buildCrsPatch(draft: ProjectPropertiesDraft): Pick<ProjectProper
  */
 export function styleEditorValueFor(content: string): StyleEditorValue {
   return {
-    styleFormat: 'cartouche',
-    sldVersion: '1.0.0',
+    styleFormat: "cartouche",
+    sldVersion: "1.0.0",
     styleContent: content,
     styleValidationError: null,
     formatCache: { cartouche: content },
@@ -409,11 +456,18 @@ export function styleEditorValueFor(content: string): StyleEditorValue {
  * @since 0.1.0-dev
  * @returns {Record<DefaultStyleSlot, StyleEditorValue | null>} Draft slots.
  */
-function seedDefaultStylesDraft(): Record<DefaultStyleSlot, StyleEditorValue | null> {
+function seedDefaultStylesDraft(): Record<
+  DefaultStyleSlot,
+  StyleEditorValue | null
+> {
   const committed = getProjectDefaultStyles(currentProjectSignal.value?.styles);
-  const result = { point: null, line: null, polygon: null } as Record<DefaultStyleSlot, StyleEditorValue | null>;
+  const result = { point: null, line: null, polygon: null } as Record<
+    DefaultStyleSlot,
+    StyleEditorValue | null
+  >;
   for (const slot of DEFAULT_STYLE_SLOTS) {
-    if (committed[slot]) result[slot] = styleEditorValueFor(committed[slot] as string);
+    if (committed[slot])
+      result[slot] = styleEditorValueFor(committed[slot] as string);
   }
   return result;
 }
@@ -429,12 +483,26 @@ function seedDefaultStylesDraft(): Record<DefaultStyleSlot, StyleEditorValue | n
  * @param {boolean} useApplicationDefault - Checkbox state.
  * @returns {void}
  */
-export function setDraftUseApplicationDefault(slot: DefaultStyleSlot, useApplicationDefault: boolean): void {
-  const current = projectPropertiesDraftSignal.value.defaultStyles ?? { point: null, line: null, polygon: null };
+export function setDraftUseApplicationDefault(
+  slot: DefaultStyleSlot,
+  useApplicationDefault: boolean
+): void {
+  const current = projectPropertiesDraftSignal.value.defaultStyles ?? {
+    point: null,
+    line: null,
+    polygon: null,
+  };
   updateProjectPropertiesDraft({
     defaultStyles: {
       ...current,
-      [slot]: useApplicationDefault ? null : styleEditorValueFor(createDefaultCartoucheLayerStyleJson(DEFAULT_STYLE_SLOT_GEOMETRY[slot])),
+      [slot]:
+        useApplicationDefault ? null : (
+          styleEditorValueFor(
+            createDefaultCartoucheLayerStyleJson(
+              DEFAULT_STYLE_SLOT_GEOMETRY[slot]
+            )
+          )
+        ),
     },
   });
 }
@@ -450,11 +518,16 @@ export function setDraftUseApplicationDefault(slot: DefaultStyleSlot, useApplica
  * @param {Partial<StyleEditorValue>} patch - Editor patch.
  * @returns {void}
  */
-export function updateDraftDefaultStyle(slot: DefaultStyleSlot, patch: Partial<StyleEditorValue>): void {
+export function updateDraftDefaultStyle(
+  slot: DefaultStyleSlot,
+  patch: Partial<StyleEditorValue>
+): void {
   const current = projectPropertiesDraftSignal.value.defaultStyles;
   const value = current?.[slot];
   if (!value) return;
-  updateProjectPropertiesDraft({ defaultStyles: { ...current, [slot]: { ...value, ...patch } } });
+  updateProjectPropertiesDraft({
+    defaultStyles: { ...current, [slot]: { ...value, ...patch } },
+  });
 }
 
 /**
@@ -471,20 +544,25 @@ export function updateDraftDefaultStyle(slot: DefaultStyleSlot, patch: Partial<S
 export async function resolveDefaultStylesPatch(
   slots: Record<DefaultStyleSlot, StyleEditorValue | null> | undefined
 ): Promise<Record<DefaultStyleSlot, string | null>> {
-  const result = { point: null, line: null, polygon: null } as Record<DefaultStyleSlot, string | null>;
+  const result = { point: null, line: null, polygon: null } as Record<
+    DefaultStyleSlot,
+    string | null
+  >;
   for (const slot of DEFAULT_STYLE_SLOTS) {
     const value = slots?.[slot];
     if (!value) continue;
     if (value.styleValidationError) {
-      throw new Error(`Default ${slot} style is invalid: ${value.styleValidationError}`);
+      throw new Error(
+        `Default ${slot} style is invalid: ${value.styleValidationError}`
+      );
     }
     result[slot] =
-      value.styleFormat === 'cartouche' ?
+      value.styleFormat === "cartouche" ?
         value.styleContent
       : await convertStyleFormat(value.styleContent, {
           fromFormat: value.styleFormat,
           fromVersion: value.sldVersion,
-          toFormat: 'cartouche',
+          toFormat: "cartouche",
           geometryKind: DEFAULT_STYLE_SLOT_GEOMETRY[slot],
         });
   }
@@ -502,11 +580,16 @@ export async function resolveDefaultStylesPatch(
  * @param {'recent' | 'predefined'} source - List the selection came from.
  * @returns {void}
  */
-export function selectDraftCrs(authId: string, source: 'recent' | 'predefined'): void {
+export function selectDraftCrs(
+  authId: string,
+  source: "recent" | "predefined"
+): void {
   const draft = projectPropertiesDraftSignal.value;
   updateProjectPropertiesDraft({
     crsAuthId: authId,
-    ...(source === 'predefined' ? { recentCrs: addToRecentCrsIfMissing(draft.recentCrs, authId) } : {}),
+    ...(source === "predefined" ?
+      { recentCrs: addToRecentCrsIfMissing(draft.recentCrs, authId) }
+    : {}),
   });
 }
 
@@ -521,9 +604,13 @@ export function selectDraftCrs(authId: string, source: 'recent' | 'predefined'):
  * @returns {void}
  */
 export function applyTimeFilterDraft(draft: ProjectPropertiesDraft): void {
-  const step = Number.isFinite(draft.timeFilterStep) && draft.timeFilterStep >= MIN_TIME_FILTER_STEP ?
-    draft.timeFilterStep
-  : timeFilterStepSignal.value;
+  const step =
+    (
+      Number.isFinite(draft.timeFilterStep)
+      && draft.timeFilterStep >= MIN_TIME_FILTER_STEP
+    ) ?
+      draft.timeFilterStep
+    : timeFilterStepSignal.value;
   batch(() => {
     if (isTimeFilterActiveSignal.value !== Boolean(draft.timeFilterEnabled)) {
       setTimeFilterActive(Boolean(draft.timeFilterEnabled));
@@ -534,7 +621,10 @@ export function applyTimeFilterDraft(draft: ProjectPropertiesDraft): void {
     ) {
       setTimeFilterRange(draft.timeFilterFrom, draft.timeFilterTo);
     }
-    if (timeFilterStepSignal.value !== step || timeFilterUnitSignal.value !== draft.timeFilterUnit) {
+    if (
+      timeFilterStepSignal.value !== step
+      || timeFilterUnitSignal.value !== draft.timeFilterUnit
+    ) {
       setTimeFilterStep(step, draft.timeFilterUnit);
     }
     const project = currentProjectSignal.value;
@@ -564,9 +654,13 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
   if (!hasProjectSignal.value) return false;
   const patch = buildProjectPropertiesPatch(projectPropertiesDraftSignal.value);
   try {
-    patch.defaultStyles = await resolveDefaultStylesPatch(projectPropertiesDraftSignal.value.defaultStyles);
+    patch.defaultStyles = await resolveDefaultStylesPatch(
+      projectPropertiesDraftSignal.value.defaultStyles
+    );
   } catch (err) {
-    logging.warn('Project Default Styles not applied', err, { scope: 'projectProperties' });
+    logging.warn("Project Default Styles not applied", err, {
+      scope: "projectProperties",
+    });
     return false;
   }
 
@@ -574,11 +668,15 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
     try {
       const ok = await window.electronAPI.updateProjectProperties(patch);
       if (!ok) {
-        logging.warn('Project Store rejected the project properties patch', { scope: 'projectProperties' });
+        logging.warn("Project Store rejected the project properties patch", {
+          scope: "projectProperties",
+        });
         return false;
       }
     } catch (err) {
-      logging.error('Failed to update project properties via IPC', err, { scope: 'projectProperties' });
+      logging.error("Failed to update project properties via IPC", err, {
+        scope: "projectProperties",
+      });
       return false;
     }
   }
@@ -612,7 +710,10 @@ export async function applyProjectPropertiesEdits(): Promise<boolean> {
       setProjectRecentCrs(patch.recentCrs);
     }
     if (patch.defaultStyles && currentProjectSignal.value) {
-      currentProjectSignal.value.styles = setProjectDefaultStyles(currentProjectSignal.value.styles, patch.defaultStyles);
+      currentProjectSignal.value.styles = setProjectDefaultStyles(
+        currentProjectSignal.value.styles,
+        patch.defaultStyles
+      );
     }
     isProjectDirtySignal.value = true;
     beginProjectPropertiesDraft();
@@ -647,13 +748,22 @@ export async function commitAndCloseProjectPropertiesDialog(): Promise<boolean> 
  * @param {string | null | undefined} layerId - Layer whose CRS is adopted.
  * @returns {Promise<boolean>} True when the Project CRS was set.
  */
-export async function setProjectCrsFromLayerAction(layerId: string | null | undefined): Promise<boolean> {
+export async function setProjectCrsFromLayerAction(
+  layerId: string | null | undefined
+): Promise<boolean> {
   if (!layerId || !hasProjectSignal.value) return false;
   const layerCrs =
     projectLayersSignal.value.find((l) => l.id === layerId)?.crs
-    ?? (findItemInTree(projectTreeSignal.value, layerId) as { crs?: ProjectCrs } | null)?.crs;
+    ?? (
+      findItemInTree(projectTreeSignal.value, layerId) as {
+        crs?: ProjectCrs;
+      } | null
+    )?.crs;
   if (!layerCrs?.authId) {
-    logging.warn('Layer has no CRS to adopt as the Project CRS', { scope: 'projectProperties', layerId });
+    logging.warn("Layer has no CRS to adopt as the Project CRS", {
+      scope: "projectProperties",
+      layerId,
+    });
     return false;
   }
   const crs: ProjectCrs = {
@@ -667,7 +777,10 @@ export async function setProjectCrsFromLayerAction(layerId: string | null | unde
       const ok = await window.electronAPI.updateProjectProperties({ crs });
       if (!ok) return false;
     } catch (err) {
-      logging.error('Failed to set Project CRS from layer', err, { scope: 'projectProperties', layerId });
+      logging.error("Failed to set Project CRS from layer", err, {
+        scope: "projectProperties",
+        layerId,
+      });
       return false;
     }
   }

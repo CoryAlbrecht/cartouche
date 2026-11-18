@@ -256,7 +256,9 @@ export const PreferencesDialog: React.FC = () => {
         }
       }
     } catch (err) {
-      logging.error('Failed to auto-save preferences', err, { scope: 'PreferencesDialog' });
+      logging.error("Failed to auto-save preferences", err, {
+        scope: "PreferencesDialog",
+      });
     } finally {
       if (animIntervalRef.current) {
         clearInterval(animIntervalRef.current);
@@ -441,7 +443,10 @@ export const PreferencesDialog: React.FC = () => {
     }
 
     const gData = groupMap.get(groupKey)!;
-    if (item.groupOrder !== undefined && item.groupOrder < gData.minGroupOrder) {
+    if (
+      item.groupOrder !== undefined
+      && item.groupOrder < gData.minGroupOrder
+    ) {
       gData.minGroupOrder = item.groupOrder;
     }
 
@@ -548,7 +553,9 @@ export const PreferencesDialog: React.FC = () => {
               buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
               buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
               showTextInput={true}
-              onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
+              onChange={(newVal, isValid) =>
+                handleFieldChange(key, newVal, isValid)
+              }
             />
           );
         }
@@ -605,7 +612,9 @@ export const PreferencesDialog: React.FC = () => {
             buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
             buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
             showTextInput={false}
-            onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
+            onChange={(newVal, isValid) =>
+              handleFieldChange(key, newVal, isValid)
+            }
           />
         );
       }
@@ -717,10 +726,8 @@ export const PreferencesDialog: React.FC = () => {
               onChange={(e) => {
                 let val = parseFloat(e.target.value);
                 if (isNaN(val)) val = 0;
-                if (min !== undefined && val < min)
-                  val = min;
-                if (max !== undefined && val > max)
-                  val = max;
+                if (min !== undefined && val < min) val = min;
+                if (max !== undefined && val > max) val = max;
                 handleFieldChange(key, val);
               }}
               className='preference-input-number'
@@ -733,7 +740,10 @@ export const PreferencesDialog: React.FC = () => {
       }
       case "slider": {
         const opts = item.options || [];
-        if (opts.length === 0 && (item.minimum !== undefined || item.min !== undefined)) {
+        if (
+          opts.length === 0
+          && (item.minimum !== undefined || item.min !== undefined)
+        ) {
           const min = item.minimum ?? item.min ?? 0;
           const max = item.maximum ?? item.max ?? 100;
           const step = item.step ?? 1;
@@ -973,7 +983,7 @@ export const PreferencesDialog: React.FC = () => {
         </div>
 
         <div className='preference-item-control'>
-          {isColorItem ? (
+          {isColorItem ?
             <ColorInput
               key={`${key}-color`}
               id={`pref-${key}`}
@@ -983,13 +993,14 @@ export const PreferencesDialog: React.FC = () => {
               buttonWidth={DIALOG_COLOUR_BUTTON_WIDTH}
               buttonHeight={DIALOG_COLOUR_BUTTON_HEIGHT}
               showTextInput={controlsToRender.includes("text")}
-              onChange={(newVal, isValid) => handleFieldChange(key, newVal, isValid)}
+              onChange={(newVal, isValid) =>
+                handleFieldChange(key, newVal, isValid)
+              }
             />
-          ) : (
-            controlsToRender.map((ctrl) =>
+          : controlsToRender.map((ctrl) =>
               renderControl(ctrl, key, item, currentValue, displayName)
             )
-          )}
+          }
         </div>
       </div>
     );

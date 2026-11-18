@@ -11,15 +11,15 @@
  * @see {@link ActionRegistry}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { mdiRestore } from '@mdi/js';
-import { BUILTIN_ACTIONS } from '../../../src/main/actions/defaults';
-import { ActionRegistry } from '../../../src/main/actions/ActionRegistry';
-import resetToolbarLayout from '../../../src/main/api/ui/toolbars/resetToolbarLayout';
-import { PreferencesStore } from '../../../src/main/api/ui/preferences/PreferencesStore';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { mdiRestore } from "@mdi/js";
+import { BUILTIN_ACTIONS } from "../../../src/main/actions/defaults";
+import { ActionRegistry } from "../../../src/main/actions/ActionRegistry";
+import resetToolbarLayout from "../../../src/main/api/ui/toolbars/resetToolbarLayout";
+import { PreferencesStore } from "../../../src/main/api/ui/preferences/PreferencesStore";
 import {
   DEFAULT_TOOLBAR_COORDINATES,
   visibleToolbarsSignal,
@@ -28,11 +28,17 @@ import {
   toolbarOrdersSignal,
   toolbarOrderSignal,
   resetToolbarsToDefault,
-  type ToolbarId
-} from '../../../src/renderer/state/gisSignals';
+  type ToolbarId,
+} from "../../../src/renderer/state/gisSignals";
 
-describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
-  const toolbarIds: ToolbarId[] = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
+describe("Toolbar Reset to Default Layout (Ticket #117)", () => {
+  const toolbarIds: ToolbarId[] = [
+    "project",
+    "map_view",
+    "selection",
+    "digitizing",
+    "snapping",
+  ];
   let ipcDispatches: Array<{ name: string; value: any }> = [];
 
   beforeEach(() => {
@@ -42,8 +48,8 @@ describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
         setPreference: (name: string, value: any) => {
           ipcDispatches.push({ name, value });
           return Promise.resolve({});
-        }
-      }
+        },
+      },
     };
   });
 
@@ -51,74 +57,81 @@ describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
     delete (globalThis as any).window;
   });
 
-  it('registers reset_toolbar_layout in BUILTIN_ACTIONS and ActionRegistry', () => {
-    const actionDef = BUILTIN_ACTIONS.find((a) => a.name === 'reset_toolbar_layout');
-    assert.ok(actionDef, 'reset_toolbar_layout must be in BUILTIN_ACTIONS');
-    assert.equal(actionDef.name, 'reset_toolbar_layout');
+  it("registers reset_toolbar_layout in BUILTIN_ACTIONS and ActionRegistry", () => {
+    const actionDef = BUILTIN_ACTIONS.find(
+      (a) => a.name === "reset_toolbar_layout"
+    );
+    assert.ok(actionDef, "reset_toolbar_layout must be in BUILTIN_ACTIONS");
+    assert.equal(actionDef.name, "reset_toolbar_layout");
     assert.equal(actionDef.icon, mdiRestore);
-    assert.equal(typeof actionDef.description, 'string');
+    assert.equal(typeof actionDef.description, "string");
     assert.ok(actionDef.description.length > 0);
-    assert.equal(typeof actionDef.functionCall, 'function');
+    assert.equal(typeof actionDef.functionCall, "function");
 
-    const registryAction = ActionRegistry.getActionByName('reset_toolbar_layout');
-    assert.ok(registryAction, 'reset_toolbar_layout must be registered in ActionRegistry');
-    assert.equal(registryAction.name, 'reset_toolbar_layout');
+    const registryAction = ActionRegistry.getActionByName(
+      "reset_toolbar_layout"
+    );
+    assert.ok(
+      registryAction,
+      "reset_toolbar_layout must be registered in ActionRegistry"
+    );
+    assert.equal(registryAction.name, "reset_toolbar_layout");
     assert.equal(registryAction.icon, mdiRestore);
   });
 
-  it('ensures reset_toolbar_layout localized string exists in en.xml and fr.xml', () => {
-    const enXmlPath = path.resolve(process.cwd(), 'assets/xml/i18n/en.xml');
-    const enContent = fs.readFileSync(enXmlPath, 'utf-8');
-    const frXmlPath = path.resolve(process.cwd(), 'assets/xml/i18n/fr.xml');
-    const frContent = fs.readFileSync(frXmlPath, 'utf-8');
+  it("ensures reset_toolbar_layout localized string exists in en.xml and fr.xml", () => {
+    const enXmlPath = path.resolve(process.cwd(), "assets/xml/i18n/en.xml");
+    const enContent = fs.readFileSync(enXmlPath, "utf-8");
+    const frXmlPath = path.resolve(process.cwd(), "assets/xml/i18n/fr.xml");
+    const frContent = fs.readFileSync(frXmlPath, "utf-8");
 
     assert.match(
       enContent,
       /<string\s+name=["']reset_toolbar_layout["']>Reset Toolbars to Default<\/string>/,
-      'en.xml must have Reset Toolbars to Default'
+      "en.xml must have Reset Toolbars to Default"
     );
     assert.match(
       frContent,
       /<string\s+name=["']reset_toolbar_layout["']>Rétablir les barres d'outils par défaut<\/string>/,
-      'fr.xml must have Rétablir les barres d\'outils par défaut'
+      "fr.xml must have Rétablir les barres d'outils par défaut"
     );
   });
 
-  it('restores all reactive toolbar signals to factory defaults upon resetToolbarsToDefault invocation', () => {
+  it("restores all reactive toolbar signals to factory defaults upon resetToolbarsToDefault invocation", () => {
     // Dirty all signals with custom layout
     visibleToolbarsSignal.value = {
       project: false,
       map_view: false,
       selection: true,
       digitizing: false,
-      snapping: true
+      snapping: true,
     };
     toolbarLocationsSignal.value = {
-      project: 'bottom',
-      map_view: 'left',
-      selection: 'right',
-      digitizing: 'bottom',
-      snapping: 'bottom'
+      project: "bottom",
+      map_view: "left",
+      selection: "right",
+      digitizing: "bottom",
+      snapping: "bottom",
     };
     toolbarRowsSignal.value = {
       project: 2,
       map_view: 1,
       selection: 0,
       digitizing: 1,
-      snapping: 0
+      snapping: 0,
     };
     toolbarOrdersSignal.value = {
       project: -5,
       map_view: -1,
       selection: 0,
       digitizing: -2,
-      snapping: 1
+      snapping: 1,
     };
     toolbarOrderSignal.value = {
       top: [],
-      bottom: ['digitizing', 'project', 'snapping'],
-      left: ['map_view'],
-      right: ['selection']
+      bottom: ["digitizing", "project", "snapping"],
+      left: ["map_view"],
+      right: ["selection"],
     };
 
     // Execute reset
@@ -130,15 +143,15 @@ describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
       map_view: true,
       selection: true,
       digitizing: true,
-      snapping: false
+      snapping: false,
     });
 
     assert.deepEqual(toolbarLocationsSignal.value, {
-      project: 'top',
-      map_view: 'top',
-      selection: 'top',
-      digitizing: 'top',
-      snapping: 'top'
+      project: "top",
+      map_view: "top",
+      selection: "top",
+      digitizing: "top",
+      snapping: "top",
     });
 
     assert.deepEqual(toolbarRowsSignal.value, {
@@ -146,7 +159,7 @@ describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
       map_view: 0,
       selection: 0,
       digitizing: 0,
-      snapping: 0
+      snapping: 0,
     });
 
     assert.deepEqual(toolbarOrdersSignal.value, {
@@ -154,21 +167,25 @@ describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
       map_view: 1,
       selection: 2,
       digitizing: 3,
-      snapping: -1
+      snapping: -1,
     });
 
     assert.deepEqual(toolbarOrderSignal.value, {
-      top: ['project', 'map_view', 'selection', 'digitizing', 'snapping'],
+      top: ["project", "map_view", "selection", "digitizing", "snapping"],
       bottom: [],
       left: [],
-      right: []
+      right: [],
     });
   });
 
-  it('dispatches setPreference IPC for all 20 toolbar preference keys with factory default values', () => {
+  it("dispatches setPreference IPC for all 20 toolbar preference keys with factory default values", () => {
     resetToolbarsToDefault();
 
-    assert.equal(ipcDispatches.length, 20, 'Must dispatch exactly 20 preference persistence calls');
+    assert.equal(
+      ipcDispatches.length,
+      20,
+      "Must dispatch exactly 20 preference persistence calls"
+    );
 
     const dispatchedMap = new Map<string, any>(
       ipcDispatches.map((d) => [d.name, d.value])
@@ -183,10 +200,10 @@ describe('Toolbar Reset to Default Layout (Ticket #117)', () => {
     }
   });
 
-  it('resets all toolbar preferences in PreferencesStore when main resetToolbarLayout is called', () => {
+  it("resets all toolbar preferences in PreferencesStore when main resetToolbarLayout is called", () => {
     // Override a couple in PreferencesStore
-    PreferencesStore.set('ui.toolbars.project.dock', 'bottom');
-    PreferencesStore.set('ui.toolbars.snapping.visible', true);
+    PreferencesStore.set("ui.toolbars.project.dock", "bottom");
+    PreferencesStore.set("ui.toolbars.snapping.visible", true);
 
     // Call main action
     resetToolbarLayout();

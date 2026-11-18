@@ -10,18 +10,22 @@
  * @see {@link addLayers}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { projectStore } from '../../../src/main/project/ProjectStore';
-import { geospatialService } from '../../../src/main/worker/GeospatialService';
-import { addLayers } from '../../../src/main/api/layers/addLayer';
-import { removeNodes } from '../../../src/main/api/project/layerTreeOperations';
-import updateProjectProperties from '../../../src/main/api/project/updateProjectProperties';
-import { adoptFirstLayerCrs, completeProjectCrs, toProjectCrs } from '../../../src/main/project/projectCrs';
-import { onBroadcast } from '../../../src/main/project/ProjectBroadcaster';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { projectStore } from "../../../src/main/project/ProjectStore";
+import { geospatialService } from "../../../src/main/worker/GeospatialService";
+import { addLayers } from "../../../src/main/api/layers/addLayer";
+import { removeNodes } from "../../../src/main/api/project/layerTreeOperations";
+import updateProjectProperties from "../../../src/main/api/project/updateProjectProperties";
+import {
+  adoptFirstLayerCrs,
+  completeProjectCrs,
+  toProjectCrs,
+} from "../../../src/main/project/projectCrs";
+import { onBroadcast } from "../../../src/main/project/ProjectBroadcaster";
 
 /**
  * @function writeGeoJson
@@ -32,17 +36,33 @@ import { onBroadcast } from '../../../src/main/project/ProjectBroadcaster';
  * @param {number[]} coords - Point coordinates.
  * @returns {string} File path.
  */
-function writeGeoJson(dir: string, name: string, crsName: string | null, coords: number[]): string {
+function writeGeoJson(
+  dir: string,
+  name: string,
+  crsName: string | null,
+  coords: number[]
+): string {
   const file = path.join(dir, name);
-  fs.writeFileSync(file, JSON.stringify({
-    type: 'FeatureCollection',
-    ...(crsName ? { crs: { type: 'name', properties: { name: crsName } } } : {}),
-    features: [{ type: 'Feature', properties: { id: 1 }, geometry: { type: 'Point', coordinates: coords } }],
-  }));
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      type: "FeatureCollection",
+      ...(crsName ?
+        { crs: { type: "name", properties: { name: crsName } } }
+      : {}),
+      features: [
+        {
+          type: "Feature",
+          properties: { id: 1 },
+          geometry: { type: "Point", coordinates: coords },
+        },
+      ],
+    })
+  );
   return file;
 }
 
-describe('Project CRS adoption (Ticket #279)', () => {
+describe("Project CRS adoption (Ticket #279)", () => {
   let dir: string;
   let mercator: string;
   let lonlat: string;
@@ -52,11 +72,18 @@ describe('Project CRS adoption (Ticket #279)', () => {
   beforeEach(async () => {
     projectStore.closeProject();
     await geospatialService.closeAll();
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-crs-adopt-'));
-    mercator = writeGeoJson(dir, 'mercator.geojson', 'urn:ogc:def:crs:EPSG::3857', [1000000, 6000000]);
-    lonlat = writeGeoJson(dir, 'lonlat.geojson', null, [10, 50]);
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-crs-adopt-"));
+    mercator = writeGeoJson(
+      dir,
+      "mercator.geojson",
+      "urn:ogc:def:crs:EPSG::3857",
+      [1000000, 6000000]
+    );
+    lonlat = writeGeoJson(dir, "lonlat.geojson", null, [10, 50]);
     events = [];
-    unsubscribe = onBroadcast((channel: string, payload: any) => events.push({ channel, payload }));
+    unsubscribe = onBroadcast((channel: string, payload: any) =>
+      events.push({ channel, payload })
+    );
   });
 
   afterEach(async () => {
@@ -66,125 +93,261 @@ describe('Project CRS adoption (Ticket #279)', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('adoptFirstLayerCrs sets the Project CRS only when none is set and the layer declares one', () => {
-    const project: any = { format: 'cartouche-xml', metadata: { title: 't' }, layers: [] };
-    assert.equal(adoptFirstLayerCrs(project, undefined), null, 'unknown Layer CRS sets nothing');
+  it("adoptFirstLayerCrs sets the Project CRS only when none is set and the layer declares one", () => {
+    const project: any = {
+      format: "cartouche-xml",
+      metadata: { title: "t" },
+      layers: [],
+    };
+    assert.equal(
+      adoptFirstLayerCrs(project, undefined),
+      null,
+      "unknown Layer CRS sets nothing"
+    );
     assert.equal(project.crs, undefined);
-    const adopted = adoptFirstLayerCrs(project, { authId: 'EPSG:2154', description: 'RGF93', wkt: 'PROJCS[...]', proj4: '+proj=lcc' });
-    assert.deepEqual(adopted, { authId: 'EPSG:2154', description: 'RGF93', proj4: '+proj=lcc', wkt: 'PROJCS[...]' }, 'the layer proj4 is kept, never replaced');
-    assert.equal(adoptFirstLayerCrs(project, { authId: 'EPSG:4326' }), null, 'never overrides an existing Project CRS');
-    assert.equal(project.crs.authId, 'EPSG:2154');
-    assert.deepEqual(toProjectCrs({ authId: 'EPSG:4326', srid: 4326, wkt: 'x' }), { authId: 'EPSG:4326', srid: 4326, wkt: 'x' });
+    const adopted = adoptFirstLayerCrs(project, {
+      authId: "EPSG:2154",
+      description: "RGF93",
+      wkt: "PROJCS[...]",
+      proj4: "+proj=lcc",
+    });
+    assert.deepEqual(
+      adopted,
+      {
+        authId: "EPSG:2154",
+        description: "RGF93",
+        proj4: "+proj=lcc",
+        wkt: "PROJCS[...]",
+      },
+      "the layer proj4 is kept, never replaced"
+    );
+    assert.equal(
+      adoptFirstLayerCrs(project, { authId: "EPSG:4326" }),
+      null,
+      "never overrides an existing Project CRS"
+    );
+    assert.equal(project.crs.authId, "EPSG:2154");
+    assert.deepEqual(
+      toProjectCrs({ authId: "EPSG:4326", srid: 4326, wkt: "x" }),
+      { authId: "EPSG:4326", srid: 4326, wkt: "x" }
+    );
   });
 
-  it('the first file in add order decides the Project CRS for a batch, and it is broadcast before the layer', async () => {
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Batch' }, layers: [] });
+  it("the first file in add order decides the Project CRS for a batch, and it is broadcast before the layer", async () => {
+    projectStore.setProject({
+      format: "cartouche-xml",
+      metadata: { title: "Batch" },
+      layers: [],
+    });
     await addLayers([
-      { sourceType: 'vector', filePath: mercator },
-      { sourceType: 'vector', filePath: lonlat },
+      { sourceType: "vector", filePath: mercator },
+      { sourceType: "vector", filePath: lonlat },
     ]);
-    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:3857');
-    const crsEvents = events.filter((e) => e.channel === 'project:crs-updated');
-    assert.equal(crsEvents.length, 1, 'adopted once');
-    const crsIndex = events.findIndex((e) => e.channel === 'project:crs-updated');
-    const firstLayerIndex = events.findIndex((e) => e.channel === 'project:layer-added');
-    assert.ok(crsIndex < firstLayerIndex, 'Project CRS is known before the first layer arrives');
+    assert.equal(projectStore.getProject()?.crs?.authId, "EPSG:3857");
+    const crsEvents = events.filter((e) => e.channel === "project:crs-updated");
+    assert.equal(crsEvents.length, 1, "adopted once");
+    const crsIndex = events.findIndex(
+      (e) => e.channel === "project:crs-updated"
+    );
+    const firstLayerIndex = events.findIndex(
+      (e) => e.channel === "project:layer-added"
+    );
+    assert.ok(
+      crsIndex < firstLayerIndex,
+      "Project CRS is known before the first layer arrives"
+    );
   });
 
-  it('reversing the add order adopts the other CRS', async () => {
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Batch' }, layers: [] });
+  it("reversing the add order adopts the other CRS", async () => {
+    projectStore.setProject({
+      format: "cartouche-xml",
+      metadata: { title: "Batch" },
+      layers: [],
+    });
     await addLayers([
-      { sourceType: 'vector', filePath: lonlat },
-      { sourceType: 'vector', filePath: mercator },
+      { sourceType: "vector", filePath: lonlat },
+      { sourceType: "vector", filePath: mercator },
     ]);
-    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:4326');
+    assert.equal(projectStore.getProject()?.crs?.authId, "EPSG:4326");
   });
 
-  it('an explicit Project CRS is never overridden, and removing the first layer leaves the Project CRS unchanged', async () => {
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Explicit' }, crs: { authId: 'EPSG:2154' }, layers: [] });
-    await addLayers([{ sourceType: 'vector', filePath: mercator }]);
-    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:2154');
-    assert.equal(events.filter((e) => e.channel === 'project:crs-updated').length, 0);
+  it("an explicit Project CRS is never overridden, and removing the first layer leaves the Project CRS unchanged", async () => {
+    projectStore.setProject({
+      format: "cartouche-xml",
+      metadata: { title: "Explicit" },
+      crs: { authId: "EPSG:2154" },
+      layers: [],
+    });
+    await addLayers([{ sourceType: "vector", filePath: mercator }]);
+    assert.equal(projectStore.getProject()?.crs?.authId, "EPSG:2154");
+    assert.equal(
+      events.filter((e) => e.channel === "project:crs-updated").length,
+      0
+    );
 
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Remove' }, layers: [] });
-    const [first] = await addLayers([{ sourceType: 'vector', filePath: mercator }]);
-    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:3857');
+    projectStore.setProject({
+      format: "cartouche-xml",
+      metadata: { title: "Remove" },
+      layers: [],
+    });
+    const [first] = await addLayers([
+      { sourceType: "vector", filePath: mercator },
+    ]);
+    assert.equal(projectStore.getProject()?.crs?.authId, "EPSG:3857");
     removeNodes([first.id]);
-    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:3857', 'removing the first layer does not change the Project CRS');
+    assert.equal(
+      projectStore.getProject()?.crs?.authId,
+      "EPSG:3857",
+      "removing the first layer does not change the Project CRS"
+    );
   });
 
-  it('an explicit change through the properties patch replaces or removes the Project CRS and sets the Project Dirty State', () => {
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Patch' }, crs: { authId: 'EPSG:4326' }, layers: [] });
-    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154' } }), true);
-    assert.equal(projectStore.getProject()?.crs?.authId, 'EPSG:2154');
+  it("an explicit change through the properties patch replaces or removes the Project CRS and sets the Project Dirty State", () => {
+    projectStore.setProject({
+      format: "cartouche-xml",
+      metadata: { title: "Patch" },
+      crs: { authId: "EPSG:4326" },
+      layers: [],
+    });
+    assert.equal(
+      updateProjectProperties({ crs: { authId: "EPSG:2154" } }),
+      true
+    );
+    assert.equal(projectStore.getProject()?.crs?.authId, "EPSG:2154");
     assert.equal(projectStore.isProjectDirty(), true);
     projectStore.setProjectDirty(false);
-    assert.equal(updateProjectProperties({ crs: { authId: '', none: true } }), true);
+    assert.equal(
+      updateProjectProperties({ crs: { authId: "", none: true } }),
+      true
+    );
     assert.equal(projectStore.getProject()?.crs?.none, true);
     assert.equal(updateProjectProperties({ crs: null }), true);
     assert.equal(projectStore.getProject()?.crs, undefined);
   });
 });
 
-describe('Project CRS definition on commit (Ticket #298)', () => {
-  it('completeProjectCrs fills proj4 and WKT from the lookup when proj4 is missing', () => {
-    const lookup = (authId: string) => ({ authId, proj4: '+proj=lcc +lat_0=46.5', wkt: 'PROJCS["RGF93"]' });
+describe("Project CRS definition on commit (Ticket #298)", () => {
+  it("completeProjectCrs fills proj4 and WKT from the lookup when proj4 is missing", () => {
+    const lookup = (authId: string) => ({
+      authId,
+      proj4: "+proj=lcc +lat_0=46.5",
+      wkt: 'PROJCS["RGF93"]',
+    });
     assert.deepEqual(
-      completeProjectCrs({ authId: 'EPSG:2154', description: 'RGF93 / Lambert-93' }, lookup),
-      { authId: 'EPSG:2154', description: 'RGF93 / Lambert-93', proj4: '+proj=lcc +lat_0=46.5', wkt: 'PROJCS["RGF93"]' },
+      completeProjectCrs(
+        { authId: "EPSG:2154", description: "RGF93 / Lambert-93" },
+        lookup
+      ),
+      {
+        authId: "EPSG:2154",
+        description: "RGF93 / Lambert-93",
+        proj4: "+proj=lcc +lat_0=46.5",
+        wkt: 'PROJCS["RGF93"]',
+      }
     );
   });
 
-  it('completeProjectCrs never replaces a proj4 already present and does not look it up', () => {
+  it("completeProjectCrs never replaces a proj4 already present and does not look it up", () => {
     let calls = 0;
-    const lookup = (authId: string) => { calls++; return { authId, proj4: '+proj=looked-up' }; };
+    const lookup = (authId: string) => {
+      calls++;
+      return { authId, proj4: "+proj=looked-up" };
+    };
     assert.deepEqual(
-      completeProjectCrs({ authId: 'EPSG:2154', proj4: '+proj=hand-written' }, lookup),
-      { authId: 'EPSG:2154', proj4: '+proj=hand-written' },
+      completeProjectCrs(
+        { authId: "EPSG:2154", proj4: "+proj=hand-written" },
+        lookup
+      ),
+      { authId: "EPSG:2154", proj4: "+proj=hand-written" }
     );
     assert.equal(calls, 0);
   });
 
-  it('completeProjectCrs gives No CRS no definition', () => {
-    const lookup = (authId: string) => ({ authId, proj4: '+proj=longlat' });
-    assert.deepEqual(completeProjectCrs({ authId: '', none: true }, lookup), { authId: '', none: true });
+  it("completeProjectCrs gives No CRS no definition", () => {
+    const lookup = (authId: string) => ({ authId, proj4: "+proj=longlat" });
+    assert.deepEqual(completeProjectCrs({ authId: "", none: true }, lookup), {
+      authId: "",
+      none: true,
+    });
   });
 
-  it('completeProjectCrs keeps an unresolvable CRS without proj4', () => {
-    assert.deepEqual(completeProjectCrs({ authId: 'FOO:1' }, () => null), { authId: 'FOO:1' });
+  it("completeProjectCrs keeps an unresolvable CRS without proj4", () => {
+    assert.deepEqual(
+      completeProjectCrs({ authId: "FOO:1" }, () => null),
+      { authId: "FOO:1" }
+    );
   });
 
-  it('a Project CRS committed through the properties patch is saved with its proj4 and WKT, keeping a proj4 already present', () => {
-    projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'Patch' }, layers: [] });
-    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93' } }), true);
+  it("a Project CRS committed through the properties patch is saved with its proj4 and WKT, keeping a proj4 already present", () => {
+    projectStore.setProject({
+      format: "cartouche-xml",
+      metadata: { title: "Patch" },
+      layers: [],
+    });
+    assert.equal(
+      updateProjectProperties({
+        crs: { authId: "EPSG:2154", description: "RGF93 v1 / Lambert-93" },
+      }),
+      true
+    );
     const crs = projectStore.getProject()?.crs;
-    assert.equal(crs?.authId, 'EPSG:2154');
-    assert.match(crs?.proj4 ?? '', /\+proj=lcc/);
-    assert.match(crs?.wkt ?? '', /^PROJCS\[/);
+    assert.equal(crs?.authId, "EPSG:2154");
+    assert.match(crs?.proj4 ?? "", /\+proj=lcc/);
+    assert.match(crs?.wkt ?? "", /^PROJCS\[/);
 
     projectStore.setProjectDirty(false);
-    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154', description: 'RGF93 v1 / Lambert-93' } }), true);
-    assert.equal(projectStore.isProjectDirty(), false, 're-applying the same CRS is not a change');
+    assert.equal(
+      updateProjectProperties({
+        crs: { authId: "EPSG:2154", description: "RGF93 v1 / Lambert-93" },
+      }),
+      true
+    );
+    assert.equal(
+      projectStore.isProjectDirty(),
+      false,
+      "re-applying the same CRS is not a change"
+    );
 
-    assert.equal(updateProjectProperties({ crs: { authId: 'EPSG:2154', proj4: '+proj=hand-written' } }), true);
-    assert.deepEqual(projectStore.getProject()?.crs, { authId: 'EPSG:2154', proj4: '+proj=hand-written' });
+    assert.equal(
+      updateProjectProperties({
+        crs: { authId: "EPSG:2154", proj4: "+proj=hand-written" },
+      }),
+      true
+    );
+    assert.deepEqual(projectStore.getProject()?.crs, {
+      authId: "EPSG:2154",
+      proj4: "+proj=hand-written",
+    });
 
-    assert.equal(updateProjectProperties({ crs: { authId: 'FOO:1' } }), true);
-    assert.deepEqual(projectStore.getProject()?.crs, { authId: 'FOO:1' }, 'an unresolvable CRS is still committed, without proj4');
+    assert.equal(updateProjectProperties({ crs: { authId: "FOO:1" } }), true);
+    assert.deepEqual(
+      projectStore.getProject()?.crs,
+      { authId: "FOO:1" },
+      "an unresolvable CRS is still committed, without proj4"
+    );
   });
 
-  it('the Project CRS adopted from the first layer added is saved with its proj4 and WKT', async () => {
+  it("the Project CRS adopted from the first layer added is saved with its proj4 and WKT", async () => {
     projectStore.closeProject();
     await geospatialService.closeAll();
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cartouche-crs-def-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-crs-def-"));
     try {
-      const file = writeGeoJson(dir, 'mercator.geojson', 'urn:ogc:def:crs:EPSG::3857', [1000000, 6000000]);
-      projectStore.setProject({ format: 'cartouche-xml', metadata: { title: 'First' }, layers: [] });
-      await addLayers([{ sourceType: 'vector', filePath: file }]);
+      const file = writeGeoJson(
+        dir,
+        "mercator.geojson",
+        "urn:ogc:def:crs:EPSG::3857",
+        [1000000, 6000000]
+      );
+      projectStore.setProject({
+        format: "cartouche-xml",
+        metadata: { title: "First" },
+        layers: [],
+      });
+      await addLayers([{ sourceType: "vector", filePath: file }]);
       const crs = projectStore.getProject()?.crs;
-      assert.equal(crs?.authId, 'EPSG:3857');
-      assert.match(crs?.proj4 ?? '', /\+proj=merc/);
-      assert.match(crs?.wkt ?? '', /^PROJCS\[/);
+      assert.equal(crs?.authId, "EPSG:3857");
+      assert.match(crs?.proj4 ?? "", /\+proj=merc/);
+      assert.match(crs?.wkt ?? "", /^PROJCS\[/);
     } finally {
       await geospatialService.closeAll();
       projectStore.closeProject();

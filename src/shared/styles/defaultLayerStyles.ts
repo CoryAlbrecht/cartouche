@@ -116,8 +116,8 @@ export function createDefaultVectorLayerStyle(
 
   if (gKind.includes("line")) {
     const lineColor =
-      (colors && (colors.length >= 2 ? colors[1] : colors[0])) ||
-      (getRandomCssColors(1)[0] as string);
+      (colors && (colors.length >= 2 ? colors[1] : colors[0]))
+      || (getRandomCssColors(1)[0] as string);
     return [
       {
         filter: ["==", ["geometry-type"], "LineString"],
@@ -133,8 +133,8 @@ export function createDefaultVectorLayerStyle(
 
   if (gKind.includes("point")) {
     const pointColor =
-      (colors && (colors.length >= 3 ? colors[2] : colors[0])) ||
-      (getRandomCssColors(1)[0] as string);
+      (colors && (colors.length >= 3 ? colors[2] : colors[0]))
+      || (getRandomCssColors(1)[0] as string);
     return [
       {
         filter: ["==", ["geometry-type"], "Point"],
@@ -150,9 +150,9 @@ export function createDefaultVectorLayerStyle(
 
   // Unknown, GeometryCollection, or mixed geometries -> 3-rule composite style
   const [polygonColor, lineColor, pointColor] =
-    colors && colors.length >= 3
-      ? (colors.slice(0, 3) as [string, string, string])
-      : (getRandomCssColors(3) as [string, string, string]);
+    colors && colors.length >= 3 ?
+      (colors.slice(0, 3) as [string, string, string])
+    : (getRandomCssColors(3) as [string, string, string]);
 
   return [
     // 1. Polygons
@@ -262,9 +262,9 @@ export function isCartoucheLayerStyle(
     return Array.isArray(obj.components);
   }
   return (
-    obj.format === "categorized" ||
-    obj.format === "graduated" ||
-    obj.format === "rules"
+    obj.format === "categorized"
+    || obj.format === "graduated"
+    || obj.format === "rules"
   );
 }
 
@@ -289,12 +289,7 @@ export function createDefaultCartoucheLayerStyle(
 
   if (gKind.includes("polygon")) {
     components = [
-      {
-        id: "fill-1",
-        type: "simple-fill",
-        enabled: true,
-        color: primaryColor,
-      },
+      { id: "fill-1", type: "simple-fill", enabled: true, color: primaryColor },
       {
         id: "line-1",
         type: "simple-line",
@@ -328,16 +323,12 @@ export function createDefaultCartoucheLayerStyle(
     ];
   } else {
     // Unknown or mixed geometries -> 3 distinct random colors from contrast-filtered palette
-    const [polyColor, lineCol, ptColor] = color
-      ? [color, color, color]
+    const [polyColor, lineCol, ptColor] =
+      color ?
+        [color, color, color]
       : (getRandomCssColors(3) as [string, string, string]);
     components = [
-      {
-        id: "fill-1",
-        type: "simple-fill",
-        enabled: true,
-        color: polyColor,
-      },
+      { id: "fill-1", type: "simple-fill", enabled: true, color: polyColor },
       {
         id: "line-1",
         type: "simple-line",
@@ -358,11 +349,7 @@ export function createDefaultCartoucheLayerStyle(
     ];
   }
 
-  return {
-    format: "simple",
-    version: 1,
-    components,
-  };
+  return { format: "simple", version: 1, components };
 }
 
 /**
@@ -476,10 +463,7 @@ export function resolveLayerStyle(
       try {
         const parsed = JSON.parse(trimmed);
         if (isCartoucheLayerStyle(parsed)) {
-          return {
-            content: trimmed,
-            format: "cartouche",
-          };
+          return { content: trimmed, format: "cartouche" };
         }
         if (parsed && (typeof parsed === "object" || Array.isArray(parsed))) {
           return resolveLayerStyle(parsed, sharedStyles, fallbackGeometryKind);
@@ -500,10 +484,7 @@ export function resolveLayerStyle(
         const matched = sharedStyles.find((s) => s.id === targetId);
         if (matched && matched.content) {
           if (matched.format === "cartouche" || style.format === "cartouche") {
-            return {
-              content: matched.content,
-              format: "cartouche",
-            };
+            return { content: matched.content, format: "cartouche" };
           }
           if (matched.format === "sld" || style.format === "sld") {
             const trimmedSld = matched.content.trim();
@@ -542,10 +523,7 @@ export function resolveLayerStyle(
     // 3b. Check for 'content' wrapper property
     if (style.content) {
       if (style.format === "cartouche") {
-        return {
-          content: style.content,
-          format: "cartouche",
-        };
+        return { content: style.content, format: "cartouche" };
       }
       if (style.format === "sld") {
         const trimmedSld = style.content.trim();
@@ -573,10 +551,7 @@ export function resolveLayerStyle(
   // 4. If style is an object (CartoucheLayerStyle or Flat Style rule object)
   if (typeof style === "object" && style !== null) {
     if (isCartoucheLayerStyle(style)) {
-      return {
-        content: JSON.stringify(style, null, 2),
-        format: "cartouche",
-      };
+      return { content: JSON.stringify(style, null, 2), format: "cartouche" };
     }
     const obj = style as Record<string, any>;
     const keys = Object.keys(obj);

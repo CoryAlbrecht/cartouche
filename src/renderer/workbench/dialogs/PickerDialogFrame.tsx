@@ -10,10 +10,10 @@
  * @see {@link GradientPickerDialog}
  */
 
-import React, { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { useTranslation } from '@renderer/hooks/useTranslation';
-import { isWithinOpenSelect } from '@renderer/components/common/Select';
+import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import { isWithinOpenSelect } from "@renderer/components/common/Select";
 
 /**
  * @typedef {Object} PickerDialogFrameProps
@@ -44,8 +44,13 @@ export interface PickerDialogFrameProps {
  * @param {HTMLElement | null} [targetContainer] - Target DOM container node.
  * @returns {Window | null} Resolved Window context or fallback window.
  */
-function resolveWindowContext(targetContainer?: HTMLElement | null): Window | null {
-  return targetContainer?.ownerDocument?.defaultView ?? (typeof window !== 'undefined' ? window : null);
+function resolveWindowContext(
+  targetContainer?: HTMLElement | null
+): Window | null {
+  return (
+    targetContainer?.ownerDocument?.defaultView
+    ?? (typeof window !== "undefined" ? window : null)
+  );
 }
 
 /**
@@ -61,15 +66,16 @@ function resolveWindowContext(targetContainer?: HTMLElement | null): Window | nu
 export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
   title,
   classPrefix,
-  width = '380px',
+  width = "380px",
   container,
   onApply,
   onCancel,
-  children
+  children,
 }) => {
   const { t } = useTranslation();
   const dialogBoxRef = useRef<HTMLDivElement>(null);
-  const targetContainer = container ?? (typeof document !== 'undefined' ? document.body : null);
+  const targetContainer =
+    container ?? (typeof document !== "undefined" ? document.body : null);
   const targetWindow = resolveWindowContext(targetContainer);
 
   // Keyboard Escape dismissal bound to the target container's window context
@@ -77,18 +83,21 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
     if (!targetWindow) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault?.();
         e.stopPropagation?.();
         onCancel();
       }
     };
-    targetWindow.addEventListener('keydown', handleKeyDown);
-    return () => targetWindow.removeEventListener('keydown', handleKeyDown);
+    targetWindow.addEventListener("keydown", handleKeyDown);
+    return () => targetWindow.removeEventListener("keydown", handleKeyDown);
   }, [onCancel, targetWindow]);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (dialogBoxRef.current && !dialogBoxRef.current.contains(e.target as Node)) {
+    if (
+      dialogBoxRef.current
+      && !dialogBoxRef.current.contains(e.target as Node)
+    ) {
       onCancel();
     }
   };
@@ -98,59 +107,57 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
       className={`${classPrefix}-backdrop`}
       onClick={handleBackdropClick}
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.45)',
-        backdropFilter: 'blur(2px)',
+        backgroundColor: "rgba(0, 0, 0, 0.45)",
+        backdropFilter: "blur(2px)",
         zIndex: 10000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        boxSizing: 'border-box'
-      }}
-    >
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+        boxSizing: "border-box",
+      }}>
       <div
         ref={dialogBoxRef}
         className={`${classPrefix}-box`}
         onClick={(e) => e.stopPropagation()}
         style={{
           width,
-          maxWidth: '95vw',
-          maxHeight: '90vh',
-          backgroundColor: 'var(--cartouche-theme-surface, #ffffff)',
-          color: 'var(--cartouche-theme-fg, #000000)',
-          borderRadius: '6px',
-          boxShadow: '0 8px 24px var(--cartouche-theme-shadow-strong, rgba(0, 0, 0, 0.3))',
-          border: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          boxSizing: 'border-box'
-        }}
-      >
+          maxWidth: "95vw",
+          maxHeight: "90vh",
+          backgroundColor: "var(--cartouche-theme-surface, #ffffff)",
+          color: "var(--cartouche-theme-fg, #000000)",
+          borderRadius: "6px",
+          boxShadow:
+            "0 8px 24px var(--cartouche-theme-shadow-strong, rgba(0, 0, 0, 0.3))",
+          border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxSizing: "border-box",
+        }}>
         {/* Header Bar */}
         <div className={`${classPrefix}-header picker-dialog-header`}>
           <span>{title}</span>
           <button
             type='button'
             className={`${classPrefix}-close-btn`}
-            title={t('dialog_cancel')}
+            title={t("dialog_cancel")}
             onClick={onCancel}
             style={{
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              fontSize: '1.125rem',
+              background: "none",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: "1.125rem",
               lineHeight: 1,
-              padding: '2px 4px',
-              opacity: 0.85
-            }}
-          >
+              padding: "2px 4px",
+              opacity: 0.85,
+            }}>
             ✕
           </button>
         </div>
@@ -159,13 +166,12 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
         <div
           className={`${classPrefix}-body`}
           style={{
-            padding: '8px',
+            padding: "8px",
             flex: 1,
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+          }}>
           {children}
         </div>
 
@@ -173,34 +179,33 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
         <div
           className={`${classPrefix}-footer`}
           style={{
-            padding: '10px 14px',
-            backgroundColor: 'var(--cartouche-theme-surface-alt, #f8fafc)',
-            borderTop: '1px solid var(--cartouche-theme-border, #cbd5e1)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '8px'
-          }}
-        >
+            padding: "10px 14px",
+            backgroundColor: "var(--cartouche-theme-surface-alt, #f8fafc)",
+            borderTop: "1px solid var(--cartouche-theme-border, #cbd5e1)",
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "8px",
+          }}>
           <button
             type='button'
             className={`${classPrefix}-btn ${classPrefix}-cancel-btn dialog-btn dialog-btn-secondary`}
-            onClick={onCancel}
-          >
-            {t('dialog_cancel')}
+            onClick={onCancel}>
+            {t("dialog_cancel")}
           </button>
           <button
             type='button'
             className={`${classPrefix}-btn ${classPrefix}-apply-btn dialog-btn dialog-btn-primary`}
-            onClick={onApply}
-          >
-            {t('dialog_apply')}
+            onClick={onApply}>
+            {t("dialog_apply")}
           </button>
         </div>
       </div>
     </div>
   );
 
-  return targetContainer ? createPortal(portalContent, targetContainer) : portalContent;
+  return targetContainer ?
+      createPortal(portalContent, targetContainer)
+    : portalContent;
 };
 
 export default PickerDialogFrame;

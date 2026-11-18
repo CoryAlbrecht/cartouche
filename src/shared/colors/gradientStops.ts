@@ -11,7 +11,13 @@
  * @see {@link GradientButton}
  */
 
-import { type ColorFormat, type RgbColor, clamp, parseCssColor, formatCssColor } from './colorConversions';
+import {
+  type ColorFormat,
+  type RgbColor,
+  clamp,
+  parseCssColor,
+  formatCssColor,
+} from "./colorConversions";
 
 /**
  * @typedef {Object} GradientStop
@@ -34,10 +40,11 @@ export interface GradientStop {
  * @type {ReadonlyArray<Readonly<GradientStop>>}
  * @see {@link parseGradientStops}
  */
-export const DEFAULT_GRADIENT_STOPS: ReadonlyArray<Readonly<GradientStop>> = Object.freeze([
-  Object.freeze({ id: 'stop-0', color: '#000000ff', offset: 0 }),
-  Object.freeze({ id: 'stop-100', color: '#00ff00ff', offset: 100 }),
-]);
+export const DEFAULT_GRADIENT_STOPS: ReadonlyArray<Readonly<GradientStop>> =
+  Object.freeze([
+    Object.freeze({ id: "stop-0", color: "#000000ff", offset: 0 }),
+    Object.freeze({ id: "stop-100", color: "#00ff00ff", offset: 100 }),
+  ]);
 
 /**
  * @description Parses an array of raw '<color> <percent>' CSS gradient stop strings into structured GradientStop objects. Ids are `stop-<offset>`, with a `-<n>` suffix for repeated offsets; offsets are rounded to one decimal and clamped to [0, 100]; a stop without an offset is placed by its index, evenly spaced. Missing or empty input yields no stops: the caller decides on a fallback such as DEFAULT_GRADIENT_STOPS.
@@ -118,5 +125,5 @@ export function gradientStopsToCss(stops: readonly GradientStop[]): string {
     .slice()
     .sort((a, b) => a.offset - b.offset)
     .map((s) => `${s.color} ${s.offset}%`)
-    .join(', ');
+    .join(", ");
 }

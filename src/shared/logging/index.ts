@@ -17,10 +17,10 @@ import {
   type LogPayload,
   type LogSink,
   type LoggingFunction,
-  type SerializedError
-} from './types';
+  type SerializedError,
+} from "./types";
 
-export * from './types';
+export * from "./types";
 
 let currentLogSink: LogSink | null = null;
 
@@ -58,13 +58,13 @@ export function resetLogSink(): void {
  * @returns {string} Process name ('Workbench' | 'GeospatialWorker' | 'Main').
  */
 export function detectProcessSource(): string {
-  if (typeof window !== 'undefined') {
-    return 'Workbench';
+  if (typeof window !== "undefined") {
+    return "Workbench";
   }
-  if (typeof (process as any)?.parentPort !== 'undefined') {
-    return 'GeospatialWorker';
+  if (typeof (process as any)?.parentPort !== "undefined") {
+    return "GeospatialWorker";
   }
-  return 'Main';
+  return "Main";
 }
 
 /**
@@ -77,28 +77,34 @@ export function detectProcessSource(): string {
  * @param {WeakSet<object>} [seen] - Cycle detection set.
  * @returns {any} Serialized value safe for structured-clone IPC and JSON formatting.
  */
-export function serializeError(value: unknown, seen = new WeakSet<object>()): any {
-  if (value === null || typeof value !== 'object') {
+export function serializeError(
+  value: unknown,
+  seen = new WeakSet<object>()
+): any {
+  if (value === null || typeof value !== "object") {
     return value;
   }
 
   if (seen.has(value)) {
-    return '[Circular]';
+    return "[Circular]";
   }
   seen.add(value);
 
-  if (value instanceof Error || ('name' in value && 'message' in value && 'stack' in value)) {
+  if (
+    value instanceof Error
+    || ("name" in value && "message" in value && "stack" in value)
+  ) {
     const err = value as Error;
     const serialized: SerializedError = {
-      name: err.name || 'Error',
-      message: err.message || '',
-      stack: err.stack
+      name: err.name || "Error",
+      message: err.message || "",
+      stack: err.stack,
     };
 
     // Capture enumerable and non-enumerable custom properties
     const propertyNames = Object.getOwnPropertyNames(err);
     for (const prop of propertyNames) {
-      if (prop !== 'name' && prop !== 'message' && prop !== 'stack') {
+      if (prop !== "name" && prop !== "message" && prop !== "stack") {
         try {
           serialized[prop] = serializeError((err as any)[prop], seen);
         } catch {
@@ -133,27 +139,24 @@ export function serializeError(value: unknown, seen = new WeakSet<object>()): an
  * @param {LogLevel | number} input - Numeric or textual log level.
  * @returns {{ level: LogLevel; numericLevel: number }} Canonical level tuple.
  */
-export function normalizeLogLevel(input: LogLevel | number): { level: LogLevel; numericLevel: number } {
-  if (typeof input === 'number') {
+export function normalizeLogLevel(input: LogLevel | number): {
+  level: LogLevel;
+  numericLevel: number;
+} {
+  if (typeof input === "number") {
     const clamped = Math.max(0, Math.min(5, Math.floor(input)));
     return {
-      level: LOG_LEVEL_NAMES[clamped] || 'error',
-      numericLevel: clamped
+      level: LOG_LEVEL_NAMES[clamped] || "error",
+      numericLevel: clamped,
     };
   }
 
   const text = String(input).toLowerCase() as LogLevel;
   if (Object.prototype.hasOwnProperty.call(LOG_LEVEL_VALUES, text)) {
-    return {
-      level: text,
-      numericLevel: LOG_LEVEL_VALUES[text]
-    };
+    return { level: text, numericLevel: LOG_LEVEL_VALUES[text] };
   }
 
-  return {
-    level: 'error',
-    numericLevel: 2
-  };
+  return { level: "error", numericLevel: 2 };
 }
 
 /**
@@ -167,7 +170,11 @@ export function normalizeLogLevel(input: LogLevel | number): { level: LogLevel; 
  * @param {...any[]} meta - Additional metadata arguments.
  * @returns {void}
  */
-function logImpl(level: LogLevel | number, message: string, ...meta: any[]): void {
+function logImpl(
+  level: LogLevel | number,
+  message: string,
+  ...meta: any[]
+): void {
   const { level: canonicalLevel, numericLevel } = normalizeLogLevel(level);
 
   // Level 0 (none) suppresses all logging output
@@ -175,7 +182,8 @@ function logImpl(level: LogLevel | number, message: string, ...meta: any[]): voi
     return;
   }
 
-  const serializedMeta = meta.length > 0 ? meta.map((arg) => serializeError(arg)) : undefined;
+  const serializedMeta =
+    meta.length > 0 ? meta.map((arg) => serializeError(arg)) : undefined;
 
   const payload: LogPayload = {
     level: canonicalLevel,
@@ -183,7 +191,7 @@ function logImpl(level: LogLevel | number, message: string, ...meta: any[]): voi
     message: String(message),
     ...(serializedMeta ? { meta: serializedMeta } : {}),
     timestamp: new Date().toISOString(),
-    source: detectProcessSource()
+    source: detectProcessSource(),
   };
 
   if (currentLogSink) {
@@ -192,7 +200,7 @@ function logImpl(level: LogLevel | number, message: string, ...meta: any[]): voi
   }
 
   // Fallback routing when no sink is explicitly hooked
-  if (typeof window !== 'undefined' && (window as any).electronAPI?.log) {
+  if (typeof window !== "undefined" && (window as any).electronAPI?.log) {
     try {
       (window as any).electronAPI.log(payload);
       return;
@@ -201,9 +209,9 @@ function logImpl(level: LogLevel | number, message: string, ...meta: any[]): voi
     }
   }
 
-  if (typeof (process as any)?.parentPort?.postMessage === 'function') {
+  if (typeof (process as any)?.parentPort?.postMessage === "function") {
     try {
-      (process as any).parentPort.postMessage({ type: 'log', payload });
+      (process as any).parentPort.postMessage({ type: "log", payload });
       return;
     } catch {
       // Ignore worker IPC fallback errors
@@ -211,14 +219,23 @@ function logImpl(level: LogLevel | number, message: string, ...meta: any[]): voi
   }
 
   // Console fallback for headless execution or pre-IPC early startup
-  if (typeof console !== 'undefined') {
+  if (typeof console !== "undefined") {
     const metaArgs = serializedMeta || [];
     if (numericLevel <= 2) {
-      console.error(`[${payload.source}] ${canonicalLevel.toUpperCase()}: ${payload.message}`, ...metaArgs);
+      console.error(
+        `[${payload.source}] ${canonicalLevel.toUpperCase()}: ${payload.message}`,
+        ...metaArgs
+      );
     } else if (numericLevel === 3) {
-      console.warn(`[${payload.source}] ${canonicalLevel.toUpperCase()}: ${payload.message}`, ...metaArgs);
+      console.warn(
+        `[${payload.source}] ${canonicalLevel.toUpperCase()}: ${payload.message}`,
+        ...metaArgs
+      );
     } else {
-      console.log(`[${payload.source}] ${canonicalLevel.toUpperCase()}: ${payload.message}`, ...metaArgs);
+      console.log(
+        `[${payload.source}] ${canonicalLevel.toUpperCase()}: ${payload.message}`,
+        ...metaArgs
+      );
     }
   }
 }
@@ -238,14 +255,19 @@ function logImpl(level: LogLevel | number, message: string, ...meta: any[]): voi
  * logging.debug('Extent calculated', extent);
  */
 export const logging = Object.assign(
-  (level: LogLevel | number, message: string, ...meta: any[]) => logImpl(level, message, ...meta),
+  (level: LogLevel | number, message: string, ...meta: any[]) =>
+    logImpl(level, message, ...meta),
   {
-    critical: (message: string, ...meta: any[]) => logImpl('critical', message, ...meta),
-    error: (message: string, ...meta: any[]) => logImpl('error', message, ...meta),
-    warn: (message: string, ...meta: any[]) => logImpl('warn', message, ...meta),
-    info: (message: string, ...meta: any[]) => logImpl('info', message, ...meta),
-    debug: (message: string, ...meta: any[]) => logImpl('debug', message, ...meta),
-    none: (_message: string, ..._meta: any[]) => {}
+    critical: (message: string, ...meta: any[]) =>
+      logImpl("critical", message, ...meta),
+    error: (message: string, ...meta: any[]) =>
+      logImpl("error", message, ...meta),
+    warn: (message: string, ...meta: any[]) =>
+      logImpl("warn", message, ...meta),
+    info: (message: string, ...meta: any[]) =>
+      logImpl("info", message, ...meta),
+    debug: (message: string, ...meta: any[]) =>
+      logImpl("debug", message, ...meta),
+    none: (_message: string, ..._meta: any[]) => {},
   }
 ) as LoggingFunction;
-

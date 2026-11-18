@@ -14,11 +14,16 @@
  * @see {@link gradientStopsToCss}
  */
 
-import React from 'react';
-import { DEFAULT_GRADIENT_STOPS, parseCssColor, parseGradientStops, gradientStopsToCss } from '@shared/colors';
-import { GradientPickerDialog } from '@renderer/workbench/dialogs/GradientPickerDialog';
-import { useTranslation } from '@renderer/hooks/useTranslation';
-import { usePickerButton } from '@renderer/hooks/usePickerButton';
+import React from "react";
+import {
+  DEFAULT_GRADIENT_STOPS,
+  parseCssColor,
+  parseGradientStops,
+  gradientStopsToCss,
+} from "@shared/colors";
+import { GradientPickerDialog } from "@renderer/workbench/dialogs/GradientPickerDialog";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import { usePickerButton } from "@renderer/hooks/usePickerButton";
 
 /**
  * @description Default button width.
@@ -28,7 +33,7 @@ import { usePickerButton } from '@renderer/hooks/usePickerButton';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const DEFAULT_GRADIENT_BUTTON_WIDTH = '8rem';
+export const DEFAULT_GRADIENT_BUTTON_WIDTH = "8rem";
 
 /**
  * @description Default button height.
@@ -38,7 +43,7 @@ export const DEFAULT_GRADIENT_BUTTON_WIDTH = '8rem';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const DEFAULT_GRADIENT_BUTTON_HEIGHT = '2rem';
+export const DEFAULT_GRADIENT_BUTTON_HEIGHT = "2rem";
 
 /**
  * @typedef {Object} GradientButtonProps
@@ -77,33 +82,43 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
   height = DEFAULT_GRADIENT_BUTTON_HEIGHT,
   dialogTitle,
   disabled = false,
-  ariaLabel
+  ariaLabel,
 }) => {
   const { t } = useTranslation();
-  const { buttonRef, isOpen, open, close, handleKeyDown, apply, dialogContainer } = usePickerButton<string[]>(disabled, onChange);
-  const title = dialogTitle ?? t('gradient_picker_dialog_title');
+  const {
+    buttonRef,
+    isOpen,
+    open,
+    close,
+    handleKeyDown,
+    apply,
+    dialogContainer,
+  } = usePickerButton<string[]>(disabled, onChange);
+  const title = dialogTitle ?? t("gradient_picker_dialog_title");
   const parsedStops = parseGradientStops(value);
   const stops = parsedStops.length > 0 ? parsedStops : DEFAULT_GRADIENT_STOPS;
-  const format = parseCssColor(stops[0]?.color ?? '')?.format;
+  const format = parseCssColor(stops[0]?.color ?? "")?.format;
 
   return (
     <>
       <button
         ref={buttonRef}
-        type="button"
+        type='button'
         tabIndex={0}
-        aria-haspopup="dialog"
+        aria-haspopup='dialog'
         aria-label={ariaLabel ?? title}
         title={title}
-        className="picker-button gradient-button"
+        className='picker-button gradient-button'
         disabled={disabled}
         onClick={open}
         onKeyDown={handleKeyDown}
         style={{ width, height }}>
-        <span className="picker-button-swatch">
+        <span className='picker-button-swatch'>
           <span
-            className="picker-button-swatch-fill gradient-button-strip"
-            style={{ backgroundImage: `linear-gradient(to right, ${gradientStopsToCss(stops)})` }}
+            className='picker-button-swatch-fill gradient-button-strip'
+            style={{
+              backgroundImage: `linear-gradient(to right, ${gradientStopsToCss(stops)})`,
+            }}
           />
         </span>
       </button>

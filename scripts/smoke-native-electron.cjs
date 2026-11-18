@@ -14,9 +14,9 @@
  * @see {@link runSmokeChecks}
  */
 
-'use strict';
+"use strict";
 
-const { spawnSync } = require('node:child_process');
+const { spawnSync } = require("node:child_process");
 
 /**
  * @typedef {Object} SmokeCheckResult
@@ -29,7 +29,7 @@ const { spawnSync } = require('node:child_process');
  * @description Well-Known Text for the probe geometry; `POINT (1 2)` encodes to exactly 21 WKB bytes (1 byte order + 4 type + 2 × 8 coordinates).
  * @type {string}
  */
-const PROBE_WKT = 'POINT (1 2)';
+const PROBE_WKT = "POINT (1 2)";
 
 /**
  * @description Expected WKB byte length of {@link PROBE_WKT}.
@@ -51,20 +51,27 @@ function runSmokeChecks(gdal, versions) {
   /** @type {SmokeCheckResult[]} */
   const results = [];
   results.push({
-    name: 'Electron runtime',
-    ok: typeof versions.electron === 'string',
-    detail: versions.electron ? `electron ${versions.electron}` : 'not running inside Electron',
+    name: "Electron runtime",
+    ok: typeof versions.electron === "string",
+    detail:
+      versions.electron ?
+        `electron ${versions.electron}`
+      : "not running inside Electron",
   });
-  results.push({ name: 'gdal-async loaded', ok: true, detail: `GDAL ${gdal.version}` });
+  results.push({
+    name: "gdal-async loaded",
+    ok: true,
+    detail: `GDAL ${gdal.version}`,
+  });
   try {
     const wkb = gdal.Geometry.fromWKT(PROBE_WKT).toWKB();
     results.push({
-      name: 'Geometry.toWKB()',
+      name: "Geometry.toWKB()",
       ok: wkb.length === PROBE_WKB_LENGTH,
       detail: `${wkb.length} bytes (expected ${PROBE_WKB_LENGTH})`,
     });
   } catch (err) {
-    results.push({ name: 'Geometry.toWKB()', ok: false, detail: String(err) });
+    results.push({ name: "Geometry.toWKB()", ok: false, detail: String(err) });
   }
   return results;
 }
@@ -79,17 +86,21 @@ function runSmokeChecks(gdal, versions) {
  */
 function relaunchInElectron() {
   /** @type {string} */
-  const electronPath = require('electron');
+  const electronPath = require("electron");
   const child = spawnSync(electronPath, [__filename], {
-    stdio: 'inherit',
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    stdio: "inherit",
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
   if (child.error) {
-    console.error(`[smoke:native] Failed to launch Electron: ${child.error.message}`);
+    console.error(
+      `[smoke:native] Failed to launch Electron: ${child.error.message}`
+    );
     return 1;
   }
   if (child.signal) {
-    console.error(`[smoke:native] Electron terminated by ${child.signal} (native crash)`);
+    console.error(
+      `[smoke:native] Electron terminated by ${child.signal} (native crash)`
+    );
     return 1;
   }
   return child.status ?? 1;
@@ -109,14 +120,16 @@ function main() {
   }
   let gdal;
   try {
-    gdal = require('gdal-async');
+    gdal = require("gdal-async");
   } catch (err) {
     console.error(`[smoke:native] FAIL gdal-async load: ${err && err.message}`);
     return 1;
   }
   const results = runSmokeChecks(gdal, process.versions);
   for (const r of results) {
-    console.log(`[smoke:native] ${r.ok ? 'PASS' : 'FAIL'} ${r.name}: ${r.detail}`);
+    console.log(
+      `[smoke:native] ${r.ok ? "PASS" : "FAIL"} ${r.name}: ${r.detail}`
+    );
   }
   return results.every((r) => r.ok) ? 0 : 1;
 }

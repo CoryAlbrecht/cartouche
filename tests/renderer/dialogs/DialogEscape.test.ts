@@ -10,23 +10,23 @@
  * @see {@link cancelTopDialog}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { Dialog } = jiti('@renderer/workbench/dialogs/Dialog');
+const { Dialog } = jiti("@renderer/workbench/dialogs/Dialog");
 const {
   activeDialogStackSignal,
   registerActiveDialog,
   focusActiveDialog,
-  cancelTopDialog
-} = jiti('@renderer/state/dialogSignals');
+  cancelTopDialog,
+} = jiti("@renderer/state/dialogSignals");
 
 class MockElement {
   nodeType = 1;
@@ -41,29 +41,32 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
   }
@@ -115,9 +118,15 @@ class MockElement {
     this.eventListeners[type].push({ cb, capture });
   }
 
-  removeEventListener(type: string, cb: (e: any) => void, _capture = false): void {
+  removeEventListener(
+    type: string,
+    cb: (e: any) => void,
+    _capture = false
+  ): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -127,7 +136,11 @@ class MockElement {
     for (const l of listeners) {
       l.cb(event);
     }
-    if (!event._bubblesStopped && this.parentNode && typeof this.parentNode.dispatchEvent === 'function') {
+    if (
+      !event._bubblesStopped
+      && this.parentNode
+      && typeof this.parentNode.dispatchEvent === "function"
+    ) {
       this.parentNode.dispatchEvent(event);
     }
     return true;
@@ -157,12 +170,15 @@ class MockElement {
   }
 }
 
-describe('Dialog Escape & Active Stack Handling', () => {
+describe("Dialog Escape & Active Stack Handling", () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalMutationObserver: typeof globalThis.MutationObserver;
   let mockChildWindow: any;
-  let childListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>>;
+  let childListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  >;
   let root: Root | null = null;
   let container: MockElement;
 
@@ -173,15 +189,15 @@ describe('Dialog Escape & Active Stack Handling', () => {
     originalMutationObserver = globalThis.MutationObserver;
 
     childListeners = {};
-    const childDocElement = new MockElement('html');
-    const childBody = new MockElement('body');
-    const childHead = new MockElement('head');
+    const childDocElement = new MockElement("html");
+    const childBody = new MockElement("body");
+    const childHead = new MockElement("head");
     childDocElement.appendChild(childHead);
     childDocElement.appendChild(childBody);
 
     const childDoc: any = {
       nodeType: 9,
-      title: '',
+      title: "",
       documentElement: childDocElement,
       body: childBody,
       head: childHead,
@@ -197,7 +213,7 @@ describe('Dialog Escape & Active Stack Handling', () => {
         return el;
       },
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     childHead.ownerDocument = childDoc;
     childBody.ownerDocument = childDoc;
@@ -205,11 +221,19 @@ describe('Dialog Escape & Active Stack Handling', () => {
     mockChildWindow = {
       closed: false,
       document: childDoc,
-      addEventListener: (type: string, cb: (e: any) => void, capture = false) => {
+      addEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        capture = false
+      ) => {
         if (!childListeners[type]) childListeners[type] = [];
         childListeners[type].push({ cb, capture });
       },
-      removeEventListener: (type: string, cb: (e: any) => void, _capture = false) => {
+      removeEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        _capture = false
+      ) => {
         if (!childListeners[type]) return;
         childListeners[type] = childListeners[type].filter((l) => l.cb !== cb);
       },
@@ -222,12 +246,12 @@ describe('Dialog Escape & Active Stack Handling', () => {
       },
       close: () => {
         mockChildWindow.closed = true;
-      }
+      },
     };
 
-    const mainDocElement = new MockElement('html');
-    const mainBody = new MockElement('body');
-    const mainHead = new MockElement('head');
+    const mainDocElement = new MockElement("html");
+    const mainBody = new MockElement("body");
+    const mainHead = new MockElement("head");
     mainDocElement.appendChild(mainHead);
     mainDocElement.appendChild(mainBody);
 
@@ -248,7 +272,7 @@ describe('Dialog Escape & Active Stack Handling', () => {
       },
       querySelectorAll: () => [],
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     mainHead.ownerDocument = mainDoc;
     mainBody.ownerDocument = mainDoc;
@@ -260,7 +284,7 @@ describe('Dialog Escape & Active Stack Handling', () => {
       removeEventListener: () => {},
       HTMLIFrameElement: class {},
       HTMLElement: MockElement,
-      Element: MockElement
+      Element: MockElement,
     };
 
     mainDoc.defaultView = win;
@@ -271,14 +295,19 @@ describe('Dialog Escape & Active Stack Handling', () => {
 
     (globalThis as any).document = mainDoc;
     (globalThis as any).window = win;
-    (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+    (globalThis as any).Node = {
+      ELEMENT_NODE: 1,
+      TEXT_NODE: 3,
+      COMMENT_NODE: 8,
+      DOCUMENT_NODE: 9,
+    };
 
     (globalThis as any).MutationObserver = class {
       observe() {}
       disconnect() {}
     };
 
-    container = new MockElement('div');
+    container = new MockElement("div");
     container.ownerDocument = mainDoc;
     mainBody.appendChild(container);
     root = createRoot(container as any);
@@ -309,38 +338,58 @@ describe('Dialog Escape & Active Stack Handling', () => {
     }
   });
 
-  it('registerActiveDialog pushes dialog entry and returns unregister cleanup function', () => {
+  it("registerActiveDialog pushes dialog entry and returns unregister cleanup function", () => {
     let cancelCalled = false;
-    const unregister = registerActiveDialog('preferencesWindow', () => {
+    const unregister = registerActiveDialog("preferencesWindow", () => {
       cancelCalled = true;
     });
 
     assert.equal(activeDialogStackSignal.value.length, 1);
-    assert.equal(activeDialogStackSignal.value[0].name, 'preferencesWindow');
+    assert.equal(activeDialogStackSignal.value[0].name, "preferencesWindow");
 
     const result = cancelTopDialog();
-    assert.equal(result, true, 'cancelTopDialog should return true when a dialog is open');
-    assert.equal(cancelCalled, true, 'cancel callback should have been invoked');
+    assert.equal(
+      result,
+      true,
+      "cancelTopDialog should return true when a dialog is open"
+    );
+    assert.equal(
+      cancelCalled,
+      true,
+      "cancel callback should have been invoked"
+    );
 
     unregister();
-    assert.equal(activeDialogStackSignal.value.length, 0, 'stack should be empty after unregister');
+    assert.equal(
+      activeDialogStackSignal.value.length,
+      0,
+      "stack should be empty after unregister"
+    );
   });
 
-  it('focusActiveDialog promotes dialog to top of stack', () => {
-    registerActiveDialog('preferencesWindow', () => {});
-    registerActiveDialog('addLayersWindow', () => {});
+  it("focusActiveDialog promotes dialog to top of stack", () => {
+    registerActiveDialog("preferencesWindow", () => {});
+    registerActiveDialog("addLayersWindow", () => {});
 
-    assert.equal(activeDialogStackSignal.value[activeDialogStackSignal.value.length - 1].name, 'addLayersWindow');
+    assert.equal(
+      activeDialogStackSignal.value[activeDialogStackSignal.value.length - 1]
+        .name,
+      "addLayersWindow"
+    );
 
-    focusActiveDialog('preferencesWindow');
-    assert.equal(activeDialogStackSignal.value[activeDialogStackSignal.value.length - 1].name, 'preferencesWindow');
+    focusActiveDialog("preferencesWindow");
+    assert.equal(
+      activeDialogStackSignal.value[activeDialogStackSignal.value.length - 1]
+        .name,
+      "preferencesWindow"
+    );
   });
 
-  it('cancelTopDialog returns false when no dialogs are open', () => {
+  it("cancelTopDialog returns false when no dialogs are open", () => {
     assert.equal(cancelTopDialog(), false);
   });
 
-  it('renders Dialog, registers into active stack, and invokes onCancel on Escape keydown in child window', async () => {
+  it("renders Dialog, registers into active stack, and invokes onCancel on Escape keydown in child window", async () => {
     let cancelCalled = false;
     let closeCalled = false;
 
@@ -349,41 +398,49 @@ describe('Dialog Escape & Active Stack Handling', () => {
         React.createElement(
           Dialog,
           {
-            name: 'preferencesWindow',
-            title: 'Preferences',
+            name: "preferencesWindow",
+            title: "Preferences",
             isOpen: true,
             onClose: () => {
               closeCalled = true;
             },
             onCancel: () => {
               cancelCalled = true;
-            }
+            },
           },
-          React.createElement('div', null, 'Dialog Body')
+          React.createElement("div", null, "Dialog Body")
         )
       );
     });
 
-    assert.equal(activeDialogStackSignal.value.length, 1, 'Dialog should register in activeDialogStackSignal when mounted');
-    assert.equal(activeDialogStackSignal.value[0].name, 'preferencesWindow');
+    assert.equal(
+      activeDialogStackSignal.value.length,
+      1,
+      "Dialog should register in activeDialogStackSignal when mounted"
+    );
+    assert.equal(activeDialogStackSignal.value[0].name, "preferencesWindow");
 
     // Dispatch Escape keydown in child window
     const escapeEvent = {
-      type: 'keydown',
-      key: 'Escape',
+      type: "keydown",
+      key: "Escape",
       defaultPrevented: false,
       preventDefault() {
         this.defaultPrevented = true;
       },
-      stopPropagation() {}
+      stopPropagation() {},
     };
     mockChildWindow.dispatchEvent(escapeEvent);
 
-    assert.equal(cancelCalled, true, 'Escape must invoke onCancel');
-    assert.equal(closeCalled, false, 'onClose should not be called when onCancel is supplied');
+    assert.equal(cancelCalled, true, "Escape must invoke onCancel");
+    assert.equal(
+      closeCalled,
+      false,
+      "onClose should not be called when onCancel is supplied"
+    );
   });
 
-  it('Dialog falls back to onClose on Escape when onCancel is not supplied', async () => {
+  it("Dialog falls back to onClose on Escape when onCancel is not supplied", async () => {
     let closeCalled = false;
 
     await act(async () => {
@@ -391,29 +448,33 @@ describe('Dialog Escape & Active Stack Handling', () => {
         React.createElement(
           Dialog,
           {
-            name: 'addLayersWindow',
-            title: 'Add Layers',
+            name: "addLayersWindow",
+            title: "Add Layers",
             isOpen: true,
             onClose: () => {
               closeCalled = true;
-            }
+            },
           },
-          React.createElement('div', null, 'Dialog Body')
+          React.createElement("div", null, "Dialog Body")
         )
       );
     });
 
     const escapeEvent = {
-      type: 'keydown',
-      key: 'Escape',
+      type: "keydown",
+      key: "Escape",
       defaultPrevented: false,
       preventDefault() {
         this.defaultPrevented = true;
       },
-      stopPropagation() {}
+      stopPropagation() {},
     };
     mockChildWindow.dispatchEvent(escapeEvent);
 
-    assert.equal(closeCalled, true, 'Escape must fall back to onClose when onCancel is omitted');
+    assert.equal(
+      closeCalled,
+      true,
+      "Escape must fall back to onClose when onCancel is omitted"
+    );
   });
 });

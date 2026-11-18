@@ -10,25 +10,23 @@
  * @see {@link closeAddLayersDialog}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { AddLayersDialog } = jiti('@renderer/workbench/dialogs/AddLayersDialog');
-const {
-  isAddLayersOpenSignal,
-  openAddLayersDialog
-} = jiti('@renderer/state/gisSignals');
-const {
-  activeDialogStackSignal,
-  cancelTopDialog
-} = jiti('@renderer/state/dialogSignals');
+const { AddLayersDialog } = jiti("@renderer/workbench/dialogs/AddLayersDialog");
+const { isAddLayersOpenSignal, openAddLayersDialog } = jiti(
+  "@renderer/state/gisSignals"
+);
+const { activeDialogStackSignal, cancelTopDialog } = jiti(
+  "@renderer/state/dialogSignals"
+);
 
 class MockElement {
   nodeType = 1;
@@ -43,29 +41,32 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
   }
@@ -117,9 +118,15 @@ class MockElement {
     this.eventListeners[type].push({ cb, capture });
   }
 
-  removeEventListener(type: string, cb: (e: any) => void, _capture = false): void {
+  removeEventListener(
+    type: string,
+    cb: (e: any) => void,
+    _capture = false
+  ): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -129,7 +136,11 @@ class MockElement {
     for (const l of listeners) {
       l.cb(event);
     }
-    if (!event._bubblesStopped && this.parentNode && typeof this.parentNode.dispatchEvent === 'function') {
+    if (
+      !event._bubblesStopped
+      && this.parentNode
+      && typeof this.parentNode.dispatchEvent === "function"
+    ) {
       this.parentNode.dispatchEvent(event);
     }
     return true;
@@ -148,7 +159,7 @@ class MockElement {
   }
 
   querySelector(selector: string): any {
-    const isClass = selector.startsWith('.');
+    const isClass = selector.startsWith(".");
     const cls = isClass ? selector.slice(1) : selector;
     if (this.className.split(/\s+/).includes(cls)) return this;
     for (const child of this.childNodes) {
@@ -168,12 +179,15 @@ class MockElement {
   }
 }
 
-describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
+describe("AddLayersDialog Escape & Draft Clearing Handling", () => {
   let originalDocument: typeof globalThis.document;
   let originalWindow: typeof globalThis.window;
   let originalMutationObserver: typeof globalThis.MutationObserver;
   let mockChildWindow: any;
-  let childListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>>;
+  let childListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  >;
   let root: Root | null = null;
   let container: MockElement;
 
@@ -186,15 +200,15 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
     originalMutationObserver = globalThis.MutationObserver;
 
     childListeners = {};
-    const childDocElement = new MockElement('html');
-    const childBody = new MockElement('body');
-    const childHead = new MockElement('head');
+    const childDocElement = new MockElement("html");
+    const childBody = new MockElement("body");
+    const childHead = new MockElement("head");
     childDocElement.appendChild(childHead);
     childDocElement.appendChild(childBody);
 
     const childDoc: any = {
       nodeType: 9,
-      title: '',
+      title: "",
       documentElement: childDocElement,
       body: childBody,
       head: childHead,
@@ -210,7 +224,7 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
         return el;
       },
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     childHead.ownerDocument = childDoc;
     childBody.ownerDocument = childDoc;
@@ -218,11 +232,19 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
     mockChildWindow = {
       closed: false,
       document: childDoc,
-      addEventListener: (type: string, cb: (e: any) => void, capture = false) => {
+      addEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        capture = false
+      ) => {
         if (!childListeners[type]) childListeners[type] = [];
         childListeners[type].push({ cb, capture });
       },
-      removeEventListener: (type: string, cb: (e: any) => void, _capture = false) => {
+      removeEventListener: (
+        type: string,
+        cb: (e: any) => void,
+        _capture = false
+      ) => {
         if (!childListeners[type]) return;
         childListeners[type] = childListeners[type].filter((l) => l.cb !== cb);
       },
@@ -235,12 +257,12 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
       },
       close: () => {
         mockChildWindow.closed = true;
-      }
+      },
     };
 
-    const mainDocElement = new MockElement('html');
-    const mainBody = new MockElement('body');
-    const mainHead = new MockElement('head');
+    const mainDocElement = new MockElement("html");
+    const mainBody = new MockElement("body");
+    const mainHead = new MockElement("head");
     mainDocElement.appendChild(mainHead);
     mainDocElement.appendChild(mainBody);
 
@@ -261,7 +283,7 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
       },
       querySelectorAll: () => [],
       addEventListener: () => {},
-      removeEventListener: () => {}
+      removeEventListener: () => {},
     };
     mainHead.ownerDocument = mainDoc;
     mainBody.ownerDocument = mainDoc;
@@ -273,7 +295,7 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
       removeEventListener: () => {},
       HTMLIFrameElement: class {},
       HTMLElement: MockElement,
-      Element: MockElement
+      Element: MockElement,
     };
 
     mainDoc.defaultView = win;
@@ -284,14 +306,19 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
 
     (globalThis as any).document = mainDoc;
     (globalThis as any).window = win;
-    (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+    (globalThis as any).Node = {
+      ELEMENT_NODE: 1,
+      TEXT_NODE: 3,
+      COMMENT_NODE: 8,
+      DOCUMENT_NODE: 9,
+    };
 
     (globalThis as any).MutationObserver = class {
       observe() {}
       disconnect() {}
     };
 
-    container = new MockElement('div');
+    container = new MockElement("div");
     container.ownerDocument = mainDoc;
     mainBody.appendChild(container);
     root = createRoot(container as any);
@@ -323,16 +350,24 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
     }
   });
 
-  it('cancelTopDialog triggers closure of AddLayersDialog when open', () => {
+  it("cancelTopDialog triggers closure of AddLayersDialog when open", () => {
     openAddLayersDialog();
     assert.equal(isAddLayersOpenSignal.value, true);
 
     const handled = cancelTopDialog();
-    assert.equal(handled, true, 'cancelTopDialog must handle open add layers dialog');
-    assert.equal(isAddLayersOpenSignal.value, false, 'AddLayersDialog should be closed');
+    assert.equal(
+      handled,
+      true,
+      "cancelTopDialog must handle open add layers dialog"
+    );
+    assert.equal(
+      isAddLayersOpenSignal.value,
+      false,
+      "AddLayersDialog should be closed"
+    );
   });
 
-  it('pressing Escape while AddLayersDialog is focused triggers closure and clears inputs', async () => {
+  it("pressing Escape while AddLayersDialog is focused triggers closure and clears inputs", async () => {
     openAddLayersDialog();
     assert.equal(isAddLayersOpenSignal.value, true);
 
@@ -340,32 +375,44 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
       root!.render(React.createElement(AddLayersDialog));
     });
 
-    assert.equal(activeDialogStackSignal.value.length, 1, 'AddLayersDialog should register in activeDialogStackSignal');
-    assert.equal(activeDialogStackSignal.value[0].name, 'addLayersWindow');
+    assert.equal(
+      activeDialogStackSignal.value.length,
+      1,
+      "AddLayersDialog should register in activeDialogStackSignal"
+    );
+    assert.equal(activeDialogStackSignal.value[0].name, "addLayersWindow");
 
-    const input = mockChildWindow.document.body.querySelector('.vector-chip-input');
+    const input =
+      mockChildWindow.document.body.querySelector(".vector-chip-input");
     if (input) {
       await act(async () => {
-        input.dispatchEvent({ type: 'change', target: { value: '/data/sample-layer.shp' } });
+        input.dispatchEvent({
+          type: "change",
+          target: { value: "/data/sample-layer.shp" },
+        });
       });
-      assert.equal(input.attributes['value'], '/data/sample-layer.shp');
+      assert.equal(input.attributes["value"], "/data/sample-layer.shp");
     }
 
     // Dispatch Escape in child window
     await act(async () => {
       const escapeEvent = {
-        type: 'keydown',
-        key: 'Escape',
+        type: "keydown",
+        key: "Escape",
         defaultPrevented: false,
         preventDefault() {
           this.defaultPrevented = true;
         },
-        stopPropagation() {}
+        stopPropagation() {},
       };
       mockChildWindow.dispatchEvent(escapeEvent);
     });
 
-    assert.equal(isAddLayersOpenSignal.value, false, 'AddLayersDialog should be closed after Escape keydown');
+    assert.equal(
+      isAddLayersOpenSignal.value,
+      false,
+      "AddLayersDialog should be closed after Escape keydown"
+    );
 
     // Reopen dialog and verify draft input has been cleared
     await act(async () => {
@@ -373,9 +420,14 @@ describe('AddLayersDialog Escape & Draft Clearing Handling', () => {
       root!.render(React.createElement(AddLayersDialog));
     });
 
-    const refreshedInput = mockChildWindow.document.body.querySelector('.vector-chip-input');
+    const refreshedInput =
+      mockChildWindow.document.body.querySelector(".vector-chip-input");
     if (refreshedInput) {
-      assert.equal(refreshedInput.attributes['value'], '', 'Draft inputs must be cleared on cancel');
+      assert.equal(
+        refreshedInput.attributes["value"],
+        "",
+        "Draft inputs must be cleared on cancel"
+      );
     }
   });
 });

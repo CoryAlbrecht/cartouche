@@ -10,20 +10,20 @@
  * @see {@link BasicWidget}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 // Mock .svg and .css imports for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
-nodeRequire.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+nodeRequire.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
-nodeRequire.extensions['.css'] = (mod: any) => {
-  mod.exports = '';
+nodeRequire.extensions[".css"] = (mod: any) => {
+  mod.exports = "";
 };
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -44,11 +44,14 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -60,14 +63,14 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
+        return styleProps[name] || "";
       },
     });
   }
 
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
   }
@@ -78,8 +81,8 @@ class MockElement {
 
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
   }
 
@@ -90,7 +93,7 @@ class MockElement {
   }
 
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -110,12 +113,17 @@ class MockElement {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
-    this.eventListeners[type].push({ cb, capture: Boolean(options && options.capture) });
+    this.eventListeners[type].push({
+      cb,
+      capture: Boolean(options && options.capture),
+    });
   }
 
   removeEventListener(type: string, cb: any): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -146,16 +154,25 @@ class MockElement {
 
   get textContent(): string {
     if (this.childNodes.length > 0) {
-      return this.childNodes.map(c => c.textContent || c.nodeValue || '').join('');
+      return this.childNodes
+        .map((c) => c.textContent || c.nodeValue || "")
+        .join("");
     }
-    return (this as any)._textContent || '';
+    return (this as any)._textContent || "";
   }
 
   set textContent(val: string) {
     (this as any)._textContent = String(val);
   }
 
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
     return { width: 160, height: 80, top: 0, left: 0, right: 160, bottom: 80 };
   }
 }
@@ -163,13 +180,16 @@ class MockElement {
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
-let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let windowListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 
 function setupDom(): void {
   windowListeners = {};
 
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -209,13 +229,17 @@ function setupDom(): void {
   const win = {
     innerWidth: 1024,
     innerHeight: 768,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
     removeEventListener: (type: string, cb: (e: any) => void) => {
       if (!windowListeners[type]) return;
-      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+      windowListeners[type] = windowListeners[type].filter((l) => l.cb !== cb);
     },
     dispatchEvent: (event: any) => {
       const listeners = (windowListeners[event.type] || []).slice();
@@ -228,7 +252,7 @@ function setupDom(): void {
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
     Element: MockElement,
-    getComputedStyle: () => ({ getPropertyValue: () => '' }),
+    getComputedStyle: () => ({ getPropertyValue: () => "" }),
   };
 
   doc.defaultView = win;
@@ -237,14 +261,19 @@ function setupDom(): void {
   (globalThis as any).HTMLIFrameElement = win.HTMLIFrameElement;
   (globalThis as any).HTMLElement = MockElement;
   (globalThis as any).Element = MockElement;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -262,7 +291,10 @@ function tearDownDom(): void {
   }
 }
 
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -275,10 +307,14 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { BasicWidget } = jiti('../../../src/renderer/workbench/widgets/BasicWidget.tsx');
-const { OverlapTabWidget } = jiti('../../../src/renderer/workbench/widgets/OverlapTabWidget.tsx');
+const { BasicWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/BasicWidget.tsx"
+);
+const { OverlapTabWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/OverlapTabWidget.tsx"
+);
 
-describe('OverlapTabWidget Component (Ticket #168)', () => {
+describe("OverlapTabWidget Component (Ticket #168)", () => {
   beforeEach(() => {
     setupDom();
   });
@@ -290,63 +326,87 @@ describe('OverlapTabWidget Component (Ticket #168)', () => {
   it('renders outer "Tab Group" title and master close button, with active child rendering its own header', async () => {
     const testTabs = [
       {
-        id: 'tab-1',
-        title: 'First Tab',
+        id: "tab-1",
+        title: "First Tab",
         render: ({ onClose }: any) =>
-          React.createElement(BasicWidget, {
-            name: 'child-widget-1',
-            displayName: 'First Child Header',
-            onClose,
-          }, React.createElement('div', {}, 'Content 1')),
+          React.createElement(
+            BasicWidget,
+            {
+              name: "child-widget-1",
+              displayName: "First Child Header",
+              onClose,
+            },
+            React.createElement("div", {}, "Content 1")
+          ),
       },
       {
-        id: 'tab-2',
-        title: 'Second Tab',
+        id: "tab-2",
+        title: "Second Tab",
         render: ({ onClose }: any) =>
-          React.createElement(BasicWidget, {
-            name: 'child-widget-2',
-            displayName: 'Second Child Header',
-            onClose,
-          }, React.createElement('div', {}, 'Content 2')),
+          React.createElement(
+            BasicWidget,
+            {
+              name: "child-widget-2",
+              displayName: "Second Child Header",
+              onClose,
+            },
+            React.createElement("div", {}, "Content 2")
+          ),
       },
     ];
 
     await act(async () => {
       root!.render(
         React.createElement(OverlapTabWidget, {
-          name: 'test-overlap-group',
+          name: "test-overlap-group",
           tabs: testTabs,
-          activeTabId: 'tab-1',
+          activeTabId: "tab-1",
         })
       );
     });
 
     // Check titles: Outer header has "Tab Group", child in tab pane has "First Child Header"
-    const titles = findAllNodes(container, el => el.className.includes('basic-widget-title'));
-    assert.strictEqual(titles.length, 2, 'Must have 2 header titles (outer Tab Group + active child)');
+    const titles = findAllNodes(container, (el) =>
+      el.className.includes("basic-widget-title")
+    );
+    assert.strictEqual(
+      titles.length,
+      2,
+      "Must have 2 header titles (outer Tab Group + active child)"
+    );
 
-    const titleTexts = titles.map(t => t.textContent.trim());
-    assert.ok(titleTexts.includes('Tab Group'), 'Outer header must be titled "Tab Group"');
-    assert.ok(titleTexts.includes('First Child Header'), 'Active child must render its own header title');
+    const titleTexts = titles.map((t) => t.textContent.trim());
+    assert.ok(
+      titleTexts.includes("Tab Group"),
+      'Outer header must be titled "Tab Group"'
+    );
+    assert.ok(
+      titleTexts.includes("First Child Header"),
+      "Active child must render its own header title"
+    );
 
     // Check tab strip items
-    const tabItems = findAllNodes(container, el => el.className.includes('overlap-tab-item'));
-    assert.strictEqual(tabItems.length, 2, 'Tab strip must contain 2 tabs');
+    const tabItems = findAllNodes(container, (el) =>
+      el.className.includes("overlap-tab-item")
+    );
+    assert.strictEqual(tabItems.length, 2, "Tab strip must contain 2 tabs");
   });
 
-  it('switches active tab when clicking a tab in the tab strip', async () => {
-    let activeTabChangedTo = '';
+  it("switches active tab when clicking a tab in the tab strip", async () => {
+    let activeTabChangedTo = "";
 
     const testTabs = [
       {
-        id: 'tab-a',
-        title: 'Tab A',
-        render: () => React.createElement('div', { id: 'pane-a' }, 'Pane A Content'),
+        id: "tab-a",
+        title: "Tab A",
+        render: () =>
+          React.createElement("div", { id: "pane-a" }, "Pane A Content"),
       },
       {
-        id: 'tab-b',
-        title: 'Tab B',
-        render: () => React.createElement('div', { id: 'pane-b' }, 'Pane B Content'),
+        id: "tab-b",
+        title: "Tab B",
+        render: () =>
+          React.createElement("div", { id: "pane-b" }, "Pane B Content"),
       },
     ];
 
@@ -354,7 +414,7 @@ describe('OverlapTabWidget Component (Ticket #168)', () => {
       root!.render(
         React.createElement(OverlapTabWidget, {
           tabs: testTabs,
-          activeTabId: 'tab-a',
+          activeTabId: "tab-a",
           onTabChange: (id: string) => {
             activeTabChangedTo = id;
           },
@@ -362,41 +422,47 @@ describe('OverlapTabWidget Component (Ticket #168)', () => {
       );
     });
 
-    const tabB = findAllNodes(container, el => el.className.includes('overlap-tab-item'))[1];
-    assert.ok(tabB, 'Second tab must exist');
+    const tabB = findAllNodes(container, (el) =>
+      el.className.includes("overlap-tab-item")
+    )[1];
+    assert.ok(tabB, "Second tab must exist");
 
     await act(async () => {
       tabB.dispatchEvent({
-        type: 'click',
+        type: "click",
         stopPropagation: () => {},
         preventDefault: () => {},
       });
     });
 
-    assert.strictEqual(activeTabChangedTo, 'tab-b', 'Clicking tab must trigger onTabChange with "tab-b"');
+    assert.strictEqual(
+      activeTabChangedTo,
+      "tab-b",
+      'Clicking tab must trigger onTabChange with "tab-b"'
+    );
   });
 
-  it('sets application/x-cartouche-tab-extract dataTransfer when dragging a tab out to extract', async () => {
-    let extractedTabId = '';
+  it("sets application/x-cartouche-tab-extract dataTransfer when dragging a tab out to extract", async () => {
+    let extractedTabId = "";
     const recordedData: Record<string, string> = {};
 
     const testTabs = [
       {
-        id: 'extract-me',
-        title: 'Extract Me',
-        render: () => React.createElement('div', {}, 'Extractable Content'),
+        id: "extract-me",
+        title: "Extract Me",
+        render: () => React.createElement("div", {}, "Extractable Content"),
       },
       {
-        id: 'keep-me',
-        title: 'Keep Me',
-        render: () => React.createElement('div', {}, 'Keeper Content'),
+        id: "keep-me",
+        title: "Keep Me",
+        render: () => React.createElement("div", {}, "Keeper Content"),
       },
     ];
 
     await act(async () => {
       root!.render(
         React.createElement(OverlapTabWidget, {
-          name: 'group-extract',
+          name: "group-extract",
           tabs: testTabs,
           onTabExtract: (id: string) => {
             extractedTabId = id;
@@ -405,44 +471,48 @@ describe('OverlapTabWidget Component (Ticket #168)', () => {
       );
     });
 
-    const firstTab = findAllNodes(container, el => el.className.includes('overlap-tab-item'))[0];
+    const firstTab = findAllNodes(container, (el) =>
+      el.className.includes("overlap-tab-item")
+    )[0];
     assert.ok(firstTab);
 
     const mockDataTransfer = {
-      effectAllowed: '',
+      effectAllowed: "",
       setData: (format: string, data: string) => {
         recordedData[format] = data;
       },
     };
 
     firstTab.dispatchEvent({
-      type: 'dragstart',
+      type: "dragstart",
       stopPropagation: () => {},
       preventDefault: () => {},
       dataTransfer: mockDataTransfer,
     });
 
-    assert.strictEqual(extractedTabId, 'extract-me');
-    assert.strictEqual(recordedData['text/plain'], 'extract-me');
-    assert.ok(recordedData['application/x-cartouche-tab-extract']);
-    const parsedPayload = JSON.parse(recordedData['application/x-cartouche-tab-extract']);
-    assert.strictEqual(parsedPayload.containerId, 'group-extract');
-    assert.strictEqual(parsedPayload.tabId, 'extract-me');
+    assert.strictEqual(extractedTabId, "extract-me");
+    assert.strictEqual(recordedData["text/plain"], "extract-me");
+    assert.ok(recordedData["application/x-cartouche-tab-extract"]);
+    const parsedPayload = JSON.parse(
+      recordedData["application/x-cartouche-tab-extract"]
+    );
+    assert.strictEqual(parsedPayload.containerId, "group-extract");
+    assert.strictEqual(parsedPayload.tabId, "extract-me");
   });
 
-  it('triggers onGroupClose and closes all children when master close button is clicked', async () => {
+  it("triggers onGroupClose and closes all children when master close button is clicked", async () => {
     let groupClosed = false;
 
     const testTabs = [
       {
-        id: 'child-1',
-        title: 'Child 1',
-        render: () => React.createElement('div', {}, '1'),
+        id: "child-1",
+        title: "Child 1",
+        render: () => React.createElement("div", {}, "1"),
       },
       {
-        id: 'child-2',
-        title: 'Child 2',
-        render: () => React.createElement('div', {}, '2'),
+        id: "child-2",
+        title: "Child 2",
+        render: () => React.createElement("div", {}, "2"),
       },
     ];
 
@@ -459,28 +529,40 @@ describe('OverlapTabWidget Component (Ticket #168)', () => {
     });
 
     // Outer close button is in the top-level basic-widget-header
-    const closeBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && el.attributes.title === 'Close')[0];
-    assert.ok(closeBtn, 'Outer master close button must exist');
+    const closeBtn = findAllNodes(
+      container,
+      (el) => el.tagName === "BUTTON" && el.attributes.title === "Close"
+    )[0];
+    assert.ok(closeBtn, "Outer master close button must exist");
 
     await act(async () => {
       closeBtn.dispatchEvent({
-        type: 'click',
+        type: "click",
         stopPropagation: () => {},
         preventDefault: () => {},
       });
     });
 
-    assert.strictEqual(groupClosed, true, 'Clicking outer close button must call onGroupClose');
+    assert.strictEqual(
+      groupClosed,
+      true,
+      "Clicking outer close button must call onGroupClose"
+    );
   });
 
-  it('auto-dissolves when children drop to 1 and unwraps solitary child', async () => {
-    let dissolvedWithId = '';
+  it("auto-dissolves when children drop to 1 and unwraps solitary child", async () => {
+    let dissolvedWithId = "";
 
     const testTabs = [
       {
-        id: 'remaining-child',
-        title: 'Remaining Solitary Child',
-        render: () => React.createElement('div', { className: 'solitary-body' }, 'Solitary Content'),
+        id: "remaining-child",
+        title: "Remaining Solitary Child",
+        render: () =>
+          React.createElement(
+            "div",
+            { className: "solitary-body" },
+            "Solitary Content"
+          ),
       },
     ];
 
@@ -496,40 +578,57 @@ describe('OverlapTabWidget Component (Ticket #168)', () => {
     });
 
     // Single-child auto-dissolution un-mounts outer Tab Group and renders solitary child in .overlap-tab-dissolved
-    const dissolvedWrapper = findAllNodes(container, el => el.className.includes('overlap-tab-dissolved'))[0];
-    assert.ok(dissolvedWrapper, 'Solitary child must be unwrapped inside .overlap-tab-dissolved');
+    const dissolvedWrapper = findAllNodes(container, (el) =>
+      el.className.includes("overlap-tab-dissolved")
+    )[0];
+    assert.ok(
+      dissolvedWrapper,
+      "Solitary child must be unwrapped inside .overlap-tab-dissolved"
+    );
 
-    const titles = findAllNodes(container, el => el.className.includes('basic-widget-title'));
-    assert.strictEqual(titles.length, 0, 'Outer "Tab Group" header must not exist when dissolved');
+    const titles = findAllNodes(container, (el) =>
+      el.className.includes("basic-widget-title")
+    );
+    assert.strictEqual(
+      titles.length,
+      0,
+      'Outer "Tab Group" header must not exist when dissolved'
+    );
 
-    assert.strictEqual(dissolvedWithId, 'remaining-child', 'onDissolve must be called with remaining child id');
+    assert.strictEqual(
+      dissolvedWithId,
+      "remaining-child",
+      "onDissolve must be called with remaining child id"
+    );
   });
 
-  it('rejects nested OverlapTabWidget children (recursive nesting prohibition)', async () => {
+  it("rejects nested OverlapTabWidget children (recursive nesting prohibition)", async () => {
     const testTabs = [
       {
-        id: 'valid-widget',
-        title: 'Valid Widget',
-        render: () => React.createElement('div', {}, 'Valid'),
+        id: "valid-widget",
+        title: "Valid Widget",
+        render: () => React.createElement("div", {}, "Valid"),
       },
       {
-        id: 'overlap-nested',
-        title: 'Illegal Nested Group',
+        id: "overlap-nested",
+        title: "Illegal Nested Group",
         isOverlapContainer: true,
-        render: () => React.createElement('div', {}, 'Illegal Nested'),
+        render: () => React.createElement("div", {}, "Illegal Nested"),
       },
     ];
 
     await act(async () => {
-      root!.render(
-        React.createElement(OverlapTabWidget, {
-          tabs: testTabs,
-        })
-      );
+      root!.render(React.createElement(OverlapTabWidget, { tabs: testTabs }));
     });
 
     // The nested container should be rejected, leaving only 'valid-widget' (length 1 -> auto-dissolved)
-    const tabStrip = findAllNodes(container, el => el.className.includes('overlap-tab-strip'))[0];
-    assert.strictEqual(tabStrip, undefined, 'Nested group must be rejected so only 1 child remains and unwraps');
+    const tabStrip = findAllNodes(container, (el) =>
+      el.className.includes("overlap-tab-strip")
+    )[0];
+    assert.strictEqual(
+      tabStrip,
+      undefined,
+      "Nested group must be rejected so only 1 child remains and unwraps"
+    );
   });
 });

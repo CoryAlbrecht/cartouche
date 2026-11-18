@@ -591,7 +591,10 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           id: "project_properties",
           label: t("project_properties") || "Project Properties...",
           icon: mdiFolderCogOutline,
-          formattedKey: getActionFormattedKey("project_properties", "Ctrl+Alt+,"),
+          formattedKey: getActionFormattedKey(
+            "project_properties",
+            "Ctrl+Alt+,"
+          ),
           onClick: () => {
             openProjectPropertiesDialog();
           },

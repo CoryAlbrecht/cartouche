@@ -11,9 +11,9 @@
  * @see {@link activeToolSignal}
  */
 
-import type { PreferenceItem } from '../../shared/types';
-import { preferencesMapSignal } from './preferencesSignals';
-import { activeLayerIdSignal } from './projectSignals';
+import type { PreferenceItem } from "../../shared/types";
+import { preferencesMapSignal } from "./preferencesSignals";
+import { activeLayerIdSignal } from "./projectSignals";
 import {
   activeToolSignal,
   activeSelectionModeSignal,
@@ -26,8 +26,8 @@ import {
   snappingDistanceSignal,
   type ActiveTool,
   type SelectionMode,
-  type SnappingScope
-} from './gisSignals';
+  type SnappingScope,
+} from "./gisSignals";
 
 /**
  * @typedef {Object} LayerToolbarState
@@ -71,17 +71,17 @@ export function getLayerToolbarPreference<T>(
 ): T | undefined {
   const key = `mapTools.layer.${layerId}.${subkey}`;
   const store = (globalThis as any).PreferencesStore;
-  if (store && typeof store.get === 'function') {
+  if (store && typeof store.get === "function") {
     const res = store.get(key);
     if (res !== undefined) {
-      if (res && typeof res === 'object' && key in res) {
+      if (res && typeof res === "object" && key in res) {
         const entry = res[key];
-        if (entry && typeof entry === 'object' && 'value' in entry) {
+        if (entry && typeof entry === "object" && "value" in entry) {
           return entry.value !== undefined ? (entry.value as T) : defaultValue;
         }
         return entry !== undefined ? (entry as T) : defaultValue;
       }
-      if (res && typeof res === 'object' && 'value' in res) {
+      if (res && typeof res === "object" && "value" in res) {
         return res.value !== undefined ? (res.value as T) : defaultValue;
       }
       return res as T;
@@ -115,7 +115,7 @@ export function setLayerToolbarPreference(
 ): void {
   const key = `mapTools.layer.${layerId}.${subkey}`;
   const store = (globalThis as any).PreferencesStore;
-  if (store && typeof store.set === 'function') {
+  if (store && typeof store.set === "function") {
     store.set(key, value);
   }
 
@@ -125,18 +125,18 @@ export function setLayerToolbarPreference(
     defaultValue: value,
     ephemeral: true,
     hidden: true,
-    category: 'map_tools',
-    type: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
+    category: "map_tools",
+    type:
+      typeof value === "boolean" ? "boolean"
+      : typeof value === "number" ? "number"
+      : "string",
   };
 
-  preferencesMapSignal.value = {
-    ...preferencesMapSignal.value,
-    [key]: item
-  };
+  preferencesMapSignal.value = { ...preferencesMapSignal.value, [key]: item };
 
-  if (typeof (globalThis as any).window !== 'undefined') {
+  if (typeof (globalThis as any).window !== "undefined") {
     const api = (globalThis as any).window.electronAPI;
-    if (api && typeof api.setPreferenceValue === 'function') {
+    if (api && typeof api.setPreferenceValue === "function") {
       api.setPreferenceValue(key, value).catch(() => {});
     }
   }
@@ -160,14 +160,17 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   const currentTool = activeToolSignal.value;
   let digitizingTool: ActiveTool | undefined;
   if (
-    currentTool === 'point' ||
-    currentTool === 'line' ||
-    currentTool === 'polygon' ||
-    currentTool === 'vertex_editor'
+    currentTool === "point"
+    || currentTool === "line"
+    || currentTool === "polygon"
+    || currentTool === "vertex_editor"
   ) {
     digitizingTool = currentTool;
   } else {
-    digitizingTool = getLayerToolbarPreference<ActiveTool>(layerId, 'digitizingTool');
+    digitizingTool = getLayerToolbarPreference<ActiveTool>(
+      layerId,
+      "digitizingTool"
+    );
   }
 
   const selectionMode = activeSelectionModeSignal.value;
@@ -179,15 +182,15 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   const snappingDistance = snappingDistanceSignal.value;
 
   if (digitizingTool !== undefined) {
-    setLayerToolbarPreference(layerId, 'digitizingTool', digitizingTool);
+    setLayerToolbarPreference(layerId, "digitizingTool", digitizingTool);
   }
-  setLayerToolbarPreference(layerId, 'selectionMode', selectionMode);
-  setLayerToolbarPreference(layerId, 'snappingEnabled', snappingEnabled);
-  setLayerToolbarPreference(layerId, 'snappingScope', snappingScope);
-  setLayerToolbarPreference(layerId, 'snapToVertices', snapToVertices);
-  setLayerToolbarPreference(layerId, 'snapToMidpoint', snapToMidpoint);
-  setLayerToolbarPreference(layerId, 'snapToSegment', snapToSegment);
-  setLayerToolbarPreference(layerId, 'snappingDistance', snappingDistance);
+  setLayerToolbarPreference(layerId, "selectionMode", selectionMode);
+  setLayerToolbarPreference(layerId, "snappingEnabled", snappingEnabled);
+  setLayerToolbarPreference(layerId, "snappingScope", snappingScope);
+  setLayerToolbarPreference(layerId, "snapToVertices", snapToVertices);
+  setLayerToolbarPreference(layerId, "snapToMidpoint", snapToMidpoint);
+  setLayerToolbarPreference(layerId, "snapToSegment", snapToSegment);
+  setLayerToolbarPreference(layerId, "snappingDistance", snappingDistance);
 
   return {
     digitizingTool,
@@ -197,7 +200,7 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
     snapToVertices,
     snapToMidpoint,
     snapToSegment,
-    snappingDistance
+    snappingDistance,
   };
 }
 
@@ -214,47 +217,71 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
 export function restoreLayerToolbarState(layerId: string): void {
   if (!layerId) return;
 
-  const cachedSelectionMode = getLayerToolbarPreference<SelectionMode>(layerId, 'selectionMode');
+  const cachedSelectionMode = getLayerToolbarPreference<SelectionMode>(
+    layerId,
+    "selectionMode"
+  );
   if (cachedSelectionMode !== undefined) {
     activeSelectionModeSignal.value = cachedSelectionMode;
   }
 
-  const cachedSnappingEnabled = getLayerToolbarPreference<boolean>(layerId, 'snappingEnabled');
+  const cachedSnappingEnabled = getLayerToolbarPreference<boolean>(
+    layerId,
+    "snappingEnabled"
+  );
   if (cachedSnappingEnabled !== undefined) {
     snappingEnabledSignal.value = cachedSnappingEnabled;
   }
 
-  const cachedSnappingScope = getLayerToolbarPreference<SnappingScope>(layerId, 'snappingScope');
+  const cachedSnappingScope = getLayerToolbarPreference<SnappingScope>(
+    layerId,
+    "snappingScope"
+  );
   if (cachedSnappingScope !== undefined) {
     snappingScopeSignal.value = cachedSnappingScope;
   }
 
-  const cachedSnapToVertices = getLayerToolbarPreference<boolean>(layerId, 'snapToVertices');
+  const cachedSnapToVertices = getLayerToolbarPreference<boolean>(
+    layerId,
+    "snapToVertices"
+  );
   if (cachedSnapToVertices !== undefined) {
     snapToVerticesSignal.value = cachedSnapToVertices;
   }
 
-  const cachedSnapToMidpoint = getLayerToolbarPreference<boolean>(layerId, 'snapToMidpoint');
+  const cachedSnapToMidpoint = getLayerToolbarPreference<boolean>(
+    layerId,
+    "snapToMidpoint"
+  );
   if (cachedSnapToMidpoint !== undefined) {
     snapToMidpointSignal.value = cachedSnapToMidpoint;
   }
 
-  const cachedSnapToSegment = getLayerToolbarPreference<boolean>(layerId, 'snapToSegment');
+  const cachedSnapToSegment = getLayerToolbarPreference<boolean>(
+    layerId,
+    "snapToSegment"
+  );
   if (cachedSnapToSegment !== undefined) {
     snapToSegmentSignal.value = cachedSnapToSegment;
   }
 
-  const cachedSnappingDistance = getLayerToolbarPreference<number>(layerId, 'snappingDistance');
+  const cachedSnappingDistance = getLayerToolbarPreference<number>(
+    layerId,
+    "snappingDistance"
+  );
   if (cachedSnappingDistance !== undefined) {
     snappingDistanceSignal.value = cachedSnappingDistance;
   }
 
-  const cachedDigitizingTool = getLayerToolbarPreference<ActiveTool>(layerId, 'digitizingTool');
+  const cachedDigitizingTool = getLayerToolbarPreference<ActiveTool>(
+    layerId,
+    "digitizingTool"
+  );
   const isEditable = editableLayerIdsSignal.value.has(layerId);
   if (isEditable) {
-    activeToolSignal.value = cachedDigitizingTool ?? 'pan';
+    activeToolSignal.value = cachedDigitizingTool ?? "pan";
   } else {
-    activeToolSignal.value = 'pan';
+    activeToolSignal.value = "pan";
   }
 }
 
@@ -274,7 +301,10 @@ let previousActiveLayerId: string | null = activeLayerIdSignal.peek();
  * @param {string | null} prevLayerId - Previously active layer identifier, or null if none was active.
  * @returns {void}
  */
-export function handleActiveLayerChange(newLayerId: string | null, prevLayerId: string | null): void {
+export function handleActiveLayerChange(
+  newLayerId: string | null,
+  prevLayerId: string | null
+): void {
   if (newLayerId === prevLayerId) {
     return;
   }
@@ -286,7 +316,7 @@ export function handleActiveLayerChange(newLayerId: string | null, prevLayerId: 
   }
 
   if (newLayerId === null) {
-    activeToolSignal.value = 'pan';
+    activeToolSignal.value = "pan";
     return;
   }
 

@@ -8,8 +8,8 @@
  * @since 0.1.0-dev
  */
 
-import { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -28,21 +28,24 @@ export class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
-  value = '';
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
+  value = "";
   disabled = false;
-  title = '';
+  title = "";
   multiple = false;
   selected = false;
   selectedIndex = 0;
 
   get options(): any[] {
-    return this.childNodes.filter((c) => c.tagName === 'OPTION');
+    return this.childNodes.filter((c) => c.tagName === "OPTION");
   }
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -54,23 +57,23 @@ export class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
-    if (k === 'value') {
+    if (k === "value") {
       this.value = String(v);
     }
-    if (k === 'title') {
+    if (k === "title") {
       this.title = String(v);
     }
-    if (k === 'disabled') {
+    if (k === "disabled") {
       this.disabled = true;
     }
   }
@@ -108,10 +111,10 @@ export class MockElement {
 
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
-    if (k === 'disabled') {
+    if (k === "disabled") {
       this.disabled = false;
     }
   }
@@ -130,7 +133,12 @@ export class MockElement {
     // Like the DOM, removing the focused element (or an ancestor of it) returns focus to the body.
     const doc = this.ownerDoc();
     const active = doc?.activeElement;
-    if (active && active !== doc.body && (child === active || child.contains?.(active))) doc.activeElement = doc.body;
+    if (
+      active
+      && active !== doc.body
+      && (child === active || child.contains?.(active))
+    )
+      doc.activeElement = doc.body;
     return child;
   }
 
@@ -146,7 +154,11 @@ export class MockElement {
     return newChild;
   }
 
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -155,7 +167,9 @@ export class MockElement {
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter((l) => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -213,11 +227,24 @@ export class MockElement {
     return false;
   }
 
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
-    return { width: 380, height: 350, top: 50, left: 50, right: 430, bottom: 400 };
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
+    return {
+      width: 380,
+      height: 350,
+      top: 50,
+      left: 50,
+      right: 430,
+      bottom: 400,
+    };
   }
 }
-
 
 /**
  * @typedef {Object} MockDom
@@ -239,11 +266,14 @@ export interface MockDom {
  * @returns {MockDom} The installed harness.
  */
 export function installMockDom(): MockDom {
-  const windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
-  const documentElement = new MockElement('html');
-  const head = new MockElement('head');
+  const windowListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
+  const documentElement = new MockElement("html");
+  const head = new MockElement("head");
   (head as any).querySelectorAll = () => [];
-  const body = new MockElement('body');
+  const body = new MockElement("body");
   documentElement.appendChild(head);
   documentElement.appendChild(body);
 
@@ -268,19 +298,19 @@ export function installMockDom(): MockDom {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
     defaultView: null as any,
     activeElement: body as any,
-    getElementById: (id: string) => findById(documentElement, id)
+    getElementById: (id: string) => findById(documentElement, id),
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -288,7 +318,11 @@ export function installMockDom(): MockDom {
   const win: any = {
     innerWidth: 1024,
     innerHeight: 768,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
@@ -304,20 +338,24 @@ export function installMockDom(): MockDom {
       return !event.defaultPrevented;
     },
     // An empty selection: React's select-event handling reads it once an input has focus.
-    getSelection: () => ({ anchorNode: null, anchorOffset: 0, focusNode: null, focusOffset: 0, rangeCount: 0 }),
+    getSelection: () => ({
+      anchorNode: null,
+      anchorOffset: 0,
+      focusNode: null,
+      focusOffset: 0,
+      rangeCount: 0,
+    }),
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
     Element: MockElement,
-    electronAPI: {
-      getPreferenceValue: async () => ({})
-    },
+    electronAPI: { getPreferenceValue: async () => ({}) },
     open: () => ({
       document: doc,
       addEventListener: () => {},
       removeEventListener: () => {},
-      close: () => {}
-    })
+      close: () => {},
+    }),
   };
   doc.defaultView = win;
 
@@ -325,7 +363,12 @@ export function installMockDom(): MockDom {
   (globalThis as any).window = win;
   (globalThis as any).HTMLElement = MockElement;
   (globalThis as any).Element = MockElement;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
@@ -339,12 +382,11 @@ export function installMockDom(): MockDom {
     }
   };
 
-  const container: MockElement = doc.createElement('div');
+  const container: MockElement = doc.createElement("div");
   body.appendChild(container);
   const root = createRoot(container as any);
   return { doc, win, container, root };
 }
-
 
 /**
  * @function teardownMockDom
@@ -377,7 +419,10 @@ export function teardownMockDom(dom: MockDom | null): void {
  * @param {string} className - Class to match.
  * @returns {MockElement[]} Matching elements in document order.
  */
-export function findElementsByClass(el: MockElement, className: string): MockElement[] {
+export function findElementsByClass(
+  el: MockElement,
+  className: string
+): MockElement[] {
   const matches: MockElement[] = [];
   if (el.className && el.className.split(/\s+/).includes(className)) {
     matches.push(el);
@@ -398,7 +443,7 @@ export function findElementsByClass(el: MockElement, className: string): MockEle
  * @returns {MockElement | null} The element, or null.
  */
 export function findById(el: MockElement, id: string): MockElement | null {
-  if (el.getAttribute?.('id') === id) return el;
+  if (el.getAttribute?.("id") === id) return el;
   for (const child of el.childNodes ?? []) {
     const found = child.nodeType === 1 ? findById(child, id) : null;
     if (found) return found;
@@ -413,8 +458,7 @@ export function findById(el: MockElement, id: string): MockElement | null {
  * @returns {string} Concatenated text content.
  */
 export function textOf(el: any): string {
-  if (el.nodeType === 3) return String(el.nodeValue ?? '');
-  if (typeof el.textContent === 'string') return el.textContent;
-  return (el.childNodes ?? []).map(textOf).join('');
+  if (el.nodeType === 3) return String(el.nodeValue ?? "");
+  if (typeof el.textContent === "string") return el.textContent;
+  return (el.childNodes ?? []).map(textOf).join("");
 }
-

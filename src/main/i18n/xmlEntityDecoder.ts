@@ -15,17 +15,18 @@
  *  - group 2: hexadecimal character references (e.g. &#x41;, &#X41;)
  *  - group 3: decimal character references (e.g. &#65;)
  */
-const ENTITY_REGEX = /&(?:(amp|lt|gt|quot|apos)|#[xX]([0-9a-fA-F]+)|#([0-9]+));/g;
+const ENTITY_REGEX =
+  /&(?:(amp|lt|gt|quot|apos)|#[xX]([0-9a-fA-F]+)|#([0-9]+));/g;
 
 /**
  * Standard XML predefined entity lookup table.
  */
 const PREDEFINED_ENTITIES: Record<string, string> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
+  amp: "&",
+  lt: "<",
+  gt: ">",
   quot: '"',
-  apos: "'"
+  apos: "'",
 };
 
 /**
@@ -39,10 +40,10 @@ const PREDEFINED_ENTITIES: Record<string, string> = {
  */
 function isValidCodePoint(codePoint: number): boolean {
   return (
-    Number.isInteger(codePoint) &&
-    codePoint >= 0 &&
-    codePoint <= 0x10ffff &&
-    (codePoint < 0xd800 || codePoint > 0xdfff)
+    Number.isInteger(codePoint)
+    && codePoint >= 0
+    && codePoint <= 0x10ffff
+    && (codePoint < 0xd800 || codePoint > 0xdfff)
   );
 }
 
@@ -58,7 +59,7 @@ function isValidCodePoint(codePoint: number): boolean {
  * @returns {string} String with XML entities and character references decoded.
  */
 export function decodeXmlEntities(text: string): string {
-  if (!text || !text.includes('&')) {
+  if (!text || !text.includes("&")) {
     return text;
   }
 

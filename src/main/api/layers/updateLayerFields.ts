@@ -9,11 +9,11 @@
  * @see {@link projectStore}
  */
 
-import { projectStore } from '../../project/ProjectStore';
-import { broadcastProjectLayersTree } from '../../project/ProjectBroadcaster';
-import { findNode } from '../project/layerTreeOperations';
-import { Layer } from '../../project/models/Layer';
-import type { LayerFieldInfo } from '../../../shared/types';
+import { projectStore } from "../../project/ProjectStore";
+import { broadcastProjectLayersTree } from "../../project/ProjectBroadcaster";
+import { findNode } from "../project/layerTreeOperations";
+import { Layer } from "../../project/models/Layer";
+import type { LayerFieldInfo } from "../../../shared/types";
 
 /**
  * @description Updates vector field metadata schema on a layer in ProjectStore, setting Project Dirty State.
@@ -30,8 +30,8 @@ export async function updateLayerFields(
   layerId: string,
   fields: LayerFieldInfo[]
 ): Promise<boolean> {
-  if (!layerId || typeof layerId !== 'string') {
-    throw new Error('Layer ID is required.');
+  if (!layerId || typeof layerId !== "string") {
+    throw new Error("Layer ID is required.");
   }
 
   const root = projectStore.getRootGroup();

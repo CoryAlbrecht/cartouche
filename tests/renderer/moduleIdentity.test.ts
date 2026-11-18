@@ -9,11 +9,11 @@
  * @see tests/renderer/rendererJiti.ts
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import type createJiti from 'jiti';
-import { createRendererJiti, rootRelativePosix } from './rendererJiti';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import type createJiti from "jiti";
+import { createRendererJiti, rootRelativePosix } from "./rendererJiti";
 
 const moduleCache = createRequire(import.meta.url).cache;
 
@@ -23,7 +23,11 @@ const moduleCache = createRequire(import.meta.url).cache;
  * @returns {string[]} Raw cache keys.
  */
 function i18nCacheKeys(): string[] {
-  return Object.keys(moduleCache).filter((k) => /[\\/]renderer[\\/](state[\\/]i18nSignals|hooks[\\/]useTranslation)\.ts$/i.test(k));
+  return Object.keys(moduleCache).filter((k) =>
+    /[\\/]renderer[\\/](state[\\/]i18nSignals|hooks[\\/]useTranslation)\.ts$/i.test(
+      k
+    )
+  );
 }
 
 /**
@@ -41,23 +45,41 @@ function clearI18nCache(): void {
  * @param {ReturnType<typeof createJiti>} jiti - jiti instance under test.
  * @returns {{ instances: number, keys: string[] }} Distinct `i18nSignals` cache entries and all matching keys.
  */
-function loadBothWays(jiti: ReturnType<typeof createJiti>): { instances: number; keys: string[] } {
-  jiti('@renderer/state/i18nSignals');
-  jiti('@renderer/hooks/useTranslation');
+function loadBothWays(jiti: ReturnType<typeof createJiti>): {
+  instances: number;
+  keys: string[];
+} {
+  jiti("@renderer/state/i18nSignals");
+  jiti("@renderer/hooks/useTranslation");
   const keys = i18nCacheKeys();
-  return { instances: keys.filter((k) => /i18nSignals\.ts$/i.test(k)).length, keys };
+  return {
+    instances: keys.filter((k) => /i18nSignals\.ts$/i.test(k)).length,
+    keys,
+  };
 }
 
-describe('Renderer test harness module identity', () => {
-  it('resolves a module reached by @renderer alias and by relative import to a single instance', () => {
+describe("Renderer test harness module identity", () => {
+  it("resolves a module reached by @renderer alias and by relative import to a single instance", () => {
     clearI18nCache();
-    const { instances, keys } = loadBothWays(createRendererJiti(import.meta.url));
+    const { instances, keys } = loadBothWays(
+      createRendererJiti(import.meta.url)
+    );
     clearI18nCache();
-    assert.equal(instances, 1, `Expected one i18nSignals instance; module cache keys:\n  ${keys.join('\n  ')}`);
+    assert.equal(
+      instances,
+      1,
+      `Expected one i18nSignals instance; module cache keys:\n  ${keys.join("\n  ")}`
+    );
   });
 
-  it('writes alias targets as root-relative POSIX paths so jiti never reads a drive letter as a URL scheme', () => {
-    assert.equal(rootRelativePosix('D:\\a\\cartouche\\src\\renderer'), '/a/cartouche/src/renderer');
-    assert.equal(rootRelativePosix('/home/user/cartouche/src/renderer'), '/home/user/cartouche/src/renderer');
+  it("writes alias targets as root-relative POSIX paths so jiti never reads a drive letter as a URL scheme", () => {
+    assert.equal(
+      rootRelativePosix("D:\\a\\cartouche\\src\\renderer"),
+      "/a/cartouche/src/renderer"
+    );
+    assert.equal(
+      rootRelativePosix("/home/user/cartouche/src/renderer"),
+      "/home/user/cartouche/src/renderer"
+    );
   });
 });

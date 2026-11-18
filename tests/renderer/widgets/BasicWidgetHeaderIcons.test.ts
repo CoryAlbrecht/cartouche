@@ -10,13 +10,13 @@
  * @see {@link prefsUiIconSize}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 // Set React act environment flag
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -41,9 +41,12 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
   /**
    * @constructor
@@ -54,7 +57,7 @@ class MockElement {
    * @since 0.1.0-dev
    * @param {string} [tag='div'] - HTML element tag name.
    */
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -66,8 +69,8 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
@@ -83,7 +86,7 @@ class MockElement {
    */
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
   }
@@ -126,7 +129,7 @@ class MockElement {
    * @returns {any} The removed child node.
    */
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -163,7 +166,11 @@ class MockElement {
    * @param {boolean} [capture] - Whether event listener is capture phase.
    * @returns {void}
    */
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -182,7 +189,9 @@ class MockElement {
    */
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   /**
@@ -237,7 +246,14 @@ class MockElement {
    * @since 0.1.0-dev
    * @returns {{ width: number, height: number, top: number, left: number, right: number, bottom: number }} Layout bounds.
    */
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
     return { width: 160, height: 80, top: 0, left: 0, right: 160, bottom: 80 };
   }
 }
@@ -248,7 +264,10 @@ class MockElement {
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
-let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let windowListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 
 /**
  * @description Initializes mock window and document global objects for React DOM component testing.
@@ -261,8 +280,8 @@ let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boole
 function setupDom(): void {
   windowListeners = {};
 
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -283,17 +302,17 @@ function setupDom(): void {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -301,13 +320,17 @@ function setupDom(): void {
   const win = {
     innerWidth: 1024,
     innerHeight: 768,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
     removeEventListener: (type: string, cb: (e: any) => void) => {
       if (!windowListeners[type]) return;
-      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+      windowListeners[type] = windowListeners[type].filter((l) => l.cb !== cb);
     },
     dispatchEvent: (event: any) => {
       const listeners = (windowListeners[event.type] || []).slice();
@@ -319,20 +342,25 @@ function setupDom(): void {
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
 
   doc.defaultView = win;
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -368,7 +396,10 @@ function tearDownDom(): void {
  * @param {(el: MockElement) => boolean} predicate - Match predicate function.
  * @returns {MockElement[]} Array of matching elements.
  */
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -382,10 +413,14 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
 // Instantiate jiti with aliases
 const jiti = createRendererJiti(import.meta.url);
 
-const { BasicWidget } = jiti('../../../src/renderer/workbench/widgets/BasicWidget.tsx');
-const { prefsUiIconSize } = jiti('../../../src/renderer/state/preferencesSignals.ts');
+const { BasicWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/BasicWidget.tsx"
+);
+const { prefsUiIconSize } = jiti(
+  "../../../src/renderer/state/preferencesSignals.ts"
+);
 
-describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
+describe("BasicWidget Header Bar Control Icon Sizing (Ticket #53)", () => {
   beforeEach(() => {
     setupDom();
     prefsUiIconSize.value = undefined;
@@ -396,238 +431,329 @@ describe('BasicWidget Header Bar Control Icon Sizing (Ticket #53)', () => {
     prefsUiIconSize.value = undefined;
   });
 
-  it('theme.css defines --cartouche-ui-icon-size: 24px in :root fallback', () => {
-    const themeCssPath = path.resolve(process.cwd(), 'src/renderer/styles/theme.css');
-    const defaultThemeCssPath = path.resolve(process.cwd(), 'src/renderer/styles/themes/theme-default.css');
-    const content = fs.existsSync(defaultThemeCssPath)
-      ? fs.readFileSync(defaultThemeCssPath, 'utf-8')
-      : fs.readFileSync(themeCssPath, 'utf-8');
+  it("theme.css defines --cartouche-ui-icon-size: 24px in :root fallback", () => {
+    const themeCssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/theme.css"
+    );
+    const defaultThemeCssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/themes/theme-default.css"
+    );
+    const content =
+      fs.existsSync(defaultThemeCssPath) ?
+        fs.readFileSync(defaultThemeCssPath, "utf-8")
+      : fs.readFileSync(themeCssPath, "utf-8");
     assert.match(
       content,
       /--cartouche-ui-icon-size:\s*24px;/,
-      'theme.css must declare --cartouche-ui-icon-size: 24px in :root'
+      "theme.css must declare --cartouche-ui-icon-size: 24px in :root"
     );
   });
 
-  it('theme.css defines --cartouche-ui-icon-size in :root and workbench.css avoids cyclic self-reference on .workbench-container', () => {
-    const workbenchCssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+  it("theme.css defines --cartouche-ui-icon-size in :root and workbench.css avoids cyclic self-reference on .workbench-container", () => {
+    const workbenchCssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/workbench.css"
+    );
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     assert.ok(
-      !content.includes('--cartouche-ui-icon-size: var(--cartouche-ui-icon-size'),
-      'workbench.css must not cyclically redeclare --cartouche-ui-icon-size on .workbench-container'
+      !content.includes(
+        "--cartouche-ui-icon-size: var(--cartouche-ui-icon-size"
+      ),
+      "workbench.css must not cyclically redeclare --cartouche-ui-icon-size on .workbench-container"
     );
   });
 
-  it('renders header control action icons with 80% of --cartouche-ui-icon-size and aspect-ratio 1 in CSS style', async () => {
+  it("renders header control action icons with 80% of --cartouche-ui-icon-size and aspect-ratio 1 in CSS style", async () => {
     await act(async () => {
       root!.render(
         React.createElement(BasicWidget, {
-          name: 'test-widget',
-          displayName: 'Test Widget',
-          onClose: () => {}
+          name: "test-widget",
+          displayName: "Test Widget",
+          onClose: () => {},
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
-    assert.strictEqual(svgs.length, 1, 'Should render 1 header action icon (close)');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
+    assert.strictEqual(
+      svgs.length,
+      1,
+      "Should render 1 header action icon (close)"
+    );
 
     for (const svg of svgs) {
       assert.ok(
-        svg.style.width.includes('calc(') && svg.style.width.includes('--cartouche-ui-icon-size') && svg.style.width.includes('0.5'),
+        svg.style.width.includes("calc(")
+          && svg.style.width.includes("--cartouche-ui-icon-size")
+          && svg.style.width.includes("0.5"),
         `Expected svg.style.width to scale to 50% of --cartouche-ui-icon-size, got: ${svg.style.width}`
       );
-      assert.strictEqual(svg.style.aspectRatio, '1', 'Expected svg.style.aspectRatio to be 1');
+      assert.strictEqual(
+        svg.style.aspectRatio,
+        "1",
+        "Expected svg.style.aspectRatio to be 1"
+      );
     }
   });
 
-  it('Workbench source code subscribes to prefsUiIconSize to sync --cartouche-ui-icon-size', () => {
-    const workbenchTsxPath = path.resolve(process.cwd(), 'src/renderer/workbench/Workbench.tsx');
-    const content = fs.readFileSync(workbenchTsxPath, 'utf-8');
+  it("Workbench source code subscribes to prefsUiIconSize to sync --cartouche-ui-icon-size", () => {
+    const workbenchTsxPath = path.resolve(
+      process.cwd(),
+      "src/renderer/workbench/Workbench.tsx"
+    );
+    const content = fs.readFileSync(workbenchTsxPath, "utf-8");
     assert.match(
       content,
       /prefsUiIconSize/,
-      'Workbench.tsx must import and subscribe to prefsUiIconSize'
+      "Workbench.tsx must import and subscribe to prefsUiIconSize"
     );
     assert.match(
       content,
       /--cartouche-ui-icon-size/,
-      'Workbench.tsx must synchronize --cartouche-ui-icon-size to document.documentElement'
+      "Workbench.tsx must synchronize --cartouche-ui-icon-size to document.documentElement"
     );
   });
 
-  it('reactively synchronizes prefsUiIconSize signal changes to document.documentElement and cleans up on unset', () => {
-    const { effect } = jiti('@preact/signals-react');
+  it("reactively synchronizes prefsUiIconSize signal changes to document.documentElement and cleans up on unset", () => {
+    const { effect } = jiti("@preact/signals-react");
     const dispose = effect(() => {
       const iconSize = prefsUiIconSize.value;
       if (iconSize) {
         doc.documentElement.style.setProperty(
-          '--cartouche-ui-icon-size',
+          "--cartouche-ui-icon-size",
           `${iconSize}px`
         );
       } else {
-        doc.documentElement.style.removeProperty(
-          '--cartouche-ui-icon-size'
-        );
+        doc.documentElement.style.removeProperty("--cartouche-ui-icon-size");
       }
     });
 
     try {
       // 1. Initial unset: no custom property set
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '',
-        'Initial unset signal should have empty inline style (inherits CSS default)'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "",
+        "Initial unset signal should have empty inline style (inherits CSS default)"
       );
 
       // 2. Update to 30px
       prefsUiIconSize.value = 30;
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '30px',
-        'Signal update to 30 should set property to 30px'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "30px",
+        "Signal update to 30 should set property to 30px"
       );
 
       // 3. Update to 16px
       prefsUiIconSize.value = 16;
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '16px',
-        'Signal update to 16 should set property to 16px'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "16px",
+        "Signal update to 16 should set property to 16px"
       );
 
       // 4. Reset to undefined (fallback to CSS theme default)
       prefsUiIconSize.value = undefined;
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '',
-        'Resetting signal to undefined must remove property to fall back to CSS 24px default'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "",
+        "Resetting signal to undefined must remove property to fall back to CSS 24px default"
       );
     } finally {
       dispose();
     }
   });
 
-  it('renders strictly title and close button, omitting minimize/restore button from header bar', async () => {
+  it("renders strictly title and close button, omitting minimize/restore button from header bar", async () => {
     await act(async () => {
       root!.render(
         React.createElement(BasicWidget, {
-          name: 'test-widget-toggle',
-          displayName: '2-Control Widget',
-          onClose: () => {}
+          name: "test-widget-toggle",
+          displayName: "2-Control Widget",
+          onClose: () => {},
         })
       );
     });
 
-    const minimizeBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && (el.attributes.title === 'Minimize' || el.attributes.title === 'Restore'))[0];
-    assert.strictEqual(minimizeBtn, undefined, 'Minimize/restore button must not be present');
+    const minimizeBtn = findAllNodes(
+      container,
+      (el) =>
+        el.tagName === "BUTTON"
+        && (el.attributes.title === "Minimize"
+          || el.attributes.title === "Restore")
+    )[0];
+    assert.strictEqual(
+      minimizeBtn,
+      undefined,
+      "Minimize/restore button must not be present"
+    );
 
-    const closeBtn = findAllNodes(container, el => el.tagName === 'BUTTON' && el.attributes.title === 'Close')[0];
-    assert.ok(closeBtn, 'Close button must be present');
+    const closeBtn = findAllNodes(
+      container,
+      (el) => el.tagName === "BUTTON" && el.attributes.title === "Close"
+    )[0];
+    assert.ok(closeBtn, "Close button must be present");
   });
 
-  it('renders 0 header action icons when onClose is not provided and no panelApi exists', async () => {
+  it("renders 0 header action icons when onClose is not provided and no panelApi exists", async () => {
     await act(async () => {
       root!.render(
         React.createElement(BasicWidget, {
-          name: 'non-closable-widget',
-          displayName: 'Non-closable Widget'
+          name: "non-closable-widget",
+          displayName: "Non-closable Widget",
         })
       );
     });
 
-    const svgs = findAllNodes(container, el => el.tagName === 'SVG');
-    assert.strictEqual(svgs.length, 0, 'Should render 0 header icons when panel cannot close');
-    const btns = findAllNodes(container, el => el.tagName === 'BUTTON');
-    assert.strictEqual(btns.length, 0, 'Should render 0 buttons when panel cannot close');
+    const svgs = findAllNodes(container, (el) => el.tagName === "SVG");
+    assert.strictEqual(
+      svgs.length,
+      0,
+      "Should render 0 header icons when panel cannot close"
+    );
+    const btns = findAllNodes(container, (el) => el.tagName === "BUTTON");
+    assert.strictEqual(
+      btns.length,
+      0,
+      "Should render 0 buttons when panel cannot close"
+    );
   });
 
-  describe('Optional Header Icon Parameter (Ticket #173)', () => {
-    it('renders optional MDI string icon at 50% ui.icon.size to the left of the title', async () => {
-      const dummyPath = 'M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z';
+  describe("Optional Header Icon Parameter (Ticket #173)", () => {
+    it("renders optional MDI string icon at 50% ui.icon.size to the left of the title", async () => {
+      const dummyPath = "M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z";
       await act(async () => {
         root!.render(
           React.createElement(BasicWidget, {
-            name: 'icon-widget',
-            displayName: 'Icon Widget',
+            name: "icon-widget",
+            displayName: "Icon Widget",
             icon: dummyPath,
-            onClose: () => {}
+            onClose: () => {},
           })
         );
       });
 
-      const iconContainers = findAllNodes(container, el => el.className === 'basic-widget-icon');
-      assert.strictEqual(iconContainers.length, 1, 'Should render one basic-widget-icon wrapper');
-      assert.strictEqual(iconContainers[0].style.marginRight, '6px', 'Icon wrapper must have 6px right margin');
+      const iconContainers = findAllNodes(
+        container,
+        (el) => el.className === "basic-widget-icon"
+      );
+      assert.strictEqual(
+        iconContainers.length,
+        1,
+        "Should render one basic-widget-icon wrapper"
+      );
+      assert.strictEqual(
+        iconContainers[0].style.marginRight,
+        "6px",
+        "Icon wrapper must have 6px right margin"
+      );
 
-      const svgs = findAllNodes(iconContainers[0], el => el.tagName === 'SVG');
-      assert.strictEqual(svgs.length, 1, 'Should render an SVG icon within the icon wrapper');
+      const svgs = findAllNodes(
+        iconContainers[0],
+        (el) => el.tagName === "SVG"
+      );
+      assert.strictEqual(
+        svgs.length,
+        1,
+        "Should render an SVG icon within the icon wrapper"
+      );
       assert.ok(
-        svgs[0].style.width.includes('calc(')
-          && svgs[0].style.width.includes('--cartouche-ui-icon-size')
-          && svgs[0].style.width.includes('0.5'),
+        svgs[0].style.width.includes("calc(")
+          && svgs[0].style.width.includes("--cartouche-ui-icon-size")
+          && svgs[0].style.width.includes("0.5"),
         `Expected header icon width to scale to 50% of --cartouche-ui-icon-size, got: ${svgs[0].style.width}`
       );
     });
 
-    it('renders custom React.ReactNode icon directly to the left of the title', async () => {
+    it("renders custom React.ReactNode icon directly to the left of the title", async () => {
       await act(async () => {
         root!.render(
           React.createElement(BasicWidget, {
-            name: 'custom-node-widget',
-            displayName: 'Custom Node Widget',
-            icon: React.createElement('span', { className: 'custom-rendered-icon' }, '★')
+            name: "custom-node-widget",
+            displayName: "Custom Node Widget",
+            icon: React.createElement(
+              "span",
+              { className: "custom-rendered-icon" },
+              "★"
+            ),
           })
         );
       });
 
-      const iconContainers = findAllNodes(container, el => el.className === 'basic-widget-icon');
-      assert.strictEqual(iconContainers.length, 1, 'Should render icon container');
-      const customElements = findAllNodes(container, el => el.className === 'custom-rendered-icon');
-      assert.strictEqual(customElements.length, 1, 'Custom ReactNode should be rendered');
+      const iconContainers = findAllNodes(
+        container,
+        (el) => el.className === "basic-widget-icon"
+      );
+      assert.strictEqual(
+        iconContainers.length,
+        1,
+        "Should render icon container"
+      );
+      const customElements = findAllNodes(
+        container,
+        (el) => el.className === "custom-rendered-icon"
+      );
+      assert.strictEqual(
+        customElements.length,
+        1,
+        "Custom ReactNode should be rendered"
+      );
     });
 
-    it('omits basic-widget-icon container when icon is unset/omitted', async () => {
+    it("omits basic-widget-icon container when icon is unset/omitted", async () => {
       await act(async () => {
         root!.render(
           React.createElement(BasicWidget, {
-            name: 'plain-widget',
-            displayName: 'Plain Widget'
+            name: "plain-widget",
+            displayName: "Plain Widget",
           })
         );
       });
 
-      const iconContainers = findAllNodes(container, el => el.className === 'basic-widget-icon');
-      assert.strictEqual(iconContainers.length, 0, 'No basic-widget-icon container should be rendered when icon is omitted');
+      const iconContainers = findAllNodes(
+        container,
+        (el) => el.className === "basic-widget-icon"
+      );
+      assert.strictEqual(
+        iconContainers.length,
+        0,
+        "No basic-widget-icon container should be rendered when icon is omitted"
+      );
     });
 
-    it('factors header icon into minimum width floor calculation', async () => {
+    it("factors header icon into minimum width floor calculation", async () => {
       let plainWidth = 0;
       let iconWidth = 0;
 
       await act(async () => {
         root!.render(
           React.createElement(BasicWidget, {
-            name: 'widget-no-icon',
-            displayName: 'No Icon',
-            minWidth: 10
+            name: "widget-no-icon",
+            displayName: "No Icon",
+            minWidth: 10,
           })
         );
       });
-      const plainWidgetEl = findAllNodes(container, el => el.className.includes('widget-no-icon'))[0];
+      const plainWidgetEl = findAllNodes(container, (el) =>
+        el.className.includes("widget-no-icon")
+      )[0];
       plainWidth = parseInt(plainWidgetEl.style.minWidth, 10);
 
       await act(async () => {
         root!.render(
           React.createElement(BasicWidget, {
-            name: 'widget-with-icon',
-            displayName: 'With Icon',
-            icon: 'M0,0H10V10H0Z',
-            minWidth: 10
+            name: "widget-with-icon",
+            displayName: "With Icon",
+            icon: "M0,0H10V10H0Z",
+            minWidth: 10,
           })
         );
       });
-      const iconWidgetEl = findAllNodes(container, el => el.className.includes('widget-with-icon'))[0];
+      const iconWidgetEl = findAllNodes(container, (el) =>
+        el.className.includes("widget-with-icon")
+      )[0];
       iconWidth = parseInt(iconWidgetEl.style.minWidth, 10);
 
       // Icon size at default (24px) is 12px + 6px margin = 18px difference

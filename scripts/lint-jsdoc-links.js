@@ -8,10 +8,10 @@
  * @since 0.1.0-dev
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { formatBlockerText } from './terminal-style.js';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import { formatBlockerText } from "./terminal-style.js";
 
 /**
  * Regular expression matching invalid JSDoc {@link ...} constructs that reference filesystem paths or document extensions.
@@ -26,7 +26,15 @@ export const INVALID_LINK_REGEX = /\{@link\s+([^}]+)\}/g;
  *
  * @type {readonly string[]}
  */
-export const SCANNED_EXTENSIONS = Object.freeze(['.ts', '.tsx', '.js', '.jsx', '.cjs', '.mjs', '.d.ts']);
+export const SCANNED_EXTENSIONS = Object.freeze([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".cjs",
+  ".mjs",
+  ".d.ts",
+]);
 
 /**
  * Directories excluded from JSDoc link scanning.
@@ -34,12 +42,12 @@ export const SCANNED_EXTENSIONS = Object.freeze(['.ts', '.tsx', '.js', '.jsx', '
  * @type {readonly string[]}
  */
 export const EXCLUDED_DIRS = Object.freeze([
-  'node_modules',
-  'dist',
-  'dist-electron',
-  'release',
-  '.git',
-  '.agents'
+  "node_modules",
+  "dist",
+  "dist-electron",
+  "release",
+  ".git",
+  ".agents",
 ]);
 
 /**
@@ -65,10 +73,12 @@ export const EXCLUDED_DIRS = Object.freeze([
  */
 export function isFilePathTarget(target) {
   const trimmed = target.trim();
-  if (trimmed.includes('/') || trimmed.includes('\\')) {
+  if (trimmed.includes("/") || trimmed.includes("\\")) {
     return true;
   }
-  return /\.(?:md|markdown|txt|json|xml|html|png|svg|ts|tsx|js|jsx|css)$/i.test(trimmed);
+  return /\.(?:md|markdown|txt|json|xml|html|png|svg|ts|tsx|js|jsx|css)$/i.test(
+    trimmed
+  );
 }
 
 /**
@@ -86,15 +96,15 @@ export function isFilePathTarget(target) {
  */
 export function checkJsdocLinks(filePath, content) {
   const violations = [];
-  const lines = content.split('\n');
+  const lines = content.split("\n");
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
-    if (!line.includes('{@link')) {
+    if (!line.includes("{@link")) {
       continue;
     }
 
-    const regex = new RegExp(INVALID_LINK_REGEX.source, 'g');
+    const regex = new RegExp(INVALID_LINK_REGEX.source, "g");
     let match;
     while ((match = regex.exec(line)) !== null) {
       const target = match[1].trim();
@@ -104,7 +114,7 @@ export function checkJsdocLinks(filePath, content) {
           lineNumber: lineIndex + 1,
           rawTag: match[0],
           target,
-          message: `JSDoc {@link ${target}} references a file path. {@link} must only reference code symbols; use plain text or markdown links instead.`
+          message: `JSDoc {@link ${target}} references a file path. {@link} must only reference code symbols; use plain text or markdown links instead.`,
         });
       }
     }
@@ -141,7 +151,7 @@ export function collectFiles(dir) {
       results.push(...collectFiles(fullPath));
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name);
-      if (SCANNED_EXTENSIONS.includes(ext) || entry.name.endsWith('.d.ts')) {
+      if (SCANNED_EXTENSIONS.includes(ext) || entry.name.endsWith(".d.ts")) {
         results.push(fullPath);
       }
     }
@@ -164,19 +174,22 @@ export function collectFiles(dir) {
  * @returns {{ violations: JsdocLinkViolation[], totalFiles: number }} Linter results.
  */
 export function runJsdocLinkLinter(options = {}) {
-  const rootDir = options.rootDir || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const files = options.files && options.files.length > 0
-    ? options.files
+  const rootDir =
+    options.rootDir
+    || path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const files =
+    options.files && options.files.length > 0 ?
+      options.files
     : [
-        ...collectFiles(path.join(rootDir, 'src')),
-        ...collectFiles(path.join(rootDir, 'tests')),
-        ...collectFiles(path.join(rootDir, 'scripts'))
+        ...collectFiles(path.join(rootDir, "src")),
+        ...collectFiles(path.join(rootDir, "tests")),
+        ...collectFiles(path.join(rootDir, "scripts")),
       ];
 
   const allViolations = [];
   for (const file of files) {
     try {
-      const content = fs.readFileSync(file, 'utf8');
+      const content = fs.readFileSync(file, "utf8");
       const violations = checkJsdocLinks(file, content);
       allViolations.push(...violations);
     } catch {
@@ -184,14 +197,13 @@ export function runJsdocLinkLinter(options = {}) {
     }
   }
 
-  return {
-    violations: allViolations,
-    totalFiles: files.length
-  };
+  return { violations: allViolations, totalFiles: files.length };
 }
 
 // CLI entry point
-const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const isDirectExecution =
+  process.argv[1]
+  && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isDirectExecution) {
   const result = runJsdocLinkLinter();
   if (result.violations.length > 0) {
@@ -203,12 +215,14 @@ if (isDirectExecution) {
       console.error(`  ${v.filePath}:${v.lineNumber}: ${v.message}`);
     }
     const fixNotice = formatBlockerText(
-      'FIX: REPLACE {@LINK PATH/TO/FILE} WITH PLAIN TEXT OR STANDARD MARKDOWN LINKS [TEXT](PATH).'
+      "FIX: REPLACE {@LINK PATH/TO/FILE} WITH PLAIN TEXT OR STANDARD MARKDOWN LINKS [TEXT](PATH)."
     );
     console.error(`\n${fixNotice}\n`);
     process.exit(1);
   } else {
-    console.log(`[lint:jsdoc] All JSDoc link symbols verified (${result.totalFiles} files scanned, 0 errors).`);
+    console.log(
+      `[lint:jsdoc] All JSDoc link symbols verified (${result.totalFiles} files scanned, 0 errors).`
+    );
     process.exit(0);
   }
 }

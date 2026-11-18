@@ -9,11 +9,11 @@
  * @see {@link buildCrsInfo}
  */
 
-import gdal from 'gdal-async';
-import { buildCrsInfo, createProjDbLookup, type CrsDbLookup } from './crsInfo';
-import { resolveBundledProjDbPath } from './CrsCatalogue';
-import type { CrsInfo } from '../../shared/types/crs';
-import { logging } from '../../shared/logging';
+import gdal from "gdal-async";
+import { buildCrsInfo, createProjDbLookup, type CrsDbLookup } from "./crsInfo";
+import { resolveBundledProjDbPath } from "./CrsCatalogue";
+import type { CrsInfo } from "../../shared/types/crs";
+import { logging } from "../../shared/logging";
 
 let lookup: CrsDbLookup | null = null;
 
@@ -33,12 +33,18 @@ export function getCrsInfo(authId: string): CrsInfo | null {
   try {
     const srs = gdal.SpatialReference.fromUserInput(authId);
     if (!lookup) {
-      const req: NodeJS.Require | undefined = typeof require !== 'undefined' ? require : undefined;
-      lookup = createProjDbLookup(resolveBundledProjDbPath(req ? req.resolve('gdal-async') : ''));
+      const req: NodeJS.Require | undefined =
+        typeof require !== "undefined" ? require : undefined;
+      lookup = createProjDbLookup(
+        resolveBundledProjDbPath(req ? req.resolve("gdal-async") : "")
+      );
     }
     return buildCrsInfo(authId, srs, lookup(authId));
   } catch (err) {
-    logging.warn('Failed to build CRS info', err, { scope: 'getCrsInfo', authId });
+    logging.warn("Failed to build CRS info", err, {
+      scope: "getCrsInfo",
+      authId,
+    });
     return null;
   }
 }

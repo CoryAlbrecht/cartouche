@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import { logging } from '../../../shared/logging';
+import { logging } from "../../../shared/logging";
 
 /**
  * @description Re-applies the last undone operation from the edit command history stack.
@@ -28,5 +28,5 @@ import { logging } from '../../../shared/logging';
  * @returns {void}
  */
 export default function redoAction(): void {
-  logging.debug('Redo action executed', { scope: 'redoAction' });
+  logging.debug("Redo action executed", { scope: "redoAction" });
 }

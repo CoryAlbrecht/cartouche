@@ -17,5 +17,8 @@ export interface CdpSession {
 }
 
 export function cdpPort(): string;
-export function takeTargetArg(argv: string[]): { target: string | undefined; rest: string[] };
+export function takeTargetArg(argv: string[]): {
+  target: string | undefined;
+  rest: string[];
+};
 export function connectRenderer(target?: string): Promise<CdpSession>;

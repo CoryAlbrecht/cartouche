@@ -9,19 +9,19 @@
  * @see {@link SplitToolButton}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { SplitToolButton } = jiti('@renderer/components/common/SplitToolButton');
-const { registeredActionsSignal } = jiti('@renderer/state/actionSignals');
-const { dictionarySignal } = jiti('@renderer/state/i18nSignals');
+const { SplitToolButton } = jiti("@renderer/components/common/SplitToolButton");
+const { registeredActionsSignal } = jiti("@renderer/state/actionSignals");
+const { dictionarySignal } = jiti("@renderer/state/i18nSignals");
 
 /**
  * @class MockElement
@@ -44,50 +44,53 @@ class MockElement {
     getPropertyValue: (name: string) => string;
     cssText: string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
   disabled = false;
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
-    const styleObj: Record<string, string> = { cssText: '' };
+    const styleObj: Record<string, string> = { cssText: "" };
     this.style = Object.assign(styleObj, {
-      cssText: '',
+      cssText: "",
       setProperty: (name: string, val: string) => {
         styleObj[name] = val;
       },
       removeProperty: (name: string) => {
         delete styleObj[name];
       },
-      getPropertyValue: (name: string) => styleObj[name] || ''
+      getPropertyValue: (name: string) => styleObj[name] || "",
     });
   }
 
   setAttribute(key: string, val: string): void {
     this.attributes[key] = String(val);
-    if (key === 'class') {
+    if (key === "class") {
       this.className = String(val);
     }
-    if (key === 'disabled') {
+    if (key === "disabled") {
       this.disabled = true;
     }
   }
 
   getAttribute(key: string): string | null {
-    if (key === 'disabled' && this.disabled) return '';
+    if (key === "disabled" && this.disabled) return "";
     return this.attributes[key] ?? null;
   }
 
   hasAttribute(key: string): boolean {
-    if (key === 'disabled') return this.disabled;
+    if (key === "disabled") return this.disabled;
     return key in this.attributes;
   }
 
   removeAttribute(key: string): void {
     delete this.attributes[key];
-    if (key === 'disabled') {
+    if (key === "disabled") {
       this.disabled = false;
     }
   }
@@ -99,7 +102,7 @@ class MockElement {
   }
 
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -116,14 +119,16 @@ class MockElement {
   }
 
   addEventListener(type: string, cb: (e: any) => void, opts?: any): void {
-    const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+    const capture = typeof opts === "boolean" ? opts : Boolean(opts?.capture);
     if (!this.eventListeners[type]) this.eventListeners[type] = [];
     this.eventListeners[type].push({ cb, capture });
   }
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -153,7 +158,7 @@ class MockElement {
       width: 40,
       height: 30,
       x: 100,
-      y: 50
+      y: 50,
     };
   }
 
@@ -168,10 +173,14 @@ class MockElement {
   get textContent(): string {
     if (this.childNodes.length > 0) {
       return this.childNodes
-        .map(c => (c.nodeType === 3 ? (c.nodeValue || c.textContent || '') : (c.textContent || '')))
-        .join('');
+        .map((c) =>
+          c.nodeType === 3 ?
+            c.nodeValue || c.textContent || ""
+          : c.textContent || ""
+        )
+        .join("");
     }
-    return (this as any)._textContent || '';
+    return (this as any)._textContent || "";
   }
 
   set textContent(val: string) {
@@ -190,7 +199,10 @@ class MockElement {
  * @param {(el: MockElement) => boolean} predicate - Search predicate.
  * @returns {MockElement[]} Array of matching elements.
  */
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -202,7 +214,10 @@ function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boo
 }
 
 let doc: any;
-let docListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let docListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 let container: MockElement;
 let root: Root | null = null;
 
@@ -217,8 +232,8 @@ let root: Root | null = null;
  */
 function setupDom(): void {
   docListeners = {};
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -240,22 +255,22 @@ function setupDom(): void {
       nodeValue: text,
       textContent: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: (type: string, cb: (e: any) => void, opts?: any) => {
-      const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture);
+      const capture = typeof opts === "boolean" ? opts : Boolean(opts?.capture);
       if (!docListeners[type]) docListeners[type] = [];
       docListeners[type].push({ cb, capture });
     },
     removeEventListener: (type: string, cb: (e: any) => void) => {
       if (docListeners[type]) {
-        docListeners[type] = docListeners[type].filter(l => l.cb !== cb);
+        docListeners[type] = docListeners[type].filter((l) => l.cb !== cb);
       }
     },
     dispatchEvent: (event: any) => {
@@ -267,7 +282,7 @@ function setupDom(): void {
       }
       return !event.defaultPrevented;
     },
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -279,14 +294,11 @@ function setupDom(): void {
     innerHeight: 768,
     addEventListener: () => {},
     removeEventListener: () => {},
-    getComputedStyle: () => ({ getPropertyValue: () => '' }),
+    getComputedStyle: () => ({ getPropertyValue: () => "" }),
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
     Element: MockElement,
-    electronAPI: {
-      getActions: async () => [],
-      executeAction: () => {}
-    }
+    electronAPI: { getActions: async () => [], executeAction: () => {} },
   };
 
   doc.defaultView = win;
@@ -294,43 +306,43 @@ function setupDom(): void {
   (globalThis as any).document = doc;
 }
 
-describe('SplitToolButton component', () => {
+describe("SplitToolButton component", () => {
   beforeEach(() => {
     setupDom();
-    container = doc.createElement('div');
+    container = doc.createElement("div");
     doc.body.appendChild(container);
     root = createRoot(container as any);
 
     // Mock i18n dictionary
     dictionarySignal.value = {
-      select_feature: 'Select Feature',
-      select_features_by_drag: 'Select Features by Drag',
-      select_features_by_freehand: 'Select Features by Freehand'
+      select_feature: "Select Feature",
+      select_features_by_drag: "Select Features by Drag",
+      select_features_by_freehand: "Select Features by Freehand",
     };
 
     // Mock registered actions
     registeredActionsSignal.value = [
       {
-        name: 'select_feature',
-        description: 'Select Feature',
-        icon: 'M-SELECT-PATH',
-        formattedKey: 'Q',
-        keyCombination: { key: 'q' }
+        name: "select_feature",
+        description: "Select Feature",
+        icon: "M-SELECT-PATH",
+        formattedKey: "Q",
+        keyCombination: { key: "q" },
       },
       {
-        name: 'select_features_by_drag',
-        description: 'Select Features by Drag',
-        icon: 'M-DRAG-PATH',
-        formattedKey: 'Shift+Q',
-        keyCombination: { key: 'q', shift: true }
+        name: "select_features_by_drag",
+        description: "Select Features by Drag",
+        icon: "M-DRAG-PATH",
+        formattedKey: "Shift+Q",
+        keyCombination: { key: "q", shift: true },
       },
       {
-        name: 'select_features_by_freehand',
-        description: 'Select Features by Freehand',
-        icon: 'M-FREEHAND-PATH',
-        formattedKey: 'Alt+Q',
-        keyCombination: { key: 'q', alt: true }
-      }
+        name: "select_features_by_freehand",
+        description: "Select Features by Freehand",
+        icon: "M-FREEHAND-PATH",
+        formattedKey: "Alt+Q",
+        keyCombination: { key: "q", alt: true },
+      },
     ];
   });
 
@@ -343,211 +355,300 @@ describe('SplitToolButton component', () => {
     }
   });
 
-  it('renders a primary button displaying the active action icon and tooltip, alongside attached chevron button', async () => {
+  it("renders a primary button displaying the active action icon and tooltip, alongside attached chevron button", async () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature', 'select_features_by_drag', 'select_features_by_freehand']
+          activeAction: "select_feature",
+          options: [
+            "select_feature",
+            "select_features_by_drag",
+            "select_features_by_freehand",
+          ],
         })
       );
     });
 
-    const buttons = findAllNodes(container, (n) => n.tagName === 'BUTTON');
-    assert.equal(buttons.length, 2, 'Should render exactly two buttons: primary and chevron');
+    const buttons = findAllNodes(container, (n) => n.tagName === "BUTTON");
+    assert.equal(
+      buttons.length,
+      2,
+      "Should render exactly two buttons: primary and chevron"
+    );
 
     const primaryBtn = buttons[0];
     const chevronBtn = buttons[1];
 
-    assert.ok(primaryBtn.className.includes('split-tool-primary'), 'First button should be primary segment');
-    assert.ok(chevronBtn.className.includes('split-tool-chevron'), 'Second button should be chevron segment');
+    assert.ok(
+      primaryBtn.className.includes("split-tool-primary"),
+      "First button should be primary segment"
+    );
+    assert.ok(
+      chevronBtn.className.includes("split-tool-chevron"),
+      "Second button should be chevron segment"
+    );
 
     // Title should format with localized name and key combination
-    const title = primaryBtn.getAttribute('title');
-    assert.equal(title, 'Select Feature (Q)');
+    const title = primaryBtn.getAttribute("title");
+    assert.equal(title, "Select Feature (Q)");
 
     // Primary button should render the active action icon
-    const svgs = findAllNodes(primaryBtn, (n) => n.tagName === 'SVG');
-    assert.ok(svgs.length > 0, 'Primary button should render an icon');
+    const svgs = findAllNodes(primaryBtn, (n) => n.tagName === "SVG");
+    assert.ok(svgs.length > 0, "Primary button should render an icon");
   });
 
-  it('clicking the primary button executes the active action via onExecute', async () => {
+  it("clicking the primary button executes the active action via onExecute", async () => {
     let executedAction: string | null = null;
 
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature', 'select_features_by_drag', 'select_features_by_freehand'],
+          activeAction: "select_feature",
+          options: [
+            "select_feature",
+            "select_features_by_drag",
+            "select_features_by_freehand",
+          ],
           onExecute: (action: string) => {
             executedAction = action;
-          }
+          },
         })
       );
     });
 
-    const primaryBtn = findAllNodes(container, (n) => n.className.includes('split-tool-primary'))[0];
-    assert.ok(primaryBtn, 'Primary button must exist');
+    const primaryBtn = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-primary")
+    )[0];
+    assert.ok(primaryBtn, "Primary button must exist");
 
     await act(async () => {
       primaryBtn.dispatchEvent({
-        type: 'click',
+        type: "click",
         bubbles: true,
         stopPropagation: () => {},
-        preventDefault: () => {}
+        preventDefault: () => {},
       });
     });
 
-    assert.equal(executedAction, 'select_feature', 'Clicking primary should execute select_feature');
+    assert.equal(
+      executedAction,
+      "select_feature",
+      "Clicking primary should execute select_feature"
+    );
   });
 
-  it('clicking the chevron opens modeless PopupMenu listing alternative actions with icons, localized titles, and formatted key combinations', async () => {
+  it("clicking the chevron opens modeless PopupMenu listing alternative actions with icons, localized titles, and formatted key combinations", async () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature', 'select_features_by_drag', 'select_features_by_freehand']
+          activeAction: "select_feature",
+          options: [
+            "select_feature",
+            "select_features_by_drag",
+            "select_features_by_freehand",
+          ],
         })
       );
     });
 
-    const chevronBtn = findAllNodes(container, (n) => n.className.includes('split-tool-chevron'))[0];
-    assert.ok(chevronBtn, 'Chevron button must exist');
+    const chevronBtn = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-chevron")
+    )[0];
+    assert.ok(chevronBtn, "Chevron button must exist");
 
     // Click chevron to toggle PopupMenu open
     await act(async () => {
       chevronBtn.dispatchEvent({
-        type: 'click',
+        type: "click",
         bubbles: true,
         clientX: 120,
         clientY: 65,
         stopPropagation: () => {},
-        preventDefault: () => {}
+        preventDefault: () => {},
       });
     });
 
     // Modeless PopupMenu renders in document.body via React portal
-    const popupMenu = findAllNodes(doc.body, (n) => n.className.includes('popup-menu'))[0];
-    assert.ok(popupMenu, 'PopupMenu should be open and rendered in document.body');
+    const popupMenu = findAllNodes(doc.body, (n) =>
+      n.className.includes("popup-menu")
+    )[0];
+    assert.ok(
+      popupMenu,
+      "PopupMenu should be open and rendered in document.body"
+    );
 
-    const menuItems = findAllNodes(popupMenu, (n) => n.className.includes('menu-dropdown-item'));
-    assert.equal(menuItems.length, 3, 'PopupMenu should display all 3 options');
+    const menuItems = findAllNodes(popupMenu, (n) =>
+      n.className.includes("menu-dropdown-item")
+    );
+    assert.equal(menuItems.length, 3, "PopupMenu should display all 3 options");
 
     // Verify labels, formatted key slots, and icons in menu items
     const dragItem = menuItems[1];
-    const dragLabel = findAllNodes(dragItem, (n) => n.className.includes('menu-item-label'))[0];
-    assert.equal(dragLabel.textContent, 'Select Features by Drag');
+    const dragLabel = findAllNodes(dragItem, (n) =>
+      n.className.includes("menu-item-label")
+    )[0];
+    assert.equal(dragLabel.textContent, "Select Features by Drag");
 
-    const dragKeySlot = findAllNodes(dragItem, (n) => n.className.includes('menu-key-slot'))[0];
-    assert.equal(dragKeySlot?.textContent, 'Shift+Q');
+    const dragKeySlot = findAllNodes(dragItem, (n) =>
+      n.className.includes("menu-key-slot")
+    )[0];
+    assert.equal(dragKeySlot?.textContent, "Shift+Q");
 
-    const dragIcon = findAllNodes(dragItem, (n) => n.className.includes('menu-item-icon-slot'))[0];
-    assert.ok(dragIcon, 'Menu item must have an icon slot');
+    const dragIcon = findAllNodes(dragItem, (n) =>
+      n.className.includes("menu-item-icon-slot")
+    )[0];
+    assert.ok(dragIcon, "Menu item must have an icon slot");
   });
 
-  it('selecting an option from PopupMenu updates primary button icon/label and immediately dispatches that action', async () => {
+  it("selecting an option from PopupMenu updates primary button icon/label and immediately dispatches that action", async () => {
     let selectedAction: string | null = null;
     let executedAction: string | null = null;
 
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature', 'select_features_by_drag', 'select_features_by_freehand'],
+          activeAction: "select_feature",
+          options: [
+            "select_feature",
+            "select_features_by_drag",
+            "select_features_by_freehand",
+          ],
           onSelect: (action: string) => {
             selectedAction = action;
           },
           onExecute: (action: string) => {
             executedAction = action;
-          }
+          },
         })
       );
     });
 
-    const chevronBtn = findAllNodes(container, (n) => n.className.includes('split-tool-chevron'))[0];
+    const chevronBtn = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-chevron")
+    )[0];
     await act(async () => {
       chevronBtn.dispatchEvent({
-        type: 'click',
+        type: "click",
         bubbles: true,
         clientX: 120,
         clientY: 65,
         stopPropagation: () => {},
-        preventDefault: () => {}
+        preventDefault: () => {},
       });
     });
 
-    const popupMenu = findAllNodes(doc.body, (n) => n.className.includes('popup-menu'))[0];
-    assert.ok(popupMenu, 'PopupMenu should be rendered');
+    const popupMenu = findAllNodes(doc.body, (n) =>
+      n.className.includes("popup-menu")
+    )[0];
+    assert.ok(popupMenu, "PopupMenu should be rendered");
 
-    const menuItems = findAllNodes(popupMenu, (n) => n.className.includes('menu-dropdown-item'));
+    const menuItems = findAllNodes(popupMenu, (n) =>
+      n.className.includes("menu-dropdown-item")
+    );
     const freehandItem = menuItems[2];
 
     await act(async () => {
       freehandItem.dispatchEvent({
-        type: 'click',
+        type: "click",
         bubbles: true,
         stopPropagation: () => {},
-        preventDefault: () => {}
+        preventDefault: () => {},
       });
     });
 
-    assert.equal(selectedAction, 'select_features_by_freehand', 'onSelect should receive selected option');
-    assert.equal(executedAction, 'select_features_by_freehand', 'onExecute should immediately dispatch selected action');
+    assert.equal(
+      selectedAction,
+      "select_features_by_freehand",
+      "onSelect should receive selected option"
+    );
+    assert.equal(
+      executedAction,
+      "select_features_by_freehand",
+      "onExecute should immediately dispatch selected action"
+    );
 
     // Primary button should now reflect the newly selected action
-    const primaryBtn = findAllNodes(container, (n) => n.className.includes('split-tool-primary'))[0];
-    assert.equal(primaryBtn.getAttribute('title'), 'Select Features by Freehand (Alt+Q)');
+    const primaryBtn = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-primary")
+    )[0];
+    assert.equal(
+      primaryBtn.getAttribute("title"),
+      "Select Features by Freehand (Alt+Q)"
+    );
 
     // Menu should be closed
-    const closedMenu = findAllNodes(doc.body, (n) => n.className.includes('popup-menu'))[0];
-    assert.equal(closedMenu, undefined, 'PopupMenu should be closed after selection');
+    const closedMenu = findAllNodes(doc.body, (n) =>
+      n.className.includes("popup-menu")
+    )[0];
+    assert.equal(
+      closedMenu,
+      undefined,
+      "PopupMenu should be closed after selection"
+    );
   });
 
-  it('supports horizontal (top/bottom) and vertical (left/right) dock zone orientations', async () => {
+  it("supports horizontal (top/bottom) and vertical (left/right) dock zone orientations", async () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature'],
-          zone: 'top'
+          activeAction: "select_feature",
+          options: ["select_feature"],
+          zone: "top",
         })
       );
     });
 
-    let wrapper = findAllNodes(container, (n) => n.className.includes('split-tool-button'))[0];
-    assert.ok(wrapper.className.includes('horizontal'), 'zone="top" should have horizontal class');
+    let wrapper = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-button")
+    )[0];
+    assert.ok(
+      wrapper.className.includes("horizontal"),
+      'zone="top" should have horizontal class'
+    );
 
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature'],
-          zone: 'left'
+          activeAction: "select_feature",
+          options: ["select_feature"],
+          zone: "left",
         })
       );
     });
 
-    wrapper = findAllNodes(container, (n) => n.className.includes('split-tool-button'))[0];
-    assert.ok(wrapper.className.includes('vertical'), 'zone="left" should have vertical class');
+    wrapper = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-button")
+    )[0];
+    assert.ok(
+      wrapper.className.includes("vertical"),
+      'zone="left" should have vertical class'
+    );
   });
 
-  it('respects disabled and active props', async () => {
+  it("respects disabled and active props", async () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: 'select_feature',
-          options: ['select_feature'],
+          activeAction: "select_feature",
+          options: ["select_feature"],
           disabled: true,
-          active: true
+          active: true,
         })
       );
     });
 
-    const primaryBtn = findAllNodes(container, (n) => n.className.includes('split-tool-primary'))[0];
-    const chevronBtn = findAllNodes(container, (n) => n.className.includes('split-tool-chevron'))[0];
+    const primaryBtn = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-primary")
+    )[0];
+    const chevronBtn = findAllNodes(container, (n) =>
+      n.className.includes("split-tool-chevron")
+    )[0];
 
-    assert.ok(primaryBtn.disabled, 'Primary button should be disabled');
-    assert.ok(chevronBtn.disabled, 'Chevron button should be disabled');
-    assert.ok(primaryBtn.className.includes('active'), 'Primary button should have active class');
+    assert.ok(primaryBtn.disabled, "Primary button should be disabled");
+    assert.ok(chevronBtn.disabled, "Chevron button should be disabled");
+    assert.ok(
+      primaryBtn.className.includes("active"),
+      "Primary button should have active class"
+    );
   });
 });

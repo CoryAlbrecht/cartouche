@@ -65,7 +65,11 @@ export const PREDEFINED_CRS_VISIBLE_ROWS = 10;
  * @since 0.1.0-dev
  * @type {React.CSSProperties}
  */
-const SECTION_STYLE: React.CSSProperties = { display: "flex", flexDirection: "column", gap: "0.25rem" };
+const SECTION_STYLE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.25rem",
+};
 
 /**
  * Shared section label style.
@@ -93,7 +97,14 @@ const SECTION_LABEL_STYLE: React.CSSProperties = {
  * @returns {CrsCatalogueEntry} Entry.
  */
 function entryFor(authId: string, fallbackName?: string): CrsCatalogueEntry {
-  return findCrsCatalogueEntry(authId) ?? { authId, name: fallbackName ?? authId, type: "projected", deprecated: false };
+  return (
+    findCrsCatalogueEntry(authId) ?? {
+      authId,
+      name: fallbackName ?? authId,
+      type: "projected",
+      deprecated: false,
+    }
+  );
 }
 
 /**
@@ -118,7 +129,10 @@ export interface SelectableListBox {
  * @param {string} selected - Selected CRS (`AUTH:code`), empty when none.
  * @returns {void}
  */
-export function clearUnmatchedListSelection(list: SelectableListBox | null, selected: string): void {
+export function clearUnmatchedListSelection(
+  list: SelectableListBox | null,
+  selected: string
+): void {
   if (list && list.value !== selected) {
     list.selectedIndex = -1;
   }
@@ -165,15 +179,28 @@ export const ProjectCrsTab: React.FC = () => {
   }, [infoKey, selected]);
 
   const recentEntries = draft.recentCrs
-    .map((id) => entryFor(id, committedCrs?.authId === id ? committedCrs?.description : undefined))
+    .map((id) =>
+      entryFor(
+        id,
+        committedCrs?.authId === id ? committedCrs?.description : undefined
+      )
+    )
     .filter((e) => crsEntryMatchesFilter(e, filter));
 
   const alwaysShow = useMemo(
-    () => [...(committedCrs?.authId && !committedCrs.none ? [committedCrs.authId] : []), ...draft.recentCrs],
+    () => [
+      ...(committedCrs?.authId && !committedCrs.none ?
+        [committedCrs.authId]
+      : []),
+      ...draft.recentCrs,
+    ],
     [committedCrs, draft.recentCrs]
   );
   const predefinedEntries = useMemo(
-    () => listCrsChooserEntries(alwaysShow).filter((e) => crsEntryMatchesFilter(e, filter)),
+    () =>
+      listCrsChooserEntries(alwaysShow).filter((e) =>
+        crsEntryMatchesFilter(e, filter)
+      ),
     // catalogue / preference changes are tracked through the signals read above
     // oxlint-disable-next-line react-hooks/exhaustive-deps
     [catalogue, hideDeprecated, alwaysShow, filter]
@@ -183,12 +210,20 @@ export const ProjectCrsTab: React.FC = () => {
     <div
       className='project-properties-tab-pane crs'
       style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          fontSize: "0.875rem",
+        }}>
         <input
           type='checkbox'
           id='project-prop-crs-none'
           checked={draft.crsNone}
-          onChange={(e) => updateProjectPropertiesDraft({ crsNone: e.target.checked })}
+          onChange={(e) =>
+            updateProjectPropertiesDraft({ crsNone: e.target.checked })
+          }
         />
         {t("project_properties_crs_none")}
       </label>
@@ -220,8 +255,12 @@ export const ProjectCrsTab: React.FC = () => {
           className='project-prop-crs-list project-prop-crs-recent'
           size={RECENT_CRS_VISIBLE_ROWS}
           disabled={disabled}
-          value={recentEntries.some((e) => e.authId === selected) ? selected : ""}
-          onChange={(e) => e.target.value && selectDraftCrs(e.target.value, "recent")}>
+          value={
+            recentEntries.some((e) => e.authId === selected) ? selected : ""
+          }
+          onChange={(e) =>
+            e.target.value && selectDraftCrs(e.target.value, "recent")
+          }>
           {recentEntries.map((entry) => (
             <option key={entry.authId} value={entry.authId}>
               {formatCrsEntryLabel(entry)}
@@ -231,7 +270,9 @@ export const ProjectCrsTab: React.FC = () => {
       </div>
 
       <div style={SECTION_STYLE}>
-        <label htmlFor='project-prop-crs-predefined' style={SECTION_LABEL_STYLE}>
+        <label
+          htmlFor='project-prop-crs-predefined'
+          style={SECTION_LABEL_STYLE}>
           {t("project_properties_crs_predefined")}
         </label>
         <select
@@ -240,8 +281,12 @@ export const ProjectCrsTab: React.FC = () => {
           className='project-prop-crs-list project-prop-crs-predefined'
           size={PREDEFINED_CRS_VISIBLE_ROWS}
           disabled={disabled}
-          value={predefinedEntries.some((e) => e.authId === selected) ? selected : ""}
-          onChange={(e) => e.target.value && selectDraftCrs(e.target.value, "predefined")}>
+          value={
+            predefinedEntries.some((e) => e.authId === selected) ? selected : ""
+          }
+          onChange={(e) =>
+            e.target.value && selectDraftCrs(e.target.value, "predefined")
+          }>
           {catalogue.status === "building" ?
             <option value='' disabled className='crs-catalogue-building'>
               {t("crs_catalogue_building")}
@@ -256,7 +301,9 @@ export const ProjectCrsTab: React.FC = () => {
       </div>
 
       <div style={SECTION_STYLE}>
-        <span style={SECTION_LABEL_STYLE}>{t("project_properties_crs_info")}</span>
+        <span style={SECTION_LABEL_STYLE}>
+          {t("project_properties_crs_info")}
+        </span>
         <pre
           id='project-prop-crs-info'
           className='project-prop-crs-list project-prop-crs-info'
@@ -271,15 +318,25 @@ export const ProjectCrsTab: React.FC = () => {
             fontFamily: "var(--cartouche-theme-font-family-mono, monospace)",
             fontSize: "0.75rem",
           }}>
-          {disabled ? t("project_properties_crs_none")
-          : !selected ? ""
-          : info ? formatCrsInfoText(info)
-          : info === null ? selected
+          {disabled ?
+            t("project_properties_crs_none")
+          : !selected ?
+            ""
+          : info ?
+            formatCrsInfoText(info)
+          : info === null ?
+            selected
           : t("project_properties_crs_info_loading")}
         </pre>
       </div>
 
-      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          fontSize: "0.875rem",
+        }}>
         <input
           type='checkbox'
           id='project-prop-crs-hide-deprecated'

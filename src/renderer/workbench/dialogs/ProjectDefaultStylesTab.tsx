@@ -38,7 +38,11 @@ import { StyleEditor } from "./StyleEditor";
  */
 export const ProjectDefaultStylesTab: React.FC = () => {
   useSignals();
-  const slots = projectPropertiesDraftSignal.value.defaultStyles ?? { point: null, line: null, polygon: null };
+  const slots = projectPropertiesDraftSignal.value.defaultStyles ?? {
+    point: null,
+    line: null,
+    polygon: null,
+  };
 
   return (
     <div
@@ -54,12 +58,21 @@ export const ProjectDefaultStylesTab: React.FC = () => {
             <legend className='preference-group-legend'>
               {t(`project_properties_default_style_${slot}`)}
             </legend>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                fontSize: "0.875rem",
+                marginBottom: "0.5rem",
+              }}>
               <input
                 type='checkbox'
                 id={`project-prop-default-style-${slot}-app`}
                 checked={!value}
-                onChange={(e) => setDraftUseApplicationDefault(slot, e.target.checked)}
+                onChange={(e) =>
+                  setDraftUseApplicationDefault(slot, e.target.checked)
+                }
               />
               {t("project_properties_default_style_use_app")}
             </label>

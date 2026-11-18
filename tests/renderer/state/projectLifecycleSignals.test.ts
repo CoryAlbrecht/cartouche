@@ -189,7 +189,11 @@ describe("Project Lifecycle Signals & Actions", () => {
       metadata: { title: "" },
       layers: [],
     });
-    assert.equal(projectNameSignal.value, "path", "empty title falls back to the file base name");
+    assert.equal(
+      projectNameSignal.value,
+      "path",
+      "empty title falls back to the file base name"
+    );
 
     mockSaveFileResult = "/new/path/renamed-project.cproj";
     const result = await saveAsProjectAction();
@@ -237,7 +241,11 @@ describe("Project Lifecycle Signals & Actions", () => {
     const result = await closeProjectAction();
     assert.equal(result, true);
     assert.equal(hasProjectSignal.value, false);
-    assert.equal(isProjectPropertiesOpenSignal.value, false, "ProjectPropertiesDialog must be closed when project closes");
+    assert.equal(
+      isProjectPropertiesOpenSignal.value,
+      false,
+      "ProjectPropertiesDialog must be closed when project closes"
+    );
   });
 
   it("closeProjectAction on a dirty project triggers save; aborts if save is canceled", async () => {
@@ -476,7 +484,12 @@ describe("Project Lifecycle Signals & Actions", () => {
 
       if (projLayers.length > 0) {
         for (const l of projLayers) {
-          if (!styles[l.id] || activeId !== null || !hasProj || tree.length === 0) {
+          if (
+            !styles[l.id]
+            || activeId !== null
+            || !hasProj
+            || tree.length === 0
+          ) {
             seenWithIncompleteState++;
           }
         }
@@ -577,8 +590,18 @@ describe("Sequential Per-Layer and Project Unsaved Changes Modals (Ticket #185)"
       filePath: "/path/multi-dirty.cproj",
       metadata: { title: "Multi Dirty Project" },
       layers: [
-        { id: "layer-a", name: "Roads Layer", type: "vector", source: "/data/roads.shp" },
-        { id: "layer-b", name: "Parcels Layer", type: "vector", source: "/data/parcels.shp" },
+        {
+          id: "layer-a",
+          name: "Roads Layer",
+          type: "vector",
+          source: "/data/roads.shp",
+        },
+        {
+          id: "layer-b",
+          name: "Parcels Layer",
+          type: "vector",
+          source: "/data/parcels.shp",
+        },
       ],
     });
     dirtyLayersInMain = ["layer-a", "layer-b"];
@@ -626,8 +649,18 @@ describe("Sequential Per-Layer and Project Unsaved Changes Modals (Ticket #185)"
       filePath: "/path/cancel-test.cproj",
       metadata: { title: "Cancel Test Project" },
       layers: [
-        { id: "layer-1", name: "Rivers", type: "vector", source: "/data/rivers.shp" },
-        { id: "layer-2", name: "Lakes", type: "vector", source: "/data/lakes.shp" },
+        {
+          id: "layer-1",
+          name: "Rivers",
+          type: "vector",
+          source: "/data/rivers.shp",
+        },
+        {
+          id: "layer-2",
+          name: "Lakes",
+          type: "vector",
+          source: "/data/lakes.shp",
+        },
       ],
     });
     dirtyLayersInMain = ["layer-1", "layer-2"];
@@ -643,9 +676,17 @@ describe("Sequential Per-Layer and Project Unsaved Changes Modals (Ticket #185)"
     (gisSignals as any).resolveUnsavedChangesModal("cancel");
     const closed = await closePromise;
 
-    assert.equal(closed, false, "closeProjectAction must return false when canceled");
+    assert.equal(
+      closed,
+      false,
+      "closeProjectAction must return false when canceled"
+    );
     assert.equal(hasProjectSignal.value, true, "Project must remain open");
-    assert.deepEqual(clearedLayers, [], "No layer edits should be cleared on cancel");
+    assert.deepEqual(
+      clearedLayers,
+      [],
+      "No layer edits should be cleared on cancel"
+    );
     assert.equal((gisSignals as any).unsavedChangesModalSignal.value, null);
   });
 
@@ -655,7 +696,12 @@ describe("Sequential Per-Layer and Project Unsaved Changes Modals (Ticket #185)"
       filePath: "/path/exit-test.cproj",
       metadata: { title: "Exit Test Project" },
       layers: [
-        { id: "layer-x", name: "Points Layer", type: "vector", source: "/data/pts.shp" },
+        {
+          id: "layer-x",
+          name: "Points Layer",
+          type: "vector",
+          source: "/data/pts.shp",
+        },
       ],
     });
     dirtyLayersInMain = ["layer-x"];
@@ -680,15 +726,29 @@ describe("Sequential Per-Layer and Project Unsaved Changes Modals (Ticket #185)"
     const exited = await exitPromise;
     assert.equal(exited, true);
     assert.equal(isProjectDirtySignal.value, false);
-    assert.equal(savedProjects.length, 0, "Project must not be saved when Don't Save Changes is chosen");
-    assert.equal(confirmedCloseCount, 1, "confirmCloseWindow must be invoked after all prompts succeed");
+    assert.equal(
+      savedProjects.length,
+      0,
+      "Project must not be saved when Don't Save Changes is chosen"
+    );
+    assert.equal(
+      confirmedCloseCount,
+      1,
+      "confirmCloseWindow must be invoked after all prompts succeed"
+    );
   });
 
   it("defines all 6 Unsaved Changes modal localization strings in en.xml and fr.xml", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const enXml = fs.readFileSync(path.resolve(process.cwd(), "assets/xml/i18n/en.xml"), "utf-8");
-    const frXml = fs.readFileSync(path.resolve(process.cwd(), "assets/xml/i18n/fr.xml"), "utf-8");
+    const enXml = fs.readFileSync(
+      path.resolve(process.cwd(), "assets/xml/i18n/en.xml"),
+      "utf-8"
+    );
+    const frXml = fs.readFileSync(
+      path.resolve(process.cwd(), "assets/xml/i18n/fr.xml"),
+      "utf-8"
+    );
 
     const requiredKeys = [
       "unsaved_changes_title",

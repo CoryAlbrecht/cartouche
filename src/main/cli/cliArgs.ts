@@ -13,12 +13,12 @@
  * @see {@link handleCliHelp}
  */
 
-import { parseArgs } from 'node:util';
+import { parseArgs } from "node:util";
 import {
   LOG_LEVEL_NAMES,
   type LogLevel,
-  normalizeLogLevel
-} from '../../shared/logging';
+  normalizeLogLevel,
+} from "../../shared/logging";
 
 /**
  * @description Canonical formatted CLI help synopsis and options layout.
@@ -29,17 +29,17 @@ import {
  * @type {string}
  */
 export const HELP_TEXT: string = [
-  'Cartouche - Modern Desktop GIS Application',
-  '',
-  'Usage: cartouche [options] [project-file]',
-  '',
-  'Options:',
-  '  -h, --help            Show this help message and exit',
-  '  -d, --debug           Increase log verbosity (cumulative, e.g. -dd)',
-  '  -q, --quiet           Decrease log verbosity (cumulative, e.g. -qq)',
+  "Cartouche - Modern Desktop GIS Application",
+  "",
+  "Usage: cartouche [options] [project-file]",
+  "",
+  "Options:",
+  "  -h, --help            Show this help message and exit",
+  "  -d, --debug           Increase log verbosity (cumulative, e.g. -dd)",
+  "  -q, --quiet           Decrease log verbosity (cumulative, e.g. -qq)",
   '  -l, --level <level>   Set initial log level (none, critical, error, warn, info, debug, or 0-5) [default: "error"]',
-  '  -L, --logfile <path>  Write log messages to specified file path'
-].join('\n');
+  "  -L, --logfile <path>  Write log messages to specified file path",
+].join("\n");
 
 /**
  * @typedef {Object} LogCliConfig
@@ -117,31 +117,14 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
     const parsed = parseArgs({
       args,
       options: {
-        help: {
-          type: 'boolean',
-          short: 'h'
-        },
-        debug: {
-          type: 'boolean',
-          short: 'd',
-          multiple: true
-        },
-        quiet: {
-          type: 'boolean',
-          short: 'q',
-          multiple: true
-        },
-        level: {
-          type: 'string',
-          short: 'l'
-        },
-        logfile: {
-          type: 'string',
-          short: 'L'
-        }
+        help: { type: "boolean", short: "h" },
+        debug: { type: "boolean", short: "d", multiple: true },
+        quiet: { type: "boolean", short: "q", multiple: true },
+        level: { type: "string", short: "l" },
+        logfile: { type: "string", short: "L" },
       },
       strict: false,
-      allowPositionals: true
+      allowPositionals: true,
     });
     parsedValues = parsed.values;
     positionals = parsed.positionals;
@@ -150,7 +133,10 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
     positionals = [];
   }
 
-  const helpRequested = Boolean(parsedValues.help) || args.includes('-h') || args.includes('--help');
+  const helpRequested =
+    Boolean(parsedValues.help)
+    || args.includes("-h")
+    || args.includes("--help");
 
   // Base level from -l or default 2 (error)
   let baseLevel = 2;
@@ -168,11 +154,18 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
   const debugCount = Array.isArray(debugArray) ? debugArray.length : 0;
   const quietCount = Array.isArray(quietArray) ? quietArray.length : 0;
 
-  const finalNumeric = Math.max(0, Math.min(5, baseLevel + debugCount - quietCount));
-  const finalLevel = LOG_LEVEL_NAMES[finalNumeric] || 'error';
+  const finalNumeric = Math.max(
+    0,
+    Math.min(5, baseLevel + debugCount - quietCount)
+  );
+  const finalLevel = LOG_LEVEL_NAMES[finalNumeric] || "error";
 
-  const logFile = typeof parsedValues.logfile === 'string' && parsedValues.logfile.trim() !== ''
-    ? parsedValues.logfile.trim()
+  const logFile =
+    (
+      typeof parsedValues.logfile === "string"
+      && parsedValues.logfile.trim() !== ""
+    ) ?
+      parsedValues.logfile.trim()
     : undefined;
 
   return {
@@ -180,9 +173,9 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
     logging: {
       level: finalLevel,
       numericLevel: finalNumeric,
-      ...(logFile ? { logFile } : {})
+      ...(logFile ? { logFile } : {}),
     },
-    positionals
+    positionals,
   };
 }
 
@@ -197,7 +190,9 @@ export function parseCliArgs(args: string[] = process.argv.slice(2)): CliArgs {
  * @param {string[]} [args] - Array of CLI argument strings (defaults to process.argv.slice(2)).
  * @returns {LogCliConfig} Parsed logging configuration object.
  */
-export function parseLogArgs(args: string[] = process.argv.slice(2)): LogCliConfig {
+export function parseLogArgs(
+  args: string[] = process.argv.slice(2)
+): LogCliConfig {
   return parseCliArgs(args).logging;
 }
 
@@ -221,15 +216,14 @@ export function handleCliHelp(
     },
     exitHandler = (code: number) => {
       process.exit(code);
-    }
+    },
   } = options;
 
   const parsed = parseCliArgs(args);
   if (parsed.help) {
-    stdoutWriter(formatHelpText() + '\n');
+    stdoutWriter(formatHelpText() + "\n");
     exitHandler(0);
     return true;
   }
   return false;
 }
-

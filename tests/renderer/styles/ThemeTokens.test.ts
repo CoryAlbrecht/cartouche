@@ -8,28 +8,28 @@
  * @since 0.1.0-dev
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
-describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #196)', () => {
+describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #196)", () => {
   const rootDir = process.cwd();
   const defaultThemeCssPath = path.resolve(
     rootDir,
-    'src/renderer/styles/themes/theme-default.css'
+    "src/renderer/styles/themes/theme-default.css"
   );
-  const themeCssPath = path.resolve(rootDir, 'src/renderer/styles/theme.css');
+  const themeCssPath = path.resolve(rootDir, "src/renderer/styles/theme.css");
   const workbenchCssPath = path.resolve(
     rootDir,
-    'src/renderer/styles/workbench.css'
+    "src/renderer/styles/workbench.css"
   );
-  const indexHtmlPath = path.resolve(rootDir, 'src/renderer/index.html');
+  const indexHtmlPath = path.resolve(rootDir, "src/renderer/index.html");
 
-  it('verifies that canonical default theme stylesheet exists and has non-zero size', () => {
+  it("verifies that canonical default theme stylesheet exists and has non-zero size", () => {
     assert.ok(
       fs.existsSync(defaultThemeCssPath),
-      'src/renderer/styles/themes/theme-default.css must exist'
+      "src/renderer/styles/themes/theme-default.css must exist"
     );
     const stats = fs.statSync(defaultThemeCssPath);
     assert.ok(
@@ -38,55 +38,55 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     );
   });
 
-  it('defines all required Tier 1 Theme Primitives in theme-default.css', () => {
-    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+  it("defines all required Tier 1 Theme Primitives in theme-default.css", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
 
     const tier1Primitives = [
       // Primary & Brand Accents
-      '--cartouche-theme-primary',
-      '--cartouche-theme-primary-hover',
-      '--cartouche-theme-primary-active',
+      "--cartouche-theme-primary",
+      "--cartouche-theme-primary-hover",
+      "--cartouche-theme-primary-active",
       // Surfaces & Backgrounds
-      '--cartouche-theme-bg',
-      '--cartouche-theme-surface',
-      '--cartouche-theme-surface-subtle',
-      '--cartouche-theme-surface-widget',
-      '--cartouche-theme-surface-alt',
-      '--cartouche-theme-surface-hover',
-      '--cartouche-theme-surface-active',
+      "--cartouche-theme-bg",
+      "--cartouche-theme-surface",
+      "--cartouche-theme-surface-subtle",
+      "--cartouche-theme-surface-widget",
+      "--cartouche-theme-surface-alt",
+      "--cartouche-theme-surface-hover",
+      "--cartouche-theme-surface-active",
       // Borders & Dividers
-      '--cartouche-theme-border',
-      '--cartouche-theme-border-subtle',
-      '--cartouche-theme-border-strong',
-      '--cartouche-theme-border-widget',
-      '--cartouche-theme-border-dark',
-      '--cartouche-theme-border-dropdown',
+      "--cartouche-theme-border",
+      "--cartouche-theme-border-subtle",
+      "--cartouche-theme-border-strong",
+      "--cartouche-theme-border-widget",
+      "--cartouche-theme-border-dark",
+      "--cartouche-theme-border-dropdown",
       // Foreground & Typography
-      '--cartouche-theme-fg',
-      '--cartouche-theme-fg-muted',
-      '--cartouche-theme-fg-subtle',
-      '--cartouche-theme-fg-secondary',
-      '--cartouche-theme-fg-inverted',
-      '--cartouche-theme-fg-primary',
+      "--cartouche-theme-fg",
+      "--cartouche-theme-fg-muted",
+      "--cartouche-theme-fg-subtle",
+      "--cartouche-theme-fg-secondary",
+      "--cartouche-theme-fg-inverted",
+      "--cartouche-theme-fg-primary",
       // Accents & Interaction
-      '--cartouche-theme-accent',
-      '--cartouche-theme-accent-hover',
-      '--cartouche-theme-accent-subtle',
-      '--cartouche-theme-accent-focus',
+      "--cartouche-theme-accent",
+      "--cartouche-theme-accent-hover",
+      "--cartouche-theme-accent-subtle",
+      "--cartouche-theme-accent-focus",
       // Status Colors
-      '--cartouche-theme-danger',
-      '--cartouche-theme-danger-hover',
-      '--cartouche-theme-danger-subtle',
-      '--cartouche-theme-danger-focus',
-      '--cartouche-theme-warning',
-      '--cartouche-theme-warning-subtle',
-      '--cartouche-theme-success',
-      '--cartouche-theme-success-subtle',
-      '--cartouche-theme-info',
-      '--cartouche-theme-info-subtle',
-      '--cartouche-theme-shadow',
-      '--cartouche-theme-shadow-subtle',
-      '--cartouche-theme-shadow-strong',
+      "--cartouche-theme-danger",
+      "--cartouche-theme-danger-hover",
+      "--cartouche-theme-danger-subtle",
+      "--cartouche-theme-danger-focus",
+      "--cartouche-theme-warning",
+      "--cartouche-theme-warning-subtle",
+      "--cartouche-theme-success",
+      "--cartouche-theme-success-subtle",
+      "--cartouche-theme-info",
+      "--cartouche-theme-info-subtle",
+      "--cartouche-theme-shadow",
+      "--cartouche-theme-shadow-subtle",
+      "--cartouche-theme-shadow-strong",
     ];
 
     for (const token of tier1Primitives) {
@@ -97,122 +97,122 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     }
   });
 
-  it('defines all required Tier 2 Component Tokens mapped by UI subsystem in theme-default.css', () => {
-    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+  it("defines all required Tier 2 Component Tokens mapped by UI subsystem in theme-default.css", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
 
     const tier2ComponentTokens = [
       // Menubar
-      '--cartouche-menubar-bg',
-      '--cartouche-menubar-fg',
-      '--cartouche-menubar-hover',
-      '--cartouche-menubar-border',
+      "--cartouche-menubar-bg",
+      "--cartouche-menubar-fg",
+      "--cartouche-menubar-hover",
+      "--cartouche-menubar-border",
       // Status Bar
-      '--cartouche-theme-status-bar-bg',
-      '--cartouche-theme-status-bar-fg',
-      '--cartouche-theme-status-bar-border',
+      "--cartouche-theme-status-bar-bg",
+      "--cartouche-theme-status-bar-fg",
+      "--cartouche-theme-status-bar-border",
       // Activity Bar
-      '--cartouche-theme-activity-bar-bg',
-      '--cartouche-theme-activity-bar-fg',
-      '--cartouche-theme-activity-bar-inactive-fg',
-      '--cartouche-theme-activity-bar-active-border',
+      "--cartouche-theme-activity-bar-bg",
+      "--cartouche-theme-activity-bar-fg",
+      "--cartouche-theme-activity-bar-inactive-fg",
+      "--cartouche-theme-activity-bar-active-border",
       // Side Bar & Panels
-      '--cartouche-theme-side-bar-bg',
-      '--cartouche-theme-side-bar-fg',
-      '--cartouche-theme-side-bar-border',
-      '--cartouche-theme-editor-bg',
-      '--cartouche-theme-panel-bg',
-      '--cartouche-theme-panel-border',
+      "--cartouche-theme-side-bar-bg",
+      "--cartouche-theme-side-bar-fg",
+      "--cartouche-theme-side-bar-border",
+      "--cartouche-theme-editor-bg",
+      "--cartouche-theme-panel-bg",
+      "--cartouche-theme-panel-border",
       // Tab Groups & Headers
-      '--cartouche-theme-tab-active-bg',
-      '--cartouche-theme-tab-inactive-bg',
-      '--cartouche-theme-tab-active-fg',
-      '--cartouche-theme-tab-inactive-fg',
-      '--cartouche-theme-tab-border',
+      "--cartouche-theme-tab-active-bg",
+      "--cartouche-theme-tab-inactive-bg",
+      "--cartouche-theme-tab-active-fg",
+      "--cartouche-theme-tab-inactive-fg",
+      "--cartouche-theme-tab-border",
       // Buttons & Badges
-      '--cartouche-theme-badge-bg',
-      '--cartouche-theme-badge-fg',
-      '--cartouche-theme-button-bg',
-      '--cartouche-theme-button-fg',
-      '--cartouche-theme-button-hover-bg',
+      "--cartouche-theme-badge-bg",
+      "--cartouche-theme-badge-fg",
+      "--cartouche-theme-button-bg",
+      "--cartouche-theme-button-fg",
+      "--cartouche-theme-button-hover-bg",
       // Dialog Buttons
-      '--cartouche-button-primary-bg',
-      '--cartouche-button-primary-fg',
-      '--cartouche-button-primary-border',
+      "--cartouche-button-primary-bg",
+      "--cartouche-button-primary-fg",
+      "--cartouche-button-primary-border",
       // Dockview Theme Overrides
-      '--dockview-theme-background-color',
-      '--dockview-theme-foreground-color',
-      '--dockview-theme-border-color',
-      '--dockview-theme-separator-color',
-      '--dockview-theme-splitter-color',
-      '--dockview-theme-active-border-color',
+      "--dockview-theme-background-color",
+      "--dockview-theme-foreground-color",
+      "--dockview-theme-border-color",
+      "--dockview-theme-separator-color",
+      "--dockview-theme-splitter-color",
+      "--dockview-theme-active-border-color",
       // Widgets
-      '--cartouche-widget-bg',
-      '--cartouche-widget-border',
-      '--cartouche-widget-header-bg',
-      '--cartouche-widget-header-fg',
-      '--cartouche-widget-header-border',
-      '--cartouche-widget-content-bg',
-      '--cartouche-widget-content-fg',
+      "--cartouche-widget-bg",
+      "--cartouche-widget-border",
+      "--cartouche-widget-header-bg",
+      "--cartouche-widget-header-fg",
+      "--cartouche-widget-header-border",
+      "--cartouche-widget-content-bg",
+      "--cartouche-widget-content-fg",
       // Menus & Dropdowns
-      '--cartouche-menu-bg',
-      '--cartouche-menu-fg',
-      '--cartouche-menu-border',
-      '--cartouche-menu-item-hover-bg',
-      '--cartouche-menu-item-hover-fg',
-      '--cartouche-menu-separator',
-      '--cartouche-menu-focus-color',
+      "--cartouche-menu-bg",
+      "--cartouche-menu-fg",
+      "--cartouche-menu-border",
+      "--cartouche-menu-item-hover-bg",
+      "--cartouche-menu-item-hover-fg",
+      "--cartouche-menu-separator",
+      "--cartouche-menu-focus-color",
       // Toolbars
-      '--cartouche-toolbar-bg',
-      '--cartouche-toolbar-fg',
-      '--cartouche-toolbar-border',
-      '--cartouche-toolbar-item-hover-bg',
-      '--cartouche-toolbar-item-active-bg',
+      "--cartouche-toolbar-bg",
+      "--cartouche-toolbar-fg",
+      "--cartouche-toolbar-border",
+      "--cartouche-toolbar-item-hover-bg",
+      "--cartouche-toolbar-item-active-bg",
       // Dialogs
-      '--cartouche-dialog-bg',
-      '--cartouche-dialog-fg',
-      '--cartouche-dialog-border',
-      '--cartouche-dialog-header-bg',
-      '--cartouche-dialog-header-fg',
-      '--cartouche-dialog-header-border',
-      '--cartouche-dialog-backdrop',
+      "--cartouche-dialog-bg",
+      "--cartouche-dialog-fg",
+      "--cartouche-dialog-border",
+      "--cartouche-dialog-header-bg",
+      "--cartouche-dialog-header-fg",
+      "--cartouche-dialog-header-border",
+      "--cartouche-dialog-backdrop",
       // Tables
-      '--cartouche-table-bg',
-      '--cartouche-table-fg',
-      '--cartouche-table-header-bg',
-      '--cartouche-table-header-fg',
-      '--cartouche-table-border',
-      '--cartouche-table-row-hover-bg',
-      '--cartouche-table-row-selected-bg',
-      '--cartouche-table-row-alt-bg',
-      '--cartouche-table-column-line',
-      '--cartouche-table-row-line',
-      '--cartouche-table-row-active-bg',
-      '--cartouche-table-row-active-fg',
-      '--cartouche-table-readonly-fg',
-      '--cartouche-table-readonly-selected-bg',
-      '--cartouche-table-readonly-selected-fg',
+      "--cartouche-table-bg",
+      "--cartouche-table-fg",
+      "--cartouche-table-header-bg",
+      "--cartouche-table-header-fg",
+      "--cartouche-table-border",
+      "--cartouche-table-row-hover-bg",
+      "--cartouche-table-row-selected-bg",
+      "--cartouche-table-row-alt-bg",
+      "--cartouche-table-column-line",
+      "--cartouche-table-row-line",
+      "--cartouche-table-row-active-bg",
+      "--cartouche-table-row-active-fg",
+      "--cartouche-table-readonly-fg",
+      "--cartouche-table-readonly-selected-bg",
+      "--cartouche-table-readonly-selected-fg",
       // Inputs
-      '--cartouche-input-bg',
-      '--cartouche-input-fg',
-      '--cartouche-input-border',
+      "--cartouche-input-bg",
+      "--cartouche-input-fg",
+      "--cartouche-input-border",
       // Disabled Controls
-      '--cartouche-control-disabled-bg',
-      '--cartouche-control-disabled-fg',
-      '--cartouche-control-disabled-border',
+      "--cartouche-control-disabled-bg",
+      "--cartouche-control-disabled-fg",
+      "--cartouche-control-disabled-border",
       // Focus Indicator, Invalid Focus Indicator & control accent (Spec #316)
-      '--cartouche-focus-color',
-      '--cartouche-focus-ring',
-      '--cartouche-focus-width',
-      '--cartouche-focus-offset',
-      '--cartouche-focus-on-primary-color',
-      '--cartouche-focus-invalid-color',
-      '--cartouche-focus-invalid-ring',
-      '--cartouche-invalid-border',
-      '--cartouche-invalid-fg',
-      '--cartouche-control-accent',
+      "--cartouche-focus-color",
+      "--cartouche-focus-ring",
+      "--cartouche-focus-width",
+      "--cartouche-focus-offset",
+      "--cartouche-focus-on-primary-color",
+      "--cartouche-focus-invalid-color",
+      "--cartouche-focus-invalid-ring",
+      "--cartouche-invalid-border",
+      "--cartouche-invalid-fg",
+      "--cartouche-control-accent",
       // Drop Targets
-      '--cartouche-drop-target-bg',
-      '--cartouche-drop-target-border',
+      "--cartouche-drop-target-bg",
+      "--cartouche-drop-target-border",
     ];
 
     for (const token of tier2ComponentTokens) {
@@ -223,37 +223,40 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     }
   });
 
-  it('defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)', () => {
-    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+  it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     assert.match(content, /--cartouche-theme-fg-secondary:\s*#475569;/);
   });
 
-  it('maps every TableWidget token to the base token the spec assigns it (Spec #322 / Ticket #323)', () => {
-    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+  it("maps every TableWidget token to the base token the spec assigns it (Spec #322 / Ticket #323)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
-      '--cartouche-table-border': '--cartouche-theme-border-dark',
-      '--cartouche-table-column-line': '--cartouche-theme-border-strong',
-      '--cartouche-table-row-line': '--cartouche-theme-border',
-      '--cartouche-table-header-bg': '--cartouche-theme-surface-widget',
-      '--cartouche-table-header-fg': '--cartouche-theme-fg',
-      '--cartouche-table-bg': '--cartouche-theme-surface',
-      '--cartouche-table-fg': '--cartouche-theme-fg',
-      '--cartouche-table-row-alt-bg': '--cartouche-theme-surface-subtle',
-      '--cartouche-table-row-selected-bg': '--cartouche-theme-info-subtle',
-      '--cartouche-table-row-active-bg': '--cartouche-theme-info',
-      '--cartouche-table-row-active-fg': '--cartouche-theme-fg',
-      '--cartouche-table-readonly-fg': '--cartouche-theme-fg-muted',
-      '--cartouche-table-readonly-selected-bg': '--cartouche-theme-surface-alt',
-      '--cartouche-table-readonly-selected-fg': '--cartouche-theme-fg-secondary',
+      "--cartouche-table-border": "--cartouche-theme-border-dark",
+      "--cartouche-table-column-line": "--cartouche-theme-border-strong",
+      "--cartouche-table-row-line": "--cartouche-theme-border",
+      "--cartouche-table-header-bg": "--cartouche-theme-surface-widget",
+      "--cartouche-table-header-fg": "--cartouche-theme-fg",
+      "--cartouche-table-bg": "--cartouche-theme-surface",
+      "--cartouche-table-fg": "--cartouche-theme-fg",
+      "--cartouche-table-row-alt-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-table-row-selected-bg": "--cartouche-theme-info-subtle",
+      "--cartouche-table-row-active-bg": "--cartouche-theme-info",
+      "--cartouche-table-row-active-fg": "--cartouche-theme-fg",
+      "--cartouche-table-readonly-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-table-readonly-selected-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-table-readonly-selected-fg":
+        "--cartouche-theme-fg-secondary",
     };
     for (const [token, base] of Object.entries(expected)) {
-      const match = content.match(new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`));
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
       assert.equal(match?.[1], base, `${token} must be var(${base})`);
     }
   });
 
-  it('guarantees referential integrity of all var() references within theme-default.css', () => {
-    const content = fs.readFileSync(defaultThemeCssPath, 'utf-8');
+  it("guarantees referential integrity of all var() references within theme-default.css", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
 
     // Extract all defined CSS custom property names
     const definedProps = new Set<string>();
@@ -276,59 +279,59 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     assert.deepEqual(
       unresolved,
       [],
-      `All var() references in theme-default.css must refer to defined tokens. Unresolved: ${unresolved.join(', ')}`
+      `All var() references in theme-default.css must refer to defined tokens. Unresolved: ${unresolved.join(", ")}`
     );
   });
 
-  it('ensures theme.css aliases theme-default.css for backward compatibility', () => {
-    const content = fs.readFileSync(themeCssPath, 'utf-8');
+  it("ensures theme.css aliases theme-default.css for backward compatibility", () => {
+    const content = fs.readFileSync(themeCssPath, "utf-8");
     assert.ok(
-      content.includes('@import "./themes/theme-default.css";') ||
-        content.includes("@import './themes/theme-default.css';"),
-      'theme.css must import ./themes/theme-default.css for backward compatibility'
+      content.includes('@import "./themes/theme-default.css";')
+        || content.includes("@import './themes/theme-default.css';"),
+      "theme.css must import ./themes/theme-default.css for backward compatibility"
     );
   });
 
-  it('ensures third-party structural dockview stylesheet is imported in workbench.css', () => {
-    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+  it("ensures third-party structural dockview stylesheet is imported in workbench.css", () => {
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     assert.ok(
-      content.includes('dockview-react/dist/styles/dockview.css'),
-      'workbench.css must import dockview-react/dist/styles/dockview.css'
+      content.includes("dockview-react/dist/styles/dockview.css"),
+      "workbench.css must import dockview-react/dist/styles/dockview.css"
     );
   });
 
-  it('ensures index.html links to cartouche-theme-stylesheet with canonical default theme', () => {
-    const content = fs.readFileSync(indexHtmlPath, 'utf-8');
+  it("ensures index.html links to cartouche-theme-stylesheet with canonical default theme", () => {
+    const content = fs.readFileSync(indexHtmlPath, "utf-8");
     assert.ok(
       content.includes('id="cartouche-theme-stylesheet"'),
       'index.html must contain link with id="cartouche-theme-stylesheet"'
     );
     assert.ok(
       content.includes('href="./styles/themes/theme-default.css"'),
-      'index.html must reference ./styles/themes/theme-default.css'
+      "index.html must reference ./styles/themes/theme-default.css"
     );
   });
 
   it('verifies that @import "./theme.css" is removed from workbench.css (Ticket #198)', () => {
-    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     assert.ok(
       !content.includes('@import "./theme.css"'),
-      'workbench.css must not import ./theme.css'
+      "workbench.css must not import ./theme.css"
     );
     assert.ok(
       !content.includes("@import './theme.css'"),
-      'workbench.css must not import ./theme.css'
+      "workbench.css must not import ./theme.css"
     );
   });
 
-  it('asserts that 0 bare hex, rgb, or rgba color literals remain in workbench.css outside comments (Ticket #198)', () => {
-    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+  it("asserts that 0 bare hex, rgb, or rgba color literals remain in workbench.css outside comments (Ticket #198)", () => {
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     // Strip multi-line comments preserving line counts
     const noComments = content.replace(/\/\*[\s\S]*?\*\//g, (m) =>
-      m.replace(/[^\n]/g, ' ')
+      m.replace(/[^\n]/g, " ")
     );
-    const lines = noComments.split('\n');
-    const origLines = content.split('\n');
+    const lines = noComments.split("\n");
+    const origLines = content.split("\n");
     const bareColorRegex = /(#[0-9a-fA-F]{3,8}\b|rgba?\([^)]+\))/g;
 
     const bareColorViolations: string[] = [];
@@ -336,7 +339,7 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       const match = line.match(bareColorRegex);
       if (match) {
         bareColorViolations.push(
-          `Line ${idx + 1}: ${origLines[idx].trim()} (matched: ${match.join(', ')})`
+          `Line ${idx + 1}: ${origLines[idx].trim()} (matched: ${match.join(", ")})`
         );
       }
     });
@@ -344,7 +347,7 @@ describe('Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     assert.deepEqual(
       bareColorViolations,
       [],
-      `workbench.css must contain 0 bare color literals. Found ${bareColorViolations.length} violations:\n${bareColorViolations.join('\n')}`
+      `workbench.css must contain 0 bare color literals. Found ${bareColorViolations.length} violations:\n${bareColorViolations.join("\n")}`
     );
   });
 });

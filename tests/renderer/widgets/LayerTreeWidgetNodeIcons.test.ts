@@ -10,19 +10,19 @@
  * @see {@link prefsUiIconSize}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import React, { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { createRendererJiti } from "../rendererJiti";
 
 // Mock .svg import for headless Node testing
 const require = createRequire(import.meta.url);
-require.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+require.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
 
 // Set React act environment flag
@@ -48,9 +48,12 @@ class MockElement {
     removeProperty: (name: string) => void;
     getPropertyValue: (name: string) => string;
   };
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
   /**
    * @constructor
@@ -61,7 +64,7 @@ class MockElement {
    * @since 0.1.0-dev
    * @param {string} [tag='div'] - HTML element tag name.
    */
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
     const styleProps: Record<string, string> = {};
@@ -73,8 +76,8 @@ class MockElement {
         delete styleProps[name];
       },
       getPropertyValue: (name: string) => {
-        return styleProps[name] || '';
-      }
+        return styleProps[name] || "";
+      },
     });
   }
 
@@ -90,7 +93,7 @@ class MockElement {
    */
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
   }
@@ -115,8 +118,8 @@ class MockElement {
    */
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
   }
 
@@ -145,7 +148,7 @@ class MockElement {
    * @returns {any} The removed child node.
    */
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -182,7 +185,11 @@ class MockElement {
    * @param {boolean} [capture] - Whether event listener is capture phase.
    * @returns {void}
    */
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -201,7 +208,9 @@ class MockElement {
    */
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   /**
@@ -256,7 +265,14 @@ class MockElement {
    * @since 0.1.0-dev
    * @returns {{ width: number, height: number, top: number, left: number, right: number, bottom: number }} Layout bounds.
    */
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
     return { width: 160, height: 80, top: 0, left: 0, right: 160, bottom: 80 };
   }
 }
@@ -264,7 +280,10 @@ class MockElement {
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
-let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+let windowListeners: Record<
+  string,
+  Array<{ cb: (e: any) => void; capture: boolean }>
+> = {};
 
 /**
  * @description Initializes mock window and document global objects for React DOM component testing.
@@ -277,8 +296,8 @@ let windowListeners: Record<string, Array<{ cb: (e: any) => void; capture: boole
 function setupDom(): void {
   windowListeners = {};
 
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
   documentElement.appendChild(body);
 
   doc = {
@@ -299,17 +318,17 @@ function setupDom(): void {
       nodeType: 3,
       nodeValue: text,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     createComment: (data: string) => ({
       nodeType: 8,
       data,
       ownerDocument: doc,
-      parentNode: null
+      parentNode: null,
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -317,13 +336,17 @@ function setupDom(): void {
   const win = {
     innerWidth: 1024,
     innerHeight: 768,
-    addEventListener: (type: string, cb: (e: any) => void, capture?: boolean) => {
+    addEventListener: (
+      type: string,
+      cb: (e: any) => void,
+      capture?: boolean
+    ) => {
       if (!windowListeners[type]) windowListeners[type] = [];
       windowListeners[type].push({ cb, capture: Boolean(capture) });
     },
     removeEventListener: (type: string, cb: (e: any) => void) => {
       if (!windowListeners[type]) return;
-      windowListeners[type] = windowListeners[type].filter(l => l.cb !== cb);
+      windowListeners[type] = windowListeners[type].filter((l) => l.cb !== cb);
     },
     dispatchEvent: (event: any) => {
       const listeners = (windowListeners[event.type] || []).slice();
@@ -335,20 +358,25 @@ function setupDom(): void {
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
 
   doc.defaultView = win;
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -384,7 +412,10 @@ function tearDownDom(): void {
  * @param {(el: MockElement) => boolean} predicate - Match predicate function.
  * @returns {MockElement[]} Array of matching elements.
  */
-function findAllNodes(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement[] {
+function findAllNodes(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement[] {
   const result: MockElement[] = [];
   if (predicate(rootNode)) result.push(rootNode);
   for (const child of rootNode.childNodes) {
@@ -403,42 +434,46 @@ import {
   projectNameSignal,
   projectTreeSignal,
   editingNodeIdSignal,
-} from '../../../src/renderer/state/projectSignals';
+} from "../../../src/renderer/state/projectSignals";
 
-const { LayerTreeWidget } = jiti('../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx');
-const { prefsUiIconSize } = jiti('../../../src/renderer/state/preferencesSignals.ts');
-const { dictionarySignal } = jiti('../../../src/renderer/state/i18nSignals.ts');
-const { mdiClockTimeFourOutline } = jiti('@mdi/js');
+const { LayerTreeWidget } = jiti(
+  "../../../src/renderer/workbench/widgets/LayerTreeWidget.tsx"
+);
+const { prefsUiIconSize } = jiti(
+  "../../../src/renderer/state/preferencesSignals.ts"
+);
+const { dictionarySignal } = jiti("../../../src/renderer/state/i18nSignals.ts");
+const { mdiClockTimeFourOutline } = jiti("@mdi/js");
 
-describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
+describe("LayerTreeWidget Node Line Icon Sizing (Ticket #54)", () => {
   beforeEach(() => {
     setupDom();
     hasProjectSignal.value = true;
-    projectNameSignal.value = 'Test GIS Project';
+    projectNameSignal.value = "Test GIS Project";
     editingNodeIdSignal.value = null;
     prefsUiIconSize.value = undefined;
     dictionarySignal.value = {
-      tree_node_layer_temporal_enabled: 'Dynamic temporal control enabled',
+      tree_node_layer_temporal_enabled: "Dynamic temporal control enabled",
     };
 
     // Populate a test layer tree with a group and a layer
     projectTreeSignal.value = [
       {
-        id: 'group-1',
-        name: 'Boundaries',
+        id: "group-1",
+        name: "Boundaries",
         visible: true,
         expanded: true,
         children: [
           {
-            id: 'layer-1',
-            name: 'Districts',
-            type: 'vector',
-            source: '/test/districts.geojson',
+            id: "layer-1",
+            name: "Districts",
+            type: "vector",
+            source: "/test/districts.geojson",
             visible: true,
-            geometryKind: 'Polygon'
-          }
-        ]
-      }
+            geometryKind: "Polygon",
+          },
+        ],
+      },
     ];
   });
 
@@ -450,219 +485,291 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     prefsUiIconSize.value = undefined;
   });
 
-  it('workbench.css defines .tree-icon-slot, .tree-chevron, and .tree-indent with 80% of --cartouche-ui-icon-size', () => {
-    const workbenchCssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+  it("workbench.css defines .tree-icon-slot, .tree-chevron, and .tree-indent with 80% of --cartouche-ui-icon-size", () => {
+    const workbenchCssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/workbench.css"
+    );
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
 
     assert.match(
       content,
       /\.tree-icon-slot\s*\{[^}]*--cartouche-ui-icon-size/s,
-      '.tree-icon-slot must adapt dynamically to --cartouche-ui-icon-size'
+      ".tree-icon-slot must adapt dynamically to --cartouche-ui-icon-size"
     );
     assert.match(
       content,
       /\.tree-chevron\s*\{[^}]*--cartouche-ui-icon-size/s,
-      '.tree-chevron must adapt dynamically to --cartouche-ui-icon-size'
+      ".tree-chevron must adapt dynamically to --cartouche-ui-icon-size"
     );
     assert.match(
       content,
       /\.tree-indent\s*\{[^}]*--cartouche-ui-icon-size/s,
-      '.tree-indent must adapt dynamically to --cartouche-ui-icon-size to preserve alignment'
+      ".tree-indent must adapt dynamically to --cartouche-ui-icon-size to preserve alignment"
     );
   });
 
-  it('renders all tree node icons (layer, group chevron, folder outline, project logo) scaled to 80% with aspect-ratio 1', async () => {
+  it("renders all tree node icons (layer, group chevron, folder outline, project logo) scaled to 80% with aspect-ratio 1", async () => {
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
     // 1. Project root logo image
-    const projectLogos = findAllNodes(container, el => el.tagName === 'IMG' && el.attributes.alt === 'Cartouche');
-    assert.strictEqual(projectLogos.length, 1, 'Should render project root Cartouche logo');
+    const projectLogos = findAllNodes(
+      container,
+      (el) => el.tagName === "IMG" && el.attributes.alt === "Cartouche"
+    );
+    assert.strictEqual(
+      projectLogos.length,
+      1,
+      "Should render project root Cartouche logo"
+    );
     assert.ok(
-      projectLogos[0].style.width.includes('calc(') &&
-      projectLogos[0].style.width.includes('--cartouche-ui-icon-size') &&
-      projectLogos[0].style.width.includes('0.8'),
+      projectLogos[0].style.width.includes("calc(")
+        && projectLogos[0].style.width.includes("--cartouche-ui-icon-size")
+        && projectLogos[0].style.width.includes("0.8"),
       `Project logo style.width must scale to 80%, got: ${projectLogos[0].style.width}`
     );
-    assert.strictEqual(projectLogos[0].style.aspectRatio, '1', 'Project logo must have aspectRatio 1');
+    assert.strictEqual(
+      projectLogos[0].style.aspectRatio,
+      "1",
+      "Project logo must have aspectRatio 1"
+    );
 
     // 2. Group chevron toggle (<Icon />)
-    const chevronSlot = findAllNodes(container, el => el.className.includes('tree-chevron'))[0];
-    assert.ok(chevronSlot, 'Group chevron slot must be present');
-    const chevronSvg = findAllNodes(chevronSlot, el => el.tagName === 'SVG')[0];
-    assert.ok(chevronSvg, 'Chevron SVG must be present');
+    const chevronSlot = findAllNodes(container, (el) =>
+      el.className.includes("tree-chevron")
+    )[0];
+    assert.ok(chevronSlot, "Group chevron slot must be present");
+    const chevronSvg = findAllNodes(
+      chevronSlot,
+      (el) => el.tagName === "SVG"
+    )[0];
+    assert.ok(chevronSvg, "Chevron SVG must be present");
     assert.ok(
-      chevronSvg.style.width.includes('calc(') &&
-      chevronSvg.style.width.includes('--cartouche-ui-icon-size') &&
-      chevronSvg.style.width.includes('0.8'),
+      chevronSvg.style.width.includes("calc(")
+        && chevronSvg.style.width.includes("--cartouche-ui-icon-size")
+        && chevronSvg.style.width.includes("0.8"),
       `Chevron SVG style.width must scale to 80%, got: ${chevronSvg.style.width}`
     );
-    assert.strictEqual(chevronSvg.style.aspectRatio, '1', 'Chevron SVG must have aspectRatio 1');
+    assert.strictEqual(
+      chevronSvg.style.aspectRatio,
+      "1",
+      "Chevron SVG must have aspectRatio 1"
+    );
 
     // 3. Group folder icon (<Icon />)
-    const groupIconSlot = findAllNodes(container, el => el.className.includes('group-icon'))[0];
-    assert.ok(groupIconSlot, 'Group icon slot must be present');
-    const folderSvg = findAllNodes(groupIconSlot, el => el.tagName === 'SVG')[0];
-    assert.ok(folderSvg, 'Folder outline SVG must be present');
+    const groupIconSlot = findAllNodes(container, (el) =>
+      el.className.includes("group-icon")
+    )[0];
+    assert.ok(groupIconSlot, "Group icon slot must be present");
+    const folderSvg = findAllNodes(
+      groupIconSlot,
+      (el) => el.tagName === "SVG"
+    )[0];
+    assert.ok(folderSvg, "Folder outline SVG must be present");
     assert.ok(
-      folderSvg.style.width.includes('calc(') &&
-      folderSvg.style.width.includes('--cartouche-ui-icon-size') &&
-      folderSvg.style.width.includes('0.8'),
+      folderSvg.style.width.includes("calc(")
+        && folderSvg.style.width.includes("--cartouche-ui-icon-size")
+        && folderSvg.style.width.includes("0.8"),
       `Folder SVG style.width must scale to 80%, got: ${folderSvg.style.width}`
     );
-    assert.strictEqual(folderSvg.style.aspectRatio, '1', 'Folder SVG must have aspectRatio 1');
+    assert.strictEqual(
+      folderSvg.style.aspectRatio,
+      "1",
+      "Folder SVG must have aspectRatio 1"
+    );
 
     // 4. Layer geometry icon (<Icon />)
-    const layerRow = findAllNodes(container, el => el.className.includes('tree-node-layer'))[0];
-    assert.ok(layerRow, 'Layer row must be present');
-    const layerSvg = findAllNodes(layerRow, el => el.tagName === 'SVG')[0];
-    assert.ok(layerSvg, 'Layer geometry SVG must be present');
+    const layerRow = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-layer")
+    )[0];
+    assert.ok(layerRow, "Layer row must be present");
+    const layerSvg = findAllNodes(layerRow, (el) => el.tagName === "SVG")[0];
+    assert.ok(layerSvg, "Layer geometry SVG must be present");
     assert.ok(
-      layerSvg.style.width.includes('calc(') &&
-      layerSvg.style.width.includes('--cartouche-ui-icon-size'),
+      layerSvg.style.width.includes("calc(")
+        && layerSvg.style.width.includes("--cartouche-ui-icon-size"),
       `Layer SVG style.width must scale with --cartouche-ui-icon-size, got: ${layerSvg.style.width}`
     );
-    assert.strictEqual(layerSvg.style.aspectRatio, '1', 'Layer SVG must have aspectRatio 1');
+    assert.strictEqual(
+      layerSvg.style.aspectRatio,
+      "1",
+      "Layer SVG must have aspectRatio 1"
+    );
   });
 
-  it('renders collapsed group chevron and closed folder icon with 80% scaling and 1:1 aspect ratio', async () => {
+  it("renders collapsed group chevron and closed folder icon with 80% scaling and 1:1 aspect ratio", async () => {
     projectTreeSignal.value = [
       {
-        id: 'group-collapsed',
-        name: 'Collapsed Group',
+        id: "group-collapsed",
+        name: "Collapsed Group",
         visible: true,
         expanded: false,
-        children: []
-      }
+        children: [],
+      },
     ];
 
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const chevronSlot = findAllNodes(container, el => el.className.includes('tree-chevron'))[0];
-    assert.ok(chevronSlot, 'Group chevron slot must be present');
-    const chevronSvg = findAllNodes(chevronSlot, el => el.tagName === 'SVG')[0];
-    assert.ok(chevronSvg, 'Chevron SVG should be present in collapsed group');
+    const chevronSlot = findAllNodes(container, (el) =>
+      el.className.includes("tree-chevron")
+    )[0];
+    assert.ok(chevronSlot, "Group chevron slot must be present");
+    const chevronSvg = findAllNodes(
+      chevronSlot,
+      (el) => el.tagName === "SVG"
+    )[0];
+    assert.ok(chevronSvg, "Chevron SVG should be present in collapsed group");
     assert.ok(
-      chevronSvg.style.width.includes('calc(') &&
-      chevronSvg.style.width.includes('--cartouche-ui-icon-size') &&
-      chevronSvg.style.width.includes('0.8'),
+      chevronSvg.style.width.includes("calc(")
+        && chevronSvg.style.width.includes("--cartouche-ui-icon-size")
+        && chevronSvg.style.width.includes("0.8"),
       `Collapsed chevron width must scale to 80%, got: ${chevronSvg.style.width}`
     );
-    assert.strictEqual(chevronSvg.style.aspectRatio, '1');
+    assert.strictEqual(chevronSvg.style.aspectRatio, "1");
 
-    const groupIconSlot = findAllNodes(container, el => el.className.includes('group-icon'))[0];
-    assert.ok(groupIconSlot, 'Group icon slot must be present');
-    const folderSvg = findAllNodes(groupIconSlot, el => el.tagName === 'SVG')[0];
-    assert.ok(folderSvg, 'Closed folder SVG should be present in collapsed group');
+    const groupIconSlot = findAllNodes(container, (el) =>
+      el.className.includes("group-icon")
+    )[0];
+    assert.ok(groupIconSlot, "Group icon slot must be present");
+    const folderSvg = findAllNodes(
+      groupIconSlot,
+      (el) => el.tagName === "SVG"
+    )[0];
     assert.ok(
-      folderSvg.style.width.includes('calc(') &&
-      folderSvg.style.width.includes('--cartouche-ui-icon-size') &&
-      folderSvg.style.width.includes('0.8'),
+      folderSvg,
+      "Closed folder SVG should be present in collapsed group"
+    );
+    assert.ok(
+      folderSvg.style.width.includes("calc(")
+        && folderSvg.style.width.includes("--cartouche-ui-icon-size")
+        && folderSvg.style.width.includes("0.8"),
       `Closed folder width must scale to 80%, got: ${folderSvg.style.width}`
     );
-    assert.strictEqual(folderSvg.style.aspectRatio, '1');
+    assert.strictEqual(folderSvg.style.aspectRatio, "1");
   });
 
-  it('renders various layer geometry kinds (Point, LineString, Polygon) scaled with --cartouche-ui-icon-size', async () => {
+  it("renders various layer geometry kinds (Point, LineString, Polygon) scaled with --cartouche-ui-icon-size", async () => {
     projectTreeSignal.value = [
-      { id: 'l-pt', name: 'Points', type: 'vector', source: 'pt.geojson', visible: true, geometryKind: 'Point' },
-      { id: 'l-line', name: 'Lines', type: 'vector', source: 'line.geojson', visible: true, geometryKind: 'LineString' },
-      { id: 'l-poly', name: 'Polygons', type: 'vector', source: 'poly.geojson', visible: true, geometryKind: 'Polygon' }
+      {
+        id: "l-pt",
+        name: "Points",
+        type: "vector",
+        source: "pt.geojson",
+        visible: true,
+        geometryKind: "Point",
+      },
+      {
+        id: "l-line",
+        name: "Lines",
+        type: "vector",
+        source: "line.geojson",
+        visible: true,
+        geometryKind: "LineString",
+      },
+      {
+        id: "l-poly",
+        name: "Polygons",
+        type: "vector",
+        source: "poly.geojson",
+        visible: true,
+        geometryKind: "Polygon",
+      },
     ];
 
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const layerRows = findAllNodes(container, el => el.className.includes('tree-node-layer'));
-    assert.strictEqual(layerRows.length, 3, 'Should render 3 layer rows');
+    const layerRows = findAllNodes(container, (el) =>
+      el.className.includes("tree-node-layer")
+    );
+    assert.strictEqual(layerRows.length, 3, "Should render 3 layer rows");
 
     for (const row of layerRows) {
-      const svg = findAllNodes(row, el => el.tagName === 'SVG')[0];
-      assert.ok(svg, 'Layer row must have SVG icon');
+      const svg = findAllNodes(row, (el) => el.tagName === "SVG")[0];
+      assert.ok(svg, "Layer row must have SVG icon");
       assert.ok(
-        svg.style.width.includes('calc(') &&
-        svg.style.width.includes('--cartouche-ui-icon-size'),
+        svg.style.width.includes("calc(")
+          && svg.style.width.includes("--cartouche-ui-icon-size"),
         `Layer icon style.width must scale with --cartouche-ui-icon-size, got: ${svg.style.width}`
       );
-      assert.strictEqual(svg.style.aspectRatio, '1');
+      assert.strictEqual(svg.style.aspectRatio, "1");
     }
   });
 
-  it('reactively synchronizes prefsUiIconSize signal changes affecting tree node lines at runtime', () => {
-    const { effect } = jiti('@preact/signals-react');
+  it("reactively synchronizes prefsUiIconSize signal changes affecting tree node lines at runtime", () => {
+    const { effect } = jiti("@preact/signals-react");
     const dispose = effect(() => {
       const iconSize = prefsUiIconSize.value;
       if (iconSize) {
         doc.documentElement.style.setProperty(
-          '--cartouche-ui-icon-size',
+          "--cartouche-ui-icon-size",
           `${iconSize}px`
         );
       } else {
-        doc.documentElement.style.removeProperty(
-          '--cartouche-ui-icon-size'
-        );
+        doc.documentElement.style.removeProperty("--cartouche-ui-icon-size");
       }
     });
 
     try {
       // 1. Initial unset: no custom property set
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '',
-        'Initial unset signal should have empty inline style'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "",
+        "Initial unset signal should have empty inline style"
       );
 
       // 2. Update to 32px
       prefsUiIconSize.value = 32;
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '32px',
-        'Signal update to 32 should set property to 32px'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "32px",
+        "Signal update to 32 should set property to 32px"
       );
 
       // 3. Update to 20px
       prefsUiIconSize.value = 20;
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '20px',
-        'Signal update to 20 should set property to 20px'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "20px",
+        "Signal update to 20 should set property to 20px"
       );
 
       // 4. Reset to undefined (fallback to CSS theme default)
       prefsUiIconSize.value = undefined;
       assert.strictEqual(
-        doc.documentElement.style.getPropertyValue('--cartouche-ui-icon-size'),
-        '',
-        'Resetting signal to undefined must remove property to fall back to CSS 24px default'
+        doc.documentElement.style.getPropertyValue("--cartouche-ui-icon-size"),
+        "",
+        "Resetting signal to undefined must remove property to fall back to CSS 24px default"
       );
     } finally {
       dispose();
     }
   });
 
-  it('renders MDI clock-time-four-outline icon scaled with --cartouche-ui-icon-size when dynamic temporal control is enabled (Ticket #232)', async () => {
+  it("renders MDI clock-time-four-outline icon scaled with --cartouche-ui-icon-size when dynamic temporal control is enabled (Ticket #232)", async () => {
     projectTreeSignal.value = [
       {
-        id: 'l-temporal-on',
-        name: 'Temporal Enabled Layer',
-        type: 'vector',
-        source: 'temporal-on.geojson',
+        id: "l-temporal-on",
+        name: "Temporal Enabled Layer",
+        type: "vector",
+        source: "temporal-on.geojson",
         visible: true,
-        geometryKind: 'Polygon',
+        geometryKind: "Polygon",
         featureCount: 42,
         temporalEnabled: true,
       },
       {
-        id: 'l-temporal-off',
-        name: 'Temporal Disabled Layer',
-        type: 'vector',
-        source: 'temporal-off.geojson',
+        id: "l-temporal-off",
+        name: "Temporal Disabled Layer",
+        type: "vector",
+        source: "temporal-off.geojson",
         visible: true,
-        geometryKind: 'Polygon',
+        geometryKind: "Polygon",
         featureCount: 100,
         temporalEnabled: false,
       },
@@ -673,67 +780,71 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     });
 
     const layerRows = findAllNodes(container, (el) =>
-      el.className.includes('tree-node-layer')
+      el.className.includes("tree-node-layer")
     );
-    assert.strictEqual(layerRows.length, 2, 'Should render 2 layer rows');
+    assert.strictEqual(layerRows.length, 2, "Should render 2 layer rows");
 
     // 1. Layer with temporalEnabled: true renders clock-time-four-outline icon immediately following feature count
     const onRow = layerRows[0];
     const clockIcons = findAllNodes(onRow, (el) =>
-      el.className.includes('tree-temporal-icon-slot')
+      el.className.includes("tree-temporal-icon-slot")
     );
-    assert.strictEqual(clockIcons.length, 1, 'Should render temporal icon on enabled layer');
+    assert.strictEqual(
+      clockIcons.length,
+      1,
+      "Should render temporal icon on enabled layer"
+    );
 
     const clockSpan = clockIcons[0];
     assert.strictEqual(
-      clockSpan.attributes['title'],
-      'Dynamic temporal control enabled',
-      'Should display accessible tooltip'
+      clockSpan.attributes["title"],
+      "Dynamic temporal control enabled",
+      "Should display accessible tooltip"
     );
     assert.strictEqual(
       clockSpan.style.color,
-      '#2563eb',
-      'Should use #2563eb accent color'
+      "#2563eb",
+      "Should use #2563eb accent color"
     );
 
     // Verify SVG icon path matches mdiClockTimeFourOutline
-    const svgPath = findAllNodes(clockSpan, (el) => el.tagName === 'PATH')[0];
-    assert.ok(svgPath, 'SVG path must be present in temporal icon slot');
+    const svgPath = findAllNodes(clockSpan, (el) => el.tagName === "PATH")[0];
+    assert.ok(svgPath, "SVG path must be present in temporal icon slot");
     assert.strictEqual(
-      svgPath.attributes['d'],
+      svgPath.attributes["d"],
       mdiClockTimeFourOutline,
-      'Must render mdiClockTimeFourOutline path'
+      "Must render mdiClockTimeFourOutline path"
     );
 
     // Verify icon size matches standard geometry icon dimensions: var(--cartouche-ui-icon-size, 24px)
-    const svg = findAllNodes(clockSpan, (el) => el.tagName === 'SVG')[0];
-    assert.ok(svg, 'SVG element must be present');
+    const svg = findAllNodes(clockSpan, (el) => el.tagName === "SVG")[0];
+    assert.ok(svg, "SVG element must be present");
     assert.ok(
-      svg.style.width.includes('var(--cartouche-ui-icon-size, 24px)'),
+      svg.style.width.includes("var(--cartouche-ui-icon-size, 24px)"),
       `Temporal icon width must match geometry icon size, got: ${svg.style.width}`
     );
 
     // 2. Layer with temporalEnabled: false must NOT render clock icon
     const offRow = layerRows[1];
     const offClockIcons = findAllNodes(offRow, (el) =>
-      el.className.includes('tree-temporal-icon-slot')
+      el.className.includes("tree-temporal-icon-slot")
     );
     assert.strictEqual(
       offClockIcons.length,
       0,
-      'Should not render temporal icon on disabled layer'
+      "Should not render temporal icon on disabled layer"
     );
 
     // 3. Reactively toggling temporalEnabled to false removes the icon immediately
     await act(async () => {
       projectTreeSignal.value = [
         {
-          id: 'l-temporal-on',
-          name: 'Temporal Enabled Layer',
-          type: 'vector',
-          source: 'temporal-on.geojson',
+          id: "l-temporal-on",
+          name: "Temporal Enabled Layer",
+          type: "vector",
+          source: "temporal-on.geojson",
           visible: true,
-          geometryKind: 'Polygon',
+          geometryKind: "Polygon",
           featureCount: 42,
           temporalEnabled: false,
         },
@@ -742,15 +853,15 @@ describe('LayerTreeWidget Node Line Icon Sizing (Ticket #54)', () => {
     });
 
     const updatedLayerRows = findAllNodes(container, (el) =>
-      el.className.includes('tree-node-layer')
+      el.className.includes("tree-node-layer")
     );
     const toggledClockIcons = findAllNodes(updatedLayerRows[0], (el) =>
-      el.className.includes('tree-temporal-icon-slot')
+      el.className.includes("tree-temporal-icon-slot")
     );
     assert.strictEqual(
       toggledClockIcons.length,
       0,
-      'Icon must disappear immediately when temporal control is disabled'
+      "Icon must disappear immediately when temporal control is disabled"
     );
   });
 });

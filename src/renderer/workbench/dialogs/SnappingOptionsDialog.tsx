@@ -58,13 +58,15 @@ export const SnappingOptionsDialog: React.FC = () => {
   const isOpen = isSnappingOptionsOpenSignal.value;
 
   const layers =
-    projectLayersSignal.value.length > 0
-      ? projectLayersSignal.value
-      : layersSignal.value;
+    projectLayersSignal.value.length > 0 ?
+      projectLayersSignal.value
+    : layersSignal.value;
 
   const defaultTolerance = snappingDistanceSignal.value || 10;
 
-  const [configs, setConfigs] = useState<Record<string, LayerSnappingConfig>>({});
+  const [configs, setConfigs] = useState<Record<string, LayerSnappingConfig>>(
+    {}
+  );
 
   /**
    * @function getLayerConfig
@@ -104,10 +106,7 @@ export const SnappingOptionsDialog: React.FC = () => {
   ): void => {
     setConfigs((prev) => ({
       ...prev,
-      [layerId]: {
-        ...getLayerConfig(layerId),
-        ...updates,
-      },
+      [layerId]: { ...getLayerConfig(layerId), ...updates },
     }));
   };
 
@@ -137,10 +136,9 @@ export const SnappingOptionsDialog: React.FC = () => {
           Configure layer-specific snapping tolerance and geometry targets:
         </p>
 
-        {layers.length === 0 ? (
+        {layers.length === 0 ?
           <div className='snapping-options-empty'>No layers in project.</div>
-        ) : (
-          <div className='snapping-options-table-scroll'>
+        : <div className='snapping-options-table-scroll'>
             <table className='snapping-options-table'>
               <thead>
                 <tr className='snapping-options-header-row'>
@@ -234,7 +232,7 @@ export const SnappingOptionsDialog: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
+        }
       </div>
     </Dialog>
   );

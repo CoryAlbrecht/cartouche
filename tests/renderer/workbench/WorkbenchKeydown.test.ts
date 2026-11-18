@@ -10,9 +10,9 @@
  * @see {@link executeWorkbenchAction}
  */
 
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
-import { createRendererJiti } from '../rendererJiti';
+import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { createRendererJiti } from "../rendererJiti";
 import {
   hasProjectSignal,
   isProjectDirtySignal,
@@ -22,22 +22,24 @@ import {
   selectedFeatureIdsSignal,
   isAddLayersOpenSignal,
   activeLayerIdSignal,
-  isCreateLayerOpenSignal
-} from '../../../src/renderer/state/gisSignals';
+  isCreateLayerOpenSignal,
+} from "../../../src/renderer/state/gisSignals";
 import {
   editingNodeIdSignal,
   projectTreeSignal,
   selectedNodeIdsSignal,
-  setNodeSelection
-} from '../../../src/renderer/state/projectSignals';
-import { isPreferencesOpenSignal } from '../../../src/renderer/state/preferencesSignals';
-import { activeLayerPropertiesIdSignal } from '../../../src/renderer/state/layerPropertiesSignals';
-import { activeDialogStackSignal } from '../../../src/renderer/state/dialogSignals';
-import { registeredActionsSignal } from '../../../src/renderer/state/actionSignals';
+  setNodeSelection,
+} from "../../../src/renderer/state/projectSignals";
+import { isPreferencesOpenSignal } from "../../../src/renderer/state/preferencesSignals";
+import { activeLayerPropertiesIdSignal } from "../../../src/renderer/state/layerPropertiesSignals";
+import { activeDialogStackSignal } from "../../../src/renderer/state/dialogSignals";
+import { registeredActionsSignal } from "../../../src/renderer/state/actionSignals";
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { handleWorkbenchKeyDown, executeWorkbenchAction } = jiti('../../../src/renderer/workbench/workbenchShortcuts') as {
+const { handleWorkbenchKeyDown, executeWorkbenchAction } = jiti(
+  "../../../src/renderer/workbench/workbenchShortcuts"
+) as {
   handleWorkbenchKeyDown: (e: any) => void;
   executeWorkbenchAction: (actionName: string) => void;
 };
@@ -65,7 +67,7 @@ function createMockKeyEvent(options: {
   let stopped = false;
   return {
     key: options.key,
-    code: options.code || '',
+    code: options.code || "",
     ctrlKey: options.ctrlKey || false,
     altKey: options.altKey || false,
     shiftKey: options.shiftKey || false,
@@ -82,7 +84,7 @@ function createMockKeyEvent(options: {
     get propagationStopped() {
       return stopped;
     },
-    target: options.target || { tagName: 'DIV' }
+    target: options.target || { tagName: "DIV" },
   };
 }
 
@@ -99,42 +101,43 @@ function setupOpenProjectMock(onOpenFiles?: () => void): void {
       openFiles: async () => {
         if (onOpenFiles) onOpenFiles();
         return [];
-      }
-    }
+      },
+    },
   };
 
   registeredActionsSignal.value = [
     {
-      name: 'open_project',
-      description: 'Opens an existing Cartouche project file',
-      keyCombination: { key: 'o', ctrl: true, alt: true }
-    }
+      name: "open_project",
+      description: "Opens an existing Cartouche project file",
+      keyCombination: { key: "o", ctrl: true, alt: true },
+    },
   ];
 }
 
-describe('Workbench Global Keyboard Listener', () => {
+describe("Workbench Global Keyboard Listener", () => {
   beforeEach(() => {
-    activeToolSignal.value = 'pan';
+    activeToolSignal.value = "pan";
     selectedFeatureIdsSignal.value = new Set();
     editingNodeIdSignal.value = null;
     projectTreeSignal.value = [
       {
-        id: 'layer-roads',
-        name: 'Roads',
-        type: 'vector',
-        source: '/path/to/roads.shp',
+        id: "layer-roads",
+        name: "Roads",
+        type: "vector",
+        source: "/path/to/roads.shp",
         visible: true,
-        selected: false
-      }
+        selected: false,
+      },
     ];
     setNodeSelection([]);
 
     registeredActionsSignal.value = [
       {
-        name: 'cancel_action',
-        description: 'Cancels the active operation, reverts tool, or clears selection',
-        keyCombination: { key: 'Escape' }
-      }
+        name: "cancel_action",
+        description:
+          "Cancels the active operation, reverts tool, or clears selection",
+        keyCombination: { key: "Escape" },
+      },
     ];
 
     isPreferencesOpenSignal.value = false;
@@ -145,195 +148,235 @@ describe('Workbench Global Keyboard Listener', () => {
     activeDialogStackSignal.value = [];
   });
 
-  it('dispatches cancel_action when Escape is pressed and no input/modal captures focus', () => {
-    activeToolSignal.value = 'polygon';
-    setNodeSelection(['layer-roads']);
-    selectedFeatureIdsSignal.value = new Set(['feature-1']);
+  it("dispatches cancel_action when Escape is pressed and no input/modal captures focus", () => {
+    activeToolSignal.value = "polygon";
+    setNodeSelection(["layer-roads"]);
+    selectedFeatureIdsSignal.value = new Set(["feature-1"]);
 
-    const event = createMockKeyEvent({ key: 'Escape' });
+    const event = createMockKeyEvent({ key: "Escape" });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
-    assert.equal(activeToolSignal.value, 'pan');
+    assert.equal(activeToolSignal.value, "pan");
     assert.deepEqual(selectedNodeIdsSignal.value, []);
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
 
-  it('bypasses cancel_action when editingNodeIdSignal is active (inline rename)', () => {
-    editingNodeIdSignal.value = 'layer-roads';
-    activeToolSignal.value = 'polygon';
+  it("bypasses cancel_action when editingNodeIdSignal is active (inline rename)", () => {
+    editingNodeIdSignal.value = "layer-roads";
+    activeToolSignal.value = "polygon";
 
-    const event = createMockKeyEvent({ key: 'Escape' });
+    const event = createMockKeyEvent({ key: "Escape" });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, false);
-    assert.equal(activeToolSignal.value, 'polygon');
+    assert.equal(activeToolSignal.value, "polygon");
   });
 
-  it('bypasses cancel_action when target is an editable input or textarea', () => {
-    activeToolSignal.value = 'polygon';
+  it("bypasses cancel_action when target is an editable input or textarea", () => {
+    activeToolSignal.value = "polygon";
 
     const event = createMockKeyEvent({
-      key: 'Escape',
-      target: { tagName: 'INPUT' }
+      key: "Escape",
+      target: { tagName: "INPUT" },
     });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, false);
-    assert.equal(activeToolSignal.value, 'polygon');
+    assert.equal(activeToolSignal.value, "polygon");
   });
 
-  it('bypasses cancel_action when target is inside a modal dialog', () => {
-    activeToolSignal.value = 'polygon';
+  it("bypasses cancel_action when target is inside a modal dialog", () => {
+    activeToolSignal.value = "polygon";
 
     const event = createMockKeyEvent({
-      key: 'Escape',
+      key: "Escape",
       target: {
-        tagName: 'BUTTON',
-        closest: (selector: string) => selector.includes('modal-dialog') ? {} : null
-      }
+        tagName: "BUTTON",
+        closest: (selector: string) =>
+          selector.includes("modal-dialog") ? {} : null,
+      },
     });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, false);
-    assert.equal(activeToolSignal.value, 'polygon');
+    assert.equal(activeToolSignal.value, "polygon");
   });
 
-  it('bypasses cancel_action when target is inside a PopupMenu or backdrop', () => {
-    activeToolSignal.value = 'polygon';
-    setNodeSelection(['layer-roads']);
+  it("bypasses cancel_action when target is inside a PopupMenu or backdrop", () => {
+    activeToolSignal.value = "polygon";
+    setNodeSelection(["layer-roads"]);
 
     const event = createMockKeyEvent({
-      key: 'Escape',
+      key: "Escape",
       target: {
-        tagName: 'DIV',
-        closest: (selector: string) => selector.includes('popup-menu') ? {} : null
-      }
+        tagName: "DIV",
+        closest: (selector: string) =>
+          selector.includes("popup-menu") ? {} : null,
+      },
     });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, false);
-    assert.equal(activeToolSignal.value, 'polygon');
-    assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads']);
+    assert.equal(activeToolSignal.value, "polygon");
+    assert.deepEqual(selectedNodeIdsSignal.value, ["layer-roads"]);
   });
 
-  it('bypasses cancel_action when an active PopupMenu exists in document', () => {
-    activeToolSignal.value = 'polygon';
-    setNodeSelection(['layer-roads']);
+  it("bypasses cancel_action when an active PopupMenu exists in document", () => {
+    activeToolSignal.value = "polygon";
+    setNodeSelection(["layer-roads"]);
 
     const prevDoc = (globalThis as any).document;
     (globalThis as any).document = {
-      querySelector: (selector: string) => selector.includes('popup-menu') ? {} : null
+      querySelector: (selector: string) =>
+        selector.includes("popup-menu") ? {} : null,
     };
 
     try {
       const event = createMockKeyEvent({
-        key: 'Escape',
-        target: { tagName: 'DIV' }
+        key: "Escape",
+        target: { tagName: "DIV" },
       });
       handleWorkbenchKeyDown(event);
 
       assert.equal(event.defaultPrevented, false);
-      assert.equal(activeToolSignal.value, 'polygon');
-      assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads']);
+      assert.equal(activeToolSignal.value, "polygon");
+      assert.deepEqual(selectedNodeIdsSignal.value, ["layer-roads"]);
     } finally {
       (globalThis as any).document = prevDoc;
     }
   });
 
-  it('bypasses cancel_action when event has already been defaultPrevented', () => {
-    activeToolSignal.value = 'polygon';
+  it("bypasses cancel_action when event has already been defaultPrevented", () => {
+    activeToolSignal.value = "polygon";
 
-    const event = createMockKeyEvent({
-      key: 'Escape',
-      defaultPrevented: true
-    });
+    const event = createMockKeyEvent({ key: "Escape", defaultPrevented: true });
     handleWorkbenchKeyDown(event);
 
-    assert.equal(activeToolSignal.value, 'polygon');
+    assert.equal(activeToolSignal.value, "polygon");
   });
 
-  it('prioritizes dismissing PreferencesDialog when open without clearing GIS state', () => {
-    activeToolSignal.value = 'polygon';
-    setNodeSelection(['layer-roads']);
+  it("prioritizes dismissing PreferencesDialog when open without clearing GIS state", () => {
+    activeToolSignal.value = "polygon";
+    setNodeSelection(["layer-roads"]);
     isPreferencesOpenSignal.value = true;
 
-    const event = createMockKeyEvent({ key: 'Escape' });
+    const event = createMockKeyEvent({ key: "Escape" });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
-    assert.equal(isPreferencesOpenSignal.value, false, 'PreferencesDialog must be dismissed');
-    assert.equal(activeToolSignal.value, 'polygon', 'Active tool must NOT be reverted to pan');
-    assert.deepEqual(selectedNodeIdsSignal.value, ['layer-roads'], 'Node selection must NOT be cleared');
+    assert.equal(
+      isPreferencesOpenSignal.value,
+      false,
+      "PreferencesDialog must be dismissed"
+    );
+    assert.equal(
+      activeToolSignal.value,
+      "polygon",
+      "Active tool must NOT be reverted to pan"
+    );
+    assert.deepEqual(
+      selectedNodeIdsSignal.value,
+      ["layer-roads"],
+      "Node selection must NOT be cleared"
+    );
   });
 
-  it('prioritizes closing AddLayersDialog when open without clearing GIS state', () => {
-    activeToolSignal.value = 'line';
+  it("prioritizes closing AddLayersDialog when open without clearing GIS state", () => {
+    activeToolSignal.value = "line";
     isAddLayersOpenSignal.value = true;
 
-    const event = createMockKeyEvent({ key: 'Escape' });
+    const event = createMockKeyEvent({ key: "Escape" });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
-    assert.equal(isAddLayersOpenSignal.value, false, 'AddLayersDialog must be closed');
-    assert.equal(activeToolSignal.value, 'line', 'Active tool must NOT be reverted');
+    assert.equal(
+      isAddLayersOpenSignal.value,
+      false,
+      "AddLayersDialog must be closed"
+    );
+    assert.equal(
+      activeToolSignal.value,
+      "line",
+      "Active tool must NOT be reverted"
+    );
   });
 
-  it('prioritizes cancelling LayerPropertiesDialog when open without clearing GIS state', () => {
-    activeToolSignal.value = 'point';
-    activeLayerPropertiesIdSignal.value = 'layer-roads';
+  it("prioritizes cancelling LayerPropertiesDialog when open without clearing GIS state", () => {
+    activeToolSignal.value = "point";
+    activeLayerPropertiesIdSignal.value = "layer-roads";
 
-    const event = createMockKeyEvent({ key: 'Escape' });
+    const event = createMockKeyEvent({ key: "Escape" });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
-    assert.equal(activeLayerPropertiesIdSignal.value, null, 'LayerPropertiesDialog must be closed');
-    assert.equal(activeToolSignal.value, 'point', 'Active tool must NOT be reverted');
+    assert.equal(
+      activeLayerPropertiesIdSignal.value,
+      null,
+      "LayerPropertiesDialog must be closed"
+    );
+    assert.equal(
+      activeToolSignal.value,
+      "point",
+      "Active tool must NOT be reverted"
+    );
   });
 
-  it('dispatches project_properties action only when active project is open', () => {
+  it("dispatches project_properties action only when active project is open", () => {
     registeredActionsSignal.value = [
       {
-        name: 'project_properties',
-        description: 'Opens project properties dialog',
-        keyCombination: { key: 'p', ctrl: true }
-      }
+        name: "project_properties",
+        description: "Opens project properties dialog",
+        keyCombination: { key: "p", ctrl: true },
+      },
     ];
 
     // When no project is open:
     hasProjectSignal.value = false;
     isProjectPropertiesOpenSignal.value = false;
-    let event = createMockKeyEvent({ key: 'p', ctrlKey: true });
+    let event = createMockKeyEvent({ key: "p", ctrlKey: true });
     handleWorkbenchKeyDown(event);
-    assert.equal(isProjectPropertiesOpenSignal.value, false, 'project_properties must not open dialog when no project is open');
+    assert.equal(
+      isProjectPropertiesOpenSignal.value,
+      false,
+      "project_properties must not open dialog when no project is open"
+    );
 
     // When project is open:
     hasProjectSignal.value = true;
-    event = createMockKeyEvent({ key: 'p', ctrlKey: true });
+    event = createMockKeyEvent({ key: "p", ctrlKey: true });
     handleWorkbenchKeyDown(event);
-    assert.equal(isProjectPropertiesOpenSignal.value, true, 'project_properties must open dialog when project is open');
+    assert.equal(
+      isProjectPropertiesOpenSignal.value,
+      true,
+      "project_properties must open dialog when project is open"
+    );
   });
 
-  it('dispatches open_project action when Ctrl+Alt+O is pressed with standard key', () => {
+  it("dispatches open_project action when Ctrl+Alt+O is pressed with standard key", () => {
     let openFilesCalled = false;
     setupOpenProjectMock(() => {
       openFilesCalled = true;
     });
 
     const event = createMockKeyEvent({
-      key: 'o',
-      code: 'KeyO',
+      key: "o",
+      code: "KeyO",
       ctrlKey: true,
-      altKey: true
+      altKey: true,
     });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
     assert.equal(event.propagationStopped, true);
-    assert.equal(openFilesCalled, true, 'openFiles should have been called via openProjectAction');
+    assert.equal(
+      openFilesCalled,
+      true,
+      "openFiles should have been called via openProjectAction"
+    );
   });
 
-  it('dispatches open_project action when Ctrl+Alt+O is pressed with layout-modified key but matching physical code', () => {
+  it("dispatches open_project action when Ctrl+Alt+O is pressed with layout-modified key but matching physical code", () => {
     let openFilesCalled = false;
     setupOpenProjectMock(() => {
       openFilesCalled = true;
@@ -341,19 +384,23 @@ describe('Workbench Global Keyboard Listener', () => {
 
     // Simulating keyboard layout or AltGr modifier producing 'ó' instead of 'o'
     const event = createMockKeyEvent({
-      key: 'ó',
-      code: 'KeyO',
+      key: "ó",
+      code: "KeyO",
       ctrlKey: true,
-      altKey: true
+      altKey: true,
     });
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
     assert.equal(event.propagationStopped, true);
-    assert.equal(openFilesCalled, true, 'openFiles should have been called via physical key code KeyO');
+    assert.equal(
+      openFilesCalled,
+      true,
+      "openFiles should have been called via physical key code KeyO"
+    );
   });
 
-  it('bypasses open_project action when modifier combinations do not match', () => {
+  it("bypasses open_project action when modifier combinations do not match", () => {
     let openFilesCalled = false;
     setupOpenProjectMock(() => {
       openFilesCalled = true;
@@ -361,10 +408,10 @@ describe('Workbench Global Keyboard Listener', () => {
 
     // Missing Alt (only Ctrl+O)
     const eventMissingAlt = createMockKeyEvent({
-      key: 'o',
-      code: 'KeyO',
+      key: "o",
+      code: "KeyO",
       ctrlKey: true,
-      altKey: false
+      altKey: false,
     });
     handleWorkbenchKeyDown(eventMissingAlt);
     assert.equal(eventMissingAlt.defaultPrevented, false);
@@ -372,81 +419,105 @@ describe('Workbench Global Keyboard Listener', () => {
 
     // Extra Shift (Ctrl+Alt+Shift+O)
     const eventExtraShift = createMockKeyEvent({
-      key: 'o',
-      code: 'KeyO',
+      key: "o",
+      code: "KeyO",
       ctrlKey: true,
       altKey: true,
-      shiftKey: true
+      shiftKey: true,
     });
     handleWorkbenchKeyDown(eventExtraShift);
     assert.equal(eventExtraShift.defaultPrevented, false);
     assert.equal(openFilesCalled, false);
   });
 
-  it('dispatches layer_properties action when Ctrl+Shift+, is pressed and active layer exists', () => {
-    activeLayerIdSignal.value = 'layer-roads';
+  it("dispatches layer_properties action when Ctrl+Shift+, is pressed and active layer exists", () => {
+    activeLayerIdSignal.value = "layer-roads";
     activeLayerPropertiesIdSignal.value = null;
 
     registeredActionsSignal.value = [
       {
-        name: 'layer_properties',
-        description: 'Opens layer properties dialog for the active layer',
-        keyCombination: { key: ',', ctrl: true, shift: true }
-      }
+        name: "layer_properties",
+        description: "Opens layer properties dialog for the active layer",
+        keyCombination: { key: ",", ctrl: true, shift: true },
+      },
     ];
 
     // On standard keyboards, pressing Shift with comma emits key: '<' and code: 'Comma'
     const event = createMockKeyEvent({
-      key: '<',
-      code: 'Comma',
+      key: "<",
+      code: "Comma",
       ctrlKey: true,
-      shiftKey: true
+      shiftKey: true,
     });
 
     handleWorkbenchKeyDown(event);
 
-    assert.equal(event.defaultPrevented, true, 'Keystroke event should be defaultPrevented');
-    assert.equal(event.propagationStopped, true, 'Keystroke event propagation should be stopped');
-    assert.equal(activeLayerPropertiesIdSignal.value, 'layer-roads', 'Layer properties dialog should open for active layer');
+    assert.equal(
+      event.defaultPrevented,
+      true,
+      "Keystroke event should be defaultPrevented"
+    );
+    assert.equal(
+      event.propagationStopped,
+      true,
+      "Keystroke event propagation should be stopped"
+    );
+    assert.equal(
+      activeLayerPropertiesIdSignal.value,
+      "layer-roads",
+      "Layer properties dialog should open for active layer"
+    );
   });
 
-  it('bypasses layer_properties opening when Ctrl+Shift+, is pressed without an active layer', () => {
+  it("bypasses layer_properties opening when Ctrl+Shift+, is pressed without an active layer", () => {
     activeLayerIdSignal.value = null;
     activeLayerPropertiesIdSignal.value = null;
 
     registeredActionsSignal.value = [
       {
-        name: 'layer_properties',
-        description: 'Opens layer properties dialog for the active layer',
-        keyCombination: { key: ',', ctrl: true, shift: true }
-      }
+        name: "layer_properties",
+        description: "Opens layer properties dialog for the active layer",
+        keyCombination: { key: ",", ctrl: true, shift: true },
+      },
     ];
 
     const event = createMockKeyEvent({
-      key: '<',
-      code: 'Comma',
+      key: "<",
+      code: "Comma",
       ctrlKey: true,
-      shiftKey: true
+      shiftKey: true,
     });
 
     handleWorkbenchKeyDown(event);
 
-    assert.equal(event.defaultPrevented, true, 'Event should match action and be handled');
-    assert.equal(activeLayerPropertiesIdSignal.value, null, 'Dialog should not open when activeLayerId is null');
+    assert.equal(
+      event.defaultPrevented,
+      true,
+      "Event should match action and be handled"
+    );
+    assert.equal(
+      activeLayerPropertiesIdSignal.value,
+      null,
+      "Dialog should not open when activeLayerId is null"
+    );
   });
 
-  describe('executeWorkbenchAction', () => {
-    it('executes open_project action when passed open_project action name', () => {
+  describe("executeWorkbenchAction", () => {
+    it("executes open_project action when passed open_project action name", () => {
       let openFilesCalled = false;
       setupOpenProjectMock(() => {
         openFilesCalled = true;
       });
 
-      executeWorkbenchAction('open_project');
-      assert.equal(openFilesCalled, true, 'openFiles should have been called via executeWorkbenchAction');
+      executeWorkbenchAction("open_project");
+      assert.equal(
+        openFilesCalled,
+        true,
+        "openFiles should have been called via executeWorkbenchAction"
+      );
     });
 
-    it('executes save_project on untitled project even when isProjectDirty is false', () => {
+    it("executes save_project on untitled project even when isProjectDirty is false", () => {
       let saveFileCalled = false;
       hasProjectSignal.value = true;
       projectFilePathSignal.value = null;
@@ -457,16 +528,20 @@ describe('Workbench Global Keyboard Listener', () => {
         electronAPI: {
           saveFile: async () => {
             saveFileCalled = true;
-            return '/mock/path.cproj';
-          }
-        }
+            return "/mock/path.cproj";
+          },
+        },
       };
 
-      executeWorkbenchAction('save_project');
-      assert.equal(saveFileCalled, true, 'saveFile should have been called for untitled project');
+      executeWorkbenchAction("save_project");
+      assert.equal(
+        saveFileCalled,
+        true,
+        "saveFile should have been called for untitled project"
+      );
     });
 
-    it('bypasses save_project when hasProject is false', () => {
+    it("bypasses save_project when hasProject is false", () => {
       let saveFileCalled = false;
       hasProjectSignal.value = false;
       projectFilePathSignal.value = null;
@@ -476,63 +551,87 @@ describe('Workbench Global Keyboard Listener', () => {
         electronAPI: {
           saveFile: async () => {
             saveFileCalled = true;
-            return '/mock/path.cproj';
-          }
-        }
+            return "/mock/path.cproj";
+          },
+        },
       };
 
-      executeWorkbenchAction('save_project');
-      assert.equal(saveFileCalled, false, 'saveFile must not be called when hasProject is false');
+      executeWorkbenchAction("save_project");
+      assert.equal(
+        saveFileCalled,
+        false,
+        "saveFile must not be called when hasProject is false"
+      );
     });
 
-    it('forwards unknown or main process actions to electronAPI.executeAction', () => {
-      let forwardedAction = '';
+    it("forwards unknown or main process actions to electronAPI.executeAction", () => {
+      let forwardedAction = "";
       (globalThis as any).window = {
         ...(globalThis as any).window,
         electronAPI: {
           executeAction: (name: string) => {
             forwardedAction = name;
-          }
-        }
+          },
+        },
       };
 
-      executeWorkbenchAction('custom_main_action');
-      assert.equal(forwardedAction, 'custom_main_action');
+      executeWorkbenchAction("custom_main_action");
+      assert.equal(forwardedAction, "custom_main_action");
     });
 
-    it('executes project_properties when hasProject is true and ignores when false', () => {
+    it("executes project_properties when hasProject is true and ignores when false", () => {
       isProjectPropertiesOpenSignal.value = false;
       hasProjectSignal.value = false;
 
-      executeWorkbenchAction('project_properties');
-      assert.equal(isProjectPropertiesOpenSignal.value, false, 'project_properties must be a no-op when !hasProject');
+      executeWorkbenchAction("project_properties");
+      assert.equal(
+        isProjectPropertiesOpenSignal.value,
+        false,
+        "project_properties must be a no-op when !hasProject"
+      );
 
       hasProjectSignal.value = true;
-      executeWorkbenchAction('project_properties');
-      assert.equal(isProjectPropertiesOpenSignal.value, true, 'project_properties must open dialog when hasProject is true');
+      executeWorkbenchAction("project_properties");
+      assert.equal(
+        isProjectPropertiesOpenSignal.value,
+        true,
+        "project_properties must open dialog when hasProject is true"
+      );
       isProjectPropertiesOpenSignal.value = false;
     });
 
-    it('executes layer_properties when activeLayerId is set and ignores when null', () => {
+    it("executes layer_properties when activeLayerId is set and ignores when null", () => {
       activeLayerPropertiesIdSignal.value = null;
       activeLayerIdSignal.value = null;
 
-      executeWorkbenchAction('layer_properties');
-      assert.equal(activeLayerPropertiesIdSignal.value, null, 'layer_properties must be a no-op when activeLayerId is null');
+      executeWorkbenchAction("layer_properties");
+      assert.equal(
+        activeLayerPropertiesIdSignal.value,
+        null,
+        "layer_properties must be a no-op when activeLayerId is null"
+      );
 
-      activeLayerIdSignal.value = 'layer-test-123';
-      executeWorkbenchAction('layer_properties');
-      assert.equal(activeLayerPropertiesIdSignal.value, 'layer-test-123', 'layer_properties must open dialog for active layer');
+      activeLayerIdSignal.value = "layer-test-123";
+      executeWorkbenchAction("layer_properties");
+      assert.equal(
+        activeLayerPropertiesIdSignal.value,
+        "layer-test-123",
+        "layer_properties must open dialog for active layer"
+      );
       activeLayerPropertiesIdSignal.value = null;
       activeLayerIdSignal.value = null;
     });
 
-    it('executes create_layer and opens Create Layer dialog regardless of hasProject', () => {
+    it("executes create_layer and opens Create Layer dialog regardless of hasProject", () => {
       isCreateLayerOpenSignal.value = false;
       hasProjectSignal.value = false;
 
-      executeWorkbenchAction('create_layer');
-      assert.equal(isCreateLayerOpenSignal.value, true, 'create_layer must open Create Layer dialog');
+      executeWorkbenchAction("create_layer");
+      assert.equal(
+        isCreateLayerOpenSignal.value,
+        true,
+        "create_layer must open Create Layer dialog"
+      );
       isCreateLayerOpenSignal.value = false;
     });
   });

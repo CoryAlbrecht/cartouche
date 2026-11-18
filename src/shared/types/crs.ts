@@ -18,7 +18,7 @@
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type CrsCatalogueType = 'geographic 2D' | 'projected';
+export type CrsCatalogueType = "geographic 2D" | "projected";
 
 /**
  * @typedef {Object} CrsCatalogueEntry
@@ -47,7 +47,7 @@ export interface CrsCatalogueEntry {
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type CrsCatalogueStatus = 'idle' | 'building' | 'ready' | 'error';
+export type CrsCatalogueStatus = "idle" | "building" | "ready" | "error";
 
 /**
  * @typedef {Object} CrsCatalogueState
@@ -74,7 +74,7 @@ export interface CrsCatalogueState {
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const CRS_HIDE_DEPRECATED_PREF = 'crs.hideDeprecated';
+export const CRS_HIDE_DEPRECATED_PREF = "crs.hideDeprecated";
 
 /**
  * @function selectVisibleCrsEntries
@@ -95,7 +95,9 @@ export function selectVisibleCrsEntries(
 ): CrsCatalogueEntry[] {
   if (!hideDeprecated) return [...entries];
   const keep = new Set(Array.from(alwaysShow, (id) => id.toUpperCase()));
-  return entries.filter((e) => !e.deprecated || keep.has(e.authId.toUpperCase()));
+  return entries.filter(
+    (e) => !e.deprecated || keep.has(e.authId.toUpperCase())
+  );
 }
 
 /**
@@ -109,7 +111,7 @@ export function selectVisibleCrsEntries(
  * @returns {string} Label.
  */
 export function formatCrsEntryLabel(entry: CrsCatalogueEntry): string {
-  return `${entry.authId} — ${entry.name}${entry.deprecated ? ' (deprecated)' : ''}`;
+  return `${entry.authId} — ${entry.name}${entry.deprecated ? " (deprecated)" : ""}`;
 }
 
 /**
@@ -133,10 +135,16 @@ export const MAX_RECENT_CRS = 20;
  * @param {string} filter - Filter text.
  * @returns {boolean} True when the entry matches.
  */
-export function crsEntryMatchesFilter(entry: { authId: string; name: string }, filter: string): boolean {
+export function crsEntryMatchesFilter(
+  entry: { authId: string; name: string },
+  filter: string
+): boolean {
   const needle = filter.trim().toLowerCase();
   if (!needle) return true;
-  return entry.name.toLowerCase().includes(needle) || entry.authId.toLowerCase().includes(needle);
+  return (
+    entry.name.toLowerCase().includes(needle)
+    || entry.authId.toLowerCase().includes(needle)
+  );
 }
 
 /**
@@ -151,9 +159,16 @@ export function crsEntryMatchesFilter(entry: { authId: string; name: string }, f
  * @param {number} [max=MAX_RECENT_CRS] - Maximum length.
  * @returns {string[]} New list.
  */
-export function pushRecentCrs(recent: readonly string[], authId: string, max: number = MAX_RECENT_CRS): string[] {
+export function pushRecentCrs(
+  recent: readonly string[],
+  authId: string,
+  max: number = MAX_RECENT_CRS
+): string[] {
   const key = authId.toUpperCase();
-  return [authId, ...recent.filter((id) => id.toUpperCase() !== key)].slice(0, max);
+  return [authId, ...recent.filter((id) => id.toUpperCase() !== key)].slice(
+    0,
+    max
+  );
 }
 
 /**
@@ -167,9 +182,14 @@ export function pushRecentCrs(recent: readonly string[], authId: string, max: nu
  * @param {string} authId - CRS selected in the Predefined list.
  * @returns {string[]} New list (untrimmed; trimming happens on Apply).
  */
-export function addToRecentCrsIfMissing(recent: readonly string[], authId: string): string[] {
+export function addToRecentCrsIfMissing(
+  recent: readonly string[],
+  authId: string
+): string[] {
   const key = authId.toUpperCase();
-  return recent.some((id) => id.toUpperCase() === key) ? [...recent] : [authId, ...recent];
+  return recent.some((id) => id.toUpperCase() === key) ?
+      [...recent]
+    : [authId, ...recent];
 }
 
 /**
@@ -208,12 +228,17 @@ export interface CrsInfo {
  * @returns {string} Plain text.
  */
 export function formatCrsInfoText(info: CrsInfo): string {
-  const blocks: string[] = [`${info.name}${info.deprecated ? ' (deprecated)' : ''}`];
+  const blocks: string[] = [
+    `${info.name}${info.deprecated ? " (deprecated)" : ""}`,
+  ];
   if (info.properties.length > 0) {
-    blocks.push(['Properties', ...info.properties.map((p) => `• ${p}`)].join('\n'));
+    blocks.push(
+      ["Properties", ...info.properties.map((p) => `• ${p}`)].join("\n")
+    );
   }
   if (info.wkt) blocks.push(`WKT\n${info.wkt}`);
   if (info.proj4) blocks.push(`Proj4\n${info.proj4}`);
-  if (info.extent) blocks.push(`Extent\n${info.extent.map((v) => v.toFixed(2)).join(', ')}`);
-  return blocks.join('\n\n');
+  if (info.extent)
+    blocks.push(`Extent\n${info.extent.map((v) => v.toFixed(2)).join(", ")}`);
+  return blocks.join("\n\n");
 }

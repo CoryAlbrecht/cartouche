@@ -10,8 +10,8 @@
  * @see {@link TableCellEditorProps}
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { TableCellEditorProps, TableEditMove } from './TableWidget';
+import React, { useEffect, useRef, useState } from "react";
+import type { TableCellEditorProps, TableEditMove } from "./TableWidget";
 
 /**
  * @function useTableEditorFocus
@@ -24,12 +24,20 @@ import type { TableCellEditorProps, TableEditMove } from './TableWidget';
  * @param {boolean} [selectText=false] - Whether to select the element's text after focusing it (inputs only).
  * @returns {React.RefObject<E | null>} Ref to attach to the editor's focusable element.
  */
-export function useTableEditorFocus<E extends HTMLElement>(selectText = false): React.RefObject<E | null> {
+export function useTableEditorFocus<E extends HTMLElement>(
+  selectText = false
+): React.RefObject<E | null> {
   const ref = useRef<E>(null);
   useEffect(() => {
     const element = ref.current;
     element?.focus?.();
-    if (selectText && element && 'select' in element && typeof element.select === 'function') element.select();
+    if (
+      selectText
+      && element
+      && "select" in element
+      && typeof element.select === "function"
+    )
+      element.select();
     // `selectText` is fixed for an editor's lifetime, so this runs once, when the editor opens.
   }, [selectText]);
   return ref;
@@ -52,15 +60,15 @@ export function tableEditorKeyDown(
   commit: (move?: TableEditMove) => void,
   cancel: () => void
 ): void {
-  if (event.key === 'Enter') {
+  if (event.key === "Enter") {
     event.preventDefault();
     commit();
-  } else if (event.key === 'Escape') {
+  } else if (event.key === "Escape") {
     event.preventDefault();
     cancel();
-  } else if (event.key === 'Tab') {
+  } else if (event.key === "Tab") {
     event.preventDefault();
-    commit(event.shiftKey ? 'previous' : 'next');
+    commit(event.shiftKey ? "previous" : "next");
   }
 }
 
@@ -75,27 +83,27 @@ export function tableEditorKeyDown(
  * @returns {number | null} Parsed number, or null if empty or not numeric.
  */
 export function parseNumericInput(text: string): number | null {
-  if (typeof text !== 'string') return null;
+  if (typeof text !== "string") return null;
   const trimmed = text.trim();
   if (!trimmed) return null;
 
   // Strip all non-breaking spaces, thin spaces, and regular spaces used for thousands grouping
-  let cleaned = trimmed.replace(/[\s\u00A0\u202F]/g, '');
+  let cleaned = trimmed.replace(/[\s\u00A0\u202F]/g, "");
 
-  const hasComma = cleaned.includes(',');
-  const hasDot = cleaned.includes('.');
+  const hasComma = cleaned.includes(",");
+  const hasDot = cleaned.includes(".");
 
   if (hasComma && hasDot) {
-    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+    if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
       // European format: "1.234,56" -> "1234.56"
-      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
     } else {
       // Standard format: "1,234.56" -> "1234.56"
-      cleaned = cleaned.replace(/,/g, '');
+      cleaned = cleaned.replace(/,/g, "");
     }
   } else if (hasComma) {
     // Single comma: e.g. "1250,5" -> "1250.5"
-    cleaned = cleaned.replace(',', '.');
+    cleaned = cleaned.replace(",", ".");
   }
 
   const num = Number(cleaned);
@@ -127,8 +135,16 @@ interface InputEditorProps<R> extends TableCellEditorProps<R> {
  * @param {InputEditorProps<R>} props - Component properties.
  * @returns {React.ReactElement} The input element.
  */
-function InputEditor<R>({ value, onCommit, onCancel, parse, numeric }: InputEditorProps<R>): React.ReactElement {
-  const [text, setText] = useState(value === null || value === undefined ? '' : String(value));
+function InputEditor<R>({
+  value,
+  onCommit,
+  onCancel,
+  parse,
+  numeric,
+}: InputEditorProps<R>): React.ReactElement {
+  const [text, setText] = useState(
+    value === null || value === undefined ? "" : String(value)
+  );
   const inputRef = useTableEditorFocus<HTMLInputElement>(true);
 
   /**
@@ -151,7 +167,7 @@ function InputEditor<R>({ value, onCommit, onCancel, parse, numeric }: InputEdit
     <input
       ref={inputRef}
       type='text'
-      className={`cell-editor-input table-widget-editor${numeric ? ' cell-editor-numeric' : ''}`}
+      className={`cell-editor-input table-widget-editor${numeric ? " cell-editor-numeric" : ""}`}
       value={text}
       onChange={(event) => setText(event.target.value)}
       onBlur={() => commit()}
@@ -171,8 +187,16 @@ function InputEditor<R>({ value, onCommit, onCancel, parse, numeric }: InputEdit
  * @param {TableCellEditorProps<R>} props - Component properties.
  * @returns {React.ReactElement} The editor.
  */
-export function TableTextEditor<R>(props: TableCellEditorProps<R>): React.ReactElement {
-  return <InputEditor {...props} numeric={false} parse={(text) => ({ value: text })} />;
+export function TableTextEditor<R>(
+  props: TableCellEditorProps<R>
+): React.ReactElement {
+  return (
+    <InputEditor
+      {...props}
+      numeric={false}
+      parse={(text) => ({ value: text })}
+    />
+  );
 }
 
 /**
@@ -186,7 +210,9 @@ export function TableTextEditor<R>(props: TableCellEditorProps<R>): React.ReactE
  * @param {TableCellEditorProps<R>} props - Component properties.
  * @returns {React.ReactElement} The editor.
  */
-export function TableNumberEditor<R>(props: TableCellEditorProps<R>): React.ReactElement {
+export function TableNumberEditor<R>(
+  props: TableCellEditorProps<R>
+): React.ReactElement {
   return (
     <InputEditor
       {...props}

@@ -13,7 +13,7 @@
  * @typedef {'ascending' | 'descending'} TableSortDirection
  * @description Direction a sorted column orders its rows in. Spelled like the ARIA `aria-sort` values.
  */
-export type TableSortDirection = 'ascending' | 'descending';
+export type TableSortDirection = "ascending" | "descending";
 
 /**
  * @typedef {Object} TableSortState
@@ -43,9 +43,15 @@ export type TableSort = TableSortState | null;
  * @param {string} columnKey - Key of the clicked column.
  * @returns {TableSort} The new sort.
  */
-export function nextTableSort(current: TableSort, columnKey: string): TableSort {
-  if (current?.columnKey !== columnKey) return { columnKey, direction: 'ascending' };
-  return current.direction === 'ascending' ? { columnKey, direction: 'descending' } : null;
+export function nextTableSort(
+  current: TableSort,
+  columnKey: string
+): TableSort {
+  if (current?.columnKey !== columnKey)
+    return { columnKey, direction: "ascending" };
+  return current.direction === "ascending" ?
+      { columnKey, direction: "descending" }
+    : null;
 }
 
 /**
@@ -60,9 +66,15 @@ export function nextTableSort(current: TableSort, columnKey: string): TableSort 
  * @returns {number} Negative when `a` sorts first, positive when `b` does, 0 when equal.
  */
 export function defaultTableCompare(a: unknown, b: unknown): number {
-  if (typeof a === 'number' && typeof b === 'number') return a - b;
-  if (typeof a === 'bigint' && typeof b === 'bigint') return a < b ? -1 : a > b ? 1 : 0;
-  if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b);
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  if (typeof a === "bigint" && typeof b === "bigint")
+    return (
+      a < b ? -1
+      : a > b ? 1
+      : 0
+    );
+  if (typeof a === "boolean" && typeof b === "boolean")
+    return Number(a) - Number(b);
   if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
   return String(a).localeCompare(String(b), undefined, { numeric: true });
 }
@@ -87,7 +99,7 @@ export function sortTableRows<R>(
   direction: TableSortDirection,
   compare: (a: unknown, b: unknown) => number = defaultTableCompare
 ): R[] {
-  const sign = direction === 'ascending' ? 1 : -1;
+  const sign = direction === "ascending" ? 1 : -1;
   return rows
     .map((row) => ({ row, value: valueOf(row) }))
     .sort((x, y) => {

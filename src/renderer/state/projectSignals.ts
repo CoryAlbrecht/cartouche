@@ -22,7 +22,7 @@
  * @see {@link describeProjectCrsStatus}
  */
 
-import { signal, computed, batch } from '@preact/signals-react';
+import { signal, computed, batch } from "@preact/signals-react";
 import type {
   ProjectModel,
   ProjectCrs,
@@ -30,10 +30,10 @@ import type {
   ProjectGroupItem,
   ProjectLayerStyleItem,
   LayerDescriptor,
-  LayerFieldInfo
-} from '@shared/types';
-import { resolveLayerStyle } from '../../shared/styles/defaultLayerStyles';
-import { resolveProjectDisplayName } from '../../shared/project/projectTitle';
+  LayerFieldInfo,
+} from "@shared/types";
+import { resolveLayerStyle } from "../../shared/styles/defaultLayerStyles";
+import { resolveProjectDisplayName } from "../../shared/project/projectTitle";
 import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
@@ -41,8 +41,8 @@ import {
   DEFAULT_MEASUREMENT_SETTINGS,
   type ProjectPathMode,
   type ProjectMeasurementSettings,
-} from '../../shared/types/project';
-import { resolveDisplayCrs } from '../map/projectionRegistry';
+} from "../../shared/types/project";
+import { resolveDisplayCrs } from "../map/projectionRegistry";
 
 /**
  * @typedef {Object} PopupMenuItem
@@ -79,7 +79,9 @@ export interface LayerTreeContextMenuContext {
 /**
  * @typedef {(context: LayerTreeContextMenuContext) => PopupMenuItem[]} LayerTreeContextMenuHook
  */
-export type LayerTreeContextMenuHook = (context: LayerTreeContextMenuContext) => PopupMenuItem[];
+export type LayerTreeContextMenuHook = (
+  context: LayerTreeContextMenuContext
+) => PopupMenuItem[];
 
 /**
  * @signal layerTreeContextMenuHooksSignal
@@ -90,7 +92,9 @@ export type LayerTreeContextMenuHook = (context: LayerTreeContextMenuContext) =>
  * @since 0.1.0-dev
  * @type {Signal<LayerTreeContextMenuHook[]>}
  */
-export const layerTreeContextMenuHooksSignal = signal<LayerTreeContextMenuHook[]>([]);
+export const layerTreeContextMenuHooksSignal = signal<
+  LayerTreeContextMenuHook[]
+>([]);
 
 /**
  * @signal projectTreeSignal
@@ -101,7 +105,9 @@ export const layerTreeContextMenuHooksSignal = signal<LayerTreeContextMenuHook[]
  * @since 0.1.0-dev
  * @type {Signal<Array<ProjectLayerItem | ProjectGroupItem>>}
  */
-export const projectTreeSignal = signal<Array<ProjectLayerItem | ProjectGroupItem>>([]);
+export const projectTreeSignal = signal<
+  Array<ProjectLayerItem | ProjectGroupItem>
+>([]);
 
 /**
  * @signal projectLayersSignal
@@ -123,7 +129,9 @@ export const projectLayersSignal = signal<LayerDescriptor[]>([]);
  * @since 0.1.0-dev
  * @type {Signal<Record<string, Record<string, any>>>}
  */
-export const layerStylesSignal = signal<Record<string, Record<string, any>>>({});
+export const layerStylesSignal = signal<Record<string, Record<string, any>>>(
+  {}
+);
 
 /**
  * @signal currentProjectSignal
@@ -178,7 +186,7 @@ export const projectFilePathSignal = signal<string | null>(null);
  * @since 0.1.0-dev
  * @type {Signal<string>}
  */
-export const projectTitleSignal = signal<string>('');
+export const projectTitleSignal = signal<string>("");
 
 /**
  * @signal mapBackgroundColourSignal
@@ -189,7 +197,9 @@ export const projectTitleSignal = signal<string>('');
  * @since 0.1.0-dev
  * @type {Signal<string>}
  */
-export const mapBackgroundColourSignal = signal<string>(DEFAULT_MAP_BACKGROUND_COLOUR);
+export const mapBackgroundColourSignal = signal<string>(
+  DEFAULT_MAP_BACKGROUND_COLOUR
+);
 
 /**
  * @function setMapBackgroundColour
@@ -201,8 +211,10 @@ export const mapBackgroundColourSignal = signal<string>(DEFAULT_MAP_BACKGROUND_C
  * @param {string | null | undefined} colour - Opaque CSS colour, or empty for the default.
  * @returns {void}
  */
-export function setMapBackgroundColour(colour: string | null | undefined): void {
-  const next = (colour ?? '').trim() || DEFAULT_MAP_BACKGROUND_COLOUR;
+export function setMapBackgroundColour(
+  colour: string | null | undefined
+): void {
+  const next = (colour ?? "").trim() || DEFAULT_MAP_BACKGROUND_COLOUR;
   batch(() => {
     mapBackgroundColourSignal.value = next;
     const project = currentProjectSignal.value;
@@ -234,7 +246,7 @@ export const selectionColourSignal = signal<string>(DEFAULT_SELECTION_COLOUR);
  * @returns {void}
  */
 export function setSelectionColour(colour: string | null | undefined): void {
-  const next = (colour ?? '').trim() || DEFAULT_SELECTION_COLOUR;
+  const next = (colour ?? "").trim() || DEFAULT_SELECTION_COLOUR;
   batch(() => {
     selectionColourSignal.value = next;
     const project = currentProjectSignal.value;
@@ -264,7 +276,9 @@ export const projectHomeSignal = signal<string | null>(null);
  * @since 0.1.0-dev
  * @type {Signal<ProjectPathMode>}
  */
-export const projectPathModeSignal = signal<ProjectPathMode>(DEFAULT_NEW_PROJECT_PATH_MODE);
+export const projectPathModeSignal = signal<ProjectPathMode>(
+  DEFAULT_NEW_PROJECT_PATH_MODE
+);
 
 /**
  * @function setProjectHome
@@ -277,7 +291,7 @@ export const projectPathModeSignal = signal<ProjectPathMode>(DEFAULT_NEW_PROJECT
  * @returns {void}
  */
 export function setProjectHome(home: string | null | undefined): void {
-  const next = (home ?? '').trim() || null;
+  const next = (home ?? "").trim() || null;
   batch(() => {
     projectHomeSignal.value = next;
     const project = currentProjectSignal.value;
@@ -320,7 +334,9 @@ export function setProjectPathMode(mode: ProjectPathMode): void {
  * @since 0.1.0-dev
  * @type {Signal<Required<ProjectMeasurementSettings>>}
  */
-export const measurementSettingsSignal = signal<Required<ProjectMeasurementSettings>>({ ...DEFAULT_MEASUREMENT_SETTINGS });
+export const measurementSettingsSignal = signal<
+  Required<ProjectMeasurementSettings>
+>({ ...DEFAULT_MEASUREMENT_SETTINGS });
 
 /**
  * @function resolveMeasurementSettings
@@ -336,9 +352,11 @@ export function resolveMeasurementSettings(
   settings: ProjectMeasurementSettings | undefined
 ): Required<ProjectMeasurementSettings> {
   return {
-    distanceUnit: settings?.distanceUnit ?? DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
+    distanceUnit:
+      settings?.distanceUnit ?? DEFAULT_MEASUREMENT_SETTINGS.distanceUnit,
     areaUnit: settings?.areaUnit ?? DEFAULT_MEASUREMENT_SETTINGS.areaUnit,
-    scaleMethod: settings?.scaleMethod ?? DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
+    scaleMethod:
+      settings?.scaleMethod ?? DEFAULT_MEASUREMENT_SETTINGS.scaleMethod,
   };
 }
 
@@ -352,8 +370,13 @@ export function resolveMeasurementSettings(
  * @param {ProjectMeasurementSettings} updates - Members to change.
  * @returns {void}
  */
-export function setMeasurementSettings(updates: ProjectMeasurementSettings): void {
-  const next = resolveMeasurementSettings({ ...measurementSettingsSignal.value, ...updates });
+export function setMeasurementSettings(
+  updates: ProjectMeasurementSettings
+): void {
+  const next = resolveMeasurementSettings({
+    ...measurementSettingsSignal.value,
+    ...updates,
+  });
   batch(() => {
     measurementSettingsSignal.value = next;
     const project = currentProjectSignal.value;
@@ -459,13 +482,22 @@ export interface ProjectCrsStatus {
  * @param {ProjectCrs | null | undefined} crs - Project CRS.
  * @returns {ProjectCrsStatus} Label and tooltip.
  */
-export function describeProjectCrsStatus(crs: ProjectCrs | null | undefined): ProjectCrsStatus {
+export function describeProjectCrsStatus(
+  crs: ProjectCrs | null | undefined
+): ProjectCrsStatus {
   const display = resolveDisplayCrs(crs);
   if (display.none) {
-    return { label: 'No CRS', tooltip: 'No CRS: layer coordinates are drawn as raw cartesian values with no reprojection' };
+    return {
+      label: "No CRS",
+      tooltip:
+        "No CRS: layer coordinates are drawn as raw cartesian values with no reprojection",
+    };
   }
   if (!crs?.authId?.trim()) {
-    return { label: display.code, tooltip: `${display.code}: the default drawing CRS, because no Project CRS is set` };
+    return {
+      label: display.code,
+      tooltip: `${display.code}: the default drawing CRS, because no Project CRS is set`,
+    };
   }
   return { label: display.code, tooltip: crs?.description || display.code };
 }
@@ -479,7 +511,9 @@ export function describeProjectCrsStatus(crs: ProjectCrs | null | undefined): Pr
  * @since 0.1.0-dev
  * @type {ReadonlySignal<ProjectCrsStatus>}
  */
-export const projectCrsStatusSignal = computed<ProjectCrsStatus>(() => describeProjectCrsStatus(projectCrsSignal.value));
+export const projectCrsStatusSignal = computed<ProjectCrsStatus>(() =>
+  describeProjectCrsStatus(projectCrsSignal.value)
+);
 
 /**
  * @signal workbenchWindowTitleSignal
@@ -491,8 +525,13 @@ export const projectCrsStatusSignal = computed<ProjectCrsStatus>(() => describeP
  * @type {ReadonlySignal<string>}
  */
 export const workbenchWindowTitleSignal = computed<string>(() => {
-  if (!hasProjectSignal.value) return 'Cartouche';
-  const name = projectNameSignal.value || resolveProjectDisplayName(projectTitleSignal.value, projectFilePathSignal.value);
+  if (!hasProjectSignal.value) return "Cartouche";
+  const name =
+    projectNameSignal.value
+    || resolveProjectDisplayName(
+      projectTitleSignal.value,
+      projectFilePathSignal.value
+    );
   return `${name} — Cartouche`;
 });
 
@@ -508,7 +547,7 @@ export const workbenchWindowTitleSignal = computed<string>(() => {
  * @returns {void}
  */
 export function setProjectTitle(title: string, filePath?: string | null): void {
-  const nextTitle = (title ?? '').trim();
+  const nextTitle = (title ?? "").trim();
   batch(() => {
     projectTitleSignal.value = nextTitle;
     projectNameSignal.value = resolveProjectDisplayName(
@@ -585,7 +624,9 @@ export const editingNodeIdSignal = signal<string | null>(null);
  * @since 0.1.0-dev
  * @type {Signal<ProjectLayerStyleItem | null>}
  */
-export const copiedLayerStyleSignal = signal<ProjectLayerStyleItem | null>(null);
+export const copiedLayerStyleSignal = signal<ProjectLayerStyleItem | null>(
+  null
+);
 
 /**
  * @description Recursively counts total layers across the tree.
@@ -596,10 +637,15 @@ export const copiedLayerStyleSignal = signal<ProjectLayerStyleItem | null>(null)
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Tree items.
  * @returns {number} Total layer count.
  */
-function countTotalLayers(items: Array<ProjectLayerItem | ProjectGroupItem>): number {
+function countTotalLayers(
+  items: Array<ProjectLayerItem | ProjectGroupItem>
+): number {
   let count = 0;
   for (const item of items) {
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       count += countTotalLayers((item as ProjectGroupItem).children);
     } else {
       count += 1;
@@ -625,7 +671,10 @@ function countLayers(
   let total = 0;
   let visible = 0;
   for (const item of items) {
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       const group = item as ProjectGroupItem;
       const isGroupEffectiveVisible = parentVisible && group.visible !== false;
       const sub = countLayers(group.children, isGroupEffectiveVisible);
@@ -666,13 +715,18 @@ export const projectTreeStatsSignal = computed(() => {
  * @param {Array<ProjectLayerItem | ProjectGroupItem>} items - Tree items.
  * @returns {string[]} Selected node IDs.
  */
-function extractSelectedIds(items: Array<ProjectLayerItem | ProjectGroupItem>): string[] {
+function extractSelectedIds(
+  items: Array<ProjectLayerItem | ProjectGroupItem>
+): string[] {
   const ids: string[] = [];
   for (const item of items) {
     if (item.selected) {
       if (item.id) ids.push(item.id);
     }
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       ids.push(...extractSelectedIds((item as ProjectGroupItem).children));
     }
   }
@@ -702,7 +756,7 @@ export const isProjectSelectedSignal = signal<boolean>(false);
 export const selectedNodeIdsSignal = computed(() => {
   const ids = extractSelectedIds(projectTreeSignal.value);
   if (isProjectSelectedSignal.value) {
-    ids.unshift('project');
+    ids.unshift("project");
   }
   return ids;
 });
@@ -743,16 +797,21 @@ export function toggleProjectVisibility(): void {
  */
 export function toggleNodeVisibility(nodeId: string): void {
   let nextVisibility = true;
-  function updateNode(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
-    return items.map(item => {
+  function updateNode(
+    items: Array<ProjectLayerItem | ProjectGroupItem>
+  ): Array<ProjectLayerItem | ProjectGroupItem> {
+    return items.map((item) => {
       if (item.id === nodeId) {
         nextVisibility = item.visible === false ? true : false;
         return { ...item, visible: nextVisibility };
       }
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      if (
+        "children" in item
+        && Array.isArray((item as ProjectGroupItem).children)
+      ) {
         return {
           ...item,
-          children: updateNode((item as ProjectGroupItem).children)
+          children: updateNode((item as ProjectGroupItem).children),
         };
       }
       return item;
@@ -761,7 +820,7 @@ export function toggleNodeVisibility(nodeId: string): void {
   projectTreeSignal.value = updateNode(projectTreeSignal.value);
   isProjectDirtySignal.value = true;
 
-  if (typeof window !== 'undefined' && window.electronAPI?.setNodeVisibility) {
+  if (typeof window !== "undefined" && window.electronAPI?.setNodeVisibility) {
     window.electronAPI.setNodeVisibility(nodeId, nextVisibility);
   }
 }
@@ -776,16 +835,21 @@ export function toggleNodeVisibility(nodeId: string): void {
  * @returns {void}
  */
 export function toggleGroupExpanded(groupId: string): void {
-  function updateGroup(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
-    return items.map(item => {
-      if ('children' in item && item.id === groupId) {
+  function updateGroup(
+    items: Array<ProjectLayerItem | ProjectGroupItem>
+  ): Array<ProjectLayerItem | ProjectGroupItem> {
+    return items.map((item) => {
+      if ("children" in item && item.id === groupId) {
         const group = item as ProjectGroupItem;
         return { ...group, expanded: group.expanded === false ? true : false };
       }
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      if (
+        "children" in item
+        && Array.isArray((item as ProjectGroupItem).children)
+      ) {
         return {
           ...item,
-          children: updateGroup((item as ProjectGroupItem).children)
+          children: updateGroup((item as ProjectGroupItem).children),
         };
       }
       return item;
@@ -820,20 +884,22 @@ export function requestRenameSelectedNode(): void {
  * @returns {void}
  */
 export function renameNode(nodeId: string, newName: string): void {
-  const trimmed = newName.replace(/[\r\n]+/g, ' ').trim();
+  const trimmed = newName.replace(/[\r\n]+/g, " ").trim();
   if (!trimmed) {
     return;
   }
 
-  if (nodeId === 'project') {
+  if (nodeId === "project") {
     if (projectNameSignal.value !== trimmed) {
       setProjectTitle(trimmed);
       isProjectDirtySignal.value = true;
     }
   } else {
     let changed = false;
-    function update(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
-      return items.map(item => {
+    function update(
+      items: Array<ProjectLayerItem | ProjectGroupItem>
+    ): Array<ProjectLayerItem | ProjectGroupItem> {
+      return items.map((item) => {
         if (item.id === nodeId) {
           if (item.name !== trimmed) {
             changed = true;
@@ -841,10 +907,13 @@ export function renameNode(nodeId: string, newName: string): void {
           }
           return item;
         }
-        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+        if (
+          "children" in item
+          && Array.isArray((item as ProjectGroupItem).children)
+        ) {
           return {
             ...item,
-            children: update((item as ProjectGroupItem).children)
+            children: update((item as ProjectGroupItem).children),
           };
         }
         return item;
@@ -857,7 +926,7 @@ export function renameNode(nodeId: string, newName: string): void {
     }
   }
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     if (window.electronAPI?.renameLayerTreeNode) {
       window.electronAPI.renameLayerTreeNode(nodeId, trimmed);
     } else if (window.electronAPI?.renameNode) {
@@ -876,22 +945,31 @@ export function renameNode(nodeId: string, newName: string): void {
  * @returns {void}
  */
 export function setNodeSelection(selectedNodeIds: string[]): void {
-  isProjectSelectedSignal.value = selectedNodeIds.includes('project');
+  isProjectSelectedSignal.value = selectedNodeIds.includes("project");
   const selectedSet = new Set(selectedNodeIds);
-  function updateSelection(items: Array<ProjectLayerItem | ProjectGroupItem>): Array<ProjectLayerItem | ProjectGroupItem> {
-    return items.map(item => {
+  function updateSelection(
+    items: Array<ProjectLayerItem | ProjectGroupItem>
+  ): Array<ProjectLayerItem | ProjectGroupItem> {
+    return items.map((item) => {
       const isSelected = item.id ? selectedSet.has(item.id) : false;
       const updated = { ...item, selected: isSelected };
-      if ('children' in updated && Array.isArray((updated as ProjectGroupItem).children)) {
-        (updated as ProjectGroupItem).children = updateSelection((updated as ProjectGroupItem).children);
+      if (
+        "children" in updated
+        && Array.isArray((updated as ProjectGroupItem).children)
+      ) {
+        (updated as ProjectGroupItem).children = updateSelection(
+          (updated as ProjectGroupItem).children
+        );
       }
       return updated;
     });
   }
   projectTreeSignal.value = updateSelection(projectTreeSignal.value);
 
-  if (typeof window !== 'undefined' && window.electronAPI?.setNodeSelection) {
-    window.electronAPI.setNodeSelection(selectedNodeIds.filter(id => id !== 'project'));
+  if (typeof window !== "undefined" && window.electronAPI?.setNodeSelection) {
+    window.electronAPI.setNodeSelection(
+      selectedNodeIds.filter((id) => id !== "project")
+    );
   }
 }
 
@@ -950,11 +1028,17 @@ export function clearNodeSelection(): void {
  * @returns {void}
  */
 export function selectRangeNodes(anchorId: string, targetId: string): void {
-  function flattenVisible(items: Array<ProjectLayerItem | ProjectGroupItem>): string[] {
+  function flattenVisible(
+    items: Array<ProjectLayerItem | ProjectGroupItem>
+  ): string[] {
     const list: string[] = [];
     for (const item of items) {
       if (item.id) list.push(item.id);
-      if ('children' in item && item.expanded !== false && Array.isArray((item as ProjectGroupItem).children)) {
+      if (
+        "children" in item
+        && item.expanded !== false
+        && Array.isArray((item as ProjectGroupItem).children)
+      ) {
         list.push(...flattenVisible((item as ProjectGroupItem).children));
       }
     }
@@ -982,10 +1066,16 @@ export function selectRangeNodes(anchorId: string, targetId: string): void {
  * @param {LayerTreeContextMenuHook} hook - Context menu items provider function.
  * @returns {() => void} Unsubscribe callback.
  */
-export function registerLayerTreeContextMenuHook(hook: LayerTreeContextMenuHook): () => void {
-  layerTreeContextMenuHooksSignal.value = [...layerTreeContextMenuHooksSignal.value, hook];
+export function registerLayerTreeContextMenuHook(
+  hook: LayerTreeContextMenuHook
+): () => void {
+  layerTreeContextMenuHooksSignal.value = [
+    ...layerTreeContextMenuHooksSignal.value,
+    hook,
+  ];
   return () => {
-    layerTreeContextMenuHooksSignal.value = layerTreeContextMenuHooksSignal.value.filter(h => h !== hook);
+    layerTreeContextMenuHooksSignal.value =
+      layerTreeContextMenuHooksSignal.value.filter((h) => h !== hook);
   };
 }
 
@@ -1004,7 +1094,7 @@ export function extractLeafLayerIds(
   idSet: Set<string>
 ): void {
   for (const item of items) {
-    if ('children' in item && Array.isArray((item as any).children)) {
+    if ("children" in item && Array.isArray((item as any).children)) {
       extractLeafLayerIds((item as any).children, idSet);
     } else if (item.id) {
       idSet.add(item.id);
@@ -1031,7 +1121,10 @@ export function findItemInTree(
     if (item.id === id) {
       return item;
     }
-    if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+    if (
+      "children" in item
+      && Array.isArray((item as ProjectGroupItem).children)
+    ) {
       const found = findItemInTree((item as ProjectGroupItem).children, id);
       if (found) {
         return found;
@@ -1055,111 +1148,156 @@ projectTreeSignal.subscribe((tree) => {
 });
 
 // Automatically subscribe to IPC tree broadcasts from Electron Main process
-if (typeof window !== 'undefined' && window.electronAPI?.onProjectLayersTreeUpdated) {
-  window.electronAPI.onProjectLayersTreeUpdated((tree: Array<ProjectLayerItem | ProjectGroupItem>) => {
-    // Preserve featureCount from projectLayersSignal or previous tree if incoming item lacks it
-    const enrichTreeWithCounts = (
-      items: Array<ProjectLayerItem | ProjectGroupItem>
-    ): Array<ProjectLayerItem | ProjectGroupItem> => {
-      return items.map((item) => {
-        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
-          return {
-            ...item,
-            children: enrichTreeWithCounts((item as ProjectGroupItem).children)
-          };
-        }
-        if (item.id) {
-          const desc = projectLayersSignal.value.find((l) => l.id === item.id);
-          const currentInTree = findItemInTree(projectTreeSignal.value, item.id) as ProjectLayerItem | null;
-          const count = (item as ProjectLayerItem).featureCount ?? desc?.featureCount ?? currentInTree?.featureCount;
-          const fields = (item as ProjectLayerItem).fields ?? desc?.fields ?? currentInTree?.fields;
-          if (count !== undefined || fields !== undefined) {
+if (
+  typeof window !== "undefined"
+  && window.electronAPI?.onProjectLayersTreeUpdated
+) {
+  window.electronAPI.onProjectLayersTreeUpdated(
+    (tree: Array<ProjectLayerItem | ProjectGroupItem>) => {
+      // Preserve featureCount from projectLayersSignal or previous tree if incoming item lacks it
+      const enrichTreeWithCounts = (
+        items: Array<ProjectLayerItem | ProjectGroupItem>
+      ): Array<ProjectLayerItem | ProjectGroupItem> => {
+        return items.map((item) => {
+          if (
+            "children" in item
+            && Array.isArray((item as ProjectGroupItem).children)
+          ) {
             return {
               ...item,
-              ...(count !== undefined ? { featureCount: count } : {}),
-              ...(fields !== undefined ? { fields } : {})
+              children: enrichTreeWithCounts(
+                (item as ProjectGroupItem).children
+              ),
             };
           }
+          if (item.id) {
+            const desc = projectLayersSignal.value.find(
+              (l) => l.id === item.id
+            );
+            const currentInTree = findItemInTree(
+              projectTreeSignal.value,
+              item.id
+            ) as ProjectLayerItem | null;
+            const count =
+              (item as ProjectLayerItem).featureCount
+              ?? desc?.featureCount
+              ?? currentInTree?.featureCount;
+            const fields =
+              (item as ProjectLayerItem).fields
+              ?? desc?.fields
+              ?? currentInTree?.fields;
+            if (count !== undefined || fields !== undefined) {
+              return {
+                ...item,
+                ...(count !== undefined ? { featureCount: count } : {}),
+                ...(fields !== undefined ? { fields } : {}),
+              };
+            }
+          }
+          return item;
+        });
+      };
+
+      const enrichedTree = enrichTreeWithCounts(tree);
+      projectTreeSignal.value = enrichedTree;
+      if (enrichedTree.length > 0 || hasProjectSignal.value) {
+        hasProjectSignal.value = true;
+        if (!projectNameSignal.value) {
+          projectNameSignal.value = "Untitled Project";
         }
-        return item;
-      });
-    };
-
-    const enrichedTree = enrichTreeWithCounts(tree);
-    projectTreeSignal.value = enrichedTree;
-    if (enrichedTree.length > 0 || hasProjectSignal.value) {
-      hasProjectSignal.value = true;
-      if (!projectNameSignal.value) {
-        projectNameSignal.value = 'Untitled Project';
       }
-    }
 
-    // Synchronize projectLayersSignal and layerStylesSignal to remove deleted layers
-    const activeLayerIds = new Set<string>();
-    extractLeafLayerIds(enrichedTree, activeLayerIds);
+      // Synchronize projectLayersSignal and layerStylesSignal to remove deleted layers
+      const activeLayerIds = new Set<string>();
+      extractLeafLayerIds(enrichedTree, activeLayerIds);
 
-    if (projectLayersSignal.value.length > 0) {
-      const remainingLayers = projectLayersSignal.value.filter((layer) => activeLayerIds.has(layer.id));
-      projectLayersSignal.value = remainingLayers.map((desc) => {
-        const treeItem = findItemInTree(enrichedTree, desc.id) as ProjectLayerItem | null;
-        if (treeItem) {
-          return {
-            ...desc,
-            ...(treeItem.featureCount !== undefined ? { featureCount: treeItem.featureCount } : {}),
-            ...(treeItem.fields !== undefined ? { fields: treeItem.fields } : {}),
-            ...(treeItem.style !== undefined ? { style: treeItem.style } : {}),
-            ...(treeItem.styleId !== undefined ? { styleId: treeItem.styleId } : {}),
-            ...(treeItem.opacity !== undefined ? { opacity: treeItem.opacity } : {})
-          };
-        }
-        return desc;
-      });
-    }
-
-    const currentStyles = { ...layerStylesSignal.value };
-    let stylesChanged = false;
-    for (const styleId of Object.keys(currentStyles)) {
-      if (!activeLayerIds.has(styleId)) {
-        delete currentStyles[styleId];
-        stylesChanged = true;
-      }
-    }
-    for (const layerId of activeLayerIds) {
-      const treeItem = findItemInTree(enrichedTree, layerId) as ProjectLayerItem | null;
-      if (treeItem && treeItem.style !== undefined) {
-        const desc = projectLayersSignal.value.find((l) => l.id === layerId);
-        currentStyles[layerId] = resolveLayerStyle(
-          treeItem.style,
-          currentProjectSignal.value?.styles,
-          treeItem.geometryKind || desc?.geometryKind || 'Unknown'
+      if (projectLayersSignal.value.length > 0) {
+        const remainingLayers = projectLayersSignal.value.filter((layer) =>
+          activeLayerIds.has(layer.id)
         );
-        stylesChanged = true;
+        projectLayersSignal.value = remainingLayers.map((desc) => {
+          const treeItem = findItemInTree(
+            enrichedTree,
+            desc.id
+          ) as ProjectLayerItem | null;
+          if (treeItem) {
+            return {
+              ...desc,
+              ...(treeItem.featureCount !== undefined ?
+                { featureCount: treeItem.featureCount }
+              : {}),
+              ...(treeItem.fields !== undefined ?
+                { fields: treeItem.fields }
+              : {}),
+              ...(treeItem.style !== undefined ?
+                { style: treeItem.style }
+              : {}),
+              ...(treeItem.styleId !== undefined ?
+                { styleId: treeItem.styleId }
+              : {}),
+              ...(treeItem.opacity !== undefined ?
+                { opacity: treeItem.opacity }
+              : {}),
+            };
+          }
+          return desc;
+        });
+      }
+
+      const currentStyles = { ...layerStylesSignal.value };
+      let stylesChanged = false;
+      for (const styleId of Object.keys(currentStyles)) {
+        if (!activeLayerIds.has(styleId)) {
+          delete currentStyles[styleId];
+          stylesChanged = true;
+        }
+      }
+      for (const layerId of activeLayerIds) {
+        const treeItem = findItemInTree(
+          enrichedTree,
+          layerId
+        ) as ProjectLayerItem | null;
+        if (treeItem && treeItem.style !== undefined) {
+          const desc = projectLayersSignal.value.find((l) => l.id === layerId);
+          currentStyles[layerId] = resolveLayerStyle(
+            treeItem.style,
+            currentProjectSignal.value?.styles,
+            treeItem.geometryKind || desc?.geometryKind || "Unknown"
+          );
+          stylesChanged = true;
+        }
+      }
+      if (stylesChanged) {
+        layerStylesSignal.value = currentStyles;
       }
     }
-    if (stylesChanged) {
-      layerStylesSignal.value = currentStyles;
-    }
-  });
+  );
 }
 
 // Automatically subscribe to IPC metadata broadcasts from Electron Main process
-if (typeof window !== 'undefined' && window.electronAPI?.onProjectMetadataUpdated) {
+if (
+  typeof window !== "undefined"
+  && window.electronAPI?.onProjectMetadataUpdated
+) {
   window.electronAPI.onProjectMetadataUpdated((metadata: any) => {
-    if (metadata && typeof metadata.title === 'string') {
+    if (metadata && typeof metadata.title === "string") {
       setProjectTitle(metadata.title);
     }
   });
 }
 
 // Follow Project CRS changes made by the main process (first layer adoption, ADR 0033)
-if (typeof window !== 'undefined' && window.electronAPI?.onProjectCrsUpdated) {
+if (typeof window !== "undefined" && window.electronAPI?.onProjectCrsUpdated) {
   window.electronAPI.onProjectCrsUpdated((crs) => {
     setProjectCrs(crs ?? null);
   });
 }
 
 // Automatically subscribe to IPC dirty state broadcasts from Electron Main process
-if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChanged) {
+if (
+  typeof window !== "undefined"
+  && window.electronAPI?.onProjectDirtyStateChanged
+) {
   window.electronAPI.onProjectDirtyStateChanged((dirty: boolean) => {
     isProjectDirtySignal.value = dirty;
   });
@@ -1167,29 +1305,31 @@ if (typeof window !== 'undefined' && window.electronAPI?.onProjectDirtyStateChan
 
 /**
  * @description Ingests a new LayerDescriptor into renderer state, updating layerStylesSignal, projectLayersSignal, and projectTreeSignal.
-   * @author Cory Albrecht <cory@albrecht.name>
-   * @date 2026-10-13
-   * @updated 2026-11-06
-   * @since 0.1.0-dev
-   * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
-   * @returns {void}
-   */
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-10-13
+ * @updated 2026-11-06
+ * @since 0.1.0-dev
+ * @param {LayerDescriptor} descriptor - Newly added layer descriptor.
+ * @returns {void}
+ */
 export function handleLayerAdded(descriptor: LayerDescriptor): void {
   batch(() => {
     // 1. Parse and register style into layerStylesSignal FIRST before projectLayersSignal triggers MapController sync
     const resolvedStyle = resolveLayerStyle(
       descriptor.style,
       currentProjectSignal.value?.styles,
-      descriptor.geometryKind || 'Unknown'
+      descriptor.geometryKind || "Unknown"
     );
 
     layerStylesSignal.value = {
       ...layerStylesSignal.value,
-      [descriptor.id]: resolvedStyle
+      [descriptor.id]: resolvedStyle,
     };
 
     // 2. Update projectLayersSignal (insert or replace in-place)
-    const existingIndex = projectLayersSignal.value.findIndex((l) => l.id === descriptor.id);
+    const existingIndex = projectLayersSignal.value.findIndex(
+      (l) => l.id === descriptor.id
+    );
     if (existingIndex >= 0) {
       const updated = [...projectLayersSignal.value];
       updated[existingIndex] = descriptor;
@@ -1199,7 +1339,10 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
     }
 
     // 3. Ensure layer appears in projectTreeSignal if not already present, or update its count
-    const existingTreeItem = findItemInTree(projectTreeSignal.value, descriptor.id);
+    const existingTreeItem = findItemInTree(
+      projectTreeSignal.value,
+      descriptor.id
+    );
     if (!existingTreeItem) {
       projectTreeSignal.value = [...projectTreeSignal.value, descriptor];
     } else {
@@ -1207,10 +1350,13 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
         items: Array<ProjectLayerItem | ProjectGroupItem>
       ): Array<ProjectLayerItem | ProjectGroupItem> => {
         return items.map((item) => {
-          if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+          if (
+            "children" in item
+            && Array.isArray((item as ProjectGroupItem).children)
+          ) {
             return {
               ...item,
-              children: updateCountInTree((item as ProjectGroupItem).children)
+              children: updateCountInTree((item as ProjectGroupItem).children),
             };
           }
           if (item.id === descriptor.id) {
@@ -1218,7 +1364,9 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
               ...item,
               featureCount: descriptor.featureCount,
               extent: descriptor.extent,
-              ...(descriptor.fields !== undefined ? { fields: descriptor.fields } : {})
+              ...(descriptor.fields !== undefined ?
+                { fields: descriptor.fields }
+              : {}),
             };
           }
           return item;
@@ -1230,7 +1378,7 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
     // Ensure project state is marked open
     hasProjectSignal.value = true;
     if (!projectNameSignal.value) {
-      projectNameSignal.value = 'Untitled Project';
+      projectNameSignal.value = "Untitled Project";
     }
 
     // Newly added layer becomes active (in batch additions, the last added layer becomes active)
@@ -1249,7 +1397,10 @@ export function handleLayerAdded(descriptor: LayerDescriptor): void {
  * @param {number} featureCount - New total feature count.
  * @returns {void}
  */
-export function updateLayerFeatureCount(layerId: string, featureCount: number): void {
+export function updateLayerFeatureCount(
+  layerId: string,
+  featureCount: number
+): void {
   projectLayersSignal.value = projectLayersSignal.value.map((l) =>
     l.id === layerId ? { ...l, featureCount } : l
   );
@@ -1258,10 +1409,13 @@ export function updateLayerFeatureCount(layerId: string, featureCount: number): 
     items: Array<ProjectLayerItem | ProjectGroupItem>
   ): Array<ProjectLayerItem | ProjectGroupItem> => {
     return items.map((item) => {
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      if (
+        "children" in item
+        && Array.isArray((item as ProjectGroupItem).children)
+      ) {
         return {
           ...item,
-          children: updateTree((item as ProjectGroupItem).children)
+          children: updateTree((item as ProjectGroupItem).children),
         };
       }
       if (item.id === layerId) {
@@ -1284,7 +1438,10 @@ export function updateLayerFeatureCount(layerId: string, featureCount: number): 
  * @param {LayerFieldInfo[]} fields - Array of updated field metadata definitions.
  * @returns {void}
  */
-export function updateLayerFields(layerId: string, fields: LayerFieldInfo[]): void {
+export function updateLayerFields(
+  layerId: string,
+  fields: LayerFieldInfo[]
+): void {
   projectLayersSignal.value = projectLayersSignal.value.map((l) =>
     l.id === layerId ? { ...l, fields } : l
   );
@@ -1293,10 +1450,13 @@ export function updateLayerFields(layerId: string, fields: LayerFieldInfo[]): vo
     items: Array<ProjectLayerItem | ProjectGroupItem>
   ): Array<ProjectLayerItem | ProjectGroupItem> => {
     return items.map((item) => {
-      if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+      if (
+        "children" in item
+        && Array.isArray((item as ProjectGroupItem).children)
+      ) {
         return {
           ...item,
-          children: updateTree((item as ProjectGroupItem).children)
+          children: updateTree((item as ProjectGroupItem).children),
         };
       }
       if (item.id === layerId) {
@@ -1320,66 +1480,67 @@ export function updateLayerFields(layerId: string, fields: LayerFieldInfo[]): vo
  * @returns {ProjectLayerStyleItem} Self-contained layer style item.
  */
 export function resolveLayerStyleItem(layerId: string): ProjectLayerStyleItem {
-  const treeItem = findItemInTree(projectTreeSignal.value, layerId) as ProjectLayerItem | null;
+  const treeItem = findItemInTree(
+    projectTreeSignal.value,
+    layerId
+  ) as ProjectLayerItem | null;
   const desc = projectLayersSignal.value.find((l) => l.id === layerId);
   const rawStyle = treeItem?.style ?? desc?.style;
-  const geometryKind = treeItem?.geometryKind ?? desc?.geometryKind ?? 'Unknown';
+  const geometryKind =
+    treeItem?.geometryKind ?? desc?.geometryKind ?? "Unknown";
 
-  if (rawStyle && typeof rawStyle === 'object' && ('format' in rawStyle || 'href' in rawStyle || 'content' in rawStyle)) {
+  if (
+    rawStyle
+    && typeof rawStyle === "object"
+    && ("format" in rawStyle || "href" in rawStyle || "content" in rawStyle)
+  ) {
     const styleWrapper = rawStyle as ProjectLayerStyleItem;
-    if (styleWrapper.href && styleWrapper.href.startsWith('#')) {
+    if (styleWrapper.href && styleWrapper.href.startsWith("#")) {
       const refId = styleWrapper.href.slice(1);
-      const shared = currentProjectSignal.value?.styles?.find((s) => s.id === refId);
+      const shared = currentProjectSignal.value?.styles?.find(
+        (s) => s.id === refId
+      );
       if (shared && shared.content) {
         return {
-          format: shared.format || 'openlayers',
+          format: shared.format || "openlayers",
           ...(shared.version ? { version: shared.version } : {}),
-          content: shared.content
+          content: shared.content,
         };
       }
     }
     if (styleWrapper.content) {
       return {
-        format: styleWrapper.format || 'openlayers',
+        format: styleWrapper.format || "openlayers",
         ...(styleWrapper.version ? { version: styleWrapper.version } : {}),
-        content: styleWrapper.content
+        content: styleWrapper.content,
       };
     }
-  } else if (rawStyle && typeof rawStyle === 'object') {
-    return {
-      format: 'openlayers',
-      content: JSON.stringify(rawStyle, null, 2)
-    };
+  } else if (rawStyle && typeof rawStyle === "object") {
+    return { format: "openlayers", content: JSON.stringify(rawStyle, null, 2) };
   }
 
   const resolved =
-    layerStylesSignal.value[layerId] ||
-    resolveLayerStyle(rawStyle, currentProjectSignal.value?.styles, geometryKind);
+    layerStylesSignal.value[layerId]
+    || resolveLayerStyle(
+      rawStyle,
+      currentProjectSignal.value?.styles,
+      geometryKind
+    );
   if (
-    resolved &&
-    !Array.isArray(resolved) &&
-    (resolved.format === 'sld' || resolved.__cartoucheSld)
+    resolved
+    && !Array.isArray(resolved)
+    && (resolved.format === "sld" || resolved.__cartoucheSld)
   ) {
     return {
-      format: 'sld',
-      version: resolved.version || '1.0.0',
-      content: resolved.content
+      format: "sld",
+      version: resolved.version || "1.0.0",
+      content: resolved.content,
     };
   }
-  if (
-    resolved &&
-    !Array.isArray(resolved) &&
-    resolved.format === 'cartouche'
-  ) {
-    return {
-      format: 'cartouche',
-      content: resolved.content
-    };
+  if (resolved && !Array.isArray(resolved) && resolved.format === "cartouche") {
+    return { format: "cartouche", content: resolved.content };
   }
-  return {
-    format: 'openlayers',
-    content: JSON.stringify(resolved, null, 2)
-  };
+  return { format: "openlayers", content: JSON.stringify(resolved, null, 2) };
 }
 
 /**
@@ -1409,17 +1570,20 @@ export async function applyStyleToLayers(
       items: Array<ProjectLayerItem | ProjectGroupItem>
     ): Array<ProjectLayerItem | ProjectGroupItem> => {
       return items.map((item) => {
-        if ('children' in item && Array.isArray((item as ProjectGroupItem).children)) {
+        if (
+          "children" in item
+          && Array.isArray((item as ProjectGroupItem).children)
+        ) {
           return {
             ...item,
-            children: updateTree((item as ProjectGroupItem).children)
+            children: updateTree((item as ProjectGroupItem).children),
           };
         }
         if (item.id && targetSet.has(item.id)) {
           return {
             ...item,
             style,
-            ...(opacity !== undefined ? { opacity } : {})
+            ...(opacity !== undefined ? { opacity } : {}),
           };
         }
         return item;
@@ -1432,7 +1596,7 @@ export async function applyStyleToLayers(
         return {
           ...desc,
           style,
-          ...(opacity !== undefined ? { opacity } : {})
+          ...(opacity !== undefined ? { opacity } : {}),
         };
       }
       return desc;
@@ -1440,25 +1604,31 @@ export async function applyStyleToLayers(
 
     const nextStyles = { ...layerStylesSignal.value };
     for (const id of layerIds) {
-      const treeItem = findItemInTree(projectTreeSignal.value, id) as ProjectLayerItem | null;
+      const treeItem = findItemInTree(
+        projectTreeSignal.value,
+        id
+      ) as ProjectLayerItem | null;
       const desc = projectLayersSignal.value.find((l) => l.id === id);
-      const geometryKind = treeItem?.geometryKind ?? desc?.geometryKind ?? 'Unknown';
-      nextStyles[id] = resolveLayerStyle(style, currentProjectSignal.value?.styles, geometryKind);
+      const geometryKind =
+        treeItem?.geometryKind ?? desc?.geometryKind ?? "Unknown";
+      nextStyles[id] = resolveLayerStyle(
+        style,
+        currentProjectSignal.value?.styles,
+        geometryKind
+      );
     }
     layerStylesSignal.value = nextStyles;
     isProjectDirtySignal.value = true;
   });
 
-  if (typeof window !== 'undefined' && window.electronAPI?.setLayerStyle) {
+  if (typeof window !== "undefined" && window.electronAPI?.setLayerStyle) {
     await window.electronAPI.setLayerStyle(layerIds, style, opacity);
   }
 }
 
 // Automatically subscribe to IPC layer added broadcasts from Electron Main process
-if (typeof window !== 'undefined' && window.electronAPI?.onLayerAdded) {
+if (typeof window !== "undefined" && window.electronAPI?.onLayerAdded) {
   window.electronAPI.onLayerAdded((descriptor: LayerDescriptor) => {
     handleLayerAdded(descriptor);
   });
 }
-
-

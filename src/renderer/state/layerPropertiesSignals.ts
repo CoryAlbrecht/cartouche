@@ -64,11 +64,7 @@ import { findCrsCatalogueEntry } from "./crsCatalogueSignals";
  * @description Identifier for CategorySidebar navigation tabs in LayerPropertiesDialog.
  */
 export type LayerPropertiesTabId =
-  | "information"
-  | "source"
-  | "fields"
-  | "time_filter"
-  | "styling";
+  "information" | "source" | "fields" | "time_filter" | "styling";
 
 /**
  * @typedef {Object} LayerPropertiesDraft
@@ -221,12 +217,7 @@ export const layerPropertiesDraftSignal: Signal<LayerPropertiesDraft> =
     visualSymbolizer: {},
     opacity: 1,
     temporalEnabled: false,
-    temporal: {
-      enabled: false,
-      mode: "start_end",
-      startOp: ">=",
-      endOp: "<=",
-    },
+    temporal: { enabled: false, mode: "start_end", startOp: ">=", endOp: "<=" },
     formatCache: {},
   });
 
@@ -310,39 +301,44 @@ export async function openLayerPropertiesDialog(
   isLayerPropertiesLoadingSignal.value = true;
 
   const currentLayer = findLayerInTree(projectTreeSignal.value, layerId);
-  const currentProjectLayer = projectLayersSignal.value.find((l) => l.id === layerId);
+  const currentProjectLayer = projectLayersSignal.value.find(
+    (l) => l.id === layerId
+  );
   const rawFields =
-    currentProjectLayer?.fields
-      ? currentProjectLayer.fields
-      : (currentLayer && 'fields' in currentLayer && (currentLayer as any).fields)
-        ? ((currentLayer as any).fields as LayerFieldInfo[])
-        : undefined;
+    currentProjectLayer?.fields ? currentProjectLayer.fields
+    : currentLayer && "fields" in currentLayer && (currentLayer as any).fields ?
+      ((currentLayer as any).fields as LayerFieldInfo[])
+    : undefined;
 
   let physicalCount = 0;
   const initialFields =
     rawFields ?
-      rawFields.map((f) => {
-        const isVirtual = Boolean(f.isVirtual);
-        let assignedIndex = f.index;
-        if (assignedIndex === undefined && !isVirtual) {
-          assignedIndex = physicalCount;
-        }
-        if (!isVirtual) {
-          physicalCount++;
-        }
-        return {
-          ...f,
-          index: assignedIndex,
-          originalInferredType: f.originalInferredType ?? f.inferredType,
-          isVirtual,
-        };
-      }).map((f, _, arr) => {
-        if (f.index === undefined && f.isVirtual) {
-          const virtualIdx = arr.filter((x) => x.isVirtual && x.index === undefined).indexOf(f);
-          return { ...f, index: physicalCount + virtualIdx };
-        }
-        return f;
-      })
+      rawFields
+        .map((f) => {
+          const isVirtual = Boolean(f.isVirtual);
+          let assignedIndex = f.index;
+          if (assignedIndex === undefined && !isVirtual) {
+            assignedIndex = physicalCount;
+          }
+          if (!isVirtual) {
+            physicalCount++;
+          }
+          return {
+            ...f,
+            index: assignedIndex,
+            originalInferredType: f.originalInferredType ?? f.inferredType,
+            isVirtual,
+          };
+        })
+        .map((f, _, arr) => {
+          if (f.index === undefined && f.isVirtual) {
+            const virtualIdx = arr
+              .filter((x) => x.isVirtual && x.index === undefined)
+              .indexOf(f);
+            return { ...f, index: physicalCount + virtualIdx };
+          }
+          return f;
+        })
     : undefined;
   const initialName = currentLayer?.name || layerId;
   const initialCrs = currentLayer?.crs?.authId || "EPSG:4326";
@@ -357,7 +353,9 @@ export async function openLayerPropertiesDialog(
   const initialTemporal =
     rawTemporalConfig ?
       rawTemporalConfig.enabled
-    : (currentLayer?.temporalEnabled ?? currentProjectLayer?.temporalEnabled ?? false);
+    : (currentLayer?.temporalEnabled
+      ?? currentProjectLayer?.temporalEnabled
+      ?? false);
   const initialTemporalConfig: LayerTemporalConfig =
     rawTemporalConfig ?
       { ...rawTemporalConfig }
@@ -375,20 +373,21 @@ export async function openLayerPropertiesDialog(
 
   if (!initialContent) {
     if (initialFormat === "cartouche") {
-      initialContent = createDefaultCartoucheLayerStyleJson(currentLayer?.geometryKind);
+      initialContent = createDefaultCartoucheLayerStyleJson(
+        currentLayer?.geometryKind
+      );
     } else if (initialFormat === "openlayers") {
       initialContent = generateDefaultVectorStyleJson();
     }
   }
 
   const initialFormatKey =
-    initialFormat === "cartouche"
-      ? "cartouche"
-      : initialFormat === "sld"
-        ? initialSldVersion === "1.1.0"
-          ? "sld-1.1.0"
-          : "sld-1.0.0"
-        : "openlayers";
+    initialFormat === "cartouche" ? "cartouche"
+    : initialFormat === "sld" ?
+      initialSldVersion === "1.1.0" ?
+        "sld-1.1.0"
+      : "sld-1.0.0"
+    : "openlayers";
 
   const initialCache: Record<string, string> = {
     [initialFormatKey]: initialContent,
@@ -439,8 +438,9 @@ export async function openLayerPropertiesDialog(
       const info = await window.electronAPI.getLayerInfo(layerId);
       layerDetailedInfoSignal.value = info;
       if (
-        info?.geometryKind &&
-        (!currentLayer?.geometryKind || currentLayer.geometryKind === "Unknown")
+        info?.geometryKind
+        && (!currentLayer?.geometryKind
+          || currentLayer.geometryKind === "Unknown")
       ) {
         try {
           const ast =
@@ -515,12 +515,7 @@ export function closeLayerPropertiesDialog(): void {
     visualSymbolizer: {},
     opacity: 1,
     temporalEnabled: false,
-    temporal: {
-      enabled: false,
-      mode: "start_end",
-      startOp: ">=",
-      endOp: "<=",
-    },
+    temporal: { enabled: false, mode: "start_end", startOp: ">=", endOp: "<=" },
     formatCache: {},
     fields: undefined,
   };
@@ -542,15 +537,15 @@ export function getBaselineLayerFields(layerId: string): LayerFieldInfo[] {
   }
   const treeLayer = findLayerInTree(projectTreeSignal.value, layerId);
   if (
-    treeLayer &&
-    "fields" in treeLayer &&
-    Array.isArray((treeLayer as any).fields)
+    treeLayer
+    && "fields" in treeLayer
+    && Array.isArray((treeLayer as any).fields)
   ) {
     return (treeLayer as any).fields as LayerFieldInfo[];
   }
   if (
-    layerDetailedInfoSignal.value?.layerId === layerId &&
-    layerDetailedInfoSignal.value.fields
+    layerDetailedInfoSignal.value?.layerId === layerId
+    && layerDetailedInfoSignal.value.fields
   ) {
     return layerDetailedInfoSignal.value.fields;
   }
@@ -584,12 +579,12 @@ export function hasUnappliedFieldChanges(layerId?: string | null): boolean {
     const bf = baseline[i];
     if (!bf) return true;
     if (
-      df.name !== bf.name ||
-      df.inferredType !== bf.inferredType ||
-      Boolean(df.userOverridden) !== Boolean(bf.userOverridden) ||
-      (df.width ?? undefined) !== (bf.width ?? undefined) ||
-      (df.precision ?? undefined) !== (bf.precision ?? undefined) ||
-      (df.comment ?? "") !== (bf.comment ?? "")
+      df.name !== bf.name
+      || df.inferredType !== bf.inferredType
+      || Boolean(df.userOverridden) !== Boolean(bf.userOverridden)
+      || (df.width ?? undefined) !== (bf.width ?? undefined)
+      || (df.precision ?? undefined) !== (bf.precision ?? undefined)
+      || (df.comment ?? "") !== (bf.comment ?? "")
     ) {
       return true;
     }
@@ -607,10 +602,7 @@ export function hasUnappliedFieldChanges(layerId?: string | null): boolean {
  */
 export function discardUnappliedFieldChanges(): void {
   const draft = layerPropertiesDraftSignal.value;
-  layerPropertiesDraftSignal.value = {
-    ...draft,
-    fields: undefined,
-  };
+  layerPropertiesDraftSignal.value = { ...draft, fields: undefined };
 }
 
 /**
@@ -676,10 +668,7 @@ export function updateLayerPropertiesDraft(
   } else if (updates.temporalEnabled !== undefined) {
     mergedTemporalEnabled = updates.temporalEnabled;
     if (mergedTemporal) {
-      mergedTemporal = {
-        ...mergedTemporal,
-        enabled: updates.temporalEnabled,
-      };
+      mergedTemporal = { ...mergedTemporal, enabled: updates.temporalEnabled };
     }
   }
 
@@ -839,21 +828,21 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
     projectTreeSignal.value = updatedTree;
     if (projectLayersSignal.value.some((l) => l.id === activeId)) {
       projectLayersSignal.value = projectLayersSignal.value.map((desc) =>
-        desc.id === activeId
-          ? {
-              ...desc,
-              id: trimmedId,
-              name: trimmedName,
-              crs: updatedCrs,
-              temporalEnabled:
-                draft.temporal ? draft.temporal.enabled : draft.temporalEnabled,
-              temporal: draft.temporal ? { ...draft.temporal } : undefined,
-              customProperties: {
-                ...desc.customProperties,
-                featureFilter: draft.featureFilter.trim(),
-              },
-            }
-          : desc
+        desc.id === activeId ?
+          {
+            ...desc,
+            id: trimmedId,
+            name: trimmedName,
+            crs: updatedCrs,
+            temporalEnabled:
+              draft.temporal ? draft.temporal.enabled : draft.temporalEnabled,
+            temporal: draft.temporal ? { ...draft.temporal } : undefined,
+            customProperties: {
+              ...desc.customProperties,
+              featureFilter: draft.featureFilter.trim(),
+            },
+          }
+        : desc
       );
     }
     isProjectDirtySignal.value = true;
@@ -890,7 +879,8 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
   }
 
   // 7. If dynamic temporal control is enabled on the layer, re-evaluate or expand global temporal range
-  const isTemporalActive = draft.temporal ? draft.temporal.enabled : draft.temporalEnabled;
+  const isTemporalActive =
+    draft.temporal ? draft.temporal.enabled : draft.temporalEnabled;
   if (isTemporalActive) {
     try {
       const range = await autoDetectTemporalRange();
@@ -898,7 +888,12 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
         setTimeFilterRange(range.from, range.to);
         const curStart = timeFilterFrameStartSignal.value;
         const curEnd = timeFilterFrameEndSignal.value;
-        if (curStart < range.from || curStart > range.to || curEnd < range.from || curEnd > range.to) {
+        if (
+          curStart < range.from
+          || curStart > range.to
+          || curEnd < range.from
+          || curEnd > range.to
+        ) {
           const s = timeFilterStepSignal.value;
           const u = timeFilterUnitSignal.value;
           const nextEnd = computeFrameEnd(range.from, s, u, range.to);
@@ -906,7 +901,11 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
         }
       }
     } catch (err) {
-      logging.warn("Failed to auto-detect temporal range after layer properties edit", err, { scope: "layerProperties" });
+      logging.warn(
+        "Failed to auto-detect temporal range after layer properties edit",
+        err,
+        { scope: "layerProperties" }
+      );
     }
   }
 

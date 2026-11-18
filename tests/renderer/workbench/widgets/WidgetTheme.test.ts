@@ -11,20 +11,20 @@
  * @see {@link DetachedWindowPortal}
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import React, { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import type { Root } from 'react-dom/client';
-import { createRendererJiti } from '../../rendererJiti';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
+import type { Root } from "react-dom/client";
+import { createRendererJiti } from "../../rendererJiti";
 
 // Mock .svg import for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
-nodeRequire.extensions['.svg'] = (mod: any) => {
-  mod.exports = 'mock-logo.svg';
+nodeRequire.extensions[".svg"] = (mod: any) => {
+  mod.exports = "mock-logo.svg";
 };
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -41,18 +41,21 @@ class MockElement {
   parentNode: any = null;
   childNodes: any[] = [];
   style: Record<string, string> = {};
-  className = '';
+  className = "";
   attributes: Record<string, string> = {};
-  eventListeners: Record<string, Array<{ cb: (e: any) => void; capture: boolean }>> = {};
+  eventListeners: Record<
+    string,
+    Array<{ cb: (e: any) => void; capture: boolean }>
+  > = {};
 
-  constructor(tag = 'div') {
+  constructor(tag = "div") {
     this.tagName = tag.toUpperCase();
     this.nodeName = tag.toUpperCase();
   }
 
   setAttribute(k: string, v: string): void {
     this.attributes[k] = String(v);
-    if (k === 'class') {
+    if (k === "class") {
       this.className = String(v);
     }
   }
@@ -63,8 +66,8 @@ class MockElement {
 
   removeAttribute(k: string): void {
     delete this.attributes[k];
-    if (k === 'class') {
-      this.className = '';
+    if (k === "class") {
+      this.className = "";
     }
   }
 
@@ -75,7 +78,7 @@ class MockElement {
   }
 
   removeChild(child: any): any {
-    this.childNodes = this.childNodes.filter(c => c !== child);
+    this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
     return child;
   }
@@ -91,7 +94,11 @@ class MockElement {
     return newChild;
   }
 
-  addEventListener(type: string, cb: (e: any) => void, capture?: boolean): void {
+  addEventListener(
+    type: string,
+    cb: (e: any) => void,
+    capture?: boolean
+  ): void {
     if (!this.eventListeners[type]) {
       this.eventListeners[type] = [];
     }
@@ -100,7 +107,9 @@ class MockElement {
 
   removeEventListener(type: string, cb: (e: any) => void): void {
     if (!this.eventListeners[type]) return;
-    this.eventListeners[type] = this.eventListeners[type].filter(l => l.cb !== cb);
+    this.eventListeners[type] = this.eventListeners[type].filter(
+      (l) => l.cb !== cb
+    );
   }
 
   dispatchEvent(event: any): boolean {
@@ -121,8 +130,22 @@ class MockElement {
     return false;
   }
 
-  getBoundingClientRect(): { width: number; height: number; top: number; left: number; right: number; bottom: number } {
-    return { width: 200, height: 150, top: 0, left: 0, right: 200, bottom: 150 };
+  getBoundingClientRect(): {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  } {
+    return {
+      width: 200,
+      height: 150,
+      top: 0,
+      left: 0,
+      right: 200,
+      bottom: 150,
+    };
   }
 }
 
@@ -131,9 +154,9 @@ let container: MockElement;
 let root: Root | null = null;
 
 function setupDom(): void {
-  const documentElement = new MockElement('html');
-  const body = new MockElement('body');
-  const head = new MockElement('head');
+  const documentElement = new MockElement("html");
+  const body = new MockElement("body");
+  const head = new MockElement("head");
   documentElement.appendChild(head);
   documentElement.appendChild(body);
 
@@ -165,14 +188,14 @@ function setupDom(): void {
       parentNode: null,
     }),
     querySelectorAll: (selector: string) => {
-      if (selector.includes('link') || selector.includes('style')) {
+      if (selector.includes("link") || selector.includes("style")) {
         return [];
       }
       return [];
     },
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
   };
   doc.body.ownerDocument = doc;
   doc.head.ownerDocument = doc;
@@ -188,10 +211,10 @@ function setupDom(): void {
     open: () => {
       const childDoc = {
         nodeType: 9,
-        title: '',
-        body: new MockElement('body'),
-        head: new MockElement('head'),
-        documentElement: new MockElement('html'),
+        title: "",
+        body: new MockElement("body"),
+        head: new MockElement("head"),
+        documentElement: new MockElement("html"),
       };
       childDoc.body.ownerDocument = childDoc;
       childDoc.head.ownerDocument = childDoc;
@@ -206,13 +229,18 @@ function setupDom(): void {
     },
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,
-    Element: MockElement
+    Element: MockElement,
   };
 
   doc.defaultView = win;
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
-  (globalThis as any).Node = { ELEMENT_NODE: 1, TEXT_NODE: 3, COMMENT_NODE: 8, DOCUMENT_NODE: 9 };
+  (globalThis as any).Node = {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3,
+    COMMENT_NODE: 8,
+    DOCUMENT_NODE: 9,
+  };
   (globalThis as any).ResizeObserver = class {
     observe() {}
     unobserve() {}
@@ -223,7 +251,7 @@ function setupDom(): void {
     disconnect() {}
   };
 
-  container = doc.createElement('div');
+  container = doc.createElement("div");
   doc.body.appendChild(container);
   root = createRoot(container as any);
 }
@@ -237,7 +265,10 @@ function tearDownDom(): void {
   }
 }
 
-function findNode(rootNode: MockElement, predicate: (el: MockElement) => boolean): MockElement | null {
+function findNode(
+  rootNode: MockElement,
+  predicate: (el: MockElement) => boolean
+): MockElement | null {
   if (predicate(rootNode)) return rootNode;
   for (const child of rootNode.childNodes) {
     if (child && child.nodeType === 1) {
@@ -250,10 +281,14 @@ function findNode(rootNode: MockElement, predicate: (el: MockElement) => boolean
 
 const jiti = createRendererJiti(import.meta.url);
 
-const { Widget } = jiti('../../../../src/renderer/workbench/widgets/Widget.tsx');
-const { BasicWidget } = jiti('../../../../src/renderer/workbench/widgets/BasicWidget.tsx');
+const { Widget } = jiti(
+  "../../../../src/renderer/workbench/widgets/Widget.tsx"
+);
+const { BasicWidget } = jiti(
+  "../../../../src/renderer/workbench/widgets/BasicWidget.tsx"
+);
 
-describe('Widget Theme Binding & Inline Style Decoupling (Ticket #197)', () => {
+describe("Widget Theme Binding & Inline Style Decoupling (Ticket #197)", () => {
   beforeEach(() => {
     setupDom();
   });
@@ -262,170 +297,197 @@ describe('Widget Theme Binding & Inline Style Decoupling (Ticket #197)', () => {
     tearDownDom();
   });
 
-  it('renders default Widget with .cartouche-widget class and NO inline background or border styles', async () => {
+  it("renders default Widget with .cartouche-widget class and NO inline background or border styles", async () => {
     await act(async () => {
       root!.render(
         React.createElement(
           Widget,
-          { id: 'test-widget' },
-          React.createElement('span', null, 'Content')
+          { id: "test-widget" },
+          React.createElement("span", null, "Content")
         )
       );
     });
 
-    const widgetEl = findNode(container, el => el.className.includes('cartouche-widget'));
-    assert.ok(widgetEl, 'Widget container element must exist with cartouche-widget class');
+    const widgetEl = findNode(container, (el) =>
+      el.className.includes("cartouche-widget")
+    );
+    assert.ok(
+      widgetEl,
+      "Widget container element must exist with cartouche-widget class"
+    );
 
     // Must NOT have inline backgroundColor, borderWidth, or borderColor
     assert.strictEqual(
       widgetEl.style.backgroundColor,
       undefined,
-      'Default Widget must omit inline backgroundColor to allow theme CSS rule to govern'
+      "Default Widget must omit inline backgroundColor to allow theme CSS rule to govern"
     );
     assert.strictEqual(
       widgetEl.style.borderWidth,
       undefined,
-      'Default Widget must omit inline borderWidth'
+      "Default Widget must omit inline borderWidth"
     );
     assert.strictEqual(
       widgetEl.style.borderColor,
       undefined,
-      'Default Widget must omit inline borderColor'
+      "Default Widget must omit inline borderColor"
     );
   });
 
-  it('renders Widget with custom background and border as inline style overrides when explicit props are passed', async () => {
+  it("renders Widget with custom background and border as inline style overrides when explicit props are passed", async () => {
     await act(async () => {
       root!.render(
         React.createElement(
           Widget,
           {
-            id: 'custom-widget',
-            background: '#123456',
+            id: "custom-widget",
+            background: "#123456",
             border: 2,
-            borderColor: '#654321',
+            borderColor: "#654321",
           },
-          React.createElement('span', null, 'Content')
+          React.createElement("span", null, "Content")
         )
       );
     });
 
-    const widgetEl = findNode(container, el => el.className.includes('cartouche-widget'));
-    assert.ok(widgetEl, 'Custom widget container must exist');
+    const widgetEl = findNode(container, (el) =>
+      el.className.includes("cartouche-widget")
+    );
+    assert.ok(widgetEl, "Custom widget container must exist");
     assert.strictEqual(
       widgetEl.style.backgroundColor,
-      '#123456',
-      'Explicit background prop must be applied as inline style override'
+      "#123456",
+      "Explicit background prop must be applied as inline style override"
     );
     assert.strictEqual(
       widgetEl.style.borderWidth,
-      '2px',
-      'Explicit border prop must be applied as inline borderWidth'
+      "2px",
+      "Explicit border prop must be applied as inline borderWidth"
     );
     assert.strictEqual(
       widgetEl.style.borderColor,
-      '#654321',
-      'Explicit borderColor prop must be applied as inline borderColor'
+      "#654321",
+      "Explicit borderColor prop must be applied as inline borderColor"
     );
   });
 
-  it('renders default BasicWidget with .basic-widget class and NO inline background or border styles on outer container', async () => {
+  it("renders default BasicWidget with .basic-widget class and NO inline background or border styles on outer container", async () => {
     await act(async () => {
       root!.render(
         React.createElement(
           BasicWidget,
-          { name: 'test-basic', displayName: 'Test Panel' },
-          React.createElement('span', null, 'Body')
+          { name: "test-basic", displayName: "Test Panel" },
+          React.createElement("span", null, "Body")
         )
       );
     });
 
-    const basicEl = findNode(container, el => el.className.includes('basic-widget'));
-    assert.ok(basicEl, 'BasicWidget element must exist with basic-widget class');
+    const basicEl = findNode(container, (el) =>
+      el.className.includes("basic-widget")
+    );
+    assert.ok(
+      basicEl,
+      "BasicWidget element must exist with basic-widget class"
+    );
 
     assert.strictEqual(
       basicEl.style.backgroundColor,
       undefined,
-      'Default BasicWidget must omit inline backgroundColor on outer container'
+      "Default BasicWidget must omit inline backgroundColor on outer container"
     );
     assert.strictEqual(
       basicEl.style.borderColor,
       undefined,
-      'Default BasicWidget must omit inline borderColor on outer container'
+      "Default BasicWidget must omit inline borderColor on outer container"
     );
   });
 
-  it('forwards custom background and border props to BasicWidget as inline style overrides', async () => {
+  it("forwards custom background and border props to BasicWidget as inline style overrides", async () => {
     await act(async () => {
       root!.render(
         React.createElement(
           BasicWidget,
           {
-            name: 'custom-basic',
-            displayName: 'Custom Panel',
-            background: '#aabbcc',
+            name: "custom-basic",
+            displayName: "Custom Panel",
+            background: "#aabbcc",
             border: 3,
-            borderColor: '#ddeeff',
+            borderColor: "#ddeeff",
           },
-          React.createElement('span', null, 'Body')
+          React.createElement("span", null, "Body")
         )
       );
     });
 
-    const basicEl = findNode(container, el => el.className.includes('basic-widget'));
-    assert.ok(basicEl, 'Custom BasicWidget must exist');
+    const basicEl = findNode(container, (el) =>
+      el.className.includes("basic-widget")
+    );
+    assert.ok(basicEl, "Custom BasicWidget must exist");
     assert.strictEqual(
       basicEl.style.backgroundColor,
-      '#aabbcc',
-      'Custom BasicWidget background prop must render as inline style override'
+      "#aabbcc",
+      "Custom BasicWidget background prop must render as inline style override"
     );
     assert.strictEqual(
       basicEl.style.borderWidth,
-      '3px',
-      'Custom BasicWidget border prop must render as inline style override'
+      "3px",
+      "Custom BasicWidget border prop must render as inline style override"
     );
     assert.strictEqual(
       basicEl.style.borderColor,
-      '#ddeeff',
-      'Custom BasicWidget borderColor prop must render as inline style override'
+      "#ddeeff",
+      "Custom BasicWidget borderColor prop must render as inline style override"
     );
   });
 
-  it('verifies that workbench.css binds .cartouche-widget and .basic-widget to theme tokens', () => {
-    const workbenchCssPath = path.resolve(process.cwd(), 'src/renderer/styles/workbench.css');
-    const content = fs.readFileSync(workbenchCssPath, 'utf-8');
+  it("verifies that workbench.css binds .cartouche-widget and .basic-widget to theme tokens", () => {
+    const workbenchCssPath = path.resolve(
+      process.cwd(),
+      "src/renderer/styles/workbench.css"
+    );
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
 
     assert.ok(
-      content.includes('.cartouche-widget {\n  width: 100%;\n  height: 100%;\n  min-height: 0;\n  box-sizing: border-box;\n  background-color: var(--cartouche-widget-bg);\n  border: 1px solid var(--cartouche-widget-border);'),
-      'workbench.css must define .cartouche-widget using var(--cartouche-widget-bg) and var(--cartouche-widget-border)'
+      content.includes(
+        ".cartouche-widget {\n  width: 100%;\n  height: 100%;\n  min-height: 0;\n  box-sizing: border-box;\n  background-color: var(--cartouche-widget-bg);\n  border: 1px solid var(--cartouche-widget-border);"
+      ),
+      "workbench.css must define .cartouche-widget using var(--cartouche-widget-bg) and var(--cartouche-widget-border)"
     );
 
     assert.ok(
-      content.includes('.basic-widget {\n  width: 100%;\n  height: 100%;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n  box-sizing: border-box;\n  background-color: var(--cartouche-widget-bg);\n  border-color: var(--cartouche-widget-border);'),
-      'workbench.css must define .basic-widget using var(--cartouche-widget-bg) and var(--cartouche-widget-border)'
+      content.includes(
+        ".basic-widget {\n  width: 100%;\n  height: 100%;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n  box-sizing: border-box;\n  background-color: var(--cartouche-widget-bg);\n  border-color: var(--cartouche-widget-border);"
+      ),
+      "workbench.css must define .basic-widget using var(--cartouche-widget-bg) and var(--cartouche-widget-border)"
     );
 
     assert.ok(
-      content.includes('.basic-widget-header {\n  flex-shrink: 0;\n  background-color: var(--cartouche-widget-header-bg);\n  color: var(--cartouche-widget-header-fg);\n  border-bottom: 1px solid var(--cartouche-widget-header-border);'),
-      'workbench.css must define .basic-widget-header using var(--cartouche-widget-header-bg) and var(--cartouche-widget-header-border)'
+      content.includes(
+        ".basic-widget-header {\n  flex-shrink: 0;\n  background-color: var(--cartouche-widget-header-bg);\n  color: var(--cartouche-widget-header-fg);\n  border-bottom: 1px solid var(--cartouche-widget-header-border);"
+      ),
+      "workbench.css must define .basic-widget-header using var(--cartouche-widget-header-bg) and var(--cartouche-widget-header-border)"
     );
   });
 
-  it('verifies that DetachedWindowPortal initializes child window body style with theme background token', () => {
+  it("verifies that DetachedWindowPortal initializes child window body style with theme background token", () => {
     const portalPath = path.resolve(
       process.cwd(),
-      'src/renderer/components/common/DetachedWindowPortal.tsx'
+      "src/renderer/components/common/DetachedWindowPortal.tsx"
     );
-    const content = fs.readFileSync(portalPath, 'utf-8');
+    const content = fs.readFileSync(portalPath, "utf-8");
 
     assert.ok(
-      /childWindow\.document\.body\.style\.background\s*=\s*"var\(--cartouche-theme-bg, #ffffff\)";/.test(content),
-      'DetachedWindowPortal must set childWindow body background to var(--cartouche-theme-bg, #ffffff)'
+      /childWindow\.document\.body\.style\.background\s*=\s*"var\(--cartouche-theme-bg, #ffffff\)";/.test(
+        content
+      ),
+      "DetachedWindowPortal must set childWindow body background to var(--cartouche-theme-bg, #ffffff)"
     );
 
     assert.ok(
-      /childWindow\.document\.body\.style\.color\s*=\s*"var\(--cartouche-theme-fg, #000000\)";/.test(content),
-      'DetachedWindowPortal must set childWindow body color to var(--cartouche-theme-fg, #000000)'
+      /childWindow\.document\.body\.style\.color\s*=\s*"var\(--cartouche-theme-fg, #000000\)";/.test(
+        content
+      ),
+      "DetachedWindowPortal must set childWindow body color to var(--cartouche-theme-fg, #000000)"
     );
   });
 });

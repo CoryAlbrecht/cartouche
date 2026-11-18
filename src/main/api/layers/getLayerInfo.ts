@@ -10,8 +10,8 @@
  * @see {@link LayerDetailedInfo}
  */
 
-import type { LayerDetailedInfo } from '@shared/types';
-import { geospatialService } from '../../worker/GeospatialService';
+import type { LayerDetailedInfo } from "@shared/types";
+import { geospatialService } from "../../worker/GeospatialService";
 
 /**
  * @description Retrieves detailed layer metadata, OGR field definitions, and provider driver properties via GeospatialService.
@@ -22,9 +22,10 @@ import { geospatialService } from '../../worker/GeospatialService';
  * @param {string} layerId - Unique layer identifier.
  * @returns {Promise<LayerDetailedInfo>} Detailed layer metadata and attribute schema fields.
  */
-export async function getLayerInfo(layerId: string): Promise<LayerDetailedInfo> {
+export async function getLayerInfo(
+  layerId: string
+): Promise<LayerDetailedInfo> {
   return await geospatialService.getLayerInfo(layerId);
 }
 
 export default getLayerInfo;
-

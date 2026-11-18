@@ -12,17 +12,17 @@
  * @see {@link broadcastProjectMetadata}
  */
 
-import { projectStore } from '../../project/ProjectStore';
-import { broadcastProjectMetadata } from '../../project/ProjectBroadcaster';
+import { projectStore } from "../../project/ProjectStore";
+import { broadcastProjectMetadata } from "../../project/ProjectBroadcaster";
 import {
   type ProjectPropertiesPatch,
   PROJECT_DISTANCE_UNITS,
   PROJECT_AREA_UNITS,
   SCALE_CALCULATION_METHODS,
-} from '../../../shared/types';
-import { logging } from '../../../shared/logging';
-import { setProjectDefaultStyles } from '../../../shared/styles/projectDefaultStyles';
-import { completeProjectCrs } from '../../project/projectCrs';
+} from "../../../shared/types";
+import { logging } from "../../../shared/logging";
+import { setProjectDefaultStyles } from "../../../shared/styles/projectDefaultStyles";
+import { completeProjectCrs } from "../../project/projectCrs";
 
 /**
  * @ipc project:update-properties
@@ -34,16 +34,20 @@ import { completeProjectCrs } from '../../project/projectCrs';
  * @param {ProjectPropertiesPatch} patch - Properties to change; absent members are left untouched.
  * @returns {boolean} True when a project was open and the patch was applied.
  */
-export default function updateProjectProperties(patch: ProjectPropertiesPatch): boolean {
+export default function updateProjectProperties(
+  patch: ProjectPropertiesPatch
+): boolean {
   const project = projectStore.getProject();
   if (!project) {
-    logging.warn('Update project properties ignored: no project is open', { scope: 'updateProjectProperties' });
+    logging.warn("Update project properties ignored: no project is open", {
+      scope: "updateProjectProperties",
+    });
     return false;
   }
 
   let changed = false;
 
-  if (patch && typeof patch.title === 'string') {
+  if (patch && typeof patch.title === "string") {
     const nextTitle = patch.title.trim();
     if (project.metadata.title !== nextTitle) {
       project.metadata.title = nextTitle;
@@ -51,7 +55,7 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     }
   }
 
-  if (patch && typeof patch.backgroundColour === 'string') {
+  if (patch && typeof patch.backgroundColour === "string") {
     const next = patch.backgroundColour.trim();
     const current = project.display?.backgroundColour;
     if (next && next !== current) {
@@ -60,7 +64,7 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     }
   }
 
-  if (patch && typeof patch.selectionColour === 'string') {
+  if (patch && typeof patch.selectionColour === "string") {
     const next = patch.selectionColour.trim();
     const current = project.display?.selectionColour;
     if (next && next !== current) {
@@ -69,9 +73,9 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     }
   }
 
-  if (patch && (typeof patch.home === 'string' || patch.home === null)) {
-    const next = typeof patch.home === 'string' ? patch.home.trim() : '';
-    const current = project.home ?? '';
+  if (patch && (typeof patch.home === "string" || patch.home === null)) {
+    const next = typeof patch.home === "string" ? patch.home.trim() : "";
+    const current = project.home ?? "";
     if (next !== current) {
       if (next) {
         project.home = next;
@@ -82,7 +86,10 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     }
   }
 
-  if (patch && (patch.pathMode === 'absolute' || patch.pathMode === 'relative')) {
+  if (
+    patch
+    && (patch.pathMode === "absolute" || patch.pathMode === "relative")
+  ) {
     if (project.pathMode !== patch.pathMode) {
       project.pathMode = patch.pathMode;
       changed = true;
@@ -90,15 +97,24 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
   }
 
   if (patch) {
-    const measurementUpdates: Array<['distanceUnit' | 'areaUnit' | 'scaleMethod', readonly string[]]> = [
-      ['distanceUnit', PROJECT_DISTANCE_UNITS],
-      ['areaUnit', PROJECT_AREA_UNITS],
-      ['scaleMethod', SCALE_CALCULATION_METHODS],
+    const measurementUpdates: Array<
+      ["distanceUnit" | "areaUnit" | "scaleMethod", readonly string[]]
+    > = [
+      ["distanceUnit", PROJECT_DISTANCE_UNITS],
+      ["areaUnit", PROJECT_AREA_UNITS],
+      ["scaleMethod", SCALE_CALCULATION_METHODS],
     ];
     for (const [key, allowed] of measurementUpdates) {
       const value = patch[key];
-      if (typeof value === 'string' && allowed.includes(value) && project.measurement?.[key] !== value) {
-        project.measurement = { ...project.measurement, [key]: value } as typeof project.measurement;
+      if (
+        typeof value === "string"
+        && allowed.includes(value)
+        && project.measurement?.[key] !== value
+      ) {
+        project.measurement = {
+          ...project.measurement,
+          [key]: value,
+        } as typeof project.measurement;
         changed = true;
       }
     }
@@ -117,7 +133,10 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
   }
 
   if (patch && Array.isArray(patch.recentCrs)) {
-    const next = patch.recentCrs.filter((c) => c && c.authId).slice(0, 20).map((c) => ({ ...c }));
+    const next = patch.recentCrs
+      .filter((c) => c && c.authId)
+      .slice(0, 20)
+      .map((c) => ({ ...c }));
     if (JSON.stringify(project.recentCrs ?? []) !== JSON.stringify(next)) {
       if (next.length > 0) {
         project.recentCrs = next;
@@ -128,7 +147,7 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     }
   }
 
-  if (patch && patch.defaultStyles && typeof patch.defaultStyles === 'object') {
+  if (patch && patch.defaultStyles && typeof patch.defaultStyles === "object") {
     const before = JSON.stringify(project.styles ?? []);
     const next = setProjectDefaultStyles(project.styles, patch.defaultStyles);
     if (JSON.stringify(next) !== before) {
@@ -141,7 +160,10 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     project.metadata.updatedAt = new Date().toISOString();
     projectStore.setProjectDirty(true);
     broadcastProjectMetadata(project.metadata);
-    logging.info('Project properties updated', { title: project.metadata.title, scope: 'updateProjectProperties' });
+    logging.info("Project properties updated", {
+      title: project.metadata.title,
+      scope: "updateProjectProperties",
+    });
   }
 
   return true;

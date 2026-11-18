@@ -8,7 +8,7 @@
  * @since 0.1.0-dev
  */
 
-import fs from 'node:fs';
+import fs from "node:fs";
 
 /**
  * @description Main process handler to check if a file exists.

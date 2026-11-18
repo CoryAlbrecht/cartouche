@@ -8,9 +8,9 @@
  * @since 0.1.0-dev
  */
 
-import type { KeyCombination, ActionDefinition } from '@shared/types';
-import { BUILTIN_ACTIONS } from './defaults';
-import { logging } from '../../shared/logging';
+import type { KeyCombination, ActionDefinition } from "@shared/types";
+import { BUILTIN_ACTIONS } from "./defaults";
+import { logging } from "../../shared/logging";
 
 /**
  * @description Formats a key combination object into a user-facing shortcut string (e.g. "Ctrl+Alt+V", "Escape").
@@ -23,13 +23,13 @@ import { logging } from '../../shared/logging';
  */
 export function formatKeyCombination(combo: KeyCombination): string {
   const parts: string[] = [];
-  if (combo.ctrl) parts.push('Ctrl');
-  if (combo.alt) parts.push('Alt');
-  if (combo.shift) parts.push('Shift');
-  if (combo.meta) parts.push('Meta');
+  if (combo.ctrl) parts.push("Ctrl");
+  if (combo.alt) parts.push("Alt");
+  if (combo.shift) parts.push("Shift");
+  if (combo.meta) parts.push("Meta");
   if (combo.key) {
-    if (combo.key.toLowerCase() === 'escape') {
-      parts.push('Escape');
+    if (combo.key.toLowerCase() === "escape") {
+      parts.push("Escape");
     } else if (/^f\d+$/i.test(combo.key)) {
       parts.push(combo.key.toUpperCase());
     } else if (combo.key.length === 1) {
@@ -38,7 +38,7 @@ export function formatKeyCombination(combo: KeyCombination): string {
       parts.push(combo.key.charAt(0).toUpperCase() + combo.key.slice(1));
     }
   }
-  return parts.join('+');
+  return parts.join("+");
 }
 
 /**
@@ -72,11 +72,17 @@ class ActionRegistryClass {
 
   public executeAction(name: string): void {
     const action = this.actionsMap.get(name);
-    if (action && typeof action.functionCall === 'function') {
-      logging.debug('Executing action', { action: name, scope: 'ActionRegistry' });
+    if (action && typeof action.functionCall === "function") {
+      logging.debug("Executing action", {
+        action: name,
+        scope: "ActionRegistry",
+      });
       action.functionCall();
     } else {
-      logging.debug('Action triggered without function mapping', { action: name, scope: 'ActionRegistry' });
+      logging.debug("Action triggered without function mapping", {
+        action: name,
+        scope: "ActionRegistry",
+      });
     }
   }
 
@@ -94,7 +100,8 @@ class ActionRegistryClass {
       const { functionCall: _functionCall, ...serializableAction } = a;
       return {
         ...serializableAction,
-        formattedKey: a.keyCombination ? formatKeyCombination(a.keyCombination) : undefined
+        formattedKey:
+          a.keyCombination ? formatKeyCombination(a.keyCombination) : undefined,
       };
     });
   }

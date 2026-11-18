@@ -10,13 +10,13 @@
  * @see {@link createDefaultCartoucheLayerStyleJson}
  */
 
-import type { ProjectStyleItem } from '../types';
-import type { StyleComponent } from '../types/styling';
+import type { ProjectStyleItem } from "../types";
+import type { StyleComponent } from "../types/styling";
 import {
   createDefaultCartoucheLayerStyle,
   createDefaultCartoucheLayerStyleJson,
   isCartoucheLayerStyle,
-} from './defaultLayerStyles';
+} from "./defaultLayerStyles";
 
 /**
  * @typedef {'point' | 'line' | 'polygon'} DefaultStyleSlot
@@ -26,7 +26,7 @@ import {
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type DefaultStyleSlot = 'point' | 'line' | 'polygon';
+export type DefaultStyleSlot = "point" | "line" | "polygon";
 
 /**
  * @constant {readonly DefaultStyleSlot[]} DEFAULT_STYLE_SLOTS
@@ -36,7 +36,11 @@ export type DefaultStyleSlot = 'point' | 'line' | 'polygon';
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const DEFAULT_STYLE_SLOTS: readonly DefaultStyleSlot[] = ['point', 'line', 'polygon'];
+export const DEFAULT_STYLE_SLOTS: readonly DefaultStyleSlot[] = [
+  "point",
+  "line",
+  "polygon",
+];
 
 /**
  * @constant {string} RESERVED_STYLE_ID_PREFIX
@@ -46,7 +50,7 @@ export const DEFAULT_STYLE_SLOTS: readonly DefaultStyleSlot[] = ['point', 'line'
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const RESERVED_STYLE_ID_PREFIX = '_';
+export const RESERVED_STYLE_ID_PREFIX = "_";
 
 /**
  * @constant {Readonly<Record<DefaultStyleSlot, string>>} PROJECT_DEFAULT_STYLE_IDS
@@ -56,10 +60,12 @@ export const RESERVED_STYLE_ID_PREFIX = '_';
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const PROJECT_DEFAULT_STYLE_IDS: Readonly<Record<DefaultStyleSlot, string>> = Object.freeze({
-  point: '_project_default_point',
-  line: '_project_default_line',
-  polygon: '_project_default_polygon',
+export const PROJECT_DEFAULT_STYLE_IDS: Readonly<
+  Record<DefaultStyleSlot, string>
+> = Object.freeze({
+  point: "_project_default_point",
+  line: "_project_default_line",
+  polygon: "_project_default_polygon",
 });
 
 /**
@@ -70,11 +76,9 @@ export const PROJECT_DEFAULT_STYLE_IDS: Readonly<Record<DefaultStyleSlot, string
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export const DEFAULT_STYLE_SLOT_GEOMETRY: Readonly<Record<DefaultStyleSlot, string>> = Object.freeze({
-  point: 'Point',
-  line: 'LineString',
-  polygon: 'Polygon',
-});
+export const DEFAULT_STYLE_SLOT_GEOMETRY: Readonly<
+  Record<DefaultStyleSlot, string>
+> = Object.freeze({ point: "Point", line: "LineString", polygon: "Polygon" });
 
 /**
  * @typedef {Partial<Record<DefaultStyleSlot, string>>} ProjectDefaultStyleContents
@@ -84,7 +88,9 @@ export const DEFAULT_STYLE_SLOT_GEOMETRY: Readonly<Record<DefaultStyleSlot, stri
  * @updated 2026-11-13
  * @since 0.1.0-dev
  */
-export type ProjectDefaultStyleContents = Partial<Record<DefaultStyleSlot, string>>;
+export type ProjectDefaultStyleContents = Partial<
+  Record<DefaultStyleSlot, string>
+>;
 
 /**
  * @function isReservedStyleId
@@ -98,7 +104,7 @@ export type ProjectDefaultStyleContents = Partial<Record<DefaultStyleSlot, strin
  */
 export function isReservedStyleId(id: string | null | undefined): boolean {
   if (!id) return false;
-  const bare = id.startsWith('#') ? id.slice(1) : id;
+  const bare = id.startsWith("#") ? id.slice(1) : id;
   return bare.startsWith(RESERVED_STYLE_ID_PREFIX);
 }
 
@@ -112,7 +118,9 @@ export function isReservedStyleId(id: string | null | undefined): boolean {
  * @param {readonly ProjectStyleItem[] | undefined} styles - Project shared styles.
  * @returns {ProjectStyleItem[]} User shared styles.
  */
-export function filterUserSharedStyles(styles: readonly ProjectStyleItem[] | undefined): ProjectStyleItem[] {
+export function filterUserSharedStyles(
+  styles: readonly ProjectStyleItem[] | undefined
+): ProjectStyleItem[] {
   return (styles ?? []).filter((s) => !isReservedStyleId(s.id));
 }
 
@@ -126,12 +134,20 @@ export function filterUserSharedStyles(styles: readonly ProjectStyleItem[] | und
  * @param {string | undefined} geometryKind - Layer geometry kind.
  * @returns {DefaultStyleSlot | 'mixed'} Slot.
  */
-export function geometryFamily(geometryKind: string | undefined): DefaultStyleSlot | 'mixed' {
-  const kind = (geometryKind ?? '').toLowerCase();
-  if (kind === 'point' || kind === 'multipoint') return 'point';
-  if (kind === 'linestring' || kind === 'multilinestring' || kind === 'line' || kind === 'multiline') return 'line';
-  if (kind === 'polygon' || kind === 'multipolygon') return 'polygon';
-  return 'mixed';
+export function geometryFamily(
+  geometryKind: string | undefined
+): DefaultStyleSlot | "mixed" {
+  const kind = (geometryKind ?? "").toLowerCase();
+  if (kind === "point" || kind === "multipoint") return "point";
+  if (
+    kind === "linestring"
+    || kind === "multilinestring"
+    || kind === "line"
+    || kind === "multiline"
+  )
+    return "line";
+  if (kind === "polygon" || kind === "multipolygon") return "polygon";
+  return "mixed";
 }
 
 /**
@@ -144,10 +160,14 @@ export function geometryFamily(geometryKind: string | undefined): DefaultStyleSl
  * @param {readonly ProjectStyleItem[] | undefined} styles - Project shared styles.
  * @returns {ProjectDefaultStyleContents} Set slots.
  */
-export function getProjectDefaultStyles(styles: readonly ProjectStyleItem[] | undefined): ProjectDefaultStyleContents {
+export function getProjectDefaultStyles(
+  styles: readonly ProjectStyleItem[] | undefined
+): ProjectDefaultStyleContents {
   const result: ProjectDefaultStyleContents = {};
   for (const slot of DEFAULT_STYLE_SLOTS) {
-    const entry = (styles ?? []).find((s) => s.id === PROJECT_DEFAULT_STYLE_IDS[slot]);
+    const entry = (styles ?? []).find(
+      (s) => s.id === PROJECT_DEFAULT_STYLE_IDS[slot]
+    );
     if (entry?.content) result[slot] = entry.content;
   }
   return result;
@@ -174,7 +194,7 @@ export function setProjectDefaultStyles(
     if (value === undefined) continue;
     const id = PROJECT_DEFAULT_STYLE_IDS[slot];
     next = next.filter((s) => s.id !== id);
-    if (value !== null) next.push({ id, format: 'cartouche', content: value });
+    if (value !== null) next.push({ id, format: "cartouche", content: value });
   }
   return next;
 }
@@ -192,7 +212,11 @@ export function setProjectDefaultStyles(
 function parseComponents(content: string): StyleComponent[] | null {
   try {
     const parsed = JSON.parse(content);
-    if (isCartoucheLayerStyle(parsed) && (parsed as any).format === 'simple' && Array.isArray((parsed as any).components)) {
+    if (
+      isCartoucheLayerStyle(parsed)
+      && (parsed as any).format === "simple"
+      && Array.isArray((parsed as any).components)
+    ) {
       return (parsed as any).components as StyleComponent[];
     }
   } catch {
@@ -217,20 +241,26 @@ export function resolveNewLayerStyleContent(
   defaults: ProjectDefaultStyleContents
 ): string {
   const family = geometryFamily(geometryKind);
-  if (family !== 'mixed') {
-    return defaults[family] ?? createDefaultCartoucheLayerStyleJson(geometryKind);
+  if (family !== "mixed") {
+    return (
+      defaults[family] ?? createDefaultCartoucheLayerStyleJson(geometryKind)
+    );
   }
   if (!defaults.point && !defaults.line && !defaults.polygon) {
     return createDefaultCartoucheLayerStyleJson(geometryKind);
   }
   const components: StyleComponent[] = [];
-  for (const slot of ['polygon', 'line', 'point'] as const) {
+  for (const slot of ["polygon", "line", "point"] as const) {
     const slotComponents =
       (defaults[slot] ? parseComponents(defaults[slot] as string) : null)
-      ?? createDefaultCartoucheLayerStyle(DEFAULT_STYLE_SLOT_GEOMETRY[slot]).components;
+      ?? createDefaultCartoucheLayerStyle(DEFAULT_STYLE_SLOT_GEOMETRY[slot])
+        .components;
     for (const component of slotComponents) {
-      components.push({ ...component, id: `${slot}-${component.id}` } as StyleComponent);
+      components.push({
+        ...component,
+        id: `${slot}-${component.id}`,
+      } as StyleComponent);
     }
   }
-  return JSON.stringify({ format: 'simple', version: 1, components }, null, 2);
+  return JSON.stringify({ format: "simple", version: 1, components }, null, 2);
 }

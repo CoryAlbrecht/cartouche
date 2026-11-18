@@ -10,9 +10,9 @@
  * @see {@link BUILTIN_PREFERENCES}
  */
 
-import { PreferencesStore } from '../preferences/PreferencesStore';
-import { BUILTIN_PREFERENCES } from '../../../../shared/preferences/index';
-import { logging } from '../../../../shared/logging';
+import { PreferencesStore } from "../preferences/PreferencesStore";
+import { BUILTIN_PREFERENCES } from "../../../../shared/preferences/index";
+import { logging } from "../../../../shared/logging";
 
 /**
  * @function resetToolbarLayout
@@ -24,19 +24,27 @@ import { logging } from '../../../../shared/logging';
  * @returns {void}
  */
 export default function resetToolbarLayout(): void {
-  logging.debug('Resetting toolbar layout preferences to factory defaults', { scope: 'resetToolbarLayout' });
-  const toolbarIds = ['project', 'map_view', 'selection', 'digitizing', 'snapping'];
-  const coordinateProps = ['visible', 'dock', 'row', 'order'];
+  logging.debug("Resetting toolbar layout preferences to factory defaults", {
+    scope: "resetToolbarLayout",
+  });
+  const toolbarIds = [
+    "project",
+    "map_view",
+    "selection",
+    "digitizing",
+    "snapping",
+  ];
+  const coordinateProps = ["visible", "dock", "row", "order"];
 
   for (const id of toolbarIds) {
     for (const prop of coordinateProps) {
       const key = `ui.toolbars.${id}.${prop}`;
       const pref = BUILTIN_PREFERENCES[key];
-      const defaultVal = pref?.defaultValue !== undefined ? pref.defaultValue : pref?.value;
+      const defaultVal =
+        pref?.defaultValue !== undefined ? pref.defaultValue : pref?.value;
       if (defaultVal !== undefined) {
         PreferencesStore.set(key, defaultVal);
       }
     }
   }
 }
-

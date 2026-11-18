@@ -78,14 +78,10 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = (props) => {
           <div
             className='panel-toolbar-actions'
             style={{ display: "flex", gap: "4px" }}>
-            <button
-              className='small-action-btn'
-              onClick={handleTestLog}>
+            <button className='small-action-btn' onClick={handleTestLog}>
               + Run Task
             </button>
-            <button
-              className='small-action-btn'
-              onClick={handleClear}>
+            <button className='small-action-btn' onClick={handleClear}>
               Clear
             </button>
           </div>

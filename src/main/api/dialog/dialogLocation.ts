@@ -9,23 +9,23 @@
  * @see {@link PreferencesStore}
  */
 
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import * as electron from 'electron';
-import { PreferencesStore } from '../ui/preferences/PreferencesStore';
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import * as electron from "electron";
+import { PreferencesStore } from "../ui/preferences/PreferencesStore";
 
 /**
  * @typedef {'open' | 'save' | 'openFile' | 'saveFile'} DialogLocationKind
  * @description Dialog operation kind identifying open vs. save location preference keys.
  */
-export type DialogLocationKind = 'open' | 'save' | 'openFile' | 'saveFile';
+export type DialogLocationKind = "open" | "save" | "openFile" | "saveFile";
 
 /**
  * @typedef {'home' | 'documents' | 'downloads' | 'desktop'} DialogNamedPathKey
  * @description Electron app.getPath key names supported by named dialog location tokens.
  */
-export type DialogNamedPathKey = 'home' | 'documents' | 'downloads' | 'desktop';
+export type DialogNamedPathKey = "home" | "documents" | "downloads" | "desktop";
 
 /**
  * @typedef {Object} DialogLocationDependencies
@@ -43,7 +43,7 @@ export interface DialogLocationDependencies {
  * @since 0.1.0-dev
  * @type {string}
  */
-export const OPEN_FILE_LOCATION_PREF = 'ui.systemDialogs.openFile.location';
+export const OPEN_FILE_LOCATION_PREF = "ui.systemDialogs.openFile.location";
 
 /**
  * @description Preference key for system file save dialog location.
@@ -53,13 +53,13 @@ export const OPEN_FILE_LOCATION_PREF = 'ui.systemDialogs.openFile.location';
  * @since 0.1.0-dev
  * @type {string}
  */
-export const SAVE_FILE_LOCATION_PREF = 'ui.systemDialogs.saveFile.location';
+export const SAVE_FILE_LOCATION_PREF = "ui.systemDialogs.saveFile.location";
 
 const TOKEN_TO_APP_PATH: Record<string, DialogNamedPathKey> = {
-  ':home': 'home',
-  ':documents': 'documents',
-  ':downloads': 'downloads',
-  ':desktop': 'desktop'
+  ":home": "home",
+  ":documents": "documents",
+  ":downloads": "downloads",
+  ":desktop": "desktop",
 };
 
 /**
@@ -73,11 +73,11 @@ const TOKEN_TO_APP_PATH: Record<string, DialogNamedPathKey> = {
  */
 function defaultGetPath(name: DialogNamedPathKey): string {
   const electronApp = (electron as any)?.app;
-  if (electronApp && typeof electronApp.getPath === 'function') {
+  if (electronApp && typeof electronApp.getPath === "function") {
     return electronApp.getPath(name);
   }
   const home = os.homedir();
-  if (name === 'home') return home;
+  if (name === "home") return home;
   const folder = name.charAt(0).toUpperCase() + name.slice(1);
   return path.join(home, folder);
 }
@@ -92,7 +92,9 @@ function defaultGetPath(name: DialogNamedPathKey): string {
  * @returns {string} Corresponding preference key in PreferencesStore.
  */
 export function getDialogLocationPrefKey(kind: DialogLocationKind): string {
-  return kind === 'save' || kind === 'saveFile' ? SAVE_FILE_LOCATION_PREF : OPEN_FILE_LOCATION_PREF;
+  return kind === "save" || kind === "saveFile" ?
+      SAVE_FILE_LOCATION_PREF
+    : OPEN_FILE_LOCATION_PREF;
 }
 
 /**
@@ -111,14 +113,14 @@ function resolveStoredPreferenceDirectory(
 ): string | undefined {
   const prefKey = getDialogLocationPrefKey(kind);
   const rawVal = PreferencesStore.get(prefKey)[prefKey]?.value;
-  if (typeof rawVal !== 'string' || rawVal.trim() === '') {
+  if (typeof rawVal !== "string" || rawVal.trim() === "") {
     return undefined;
   }
 
   const trimmed = rawVal.trim();
-  if (trimmed.startsWith(':')) {
+  if (trimmed.startsWith(":")) {
     const token = trimmed.toLowerCase();
-    if (token === ':recent') {
+    if (token === ":recent") {
       return undefined;
     }
     const appPathKey = TOKEN_TO_APP_PATH[token];
@@ -142,7 +144,7 @@ function resolveStoredPreferenceDirectory(
     // Fall through to reset
   }
 
-  PreferencesStore.set(prefKey, ':Recent');
+  PreferencesStore.set(prefKey, ":Recent");
   return undefined;
 }
 
@@ -162,13 +164,14 @@ export function resolveDialogDefaultPath(
   suggestedPath?: string,
   deps?: DialogLocationDependencies
 ): string | undefined {
-  const cleanSuggested = typeof suggestedPath === 'string' ? suggestedPath.trim() : '';
+  const cleanSuggested =
+    typeof suggestedPath === "string" ? suggestedPath.trim() : "";
 
   if (cleanSuggested) {
     const hasExplicitDir =
-      path.isAbsolute(cleanSuggested) ||
-      cleanSuggested.includes('/') ||
-      cleanSuggested.includes('\\');
+      path.isAbsolute(cleanSuggested)
+      || cleanSuggested.includes("/")
+      || cleanSuggested.includes("\\");
     if (hasExplicitDir) {
       return cleanSuggested;
     }
@@ -176,7 +179,9 @@ export function resolveDialogDefaultPath(
 
   const resolvedDir = resolveStoredPreferenceDirectory(kind, deps);
   if (cleanSuggested) {
-    return resolvedDir ? path.join(resolvedDir, cleanSuggested) : cleanSuggested;
+    return resolvedDir ?
+        path.join(resolvedDir, cleanSuggested)
+      : cleanSuggested;
   }
 
   return resolvedDir;
@@ -192,12 +197,15 @@ export function resolveDialogDefaultPath(
  * @param {string} selectedPath - Confirmed file path returned by the dialog.
  * @returns {void}
  */
-export function updateDialogLocation(kind: DialogLocationKind, selectedPath: string): void {
-  if (typeof selectedPath !== 'string' || selectedPath.trim() === '') {
+export function updateDialogLocation(
+  kind: DialogLocationKind,
+  selectedPath: string
+): void {
+  if (typeof selectedPath !== "string" || selectedPath.trim() === "") {
     return;
   }
   const dirPath = path.dirname(selectedPath.trim());
-  if (!dirPath || dirPath === '.') {
+  if (!dirPath || dirPath === ".") {
     return;
   }
   const prefKey = getDialogLocationPrefKey(kind);

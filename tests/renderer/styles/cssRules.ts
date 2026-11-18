@@ -9,19 +9,19 @@
  * @see FocusIndicator.test.ts
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 /** Text of the canonical default theme stylesheet. */
 export const THEME_CSS = fs.readFileSync(
-  path.resolve(process.cwd(), 'src/renderer/styles/themes/theme-default.css'),
-  'utf8'
+  path.resolve(process.cwd(), "src/renderer/styles/themes/theme-default.css"),
+  "utf8"
 );
 
 /** Text of the structural workbench stylesheet. */
 export const WORKBENCH_CSS = fs.readFileSync(
-  path.resolve(process.cwd(), 'src/renderer/styles/workbench.css'),
-  'utf8'
+  path.resolve(process.cwd(), "src/renderer/styles/workbench.css"),
+  "utf8"
 );
 
 /**
@@ -43,19 +43,19 @@ export interface CssRule {
 export function splitSelectors(list: string): string[] {
   const out: string[] = [];
   let depth = 0;
-  let current = '';
+  let current = "";
   for (const ch of list) {
-    if (ch === '(') depth++;
-    if (ch === ')') depth--;
-    if (ch === ',' && depth === 0) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
       out.push(current);
-      current = '';
+      current = "";
     } else {
       current += ch;
     }
   }
   out.push(current);
-  return out.map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  return out.map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean);
 }
 
 /**
@@ -65,7 +65,9 @@ export function splitSelectors(list: string): string[] {
  * @returns {CssRule[]} Parsed rules.
  */
 export function parseRules(css: string): CssRule[] {
-  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@import[^;]*;/g, '');
+  const stripped = css
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/@import[^;]*;/g, "");
   const rules: CssRule[] = [];
   for (const match of stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     rules.push({ selectors: splitSelectors(match[1]), body: match[2] });
@@ -80,8 +82,13 @@ export function parseRules(css: string): CssRule[] {
  * @param {string} property - Property name.
  * @returns {string | undefined} The trimmed value, or undefined when absent.
  */
-export function declaration(body: string, property: string): string | undefined {
-  const match = body.match(new RegExp(`(?:^|;|\\s)${property}\\s*:\\s*([^;]+)`));
+export function declaration(
+  body: string,
+  property: string
+): string | undefined {
+  const match = body.match(
+    new RegExp(`(?:^|;|\\s)${property}\\s*:\\s*([^;]+)`)
+  );
   return match ? match[1].trim() : undefined;
 }
 
@@ -92,7 +99,9 @@ export function declaration(body: string, property: string): string | undefined 
  * @returns {CssRule[]} Matching rules.
  */
 export function rulesFor(selector: string): CssRule[] {
-  return parseRules(WORKBENCH_CSS).filter((r) => r.selectors.includes(selector));
+  return parseRules(WORKBENCH_CSS).filter((r) =>
+    r.selectors.includes(selector)
+  );
 }
 
 /**
@@ -115,7 +124,10 @@ export function tokenValue(token: string): string | undefined {
 export function resolveThemeTokens(value: string): string {
   let out = value;
   for (let i = 0; i < 10 && /var\(--/.test(out); i++) {
-    out = out.replace(/var\((--[a-z0-9-]+)\)/g, (_m, token: string) => tokenValue(token) ?? `<undefined ${token}>`);
+    out = out.replace(
+      /var\((--[a-z0-9-]+)\)/g,
+      (_m, token: string) => tokenValue(token) ?? `<undefined ${token}>`
+    );
   }
   return out;
 }
@@ -127,7 +139,10 @@ export function resolveThemeTokens(value: string): string {
  * @param {string} property - Kebab-case property.
  * @returns {string | undefined} The first declared value, or undefined.
  */
-export function classDeclaration(cls: string, property: string): string | undefined {
+export function classDeclaration(
+  cls: string,
+  property: string
+): string | undefined {
   for (const rule of rulesFor(`.${cls}`)) {
     const value = declaration(rule.body, property);
     if (value !== undefined) return value;
@@ -141,7 +156,7 @@ export function classDeclaration(cls: string, property: string): string | undefi
  * @returns {Set<string>} Tier 2 token names.
  */
 export function tier2Tokens(): Set<string> {
-  const tier2 = THEME_CSS.slice(THEME_CSS.indexOf('Tier 2: Component Tokens'));
+  const tier2 = THEME_CSS.slice(THEME_CSS.indexOf("Tier 2: Component Tokens"));
   return new Set([...tier2.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
 }
 
@@ -165,7 +180,9 @@ export interface StyledNode {
  * @returns {string[]} Its classes; empty when there is no node.
  */
 function classesOf(node: StyledNode | null | undefined): string[] {
-  return typeof node?.className === 'string' ? node.className.split(/\s+/).filter(Boolean) : [];
+  return typeof node?.className === "string" ?
+      node.className.split(/\s+/).filter(Boolean)
+    : [];
 }
 
 /**
@@ -175,8 +192,11 @@ function classesOf(node: StyledNode | null | undefined): string[] {
  * @param {StyledNode | null | undefined} node - The node.
  * @returns {boolean} True when the node carries every class.
  */
-function matchesCompound(compound: string, node: StyledNode | null | undefined): boolean {
-  const classes = compound.split('.').slice(1);
+function matchesCompound(
+  compound: string,
+  node: StyledNode | null | undefined
+): boolean {
+  const classes = compound.split(".").slice(1);
   const own = classesOf(node);
   return classes.length > 0 && classes.every((cls) => own.includes(cls));
 }
@@ -188,9 +208,15 @@ function matchesCompound(compound: string, node: StyledNode | null | undefined):
  * @param {StyledNode} node - The node.
  * @returns {boolean} True when the selector matches the node.
  */
-export function matchesClassSelector(selector: string, node: StyledNode): boolean {
-  if (!/^\.[\w-]+(?:\.[\w-]+)*(?:\s*>?\s*\.[\w-]+(?:\.[\w-]+)*)*$/.test(selector)) return false;
-  const parts = selector.replace(/\s*>\s*/g, ' > ').split(' ');
+export function matchesClassSelector(
+  selector: string,
+  node: StyledNode
+): boolean {
+  if (
+    !/^\.[\w-]+(?:\.[\w-]+)*(?:\s*>?\s*\.[\w-]+(?:\.[\w-]+)*)*$/.test(selector)
+  )
+    return false;
+  const parts = selector.replace(/\s*>\s*/g, " > ").split(" ");
   /**
    * @function matchFrom
    * @description Matches the selector parts up to `index`, right to left, with `current` as the subject of the part at `index`.
@@ -198,11 +224,19 @@ export function matchesClassSelector(selector: string, node: StyledNode): boolea
    * @param {StyledNode | null | undefined} current - Candidate node.
    * @returns {boolean} True when the rest of the selector matches.
    */
-  const matchFrom = (index: number, current: StyledNode | null | undefined): boolean => {
+  const matchFrom = (
+    index: number,
+    current: StyledNode | null | undefined
+  ): boolean => {
     if (!matchesCompound(parts[index], current)) return false;
     if (index === 0) return true;
-    if (parts[index - 1] === '>') return matchFrom(index - 2, current?.parentNode);
-    for (let ancestor = current?.parentNode; ancestor; ancestor = ancestor.parentNode) {
+    if (parts[index - 1] === ">")
+      return matchFrom(index - 2, current?.parentNode);
+    for (
+      let ancestor = current?.parentNode;
+      ancestor;
+      ancestor = ancestor.parentNode
+    ) {
       if (matchFrom(index - 1, ancestor)) return true;
     }
     return false;
@@ -217,10 +251,13 @@ export function matchesClassSelector(selector: string, node: StyledNode): boolea
  * @param {string} name - Custom property name.
  * @returns {string | undefined} Its value, or undefined when no node in the chain sets it.
  */
-function customProperty(node: StyledNode | null | undefined, name: string): string | undefined {
+function customProperty(
+  node: StyledNode | null | undefined,
+  name: string
+): string | undefined {
   for (let current = node; current; current = current.parentNode) {
     const value = current.style?.[name];
-    if (typeof value === 'string' && value !== '') return value;
+    if (typeof value === "string" && value !== "") return value;
   }
   return undefined;
 }
@@ -233,24 +270,25 @@ function customProperty(node: StyledNode | null | undefined, name: string): stri
  * @returns {string} The value with the resolvable references substituted.
  */
 function resolveVars(value: string, node: StyledNode): string {
-  let out = '';
+  let out = "";
   let index = 0;
   while (index < value.length) {
-    const start = value.indexOf('var(', index);
+    const start = value.indexOf("var(", index);
     if (start < 0) return out + value.slice(index);
     out += value.slice(index, start);
     let depth = 0;
     let end = start + 3;
     for (; end < value.length; end++) {
-      if (value[end] === '(') depth++;
-      if (value[end] === ')' && --depth === 0) break;
+      if (value[end] === "(") depth++;
+      if (value[end] === ")" && --depth === 0) break;
     }
     const inner = value.slice(start + 4, end);
-    const comma = inner.indexOf(',');
+    const comma = inner.indexOf(",");
     const name = (comma < 0 ? inner : inner.slice(0, comma)).trim();
     const own = customProperty(node, name);
     if (own !== undefined) out += own;
-    else if (comma >= 0) out += resolveVars(inner.slice(comma + 1).trim(), node);
+    else if (comma >= 0)
+      out += resolveVars(inner.slice(comma + 1).trim(), node);
     else out += value.slice(start, end + 1);
     index = end + 1;
   }
@@ -267,10 +305,16 @@ let workbenchRules: CssRule[] | undefined;
  * @param {string} property - Kebab-case property name, e.g. `background-color`.
  * @returns {string | undefined} The cascaded value, or undefined when neither the inline style nor a class rule sets it.
  */
-export function cascadedValue(node: StyledNode, property: string): string | undefined {
-  const camel = property.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
+export function cascadedValue(
+  node: StyledNode,
+  property: string
+): string | undefined {
+  const camel = property.replace(/-([a-z])/g, (_match, letter: string) =>
+    letter.toUpperCase()
+  );
   const inline = node.style?.[camel];
-  if (typeof inline === 'string' && inline !== '') return resolveVars(inline, node);
+  if (typeof inline === "string" && inline !== "")
+    return resolveVars(inline, node);
   let best: { specificity: number; value: string } | undefined;
   workbenchRules ??= parseRules(WORKBENCH_CSS);
   for (const rule of workbenchRules) {
@@ -279,7 +323,8 @@ export function cascadedValue(node: StyledNode, property: string): string | unde
     for (const selector of rule.selectors) {
       if (!matchesClassSelector(selector, node)) continue;
       const specificity = (selector.match(/\./g) ?? []).length;
-      if (!best || specificity >= best.specificity) best = { specificity, value };
+      if (!best || specificity >= best.specificity)
+        best = { specificity, value };
     }
   }
   return best && resolveVars(best.value, node);

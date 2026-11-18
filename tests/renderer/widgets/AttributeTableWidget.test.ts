@@ -597,10 +597,18 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
     );
 
     // Verify workbench.css defines justify-content: flex-start for .attribute-table-header (Ticket #210)
-    const workbenchCssPath = path.resolve(__dirname, "../../../src/renderer/styles/workbench.css");
+    const workbenchCssPath = path.resolve(
+      __dirname,
+      "../../../src/renderer/styles/workbench.css"
+    );
     const workbenchCss = fs.readFileSync(workbenchCssPath, "utf-8");
-    const headerCssMatch = workbenchCss.match(/\.attribute-table-header\s*\{[^}]*\}/);
-    assert.ok(headerCssMatch, ".attribute-table-header rule must exist in workbench.css");
+    const headerCssMatch = workbenchCss.match(
+      /\.attribute-table-header\s*\{[^}]*\}/
+    );
+    assert.ok(
+      headerCssMatch,
+      ".attribute-table-header rule must exist in workbench.css"
+    );
     assert.match(
       headerCssMatch[0],
       /justify-content:\s*flex-start;/,
@@ -824,7 +832,11 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
 
     // Double-click data cell when not in edit mode
     await act(async () => {
-      dataCells[0].dispatchEvent({ type: "dblclick", button: 0, stopPropagation: () => {} });
+      dataCells[0].dispatchEvent({
+        type: "dblclick",
+        button: 0,
+        stopPropagation: () => {},
+      });
     });
 
     let inputEls = findAllNodes(container, (el) =>
@@ -843,7 +855,11 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
 
     // Double-click data cell when edit mode is ON
     await act(async () => {
-      dataCells[0].dispatchEvent({ type: "dblclick", button: 0, stopPropagation: () => {} });
+      dataCells[0].dispatchEvent({
+        type: "dblclick",
+        button: 0,
+        stopPropagation: () => {},
+      });
     });
 
     inputEls = findAllNodes(container, (el) =>
@@ -1755,7 +1771,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click Next page -> start = 2
       await act(async () => {
-        nextBtn.dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
+        nextBtn.dispatchEvent({
+          type: "click",
+          button: 0,
+          stopPropagation: () => {},
+        });
       });
 
       assert.strictEqual(queryCalls.length, 2);
@@ -1789,7 +1809,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click Last page -> start = 4 (only 1 feature: 105)
       await act(async () => {
-        lastBtn.dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
+        lastBtn.dispatchEvent({
+          type: "click",
+          button: 0,
+          stopPropagation: () => {},
+        });
       });
       assert.strictEqual(queryCalls.length, 3);
       assert.strictEqual(queryCalls[2].options.start, 4);
@@ -1813,7 +1837,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click First page -> start = 0
       await act(async () => {
-        firstBtn.dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
+        firstBtn.dispatchEvent({
+          type: "click",
+          button: 0,
+          stopPropagation: () => {},
+        });
       });
       assert.strictEqual(queryCalls.length, 4);
       assert.strictEqual(queryCalls[3].options.start, 0);
@@ -1896,7 +1924,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         el.className.includes("cell-attribute-data")
       )[0];
       await act(async () => {
-        dataCell.dispatchEvent({ type: "dblclick", button: 0, stopPropagation: () => {} });
+        dataCell.dispatchEvent({
+          type: "dblclick",
+          button: 0,
+          stopPropagation: () => {},
+        });
       });
 
       const inputEl = findAllNodes(container, (el) =>
@@ -1988,7 +2020,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
       // Click "Don't Save Changes"
       await act(async () => {
-        buttons[1].dispatchEvent({ type: "click", button: 0, stopPropagation: () => {} });
+        buttons[1].dispatchEvent({
+          type: "click",
+          button: 0,
+          stopPropagation: () => {},
+        });
       });
       assert.strictEqual(await choicePromise, "discard");
       assert.strictEqual(unsavedChangesModalSignal.value, null);
@@ -2390,7 +2426,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         });
         const selectedRow = findAllNodes(
           tableEl,
-          (el) => el.tagName === "TR" && el.getAttribute("aria-selected") === "true"
+          (el) =>
+            el.tagName === "TR" && el.getAttribute("aria-selected") === "true"
         )[0];
         assert.ok(selectedRow, "selected row must be a Selected Row");
         const selectedTds = findAllNodes(
@@ -3691,11 +3728,28 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           "editor input must carry the cell-editor-input class"
         );
         const cellEditorRule = fs
-          .readFileSync(path.resolve(__dirname, "../../../src/renderer/styles/workbench.css"), "utf-8")
+          .readFileSync(
+            path.resolve(
+              __dirname,
+              "../../../src/renderer/styles/workbench.css"
+            ),
+            "utf-8"
+          )
           .match(/\.cell-editor-input\s*\{[^}]*\}/);
-        assert.ok(cellEditorRule, ".cell-editor-input rule must exist in workbench.css");
-        assert.match(cellEditorRule[0], /width:\s*100%/, "editor input must have width 100%");
-        assert.match(cellEditorRule[0], /box-sizing:\s*border-box/, "editor input must have box-sizing border-box");
+        assert.ok(
+          cellEditorRule,
+          ".cell-editor-input rule must exist in workbench.css"
+        );
+        assert.match(
+          cellEditorRule[0],
+          /width:\s*100%/,
+          "editor input must have width 100%"
+        );
+        assert.match(
+          cellEditorRule[0],
+          /box-sizing:\s*border-box/,
+          "editor input must have box-sizing border-box"
+        );
 
         const triggerChange = (el: any, val: string) => {
           const propKey = Object.keys(el).find((k) =>
@@ -3762,7 +3816,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         assert.ok(boolSelect, "boolean select must be active in cell editor");
         // The boolean editor is the compact shared Select (Ticket #344)
         assert.ok(
-          boolSelect.className.includes("cartouche-select") && boolSelect.className.includes("is-compact"),
+          boolSelect.className.includes("cartouche-select")
+            && boolSelect.className.includes("is-compact"),
           "editor select must be the compact shared Select"
         );
 
@@ -3962,13 +4017,27 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
               id: "501",
               properties: { ogc_fid: 501, county_name: "Arapahoe" },
               geometryType: "Polygon",
-              coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]],
+              coordinates: [
+                [
+                  [0, 0],
+                  [1, 0],
+                  [1, 1],
+                  [0, 0],
+                ],
+              ],
             },
             {
               id: "502",
               properties: { ogc_fid: 502, county_name: "Boulder" },
               geometryType: "Polygon",
-              coordinates: [[[1, 1], [2, 1], [2, 2], [1, 1]]],
+              coordinates: [
+                [
+                  [1, 1],
+                  [2, 1],
+                  [2, 2],
+                  [1, 1],
+                ],
+              ],
             },
           ],
           totalMatched: 2,
@@ -3983,7 +4052,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           root!.render(React.createElement(AttributeTableWidget));
         });
 
-        const tableEl = findAllNodes(container, (el) => el.tagName === "TABLE")[0];
+        const tableEl = findAllNodes(
+          container,
+          (el) => el.tagName === "TABLE"
+        )[0];
         assert.ok(tableEl, "table element must render");
 
         const thEls = findAllNodes(tableEl, (el) => el.tagName === "TH");
@@ -3999,8 +4071,16 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
 
         // Exactly 2 cells: FID cell and county_name cell
         assert.strictEqual(tdCells.length, 2);
-        assert.strictEqual(tdCells[0].textContent, "501", "FID cell renders feature ID");
-        assert.strictEqual(tdCells[1].textContent, "Arapahoe", "county_name attribute value");
+        assert.strictEqual(
+          tdCells[0].textContent,
+          "501",
+          "FID cell renders feature ID"
+        );
+        assert.strictEqual(
+          tdCells[1].textContent,
+          "Arapahoe",
+          "county_name attribute value"
+        );
 
         // Double-clicking FID cell must NOT activate an editor (identity columns are strictly read-only)
         await act(async () => {
@@ -4012,7 +4092,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           });
         });
         const inputs = findAllNodes(container, (el) => el.tagName === "INPUT");
-        assert.strictEqual(inputs.length, 0, "identity cell must not activate an editor on double click");
+        assert.strictEqual(
+          inputs.length,
+          0,
+          "identity cell must not activate an editor on double click"
+        );
 
         // Single-clicking FID cell selects the row
         await act(async () => {
@@ -4023,7 +4107,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             button: 0,
           });
         });
-        assert.ok(selectedFeatureIdsSignal.value.has("501"), "clicking FID cell must select row");
+        assert.ok(
+          selectedFeatureIdsSignal.value.has("501"),
+          "clicking FID cell must select row"
+        );
       } finally {
         delete (globalThis as any).window.electronAPI.queryExtent;
       }
@@ -4078,7 +4165,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           root!.render(React.createElement(AttributeTableWidget));
         });
 
-        const tableEl = findAllNodes(container, (el) => el.tagName === "TABLE")[0];
+        const tableEl = findAllNodes(
+          container,
+          (el) => el.tagName === "TABLE"
+        )[0];
         const thEls = findAllNodes(tableEl, (el) => el.tagName === "TH");
         const headerTexts = thEls.map((th) => th.textContent);
 
@@ -4090,8 +4180,16 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
         const tdCells = findAllNodes(row1, (el) => el.tagName === "TD");
 
         assert.strictEqual(tdCells.length, 2);
-        assert.strictEqual(tdCells[0].textContent, "1", "1-based sequential counter");
-        assert.strictEqual(tdCells[1].textContent, "SITE-ALPHA", "site_code attribute value");
+        assert.strictEqual(
+          tdCells[0].textContent,
+          "1",
+          "1-based sequential counter"
+        );
+        assert.strictEqual(
+          tdCells[1].textContent,
+          "SITE-ALPHA",
+          "site_code attribute value"
+        );
 
         // Double-clicking counter cell must NOT activate an editor
         await act(async () => {
@@ -4103,7 +4201,11 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           });
         });
         const inputs = findAllNodes(container, (el) => el.tagName === "INPUT");
-        assert.strictEqual(inputs.length, 0, "counter cell must not activate an editor on double click");
+        assert.strictEqual(
+          inputs.length,
+          0,
+          "counter cell must not activate an editor on double click"
+        );
 
         // Single-clicking counter cell selects the row
         await act(async () => {
@@ -4114,7 +4216,10 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
             button: 0,
           });
         });
-        assert.ok(selectedFeatureIdsSignal.value.has("v-99"), "clicking counter cell must select row");
+        assert.ok(
+          selectedFeatureIdsSignal.value.has("v-99"),
+          "clicking counter cell must select row"
+        );
       } finally {
         dictionarySignal.value = {};
         delete (globalThis as any).window.electronAPI.queryExtent;
@@ -4129,7 +4234,9 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
  * @param {Record<string, unknown>} [fields] - Extra event fields, e.g. `ctrlKey` or `shiftKey`.
  * @returns {Record<string, unknown>} The event.
  */
-function nativeClick(fields: Record<string, unknown> = {}): Record<string, unknown> {
+function nativeClick(
+  fields: Record<string, unknown> = {}
+): Record<string, unknown> {
   return {
     type: "click",
     bubbles: true,
@@ -4149,7 +4256,10 @@ function nativeClick(fields: Record<string, unknown> = {}): Record<string, unkno
  * @param {MockElement} el - Element to click.
  * @param {Record<string, unknown>} [fields] - Modifier keys.
  */
-async function clickEl(el: MockElement, fields: Record<string, unknown> = {}): Promise<void> {
+async function clickEl(
+  el: MockElement,
+  fields: Record<string, unknown> = {}
+): Promise<void> {
   await act(async () => {
     el.dispatchEvent(nativeClick(fields));
   });
@@ -4162,7 +4272,12 @@ async function clickEl(el: MockElement, fields: Record<string, unknown> = {}): P
  */
 async function dblclickEl(el: MockElement): Promise<void> {
   await act(async () => {
-    el.dispatchEvent({ type: "dblclick", bubbles: true, button: 0, preventDefault: () => {} });
+    el.dispatchEvent({
+      type: "dblclick",
+      bubbles: true,
+      button: 0,
+      preventDefault: () => {},
+    });
   });
 }
 
@@ -4172,7 +4287,10 @@ async function dblclickEl(el: MockElement): Promise<void> {
  * @returns {MockElement[]} Body rows.
  */
 function dataRows(): MockElement[] {
-  return findAllNodes(container, (el) => el.className.includes("table-widget-row") && el.tagName === "TR");
+  return findAllNodes(
+    container,
+    (el) => el.className.includes("table-widget-row") && el.tagName === "TR"
+  );
 }
 
 /**
@@ -4182,7 +4300,9 @@ function dataRows(): MockElement[] {
  * @returns {MockElement} Body row.
  */
 function rowById(id: string | number): MockElement {
-  const found = dataRows().find((r) => r.getAttribute("data-row-id") === String(id));
+  const found = dataRows().find(
+    (r) => r.getAttribute("data-row-id") === String(id)
+  );
   assert.ok(found, `row ${id} rendered`);
   return found;
 }
@@ -4205,7 +4325,9 @@ function cellOf(id: string | number, index: number): MockElement {
  * @returns {MockElement} The button.
  */
 function pageButton(which: string): MockElement {
-  return findAllNodes(container, (el) => el.className.includes(`attribute-table-page-${which}`))[0];
+  return findAllNodes(container, (el) =>
+    el.className.includes(`attribute-table-page-${which}`)
+  )[0];
 }
 
 /**
@@ -4217,9 +4339,9 @@ function inputs(): MockElement[] {
   return findAllNodes(container, (el) => el.tagName === "INPUT");
 }
 
-const { dirtyLayerIdsSignal } = jiti("../../../src/renderer/state/gisSignals.ts") as {
-  dirtyLayerIdsSignal: { value: Set<string> };
-};
+const { dirtyLayerIdsSignal } = jiti(
+  "../../../src/renderer/state/gisSignals.ts"
+) as { dirtyLayerIdsSignal: { value: Set<string> } };
 
 describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
   /** Five point features served two per chunk by the mock Geospatial Worker. */
@@ -4239,7 +4361,14 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
     opacity: 1,
     color: "#2563eb",
     featureCount: 5,
-    fields: [{ name: "title", nativeType: "String", inferredType: "string", nullable: false }],
+    fields: [
+      {
+        name: "title",
+        nativeType: "String",
+        inferredType: "string",
+        nullable: false,
+      },
+    ],
   };
 
   let prefs: { prefsAttributeTableMaxRows: { value: number } };
@@ -4257,7 +4386,8 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
     viewportExtentSignal.value = [-180, -90, 180, 90];
     openDockPanelsSignal.value = { attributes: true, layers: true };
     dictionarySignal.value = {};
-    prefs = (await import("../../../src/renderer/state/preferencesSignals")) as any;
+    prefs =
+      (await import("../../../src/renderer/state/preferencesSignals")) as any;
     prefs.prefsAttributeTableMaxRows.value = 2;
     (globalThis as any).window.electronAPI = {
       queryExtent: async (layerId: string, options: any) => ({
@@ -4280,23 +4410,35 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
   });
 
   it("shows its records through a TableWidget with the header bar and Row Number Column hidden", () => {
-    const tableWidget = findAllNodes(container, (el) => /(^| )table-widget( |$)/.test(el.className))[0];
+    const tableWidget = findAllNodes(container, (el) =>
+      /(^| )table-widget( |$)/.test(el.className)
+    )[0];
     assert.ok(tableWidget, "an embedded TableWidget is rendered");
     assert.equal(
-      findAllNodes(tableWidget, (el) => el.className.includes("basic-widget-header")).length,
+      findAllNodes(tableWidget, (el) =>
+        el.className.includes("basic-widget-header")
+      ).length,
       0,
       "the embedded TableWidget's header bar is hidden"
     );
     assert.equal(
-      findAllNodes(container, (el) => el.className.includes("table-widget-row-number")).length,
+      findAllNodes(container, (el) =>
+        el.className.includes("table-widget-row-number")
+      ).length,
       0,
       "the Row Number Column is hidden"
     );
-    assert.deepEqual(dataRows().map((r) => r.getAttribute("data-row-id")), ["101", "102"]);
+    assert.deepEqual(
+      dataRows().map((r) => r.getAttribute("data-row-id")),
+      ["101", "102"]
+    );
   });
 
   it("numbers its own # column with the Sequential Row Index across pages", async () => {
-    const numbers = () => dataRows().map((r) => findAllNodes(r, (el) => el.tagName === "TD")[0].textContent);
+    const numbers = () =>
+      dataRows().map(
+        (r) => findAllNodes(r, (el) => el.tagName === "TD")[0].textContent
+      );
     assert.deepEqual(numbers(), ["1", "2"]);
     await clickEl(pageButton("next"));
     assert.deepEqual(numbers(), ["3", "4"]);
@@ -4305,8 +4447,16 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
   it("makes its attribute columns sortable and its # column unsortable without a stored ID column (Ticket #330)", () => {
     const headers = findAllNodes(container, (el) => el.tagName === "TH");
     assert.ok(headers.length >= 2);
-    assert.equal(headers[0].getAttribute("aria-sort"), null, "the Sequential Row Index column is not sortable");
-    assert.equal(headers[1].getAttribute("aria-sort"), "none", "the title column is sortable");
+    assert.equal(
+      headers[0].getAttribute("aria-sort"),
+      null,
+      "the Sequential Row Index column is not sortable"
+    );
+    assert.equal(
+      headers[1].getAttribute("aria-sort"),
+      "none",
+      "the title column is sortable"
+    );
   });
 
   it("selects a row by a click anywhere in it and publishes it to selectedFeatureIdsSignal", async () => {
@@ -4325,14 +4475,25 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
     assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [101, 103]);
 
     await clickEl(rowById(104), { shiftKey: true });
-    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [101, 103, 104]);
+    assert.deepEqual(
+      [...selectedFeatureIdsSignal.value].sort(),
+      [101, 103, 104]
+    );
 
     await clickEl(pageButton("prev"));
-    assert.equal(rowById(101).getAttribute("aria-selected"), "true", "page 1 row still selected after the chunk reloads");
+    assert.equal(
+      rowById(101).getAttribute("aria-selected"),
+      "true",
+      "page 1 row still selected after the chunk reloads"
+    );
     assert.equal(rowById(102).getAttribute("aria-selected"), "false");
 
     await clickEl(rowById(102));
-    assert.deepEqual([...selectedFeatureIdsSignal.value], [102], "a plain click drops the rows on other pages");
+    assert.deepEqual(
+      [...selectedFeatureIdsSignal.value],
+      [102],
+      "a plain click drops the rows on other pages"
+    );
   });
 
   it("Ctrl+click toggles a row out of the selection without touching rows on other pages", async () => {
@@ -4360,7 +4521,11 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
       editableLayerIdsSignal.value = new Set([PAGED_LAYER.id]);
     });
     assert.equal(cellOf(101, 1).getAttribute("aria-readonly"), null);
-    assert.equal(cellOf(101, 0).getAttribute("aria-readonly"), "true", "the # column stays read-only");
+    assert.equal(
+      cellOf(101, 0).getAttribute("aria-readonly"),
+      "true",
+      "the # column stays read-only"
+    );
     await dblclickEl(cellOf(101, 1));
     assert.equal(inputs().length, 1);
   });
@@ -4379,14 +4544,22 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
     });
     await dblclickEl(cellOf(102, 1));
     const input = inputs()[0];
-    const propKey = Object.keys(input).find((k) => k.startsWith("__reactProps"))!;
+    const propKey = Object.keys(input).find((k) =>
+      k.startsWith("__reactProps")
+    )!;
     await act(async () => {
       (input as any)[propKey].onChange({ target: { value: "Renamed" } });
     });
     await act(async () => {
-      (input as any)[propKey].onKeyDown({ key: "Enter", preventDefault: () => {} });
+      (input as any)[propKey].onKeyDown({
+        key: "Enter",
+        preventDefault: () => {},
+      });
     });
-    assert.equal(featuresSignal.value.find((f) => f.id === 102)?.properties.title, "Renamed");
+    assert.equal(
+      featuresSignal.value.find((f) => f.id === 102)?.properties.title,
+      "Renamed"
+    );
     assert.ok(editedFeatureIdsSignal.value.has(102));
     assert.ok(dirtyLayerIdsSignal.value.has(PAGED_LAYER.id));
     assert.equal(isProjectDirtySignal.value, true);
@@ -4395,9 +4568,16 @@ describe("AttributeTableWidget embeds a TableWidget (Ticket #329)", () => {
 
   it("uses no hard-coded colours", () => {
     const source = fs.readFileSync(
-      path.resolve(__dirname, "../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx"),
+      path.resolve(
+        __dirname,
+        "../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx"
+      ),
       "utf-8"
     );
-    assert.equal(source.match(/["'`]#[0-9a-fA-F]{3,8}["'`]|,\s*#[0-9a-fA-F]{3,8}\)/), null, "no hex colour literals");
+    assert.equal(
+      source.match(/["'`]#[0-9a-fA-F]{3,8}["'`]|,\s*#[0-9a-fA-F]{3,8}\)/),
+      null,
+      "no hex colour literals"
+    );
   });
 });

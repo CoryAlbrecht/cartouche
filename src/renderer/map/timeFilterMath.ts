@@ -18,11 +18,17 @@
  * @see {@link MIN_TIME_FILTER_STEP}
  */
 
-import type { TimeFilterUnit, LayerDescriptor, GisFeature, QueryExtentOptions, LayerTemporalMode } from '../../shared/types';
-import { projectLayersSignal } from '../state/projectSignals';
-import { featuresSignal } from '../state/gisSignals';
-import { parseTemporalValue } from './temporalPredicate';
-import { logging } from '../../shared/logging';
+import type {
+  TimeFilterUnit,
+  LayerDescriptor,
+  GisFeature,
+  QueryExtentOptions,
+  LayerTemporalMode,
+} from "../../shared/types";
+import { projectLayersSignal } from "../state/projectSignals";
+import { featuresSignal } from "../state/gisSignals";
+import { parseTemporalValue } from "./temporalPredicate";
+import { logging } from "../../shared/logging";
 
 /**
  * Minimum allowable positive decimal stepping value, ensuring a 1-second increment under 'Years' unit.
@@ -42,7 +48,7 @@ export const MIN_TIME_FILTER_STEP = 0.000000031623;
  * @returns {boolean} True if leap year, false otherwise.
  */
 export function isLeapYearUtc(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
 /**
@@ -90,7 +96,11 @@ export function stepTemporalTimestamp(
   stepDelta: number,
   unit: TimeFilterUnit
 ): number {
-  if (!Number.isFinite(timestampUtc) || !Number.isFinite(stepDelta) || stepDelta === 0) {
+  if (
+    !Number.isFinite(timestampUtc)
+    || !Number.isFinite(stepDelta)
+    || stepDelta === 0
+  ) {
     return timestampUtc;
   }
 
@@ -99,22 +109,22 @@ export function stepTemporalTimestamp(
   const MILLIS_PER_HOUR = 60 * MILLIS_PER_MINUTE;
   const MILLIS_PER_DAY = 24 * MILLIS_PER_HOUR;
 
-  if (unit === 'Milliseconds') {
+  if (unit === "Milliseconds") {
     return Math.round(timestampUtc + stepDelta);
   }
-  if (unit === 'Seconds') {
+  if (unit === "Seconds") {
     return Math.round(timestampUtc + stepDelta * MILLIS_PER_SECOND);
   }
-  if (unit === 'Minutes') {
+  if (unit === "Minutes") {
     return Math.round(timestampUtc + stepDelta * MILLIS_PER_MINUTE);
   }
-  if (unit === 'Hours') {
+  if (unit === "Hours") {
     return Math.round(timestampUtc + stepDelta * MILLIS_PER_HOUR);
   }
-  if (unit === 'Days') {
+  if (unit === "Days") {
     return Math.round(timestampUtc + stepDelta * MILLIS_PER_DAY);
   }
-  if (unit === 'Weeks') {
+  if (unit === "Weeks") {
     return Math.round(timestampUtc + stepDelta * 7 * MILLIS_PER_DAY);
   }
 
@@ -127,7 +137,7 @@ export function stepTemporalTimestamp(
   const curSecond = d.getUTCSeconds();
   const curMs = d.getUTCMilliseconds();
 
-  if (unit === 'Years') {
+  if (unit === "Years") {
     const wholeYears = Math.trunc(stepDelta);
     const fracYears = stepDelta - wholeYears;
 
@@ -159,7 +169,7 @@ export function stepTemporalTimestamp(
     return resultMs;
   }
 
-  if (unit === 'Months') {
+  if (unit === "Months") {
     const wholeMonths = Math.trunc(stepDelta);
     const fracMonths = stepDelta - wholeMonths;
 
@@ -237,22 +247,22 @@ export function computeTemporalStepAttribute(
   if (!Number.isFinite(step) || step <= 0) {
     return 1;
   }
-  if (unit === 'Milliseconds') {
+  if (unit === "Milliseconds") {
     return Math.max(1, Math.round(step));
   }
-  if (unit === 'Seconds') {
+  if (unit === "Seconds") {
     return Math.max(1, Math.round(step * 1000));
   }
-  if (unit === 'Minutes') {
+  if (unit === "Minutes") {
     return Math.max(1, Math.round(step * 60000));
   }
-  if (unit === 'Hours') {
+  if (unit === "Hours") {
     return Math.max(1, Math.round(step * 3600000));
   }
-  if (unit === 'Days') {
+  if (unit === "Days") {
     return Math.max(1, Math.round(step * 86400000));
   }
-  if (unit === 'Weeks') {
+  if (unit === "Weeks") {
     return Math.max(1, Math.round(step * 604800000));
   }
   // For Months and Years, variable month lengths (28-31 days) and leap years require
@@ -298,12 +308,12 @@ export function snapToTemporalStep(
 
   // Fixed duration units: exact arithmetic
   if (
-    unit === 'Milliseconds'
-    || unit === 'Seconds'
-    || unit === 'Minutes'
-    || unit === 'Hours'
-    || unit === 'Days'
-    || unit === 'Weeks'
+    unit === "Milliseconds"
+    || unit === "Seconds"
+    || unit === "Minutes"
+    || unit === "Hours"
+    || unit === "Days"
+    || unit === "Weeks"
   ) {
     const msPerUnit: Record<string, number> = {
       Milliseconds: 1,
@@ -321,7 +331,7 @@ export function snapToTemporalStep(
   }
 
   // Calendar-aware units (Months, Years): binary search for the nearest discrete calendar step
-  const avgDays = unit === 'Months' ? 30.4375 : 365.2425;
+  const avgDays = unit === "Months" ? 30.4375 : 365.2425;
   const estimatedK = Math.max(
     0,
     Math.round((timestampUtc - rangeStartUtc) / (step * avgDays * 86400000))
@@ -329,7 +339,9 @@ export function snapToTemporalStep(
 
   let low = 0;
   let high = Math.max(2, estimatedK * 2);
-  while (stepTemporalTimestamp(rangeStartUtc, high * step, unit) < timestampUtc) {
+  while (
+    stepTemporalTimestamp(rangeStartUtc, high * step, unit) < timestampUtc
+  ) {
     low = high;
     high *= 2;
   }
@@ -338,7 +350,11 @@ export function snapToTemporalStep(
     const mid = Math.floor((low + high) / 2);
     const tMid = stepTemporalTimestamp(rangeStartUtc, mid * step, unit);
     if (tMid <= timestampUtc) {
-      const tNext = stepTemporalTimestamp(rangeStartUtc, (mid + 1) * step, unit);
+      const tNext = stepTemporalTimestamp(
+        rangeStartUtc,
+        (mid + 1) * step,
+        unit
+      );
       if (tNext > timestampUtc) {
         const candidate =
           timestampUtc - tMid <= tNext - timestampUtc ? tMid : tNext;
@@ -380,15 +396,19 @@ export function calculateActiveTemporalRange(
   let maxTime = -Infinity;
 
   for (const layer of activeTemporalLayers) {
-    const config = layer.temporal || { enabled: true, mode: 'start_end' };
-    const mode = config.mode || 'start_end';
+    const config = layer.temporal || { enabled: true, mode: "start_end" };
+    const mode = config.mode || "start_end";
     const startField = config.startField;
     const endField = config.endField;
 
     const layerFeatures = features.filter((f) => f.layerId === layer.id);
     for (const f of layerFeatures) {
-      if (mode === 'start' || mode === 'start_end') {
-        if (startField && f.properties && f.properties[startField] !== undefined) {
+      if (mode === "start" || mode === "start_end") {
+        if (
+          startField
+          && f.properties
+          && f.properties[startField] !== undefined
+        ) {
           const t = parseTemporalValue(f.properties[startField]);
           if (t !== null) {
             if (t < minTime) minTime = t;
@@ -396,7 +416,7 @@ export function calculateActiveTemporalRange(
           }
         }
       }
-      if (mode === 'end' || mode === 'start_end') {
+      if (mode === "end" || mode === "start_end") {
         if (endField && f.properties && f.properties[endField] !== undefined) {
           const t = parseTemporalValue(f.properties[endField]);
           if (t !== null) {
@@ -427,8 +447,10 @@ export function calculateActiveTemporalRange(
  * @param {any} result - Response returned from queryExtent.
  * @returns {Record<string, unknown> | null} Properties dictionary of first feature, or null if empty.
  */
-export function extractFirstFeatureProperties(result: any): Record<string, unknown> | null {
-  if (!result || typeof result !== 'object') {
+export function extractFirstFeatureProperties(
+  result: any
+): Record<string, unknown> | null {
+  if (!result || typeof result !== "object") {
     return null;
   }
 
@@ -439,7 +461,10 @@ export function extractFirstFeatureProperties(result: any): Record<string, unkno
   let buffer: ArrayBuffer | null = null;
   if (result.buffer instanceof ArrayBuffer) {
     buffer = result.buffer;
-  } else if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(result.buffer)) {
+  } else if (
+    typeof ArrayBuffer !== "undefined"
+    && ArrayBuffer.isView(result.buffer)
+  ) {
     const view = result.buffer as ArrayBufferView;
     const copy = new Uint8Array(view.byteLength);
     copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
@@ -459,7 +484,9 @@ export function extractFirstFeatureProperties(result: any): Record<string, unkno
           if (propsLen > 0 && propsOffset + 4 + propsLen <= buffer.byteLength) {
             try {
               const decoder = new TextDecoder();
-              const jsonStr = decoder.decode(new Uint8Array(buffer, propsOffset + 4, propsLen));
+              const jsonStr = decoder.decode(
+                new Uint8Array(buffer, propsOffset + 4, propsLen)
+              );
               return JSON.parse(jsonStr);
             } catch {
               return null;
@@ -501,15 +528,15 @@ export async function autoDetectTemporalRange(
   const queryFn =
     queryExtentFn ?? (globalThis as any).window?.electronAPI?.queryExtent;
 
-  if (typeof queryFn === 'function') {
+  if (typeof queryFn === "function") {
     let minTime = Infinity;
     let maxTime = -Infinity;
 
     for (const layer of activeTemporalLayers) {
-      const config = layer.temporal || { enabled: true, mode: 'start_end' };
-      const mode = (config.mode || 'start_end') as LayerTemporalMode | string;
-      const isEndOnly = mode === 'end' || mode === 'End Field';
-      const isStartOnly = mode === 'start' || mode === 'Start Field';
+      const config = layer.temporal || { enabled: true, mode: "start_end" };
+      const mode = (config.mode || "start_end") as LayerTemporalMode | string;
+      const isEndOnly = mode === "end" || mode === "End Field";
+      const isStartOnly = mode === "start" || mode === "Start Field";
       const startField = config.startField;
       const endField = config.endField;
 
@@ -517,13 +544,17 @@ export async function autoDetectTemporalRange(
       if (minSortField) {
         try {
           const res = await queryFn(layer.id, {
-            orderBy: [[minSortField, 'ASC']],
+            orderBy: [[minSortField, "ASC"]],
             max: 1,
             includeGeometry: false,
-            fields: [minSortField]
+            fields: [minSortField],
           });
           const props = extractFirstFeatureProperties(res);
-          if (props && props[minSortField] !== undefined && props[minSortField] !== null) {
+          if (
+            props
+            && props[minSortField] !== undefined
+            && props[minSortField] !== null
+          ) {
             const t = parseTemporalValue(props[minSortField]);
             if (t !== null && Number.isFinite(t)) {
               if (t < minTime) minTime = t;
@@ -531,7 +562,10 @@ export async function autoDetectTemporalRange(
             }
           }
         } catch (err) {
-          logging.warn(`Failed to query earliest temporal bound for layer "${layer.id}"`, err);
+          logging.warn(
+            `Failed to query earliest temporal bound for layer "${layer.id}"`,
+            err
+          );
         }
       }
 
@@ -539,13 +573,17 @@ export async function autoDetectTemporalRange(
       if (maxSortField) {
         try {
           const res = await queryFn(layer.id, {
-            orderBy: [[maxSortField, 'DESC']],
+            orderBy: [[maxSortField, "DESC"]],
             max: 1,
             includeGeometry: false,
-            fields: [maxSortField]
+            fields: [maxSortField],
           });
           const props = extractFirstFeatureProperties(res);
-          if (props && props[maxSortField] !== undefined && props[maxSortField] !== null) {
+          if (
+            props
+            && props[maxSortField] !== undefined
+            && props[maxSortField] !== null
+          ) {
             const t = parseTemporalValue(props[maxSortField]);
             if (t !== null && Number.isFinite(t)) {
               if (t < minTime) minTime = t;
@@ -553,7 +591,10 @@ export async function autoDetectTemporalRange(
             }
           }
         } catch (err) {
-          logging.warn(`Failed to query latest temporal bound for layer "${layer.id}"`, err);
+          logging.warn(
+            `Failed to query latest temporal bound for layer "${layer.id}"`,
+            err
+          );
         }
       }
     }

@@ -10,8 +10,8 @@
  * @see {@link GradientButton}
  */
 
-import type React from 'react';
-import { useRef, useState } from 'react';
+import type React from "react";
+import { useRef, useState } from "react";
 
 /**
  * @typedef {Object} PickerButtonState
@@ -45,7 +45,10 @@ export interface PickerButtonState<T> {
  * @param {(value: T) => void} onChange - Called with the value applied in the dialog.
  * @returns {PickerButtonState<T>} State and handlers to wire into the button and its dialog.
  */
-export function usePickerButton<T>(disabled: boolean, onChange: (value: T) => void): PickerButtonState<T> {
+export function usePickerButton<T>(
+  disabled: boolean,
+  onChange: (value: T) => void
+): PickerButtonState<T> {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -58,7 +61,7 @@ export function usePickerButton<T>(disabled: boolean, onChange: (value: T) => vo
   // Opens on Enter/Space itself and suppresses the native synthesized click, so the
   // dialog opens exactly once however the keypress is delivered.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       open();
     }
@@ -71,5 +74,13 @@ export function usePickerButton<T>(disabled: boolean, onChange: (value: T) => vo
 
   const dialogContainer = () => buttonRef.current?.ownerDocument?.body ?? null;
 
-  return { buttonRef, isOpen, open, close, handleKeyDown, apply, dialogContainer };
+  return {
+    buttonRef,
+    isOpen,
+    open,
+    close,
+    handleKeyDown,
+    apply,
+    dialogContainer,
+  };
 }

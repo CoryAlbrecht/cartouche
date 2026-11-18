@@ -9,20 +9,24 @@
  * @see {@link BUILTIN_ACTIONS}
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { mdiContentSaveAllOutline, mdiFolderCogOutline, mdiLayersTripleOutline } from '@mdi/js';
-import { BUILTIN_ACTIONS } from '../../../src/main/actions/defaults';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  mdiContentSaveAllOutline,
+  mdiFolderCogOutline,
+  mdiLayersTripleOutline,
+} from "@mdi/js";
+import { BUILTIN_ACTIONS } from "../../../src/main/actions/defaults";
 
-describe('actionParity', () => {
-  const enXmlPath = path.resolve(process.cwd(), 'assets/xml/i18n/en.xml');
-  const enXmlContent = fs.readFileSync(enXmlPath, 'utf-8');
-  const frXmlPath = path.resolve(process.cwd(), 'assets/xml/i18n/fr.xml');
-  const frXmlContent = fs.readFileSync(frXmlPath, 'utf-8');
+describe("actionParity", () => {
+  const enXmlPath = path.resolve(process.cwd(), "assets/xml/i18n/en.xml");
+  const enXmlContent = fs.readFileSync(enXmlPath, "utf-8");
+  const frXmlPath = path.resolve(process.cwd(), "assets/xml/i18n/fr.xml");
+  const frXmlContent = fs.readFileSync(frXmlPath, "utf-8");
 
-  it('ensures every BUILTIN_ACTION has a corresponding localized string entry in en.xml', () => {
+  it("ensures every BUILTIN_ACTION has a corresponding localized string entry in en.xml", () => {
     const stringNameRegex = /<string\s+name=["']([^"']+)["']/g;
     const definedI18nKeys = new Set<string>();
     let match: RegExpExecArray | null;
@@ -40,11 +44,11 @@ describe('actionParity', () => {
     assert.deepEqual(
       missingKeys,
       [],
-      `The following builtin actions are missing <string name="..."> entries in assets/xml/i18n/en.xml: ${missingKeys.join(', ')}`
+      `The following builtin actions are missing <string name="..."> entries in assets/xml/i18n/en.xml: ${missingKeys.join(", ")}`
     );
   });
 
-  it('ensures core project and layer actions have matching entries in fr.xml', () => {
+  it("ensures core project and layer actions have matching entries in fr.xml", () => {
     const stringNameRegex = /<string\s+name=["']([^"']+)["']/g;
     const definedFrKeys = new Set<string>();
     let match: RegExpExecArray | null;
@@ -53,15 +57,15 @@ describe('actionParity', () => {
     }
 
     const coreProjectActions = [
-      'new_project',
-      'open_project',
-      'close_project',
-      'save_project',
-      'save_as_project',
-      'save_active_layer',
-      'save_active_layer_as',
-      'create_layer',
-      'layer_properties'
+      "new_project",
+      "open_project",
+      "close_project",
+      "save_project",
+      "save_as_project",
+      "save_active_layer",
+      "save_active_layer_as",
+      "create_layer",
+      "layer_properties",
     ];
 
     for (const key of coreProjectActions) {
@@ -72,52 +76,81 @@ describe('actionParity', () => {
     }
   });
 
-  it('verifies migrated project and layer keyboard shortcuts conform to spec', () => {
-    const actionsMap = new Map(BUILTIN_ACTIONS.map(a => [a.name, a]));
+  it("verifies migrated project and layer keyboard shortcuts conform to spec", () => {
+    const actionsMap = new Map(BUILTIN_ACTIONS.map((a) => [a.name, a]));
 
-    const saveProject = actionsMap.get('save_project');
-    assert.deepEqual(saveProject?.keyCombination, { key: 's', ctrl: true, alt: true });
+    const saveProject = actionsMap.get("save_project");
+    assert.deepEqual(saveProject?.keyCombination, {
+      key: "s",
+      ctrl: true,
+      alt: true,
+    });
     assert.equal(saveProject?.icon, mdiContentSaveAllOutline);
 
-    const saveAsProject = actionsMap.get('save_as_project');
-    assert.deepEqual(saveAsProject?.keyCombination, { key: 's', ctrl: true, alt: true, shift: true });
+    const saveAsProject = actionsMap.get("save_as_project");
+    assert.deepEqual(saveAsProject?.keyCombination, {
+      key: "s",
+      ctrl: true,
+      alt: true,
+      shift: true,
+    });
 
-    const openProject = actionsMap.get('open_project');
-    assert.deepEqual(openProject?.keyCombination, { key: 'o', ctrl: true, alt: true });
+    const openProject = actionsMap.get("open_project");
+    assert.deepEqual(openProject?.keyCombination, {
+      key: "o",
+      ctrl: true,
+      alt: true,
+    });
 
-    const newProject = actionsMap.get('new_project');
-    assert.deepEqual(newProject?.keyCombination, { key: 'n', ctrl: true, alt: true });
+    const newProject = actionsMap.get("new_project");
+    assert.deepEqual(newProject?.keyCombination, {
+      key: "n",
+      ctrl: true,
+      alt: true,
+    });
 
-    const closeProject = actionsMap.get('close_project');
-    assert.deepEqual(closeProject?.keyCombination, { key: 'w', ctrl: true });
+    const closeProject = actionsMap.get("close_project");
+    assert.deepEqual(closeProject?.keyCombination, { key: "w", ctrl: true });
 
-    const saveActiveLayer = actionsMap.get('save_active_layer');
-    assert.deepEqual(saveActiveLayer?.keyCombination, { key: 's', ctrl: true });
+    const saveActiveLayer = actionsMap.get("save_active_layer");
+    assert.deepEqual(saveActiveLayer?.keyCombination, { key: "s", ctrl: true });
 
-    const saveActiveLayerAs = actionsMap.get('save_active_layer_as');
-    assert.deepEqual(saveActiveLayerAs?.keyCombination, { key: 's', ctrl: true, shift: true });
+    const saveActiveLayerAs = actionsMap.get("save_active_layer_as");
+    assert.deepEqual(saveActiveLayerAs?.keyCombination, {
+      key: "s",
+      ctrl: true,
+      shift: true,
+    });
 
-    const createLayer = actionsMap.get('create_layer');
-    assert.deepEqual(createLayer?.keyCombination, { key: 'n', ctrl: true });
-    assert.equal(createLayer?.icon, 'file:layers-plus-outline.svg');
+    const createLayer = actionsMap.get("create_layer");
+    assert.deepEqual(createLayer?.keyCombination, { key: "n", ctrl: true });
+    assert.equal(createLayer?.icon, "file:layers-plus-outline.svg");
 
-    const addLayers = actionsMap.get('add_layers');
-    assert.deepEqual(addLayers?.keyCombination, { key: 'l', ctrl: true });
+    const addLayers = actionsMap.get("add_layers");
+    assert.deepEqual(addLayers?.keyCombination, { key: "l", ctrl: true });
     assert.equal(addLayers?.icon, mdiLayersTripleOutline);
 
-    const layerProperties = actionsMap.get('layer_properties');
-    assert.deepEqual(layerProperties?.keyCombination, { key: ',', ctrl: true, shift: true });
-    assert.equal(layerProperties?.icon, 'file:layers-cog-outline.svg');
+    const layerProperties = actionsMap.get("layer_properties");
+    assert.deepEqual(layerProperties?.keyCombination, {
+      key: ",",
+      ctrl: true,
+      shift: true,
+    });
+    assert.equal(layerProperties?.icon, "file:layers-cog-outline.svg");
 
-    const projectProperties = actionsMap.get('project_properties');
-    assert.deepEqual(projectProperties?.keyCombination, { key: ',', ctrl: true, alt: true });
+    const projectProperties = actionsMap.get("project_properties");
+    assert.deepEqual(projectProperties?.keyCombination, {
+      key: ",",
+      ctrl: true,
+      alt: true,
+    });
     assert.equal(projectProperties?.icon, mdiFolderCogOutline);
 
-    const cancelAction = actionsMap.get('cancel_action');
-    assert.deepEqual(cancelAction?.keyCombination, { key: 'Escape' });
+    const cancelAction = actionsMap.get("cancel_action");
+    assert.deepEqual(cancelAction?.keyCombination, { key: "Escape" });
   });
 
-  it('ensures all 25 modular toolbar actions have matching entries in fr.xml', () => {
+  it("ensures all 25 modular toolbar actions have matching entries in fr.xml", () => {
     const stringNameRegex = /<string\s+name=["']([^"']+)["']/g;
     const definedFrKeys = new Set<string>();
     let match: RegExpExecArray | null;
@@ -126,31 +159,31 @@ describe('actionParity', () => {
     }
 
     const modularToolbarActions = [
-      'project_properties',
-      'zoom_in',
-      'zoom_out',
-      'zoom_to_selection',
-      'zoom_to_layer',
-      'select_feature',
-      'select_features_by_drag',
-      'select_features_by_freehand',
-      'select_features_by_value',
-      'select_all_features',
-      'deselect_all_features',
-      'toggle_layer_editing',
-      'vertex_editor',
-      'delete_selected_features',
-      'copy_selected_features',
-      'cut_selected_features',
-      'paste_features',
-      'snapping',
-      'snap_to_active',
-      'snap_to_all',
-      'snap_to_advanced',
-      'snap_to_vertices',
-      'snap_to_midpoint',
-      'snap_to_segment',
-      'reset_toolbar_layout'
+      "project_properties",
+      "zoom_in",
+      "zoom_out",
+      "zoom_to_selection",
+      "zoom_to_layer",
+      "select_feature",
+      "select_features_by_drag",
+      "select_features_by_freehand",
+      "select_features_by_value",
+      "select_all_features",
+      "deselect_all_features",
+      "toggle_layer_editing",
+      "vertex_editor",
+      "delete_selected_features",
+      "copy_selected_features",
+      "cut_selected_features",
+      "paste_features",
+      "snapping",
+      "snap_to_active",
+      "snap_to_all",
+      "snap_to_advanced",
+      "snap_to_vertices",
+      "snap_to_midpoint",
+      "snap_to_segment",
+      "reset_toolbar_layout",
     ];
 
     for (const key of modularToolbarActions) {
@@ -161,51 +194,116 @@ describe('actionParity', () => {
     }
   });
 
-  it('verifies all modular toolbar action keyboard shortcuts conform to spec', () => {
-    const actionsMap = new Map(BUILTIN_ACTIONS.map(a => [a.name, a]));
+  it("verifies all modular toolbar action keyboard shortcuts conform to spec", () => {
+    const actionsMap = new Map(BUILTIN_ACTIONS.map((a) => [a.name, a]));
 
-    assert.deepEqual(actionsMap.get('zoom_in')?.keyCombination, { key: '=', ctrl: true });
-    assert.deepEqual(actionsMap.get('zoom_out')?.keyCombination, { key: '-', ctrl: true });
-    assert.deepEqual(actionsMap.get('zoom_to_selection')?.keyCombination, { key: 'j', ctrl: true });
-    assert.deepEqual(actionsMap.get('zoom_to_layer')?.keyCombination, { key: 'l', ctrl: true, alt: true });
-    assert.deepEqual(actionsMap.get('select_feature')?.keyCombination, { key: 'q' });
-    assert.deepEqual(actionsMap.get('select_features_by_drag')?.keyCombination, { key: 'q', shift: true });
-    assert.deepEqual(actionsMap.get('select_features_by_freehand')?.keyCombination, { key: 'q', alt: true });
-    assert.deepEqual(actionsMap.get('select_features_by_value')?.keyCombination, { key: 'F6' });
-    assert.deepEqual(actionsMap.get('select_all_features')?.keyCombination, { key: 'a', ctrl: true });
-    assert.deepEqual(actionsMap.get('deselect_all_features')?.keyCombination, { key: 'a', ctrl: true, shift: true });
-    assert.deepEqual(actionsMap.get('toggle_layer_editing')?.keyCombination, { key: 'e', ctrl: true });
-    assert.deepEqual(actionsMap.get('vertex_editor')?.keyCombination, { key: 'v' });
-    assert.deepEqual(actionsMap.get('delete_selected_features')?.keyCombination, { key: 'Delete' });
-    assert.deepEqual(actionsMap.get('copy_selected_features')?.keyCombination, { key: 'c', ctrl: true });
-    assert.deepEqual(actionsMap.get('cut_selected_features')?.keyCombination, { key: 'x', ctrl: true });
-    assert.deepEqual(actionsMap.get('paste_features')?.keyCombination, { key: 'v', ctrl: true });
-    assert.deepEqual(actionsMap.get('snapping')?.keyCombination, { key: 's' });
-    assert.deepEqual(actionsMap.get('snap_to_vertices')?.keyCombination, { key: 'v', alt: true });
-    assert.deepEqual(actionsMap.get('snap_to_midpoint')?.keyCombination, { key: 'm', alt: true });
-    assert.deepEqual(actionsMap.get('snap_to_segment')?.keyCombination, { key: 'e', alt: true });
+    assert.deepEqual(actionsMap.get("zoom_in")?.keyCombination, {
+      key: "=",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("zoom_out")?.keyCombination, {
+      key: "-",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("zoom_to_selection")?.keyCombination, {
+      key: "j",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("zoom_to_layer")?.keyCombination, {
+      key: "l",
+      ctrl: true,
+      alt: true,
+    });
+    assert.deepEqual(actionsMap.get("select_feature")?.keyCombination, {
+      key: "q",
+    });
+    assert.deepEqual(
+      actionsMap.get("select_features_by_drag")?.keyCombination,
+      { key: "q", shift: true }
+    );
+    assert.deepEqual(
+      actionsMap.get("select_features_by_freehand")?.keyCombination,
+      { key: "q", alt: true }
+    );
+    assert.deepEqual(
+      actionsMap.get("select_features_by_value")?.keyCombination,
+      { key: "F6" }
+    );
+    assert.deepEqual(actionsMap.get("select_all_features")?.keyCombination, {
+      key: "a",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("deselect_all_features")?.keyCombination, {
+      key: "a",
+      ctrl: true,
+      shift: true,
+    });
+    assert.deepEqual(actionsMap.get("toggle_layer_editing")?.keyCombination, {
+      key: "e",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("vertex_editor")?.keyCombination, {
+      key: "v",
+    });
+    assert.deepEqual(
+      actionsMap.get("delete_selected_features")?.keyCombination,
+      { key: "Delete" }
+    );
+    assert.deepEqual(actionsMap.get("copy_selected_features")?.keyCombination, {
+      key: "c",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("cut_selected_features")?.keyCombination, {
+      key: "x",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("paste_features")?.keyCombination, {
+      key: "v",
+      ctrl: true,
+    });
+    assert.deepEqual(actionsMap.get("snapping")?.keyCombination, { key: "s" });
+    assert.deepEqual(actionsMap.get("snap_to_vertices")?.keyCombination, {
+      key: "v",
+      alt: true,
+    });
+    assert.deepEqual(actionsMap.get("snap_to_midpoint")?.keyCombination, {
+      key: "m",
+      alt: true,
+    });
+    assert.deepEqual(actionsMap.get("snap_to_segment")?.keyCombination, {
+      key: "e",
+      alt: true,
+    });
   });
 
-  it('ensures every BUILTIN_ACTION that defines a functionCall has a callable function', () => {
+  it("ensures every BUILTIN_ACTION that defines a functionCall has a callable function", () => {
     for (const action of BUILTIN_ACTIONS) {
       if (action.functionCall !== undefined) {
         assert.equal(
           typeof action.functionCall,
-          'function',
+          "function",
           `Action "${action.name}" defines a functionCall that is not a function.`
         );
       }
     }
   });
 
-  it('ensures all BUILTIN_ACTIONS have non-empty name, description, and valid key combinations if defined', () => {
+  it("ensures all BUILTIN_ACTIONS have non-empty name, description, and valid key combinations if defined", () => {
     for (const action of BUILTIN_ACTIONS) {
-      assert.ok(action.name && action.name.trim().length > 0, 'Action name must not be empty');
-      assert.ok(action.description && action.description.trim().length > 0, `Action "${action.name}" description must not be empty`);
+      assert.ok(
+        action.name && action.name.trim().length > 0,
+        "Action name must not be empty"
+      );
+      assert.ok(
+        action.description && action.description.trim().length > 0,
+        `Action "${action.name}" description must not be empty`
+      );
       if (action.keyCombination) {
-        assert.ok(action.keyCombination.key, `Action "${action.name}" key combination must define a key`);
+        assert.ok(
+          action.keyCombination.key,
+          `Action "${action.name}" key combination must define a key`
+        );
       }
     }
   });
 });
-

@@ -19,11 +19,7 @@ import React, {
   type KeyboardEvent,
 } from "react";
 import Icon from "./Icon";
-import {
-  mdiClockTimeFourOutline,
-  mdiChevronUp,
-  mdiChevronDown,
-} from "@mdi/js";
+import { mdiClockTimeFourOutline, mdiChevronUp, mdiChevronDown } from "@mdi/js";
 import { TimestampSpinner } from "./TimestampSpinner";
 import { Select } from "./Select";
 import { MIN_TIME_FILTER_STEP } from "../../map/timeFilterMath";
@@ -73,10 +69,9 @@ export interface TimeFilterEnabledToggleProps {
  * @param {TimeFilterEnabledToggleProps} props - Component properties.
  * @returns {React.ReactElement} The toggle button.
  */
-export const TimeFilterEnabledToggle: React.FC<TimeFilterEnabledToggleProps> = ({
-  enabled,
-  onChange,
-}) => {
+export const TimeFilterEnabledToggle: React.FC<
+  TimeFilterEnabledToggleProps
+> = ({ enabled, onChange }) => {
   return (
     <button
       type='button'
@@ -135,7 +130,9 @@ export interface TimeFilterRangeStepControlsProps {
  * @param {TimeFilterRangeStepControlsProps} props - Component properties.
  * @returns {React.ReactElement} The range and step control groups.
  */
-export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsProps> = ({
+export const TimeFilterRangeStepControls: React.FC<
+  TimeFilterRangeStepControlsProps
+> = ({
   from,
   to,
   step,
@@ -276,11 +273,7 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
       {/* Step Input with discrete 1.00 arrow buttons */}
       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         <span
-          style={{
-            fontWeight: 500,
-            fontSize: "0.75rem",
-            color: "#475569",
-          }}>
+          style={{ fontWeight: 500, fontSize: "0.75rem", color: "#475569" }}>
           Step:
         </span>
         <div
@@ -310,8 +303,7 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
               width: "16px",
               display: "flex",
               flexDirection: "column",
-              borderLeft:
-                "1px solid var(--cartouche-theme-border, #cbd5e1)",
+              borderLeft: "1px solid var(--cartouche-theme-border, #cbd5e1)",
               boxSizing: "border-box",
             }}>
             <button
@@ -344,7 +336,10 @@ export const TimeFilterRangeStepControls: React.FC<TimeFilterRangeStepControlsPr
           aria-label='Temporal Step Unit'
           value={unit}
           disabled={disabled}
-          options={TIME_FILTER_UNIT_OPTIONS.map((u) => ({ value: u, label: u }))}
+          options={TIME_FILTER_UNIT_OPTIONS.map((u) => ({
+            value: u,
+            label: u,
+          }))}
           onChange={onUnitChange}
         />
       </div>

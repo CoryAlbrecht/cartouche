@@ -18,8 +18,11 @@
  * @see {@link serializeGeoStylerToText}
  */
 
-import { SldStyleParser } from 'geostyler-sld-parser';
-import { isCartoucheLayerStyle, createDefaultCartoucheLayerStyle } from './defaultLayerStyles';
+import { SldStyleParser } from "geostyler-sld-parser";
+import {
+  isCartoucheLayerStyle,
+  createDefaultCartoucheLayerStyle,
+} from "./defaultLayerStyles";
 import {
   type SimpleCartoucheStyle,
   type StyleComponent,
@@ -27,7 +30,7 @@ import {
   type SimpleLineComponent,
   type SimpleMarkerComponent,
   matchDashPattern,
-} from '../types/styling';
+} from "../types/styling";
 import type {
   Style as GeoStylerStyle,
   Rule as GeoStylerRule,
@@ -39,7 +42,7 @@ import type {
   ComparisonFilter,
   CombinationFilter,
   NegationFilter,
-} from 'geostyler-style';
+} from "geostyler-style";
 import type {
   OlFlatStyleRule,
   ProjectStyleFormat,
@@ -47,19 +50,19 @@ import type {
   StyleFormatConversionOptions,
   StyleValidationResult,
   LayerVisualSymbolizer,
-} from '../types';
+} from "../types";
 
 /**
  * Cached SLD 1.0.0 parser instance for format conversions.
  * @type {SldStyleParser}
  */
-const sldParser100 = new SldStyleParser({ sldVersion: '1.0.0' });
+const sldParser100 = new SldStyleParser({ sldVersion: "1.0.0" });
 
 /**
  * Cached SLD 1.1.0 parser instance for format conversions.
  * @type {SldStyleParser}
  */
-const sldParser110 = new SldStyleParser({ sldVersion: '1.1.0' });
+const sldParser110 = new SldStyleParser({ sldVersion: "1.1.0" });
 
 /**
  * @description Converts an OpenLayers Flat Style filter expression into a GeoStyler AST Filter.
@@ -71,7 +74,9 @@ const sldParser110 = new SldStyleParser({ sldVersion: '1.1.0' });
  * @param {any[]} [olFilter] - OpenLayers flat style filter array.
  * @returns {GeoStylerFilter | undefined} Converted GeoStyler Filter, or undefined if no attribute filter exists.
  */
-export function olFilterToGeoStyler(olFilter?: any[]): GeoStylerFilter | undefined {
+export function olFilterToGeoStyler(
+  olFilter?: any[]
+): GeoStylerFilter | undefined {
   if (!Array.isArray(olFilter) || olFilter.length === 0) {
     return undefined;
   }
@@ -80,15 +85,15 @@ export function olFilterToGeoStyler(olFilter?: any[]): GeoStylerFilter | undefin
 
   // 1. Geometry-type discriminator: handled via symbolizer kind, so omit from GeoStyler rule filter
   if (
-    (op === '==' || op === '!=') &&
-    Array.isArray(olFilter[1]) &&
-    olFilter[1][0] === 'geometry-type'
+    (op === "==" || op === "!=")
+    && Array.isArray(olFilter[1])
+    && olFilter[1][0] === "geometry-type"
   ) {
     return undefined;
   }
 
   // 2. Combination filters: ['all', ...conditions] or ['any', ...conditions]
-  if (op === 'all' || op === 'any') {
+  if (op === "all" || op === "any") {
     const childFilters: GeoStylerFilter[] = [];
     for (let i = 1; i < olFilter.length; i++) {
       const converted = olFilterToGeoStyler(olFilter[i]);
@@ -102,26 +107,30 @@ export function olFilterToGeoStyler(olFilter?: any[]): GeoStylerFilter | undefin
     if (childFilters.length === 1) {
       return childFilters[0];
     }
-    const gsOp = op === 'all' ? '&&' : '||';
+    const gsOp = op === "all" ? "&&" : "||";
     return [gsOp, ...childFilters] as CombinationFilter;
   }
 
   // 3. Negation filter: ['!', condition]
-  if (op === '!') {
+  if (op === "!") {
     const converted = olFilterToGeoStyler(olFilter[1]);
     if (!converted) {
       return undefined;
     }
-    return ['!', converted] as NegationFilter;
+    return ["!", converted] as NegationFilter;
   }
 
   // 4. Comparison filters: [op, ['get', propName], value] or [op, propName, value]
-  const validOps = ['==', '!=', '<', '<=', '>', '>=', '*='];
+  const validOps = ["==", "!=", "<", "<=", ">", ">=", "*="];
   if (validOps.includes(op)) {
-    let propName = '';
-    if (Array.isArray(olFilter[1]) && olFilter[1][0] === 'get' && typeof olFilter[1][1] === 'string') {
+    let propName = "";
+    if (
+      Array.isArray(olFilter[1])
+      && olFilter[1][0] === "get"
+      && typeof olFilter[1][1] === "string"
+    ) {
       propName = olFilter[1][1];
-    } else if (typeof olFilter[1] === 'string') {
+    } else if (typeof olFilter[1] === "string") {
       propName = olFilter[1];
     }
     if (propName) {
@@ -142,14 +151,16 @@ export function olFilterToGeoStyler(olFilter?: any[]): GeoStylerFilter | undefin
  * @param {GeoStylerFilter} [gsFilter] - GeoStyler AST filter expression.
  * @returns {any[] | undefined} OpenLayers filter array, or undefined if no filter exists.
  */
-export function geoStylerFilterToOl(gsFilter?: GeoStylerFilter): any[] | undefined {
+export function geoStylerFilterToOl(
+  gsFilter?: GeoStylerFilter
+): any[] | undefined {
   if (!Array.isArray(gsFilter) || gsFilter.length === 0) {
     return undefined;
   }
 
   const op = gsFilter[0];
 
-  if (op === '&&' || op === '||') {
+  if (op === "&&" || op === "||") {
     const childFilters: any[] = [];
     for (let i = 1; i < gsFilter.length; i++) {
       const converted = geoStylerFilterToOl(gsFilter[i] as GeoStylerFilter);
@@ -159,22 +170,22 @@ export function geoStylerFilterToOl(gsFilter?: GeoStylerFilter): any[] | undefin
     }
     if (childFilters.length === 0) return undefined;
     if (childFilters.length === 1) return childFilters[0];
-    const olOp = op === '&&' ? 'all' : 'any';
+    const olOp = op === "&&" ? "all" : "any";
     return [olOp, ...childFilters];
   }
 
-  if (op === '!') {
+  if (op === "!") {
     const converted = geoStylerFilterToOl(gsFilter[1] as GeoStylerFilter);
     if (!converted) return undefined;
-    return ['!', converted];
+    return ["!", converted];
   }
 
-  const validOps = ['==', '!=', '<', '<=', '>', '>=', '*='];
+  const validOps = ["==", "!=", "<", "<=", ">", ">=", "*="];
   if (validOps.includes(op)) {
     const propArg = gsFilter[1];
     const val = gsFilter[2];
-    if (typeof propArg === 'string') {
-      return [op, ['get', propArg], val];
+    if (typeof propArg === "string") {
+      return [op, ["get", propArg], val];
     }
   }
 
@@ -197,137 +208,148 @@ function parseStyleDictToSymbolizers(
 ): Symbolizer[] {
   const symbolizers: Symbolizer[] = [];
 
-  const hasFill = 'fill-color' in styleDict;
-  const hasLine = 'stroke-color' in styleDict || 'stroke-width' in styleDict;
-  const hasCircle = 'circle-radius' in styleDict || 'circle-fill-color' in styleDict;
+  const hasFill = "fill-color" in styleDict;
+  const hasLine = "stroke-color" in styleDict || "stroke-width" in styleDict;
+  const hasCircle =
+    "circle-radius" in styleDict || "circle-fill-color" in styleDict;
   const hasRegularShape =
-    'shape-points' in styleDict ||
-    'shape-radius' in styleDict ||
-    'shape-fill-color' in styleDict ||
-    'regular-shape' in styleDict;
+    "shape-points" in styleDict
+    || "shape-radius" in styleDict
+    || "shape-fill-color" in styleDict
+    || "regular-shape" in styleDict;
 
   // 1. Polygon / Fill Symbolizer
-  if (hasFill || (geometryHint === 'Polygon' && hasLine)) {
+  if (hasFill || (geometryHint === "Polygon" && hasLine)) {
     const fillSym: FillSymbolizer = {
-      kind: 'Fill',
-      ...(styleDict['fill-color'] ? { color: String(styleDict['fill-color']) } : {}),
-      ...(styleDict['fill-opacity'] !== undefined
-        ? { fillOpacity: Number(styleDict['fill-opacity']) }
-        : styleDict['opacity'] !== undefined
-          ? { opacity: Number(styleDict['opacity']) }
-          : {}),
-      ...(styleDict['stroke-color'] ? { outlineColor: String(styleDict['stroke-color']) } : {}),
-      ...(styleDict['stroke-width'] !== undefined
-        ? { outlineWidth: Number(styleDict['stroke-width']) }
-        : {}),
-      ...(Array.isArray(styleDict['stroke-line-dash'])
-        ? { outlineDasharray: styleDict['stroke-line-dash'].map(Number) }
-        : {}),
+      kind: "Fill",
+      ...(styleDict["fill-color"] ?
+        { color: String(styleDict["fill-color"]) }
+      : {}),
+      ...(styleDict["fill-opacity"] !== undefined ?
+        { fillOpacity: Number(styleDict["fill-opacity"]) }
+      : styleDict["opacity"] !== undefined ?
+        { opacity: Number(styleDict["opacity"]) }
+      : {}),
+      ...(styleDict["stroke-color"] ?
+        { outlineColor: String(styleDict["stroke-color"]) }
+      : {}),
+      ...(styleDict["stroke-width"] !== undefined ?
+        { outlineWidth: Number(styleDict["stroke-width"]) }
+      : {}),
+      ...(Array.isArray(styleDict["stroke-line-dash"]) ?
+        { outlineDasharray: styleDict["stroke-line-dash"].map(Number) }
+      : {}),
     };
     symbolizers.push(fillSym);
   }
 
   // 2. LineString / Line Symbolizer
   if (
-    (hasLine && !hasFill && geometryHint !== 'Point' && !hasCircle && !hasRegularShape) ||
-    geometryHint === 'LineString'
+    (hasLine
+      && !hasFill
+      && geometryHint !== "Point"
+      && !hasCircle
+      && !hasRegularShape)
+    || geometryHint === "LineString"
   ) {
     const lineSym: LineSymbolizer = {
-      kind: 'Line',
-      ...(styleDict['stroke-color'] ? { color: String(styleDict['stroke-color']) } : {}),
-      ...(styleDict['stroke-width'] !== undefined
-        ? { width: Number(styleDict['stroke-width']) }
-        : {}),
-      ...(styleDict['stroke-opacity'] !== undefined
-        ? { opacity: Number(styleDict['stroke-opacity']) }
-        : styleDict['opacity'] !== undefined
-          ? { opacity: Number(styleDict['opacity']) }
-          : {}),
-      ...(Array.isArray(styleDict['stroke-line-dash'])
-        ? { dasharray: styleDict['stroke-line-dash'].map(Number) }
-        : {}),
-      ...(styleDict['stroke-line-dash-offset'] !== undefined
-        ? { dashOffset: Number(styleDict['stroke-line-dash-offset']) }
-        : {}),
-      ...(styleDict['stroke-offset'] !== undefined
-        ? { perpendicularOffset: Number(styleDict['stroke-offset']) }
-        : {}),
-      ...(typeof styleDict['stroke-line-cap'] === 'string'
-        ? { cap: styleDict['stroke-line-cap'] as LineSymbolizer['cap'] }
-        : {}),
-      ...(typeof styleDict['stroke-line-join'] === 'string'
-        ? { join: styleDict['stroke-line-join'] as LineSymbolizer['join'] }
-        : {}),
+      kind: "Line",
+      ...(styleDict["stroke-color"] ?
+        { color: String(styleDict["stroke-color"]) }
+      : {}),
+      ...(styleDict["stroke-width"] !== undefined ?
+        { width: Number(styleDict["stroke-width"]) }
+      : {}),
+      ...(styleDict["stroke-opacity"] !== undefined ?
+        { opacity: Number(styleDict["stroke-opacity"]) }
+      : styleDict["opacity"] !== undefined ?
+        { opacity: Number(styleDict["opacity"]) }
+      : {}),
+      ...(Array.isArray(styleDict["stroke-line-dash"]) ?
+        { dasharray: styleDict["stroke-line-dash"].map(Number) }
+      : {}),
+      ...(styleDict["stroke-line-dash-offset"] !== undefined ?
+        { dashOffset: Number(styleDict["stroke-line-dash-offset"]) }
+      : {}),
+      ...(styleDict["stroke-offset"] !== undefined ?
+        { perpendicularOffset: Number(styleDict["stroke-offset"]) }
+      : {}),
+      ...(typeof styleDict["stroke-line-cap"] === "string" ?
+        { cap: styleDict["stroke-line-cap"] as LineSymbolizer["cap"] }
+      : {}),
+      ...(typeof styleDict["stroke-line-join"] === "string" ?
+        { join: styleDict["stroke-line-join"] as LineSymbolizer["join"] }
+      : {}),
     };
     symbolizers.push(lineSym);
   }
 
   // 3. Point / Mark Symbolizer (Circle)
-  if (hasCircle || (geometryHint === 'Point' && !hasRegularShape)) {
+  if (hasCircle || (geometryHint === "Point" && !hasRegularShape)) {
     const markSym: MarkSymbolizer = {
-      kind: 'Mark',
-      wellKnownName: 'circle',
-      ...(styleDict['circle-radius'] !== undefined
-        ? { radius: Number(styleDict['circle-radius']) }
-        : { radius: 6 }),
-      ...(styleDict['circle-fill-color']
-        ? { color: String(styleDict['circle-fill-color']) }
-        : styleDict['fill-color']
-          ? { color: String(styleDict['fill-color']) }
-          : {}),
-      ...(styleDict['circle-stroke-color']
-        ? { strokeColor: String(styleDict['circle-stroke-color']) }
-        : styleDict['stroke-color']
-          ? { strokeColor: String(styleDict['stroke-color']) }
-          : {}),
-      ...(styleDict['circle-stroke-width'] !== undefined
-        ? { strokeWidth: Number(styleDict['circle-stroke-width']) }
-        : styleDict['stroke-width'] !== undefined
-          ? { strokeWidth: Number(styleDict['stroke-width']) }
-          : {}),
-      ...(styleDict['circle-opacity'] !== undefined
-        ? { opacity: Number(styleDict['circle-opacity']) }
-        : styleDict['opacity'] !== undefined
-          ? { opacity: Number(styleDict['opacity']) }
-          : {}),
+      kind: "Mark",
+      wellKnownName: "circle",
+      ...(styleDict["circle-radius"] !== undefined ?
+        { radius: Number(styleDict["circle-radius"]) }
+      : { radius: 6 }),
+      ...(styleDict["circle-fill-color"] ?
+        { color: String(styleDict["circle-fill-color"]) }
+      : styleDict["fill-color"] ? { color: String(styleDict["fill-color"]) }
+      : {}),
+      ...(styleDict["circle-stroke-color"] ?
+        { strokeColor: String(styleDict["circle-stroke-color"]) }
+      : styleDict["stroke-color"] ?
+        { strokeColor: String(styleDict["stroke-color"]) }
+      : {}),
+      ...(styleDict["circle-stroke-width"] !== undefined ?
+        { strokeWidth: Number(styleDict["circle-stroke-width"]) }
+      : styleDict["stroke-width"] !== undefined ?
+        { strokeWidth: Number(styleDict["stroke-width"]) }
+      : {}),
+      ...(styleDict["circle-opacity"] !== undefined ?
+        { opacity: Number(styleDict["circle-opacity"]) }
+      : styleDict["opacity"] !== undefined ?
+        { opacity: Number(styleDict["opacity"]) }
+      : {}),
     };
     symbolizers.push(markSym);
   }
 
   // 4. Point / Mark Symbolizer (Regular Shape: Square, Triangle, Star, Cross, X)
   if (hasRegularShape) {
-    const points = Number(styleDict['shape-points'] || 4);
-    let wellKnownName: 'square' | 'triangle' | 'star' | 'cross' | 'x' = 'square';
+    const points = Number(styleDict["shape-points"] || 4);
+    let wellKnownName: "square" | "triangle" | "star" | "cross" | "x" =
+      "square";
     if (points === 3) {
-      wellKnownName = 'triangle';
+      wellKnownName = "triangle";
     } else if (points === 5) {
-      wellKnownName = 'star';
-    } else if (points === 4 && styleDict['shape-radius2'] === 0) {
-      wellKnownName = styleDict['shape-angle'] ? 'x' : 'cross';
+      wellKnownName = "star";
+    } else if (points === 4 && styleDict["shape-radius2"] === 0) {
+      wellKnownName = styleDict["shape-angle"] ? "x" : "cross";
     } else {
-      wellKnownName = 'square';
+      wellKnownName = "square";
     }
 
     const markSym: MarkSymbolizer = {
-      kind: 'Mark',
+      kind: "Mark",
       wellKnownName,
-      ...(styleDict['shape-radius'] !== undefined
-        ? { radius: Number(styleDict['shape-radius']) }
-        : { radius: 6 }),
-      ...(styleDict['shape-fill-color']
-        ? { color: String(styleDict['shape-fill-color']) }
-        : {}),
-      ...(styleDict['shape-stroke-color']
-        ? { strokeColor: String(styleDict['shape-stroke-color']) }
-        : {}),
-      ...(styleDict['shape-stroke-width'] !== undefined
-        ? { strokeWidth: Number(styleDict['shape-stroke-width']) }
-        : {}),
-      ...(styleDict['shape-opacity'] !== undefined
-        ? { opacity: Number(styleDict['shape-opacity']) }
-        : styleDict['opacity'] !== undefined
-          ? { opacity: Number(styleDict['opacity']) }
-          : {}),
+      ...(styleDict["shape-radius"] !== undefined ?
+        { radius: Number(styleDict["shape-radius"]) }
+      : { radius: 6 }),
+      ...(styleDict["shape-fill-color"] ?
+        { color: String(styleDict["shape-fill-color"]) }
+      : {}),
+      ...(styleDict["shape-stroke-color"] ?
+        { strokeColor: String(styleDict["shape-stroke-color"]) }
+      : {}),
+      ...(styleDict["shape-stroke-width"] !== undefined ?
+        { strokeWidth: Number(styleDict["shape-stroke-width"]) }
+      : {}),
+      ...(styleDict["shape-opacity"] !== undefined ?
+        { opacity: Number(styleDict["shape-opacity"]) }
+      : styleDict["opacity"] !== undefined ?
+        { opacity: Number(styleDict["opacity"]) }
+      : {}),
     };
     symbolizers.push(markSym);
   }
@@ -347,14 +369,14 @@ function parseStyleDictToSymbolizers(
  */
 export function flatStyleToGeoStyler(
   flatStyle: unknown,
-  styleName: string = 'Cartouche Style'
+  styleName: string = "Cartouche Style"
 ): GeoStylerStyle {
   if (!flatStyle) {
     return { name: styleName, rules: [] };
   }
 
   let parsed: unknown = flatStyle;
-  if (typeof flatStyle === 'string') {
+  if (typeof flatStyle === "string") {
     try {
       parsed = JSON.parse(flatStyle.trim());
     } catch {
@@ -367,29 +389,34 @@ export function flatStyleToGeoStyler(
     const rules: GeoStylerRule[] = [];
 
     for (const item of parsed) {
-      if (item && typeof item === 'object') {
+      if (item && typeof item === "object") {
         const ruleObj = item as Record<string, any>;
-        const filterArr = Array.isArray(ruleObj.filter) ? ruleObj.filter : undefined;
+        const filterArr =
+          Array.isArray(ruleObj.filter) ? ruleObj.filter : undefined;
         let geometryHint: string | undefined;
 
         if (filterArr) {
           const filterStr = JSON.stringify(filterArr);
-          if (filterStr.includes('"Polygon"')) geometryHint = 'Polygon';
-          else if (filterStr.includes('"LineString"')) geometryHint = 'LineString';
-          else if (filterStr.includes('"Point"')) geometryHint = 'Point';
+          if (filterStr.includes('"Polygon"')) geometryHint = "Polygon";
+          else if (filterStr.includes('"LineString"'))
+            geometryHint = "LineString";
+          else if (filterStr.includes('"Point"')) geometryHint = "Point";
         }
 
         const styleDict =
-          ruleObj.style && typeof ruleObj.style === 'object'
-            ? ruleObj.style
-            : ruleObj;
+          ruleObj.style && typeof ruleObj.style === "object" ?
+            ruleObj.style
+          : ruleObj;
 
-        const symbolizers = parseStyleDictToSymbolizers(styleDict, geometryHint);
+        const symbolizers = parseStyleDictToSymbolizers(
+          styleDict,
+          geometryHint
+        );
         const gsFilter = olFilterToGeoStyler(filterArr);
 
         if (symbolizers.length > 0) {
           rules.push({
-            name: geometryHint || 'Rule',
+            name: geometryHint || "Rule",
             ...(gsFilter ? { filter: gsFilter } : {}),
             symbolizers,
           });
@@ -401,35 +428,35 @@ export function flatStyleToGeoStyler(
   }
 
   // 2. Single flat style rule or dictionary
-  if (parsed && typeof parsed === 'object') {
+  if (parsed && typeof parsed === "object") {
     const obj = parsed as Record<string, any>;
     const filterArr = Array.isArray(obj.filter) ? obj.filter : undefined;
     let geometryHint: string | undefined;
 
     if (filterArr) {
       const filterStr = JSON.stringify(filterArr);
-      if (filterStr.includes('"Polygon"')) geometryHint = 'Polygon';
-      else if (filterStr.includes('"LineString"')) geometryHint = 'LineString';
-      else if (filterStr.includes('"Point"')) geometryHint = 'Point';
+      if (filterStr.includes('"Polygon"')) geometryHint = "Polygon";
+      else if (filterStr.includes('"LineString"')) geometryHint = "LineString";
+      else if (filterStr.includes('"Point"')) geometryHint = "Point";
     }
 
     const styleDict =
-      obj.style && typeof obj.style === 'object' ? obj.style : obj;
+      obj.style && typeof obj.style === "object" ? obj.style : obj;
     const symbolizers = parseStyleDictToSymbolizers(styleDict, geometryHint);
     const gsFilter = olFilterToGeoStyler(filterArr);
 
     return {
       name: styleName,
       rules:
-        symbolizers.length > 0
-          ? [
-              {
-                name: geometryHint || 'Rule 1',
-                ...(gsFilter ? { filter: gsFilter } : {}),
-                symbolizers,
-              },
-            ]
-          : [],
+        symbolizers.length > 0 ?
+          [
+            {
+              name: geometryHint || "Rule 1",
+              ...(gsFilter ? { filter: gsFilter } : {}),
+              symbolizers,
+            },
+          ]
+        : [],
     };
   }
 
@@ -459,75 +486,86 @@ export function geoStylerToFlatStyle(ast: GeoStylerStyle): OlFlatStyleRule[] {
     const baseOlFilter = geoStylerFilterToOl(rule.filter);
 
     for (const sym of rule.symbolizers) {
-      if (!sym || typeof sym !== 'object') continue;
+      if (!sym || typeof sym !== "object") continue;
 
-      let geomType = 'Polygon';
+      let geomType = "Polygon";
       const styleDict: Record<string, any> = {};
 
-      if (sym.kind === 'Fill') {
-        geomType = 'Polygon';
-        if (sym.color) styleDict['fill-color'] = sym.color;
-        if (sym.fillOpacity !== undefined) styleDict['fill-opacity'] = sym.fillOpacity;
-        else if (sym.opacity !== undefined) styleDict['fill-opacity'] = sym.opacity;
+      if (sym.kind === "Fill") {
+        geomType = "Polygon";
+        if (sym.color) styleDict["fill-color"] = sym.color;
+        if (sym.fillOpacity !== undefined)
+          styleDict["fill-opacity"] = sym.fillOpacity;
+        else if (sym.opacity !== undefined)
+          styleDict["fill-opacity"] = sym.opacity;
 
-        if (sym.outlineColor) styleDict['stroke-color'] = sym.outlineColor;
-        if (sym.outlineWidth !== undefined) styleDict['stroke-width'] = sym.outlineWidth;
+        if (sym.outlineColor) styleDict["stroke-color"] = sym.outlineColor;
+        if (sym.outlineWidth !== undefined)
+          styleDict["stroke-width"] = sym.outlineWidth;
         if (Array.isArray(sym.outlineDasharray)) {
-          styleDict['stroke-line-dash'] = sym.outlineDasharray;
+          styleDict["stroke-line-dash"] = sym.outlineDasharray;
         }
-      } else if (sym.kind === 'Line') {
-        geomType = 'LineString';
-        if (sym.color) styleDict['stroke-color'] = sym.color;
-        if (sym.width !== undefined) styleDict['stroke-width'] = sym.width;
-        if (sym.opacity !== undefined) styleDict['stroke-opacity'] = sym.opacity;
-        if (Array.isArray(sym.dasharray)) styleDict['stroke-line-dash'] = sym.dasharray;
-        if (sym.cap) styleDict['stroke-line-cap'] = sym.cap;
-        if (sym.join) styleDict['stroke-line-join'] = sym.join;
-        if (sym.dashOffset !== undefined) styleDict['stroke-line-dash-offset'] = sym.dashOffset;
-        if (sym.perpendicularOffset !== undefined) styleDict['stroke-offset'] = sym.perpendicularOffset;
-      } else if (sym.kind === 'Mark') {
-        geomType = 'Point';
-        const wellKnownName = sym.wellKnownName?.toLowerCase() || 'circle';
+      } else if (sym.kind === "Line") {
+        geomType = "LineString";
+        if (sym.color) styleDict["stroke-color"] = sym.color;
+        if (sym.width !== undefined) styleDict["stroke-width"] = sym.width;
+        if (sym.opacity !== undefined)
+          styleDict["stroke-opacity"] = sym.opacity;
+        if (Array.isArray(sym.dasharray))
+          styleDict["stroke-line-dash"] = sym.dasharray;
+        if (sym.cap) styleDict["stroke-line-cap"] = sym.cap;
+        if (sym.join) styleDict["stroke-line-join"] = sym.join;
+        if (sym.dashOffset !== undefined)
+          styleDict["stroke-line-dash-offset"] = sym.dashOffset;
+        if (sym.perpendicularOffset !== undefined)
+          styleDict["stroke-offset"] = sym.perpendicularOffset;
+      } else if (sym.kind === "Mark") {
+        geomType = "Point";
+        const wellKnownName = sym.wellKnownName?.toLowerCase() || "circle";
 
-        if (wellKnownName === 'circle') {
-          styleDict['circle-radius'] = sym.radius ?? 6;
-          if (sym.color) styleDict['circle-fill-color'] = sym.color;
-          if (sym.strokeColor) styleDict['circle-stroke-color'] = sym.strokeColor;
-          if (sym.strokeWidth !== undefined) styleDict['circle-stroke-width'] = sym.strokeWidth;
-          if (sym.opacity !== undefined) styleDict['circle-opacity'] = sym.opacity;
+        if (wellKnownName === "circle") {
+          styleDict["circle-radius"] = sym.radius ?? 6;
+          if (sym.color) styleDict["circle-fill-color"] = sym.color;
+          if (sym.strokeColor)
+            styleDict["circle-stroke-color"] = sym.strokeColor;
+          if (sym.strokeWidth !== undefined)
+            styleDict["circle-stroke-width"] = sym.strokeWidth;
+          if (sym.opacity !== undefined)
+            styleDict["circle-opacity"] = sym.opacity;
         } else {
           // Regular shapes
           let points = 4;
-          if (wellKnownName === 'triangle') points = 3;
-          else if (wellKnownName === 'star') points = 5;
+          if (wellKnownName === "triangle") points = 3;
+          else if (wellKnownName === "star") points = 5;
 
-          styleDict['shape-points'] = points;
-          styleDict['shape-radius'] = sym.radius ?? 6;
-          if (sym.color) styleDict['shape-fill-color'] = sym.color;
-          if (sym.strokeColor) styleDict['shape-stroke-color'] = sym.strokeColor;
-          if (sym.strokeWidth !== undefined) styleDict['shape-stroke-width'] = sym.strokeWidth;
-          if (sym.opacity !== undefined) styleDict['shape-opacity'] = sym.opacity;
+          styleDict["shape-points"] = points;
+          styleDict["shape-radius"] = sym.radius ?? 6;
+          if (sym.color) styleDict["shape-fill-color"] = sym.color;
+          if (sym.strokeColor)
+            styleDict["shape-stroke-color"] = sym.strokeColor;
+          if (sym.strokeWidth !== undefined)
+            styleDict["shape-stroke-width"] = sym.strokeWidth;
+          if (sym.opacity !== undefined)
+            styleDict["shape-opacity"] = sym.opacity;
 
-          if (wellKnownName === 'star') {
-            const r = typeof sym.radius === 'number' ? sym.radius : 6;
-            styleDict['shape-radius2'] = r / 2;
-          } else if (wellKnownName === 'cross' || wellKnownName === 'x') {
-            styleDict['shape-radius2'] = 0;
-            if (wellKnownName === 'x') {
-              styleDict['shape-angle'] = Math.PI / 4;
+          if (wellKnownName === "star") {
+            const r = typeof sym.radius === "number" ? sym.radius : 6;
+            styleDict["shape-radius2"] = r / 2;
+          } else if (wellKnownName === "cross" || wellKnownName === "x") {
+            styleDict["shape-radius2"] = 0;
+            if (wellKnownName === "x") {
+              styleDict["shape-angle"] = Math.PI / 4;
             }
           }
         }
       }
 
       if (Object.keys(styleDict).length > 0) {
-        const geomFilter = ['==', ['geometry-type'], geomType];
-        const combinedFilter = baseOlFilter ? ['all', geomFilter, baseOlFilter] : geomFilter;
+        const geomFilter = ["==", ["geometry-type"], geomType];
+        const combinedFilter =
+          baseOlFilter ? ["all", geomFilter, baseOlFilter] : geomFilter;
 
-        olRules.push({
-          filter: combinedFilter,
-          style: styleDict,
-        });
+        olRules.push({ filter: combinedFilter, style: styleDict });
       }
     }
   }
@@ -549,14 +587,14 @@ export function geoStylerToFlatStyle(ast: GeoStylerStyle): OlFlatStyleRule[] {
 export function cartoucheToGeoStyler(
   cartoucheStyle: unknown,
   geometryKind?: string,
-  styleName: string = 'Cartouche Style'
+  styleName: string = "Cartouche Style"
 ): GeoStylerStyle {
   if (!cartoucheStyle) {
     return { name: styleName, rules: [] };
   }
 
   let parsed: unknown = cartoucheStyle;
-  if (typeof cartoucheStyle === 'string') {
+  if (typeof cartoucheStyle === "string") {
     try {
       parsed = JSON.parse(cartoucheStyle.trim());
     } catch {
@@ -565,88 +603,114 @@ export function cartoucheToGeoStyler(
   }
 
   const components: StyleComponent[] =
-    parsed && typeof parsed === 'object' && 'components' in parsed && Array.isArray((parsed as any).components)
-      ? (parsed as any).components
-      : [];
+    (
+      parsed
+      && typeof parsed === "object"
+      && "components" in parsed
+      && Array.isArray((parsed as any).components)
+    ) ?
+      (parsed as any).components
+    : [];
 
-  const isPoly = !geometryKind || geometryKind.includes('Polygon');
-  const isLine = geometryKind && geometryKind.includes('Line');
-  const isPoint = geometryKind && geometryKind.includes('Point');
+  const isPoly = !geometryKind || geometryKind.includes("Polygon");
+  const isLine = geometryKind && geometryKind.includes("Line");
+  const isPoint = geometryKind && geometryKind.includes("Point");
 
   const symbolizers: Symbolizer[] = [];
   const fills = components.filter(
-    (c): c is SimpleFillComponent => c.type === 'simple-fill' && c.enabled !== false
+    (c): c is SimpleFillComponent =>
+      c.type === "simple-fill" && c.enabled !== false
   );
   const lines = components.filter(
     (c): c is SimpleLineComponent =>
-      c.type === 'simple-line' && c.enabled !== false && c.dashPattern !== 'no-line'
+      c.type === "simple-line"
+      && c.enabled !== false
+      && c.dashPattern !== "no-line"
   );
   const markers = components.filter(
-    (c): c is SimpleMarkerComponent => c.type === 'simple-marker' && c.enabled !== false
+    (c): c is SimpleMarkerComponent =>
+      c.type === "simple-marker" && c.enabled !== false
   );
 
   if (isPoly && (fills.length > 0 || lines.length > 0)) {
     if (fills.length > 0) {
       fills.forEach((fill, idx) => {
-        const correspondingLine = idx === 0 && lines.length > 0 ? lines[0] : undefined;
+        const correspondingLine =
+          idx === 0 && lines.length > 0 ? lines[0] : undefined;
         symbolizers.push({
-          kind: 'Fill',
+          kind: "Fill",
           color: fill.color,
-          ...(correspondingLine
-            ? {
-                outlineColor: correspondingLine.color,
-                outlineWidth: correspondingLine.width,
-                ...(Array.isArray(correspondingLine.dashArray)
-                  ? { outlineDasharray: correspondingLine.dashArray }
-                  : {}),
-              }
-            : {}),
+          ...(correspondingLine ?
+            {
+              outlineColor: correspondingLine.color,
+              outlineWidth: correspondingLine.width,
+              ...(Array.isArray(correspondingLine.dashArray) ?
+                { outlineDasharray: correspondingLine.dashArray }
+              : {}),
+            }
+          : {}),
         });
       });
       lines.slice(fills.length > 0 ? 1 : 0).forEach((line) => {
         symbolizers.push({
-          kind: 'Line',
+          kind: "Line",
           color: line.color,
           width: line.width,
-          ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+          ...(Array.isArray(line.dashArray) ?
+            { dasharray: line.dashArray }
+          : {}),
           ...(line.cap ? { cap: line.cap } : {}),
           ...(line.join ? { join: line.join } : {}),
-          ...(line.dashOffset !== undefined ? { dashOffset: line.dashOffset } : {}),
-          ...(line.offset !== undefined ? { perpendicularOffset: line.offset } : {}),
+          ...(line.dashOffset !== undefined ?
+            { dashOffset: line.dashOffset }
+          : {}),
+          ...(line.offset !== undefined ?
+            { perpendicularOffset: line.offset }
+          : {}),
         });
       });
     } else {
       lines.forEach((line) => {
         symbolizers.push({
-          kind: 'Line',
+          kind: "Line",
           color: line.color,
           width: line.width,
-          ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
+          ...(Array.isArray(line.dashArray) ?
+            { dasharray: line.dashArray }
+          : {}),
           ...(line.cap ? { cap: line.cap } : {}),
           ...(line.join ? { join: line.join } : {}),
-          ...(line.dashOffset !== undefined ? { dashOffset: line.dashOffset } : {}),
-          ...(line.offset !== undefined ? { perpendicularOffset: line.offset } : {}),
+          ...(line.dashOffset !== undefined ?
+            { dashOffset: line.dashOffset }
+          : {}),
+          ...(line.offset !== undefined ?
+            { perpendicularOffset: line.offset }
+          : {}),
         });
       });
     }
   } else if (isLine) {
     lines.forEach((line) => {
       symbolizers.push({
-        kind: 'Line',
+        kind: "Line",
         color: line.color,
         width: line.width,
         ...(Array.isArray(line.dashArray) ? { dasharray: line.dashArray } : {}),
         ...(line.cap ? { cap: line.cap } : {}),
         ...(line.join ? { join: line.join } : {}),
-        ...(line.dashOffset !== undefined ? { dashOffset: line.dashOffset } : {}),
-        ...(line.offset !== undefined ? { perpendicularOffset: line.offset } : {}),
+        ...(line.dashOffset !== undefined ?
+          { dashOffset: line.dashOffset }
+        : {}),
+        ...(line.offset !== undefined ?
+          { perpendicularOffset: line.offset }
+        : {}),
       });
     });
   } else if (isPoint) {
     markers.forEach((marker) => {
       symbolizers.push({
-        kind: 'Mark',
-        wellKnownName: 'circle',
+        kind: "Mark",
+        wellKnownName: "circle",
         radius: marker.radius,
         color: marker.fillColor,
         strokeColor: marker.strokeColor,
@@ -655,10 +719,10 @@ export function cartoucheToGeoStyler(
     });
   } else {
     // Unknown geometry: extract all available symbolizers
-    fills.forEach((f) => symbolizers.push({ kind: 'Fill', color: f.color }));
+    fills.forEach((f) => symbolizers.push({ kind: "Fill", color: f.color }));
     lines.forEach((l) =>
       symbolizers.push({
-        kind: 'Line',
+        kind: "Line",
         color: l.color,
         width: l.width,
         ...(Array.isArray(l.dashArray) ? { dasharray: l.dashArray } : {}),
@@ -670,8 +734,8 @@ export function cartoucheToGeoStyler(
     );
     markers.forEach((m) =>
       symbolizers.push({
-        kind: 'Mark',
-        wellKnownName: 'circle',
+        kind: "Mark",
+        wellKnownName: "circle",
         radius: m.radius,
         color: m.fillColor,
         strokeColor: m.strokeColor,
@@ -682,7 +746,10 @@ export function cartoucheToGeoStyler(
 
   return {
     name: styleName,
-    rules: symbolizers.length > 0 ? [{ name: geometryKind || 'Rule', symbolizers }] : [],
+    rules:
+      symbolizers.length > 0 ?
+        [{ name: geometryKind || "Rule", symbolizers }]
+      : [],
   };
 }
 
@@ -705,65 +772,79 @@ export function geoStylerToCartouche(
     return createDefaultCartoucheLayerStyle(geometryKind);
   }
 
-  const isPoly = geometryKind && geometryKind.includes('Polygon');
-  const isLine = geometryKind && geometryKind.includes('Line');
-  const isPoint = geometryKind && geometryKind.includes('Point');
+  const isPoly = geometryKind && geometryKind.includes("Polygon");
+  const isLine = geometryKind && geometryKind.includes("Line");
+  const isPoint = geometryKind && geometryKind.includes("Point");
 
   const components: StyleComponent[] = [];
   let compId = 1;
 
   for (const rule of ast.rules) {
     for (const sym of rule.symbolizers || []) {
-      if (sym.kind === 'Fill' && (!geometryKind || isPoly)) {
+      if (sym.kind === "Fill" && (!geometryKind || isPoly)) {
         const fill = sym as FillSymbolizer;
         if (fill.color) {
           components.push({
             id: `fill-${compId++}`,
-            type: 'simple-fill',
+            type: "simple-fill",
             enabled: true,
             color: String(fill.color),
           });
         }
         if (fill.outlineColor) {
-          const outlineDash = Array.isArray(fill.outlineDasharray)
-            ? fill.outlineDasharray.map(Number)
+          const outlineDash =
+            Array.isArray(fill.outlineDasharray) ?
+              fill.outlineDasharray.map(Number)
             : undefined;
           components.push({
             id: `line-${compId++}`,
-            type: 'simple-line',
+            type: "simple-line",
             enabled: true,
             color: String(fill.outlineColor),
             width: Number(fill.outlineWidth ?? 1),
-            ...(outlineDash && outlineDash.length > 0 ? { dashArray: outlineDash } : {}),
+            ...(outlineDash && outlineDash.length > 0 ?
+              { dashArray: outlineDash }
+            : {}),
             dashPattern: matchDashPattern(outlineDash),
           });
         }
-      } else if (sym.kind === 'Line' && (!geometryKind || isLine)) {
+      } else if (sym.kind === "Line" && (!geometryKind || isLine)) {
         const line = sym as LineSymbolizer;
-        const dashArr = Array.isArray(line.dasharray) ? line.dasharray.map(Number) : undefined;
+        const dashArr =
+          Array.isArray(line.dasharray) ?
+            line.dasharray.map(Number)
+          : undefined;
         components.push({
           id: `line-${compId++}`,
-          type: 'simple-line',
+          type: "simple-line",
           enabled: true,
-          color: String(line.color || '#000000'),
+          color: String(line.color || "#000000"),
           width: Number(line.width ?? 1),
           ...(dashArr && dashArr.length > 0 ? { dashArray: dashArr } : {}),
           dashPattern: matchDashPattern(dashArr),
-          ...(typeof line.cap === 'string' ? { cap: line.cap as SimpleLineComponent['cap'] } : {}),
-          ...(typeof line.join === 'string' ? { join: line.join as SimpleLineComponent['join'] } : {}),
-          ...(line.dashOffset !== undefined ? { dashOffset: Number(line.dashOffset) } : {}),
-          ...(line.perpendicularOffset !== undefined ? { offset: Number(line.perpendicularOffset) } : {}),
+          ...(typeof line.cap === "string" ?
+            { cap: line.cap as SimpleLineComponent["cap"] }
+          : {}),
+          ...(typeof line.join === "string" ?
+            { join: line.join as SimpleLineComponent["join"] }
+          : {}),
+          ...(line.dashOffset !== undefined ?
+            { dashOffset: Number(line.dashOffset) }
+          : {}),
+          ...(line.perpendicularOffset !== undefined ?
+            { offset: Number(line.perpendicularOffset) }
+          : {}),
         });
-      } else if (sym.kind === 'Mark' && (!geometryKind || isPoint)) {
+      } else if (sym.kind === "Mark" && (!geometryKind || isPoint)) {
         const mark = sym as MarkSymbolizer;
         components.push({
           id: `marker-${compId++}`,
-          type: 'simple-marker',
+          type: "simple-marker",
           enabled: true,
-          shape: 'circle',
+          shape: "circle",
           radius: Number(mark.radius ?? 6),
-          fillColor: String(mark.color || '#000000'),
-          strokeColor: String(mark.strokeColor || '#000000'),
+          fillColor: String(mark.color || "#000000"),
+          strokeColor: String(mark.strokeColor || "#000000"),
           strokeWidth: Number(mark.strokeWidth ?? 1),
         });
       }
@@ -771,59 +852,73 @@ export function geoStylerToCartouche(
   }
 
   // Fallback to extracting any available symbolizers if specific geometryKind matched none
-  if (components.length === 0 && geometryKind && geometryKind !== 'Unknown') {
+  if (components.length === 0 && geometryKind && geometryKind !== "Unknown") {
     for (const rule of ast.rules) {
       for (const sym of rule.symbolizers || []) {
-        if (sym.kind === 'Fill') {
+        if (sym.kind === "Fill") {
           const fill = sym as FillSymbolizer;
           if (fill.color) {
             components.push({
               id: `fill-${compId++}`,
-              type: 'simple-fill',
+              type: "simple-fill",
               enabled: true,
               color: String(fill.color),
             });
           }
           if (fill.outlineColor) {
-            const outlineDash = Array.isArray(fill.outlineDasharray)
-              ? fill.outlineDasharray.map(Number)
+            const outlineDash =
+              Array.isArray(fill.outlineDasharray) ?
+                fill.outlineDasharray.map(Number)
               : undefined;
             components.push({
               id: `line-${compId++}`,
-              type: 'simple-line',
+              type: "simple-line",
               enabled: true,
               color: String(fill.outlineColor),
               width: Number(fill.outlineWidth ?? 1),
-              ...(outlineDash && outlineDash.length > 0 ? { dashArray: outlineDash } : {}),
+              ...(outlineDash && outlineDash.length > 0 ?
+                { dashArray: outlineDash }
+              : {}),
               dashPattern: matchDashPattern(outlineDash),
             });
           }
-        } else if (sym.kind === 'Line') {
+        } else if (sym.kind === "Line") {
           const line = sym as LineSymbolizer;
-          const dashArr = Array.isArray(line.dasharray) ? line.dasharray.map(Number) : undefined;
+          const dashArr =
+            Array.isArray(line.dasharray) ?
+              line.dasharray.map(Number)
+            : undefined;
           components.push({
             id: `line-${compId++}`,
-            type: 'simple-line',
+            type: "simple-line",
             enabled: true,
-            color: String(line.color || '#000000'),
+            color: String(line.color || "#000000"),
             width: Number(line.width ?? 1),
             ...(dashArr && dashArr.length > 0 ? { dashArray: dashArr } : {}),
             dashPattern: matchDashPattern(dashArr),
-            ...(typeof line.cap === 'string' ? { cap: line.cap as SimpleLineComponent['cap'] } : {}),
-            ...(typeof line.join === 'string' ? { join: line.join as SimpleLineComponent['join'] } : {}),
-            ...(line.dashOffset !== undefined ? { dashOffset: Number(line.dashOffset) } : {}),
-            ...(line.perpendicularOffset !== undefined ? { offset: Number(line.perpendicularOffset) } : {}),
+            ...(typeof line.cap === "string" ?
+              { cap: line.cap as SimpleLineComponent["cap"] }
+            : {}),
+            ...(typeof line.join === "string" ?
+              { join: line.join as SimpleLineComponent["join"] }
+            : {}),
+            ...(line.dashOffset !== undefined ?
+              { dashOffset: Number(line.dashOffset) }
+            : {}),
+            ...(line.perpendicularOffset !== undefined ?
+              { offset: Number(line.perpendicularOffset) }
+            : {}),
           });
-        } else if (sym.kind === 'Mark') {
+        } else if (sym.kind === "Mark") {
           const mark = sym as MarkSymbolizer;
           components.push({
             id: `marker-${compId++}`,
-            type: 'simple-marker',
+            type: "simple-marker",
             enabled: true,
-            shape: 'circle',
+            shape: "circle",
             radius: Number(mark.radius ?? 6),
-            fillColor: String(mark.color || '#000000'),
-            strokeColor: String(mark.strokeColor || '#000000'),
+            fillColor: String(mark.color || "#000000"),
+            strokeColor: String(mark.strokeColor || "#000000"),
             strokeWidth: Number(mark.strokeWidth ?? 1),
           });
         }
@@ -835,11 +930,7 @@ export function geoStylerToCartouche(
     return createDefaultCartoucheLayerStyle(geometryKind);
   }
 
-  return {
-    format: 'simple',
-    version: 1,
-    components,
-  };
+  return { format: "simple", version: 1, components };
 }
 
 /**
@@ -857,7 +948,13 @@ export async function convertStyleFormat(
   content: string,
   options: StyleFormatConversionOptions
 ): Promise<string> {
-  const { fromFormat, toFormat, fromVersion = '1.0.0', toVersion = '1.0.0', geometryKind } = options;
+  const {
+    fromFormat,
+    toFormat,
+    fromVersion = "1.0.0",
+    toVersion = "1.0.0",
+    geometryKind,
+  } = options;
 
   if (fromFormat === toFormat && fromVersion === toVersion) {
     return content;
@@ -866,34 +963,34 @@ export async function convertStyleFormat(
   let ast: GeoStylerStyle;
 
   // 1. Parse input to GeoStyler AST
-  if (fromFormat === 'openlayers') {
+  if (fromFormat === "openlayers") {
     ast = flatStyleToGeoStyler(content);
-  } else if (fromFormat === 'cartouche') {
+  } else if (fromFormat === "cartouche") {
     ast = cartoucheToGeoStyler(content, geometryKind);
   } else {
-    const sldInParser = fromVersion === '1.1.0' ? sldParser110 : sldParser100;
+    const sldInParser = fromVersion === "1.1.0" ? sldParser110 : sldParser100;
     const readResult = await sldInParser.readStyle(content.trim());
     if (readResult.errors?.length || !readResult.output) {
       throw new Error(
-        `Failed to parse SLD ${fromVersion} style: ${readResult.errors?.map((e) => e.message || String(e)).join(', ') || 'Unknown error'}`
+        `Failed to parse SLD ${fromVersion} style: ${readResult.errors?.map((e) => e.message || String(e)).join(", ") || "Unknown error"}`
       );
     }
     ast = readResult.output as unknown as GeoStylerStyle;
   }
 
   // 2. Write GeoStyler AST to target format
-  if (toFormat === 'openlayers') {
+  if (toFormat === "openlayers") {
     const flatRules = geoStylerToFlatStyle(ast);
     return JSON.stringify(flatRules, null, 2);
-  } else if (toFormat === 'cartouche') {
+  } else if (toFormat === "cartouche") {
     const cartouche = geoStylerToCartouche(ast, geometryKind);
     return JSON.stringify(cartouche, null, 2);
   } else {
-    const sldOutParser = toVersion === '1.1.0' ? sldParser110 : sldParser100;
+    const sldOutParser = toVersion === "1.1.0" ? sldParser110 : sldParser100;
     const writeResult = await sldOutParser.writeStyle(ast);
     if (writeResult.errors?.length || !writeResult.output) {
       throw new Error(
-        `Failed to generate SLD ${toVersion} style: ${writeResult.errors?.map((e) => e.message || String(e)).join(', ') || 'Unknown error'}`
+        `Failed to generate SLD ${toVersion} style: ${writeResult.errors?.map((e) => e.message || String(e)).join(", ") || "Unknown error"}`
       );
     }
     return writeResult.output;
@@ -914,70 +1011,96 @@ export async function convertStyleFormat(
 export async function validateStyleContent(
   content: string,
   format: ProjectStyleFormat,
-  version: SldStyleVersion = '1.0.0'
+  version: SldStyleVersion = "1.0.0"
 ): Promise<StyleValidationResult> {
-  const trimmed = (content || '').trim();
+  const trimmed = (content || "").trim();
   if (!trimmed) {
-    return { isValid: false, error: 'Style content cannot be empty.' };
+    return { isValid: false, error: "Style content cannot be empty." };
   }
 
-  if (format === 'cartouche') {
+  if (format === "cartouche") {
     let parsed: unknown;
     try {
       parsed = JSON.parse(trimmed);
     } catch (err: any) {
-      return { isValid: false, error: `Invalid JSON syntax: ${err.message || String(err)}` };
+      return {
+        isValid: false,
+        error: `Invalid JSON syntax: ${err.message || String(err)}`,
+      };
     }
 
     if (!isCartoucheLayerStyle(parsed)) {
-      return { isValid: false, error: 'Invalid Cartouche Symbology structure.' };
+      return {
+        isValid: false,
+        error: "Invalid Cartouche Symbology structure.",
+      };
     }
 
     return { isValid: true };
   }
 
-  if (format === 'openlayers') {
+  if (format === "openlayers") {
     let parsed: unknown;
     try {
       parsed = JSON.parse(trimmed);
     } catch (err: any) {
-      return { isValid: false, error: `Invalid JSON syntax: ${err.message || String(err)}` };
+      return {
+        isValid: false,
+        error: `Invalid JSON syntax: ${err.message || String(err)}`,
+      };
     }
 
     if (
-      parsed === null ||
-      typeof parsed !== 'object' ||
-      (Array.isArray(parsed) && parsed.length === 0)
+      parsed === null
+      || typeof parsed !== "object"
+      || (Array.isArray(parsed) && parsed.length === 0)
     ) {
-      return { isValid: false, error: 'OpenLayers Flat Style must be a non-empty object or array of rules.' };
+      return {
+        isValid: false,
+        error:
+          "OpenLayers Flat Style must be a non-empty object or array of rules.",
+      };
     }
 
     return { isValid: true };
   }
 
   // SLD format validation
-  if (!trimmed.startsWith('<') || !trimmed.endsWith('>')) {
-    return { isValid: false, error: 'SLD style content must be a valid XML document starting with "<".' };
+  if (!trimmed.startsWith("<") || !trimmed.endsWith(">")) {
+    return {
+      isValid: false,
+      error:
+        'SLD style content must be a valid XML document starting with "<".',
+    };
   }
 
   if (
-    !trimmed.includes('StyledLayerDescriptor') &&
-    !trimmed.includes('FeatureTypeStyle') &&
-    !trimmed.includes('UserStyle')
+    !trimmed.includes("StyledLayerDescriptor")
+    && !trimmed.includes("FeatureTypeStyle")
+    && !trimmed.includes("UserStyle")
   ) {
-    return { isValid: false, error: 'SLD XML must contain a StyledLayerDescriptor, FeatureTypeStyle, or UserStyle root.' };
+    return {
+      isValid: false,
+      error:
+        "SLD XML must contain a StyledLayerDescriptor, FeatureTypeStyle, or UserStyle root.",
+    };
   }
 
-  const parser = version === '1.1.0' ? sldParser110 : sldParser100;
+  const parser = version === "1.1.0" ? sldParser110 : sldParser100;
   try {
     const readResult = await parser.readStyle(trimmed);
     if (readResult.errors && readResult.errors.length > 0) {
-      const msg = readResult.errors.map((e) => e.message || String(e)).join('; ');
+      const msg = readResult.errors
+        .map((e) => e.message || String(e))
+        .join("; ");
       return { isValid: false, error: `SLD ${version} parse error: ${msg}` };
     }
     return { isValid: true };
   } catch (err: any) {
-    return { isValid: false, error: `SLD parsing failed: ${err.message || String(err)}` };
+    return {
+      isValid: false,
+      error: `SLD parsing failed: ${err.message || String(err)}`,
+    };
   }
 }
 
@@ -996,21 +1119,21 @@ export async function validateStyleContent(
 export async function parseStyleTextToGeoStyler(
   content: string,
   format: ProjectStyleFormat,
-  version: SldStyleVersion = '1.0.0',
+  version: SldStyleVersion = "1.0.0",
   geometryKind?: string
 ): Promise<GeoStylerStyle> {
-  if (format === 'openlayers') {
+  if (format === "openlayers") {
     return flatStyleToGeoStyler(content);
   }
-  if (format === 'cartouche') {
+  if (format === "cartouche") {
     return cartoucheToGeoStyler(content, geometryKind);
   }
 
-  const parser = version === '1.1.0' ? sldParser110 : sldParser100;
+  const parser = version === "1.1.0" ? sldParser110 : sldParser100;
   const readResult = await parser.readStyle(content.trim());
   if (readResult.errors?.length || !readResult.output) {
     throw new Error(
-      `Failed to parse SLD ${version} style: ${readResult.errors?.map((e) => e.message || String(e)).join(', ') || 'Unknown error'}`
+      `Failed to parse SLD ${version} style: ${readResult.errors?.map((e) => e.message || String(e)).join(", ") || "Unknown error"}`
     );
   }
   return readResult.output as unknown as GeoStylerStyle;
@@ -1031,23 +1154,23 @@ export async function parseStyleTextToGeoStyler(
 export async function serializeGeoStylerToText(
   ast: GeoStylerStyle,
   format: ProjectStyleFormat,
-  version: SldStyleVersion = '1.0.0',
+  version: SldStyleVersion = "1.0.0",
   geometryKind?: string
 ): Promise<string> {
-  if (format === 'openlayers') {
+  if (format === "openlayers") {
     const flatRules = geoStylerToFlatStyle(ast);
     return JSON.stringify(flatRules, null, 2);
   }
-  if (format === 'cartouche') {
+  if (format === "cartouche") {
     const cartouche = geoStylerToCartouche(ast, geometryKind);
     return JSON.stringify(cartouche, null, 2);
   }
 
-  const parser = version === '1.1.0' ? sldParser110 : sldParser100;
+  const parser = version === "1.1.0" ? sldParser110 : sldParser100;
   const writeResult = await parser.writeStyle(ast);
   if (writeResult.errors?.length || !writeResult.output) {
     throw new Error(
-      `Failed to generate SLD ${version} style: ${writeResult.errors?.map((e) => e.message || String(e)).join(', ') || 'Unknown error'}`
+      `Failed to generate SLD ${version} style: ${writeResult.errors?.map((e) => e.message || String(e)).join(", ") || "Unknown error"}`
     );
   }
   return writeResult.output;
@@ -1072,28 +1195,35 @@ export function extractVisualSymbolizers(
   for (const rule of ast.rules || []) {
     for (const sym of rule.symbolizers || []) {
       if (
-        sym.kind === 'Fill' &&
-        (!geometryKind || geometryKind === 'Polygon' || geometryKind === 'MultiPolygon')
+        sym.kind === "Fill"
+        && (!geometryKind
+          || geometryKind === "Polygon"
+          || geometryKind === "MultiPolygon")
       ) {
         const fill = sym as FillSymbolizer;
         if (result.fillColor === undefined && fill.color) {
           result.fillColor = String(fill.color);
         }
         if (
-          result.fillOpacity === undefined &&
-          (fill.fillOpacity !== undefined || fill.opacity !== undefined)
+          result.fillOpacity === undefined
+          && (fill.fillOpacity !== undefined || fill.opacity !== undefined)
         ) {
           result.fillOpacity = Number(fill.fillOpacity ?? fill.opacity);
         }
         if (result.strokeColor === undefined && fill.outlineColor) {
           result.strokeColor = String(fill.outlineColor);
         }
-        if (result.strokeWidth === undefined && fill.outlineWidth !== undefined) {
+        if (
+          result.strokeWidth === undefined
+          && fill.outlineWidth !== undefined
+        ) {
           result.strokeWidth = Number(fill.outlineWidth);
         }
       } else if (
-        sym.kind === 'Line' &&
-        (!geometryKind || geometryKind === 'LineString' || geometryKind === 'MultiLineString')
+        sym.kind === "Line"
+        && (!geometryKind
+          || geometryKind === "LineString"
+          || geometryKind === "MultiLineString")
       ) {
         const line = sym as LineSymbolizer;
         if (result.strokeColor === undefined && line.color) {
@@ -1103,15 +1233,19 @@ export function extractVisualSymbolizers(
           result.strokeWidth = Number(line.width);
         }
         if (result.strokeLineDash === undefined) {
-          result.strokeLineDash = Array.isArray(line.dasharray) && line.dasharray.length > 0;
+          result.strokeLineDash =
+            Array.isArray(line.dasharray) && line.dasharray.length > 0;
         }
       } else if (
-        sym.kind === 'Mark' &&
-        (!geometryKind || geometryKind === 'Point' || geometryKind === 'MultiPoint')
+        sym.kind === "Mark"
+        && (!geometryKind
+          || geometryKind === "Point"
+          || geometryKind === "MultiPoint")
       ) {
         const mark = sym as MarkSymbolizer;
         if (result.pointShape === undefined && mark.wellKnownName) {
-          result.pointShape = mark.wellKnownName as LayerVisualSymbolizer['pointShape'];
+          result.pointShape =
+            mark.wellKnownName as LayerVisualSymbolizer["pointShape"];
         }
         if (result.pointRadius === undefined && mark.radius !== undefined) {
           result.pointRadius = Number(mark.radius);
@@ -1122,7 +1256,10 @@ export function extractVisualSymbolizers(
         if (result.strokeColor === undefined && mark.strokeColor) {
           result.strokeColor = String(mark.strokeColor);
         }
-        if (result.strokeWidth === undefined && mark.strokeWidth !== undefined) {
+        if (
+          result.strokeWidth === undefined
+          && mark.strokeWidth !== undefined
+        ) {
           result.strokeWidth = Number(mark.strokeWidth);
         }
       }
@@ -1130,24 +1267,25 @@ export function extractVisualSymbolizers(
   }
 
   // Provide sensible defaults for any unpopulated fields based on geometryKind
-  const isLine = geometryKind === 'LineString' || geometryKind === 'MultiLineString';
-  const isPoint = geometryKind === 'Point' || geometryKind === 'MultiPoint';
+  const isLine =
+    geometryKind === "LineString" || geometryKind === "MultiLineString";
+  const isPoint = geometryKind === "Point" || geometryKind === "MultiPoint";
 
   if (isLine) {
-    if (result.strokeColor === undefined) result.strokeColor = '#0284c7';
+    if (result.strokeColor === undefined) result.strokeColor = "#0284c7";
     if (result.strokeWidth === undefined) result.strokeWidth = 1;
     if (result.strokeLineDash === undefined) result.strokeLineDash = false;
   } else if (isPoint) {
-    if (result.pointShape === undefined) result.pointShape = 'circle';
+    if (result.pointShape === undefined) result.pointShape = "circle";
     if (result.pointRadius === undefined) result.pointRadius = 6;
-    if (result.fillColor === undefined) result.fillColor = '#0369a1';
-    if (result.strokeColor === undefined) result.strokeColor = '#0284c7';
+    if (result.fillColor === undefined) result.fillColor = "#0369a1";
+    if (result.strokeColor === undefined) result.strokeColor = "#0284c7";
     if (result.strokeWidth === undefined) result.strokeWidth = 1;
   } else {
     // Polygon / Unknown default
-    if (result.fillColor === undefined) result.fillColor = '#1e293b';
+    if (result.fillColor === undefined) result.fillColor = "#1e293b";
     if (result.fillOpacity === undefined) result.fillOpacity = 1;
-    if (result.strokeColor === undefined) result.strokeColor = '#0284c7';
+    if (result.strokeColor === undefined) result.strokeColor = "#0284c7";
     if (result.strokeWidth === undefined) result.strokeWidth = 0;
   }
 
@@ -1171,13 +1309,17 @@ export function applyVisualSymbolizersToGeoStyler(
   geometryKind?: string
 ): GeoStylerStyle {
   const cloned: GeoStylerStyle = JSON.parse(
-    JSON.stringify(ast || { name: 'Cartouche Style', rules: [] })
+    JSON.stringify(ast || { name: "Cartouche Style", rules: [] })
   );
   if (!cloned.rules) cloned.rules = [];
 
-  const isLine = geometryKind === 'LineString' || geometryKind === 'MultiLineString';
-  const isPoint = geometryKind === 'Point' || geometryKind === 'MultiPoint';
-  const targetKind = isLine ? 'Line' : isPoint ? 'Mark' : 'Fill';
+  const isLine =
+    geometryKind === "LineString" || geometryKind === "MultiLineString";
+  const isPoint = geometryKind === "Point" || geometryKind === "MultiPoint";
+  const targetKind =
+    isLine ? "Line"
+    : isPoint ? "Mark"
+    : "Fill";
 
   let found = false;
 
@@ -1187,26 +1329,33 @@ export function applyVisualSymbolizersToGeoStyler(
       const sym = rule.symbolizers[i];
       if (sym.kind === targetKind) {
         found = true;
-        if (targetKind === 'Fill') {
+        if (targetKind === "Fill") {
           const fill = sym as FillSymbolizer;
           if (visual.fillColor !== undefined) fill.color = visual.fillColor;
-          if (visual.fillOpacity !== undefined) fill.fillOpacity = visual.fillOpacity;
-          if (visual.strokeColor !== undefined) fill.outlineColor = visual.strokeColor;
-          if (visual.strokeWidth !== undefined) fill.outlineWidth = visual.strokeWidth;
-        } else if (targetKind === 'Line') {
+          if (visual.fillOpacity !== undefined)
+            fill.fillOpacity = visual.fillOpacity;
+          if (visual.strokeColor !== undefined)
+            fill.outlineColor = visual.strokeColor;
+          if (visual.strokeWidth !== undefined)
+            fill.outlineWidth = visual.strokeWidth;
+        } else if (targetKind === "Line") {
           const line = sym as LineSymbolizer;
           if (visual.strokeColor !== undefined) line.color = visual.strokeColor;
           if (visual.strokeWidth !== undefined) line.width = visual.strokeWidth;
           if (visual.strokeLineDash !== undefined) {
             line.dasharray = visual.strokeLineDash ? [4, 4] : undefined;
           }
-        } else if (targetKind === 'Mark') {
+        } else if (targetKind === "Mark") {
           const mark = sym as MarkSymbolizer;
-          if (visual.pointShape !== undefined) mark.wellKnownName = visual.pointShape;
-          if (visual.pointRadius !== undefined) mark.radius = visual.pointRadius;
+          if (visual.pointShape !== undefined)
+            mark.wellKnownName = visual.pointShape;
+          if (visual.pointRadius !== undefined)
+            mark.radius = visual.pointRadius;
           if (visual.fillColor !== undefined) mark.color = visual.fillColor;
-          if (visual.strokeColor !== undefined) mark.strokeColor = visual.strokeColor;
-          if (visual.strokeWidth !== undefined) mark.strokeWidth = visual.strokeWidth;
+          if (visual.strokeColor !== undefined)
+            mark.strokeColor = visual.strokeColor;
+          if (visual.strokeWidth !== undefined)
+            mark.strokeWidth = visual.strokeWidth;
         }
       }
     }
@@ -1215,35 +1364,35 @@ export function applyVisualSymbolizersToGeoStyler(
   // If no matching symbolizer was found in the AST, create one
   if (!found) {
     let newSym: Symbolizer;
-    if (targetKind === 'Line') {
+    if (targetKind === "Line") {
       newSym = {
-        kind: 'Line',
-        color: visual.strokeColor || '#0284c7',
+        kind: "Line",
+        color: visual.strokeColor || "#0284c7",
         width: visual.strokeWidth ?? 1,
         ...(visual.strokeLineDash ? { dasharray: [4, 4] } : {}),
       };
-    } else if (targetKind === 'Mark') {
+    } else if (targetKind === "Mark") {
       newSym = {
-        kind: 'Mark',
-        wellKnownName: visual.pointShape || 'circle',
+        kind: "Mark",
+        wellKnownName: visual.pointShape || "circle",
         radius: visual.pointRadius ?? 6,
-        color: visual.fillColor || '#0369a1',
-        strokeColor: visual.strokeColor || '#0284c7',
+        color: visual.fillColor || "#0369a1",
+        strokeColor: visual.strokeColor || "#0284c7",
         strokeWidth: visual.strokeWidth ?? 1,
       };
     } else {
       newSym = {
-        kind: 'Fill',
-        color: visual.fillColor || '#1e293b',
+        kind: "Fill",
+        color: visual.fillColor || "#1e293b",
         fillOpacity: visual.fillOpacity ?? 1,
-        outlineColor: visual.strokeColor || '#0284c7',
+        outlineColor: visual.strokeColor || "#0284c7",
         outlineWidth: visual.strokeWidth ?? 0,
       };
     }
 
     if (cloned.rules.length === 0) {
       cloned.rules.push({
-        name: geometryKind || 'Default Rule',
+        name: geometryKind || "Default Rule",
         symbolizers: [newSym],
       });
     } else {
