@@ -4,7 +4,7 @@
  * @description Headless tests of the LayerPropertiesDialog fields tables as embedded TableWidgets (Spec #322 / Ticket #331): the Information tab's read-only fields table and the Fields tab's table, with their columns and values, header bars hidden, sorting turned off, row selection driving Delete Selected Field, Layer Edit Mode gating the Length, Precision and Comment edits, edits reaching the draft, and the per-field type select and reset button not changing the row selection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link TableWidget}
@@ -351,7 +351,7 @@ describe('LayerPropertiesDialog fields tables do not sort (Ticket #331)', () => 
 
       assert.equal(findElementsByClass(tables()[0], 'table-widget-sort-icon').length, 0, 'no sort chevrons');
       for (const th of headerCells) {
-        assert.equal(th.getAttribute('aria-sort'), undefined, 'no sort state');
+        assert.equal(th.getAttribute('aria-sort'), null, 'no sort state');
       }
       for (const th of headerCells) {
         await fire(th, 'click');

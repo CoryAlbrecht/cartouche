@@ -4,7 +4,7 @@
  * @description Tests for the Dash Array Composite Control (Spec #322 / Ticket #332): dash array ↔ pair conversion, the edit validation rules, and, headlessly, the embedded TableWidget's single-row selection, in-place editing with rejected edits marked by a class and tooltip until the next accepted change, the Add / Remove / Move Up / Move Down buttons keeping the selection on the right pair, Add opening the new pair's Line cell for editing, and the read-only state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link DashArrayControl}
  */
@@ -270,7 +270,7 @@ describe('DashArrayControl (Ticket #332)', () => {
     await fire(button('move-up'), 'click');
     assert.deepEqual(changes.at(-1), [3, 3, 1, 1, 2, 2]);
     assert.deepEqual(selectedRows(), [0]);
-    assert.equal(button('move-up').getAttribute('disabled') ?? null, '', 'Move Up disabled on the first pair');
+    assert.equal(button('move-up').getAttribute('disabled'), '', 'Move Up disabled on the first pair');
     await fire(button('move-down'), 'click');
     assert.deepEqual(changes.at(-1), [1, 1, 3, 3, 2, 2]);
     assert.deepEqual(selectedRows(), [1]);
@@ -288,7 +288,7 @@ describe('DashArrayControl (Ticket #332)', () => {
     await fire(button('remove'), 'click');
     assert.deepEqual(changes.at(-1), []);
     assert.deepEqual(cellTexts(), []);
-    assert.notEqual(button('remove').getAttribute('disabled'), undefined, 'Remove disabled with no pairs');
+    assert.notEqual(button('remove').getAttribute('disabled'), null, 'Remove disabled with no pairs');
   });
 
   it('a read-only control shows its pairs in Read-Only Cells and disables every button', async () => {
@@ -298,7 +298,7 @@ describe('DashArrayControl (Ticket #332)', () => {
     await fire(cell(0, 0), 'dblclick');
     assert.equal(editors().length, 0);
     for (const name of ['add', 'remove', 'move-up', 'move-down']) {
-      assert.notEqual(button(name).getAttribute('disabled'), undefined, `${name} disabled`);
+      assert.notEqual(button(name).getAttribute('disabled'), null, `${name} disabled`);
     }
   });
 });
@@ -325,9 +325,9 @@ describe('DashArrayControl review follow-ups (Ticket #332)', () => {
   it('disables Remove when the remaining pairs would all be 0', async () => {
     await render([0, 0, 5, 0]);
     await fire(cell(1, 0), 'click');
-    assert.notEqual(button('remove').getAttribute('disabled'), undefined, 'removing 5 / 0 would leave only zeros');
+    assert.notEqual(button('remove').getAttribute('disabled'), null, 'removing 5 / 0 would leave only zeros');
     await fire(cell(0, 0), 'click');
-    assert.equal(button('remove').getAttribute('disabled'), undefined, 'removing 0 / 0 is allowed');
+    assert.equal(button('remove').getAttribute('disabled'), null, 'removing 0 / 0 is allowed');
   });
 
   it('drops the rejection mark when the control becomes read-only', async () => {
@@ -346,7 +346,6 @@ describe('DashArrayControl review follow-ups (Ticket #332)', () => {
 describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
   const { SimpleModeEditor } = jiti('@renderer/workbench/dialogs/SimpleModeEditor.tsx');
   let saved: string[];
-  let originalGetElementById: unknown;
 
   /**
    * @function line
@@ -382,13 +381,9 @@ describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
   beforeEach(() => {
     dom = installMockDom();
     saved = [];
-    const doc = (globalThis as any).document;
-    originalGetElementById = doc.getElementById;
-    doc.getElementById = (id: string) => findById(dom!.container, id);
   });
 
   afterEach(() => {
-    (globalThis as any).document.getElementById = originalGetElementById;
     teardownMockDom(dom);
     dom = null;
   });
@@ -405,12 +400,8 @@ describe('SimpleModeEditor Dash Array wiring (Ticket #332)', () => {
   it('focuses the Dash Array table when its label is clicked', async () => {
     await renderEditor(line('a', { dashPattern: 'custom', dashArray: [5, 2] }));
     const table = findById(dom!.container, 'layer-prop-dash-array-table')!;
-    let focused = false;
-    (table as any).focus = () => {
-      focused = true;
-    };
     await fire(findById(dom!.container, 'layer-prop-dash-array-label')!, 'click');
-    assert.ok(focused);
+    assert.equal(dom!.doc.activeElement, table);
   });
 
   it('starts afresh for another component: first pair selected, no rejection mark', async () => {

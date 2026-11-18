@@ -4,7 +4,7 @@
  * @description Headless component tests for the TableWidget options that embedded form-style tables need (Spec #322 / Ticket #335): `selectionMode='single'`, columns with `resizable: false`, the `tableId` / `ariaLabel` / `ariaLabelledBy` props on the focusable table element, host-started edits through the `editCell` signal, and host cell classes through `cellClassName`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  */
@@ -259,9 +259,9 @@ describe('TableWidget table id and accessible name (Ticket #335)', () => {
   it('leaves the attributes off when not given', async () => {
     await render();
     const el = table();
-    assert.equal(el.getAttribute('id') ?? null, null);
-    assert.equal(el.getAttribute('aria-label') ?? null, null);
-    assert.equal(el.getAttribute('aria-labelledby') ?? null, null);
+    assert.equal(el.getAttribute('id'), null);
+    assert.equal(el.getAttribute('aria-label'), null);
+    assert.equal(el.getAttribute('aria-labelledby'), null);
   });
 });
 

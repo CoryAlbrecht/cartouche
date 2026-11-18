@@ -4,7 +4,7 @@
  * @description Headless component tests for TableWidget single-column sorting as a host uses it (Spec #322 / Ticket #325): header clicks cycling none → ascending → descending → none, one sorted column at a time, the dual, up and down chevrons, columns with `sortable: false`, a host-owned sort signal, in-memory sorting with the column's compare function or the default, a host `sortHandler`, and Row Number Column values following the displayed order.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  */
@@ -174,7 +174,7 @@ describe('TableWidget single-column sorting (Ticket #325)', () => {
   it('shows no chevrons on a column with sortable false and ignores clicks on its header', async () => {
     await render({ columns: [{ key: 'name', header: 'Name', sortable: false }, COLUMNS[1]] });
     assert.equal(chevronOf('Name'), null);
-    assert.equal(dataHeader('Name').getAttribute('aria-sort'), undefined);
+    assert.equal(dataHeader('Name').getAttribute('aria-sort'), null);
     await clickHeader('Name');
     assert.deepEqual(displayedNames(), ['Ottawa', 'Montréal', 'Halifax']);
     assert.equal(chevronOf('Name'), null);

@@ -1,10 +1,10 @@
 /**
  * @file mockDom.ts
  * @module tests/renderer/mockDom
- * @description Shared headless DOM harness for renderer component tests that need real event dispatch (clicks, keydown, portals): a lightweight MockElement, a mock document and window installed on globalThis, a React root, and lookup helpers. Not a test file itself.
+ * @description Shared headless DOM harness for renderer component tests that need real event dispatch (clicks, keydown, portals): a lightweight MockElement, a mock document and window installed on globalThis, a React root, and lookup helpers. Like the DOM, `getAttribute` returns `null` for a missing attribute, `document.getElementById` searches the document, and `focus()` / `blur()` move `document.activeElement` (back to `body` when the focused element is removed); focus does not dispatch focus events. Not a test file itself.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-15
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -75,8 +75,35 @@ export class MockElement {
     }
   }
 
-  getAttribute(k: string): string | undefined {
-    return this.attributes[k];
+  getAttribute(k: string): string | null {
+    return Object.hasOwn(this.attributes, k) ? this.attributes[k] : null;
+  }
+
+  /**
+   * @function ownerDoc
+   * @description The mock document this element belongs to, or the installed global one.
+   * @returns {any} The mock document, if any.
+   */
+  private ownerDoc(): any {
+    return this.ownerDocument ?? (globalThis as any).document;
+  }
+
+  /**
+   * @function focus
+   * @description Makes this element the document's `activeElement`. No focus events are dispatched; tests that need them fire `focusin` themselves.
+   */
+  focus(): void {
+    const doc = this.ownerDoc();
+    if (doc) doc.activeElement = this;
+  }
+
+  /**
+   * @function blur
+   * @description Returns focus to the document body when this element has it.
+   */
+  blur(): void {
+    const doc = this.ownerDoc();
+    if (doc && doc.activeElement === this) doc.activeElement = doc.body;
   }
 
   removeAttribute(k: string): void {
@@ -100,6 +127,10 @@ export class MockElement {
   removeChild(child: any): any {
     this.childNodes = this.childNodes.filter((c) => c !== child);
     child.parentNode = null;
+    // Like the DOM, removing the focused element (or an ancestor of it) returns focus to the body.
+    const doc = this.ownerDoc();
+    const active = doc?.activeElement;
+    if (active && active !== doc.body && (child === active || child.contains?.(active))) doc.activeElement = doc.body;
     return child;
   }
 
@@ -247,7 +278,9 @@ export function installMockDom(): MockDom {
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
-    defaultView: null as any
+    defaultView: null as any,
+    activeElement: body as any,
+    getElementById: (id: string) => findById(documentElement, id)
   };
   documentElement.ownerDocument = doc;
   body.ownerDocument = doc;
@@ -270,6 +303,8 @@ export function installMockDom(): MockDom {
       }
       return !event.defaultPrevented;
     },
+    // An empty selection: React's select-event handling reads it once an input has focus.
+    getSelection: () => ({ anchorNode: null, anchorOffset: 0, focusNode: null, focusOffset: 0, rangeCount: 0 }),
     document: doc,
     HTMLIFrameElement: class {},
     HTMLElement: MockElement,

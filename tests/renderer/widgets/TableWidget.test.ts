@@ -4,7 +4,7 @@
  * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324); and (Ticket #328) host cellStyle borders over the shared lines and on selected rows, and cell backgrounds ordered above plain and alternating rows and below the Selected Row and Active Row colours.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  */
@@ -25,6 +25,7 @@ import {
   type MockElement
 } from '../mockDom';
 import { cascadedValue, parseRules, WORKBENCH_CSS } from '../styles/cssRules';
+import { COLOUR_LITERAL, stripSourceComments } from '../sourceText';
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -285,8 +286,8 @@ describe('TableWidget theme tokens and typography (Ticket #323)', () => {
   });
 
   it('sets no colour in its source: no colour literals and no theme token other than the UI icon size', () => {
-    const code = TABLE_WIDGET_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.doesNotMatch(code, /#[0-9a-fA-F]{3,8}\b|rgba?\(/, 'no colour literals');
+    const code = stripSourceComments(TABLE_WIDGET_SOURCE);
+    assert.doesNotMatch(code, COLOUR_LITERAL, 'no colour literals');
     const tokens = [...code.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]);
     assert.deepEqual([...new Set(tokens)], ['--cartouche-ui-icon-size'], 'only the icon size token');
   });
