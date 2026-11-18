@@ -1,16 +1,17 @@
 /**
  * @file crsInfo.ts
  * @module main/crs/crsInfo
- * @description Builds the Coordinate Reference System Info shown on the Project Properties CRS tab, in the QGIS-style layout: the title line (name, " (deprecated)" when it applies), Properties bullets (geographic or projected, dynamic reference frame, celestial body, "Based on <reference frame> (<AUTH:code>)" with the ensemble accuracy clause, method), WKT (`toPrettyWKT`, WKT1), Proj4 (`toProj4`) and the area-of-use extent (west, south, east, north to two decimals). Everything comes from the `gdal.SpatialReference` object and single-row `proj.db` lookups (prepared once); bullets whose source data is missing are left out.
+ * @description Builds the Coordinate Reference System Info shown on the Project Properties CRS tab, in the QGIS-style layout: the title line (name, " (deprecated)" when it applies), Properties bullets (geographic or projected, dynamic reference frame, celestial body, "Based on <reference frame> (<AUTH:code>)" with the ensemble accuracy clause, method), WKT (`toPrettyWKT`, WKT1), Proj4 (`toProj4`) and the area-of-use extent (west, south, east, north to two decimals). Everything comes from the `gdal.SpatialReference` object and single-row `proj.db` lookups read through GDAL's SQLite driver (ADR 0036); bullets whose source data is missing are left out.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link CrsInfo}
  * @see {@link formatCrsInfoText}
  */
 
-import Database from 'better-sqlite3';
+import { selectRows, withReadOnlySqlite } from '../gdal/readOnlySqlite';
+import { quoteSqlString } from '../gdal/sqlQuote';
 import type { CrsInfo } from '../../shared/types/crs';
 
 /**
@@ -87,65 +88,66 @@ function splitAuthId(authId: string): [string, string] | null {
 
 /**
  * @function createProjDbLookup
- * @description Opens `proj.db` read-only and returns a lookup whose single-row statements are prepared once and reused.
+ * @description Returns a lookup that reads one CRS's facts from `proj.db`. Each call opens its own short-lived read-only GDAL handle (a few milliseconds) and closes it
+ * before returning, so no `executeSQL` result set outlives the call (#342). `executeSQL` has no bound parameters, so authority names and codes are quoted with
+ * {@link quoteSqlString}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {string} projDbPath - Absolute path of the PROJ database.
  * @returns {CrsDbLookup} Lookup.
  */
 export function createProjDbLookup(projDbPath: string): CrsDbLookup {
-  const db = new Database(projDbPath, { readonly: true, fileMustExist: true });
-  const crsRow = db.prepare(
-    `SELECT 'geodetic_crs' AS tbl, name, deprecated, datum_auth_name AS da, datum_code AS dc
-       FROM geodetic_crs WHERE auth_name = ? AND code = ?
-     UNION ALL
-     SELECT 'projected_crs' AS tbl, p.name, p.deprecated, g.datum_auth_name AS da, g.datum_code AS dc
-       FROM projected_crs p
-       JOIN geodetic_crs g ON g.auth_name = p.geodetic_crs_auth_name AND g.code = p.geodetic_crs_code
-      WHERE p.auth_name = ? AND p.code = ?
-     LIMIT 1`
-  );
-  const datumRow = db.prepare(
-    `SELECT d.name, d.frame_reference_epoch AS epoch, d.ensemble_accuracy AS accuracy, c.name AS body
-       FROM geodetic_datum d
-       LEFT JOIN ellipsoid e ON e.auth_name = d.ellipsoid_auth_name AND e.code = d.ellipsoid_code
-       LEFT JOIN celestial_body c ON c.auth_name = e.celestial_body_auth_name AND c.code = e.celestial_body_code
-      WHERE d.auth_name = ? AND d.code = ? LIMIT 1`
-  );
-  const extentRow = db.prepare(
-    `SELECT x.west_lon AS w, x.south_lat AS s, x.east_lon AS e, x.north_lat AS n
-       FROM usage u JOIN extent x ON x.auth_name = u.extent_auth_name AND x.code = u.extent_code
-      WHERE u.object_table_name = ? AND u.object_auth_name = ? AND u.object_code = ? LIMIT 1`
-  );
-
   return (authId: string): CrsDbFacts => {
     const parts = splitAuthId(authId);
     if (!parts) return {};
-    const [auth, code] = parts;
-    const crs = crsRow.get(auth, code, auth, code) as
-      | { tbl: string; name: string; deprecated: number; da: string | null; dc: string | number | null }
-      | undefined;
-    if (!crs) return {};
-    const facts: CrsDbFacts = { name: crs.name, deprecated: Number(crs.deprecated) === 1 };
-    if (crs.da && crs.dc !== null && crs.dc !== undefined) {
-      const frame = datumRow.get(crs.da, crs.dc) as
-        | { name: string; epoch: number | null; accuracy: number | null; body: string | null }
-        | undefined;
-      if (frame) {
-        facts.datumName = frame.name;
-        facts.datumAuthId = `${crs.da}:${crs.dc}`;
-        if (frame.epoch !== null && frame.epoch !== undefined) facts.dynamic = true;
-        if (frame.accuracy !== null && frame.accuracy !== undefined) facts.ensembleAccuracy = Number(frame.accuracy);
-        if (frame.body) facts.celestialBody = frame.body;
+    const auth = quoteSqlString(parts[0]);
+    const code = quoteSqlString(parts[1]);
+    return withReadOnlySqlite(projDbPath, (dataset) => {
+      const [crs] = selectRows(
+        dataset,
+        `SELECT 'geodetic_crs' AS tbl, name, deprecated, datum_auth_name AS da, datum_code AS dc
+           FROM geodetic_crs WHERE auth_name = ${auth} AND code = ${code}
+         UNION ALL
+         SELECT 'projected_crs' AS tbl, p.name, p.deprecated, g.datum_auth_name AS da, g.datum_code AS dc
+           FROM projected_crs p
+           JOIN geodetic_crs g ON g.auth_name = p.geodetic_crs_auth_name AND g.code = p.geodetic_crs_code
+          WHERE p.auth_name = ${auth} AND p.code = ${code}
+         LIMIT 1`
+      );
+      if (!crs) return {};
+      const facts: CrsDbFacts = { name: String(crs.name), deprecated: Number(crs.deprecated) === 1 };
+      if (crs.da != null && crs.da !== '' && crs.dc != null) {
+        const datumAuth = String(crs.da);
+        const datumCode = String(crs.dc);
+        const [frame] = selectRows(
+          dataset,
+          `SELECT d.name, d.frame_reference_epoch AS epoch, d.ensemble_accuracy AS accuracy, c.name AS body
+             FROM geodetic_datum d
+             LEFT JOIN ellipsoid e ON e.auth_name = d.ellipsoid_auth_name AND e.code = d.ellipsoid_code
+             LEFT JOIN celestial_body c ON c.auth_name = e.celestial_body_auth_name AND c.code = e.celestial_body_code
+            WHERE d.auth_name = ${quoteSqlString(datumAuth)} AND d.code = ${quoteSqlString(datumCode)} LIMIT 1`
+        );
+        if (frame) {
+          facts.datumName = String(frame.name);
+          facts.datumAuthId = `${datumAuth}:${datumCode}`;
+          if (frame.epoch != null) facts.dynamic = true;
+          if (frame.accuracy != null) facts.ensembleAccuracy = Number(frame.accuracy);
+          if (frame.body) facts.celestialBody = String(frame.body);
+        }
       }
-    }
-    const ext = extentRow.get(crs.tbl, auth, code) as { w: number; s: number; e: number; n: number } | undefined;
-    if (ext && [ext.w, ext.s, ext.e, ext.n].every((v) => typeof v === 'number' && isFinite(v))) {
-      facts.extent = [ext.w, ext.s, ext.e, ext.n];
-    }
-    return facts;
+      const [ext] = selectRows(
+        dataset,
+        `SELECT x.west_lon AS w, x.south_lat AS s, x.east_lon AS e, x.north_lat AS n
+           FROM usage u JOIN extent x ON x.auth_name = u.extent_auth_name AND x.code = u.extent_code
+          WHERE u.object_table_name = ${quoteSqlString(String(crs.tbl))} AND u.object_auth_name = ${auth} AND u.object_code = ${code} LIMIT 1`
+      );
+      if (ext && [ext.w, ext.s, ext.e, ext.n].every((v) => typeof v === 'number' && isFinite(v))) {
+        facts.extent = [ext.w, ext.s, ext.e, ext.n] as [number, number, number, number];
+      }
+      return facts;
+    });
   };
 }
 

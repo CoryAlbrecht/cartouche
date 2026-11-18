@@ -1,10 +1,10 @@
 /**
  * @file getCrsInfo.ts
  * @module main/crs/getCrsInfo
- * @description Production entry for `crs:get-info`: creates the CRS with `gdal.SpatialReference` and reads its facts from the bundled `proj.db` through a lazily opened lookup whose statements are prepared once.
+ * @description Production entry for `crs:get-info`: creates the CRS with `gdal.SpatialReference` and reads its facts from the bundled `proj.db` through a lazily created lookup that opens a short-lived read-only GDAL handle per call.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link buildCrsInfo}
  */

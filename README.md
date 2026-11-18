@@ -43,7 +43,7 @@ To set up a local development environment, build from source, or contribute to C
 
 - **Node.js**: v20.0.0 or higher (v22+ recommended)
 - **npm**: v10.0.0 or higher
-- **Build Tools**: C++ compiler toolchain (`gcc`/`g++` and `make` on Linux; Visual Studio C++ Build Tools on Windows) for native module compilation (`better-sqlite3`).
+- **Build Tools**: C++ compiler toolchain (`gcc`/`g++` and `make` on Linux; Visual Studio C++ Build Tools on Windows) for native module compilation (the forked `gdal-async`, built from source against Electron headers).
 
 #### Setup & Execution Instructions
 

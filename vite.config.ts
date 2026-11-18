@@ -112,7 +112,7 @@ export default defineConfig({
             outDir: 'dist-electron/main',
             sourcemap: true,
             rollupOptions: {
-              external: ['electron', 'gdal-async', 'better-sqlite3']
+              external: ['electron', 'gdal-async']
             }
           },
           resolve: {
@@ -164,7 +164,7 @@ export default defineConfig({
               fileName: () => 'geospatialWorker.cjs'
             },
             rollupOptions: {
-              external: ['electron', 'gdal-async', 'better-sqlite3']
+              external: ['electron', 'gdal-async']
             }
           },
           resolve: {

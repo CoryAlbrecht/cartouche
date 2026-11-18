@@ -48,7 +48,7 @@ env:
   IS_RELEASE_BUILD: ${{ github.event_name != 'workflow_dispatch' }}
   ARTIFACT_RETENTION_DAYS: ${{ github.event_name == 'workflow_dispatch' && 7 || 1 }}
   # Bump when the native rebuild steps or flags change, to invalidate cached bindings.
-  NATIVE_CACHE_VERSION: 1
+  NATIVE_CACHE_VERSION: 2
 
 jobs:
   build-linux:
@@ -107,7 +107,6 @@ jobs:
         with:
           path: |
             node_modules/gdal-async/lib/binding
-            node_modules/better-sqlite3/build
           key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json') }}-v${{ env.NATIVE_CACHE_VERSION }}
 
       - name: Rebuild native Electron dependencies
@@ -122,7 +121,6 @@ jobs:
         with:
           path: |
             node_modules/gdal-async/lib/binding
-            node_modules/better-sqlite3/build
           key: ${{ steps.native-cache.outputs.cache-primary-key }}
 
       - name: Smoke-test native addons inside Electron
@@ -210,14 +208,7 @@ jobs:
         with:
           path: |
             node_modules/gdal-async/lib/binding
-            node_modules/better-sqlite3/build
           key: native-${{ runner.os }}-electron-${{ steps.electron.outputs.version }}-${{ hashFiles('package-lock.json') }}-v${{ env.NATIVE_CACHE_VERSION }}
-
-      - name: Rebuild better-sqlite3 for Electron
-        if: steps.native-cache.outputs.cache-hit != 'true'
-        run:
-          npx node-gyp rebuild --directory=node_modules/better-sqlite3
-          --target=45.3.2 --arch=x64 --dist-url=https://electronjs.org/headers
 
       # Compiles the forked gdal-async (V8-sandbox fix, ADR 0006) and its bundled
       # GDAL/PROJ/GEOS with MSVC against Electron headers. Slow on a cold cache.
@@ -233,7 +224,6 @@ jobs:
         with:
           path: |
             node_modules/gdal-async/lib/binding
-            node_modules/better-sqlite3/build
           key: ${{ steps.native-cache.outputs.cache-primary-key }}
 
       - name: Smoke-test native addons inside Electron

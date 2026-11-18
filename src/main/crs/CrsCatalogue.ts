@@ -1,10 +1,10 @@
 /**
  * @file CrsCatalogue.ts
  * @module main/crs/CrsCatalogue
- * @description Builds, caches and loads the CRS Catalogue: every geographic 2D and projected CRS that the bundled PROJ database defines (all authorities) and that a validator (in production `gdal.SpatialReference`) confirms can be created. Each entry records the name, `AUTH:code`, type and deprecated flag. The build reads `proj.db` read-only through `better-sqlite3`, yields to the event loop between batches so the geospatial worker keeps answering other requests, and the result is cached as `crs-catalogue.json` keyed by the SHA-256 of `proj.db`, the SHA-256 of the loaded `gdal.node` binding and `gdal.version`.
+ * @description Builds, caches and loads the CRS Catalogue: every geographic 2D and projected CRS that the bundled PROJ database defines (all authorities) and that a validator (in production `gdal.SpatialReference`) confirms can be created. Each entry records the name, `AUTH:code`, type and deprecated flag. The build reads `proj.db` read-only through GDAL's SQLite driver (ADR 0036), yields to the event loop between batches so the geospatial worker keeps answering other requests, and the result is cached as `crs-catalogue.json` keyed by the SHA-256 of `proj.db`, the SHA-256 of the loaded `gdal.node` binding and `gdal.version`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @see {@link CrsCatalogueEntry}
  * @see {@link loadOrBuildCrsCatalogue}
@@ -13,7 +13,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import Database from 'better-sqlite3';
+import { selectRows, withReadOnlySqlite } from '../gdal/readOnlySqlite';
+import { quoteSqlString } from '../gdal/sqlQuote';
 import type { CrsCatalogueEntry, CrsCatalogueType } from '../../shared/types/crs';
 
 /**
@@ -162,30 +163,26 @@ export function computeCrsCatalogueCacheKey(parts: CrsCatalogueCacheKeyParts): s
  * @description Reads every geographic 2D and projected CRS row (all authorities) from `proj.db`, ordered by authority and code.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-17
  * @since 0.1.0-dev
  * @param {string} projDbPath - Absolute path of the PROJ database.
  * @returns {CrsCatalogueEntry[]} Candidate entries (not yet validated).
  */
 export function readCrsCandidates(projDbPath: string): CrsCatalogueEntry[] {
-  const db = new Database(projDbPath, { readonly: true, fileMustExist: true });
-  try {
-    const rows = db
-      .prepare(
-        `SELECT auth_name, code, name, type, deprecated FROM crs_view
-         WHERE type IN (${CRS_CATALOGUE_TYPES.map(() => '?').join(', ')})
-         ORDER BY auth_name, code`
-      )
-      .all(...CRS_CATALOGUE_TYPES) as Array<{ auth_name: string; code: string | number; name: string; type: CrsCatalogueType; deprecated: number }>;
-    return rows.map((row) => ({
-      authId: `${row.auth_name}:${row.code}`,
-      name: row.name,
-      type: row.type,
-      deprecated: Number(row.deprecated) === 1,
-    }));
-  } finally {
-    db.close();
-  }
+  const rows = withReadOnlySqlite(projDbPath, (dataset) =>
+    selectRows(
+      dataset,
+      `SELECT auth_name, code, name, type, deprecated FROM crs_view
+       WHERE type IN (${CRS_CATALOGUE_TYPES.map((type) => quoteSqlString(type)).join(', ')})
+       ORDER BY auth_name, code`
+    )
+  );
+  return rows.map((row) => ({
+    authId: `${row.auth_name}:${row.code}`,
+    name: String(row.name),
+    type: row.type as CrsCatalogueType,
+    deprecated: Number(row.deprecated) === 1,
+  }));
 }
 
 /**
