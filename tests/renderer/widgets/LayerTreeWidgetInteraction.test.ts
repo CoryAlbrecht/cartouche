@@ -4,7 +4,7 @@
  * @description Component tests for LayerTreeWidget interaction triggers verifying active layer transitions on primary click, double click, arrow navigation, PopupMenu preservation, and empty viewport clicks.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-14
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -765,7 +765,7 @@ describe('LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)', () => {
 
     const setLayerStyleCalls: Array<{ layerIds: string[]; style: any }> = [];
     const saveStyleFileCalls: Array<{ style: any }> = [];
-    let nextLoadStyleResult: any = {
+    const nextLoadStyleResult: any = {
       format: 'sld',
       version: '1.0.0',
       content: '<StyledLayerDescriptor version="1.0.0"/>'

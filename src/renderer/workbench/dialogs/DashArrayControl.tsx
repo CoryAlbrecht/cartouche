@@ -4,7 +4,7 @@
  * @description The Dash Array Composite Control of SimpleModeEditor's Simple Line options (Spec #322 / Ticket #332): the line/gap pairs of a dash array shown in an embedded TableWidget (header bar and Row Number Column hidden, single selection, fixed unsortable columns), next to a 2×2 cluster of Add, Remove, Move Up and Move Down buttons acting on the selected pair. Values are edited in place and validated: a value must be a finite number of 0 or more, and the array must keep at least one value above 0. A rejected edit leaves the old value and marks its cell with the `dash-array-cell--invalid` class and an explanatory tooltip until the next successful change.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  * @see {@link SimpleModeEditor}
@@ -260,7 +260,7 @@ export interface DashArrayControlProps {
  * @description Shows a dash array's line/gap pairs in an embedded TableWidget with a 2×2 Add / Remove / Move Up / Move Down button cluster acting on the selected pair. Pairs are edited in place through TableWidget's editors and validated by {@link checkDashEdit}; a rejected edit marks its cell with `dash-array-cell--invalid` and a tooltip until the next accepted change. The selection follows the pair through moves, goes to the next pair on removal, and an added pair (5 / 2) is selected and opened for editing in its Line cell. A read-only control (a preset pattern or a locked component) shows its pairs in a read-only table with every button disabled; an empty dash array shows only the header row.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {DashArrayControlProps} props - Component properties.
  * @returns {React.ReactElement} The table and its button cluster.
@@ -368,7 +368,7 @@ export function DashArrayControl({
       editCell.value = pending;
     }
     // Runs when the number of pairs changes; select only writes the selection signals.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [pairs.length]);
 
   const active = activeRowId.value;

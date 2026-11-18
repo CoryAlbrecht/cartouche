@@ -4,7 +4,7 @@
  * @description Pure, store-agnostic helpers for the style editor's format switching: the editable style value type, the format cache key, and the computation that converts (or restores from cache) the style text when the user picks another format. Used by the Layer Properties draft and by the reusable StyleEditor.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link StyleEditor}
  * @see {@link switchLayerPropertiesStyleFormat}
@@ -74,7 +74,7 @@ export function styleFormatOptionKey(
  * @description Computes the value patch that switches a style editor value to another format: restores the target format's cached text when one exists, otherwise converts the current text (falling back to the default template for the target format), then validates the result. Returns null when the target equals the current format.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {StyleEditorValue} value - Current editor value.
  * @param {string} targetOption - Format selection key (`cartouche` | `simple` | `openlayers` | `sld-1.0.0` | `sld-1.1.0`).
@@ -97,7 +97,7 @@ export async function computeStyleFormatSwitch(
   const targetVersion: SldStyleVersion = targetKey === 'sld-1.1.0' ? '1.1.0' : '1.0.0';
 
   const updatedCache: Record<string, string> = {
-    ...(value.formatCache || {}),
+    ...value.formatCache,
     [currentKey]: value.styleContent,
   };
 
@@ -159,7 +159,7 @@ export async function computeStyleFormatSwitch(
  * @description Computes the patch that resets the style text to the default template for the value's current format (converting the OpenLayers default to SLD when needed). On a failed SLD conversion the patch carries the OpenLayers default and the conversion error.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {StyleEditorValue} value - Current editor value.
  * @param {string} [geometryKind] - Geometry kind for the Cartouche default template.
@@ -194,7 +194,7 @@ export async function computeDefaultStyleReset(
     styleContent: contentToSet,
     styleValidationError: null,
     formatCache: {
-      ...(value.formatCache || {}),
+      ...value.formatCache,
       [currentKey]: contentToSet,
     },
   };

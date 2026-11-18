@@ -4,7 +4,7 @@
  * @description Zero-dependency mathematical color science and conversion engine supporting CSS Color 4 spaces, cylindrical models, and interpolation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-15
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link parseCssColor}
  * @see {@link formatCssColor}
@@ -633,13 +633,19 @@ export function srgbToHwb(srgb: RgbColor): HwbColor {
 /**
  * Converts HWB coordinates to standard non-linear sRGB coordinates.
  *
+ * @function hwbToSrgb
+ * @description Converts HWB coordinates to standard non-linear sRGB, normalising whiteness and blackness that sum past 100%.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-08
+ * @updated 2026-11-18
+ * @since 0.1.0-dev
  * @param {HwbColor} hwb - HWB color coordinates.
  * @returns {RgbColor} Standard non-linear sRGB color.
  */
 export function hwbToSrgb(hwb: HwbColor): RgbColor {
   const h = normalizeHue(hwb.h);
-  let w = clamp(hwb.w, 0, 100) / 100;
-  let b = clamp(hwb.b, 0, 100) / 100;
+  const w = clamp(hwb.w, 0, 100) / 100;
+  const b = clamp(hwb.b, 0, 100) / 100;
 
   if (w + b >= 1) {
     const gray = Math.round((w / (w + b)) * 255);

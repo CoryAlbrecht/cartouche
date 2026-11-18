@@ -4,7 +4,7 @@
  * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable identity from `getRowId`, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens through the `.table-widget-*` classes and state modifier classes in workbench.css (it sets no colour inline), a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resizer that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. A host `cellStyle` function can give individual cells a 1px border colour, drawn over the shared row and column lines and shown on selected rows too, and a background that sits above the row colours and below the selection colours. Cells can be edited in place (double-click, or F2 / Enter in the focused column) with the default text and number editors or a column's own editor, unless they are Read-Only Cells through the table, their column, their row or themselves; each committed change goes to the host's `onCellEdit`, which can reject it. For embedded form-style tables (Ticket #335) a host can limit selection to a single row, turn off resizing per column, put an `id` and accessible name on the focusable table element, start an edit itself through an `editCell` signal, and mark cells with its own stylesheet classes through `cellClassName`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
@@ -1013,7 +1013,7 @@ interface CellEditing<R> {
  * @description Inline cell editing (Ticket #327): one cell at a time, never a Read-Only Cell. Remembers the focused column, the column of the most recently clicked or edited cell, so F2 and Enter can edit the Active Row's cell in it. A commit reports a changed value through `onCellEdit` (an unchanged value is not reported) and always ends the edit; the host saves it by updating its rows, and a host that rejects it returns `false` or throws without updating its rows, so the row's old value shows again. Tab/Shift+Tab commits and moves on to the next/previous editable cell in display order, selecting its row when it is another row. When an edit ends with nothing focused (its editor was removed), the table takes focus back for keyboard use. A host starts an edit itself by setting its `editCell` signal (Ticket #335): the cell's row becomes the only Selected Row and the Active Row (a `replace` change) and the cell opens for editing, unless it is a Read-Only Cell or is not displayed, and the signal is set back to `null` either way. A request made while another cell is being edited replaces that edit without committing it; editors commit when they lose focus, so a request from a host button arrives after the edit has been committed.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @template R
  * @param {CellEditingOptions<R>} options - Rows, columns, read-only test, selection, host callback and host edit requests.
@@ -1126,7 +1126,7 @@ function useCellEditing<R>({
     selectOnly(requestedCell.rowId);
     startEdit(row, column);
     // Runs once per request; the row lookup uses the rows displayed when the request arrives.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedCell]);
 
   /**

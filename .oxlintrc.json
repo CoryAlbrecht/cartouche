@@ -1,0 +1,76 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "react",
+    "unicorn"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "dist-electron/**",
+    "node_modules/**",
+    "coverage/**",
+    "release/**"
+  ],
+  "rules": {
+    "no-console": "error",
+    "prefer-const": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/no-explicit-any": "warn",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react/immutability": "off",
+    "react/refs": "off",
+    "react/set-state-in-effect": "off",
+    "react/use-memo": "off",
+    "react/preserve-manual-memoization": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/main/**",
+        "src/worker/**",
+        "src/shared/**",
+        "scripts/**"
+      ],
+      "rules": {
+        "react/rules-of-hooks": "off",
+        "react/exhaustive-deps": "off"
+      }
+    },
+    {
+      "files": [
+        "src/shared/logging/**",
+        "tests/**",
+        "scripts/**"
+      ],
+      "rules": {
+        "no-console": "off",
+        "typescript/no-this-alias": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.cjs"
+      ],
+      "rules": {
+        "typescript/no-require-imports": "off"
+      }
+    }
+  ]
+}

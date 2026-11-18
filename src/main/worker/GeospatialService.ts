@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-13
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -1061,7 +1061,7 @@ export class GeospatialService {
    * @description Stages a feature modification or new feature addition into Main's crash-resilient edit cache and forwards it to the Geospatial Worker.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-06
-   * @updated 2026-11-06
+   * @updated 2026-11-18
    * @since 0.1.0-dev
    * @param {string} layerId - Target layer identifier.
    * @param {StagedFeatureEdit} edit - Feature edit or addition payload.
@@ -1095,15 +1095,15 @@ export class GeospatialService {
           ...edit,
           isNew: true,
           properties: {
-            ...(prev.properties ?? {}),
-            ...(edit.properties ?? {})
+            ...prev.properties,
+            ...edit.properties
           }
         };
       } else {
         entry.addedFeatures.push({
           ...edit,
           isNew: true,
-          properties: { ...(edit.properties ?? {}) }
+          properties: { ...edit.properties }
         });
       }
     } else {
@@ -1113,8 +1113,8 @@ export class GeospatialService {
         ...edit,
         id: edit.id,
         properties: {
-          ...(prevMod?.properties ?? {}),
-          ...(edit.properties ?? {})
+          ...prevMod?.properties,
+          ...edit.properties
         }
       });
     }

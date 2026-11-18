@@ -4,7 +4,7 @@
  * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-06
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -23,7 +23,7 @@ import {
   loadPreferences,
   updatePreference
 } from '../../../src/renderer/state/preferencesSignals';
-import type { PreferenceItem, PreferenceControlType } from '../../../src/shared/types';
+import type { PreferenceControlType } from '../../../src/shared/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -223,9 +223,9 @@ describe('Extensible Preferences Subsystem Contracts', () => {
 
     const prevWindow = (globalThis as any).window;
     (globalThis as any).window = {
-      ...(prevWindow || {}),
+      ...prevWindow,
       electronAPI: {
-        ...(prevWindow?.electronAPI || {}),
+        ...prevWindow?.electronAPI,
         getPreferenceValue: async () => ({
           'ui.attributeTable.maxRows': {
             ...pref,

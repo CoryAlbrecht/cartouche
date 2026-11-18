@@ -4,7 +4,7 @@
  * @description Unit tests for renderer styleCompiler verifying Cartouche Symbology compilation, OpenLayers StyleFunction closure caching, painter execution order, disabled component filtering, GradientFillComponent Canvas 2D linear gradients, and format routing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-11
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link compileStyleFunction}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -27,7 +27,6 @@ import {
   compileFlatLayerStyleSync,
   compileLayerStyle,
   isCartoucheStyleDescriptor,
-  wrapStyleWithTemporalFilter,
 } from "../../../src/renderer/map/styleCompiler";
 import {
   setTimeFilterActive,

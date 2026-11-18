@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing Cartouche project state, hierarchical layer tree nodes, metadata, dirty state, selection, visibility, and IPC synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-09
- * @updated 2026-11-15
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link ProjectModel}
  * @see {@link ProjectLayerItem}
@@ -196,7 +196,7 @@ export const mapBackgroundColourSignal = signal<string>(DEFAULT_MAP_BACKGROUND_C
  * @description Sets the Map Background Colour signal (falling back to the default for an empty value) and mirrors it into the current project model's display settings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {string | null | undefined} colour - Opaque CSS colour, or empty for the default.
  * @returns {void}
@@ -207,7 +207,7 @@ export function setMapBackgroundColour(colour: string | null | undefined): void 
     mapBackgroundColourSignal.value = next;
     const project = currentProjectSignal.value;
     if (project) {
-      project.display = { ...(project.display || {}), backgroundColour: next };
+      project.display = { ...project.display, backgroundColour: next };
     }
   });
 }
@@ -228,7 +228,7 @@ export const selectionColourSignal = signal<string>(DEFAULT_SELECTION_COLOUR);
  * @description Sets the Selection Colour signal (falling back to the default for an empty value) and mirrors it into the current project model's display settings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {string | null | undefined} colour - CSS colour (alpha allowed), or empty for the default.
  * @returns {void}
@@ -239,7 +239,7 @@ export function setSelectionColour(colour: string | null | undefined): void {
     selectionColourSignal.value = next;
     const project = currentProjectSignal.value;
     if (project) {
-      project.display = { ...(project.display || {}), selectionColour: next };
+      project.display = { ...project.display, selectionColour: next };
     }
   });
 }

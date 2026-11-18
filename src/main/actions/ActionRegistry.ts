@@ -4,7 +4,7 @@
  * @description Centralized Action registry for the Cartouche main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-10-21
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -80,10 +80,18 @@ class ActionRegistryClass {
     }
   }
 
+  /**
+   * @description Lists every registered action as a serializable definition for IPC: the function mapping is stripped (it cannot be cloned) and its key combination is added, formatted for display.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-04
+   * @updated 2026-11-18
+   * @since 0.1.0-dev
+   * @returns {ActionDefinition[]} The action definitions.
+   */
   public getAllActionDefinitions(): ActionDefinition[] {
     return Array.from(this.actionsMap.values()).map((a) => {
       // Strip functionCall to avoid IPC cloning errors
-      const { functionCall, ...serializableAction } = a;
+      const { functionCall: _functionCall, ...serializableAction } = a;
       return {
         ...serializableAction,
         formattedKey: a.keyCombination ? formatKeyCombination(a.keyCombination) : undefined

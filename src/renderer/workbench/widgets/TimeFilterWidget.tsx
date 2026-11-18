@@ -4,7 +4,7 @@
  * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-12
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TimeFilterControls}
@@ -64,7 +64,6 @@ import {
   computeFrameEnd,
   snapToTemporalStep,
   computeTemporalStepAttribute,
-  calculateActiveTemporalRange,
   autoDetectTemporalRange,
 } from "../../map/timeFilterMath";
 import type { TimeFilterUnit } from "../../../shared/types";

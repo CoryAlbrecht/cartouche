@@ -4,7 +4,7 @@
  * @description Unit tests for Active Layer lifecycle, separation from Selected Layer, batch ingestion activation, and deletion reset (Ticket #92, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-06
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link activeLayerIdSignal}
  * @see {@link selectedNodeIdsSignal}
@@ -169,9 +169,9 @@ describe('Active Layer Lifecycle and Selection Separation (Ticket #92, ADR 0016)
     const calls: Array<{ layerId: string | null; ids: Array<string | number> }> = [];
     const prevWindow = (globalThis as any).window;
     (globalThis as any).window = {
-      ...(prevWindow || {}),
+      ...prevWindow,
       electronAPI: {
-        ...(prevWindow?.electronAPI || {}),
+        ...prevWindow?.electronAPI,
         setFeatureSelection: async (layerId: string | null, selectedFeatureIds: Array<string | number>) => {
           calls.push({ layerId, ids: selectedFeatureIds });
         }
@@ -244,9 +244,9 @@ describe('Active Layer Lifecycle and Selection Separation (Ticket #92, ADR 0016)
     const clearedLayers: string[] = [];
     const prevWindow = (globalThis as any).window;
     (globalThis as any).window = {
-      ...(prevWindow || {}),
+      ...prevWindow,
       electronAPI: {
-        ...(prevWindow?.electronAPI || {}),
+        ...prevWindow?.electronAPI,
         clearLayerEdits: async (layerId: string) => {
           clearedLayers.push(layerId);
         }

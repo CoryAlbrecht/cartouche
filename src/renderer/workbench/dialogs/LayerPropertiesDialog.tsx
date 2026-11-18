@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -74,7 +74,7 @@ import {
 } from "@renderer/state/gisSignals";
 import { Select, type SelectOption } from "@renderer/components/common/Select";
 import { Dialog } from "./Dialog";
-import { TabbedDialogShell, type TabbedDialogTabDef } from "./TabbedDialogShell";
+import { TabbedDialogShell } from "./TabbedDialogShell";
 import { ModalDialog } from "./ModalDialog";
 import { StyleEditor } from "./StyleEditor";
 import { crsCatalogueSignal, listCrsChooserEntries } from "@renderer/state/crsCatalogueSignals";

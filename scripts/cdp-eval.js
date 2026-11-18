@@ -4,18 +4,19 @@
  * @description Evaluates an async JavaScript function body inside the running Cartouche renderer over the DevTools protocol (CDP) and prints the JSON-serialized `return` value, followed by any console errors/warnings and uncaught exceptions raised meanwhile. Under `npm run dev` the body can `await import('/src/...')` to reach the live renderer modules (e.g. `activeMapControllerSignal` in `/src/renderer/state/gisSignals.ts`).
  *
  * Usage:
- *   node scripts/cdp-eval.js <body-file.js>
- *   node scripts/cdp-eval.js -e "<body>"
+ *   node scripts/cdp-eval.js [--target <window title>] <body-file.js>
+ *   node scripts/cdp-eval.js [--target <window title>] -e "<body>"
+ * `--target` evaluates in the first window whose title contains the text, such as a detached dialog; module imports work only in the Workbench window, which owns the Vite dev server page.
  * Exit code 1 when the evaluation throws or the renderer is unreachable.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see scripts/cdp-client.js
  */
 
 import { readFileSync } from 'node:fs';
-import { connectRenderer } from './cdp-client.js';
+import { connectRenderer, takeTargetArg } from './cdp-client.js';
 
 /**
  * @description Reads the function body from `-e <body>` or a file path argument.
@@ -34,20 +35,21 @@ function readBody(argv) {
   if (argv[0]) {
     return readFileSync(argv[0], 'utf8');
   }
-  throw new Error('Usage: node scripts/cdp-eval.js <body-file.js> | -e "<body>"');
+  throw new Error('Usage: node scripts/cdp-eval.js [--target <window title>] <body-file.js> | -e "<body>"');
 }
 
 /**
- * @description Entry point: evaluates the body in the renderer and prints the result and observed problems.
+ * @description Entry point: evaluates the body in the renderer, or the `--target` window, and prints the result and observed problems.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @returns {Promise<number>} Process exit code.
  */
 async function main() {
-  const body = readBody(process.argv.slice(2));
-  const session = await connectRenderer();
+  const { target, rest } = takeTargetArg(process.argv.slice(2));
+  const body = readBody(rest);
+  const session = await connectRenderer(target);
   try {
     await session.send('Runtime.enable');
     const { result, exceptionDetails } = await session.send('Runtime.evaluate', {

@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers, including multi-column Sort Key ordering.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -748,7 +748,7 @@ export class GeospatialEngine {
    * @description Stages an uncommitted feature modification or newly added feature into the engine's per-layer edit cache so subsequent queries reflect the edit immediately.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-06
-   * @updated 2026-11-06
+   * @updated 2026-11-18
    * @since 0.1.0-dev
    * @param {string} layerId - Target layer identifier.
    * @param {StagedFeatureEdit} edit - Feature edit or addition payload.
@@ -777,15 +777,15 @@ export class GeospatialEngine {
           ...edit,
           isNew: true,
           properties: {
-            ...(prev.properties ?? {}),
-            ...(edit.properties ?? {}),
+            ...prev.properties,
+            ...edit.properties,
           },
         };
       } else {
         entry.addedFeatures.push({
           ...edit,
           isNew: true,
-          properties: { ...(edit.properties ?? {}) },
+          properties: { ...edit.properties },
         });
       }
       return;
@@ -797,8 +797,8 @@ export class GeospatialEngine {
       ...edit,
       id: edit.id,
       properties: {
-        ...(prevMod?.properties ?? {}),
-        ...(edit.properties ?? {}),
+        ...prevMod?.properties,
+        ...edit.properties,
       },
     });
   }

@@ -4,7 +4,7 @@
  * @description Unit and component tests for ephemeral per-layer toolbar state conservation, caching, restoration, and fallback mechanisms (Ticket #107).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link captureLayerToolbarState}
  * @see {@link restoreLayerToolbarState}
@@ -36,8 +36,6 @@ import {
 } from '../../../src/renderer/state/gisSignals';
 import {
   captureLayerToolbarState,
-  restoreLayerToolbarState,
-  handleActiveLayerChange,
   getLayerToolbarPreference,
   setLayerToolbarPreference,
   resetLayerToolbarMemoryState

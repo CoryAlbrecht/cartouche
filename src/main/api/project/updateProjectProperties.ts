@@ -4,7 +4,7 @@
  * @description Main Process API function committing a Project Properties dialog draft to the Project Store in one IPC round trip: applies every member present in the patch, sets the Project Dirty State, and broadcasts the updated metadata to all windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-15
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link completeProjectCrs}
@@ -29,7 +29,7 @@ import { completeProjectCrs } from '../../project/projectCrs';
  * @description Applies a {@link ProjectPropertiesPatch} to the active project. The title is trimmed; an empty title is stored as an empty string so the display name falls back to the file base name. An explicit Project CRS replaces or removes `<crs>`, completed with its proj4 (and WKT when available) unless it already carries a proj4; the Recently Used CRSs are stored trimmed to 20; Project Default Styles replace their reserved shared-style entries. Background and selection colours are stored in the project's display settings; the Project Home (absolute, or cleared) and Save Path Mode are stored on the project; distance / area units and the Scale Calculation method go to the measurement settings. Loaded layers keep their absolute in-memory paths, so neither setting disturbs them. Returns false when no project is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-15
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {ProjectPropertiesPatch} patch - Properties to change; absent members are left untouched.
  * @returns {boolean} True when a project was open and the patch was applied.
@@ -55,7 +55,7 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     const next = patch.backgroundColour.trim();
     const current = project.display?.backgroundColour;
     if (next && next !== current) {
-      project.display = { ...(project.display || {}), backgroundColour: next };
+      project.display = { ...project.display, backgroundColour: next };
       changed = true;
     }
   }
@@ -64,7 +64,7 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     const next = patch.selectionColour.trim();
     const current = project.display?.selectionColour;
     if (next && next !== current) {
-      project.display = { ...(project.display || {}), selectionColour: next };
+      project.display = { ...project.display, selectionColour: next };
       changed = true;
     }
   }
@@ -98,7 +98,7 @@ export default function updateProjectProperties(patch: ProjectPropertiesPatch): 
     for (const [key, allowed] of measurementUpdates) {
       const value = patch[key];
       if (typeof value === 'string' && allowed.includes(value) && project.measurement?.[key] !== value) {
-        project.measurement = { ...(project.measurement || {}), [key]: value } as typeof project.measurement;
+        project.measurement = { ...project.measurement, [key]: value } as typeof project.measurement;
         changed = true;
       }
     }

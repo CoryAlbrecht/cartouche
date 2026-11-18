@@ -4,7 +4,7 @@
  * @description Reusable style editor shared by the Layer Properties Styling Tab and the Project Properties Default Styles tab: the style format dropdown, Load / Export / Reset actions, the Cartouche Symbology component editor or the raw text editor (with validation banner and undo/redo history), and the live preview canvas. The editor is controlled: it receives a StyleEditorValue and a geometry kind and reports every change as a value patch through `onChange`, with no dependency on any dialog draft store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link SimpleModeEditor}
@@ -392,7 +392,7 @@ export interface StyleEditorProps {
  * @description Controlled editor for one style value: format selection with per-format text cache, file load/export/reset, Cartouche Symbology component editing or raw text editing with live validation, and a 120×120 preview.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {StyleEditorProps} props - Component properties.
  * @returns {JSX.Element} The editor controls.
@@ -499,7 +499,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
             styleValidationError:
               validation.isValid ? null : validation.error ?? "Invalid style",
             formatCache: {
-              ...(value.formatCache || {}),
+              ...value.formatCache,
               [formatKey]: loaded.content,
             },
           });

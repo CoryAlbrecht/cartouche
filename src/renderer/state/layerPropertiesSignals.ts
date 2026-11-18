@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-13
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -760,7 +760,7 @@ export function updateLayerPropertiesInTree(
  * @description Commits active draft modifications (name, ID, CRS, filter, temporalEnabled, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-11
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -827,7 +827,7 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
         draft.temporal ? draft.temporal.enabled : draft.temporalEnabled,
       temporal: draft.temporal ? { ...draft.temporal } : undefined,
       customProperties: {
-        ...(currentLayer.customProperties || {}),
+        ...currentLayer.customProperties,
         featureFilter: draft.featureFilter.trim(),
       },
     }
@@ -849,7 +849,7 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
                 draft.temporal ? draft.temporal.enabled : draft.temporalEnabled,
               temporal: draft.temporal ? { ...draft.temporal } : undefined,
               customProperties: {
-                ...(desc.customProperties || {}),
+                ...desc.customProperties,
                 featureFilter: draft.featureFilter.trim(),
               },
             }

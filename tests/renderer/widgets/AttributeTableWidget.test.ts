@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -2806,7 +2806,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           (el) => el.tagName === "TABLE"
         )[0];
         let thNodes = findAllNodes(tableEl, (el) => el.tagName === "TH");
-        let handle = findAllNodes(thNodes[1], (el) =>
+        const handle = findAllNodes(thNodes[1], (el) =>
           el.className.includes("table-widget-resize-handle")
         )[0];
 
@@ -3189,7 +3189,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           });
         });
 
-        let dateInput = findAllNodes(
+        const dateInput = findAllNodes(
           container,
           (el) => el.tagName === "INPUT"
         )[0];
@@ -3255,7 +3255,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           });
         });
 
-        let timeInput = findAllNodes(
+        const timeInput = findAllNodes(
           container,
           (el) => el.tagName === "INPUT"
         )[0];
@@ -3300,7 +3300,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           });
         });
 
-        let dtInput = findAllNodes(
+        const dtInput = findAllNodes(
           container,
           (el) => el.tagName === "INPUT"
         )[0];
@@ -3680,7 +3680,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
           });
         });
 
-        let textInput = findAllNodes(
+        const textInput = findAllNodes(
           container,
           (el) => el.tagName === "INPUT"
         )[0];
