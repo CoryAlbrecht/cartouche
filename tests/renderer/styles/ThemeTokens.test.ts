@@ -1,7 +1,7 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive.
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive; and (#364) that the TableWidget outer border reads the input border colour.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
  * @updated 2026-11-19
@@ -1823,9 +1823,9 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     assert.equal(tokenValue("--cartouche-theme-fg-secondary"), "#475569");
   });
 
-  it("maps every TableWidget token to the base token the spec assigns it (Spec #322 / Ticket #323)", () => {
+  it("maps every TableWidget token to the token it reads from (Spec #322 / Tickets #323, #364)", () => {
     const expected: Record<string, string> = {
-      "--cartouche-table-border": "--cartouche-theme-border-dark",
+      "--cartouche-table-border": "--cartouche-input-border",
       "--cartouche-table-column-line": "--cartouche-theme-border-strong",
       "--cartouche-table-row-line": "--cartouche-theme-border",
       "--cartouche-table-header-bg": "--cartouche-theme-surface-widget",

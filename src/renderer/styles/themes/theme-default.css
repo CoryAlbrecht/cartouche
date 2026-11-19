@@ -346,7 +346,7 @@
   --cartouche-table-fg: var(--cartouche-theme-fg);
   --cartouche-table-header-bg: var(--cartouche-theme-surface-widget);
   --cartouche-table-header-fg: var(--cartouche-theme-fg);
-  --cartouche-table-border: var(--cartouche-theme-border-dark);
+  --cartouche-table-border: var(--cartouche-input-border);
   --cartouche-table-column-line: var(--cartouche-theme-border-strong);
   --cartouche-table-row-line: var(--cartouche-theme-border);
   --cartouche-table-row-hover-bg: var(--cartouche-theme-surface-hover);

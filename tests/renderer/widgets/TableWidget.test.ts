@@ -4,7 +4,7 @@
  * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324); and (Ticket #328) host cellStyle borders over the shared lines and on selected rows, and cell backgrounds ordered above plain and alternating rows and below the Selected Row and Active Row colours; and (#360) the row Hover colour, above plain and alternating rows and below the Selected Row and Active Row colours.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link TableWidget}
  */
@@ -266,7 +266,7 @@ describe("TableWidget theme tokens and typography (Ticket #323)", () => {
     dom = null;
   });
 
-  it("draws a dark outer border around the table from --cartouche-table-border", async () => {
+  it("draws the outer border around the table from --cartouche-table-border", async () => {
     await render();
     const [frame] = findElementsByClass(dom!.container, "table-widget-frame");
     assert.equal(
