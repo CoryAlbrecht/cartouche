@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -184,6 +184,8 @@
   --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
   --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
   --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
+  /* OverlapTabWidget tab strip behind the tabs; the pane reads --cartouche-widget-content-bg */
+  --cartouche-overlap-tab-strip-bg: var(--cartouche-theme-surface-active);
 
   /* Dialog Buttons: primary (OK, Apply, Add), secondary (Cancel, Browse…) and a pressed toggle (Toggle Layer Edit Mode) */
   --cartouche-button-primary-bg: var(--cartouche-theme-primary);
@@ -228,6 +230,8 @@
   --cartouche-widget-control-hover-bg: var(--cartouche-theme-surface-alt);
   --cartouche-widget-control-hover-fg: var(--cartouche-theme-fg-primary);
   --cartouche-widget-menu-item-hover-bg: var(--cartouche-theme-surface-alt);
+  /* BasicWidget header title text */
+  --cartouche-widget-title-fg: var(--cartouche-theme-fg-primary);
 
   /* Workbench Shell: the Workbench window, its main body and Dockview area, the
      map canvas behind the layers, and a detached window hosting a dialog */
@@ -235,6 +239,9 @@
   --cartouche-workbench-fg: var(--cartouche-theme-fg);
   --cartouche-map-viewport-bg: var(--cartouche-theme-surface);
   --cartouche-detached-window-bg: var(--cartouche-theme-surface);
+  /* Detached window document body, behind the portal container */
+  --cartouche-detached-window-body-bg: var(--cartouche-theme-bg);
+  --cartouche-detached-window-body-fg: var(--cartouche-theme-fg);
 
   /* Layer Tree (LayerTreeWidget): panel and viewport, header bar, Tree Node Row Hover and
      Selected, the project row's divider, chevrons, layer metadata, the empty-project state,
@@ -487,6 +494,8 @@
 
   /* Timestamp Spinner: highlight of the segment being edited */
   --cartouche-timestamp-segment-active-bg: var(--cartouche-theme-info-subtle);
+  /* Timestamp Spinner: the - and : separators between segments */
+  --cartouche-timestamp-divider-fg: var(--cartouche-theme-fg-muted);
 
   /* TimeFilterWidget: playback buttons (Normal reads the secondary button tokens)
      and the range scrubber slider track and thumb */
@@ -497,6 +506,12 @@
   --cartouche-time-filter-thumb-hover-bg: var(--cartouche-theme-primary-hover);
   --cartouche-time-filter-thumb-pressed-bg: var(--cartouche-theme-primary-active);
   --cartouche-time-filter-thumb-disabled-bg: var(--cartouche-theme-fg-muted);
+  /* TimeFilterWidget: the divider before the Step input, the line left of
+     its 1.00 arrows, and the Frame caption and current frame label */
+  --cartouche-time-filter-divider-bg: var(--cartouche-theme-border);
+  --cartouche-time-filter-step-arrows-border: var(--cartouche-theme-border);
+  --cartouche-time-filter-frame-caption-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-time-filter-frame-label-fg: var(--cartouche-theme-fg-primary);
 
   /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
   --cartouche-focus-color: var(--cartouche-theme-primary);
@@ -518,6 +533,9 @@
   /* Drop Targets & Highlights */
   --cartouche-drop-target-bg: var(--cartouche-theme-accent-subtle);
   --cartouche-drop-target-border: var(--cartouche-theme-primary);
+  /* Drop overlay badge ("Group as Tabs", "Add Tab to Group"); its face reads --cartouche-drop-target-border */
+  --cartouche-drop-target-badge-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-drop-target-badge-shadow: var(--cartouche-theme-shadow);
 
   /* Colour & Gradient Pickers */
   --cartouche-picker-control-border: var(--cartouche-theme-border);
@@ -535,6 +553,14 @@
   --cartouche-picker-swatch-checker-light: var(--cartouche-theme-checker-light);
   --cartouche-picker-swatch-checker-dark: var(--cartouche-theme-checker-dark);
   --cartouche-picker-swatch-outline: var(--cartouche-theme-fg-subtle);
+  /* ColourPickerWidget channel labels under the channel inputs */
+  --cartouche-picker-channel-label-fg: var(--cartouche-theme-fg-muted);
+  /* Picker dialog frame (PickerDialogFrame): text, border and footer that
+     differ from the Dialog tokens; its face, shadow and footer line read
+     --cartouche-dialog-bg, -shadow and -footer-border */
+  --cartouche-picker-dialog-fg: var(--cartouche-theme-fg);
+  --cartouche-picker-dialog-border: var(--cartouche-theme-border);
+  --cartouche-picker-dialog-footer-bg: var(--cartouche-theme-surface-alt);
 }
 
 /* Global Reset & Theme Root Application */

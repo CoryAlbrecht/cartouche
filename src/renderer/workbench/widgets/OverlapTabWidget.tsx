@@ -4,7 +4,7 @@
  * @description Tabbed container subclass of BasicWidget hosting multiple tool widgets, managing tab selection, drag-and-drop tab extraction, and single-child auto-dissolution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see docs/adr/0025-flex-proportional-docking-and-overlap-tab-widgets.md (ADR 0025)
@@ -90,7 +90,7 @@ export interface OverlapTabWidgetProps extends Partial<BasicWidgetProps> {
  * @description Subclass of BasicWidget providing a tabbed container for grouping overlappable tool widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {OverlapTabWidgetProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered tabbed container element or null when empty.
@@ -382,14 +382,12 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
               justifyContent: "center",
             }}>
             <div
+              className='widget-drop-overlay-badge'
               style={{
-                backgroundColor: "var(--cartouche-drop-target-border)",
-                color: "var(--cartouche-theme-fg-inverted)",
                 padding: "4px 10px",
                 borderRadius: "4px",
                 fontSize: "0.75rem",
                 fontWeight: 600,
-                boxShadow: "0 2px 4px var(--cartouche-theme-shadow)",
               }}>
               Add Tab to Group
             </div>
@@ -402,8 +400,6 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
           style={{
             display: "flex",
             alignItems: "center",
-            backgroundColor: "var(--cartouche-theme-surface-active)",
-            borderBottom: "1px solid var(--cartouche-theme-border-strong)",
             overflowX: "auto",
             flexShrink: 0,
             minHeight: "28px",
@@ -444,7 +440,6 @@ export const OverlapTabWidget: React.FC<OverlapTabWidgetProps> = (props) => {
             flexDirection: "column",
             overflow: "hidden",
             position: "relative",
-            backgroundColor: "var(--cartouche-theme-surface)",
           }}>
           {activeTab
             && activeTab.render({

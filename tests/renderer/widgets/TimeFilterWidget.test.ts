@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -724,8 +724,8 @@ describe("TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket 
     );
 
     assert.ok(
-      markup.includes("var(--cartouche-theme-fg-muted"),
-      "Frame descriptor must render using var(--cartouche-theme-fg-muted)"
+      markup.includes("time-filter-current-frame-caption"),
+      "Frame descriptor must have class time-filter-current-frame-caption, coloured from workbench.css (#361)"
     );
     assert.ok(
       markup.includes("Frame:"),

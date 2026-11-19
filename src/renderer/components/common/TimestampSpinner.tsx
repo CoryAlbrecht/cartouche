@@ -4,7 +4,7 @@
  * @description Discrete, segmented numeric input component providing non-cascading calendar date and timestamp editing strictly in UTC epoch milliseconds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link TimestampSpinner}
  * @see {@link UtcTimestampParts}
@@ -279,7 +279,7 @@ const SPINNER_BUTTON_BASE_STYLE: React.CSSProperties = {
  * @description Discrete non-cascading segmented UTC timestamp spinner component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {TimestampSpinnerProps} props - Component properties.
  * @returns {JSX.Element} The rendered timestamp spinner component.
@@ -549,11 +549,7 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       {renderSegmentInput("year", parts.year, 4, yearInputRef, "Year")}
       <span
         className='timestamp-spinner-divider'
-        style={{
-          userSelect: "none",
-          padding: "0 0.05rem",
-          color: "var(--cartouche-theme-fg-muted, #666666)",
-        }}>
+        style={{ userSelect: "none", padding: "0 0.05rem" }}>
         -
       </span>
 
@@ -561,11 +557,7 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       {renderSegmentInput("month", parts.month, 2, monthInputRef, "Month")}
       <span
         className='timestamp-spinner-divider'
-        style={{
-          userSelect: "none",
-          padding: "0 0.05rem",
-          color: "var(--cartouche-theme-fg-muted, #666666)",
-        }}>
+        style={{ userSelect: "none", padding: "0 0.05rem" }}>
         -
       </span>
 
@@ -581,11 +573,7 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       {renderSegmentInput("hour", parts.hour, 2, hourInputRef, "Hour")}
       <span
         className='timestamp-spinner-divider'
-        style={{
-          userSelect: "none",
-          padding: "0 0.05rem",
-          color: "var(--cartouche-theme-fg-muted, #666666)",
-        }}>
+        style={{ userSelect: "none", padding: "0 0.05rem" }}>
         :
       </span>
 
@@ -593,11 +581,7 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       {renderSegmentInput("minute", parts.minute, 2, minuteInputRef, "Minute")}
       <span
         className='timestamp-spinner-divider'
-        style={{
-          userSelect: "none",
-          padding: "0 0.05rem",
-          color: "var(--cartouche-theme-fg-muted, #666666)",
-        }}>
+        style={{ userSelect: "none", padding: "0 0.05rem" }}>
         :
       </span>
 

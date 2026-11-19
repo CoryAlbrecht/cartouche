@@ -4,7 +4,7 @@
  * @description Standard subclass of Widget featuring a 2-control header bar (label, close button) and content body.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Widget}
  */
@@ -237,7 +237,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -598,14 +598,12 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
             justifyContent: "center",
           }}>
           <div
+            className='widget-drop-overlay-badge'
             style={{
-              backgroundColor: "var(--cartouche-drop-target-border)",
-              color: "var(--cartouche-theme-fg-inverted)",
               padding: "4px 10px",
               borderRadius: "4px",
               fontSize: "0.75rem",
               fontWeight: 600,
-              boxShadow: "0 2px 4px var(--cartouche-theme-shadow)",
             }}>
             Group as Tabs
           </div>
@@ -729,7 +727,6 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
               style={{
                 fontWeight: 600,
                 fontSize: "0.875rem",
-                color: "var(--cartouche-theme-fg-primary)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",

@@ -4,7 +4,7 @@
  * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link parseCssColor}
@@ -84,7 +84,7 @@ export interface ColourPickerWidgetProps extends Omit<
  * @description Custom color picker widget subclassing BasicWidget, embeddable across Dockview panels, dialogs, and parent widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {ColourPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ColourPickerWidget React component.
@@ -559,7 +559,6 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             height: "140px",
             minHeight: "120px",
             backgroundColor: `rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})`,
-            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
             borderRadius: "4px",
             flexShrink: 0,
             boxSizing: "border-box",
@@ -583,7 +582,6 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
             backgroundImage:
               "linear-gradient(to right, #ffffff, transparent), linear-gradient(to top, #000000, transparent)",
             borderRadius: "4px",
-            border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
             cursor: "crosshair",
             touchAction: "none",
             userSelect: "none",
@@ -631,7 +629,6 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               background:
                 "linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)",
               borderRadius: "3px",
-              border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
               cursor: "ew-resize",
               touchAction: "none",
               userSelect: "none",
@@ -668,7 +665,6 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                 minHeight: "16px",
                 background: `linear-gradient(to right, transparent, rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})), conic-gradient(#cccccc 90deg, #ffffff 90deg 180deg, #cccccc 180deg 270deg, #ffffff 270deg) 0 0 / 8px 8px`,
                 borderRadius: "3px",
-                border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
                 cursor: "ew-resize",
                 touchAction: "none",
                 userSelect: "none",
@@ -775,11 +771,8 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                     title={chan.label}
                   />
                   <span
-                    style={{
-                      fontSize: "0.9rem",
-                      color: "var(--cartouche-theme-fg-muted, #64748b)",
-                      marginTop: "1px",
-                    }}>
+                    className='colour-picker-channel-label'
+                    style={{ fontSize: "0.9rem", marginTop: "1px" }}>
                     {chan.label}
                   </span>
                 </div>

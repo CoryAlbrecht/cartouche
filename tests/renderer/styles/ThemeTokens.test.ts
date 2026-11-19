@@ -1,7 +1,7 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read.
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
  * @updated 2026-11-19
@@ -670,6 +670,242 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       [],
       `workbench.css colour declarations read Tier 1 primitives:\n${offenders.join("\n")}`
     );
+  });
+
+  /**
+   * Tier 1 primitive reads the TypeScript sources may keep, keyed by file, each
+   * with its reason. Only typography reads remain: guard 2 excepts `font-family`
+   * in workbench.css for the same reason.
+   */
+  const tsTier1ReadExceptions: Record<
+    string,
+    { token: string; reason: string }[]
+  > = {
+    "src/renderer/workbench/dialogs/ProjectCrsTab.tsx": [
+      {
+        token: "--cartouche-theme-font-family-mono",
+        reason:
+          "inline font-family of the WKT box: a typography primitive (ADR 0013), not a colour",
+      },
+    ],
+    "src/renderer/workbench/panels/ConsolePanel.tsx": [
+      {
+        token: "--cartouche-theme-font-family-mono",
+        reason:
+          "inline font-family of the console log: a typography primitive (ADR 0013), not a colour",
+      },
+    ],
+  };
+
+  it("reads no --cartouche-theme-* Tier 1 primitive in the TypeScript sources, except the listed font-family reads (#361)", () => {
+    const offenders: string[] = [];
+    for (const { file, text } of sources) {
+      const allowed = (tsTier1ReadExceptions[file] ?? []).map((e) => e.token);
+      for (const token of readTokens(text)) {
+        if (
+          token.startsWith("--cartouche-theme-")
+          && !TIER2_TOKENS_WITH_THEME_PREFIX.includes(token)
+          && !allowed.includes(token)
+        )
+          offenders.push(`${file}: ${token}`);
+      }
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      `TypeScript sources read Tier 1 primitives. Read a Tier 2 token from a workbench.css class instead (ADR 0027 § Token Scopes):\n${offenders.join("\n")}`
+    );
+    // Every exception is still needed, so the list never goes slack.
+    for (const [file, exceptions] of Object.entries(tsTier1ReadExceptions)) {
+      const text = sources.find((s) => s.file === file)?.text ?? "";
+      for (const { token } of exceptions)
+        assert.ok(
+          readTokens(text).has(token),
+          `${file} no longer reads ${token}: remove its exception`
+        );
+    }
+  });
+
+  it("defines the Tier 2 tokens for the colours moved out of renderer TSX, each mapped to the primitive the inline style read (#361)", () => {
+    assertMappings({
+      "--cartouche-picker-dialog-fg": "--cartouche-theme-fg",
+      "--cartouche-picker-dialog-border": "--cartouche-theme-border",
+      "--cartouche-picker-dialog-footer-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-picker-channel-label-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-drop-target-badge-fg": "--cartouche-theme-fg-inverted",
+      "--cartouche-drop-target-badge-shadow": "--cartouche-theme-shadow",
+      "--cartouche-overlap-tab-strip-bg": "--cartouche-theme-surface-active",
+      "--cartouche-widget-title-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-detached-window-body-bg": "--cartouche-theme-bg",
+      "--cartouche-detached-window-body-fg": "--cartouche-theme-fg",
+      "--cartouche-timestamp-divider-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-time-filter-divider-bg": "--cartouche-theme-border",
+      "--cartouche-time-filter-step-arrows-border": "--cartouche-theme-border",
+      "--cartouche-time-filter-frame-caption-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-time-filter-frame-label-fg": "--cartouche-theme-fg-primary",
+    });
+  });
+
+  /**
+   * Each colour declaration moved out of renderer TSX by #361: selector,
+   * property, the Tier 2 value its workbench.css rule declares, and the colour
+   * the inline Tier 1 read rendered on `main`.
+   */
+  const movedFromTsx: [string, string, string, string][] = [
+    // PickerDialogFrame
+    [
+      ".picker-dialog-box",
+      "background-color",
+      "var(--cartouche-dialog-bg)",
+      "#ffffff",
+    ],
+    [
+      ".picker-dialog-box",
+      "color",
+      "var(--cartouche-picker-dialog-fg)",
+      "#000000",
+    ],
+    [
+      ".picker-dialog-box",
+      "box-shadow",
+      "0 0.5rem 1.5rem var(--cartouche-dialog-shadow)",
+      "0 0.5rem 1.5rem rgba(0, 0, 0, 0.24)",
+    ],
+    [
+      ".picker-dialog-box",
+      "border",
+      "0.0625rem solid var(--cartouche-picker-dialog-border)",
+      "0.0625rem solid #e2e8f0",
+    ],
+    [
+      ".picker-dialog-footer",
+      "background-color",
+      "var(--cartouche-picker-dialog-footer-bg)",
+      "#f1f5f9",
+    ],
+    [
+      ".picker-dialog-footer",
+      "border-top",
+      "0.0625rem solid var(--cartouche-dialog-footer-border)",
+      "0.0625rem solid #e2e8f0",
+    ],
+    // BasicWidget and OverlapTabWidget
+    [
+      ".widget-drop-overlay-badge",
+      "color",
+      "var(--cartouche-drop-target-badge-fg)",
+      "#ffffff",
+    ],
+    [
+      ".widget-drop-overlay-badge",
+      "box-shadow",
+      "0 0.125rem 0.25rem var(--cartouche-drop-target-badge-shadow)",
+      "0 0.125rem 0.25rem rgba(0, 0, 0, 0.16)",
+    ],
+    [
+      ".basic-widget-title",
+      "color",
+      "var(--cartouche-widget-title-fg)",
+      "#0f172a",
+    ],
+    [
+      ".overlap-tab-strip",
+      "background-color",
+      "var(--cartouche-overlap-tab-strip-bg)",
+      "#e2e8f0",
+    ],
+    [
+      ".overlap-tab-strip",
+      "border-bottom",
+      "0.0625rem solid var(--cartouche-overlap-tab-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".overlap-tab-pane",
+      "background-color",
+      "var(--cartouche-widget-content-bg)",
+      "#ffffff",
+    ],
+    // ColourPickerWidget
+    ...[
+      ".colour-picker-preview-box",
+      ".colour-picker-surface",
+      ".colour-picker-hue-strip",
+      ".colour-picker-alpha-strip",
+    ].map((selector): [string, string, string, string] => [
+      selector,
+      "border",
+      "0.0625rem solid var(--cartouche-picker-control-border)",
+      "0.0625rem solid #e2e8f0",
+    ]),
+    [
+      ".colour-picker-channel-label",
+      "color",
+      "var(--cartouche-picker-channel-label-fg)",
+      "#64748b",
+    ],
+    // TimestampSpinner, TimeFilterControls and TimeFilterWidget
+    [
+      ".timestamp-spinner-divider",
+      "color",
+      "var(--cartouche-timestamp-divider-fg)",
+      "#64748b",
+    ],
+    [
+      ".time-filter-divider",
+      "background-color",
+      "var(--cartouche-time-filter-divider-bg)",
+      "#e2e8f0",
+    ],
+    [
+      ".time-filter-step-arrows",
+      "border-left",
+      "0.0625rem solid var(--cartouche-time-filter-step-arrows-border)",
+      "0.0625rem solid #e2e8f0",
+    ],
+    [
+      ".time-filter-current-frame-caption",
+      "color",
+      "var(--cartouche-time-filter-frame-caption-fg)",
+      "#64748b",
+    ],
+    [
+      ".time-filter-current-frame-label",
+      "color",
+      "var(--cartouche-time-filter-frame-label-fg)",
+      "#0f172a",
+    ],
+    // DetachedWindowPortal and LayerTreeWidget
+    [
+      ".detached-window-body",
+      "background-color",
+      "var(--cartouche-detached-window-body-bg)",
+      "#ffffff",
+    ],
+    [
+      ".detached-window-body",
+      "color",
+      "var(--cartouche-detached-window-body-fg)",
+      "#000000",
+    ],
+    [
+      ".layer-tree-viewport",
+      "background-color",
+      "var(--cartouche-layer-tree-bg)",
+      "#ffffff",
+    ],
+  ];
+
+  it("declares the colours moved out of renderer TSX in workbench.css classes, rendering the same colours (#361)", () => {
+    for (const [selector, property, value, colour] of movedFromTsx) {
+      const actual = selectorDeclaration(selector, property);
+      assert.equal(actual, value, `${selector} ${property}`);
+      assert.equal(
+        resolveThemeTokens(value),
+        colour,
+        `${selector} ${property} must still render ${colour}`
+      );
+    }
   });
 
   it("reads every --cartouche-* and --dockview-* token theme-default.css defines, in theme-default.css, workbench.css or the TypeScript sources (#360)", () => {

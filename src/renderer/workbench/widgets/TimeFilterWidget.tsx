@@ -4,7 +4,7 @@
  * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TimeFilterControls}
@@ -118,7 +118,7 @@ export interface TimeFilterWidgetProps extends Omit<
  * @description Dockable panel providing global temporal filtering controls, continuous scrubbing, and range settings. The Enabled toggle and the From / To / Step / Unit controls come from the shared TimeFilterControls module, bound to the time filter signals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-12
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {TimeFilterWidgetProps} props - Widget props.
  * @returns {React.ReactElement} Time filter widget element.
@@ -396,8 +396,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               border: "none",
             }}>
             <span
+              className='time-filter-current-frame-caption'
               style={{
-                color: "var(--cartouche-theme-fg-muted, #64748b)",
                 fontSize: "0.75rem",
                 fontFamily: "sans-serif",
                 fontWeight: 500,
@@ -410,7 +410,6 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
                 fontFamily:
                   "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                 fontSize: "0.8333rem",
-                color: "var(--cartouche-theme-fg-primary, #0f172a)",
               }}>
               {currentFrameLabel}
             </span>

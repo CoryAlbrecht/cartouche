@@ -4,7 +4,7 @@
  * @description Shared modal frame for the picker dialogs (ColourPickerDialog, GradientPickerDialog): a backdrop portaled into a target container, a titled header with a close button, a scrolling body for the hosted picker widget, and localized Cancel / Apply footer buttons. Escape on the container's window and clicks on the backdrop cancel.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link GradientPickerDialog}
@@ -58,7 +58,7 @@ function resolveWindowContext(
  * @description Centered in-window modal frame hosting a picker widget, with a title, localized Cancel and Apply buttons (`dialog_cancel`, `dialog_apply`), Escape and backdrop-click cancellation, and ownerDocument container targeting. Render it only while the dialog is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {PickerDialogFrameProps} props - Component properties.
  * @returns {React.ReactElement} Rendered portal (or inline content when no container is available).
@@ -123,18 +123,13 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
       }}>
       <div
         ref={dialogBoxRef}
-        className={`${classPrefix}-box`}
+        className={`${classPrefix}-box picker-dialog-box`}
         onClick={(e) => e.stopPropagation()}
         style={{
           width,
           maxWidth: "95vw",
           maxHeight: "90vh",
-          backgroundColor: "var(--cartouche-theme-surface, #ffffff)",
-          color: "var(--cartouche-theme-fg, #000000)",
           borderRadius: "6px",
-          boxShadow:
-            "0 8px 24px var(--cartouche-theme-shadow-strong, rgba(0, 0, 0, 0.3))",
-          border: "1px solid var(--cartouche-theme-border, #cbd5e1)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -177,11 +172,9 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
 
         {/* Footer Actions: Cancel & Apply */}
         <div
-          className={`${classPrefix}-footer`}
+          className={`${classPrefix}-footer picker-dialog-footer`}
           style={{
             padding: "10px 14px",
-            backgroundColor: "var(--cartouche-theme-surface-alt, #f8fafc)",
-            borderTop: "1px solid var(--cartouche-theme-border, #cbd5e1)",
             display: "flex",
             justifyContent: "flex-end",
             gap: "8px",

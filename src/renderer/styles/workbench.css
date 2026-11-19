@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -543,6 +543,11 @@
   background-color: var(--cartouche-widget-header-bg);
   color: var(--cartouche-widget-header-fg);
   border-bottom: 1px solid var(--cartouche-widget-header-border);
+}
+
+/* BasicWidget header title text; its size and truncation stay inline. */
+.basic-widget-title {
+  color: var(--cartouche-widget-title-fg);
 }
 
 .basic-widget-body {
@@ -1437,6 +1442,12 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--cartouche-detached-window-bg);
+}
+
+/* Body of a detached window's document, set by DetachedWindowPortal. */
+.detached-window-body {
+  background-color: var(--cartouche-detached-window-body-bg);
+  color: var(--cartouche-detached-window-body-fg);
 }
 
 .detached-portal-container .preferences-modal-backdrop {
@@ -2497,6 +2508,25 @@
   border-top: 0.0625rem solid var(--cartouche-input-border);
 }
 
+/* Time Filter divider before the Step input, the column holding the Step
+   input's 1.00 arrows, and the current frame caption and label. Their layout
+   stays inline. */
+.time-filter-divider {
+  background-color: var(--cartouche-time-filter-divider-bg);
+}
+
+.time-filter-step-arrows {
+  border-left: 0.0625rem solid var(--cartouche-time-filter-step-arrows-border);
+}
+
+.time-filter-current-frame-caption {
+  color: var(--cartouche-time-filter-frame-caption-fg);
+}
+
+.time-filter-current-frame-label {
+  color: var(--cartouche-time-filter-frame-label-fg);
+}
+
 /* TimestampSpinner segment inputs (year, month, day, hour, minute, second). */
 .timestamp-spinner-segment {
   box-sizing: border-box;
@@ -2520,6 +2550,11 @@
 
 .timestamp-spinner-segment.is-focused {
   background-color: var(--cartouche-timestamp-segment-active-bg);
+}
+
+/* TimestampSpinner separators between segments. */
+.timestamp-spinner-divider {
+  color: var(--cartouche-timestamp-divider-fg);
 }
 
 .timestamp-spinner-segment:disabled {
@@ -3265,6 +3300,24 @@
   font-weight: 600;
 }
 
+/* Overlap tab strip behind the tabs, and the pane under it. Layout stays inline. */
+.overlap-tab-strip {
+  background-color: var(--cartouche-overlap-tab-strip-bg);
+  border-bottom: 0.0625rem solid var(--cartouche-overlap-tab-border);
+}
+
+.overlap-tab-pane {
+  background-color: var(--cartouche-widget-content-bg);
+}
+
+/* Badge centred in the BasicWidget and OverlapTabWidget center-overlap drop
+   overlay ("Group as Tabs", "Add Tab to Group"). */
+.widget-drop-overlay-badge {
+  background-color: var(--cartouche-drop-target-border);
+  color: var(--cartouche-drop-target-badge-fg);
+  box-shadow: 0 0.125rem 0.25rem var(--cartouche-drop-target-badge-shadow);
+}
+
 /* Colour and Gradient picker controls: icon buttons, dropdowns and text fields.
    Icon buttons take their width and height inline from the UI icon size
    preference, matching the inline-sized actions-row spacer. */
@@ -3318,6 +3371,20 @@
   text-align: center;
 }
 
+/* ColourPickerWidget frames around the preview box, saturation/value surface
+   and hue and alpha strips; their size and fill stay inline. */
+.colour-picker-preview-box,
+.colour-picker-surface,
+.colour-picker-hue-strip,
+.colour-picker-alpha-strip {
+  border: 0.0625rem solid var(--cartouche-picker-control-border);
+}
+
+/* ColourPickerWidget channel label under each channel input. */
+.colour-picker-channel-label {
+  color: var(--cartouche-picker-channel-label-fg);
+}
+
 /* Colour and Gradient picker dialog header bar (PickerDialogFrame). */
 .picker-dialog-header {
   display: flex;
@@ -3329,6 +3396,19 @@
   font-size: 0.9375rem;
   font-weight: 600;
   user-select: none;
+}
+
+/* Picker dialog box and footer (PickerDialogFrame). Size and layout stay inline. */
+.picker-dialog-box {
+  background-color: var(--cartouche-dialog-bg);
+  color: var(--cartouche-picker-dialog-fg);
+  box-shadow: 0 0.5rem 1.5rem var(--cartouche-dialog-shadow);
+  border: 0.0625rem solid var(--cartouche-picker-dialog-border);
+}
+
+.picker-dialog-footer {
+  background-color: var(--cartouche-picker-dialog-footer-bg);
+  border-top: 0.0625rem solid var(--cartouche-dialog-footer-border);
 }
 
 /* Gradient stop toggles: intermediate stops on the track; boundary stops take

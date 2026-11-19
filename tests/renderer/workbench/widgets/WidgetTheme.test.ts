@@ -1,10 +1,10 @@
 /**
  * @file WidgetTheme.test.ts
  * @module tests/renderer/workbench/widgets/WidgetTheme.test
- * @description Unit tests verifying that Widget and BasicWidget omit hardcoded inline background and border styles by default, bind to theme CSS tokens, correctly accept custom prop overrides, and synchronize detached window body styles (ADR 0027 / Ticket #197).
+ * @description Unit tests verifying that Widget and BasicWidget omit hardcoded inline background and border styles by default, bind to theme CSS tokens, correctly accept custom prop overrides, and give the detached window body the detached-window-body class (ADR 0027 / Ticket #197, #361).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link BasicWidget}
@@ -469,25 +469,22 @@ describe("Widget Theme Binding & Inline Style Decoupling (Ticket #197)", () => {
     );
   });
 
-  it("verifies that DetachedWindowPortal initializes child window body style with theme background token", () => {
+  it("verifies that DetachedWindowPortal gives the child window body the detached-window-body class, whose colours come from workbench.css Tier 2 tokens (#361)", () => {
     const portalPath = path.resolve(
       process.cwd(),
       "src/renderer/components/common/DetachedWindowPortal.tsx"
     );
     const content = fs.readFileSync(portalPath, "utf-8");
 
-    assert.ok(
-      /childWindow\.document\.body\.style\.background\s*=\s*"var\(--cartouche-theme-bg, #ffffff\)";/.test(
-        content
-      ),
-      "DetachedWindowPortal must set childWindow body background to var(--cartouche-theme-bg, #ffffff)"
+    assert.match(
+      content,
+      /childWindow\.document\.body\.className\s*=\s*"detached-window-body";/,
+      "DetachedWindowPortal must give the childWindow body the detached-window-body class"
     );
-
-    assert.ok(
-      /childWindow\.document\.body\.style\.color\s*=\s*"var\(--cartouche-theme-fg, #000000\)";/.test(
-        content
-      ),
-      "DetachedWindowPortal must set childWindow body color to var(--cartouche-theme-fg, #000000)"
+    assert.doesNotMatch(
+      content,
+      /body\.style\.(background|color)\b/,
+      "DetachedWindowPortal must not set the childWindow body colours inline"
     );
   });
 });
