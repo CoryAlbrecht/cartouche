@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -17,8 +17,8 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg);
+  background-color: var(--cartouche-workbench-bg);
+  color: var(--cartouche-workbench-fg);
   font-size: var(--cartouche-ui-basefont-size);
 }
 
@@ -557,7 +557,7 @@
   flex: 1;
   overflow: hidden;
   position: relative;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-workbench-bg);
 }
 
 .dockview-wrapper {
@@ -565,7 +565,7 @@
   position: relative;
   overflow: hidden;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-workbench-bg);
 }
 
 /* Light Clean Dockview Overrides */
@@ -595,7 +595,7 @@
 
 /* OpenLayers Canvas Container Styling */
 .ol-viewport {
-  background-color: var(--cartouche-theme-surface) !important;
+  background-color: var(--cartouche-map-viewport-bg) !important;
 }
 
 /* =========================================================================
@@ -644,12 +644,12 @@
 }
 
 .widget-control-btn:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-  color: var(--cartouche-theme-fg-primary) !important;
+  background-color: var(--cartouche-widget-control-hover-bg);
+  color: var(--cartouche-widget-control-hover-fg) !important;
 }
 
 .widget-menu-item:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-widget-menu-item-hover-bg);
 }
 
 .toolbar-grabber {
@@ -1520,7 +1520,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-detached-window-bg);
 }
 
 .detached-portal-container .preferences-modal-backdrop {
@@ -1800,8 +1800,8 @@
   align-items: stretch;
   justify-content: stretch;
   padding: 0.1rem;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-picker-button-bg);
+  border: 1px solid var(--cartouche-picker-button-border);
   border-radius: 0.25rem;
   cursor: pointer;
   transition:
@@ -1811,14 +1811,14 @@
 }
 
 .picker-button:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-color: var(--cartouche-theme-fg-subtle);
+  background-color: var(--cartouche-picker-button-hover-bg);
+  border-color: var(--cartouche-picker-button-hover-border);
 }
 
 .picker-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-picker-button-disabled-bg);
 }
 
 .picker-button-swatch {
@@ -1828,10 +1828,10 @@
   height: 100%;
   border-radius: 0.125rem;
   overflow: hidden;
-  background-color: var(--cartouche-theme-checker-light);
+  background-color: var(--cartouche-picker-swatch-checker-light);
   background-image:
-    linear-gradient(45deg, var(--cartouche-theme-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-theme-checker-dark) 75%),
-    linear-gradient(45deg, var(--cartouche-theme-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-theme-checker-dark) 75%);
+    linear-gradient(45deg, var(--cartouche-picker-swatch-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-picker-swatch-checker-dark) 75%),
+    linear-gradient(45deg, var(--cartouche-picker-swatch-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-picker-swatch-checker-dark) 75%);
   background-size: 0.5rem 0.5rem;
   background-position: 0 0, 0.25rem 0.25rem;
 }
@@ -1841,7 +1841,7 @@
   inset: 0;
   border-radius: inherit;
   /* Hairline outline keeps white and near-white colours distinct from the button face. */
-  box-shadow: inset 0 0 0 1px var(--cartouche-theme-fg-subtle);
+  box-shadow: inset 0 0 0 1px var(--cartouche-picker-swatch-outline);
 }
 
 .preference-color-chevron {
@@ -2226,10 +2226,10 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-button-secondary-border);
   border-radius: 3px;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
   cursor: pointer;
   transition:
     background-color 0.12s ease,
@@ -2237,11 +2237,11 @@
 }
 
 .time-filter-btn:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-time-filter-button-hover-bg);
 }
 
 .time-filter-btn:active:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-active);
+  background-color: var(--cartouche-time-filter-button-pressed-bg);
   transform: translateY(1px);
 }
 
@@ -2274,7 +2274,7 @@
   height: 2px;
   border: none;
   border-radius: 1px;
-  background-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-time-filter-track-bg);
 }
 
 .time-filter-slider::-webkit-slider-thumb {
@@ -2283,7 +2283,7 @@
   margin-top: calc((2px - (var(--cartouche-ui-icon-size, 24px) * 0.8)) / 2);
   border: none;
   border-radius: 50%;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-time-filter-thumb-bg);
   cursor: pointer;
   transition:
     transform 0.1s ease,
@@ -2293,15 +2293,15 @@
 }
 
 .time-filter-slider:not(:disabled)::-webkit-slider-thumb:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-time-filter-thumb-hover-bg);
 }
 
 .time-filter-slider:not(:disabled)::-webkit-slider-thumb:active {
-  background-color: var(--cartouche-theme-primary-active);
+  background-color: var(--cartouche-time-filter-thumb-pressed-bg);
 }
 
 .time-filter-slider:disabled::-webkit-slider-thumb {
-  background-color: var(--cartouche-theme-fg-muted);
+  background-color: var(--cartouche-time-filter-thumb-disabled-bg);
   cursor: not-allowed;
 }
 
@@ -2311,7 +2311,7 @@
   height: 2px;
   border: none;
   border-radius: 1px;
-  background-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-time-filter-track-bg);
 }
 
 .time-filter-slider::-moz-range-thumb {
@@ -2319,7 +2319,7 @@
   height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   border: none;
   border-radius: 50%;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-time-filter-thumb-bg);
   cursor: pointer;
   transition:
     transform 0.1s ease,
@@ -2327,15 +2327,15 @@
 }
 
 .time-filter-slider:not(:disabled)::-moz-range-thumb:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-time-filter-thumb-hover-bg);
 }
 
 .time-filter-slider:not(:disabled)::-moz-range-thumb:active {
-  background-color: var(--cartouche-theme-primary-active);
+  background-color: var(--cartouche-time-filter-thumb-pressed-bg);
 }
 
 .time-filter-slider:disabled::-moz-range-thumb {
-  background-color: var(--cartouche-theme-fg-muted);
+  background-color: var(--cartouche-time-filter-thumb-disabled-bg);
   cursor: not-allowed;
 }
 

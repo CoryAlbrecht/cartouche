@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -232,6 +232,16 @@
   --cartouche-widget-content-bg: var(--cartouche-theme-surface);
   --cartouche-widget-content-fg: var(--cartouche-theme-fg);
   --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-widget-control-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-widget-control-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-widget-menu-item-hover-bg: var(--cartouche-theme-surface-alt);
+
+  /* Workbench Shell: the Workbench window, its main body and Dockview area, the
+     map canvas behind the layers, and a detached window hosting a dialog */
+  --cartouche-workbench-bg: var(--cartouche-theme-surface);
+  --cartouche-workbench-fg: var(--cartouche-theme-fg);
+  --cartouche-map-viewport-bg: var(--cartouche-theme-surface);
+  --cartouche-detached-window-bg: var(--cartouche-theme-surface);
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);
@@ -336,6 +346,16 @@
   /* Timestamp Spinner: highlight of the segment being edited */
   --cartouche-timestamp-segment-active-bg: var(--cartouche-theme-info-subtle);
 
+  /* TimeFilterWidget: playback buttons (Normal reads the secondary button tokens)
+     and the range scrubber slider track and thumb */
+  --cartouche-time-filter-button-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-time-filter-button-pressed-bg: var(--cartouche-theme-surface-active);
+  --cartouche-time-filter-track-bg: var(--cartouche-theme-border-strong);
+  --cartouche-time-filter-thumb-bg: var(--cartouche-theme-primary);
+  --cartouche-time-filter-thumb-hover-bg: var(--cartouche-theme-primary-hover);
+  --cartouche-time-filter-thumb-pressed-bg: var(--cartouche-theme-primary-active);
+  --cartouche-time-filter-thumb-disabled-bg: var(--cartouche-theme-fg-muted);
+
   /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
   --cartouche-focus-color: var(--cartouche-theme-primary);
   --cartouche-focus-ring: var(--cartouche-theme-accent-focus);
@@ -363,6 +383,16 @@
   --cartouche-gradient-stop-border: var(--cartouche-theme-fg-muted);
   --cartouche-gradient-stop-active-border: var(--cartouche-theme-primary);
   --cartouche-gradient-stop-active-ring: var(--cartouche-theme-accent-focus);
+  /* Picker buttons (ColourButton, GradientButton): face, border, the transparency
+     checkerboard under the swatch, and the hairline outline around the swatch */
+  --cartouche-picker-button-bg: var(--cartouche-theme-surface);
+  --cartouche-picker-button-border: var(--cartouche-theme-border-strong);
+  --cartouche-picker-button-hover-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-picker-button-hover-border: var(--cartouche-theme-fg-subtle);
+  --cartouche-picker-button-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-picker-swatch-checker-light: var(--cartouche-theme-checker-light);
+  --cartouche-picker-swatch-checker-dark: var(--cartouche-theme-checker-dark);
+  --cartouche-picker-swatch-outline: var(--cartouche-theme-fg-subtle);
 }
 
 /* Global Reset & Theme Root Application */

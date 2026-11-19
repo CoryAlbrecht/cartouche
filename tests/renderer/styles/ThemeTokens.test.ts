@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -221,6 +221,76 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `theme-default.css must define Tier 2 component token: ${token}`
       );
     }
+  });
+
+  it("defines the TimeFilterWidget, ColourButton, BasicWidget control and Workbench shell Tier 2 tokens (#359)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    // Each new token maps to the Tier 1 primitive its rule read before #359, so no rendered colour changes.
+    const expectedMappings: Record<string, string> = {
+      // Workbench shell
+      "--cartouche-workbench-bg": "--cartouche-theme-surface",
+      "--cartouche-workbench-fg": "--cartouche-theme-fg",
+      "--cartouche-map-viewport-bg": "--cartouche-theme-surface",
+      "--cartouche-detached-window-bg": "--cartouche-theme-surface",
+      // BasicWidget controls
+      "--cartouche-widget-control-hover-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-widget-control-hover-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-widget-menu-item-hover-bg": "--cartouche-theme-surface-alt",
+      // TimeFilterWidget buttons and slider
+      "--cartouche-time-filter-button-hover-bg":
+        "--cartouche-theme-surface-alt",
+      "--cartouche-time-filter-button-pressed-bg":
+        "--cartouche-theme-surface-active",
+      "--cartouche-time-filter-track-bg": "--cartouche-theme-border-strong",
+      "--cartouche-time-filter-thumb-bg": "--cartouche-theme-primary",
+      "--cartouche-time-filter-thumb-hover-bg":
+        "--cartouche-theme-primary-hover",
+      "--cartouche-time-filter-thumb-pressed-bg":
+        "--cartouche-theme-primary-active",
+      "--cartouche-time-filter-thumb-disabled-bg": "--cartouche-theme-fg-muted",
+      // ColourButton
+      "--cartouche-picker-button-bg": "--cartouche-theme-surface",
+      "--cartouche-picker-button-border": "--cartouche-theme-border-strong",
+      "--cartouche-picker-button-hover-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-picker-button-hover-border": "--cartouche-theme-fg-subtle",
+      "--cartouche-picker-button-disabled-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-picker-swatch-checker-light":
+        "--cartouche-theme-checker-light",
+      "--cartouche-picker-swatch-checker-dark":
+        "--cartouche-theme-checker-dark",
+      "--cartouche-picker-swatch-outline": "--cartouche-theme-fg-subtle",
+    };
+
+    for (const [token, primitive] of Object.entries(expectedMappings)) {
+      const match = content.match(new RegExp(`${token}:\\s*([^;]+);`));
+      assert.ok(match, `theme-default.css must define Tier 2 token ${token}`);
+      assert.equal(
+        match[1].trim(),
+        `var(${primitive})`,
+        `${token} must map to ${primitive}`
+      );
+    }
+  });
+
+  it("reads no Tier 1 primitive in the TimeFilterWidget, ColourButton, BasicWidget control and Workbench shell rules (#359)", () => {
+    const css = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const subsystemSelector =
+      /\.time-filter-btn|\.time-filter-slider|\.picker-button|\.widget-control-btn:hover|\.widget-menu-item:hover|\.workbench-container|\.workbench-main|\.dockview-wrapper|\.ol-viewport|\.detached-portal-container/;
+    const offenders: string[] = [];
+    let ruleCount = 0;
+    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!subsystemSelector.test(selector)) continue;
+      ruleCount++;
+      for (const declaration of body.split(";")) {
+        if (declaration.includes("var(--cartouche-theme-")) {
+          offenders.push(`${selector.trim()} { ${declaration.trim()} }`);
+        }
+      }
+    }
+    assert.ok(ruleCount > 20, "the subsystem rules must be found");
+    assert.deepEqual(offenders, []);
   });
 
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {
