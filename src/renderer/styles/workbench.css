@@ -568,29 +568,50 @@
   background-color: var(--cartouche-workbench-bg);
 }
 
-/* Light Clean Dockview Overrides */
+/* Dockview colours (#352). Dockview reads only its own --dv-* variables, so they
+   are set here, on the Dockview root, from the --dockview-* Tier 2 tokens. This
+   rule follows the dockview.css import, so it overrides Dockview's built-in light
+   theme. The Front Tab and Background Tabs look the same in focused and unfocused
+   groups, like the OverlapTabWidget tabs. */
 .dockview-theme-light {
-  --dockview-tab-height: 2em;
-  --dockview-activegroup-visibleindicator-color: var(--cartouche-theme-primary);
+  --dv-group-view-background-color: var(--dockview-group-bg);
+  --dv-tabs-and-actions-container-background-color: var(
+    --dockview-tab-strip-bg
+  );
+  --dv-activegroup-visiblepanel-tab-background-color: var(
+    --dockview-tab-front-bg
+  );
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(
+    --dockview-tab-front-bg
+  );
+  --dv-activegroup-visiblepanel-tab-color: var(--dockview-tab-front-fg);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--dockview-tab-front-fg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(
+    --dockview-tab-background-bg
+  );
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(
+    --dockview-tab-background-bg
+  );
+  --dv-activegroup-hiddenpanel-tab-color: var(--dockview-tab-background-fg);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--dockview-tab-background-fg);
+  --dv-tab-divider-color: var(--dockview-tab-divider);
+  --dv-separator-border: var(--dockview-group-border);
+  --dv-sash-color: var(--dockview-sash-bg);
+  --dv-active-sash-color: var(--dockview-sash-hover-bg);
+  --dv-drag-over-background-color: var(--cartouche-drop-target-bg);
+  --dv-drag-over-border-color: var(--cartouche-drop-target-border);
+  --dv-drag-over-border: 0.0625rem solid var(--cartouche-drop-target-border);
 }
 
-.dockview-theme-light .dockview-tab {
-  background-color: var(--cartouche-theme-surface-alt);
-  color: var(--cartouche-theme-fg-muted);
-  border-right: 1px solid var(--cartouche-theme-border);
-  font-size: 0.9167rem;
-}
-
-.dockview-theme-light .dockview-tab:hover {
-  color: var(--cartouche-theme-fg-primary);
-  background-color: var(--cartouche-theme-surface-active);
-}
-
-.dockview-theme-light .dockview-tab.dockview-tab-selected {
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
-  font-weight: 500;
-  border-top: 2px solid var(--cartouche-theme-primary);
+/* Background Tab Hover. Dockview has no Hover variable; the selector matches the
+   specificity of Dockview's own tab colour rules plus one. */
+.dockview-theme-light
+  .dv-groupview
+  > .dv-tabs-and-actions-container
+  .dv-tabs-container
+  > .dv-tab.dv-inactive-tab:hover {
+  background-color: var(--dockview-tab-hover-bg);
+  color: var(--dockview-tab-hover-fg);
 }
 
 /* OpenLayers Canvas Container Styling */
