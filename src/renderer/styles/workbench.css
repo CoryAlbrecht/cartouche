@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -889,8 +889,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-panel-toolbar-bg);
+  border-bottom: 1px solid var(--cartouche-panel-toolbar-border);
   font-size: 0.875rem;
   user-select: none;
 }
@@ -908,7 +908,7 @@
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-subtitle-fg);
 }
 
 .panel-toolbar-actions {
@@ -922,13 +922,13 @@
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-icon-button-fg);
   font-size: 0.9167rem;
 }
 
 .icon-btn:hover {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-panel-icon-button-hover-bg);
+  color: var(--cartouche-panel-icon-button-hover-fg);
 }
 
 .layer-tree-panel-widget {
@@ -1218,7 +1218,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-attribute-table-bg);
 }
 
 .attribute-table-header {
@@ -1229,8 +1229,8 @@
   flex-wrap: wrap;
   gap: 4px;
   padding: 2px 4px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-attribute-table-header-bg);
+  border-bottom: 1px solid var(--cartouche-attribute-table-header-border);
   font-size: 0.9167rem;
 }
 
@@ -1249,15 +1249,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 8px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-attribute-table-footer-bg);
+  border-top: 1px solid var(--cartouche-attribute-table-footer-border);
 }
 
 /* Attribute table muted text: the "no matching features" message under the
    table and the page range in the footer. */
 .empty-filter-message,
 .attribute-table-page-range {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-attribute-table-muted-fg);
 }
 
 /* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget,
@@ -1268,9 +1268,9 @@
 .project-prop-crs-predefined option:checked,
 .project-prop-crs-recent:focus option:checked,
 .project-prop-crs-predefined:focus option:checked {
-  background: var(--cartouche-theme-info-subtle) linear-gradient(var(--cartouche-theme-info-subtle), var(--cartouche-theme-info-subtle));
-  color: var(--cartouche-theme-info);
-  -webkit-text-fill-color: var(--cartouche-theme-info);
+  background: var(--cartouche-crs-list-option-selected-bg) linear-gradient(var(--cartouche-crs-list-option-selected-bg), var(--cartouche-crs-list-option-selected-bg));
+  color: var(--cartouche-crs-list-option-selected-fg);
+  -webkit-text-fill-color: var(--cartouche-crs-list-option-selected-fg);
 }
 
 /* Persistent FID values in the attribute table's # column; the colours are the table's. */
@@ -1281,11 +1281,11 @@
 .geometry-badge {
   display: inline-block;
   padding: 1px 5px;
-  background-color: var(--cartouche-theme-surface-alt);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-geometry-badge-bg);
+  border: 1px solid var(--cartouche-geometry-badge-border);
   border-radius: 3px;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-info);
+  color: var(--cartouche-geometry-badge-fg);
 }
 
 .empty-panel-message {
@@ -1293,7 +1293,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-empty-fg);
   font-size: 1rem;
 }
 
@@ -1302,7 +1302,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-console-bg);
   font-family: var(--cartouche-theme-font-family-mono);
 }
 
@@ -1324,12 +1324,12 @@
 }
 
 .log-time {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-console-time-fg);
   font-size: 0.7917rem;
 }
 
 .log-source {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-console-source-fg);
   font-size: 0.8333rem;
   font-weight: 600;
 }
@@ -1342,32 +1342,32 @@
 }
 
 .badge-info {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-console-level-info-bg);
+  color: var(--cartouche-console-level-info-fg);
 }
 
 .badge-success {
-  background-color: var(--cartouche-theme-success-subtle);
-  color: var(--cartouche-theme-success);
+  background-color: var(--cartouche-console-level-success-bg);
+  color: var(--cartouche-console-level-success-fg);
 }
 
 .badge-warn {
-  background-color: var(--cartouche-theme-warning-subtle);
-  color: var(--cartouche-theme-warning);
+  background-color: var(--cartouche-console-level-warn-bg);
+  color: var(--cartouche-console-level-warn-fg);
 }
 
 .badge-error {
-  background-color: var(--cartouche-theme-danger-subtle);
-  color: var(--cartouche-theme-danger);
+  background-color: var(--cartouche-console-level-error-bg);
+  color: var(--cartouche-console-level-error-fg);
 }
 
 .log-message {
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-console-message-fg);
   word-break: break-all;
 }
 
 .console-empty {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-console-empty-fg);
   font-style: italic;
   padding: 10px;
 }

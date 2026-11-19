@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -221,6 +221,90 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `theme-default.css must define Tier 2 component token: ${token}`
       );
     }
+  });
+
+  it("defines the AttributeTableWidget chrome, CRS list and console Tier 2 tokens (#357)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    // Each token maps to the Tier 1 primitive its rule read before #357, so no rendered colour changes.
+    const expected: Record<string, string> = {
+      "--cartouche-panel-toolbar-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-panel-toolbar-border": "--cartouche-theme-border",
+      "--cartouche-panel-subtitle-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-panel-icon-button-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-panel-icon-button-hover-bg":
+        "--cartouche-theme-surface-active",
+      "--cartouche-panel-icon-button-hover-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-panel-empty-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-attribute-table-bg": "--cartouche-theme-surface",
+      "--cartouche-attribute-table-header-bg":
+        "--cartouche-theme-surface-subtle",
+      "--cartouche-attribute-table-header-border": "--cartouche-theme-border",
+      "--cartouche-attribute-table-footer-bg":
+        "--cartouche-theme-surface-subtle",
+      "--cartouche-attribute-table-footer-border": "--cartouche-theme-border",
+      "--cartouche-attribute-table-muted-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-geometry-badge-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-geometry-badge-border": "--cartouche-theme-border-strong",
+      "--cartouche-geometry-badge-fg": "--cartouche-theme-info",
+      "--cartouche-crs-list-option-selected-bg":
+        "--cartouche-theme-info-subtle",
+      "--cartouche-crs-list-option-selected-fg": "--cartouche-theme-info",
+      "--cartouche-console-bg": "--cartouche-theme-surface",
+      "--cartouche-console-time-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-console-source-fg": "--cartouche-theme-primary",
+      "--cartouche-console-message-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-console-empty-fg": "--cartouche-theme-fg-subtle",
+      "--cartouche-console-level-info-bg": "--cartouche-theme-info-subtle",
+      "--cartouche-console-level-info-fg": "--cartouche-theme-info",
+      "--cartouche-console-level-success-bg":
+        "--cartouche-theme-success-subtle",
+      "--cartouche-console-level-success-fg": "--cartouche-theme-success",
+      "--cartouche-console-level-warn-bg": "--cartouche-theme-warning-subtle",
+      "--cartouche-console-level-warn-fg": "--cartouche-theme-warning",
+      "--cartouche-console-level-error-bg": "--cartouche-theme-danger-subtle",
+      "--cartouche-console-level-error-fg": "--cartouche-theme-danger",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads no Tier 1 primitive in the AttributeTableWidget chrome, CRS list or console colour rules (#357)", () => {
+    const css = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const subsystemSelector =
+      /(?<![\w-])\.(?:attribute-table-[\w-]+|panel-toolbar|panel-subtitle|icon-btn|geometry-badge|empty-filter-message|empty-panel-message|console-[\w-]+|log-[\w-]+|badge-(?:info|success|warn|error))(?![\w-])|\.project-prop-crs-[\w-]+(?::focus)?\s+option:checked/;
+    const colourProperty =
+      /^(?:color|background(?:-color)?|border(?:-[a-z]+)*|outline(?:-color)?|-webkit-text-fill-color|fill|stroke|box-shadow)$/;
+    const offenders: string[] = [];
+    let matchedRules = 0;
+    for (const block of css.split("}")) {
+      const [selector, body] = block.split("{");
+      if (body === undefined) continue;
+      if (!selector.split(",").some((s) => subsystemSelector.test(s.trim())))
+        continue;
+      matchedRules += 1;
+      for (const declaration of body.split(";")) {
+        const colon = declaration.indexOf(":");
+        if (colon < 0) continue;
+        const property = declaration.slice(0, colon).trim();
+        if (
+          colourProperty.test(property)
+          && declaration.includes("--cartouche-theme-")
+        ) {
+          offenders.push(`${selector.trim()} { ${declaration.trim()} }`);
+        }
+      }
+    }
+    assert.ok(
+      matchedRules >= 15,
+      `expected the #357 rules, found ${matchedRules}`
+    );
+    assert.deepEqual(offenders, []);
   });
 
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {

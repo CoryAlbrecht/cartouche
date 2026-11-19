@@ -4,7 +4,7 @@
  * @description Automated verification suite for Cartouche typography design tokens, statically bundled Noto WOFF2 font assets, @font-face declarations, unicode-range scoping, omission of redundant HTML font preloads in Electron, and stylesheet monospace consistency (ADR 0013).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-07
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -185,7 +185,7 @@ describe("Cartouche Typography & Bundled Fonts Architecture (ADR 0013 / Spec #78
     );
     assert.ok(
       workbenchCss.includes(
-        ".console-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background-color: var(--cartouche-theme-surface);\n  font-family: var(--cartouche-theme-font-family-mono);"
+        ".console-panel {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background-color: var(--cartouche-console-bg);\n  font-family: var(--cartouche-theme-font-family-mono);"
       ),
       ".console-panel must use var(--cartouche-theme-font-family-mono)"
     );

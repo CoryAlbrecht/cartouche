@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -281,6 +281,48 @@
   --cartouche-table-readonly-fg: var(--cartouche-theme-fg-muted);
   --cartouche-table-readonly-selected-bg: var(--cartouche-theme-surface-alt);
   --cartouche-table-readonly-selected-fg: var(--cartouche-theme-fg-secondary);
+
+  /* Panel Chrome (AttributeTableWidget and Console Log Panel): the panel toolbar and its
+     subtitle, icon buttons and their Hover, and the empty-panel message */
+  --cartouche-panel-toolbar-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-panel-toolbar-border: var(--cartouche-theme-border);
+  --cartouche-panel-subtitle-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-panel-icon-button-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-panel-icon-button-hover-bg: var(--cartouche-theme-surface-active);
+  --cartouche-panel-icon-button-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-panel-empty-fg: var(--cartouche-theme-fg-muted);
+
+  /* AttributeTableWidget chrome around its TableWidget: container, header and footer bars,
+     muted text (no-matching-features message, page range) and the geometry badge */
+  --cartouche-attribute-table-bg: var(--cartouche-theme-surface);
+  --cartouche-attribute-table-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-attribute-table-header-border: var(--cartouche-theme-border);
+  --cartouche-attribute-table-footer-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-attribute-table-footer-border: var(--cartouche-theme-border);
+  --cartouche-attribute-table-muted-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-geometry-badge-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-geometry-badge-border: var(--cartouche-theme-border-strong);
+  --cartouche-geometry-badge-fg: var(--cartouche-theme-info);
+
+  /* CRS List Boxes (ProjectPropertiesDialog CRS tab): the Selected option, focused or not */
+  --cartouche-crs-list-option-selected-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-crs-list-option-selected-fg: var(--cartouche-theme-info);
+
+  /* Console Log Panel: background, entry time, source, message and empty-state text,
+     and one fg/bg pair per Log Level badge */
+  --cartouche-console-bg: var(--cartouche-theme-surface);
+  --cartouche-console-time-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-console-source-fg: var(--cartouche-theme-primary);
+  --cartouche-console-message-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-console-empty-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-console-level-info-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-console-level-info-fg: var(--cartouche-theme-info);
+  --cartouche-console-level-success-bg: var(--cartouche-theme-success-subtle);
+  --cartouche-console-level-success-fg: var(--cartouche-theme-success);
+  --cartouche-console-level-warn-bg: var(--cartouche-theme-warning-subtle);
+  --cartouche-console-level-warn-fg: var(--cartouche-theme-warning);
+  --cartouche-console-level-error-bg: var(--cartouche-theme-danger-subtle);
+  --cartouche-console-level-error-fg: var(--cartouche-theme-danger);
 
   /* Layer Properties Dialog: form field labels and read-only values, captions and
      the loading message, the Layer ID validation message, the Fields tab toolbar
