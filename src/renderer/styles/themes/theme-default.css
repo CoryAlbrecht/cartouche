@@ -276,9 +276,16 @@
   --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
   --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 
-  /* Toolbars: the ToolbarWidget grabber, dividers and button icons,
+  /* Toolbars: the ToolbarContainerWidget frame and empty drop target (background
+     and border), the ToolbarWidget frame (background, border and shadow), the
+     ToolbarWidget grabber, dividers and button icons,
      button Hover and Toggled On states (also the SplitToolButton), and the
      toolbar drop markers */
+  --cartouche-toolbar-container-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-toolbar-container-border: var(--cartouche-theme-surface-subtle);
+  --cartouche-toolbar-bg: var(--cartouche-theme-surface);
+  --cartouche-toolbar-border: var(--cartouche-theme-border);
+  --cartouche-toolbar-shadow: var(--cartouche-theme-shadow-subtle);
   --cartouche-toolbar-fg: var(--cartouche-theme-fg-primary);
   --cartouche-toolbar-grabber-fg: var(--cartouche-theme-fg-subtle);
   --cartouche-toolbar-grabber-hover-fg: var(--cartouche-theme-info);

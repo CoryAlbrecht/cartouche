@@ -582,9 +582,32 @@
   pointer-events: none;
 }
 
-/* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area) */
+/* ToolbarContainerWidget and ToolbarWidget frames: their Widget's background,
+   border colour and (ToolbarWidget) shadow; the border width comes from the
+   Widget's border prop. */
+.cartouche-widget.toolbar-container-widget {
+  background-color: var(--cartouche-toolbar-container-bg);
+  border-color: var(--cartouche-toolbar-container-border);
+}
+
+.cartouche-widget.toolbar-widget {
+  background-color: var(--cartouche-toolbar-bg);
+  border-color: var(--cartouche-toolbar-border);
+  box-shadow: 0 1px 2px var(--cartouche-toolbar-shadow);
+}
+
+/* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area).
+   An empty ToolbarContainerWidget takes the container colours, and the drop target
+   colours while a toolbar is dragged over it. */
 .toolbar-container-widget-drop-target {
   position: relative;
+  background-color: var(--cartouche-toolbar-container-bg);
+  border-color: var(--cartouche-toolbar-container-border);
+}
+
+.toolbar-container-widget-drop-target.is-drag-over {
+  background-color: var(--cartouche-drop-target-bg);
+  border-color: var(--cartouche-drop-target-border);
 }
 
 .toolbar-container-widget-drop-target::before {

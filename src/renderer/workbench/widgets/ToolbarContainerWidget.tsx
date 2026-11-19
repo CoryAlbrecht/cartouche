@@ -4,7 +4,7 @@
  * @description Outer panel edge container widget managing masonry layout and drag-and-drop relocation for toolbars across 4 outer zones.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link resolveContainerDropPosition}
@@ -47,7 +47,7 @@ export interface ToolbarContainerWidgetProps {
  * @description Outer 4-edge panel container hosting docked ToolbarWidget items and handling dragover drop targets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {ToolbarContainerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Toolbar container zone element.
@@ -186,15 +186,6 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
     activeDraggedToolbarSignal.value = null;
   };
 
-  const activeBackground =
-    isDragOver ?
-      "var(--cartouche-drop-target-bg)"
-    : "var(--cartouche-theme-surface-subtle)";
-  const activeBorderColor =
-    isDragOver ?
-      "var(--cartouche-drop-target-border)"
-    : "var(--cartouche-theme-surface-subtle)";
-
   // Fast transition on drag-enter (0.05s), slow smooth transition on drag-leave (0.7s)
   const currentTransition =
     isDragOver ? "all 0.0s ease-in" : "all 0.7s ease-out";
@@ -218,10 +209,8 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
               isDragOver ? "36px"
               : "1px"
             : "100%",
-          backgroundColor: activeBackground,
           borderWidth: "1px",
           borderStyle: "solid",
-          borderColor: activeBorderColor,
           transition: currentTransition,
           boxSizing: "border-box",
           pointerEvents: "auto",
@@ -247,9 +236,8 @@ export const ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> = ({
       }}>
       <Widget
         id={`toolbar-container-${zone}`}
-        background='var(--cartouche-theme-surface-subtle)'
+        className='toolbar-container-widget'
         border={1}
-        borderColor='var(--cartouche-theme-surface-subtle)'
         location={zone}
         minWidth={isHorizontal ? "100%" : 32}
         minHeight={isHorizontal ? 32 : "100%"}

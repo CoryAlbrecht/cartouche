@@ -406,7 +406,9 @@ describe("TableWidget theme tokens and typography (Ticket #323)", () => {
     );
     // Like the Selected Row colour, Hover replaces a host cellStyle background
     // (Ticket #328): neither rule falls back to --table-widget-cell-bg.
-    const selected = indexOf(".table-widget-row--selected > .table-widget-cell");
+    const selected = indexOf(
+      ".table-widget-row--selected > .table-widget-cell"
+    );
     assert.equal(
       declaration(rules[selected].body, "background-color"),
       "var(--cartouche-table-row-selected-bg)"
@@ -417,10 +419,7 @@ describe("TableWidget theme tokens and typography (Ticket #323)", () => {
       hover > indexOf(".table-widget-row--alternate > .table-widget-cell"),
       "Hover comes after the alternating row colour"
     );
-    assert.ok(
-      hover < selected,
-      "Hover comes before the Selected Row colour"
-    );
+    assert.ok(hover < selected, "Hover comes before the Selected Row colour");
     assert.ok(
       hover < indexOf(".table-widget-row--active > .table-widget-cell"),
       "Hover comes before the Active Row colour"

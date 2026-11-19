@@ -1,7 +1,7 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css reads only defined tokens, reads no Tier 1 primitive in a colour declaration, and that every defined token is read.
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
  * @updated 2026-11-18
@@ -13,13 +13,22 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  declaration,
+  declarationsOf,
+  definedTokens,
+  parseRules,
+  readTokens,
   resolveThemeTokens,
   rulesFor,
+  selectorDeclaration,
+  stripCssComments,
+  THEME_CSS,
   tier2Tokens,
   tokenMapping,
   tokenValue,
+  tsSources,
+  WORKBENCH_CSS,
 } from "./cssRules";
+import { stripSourceComments } from "../sourceText";
 
 describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #196)", () => {
   const rootDir = process.cwd();
@@ -28,11 +37,39 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     "src/renderer/styles/themes/theme-default.css"
   );
   const themeCssPath = path.resolve(rootDir, "src/renderer/styles/theme.css");
-  const workbenchCssPath = path.resolve(
-    rootDir,
-    "src/renderer/styles/workbench.css"
-  );
   const indexHtmlPath = path.resolve(rootDir, "src/renderer/index.html");
+
+  /**
+   * @function assertDefined
+   * @description Asserts that theme-default.css defines every token.
+   * @param {string[]} tokens - Token names.
+   * @param {string} kind - What the tokens are, for the failure message.
+   */
+  const assertDefined = (tokens: string[], kind: string): void => {
+    for (const token of tokens) {
+      assert.ok(
+        tokenValue(token) !== undefined,
+        `theme-default.css must define ${kind}: ${token}`
+      );
+    }
+  };
+
+  /**
+   * @function assertMappings
+   * @description Asserts that each theme-default.css token's whole value is `var(<base>)`.
+   * @param {Record<string, string>} expected - Token name to the token it must map to.
+   */
+  const assertMappings = (expected: Record<string, string>): void => {
+    for (const [token, base] of Object.entries(expected)) {
+      assert.equal(tokenMapping(token), base, `${token} must be var(${base})`);
+    }
+  };
+
+  /** Comment-free TypeScript sources under src/, for the token read guards. */
+  const sources = tsSources().map(({ file, text }) => ({
+    file,
+    text: stripSourceComments(text),
+  }));
 
   it("verifies that canonical default theme stylesheet exists and has non-zero size", () => {
     assert.ok(
@@ -47,8 +84,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines all required Tier 1 Theme Primitives in theme-default.css", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
-
     const tier1Primitives = [
       // Primary & Brand Accents
       "--cartouche-theme-primary",
@@ -93,17 +128,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-theme-shadow-strong",
     ];
 
-    for (const token of tier1Primitives) {
-      assert.ok(
-        content.includes(`${token}:`),
-        `theme-default.css must define Tier 1 primitive: ${token}`
-      );
-    }
+    assertDefined(tier1Primitives, "Tier 1 primitive");
   });
 
   it("defines all required Tier 2 Component Tokens mapped by UI subsystem in theme-default.css", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
-
     const tier2ComponentTokens = [
       // Menubar
       "--cartouche-menubar-bg",
@@ -189,31 +217,22 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-drop-target-border",
     ];
 
-    for (const token of tier2ComponentTokens) {
-      assert.ok(
-        content.includes(`${token}:`),
-        `theme-default.css must define Tier 2 component token: ${token}`
-      );
-    }
+    assertDefined(tier2ComponentTokens, "Tier 2 component token");
   });
 
   it("defines the status bar Tier 2 tokens and drops the unread border token (#351)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const statusBarTokens = [
-      "--cartouche-theme-status-bar-bg",
-      "--cartouche-theme-status-bar-fg",
-      "--cartouche-statusbar-item-hover-bg",
-      "--cartouche-statusbar-separator-bg",
-    ];
-    for (const token of statusBarTokens) {
-      assert.ok(
-        content.includes(`${token}:`),
-        `theme-default.css must define status bar token: ${token}`
-      );
-    }
+    assertDefined(
+      [
+        "--cartouche-theme-status-bar-bg",
+        "--cartouche-theme-status-bar-fg",
+        "--cartouche-statusbar-item-hover-bg",
+        "--cartouche-statusbar-separator-bg",
+      ],
+      "status bar token"
+    );
     // The status bar draws no border, so its border token is removed rather than read.
     assert.ok(
-      !content.includes("--cartouche-theme-status-bar-border"),
+      !THEME_CSS.includes("--cartouche-theme-status-bar-border"),
       "theme-default.css must not define the unread --cartouche-theme-status-bar-border"
     );
   });
@@ -255,9 +274,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       rendered,
       token,
     ] of statusBarRenderedColours) {
-      const value = rulesFor(selector)
-        .map((rule) => declaration(rule.body, property))
-        .find((v) => v !== undefined);
+      const value = selectorDeclaration(selector, property);
       assert.ok(value, `${selector} must declare ${property}`);
       assert.match(value, token, `${selector} ${property} must read ${token}`);
       assert.equal(
@@ -284,7 +301,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `${token} must map to the overlay primitive`
       );
     }
-    assert.equal(tokenValue("--cartouche-theme-backdrop"), "rgba(0, 0, 0, 0.4)");
+    assert.equal(
+      tokenValue("--cartouche-theme-backdrop"),
+      "rgba(0, 0, 0, 0.4)"
+    );
     assert.equal(
       tokenMapping("--cartouche-dialog-backdrop"),
       "--cartouche-theme-backdrop"
@@ -292,9 +312,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("gives the Dialog close button Hover its own Dialog title bar token, not the menubar's (#349)", () => {
-    const value = rulesFor(".cartouche-dialog-close-btn:hover")
-      .map((rule) => declaration(rule.body, "background-color"))
-      .find((v) => v !== undefined);
+    const value = selectorDeclaration(
+      ".cartouche-dialog-close-btn:hover",
+      "background-color"
+    );
     assert.equal(value, "var(--cartouche-dialog-titlebar-button-hover-bg)");
     assert.equal(resolveThemeTokens(value), "rgba(255, 255, 255, 0.2)");
   });
@@ -323,7 +344,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines the Dockview Tier 2 tokens (#352)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const dockviewTokens: Record<string, string> = {
       "--dockview-group-bg": "--cartouche-theme-surface",
       "--dockview-group-border": "--cartouche-theme-border",
@@ -337,29 +357,22 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--dockview-tab-hover-fg": "--cartouche-theme-fg-primary",
       "--dockview-sash-hover-bg": "--cartouche-theme-primary",
     };
-    for (const [token, base] of Object.entries(dockviewTokens)) {
-      const match = content.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
-    assert.match(content, /--dockview-sash-bg:\s*transparent;/);
+    assertMappings(dockviewTokens);
+    // The sash at rest is the CSS keyword `transparent`, not a mapping (see
+    // tier2TokensWithoutMapping above).
+    assert.equal(tokenValue("--dockview-sash-bg"), "transparent");
   });
 
   it("reads every --dockview-* token in workbench.css and sets Dockview's --dv-* colours only from Tier 2 tokens (#352)", () => {
-    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
-
-    const defined = [...theme.matchAll(/(--dockview-[a-z0-9-]+)\s*:/g)].map(
-      (m) => m[1]
+    const defined = [...definedTokens()].filter((t) =>
+      t.startsWith("--dockview-")
     );
     assert.ok(
       defined.length > 0,
       "theme-default.css must define --dockview-* tokens"
     );
-    const unread = defined.filter(
-      (t) => !new RegExp(`var\\(\\s*${t}\\s*[,)]`).test(workbench)
-    );
+    const workbenchReads = readTokens(stripCssComments(WORKBENCH_CSS));
+    const unread = defined.filter((t) => !workbenchReads.has(t));
     assert.deepEqual(
       unread,
       [],
@@ -386,29 +399,25 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--dv-drag-over-border",
     ];
     for (const dv of dvColourVars) {
-      const match = workbench.match(new RegExp(`${dv}:\\s*([^;]+);`));
-      assert.ok(match, `workbench.css must set ${dv}`);
-      const reads = [...match[1].matchAll(/var\(\s*(--[a-z0-9-]+)\s*\)/g)].map(
-        (m) => m[1]
-      );
+      const value = tokenValue(dv, WORKBENCH_CSS);
+      assert.ok(value, `workbench.css must set ${dv}`);
+      const reads = [...readTokens(value)];
       assert.ok(reads.length > 0, `${dv} must read a token`);
       for (const token of reads) {
         assert.ok(
           !token.startsWith("--cartouche-theme-"),
           `${dv} must read a Tier 2 token, not ${token}`
         );
-        assert.ok(theme.includes(`${token}:`), `${token} must be defined`);
+        assert.ok(tokenValue(token) !== undefined, `${token} must be defined`);
       }
     }
   });
 
   it("has no dead .dockview-tab rules in workbench.css (#352)", () => {
-    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
-    assert.doesNotMatch(workbench, /\.dockview-tab\b/);
+    assert.doesNotMatch(WORKBENCH_CSS, /\.dockview-tab\b/);
   });
 
   it("defines the LayerTreeWidget Tier 2 tokens (#356)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
       "--cartouche-layer-tree-bg": "--cartouche-theme-surface",
       "--cartouche-layer-tree-fg": "--cartouche-theme-fg-primary",
@@ -425,54 +434,41 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-layer-tree-drop-marker-bg": "--cartouche-theme-primary",
       "--cartouche-layer-tree-inline-input-border": "--cartouche-theme-primary",
     };
-    for (const [token, base] of Object.entries(expected)) {
-      const match = content.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
+    assertMappings(expected);
   });
 
   it("reads only Tier 2 tokens in the LayerTreeWidget colour declarations (#356)", () => {
-    const css = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
     const subsystem =
       /\.(layer-tree-|tree-node-|tree-chevron|tree-drop-marker|tree-inline-input|empty-layers-|layer-meta)/;
     const colourProperty =
       /^(color|background(-color)?|border(-(top|right|bottom|left))?(-color)?|outline(-color)?|fill|stroke|box-shadow)$/;
-    const declarations = new Map<string, string>();
-    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      if (!subsystem.test(selector)) continue;
-      for (const declaration of body.split(";")) {
-        const [property, ...rest] = declaration.split(":");
-        const name = property?.trim() ?? "";
-        if (!colourProperty.test(name)) continue;
-        const value = rest.join(":").trim();
+    for (const rule of parseRules(WORKBENCH_CSS)) {
+      if (!rule.selectors.some((s) => subsystem.test(s))) continue;
+      for (const { property, value } of declarationsOf(rule.body)) {
+        if (!colourProperty.test(property)) continue;
         assert.doesNotMatch(
           value,
           /--cartouche-theme-/,
-          `${selector.trim()} { ${name} } must read a Tier 2 token, not ${value}`
+          `${rule.selectors.join(", ")} { ${property} } must read a Tier 2 token, not ${value}`
         );
-        declarations.set(`${selector.trim()}|${name}`, value);
       }
     }
-    assert.match(
-      declarations.get(".tree-node-row:hover|background-color") ?? "",
-      /var\(--cartouche-layer-tree-row-hover-bg\)/
+    // The Tree Node Row is the only rule that reads the row Hover and Selected tokens.
+    assert.equal(
+      selectorDeclaration(".tree-node-row:hover", "background-color"),
+      "var(--cartouche-layer-tree-row-hover-bg)"
     );
-    assert.match(
-      declarations.get(".tree-node-row.selected|background-color") ?? "",
-      /var\(--cartouche-layer-tree-row-selected-bg\)/
+    assert.equal(
+      selectorDeclaration(".tree-node-row.selected", "background-color"),
+      "var(--cartouche-layer-tree-row-selected-bg)"
     );
-    assert.match(
-      declarations.get(".tree-node-row.selected|color") ?? "",
-      /var\(--cartouche-layer-tree-row-selected-fg\)/
+    assert.equal(
+      selectorDeclaration(".tree-node-row.selected", "color"),
+      "var(--cartouche-layer-tree-row-selected-fg)"
     );
   });
 
   it("defines the AttributeTableWidget frame, CRS Catalogue list box and console Tier 2 tokens (#357)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     // Each token maps to the Tier 1 primitive its rule read before #357, so no rendered colour changes.
     const expected: Record<string, string> = {
       "--cartouche-panel-toolbar-bg": "--cartouche-theme-surface-subtle",
@@ -512,40 +508,27 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-console-level-error-bg": "--cartouche-theme-danger-subtle",
       "--cartouche-console-level-error-fg": "--cartouche-theme-danger",
     };
-    for (const [token, base] of Object.entries(expected)) {
-      const match = content.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
+    assertMappings(expected);
   });
 
   it("reads no Tier 1 primitive in the AttributeTableWidget frame, CRS Catalogue list box or console colour rules (#357)", () => {
-    const css = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
     const subsystemSelector =
       /(?<![\w-])\.(?:attribute-table-[\w-]+|panel-toolbar|panel-subtitle|icon-btn|geometry-badge|empty-filter-message|empty-panel-message|console-[\w-]+|log-[\w-]+|badge-(?:info|success|warn|error))(?![\w-])|\.project-prop-crs-[\w-]+(?::focus)?\s+option:checked/;
     const colourProperty =
       /^(?:color|background(?:-color)?|border(?:-[a-z]+)*|outline(?:-color)?|-webkit-text-fill-color|fill|stroke|box-shadow)$/;
     const offenders: string[] = [];
     let matchedRules = 0;
-    for (const block of css.split("}")) {
-      const [selector, body] = block.split("{");
-      if (body === undefined) continue;
-      if (!selector.split(",").some((s) => subsystemSelector.test(s.trim())))
-        continue;
+    for (const rule of parseRules(WORKBENCH_CSS)) {
+      if (!rule.selectors.some((s) => subsystemSelector.test(s))) continue;
       matchedRules += 1;
-      for (const declaration of body.split(";")) {
-        const colon = declaration.indexOf(":");
-        if (colon < 0) continue;
-        const property = declaration.slice(0, colon).trim();
+      for (const { property, value } of declarationsOf(rule.body)) {
         if (
           colourProperty.test(property)
-          && declaration.includes("--cartouche-theme-")
-        ) {
-          offenders.push(`${selector.trim()} { ${declaration.trim()} }`);
-        }
+          && value.includes("--cartouche-theme-")
+        )
+          offenders.push(
+            `${rule.selectors.join(", ")} { ${property}: ${value} }`
+          );
       }
     }
     assert.ok(
@@ -556,7 +539,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines the ToolbarWidget Tier 2 tokens (#354)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const toolbarTokens = [
       "--cartouche-toolbar-grabber-fg",
       "--cartouche-toolbar-grabber-hover-fg",
@@ -567,12 +549,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-toolbar-item-toggled-on-border",
       "--cartouche-toolbar-drop-marker-bg",
     ];
-    for (const token of toolbarTokens) {
-      assert.ok(
-        content.includes(`${token}:`),
-        `theme-default.css must define toolbar token: ${token}`
-      );
-    }
+    assertDefined(toolbarTokens, "toolbar token");
   });
 
   /**
@@ -594,9 +571,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
 
   it("toolbar rules read Tier 2 toolbar tokens, not Tier 1 primitives, and render the same colours (#354)", () => {
     for (const [selector, property, rendered] of toolbarRenderedColours) {
-      const value = rulesFor(selector)
-        .map((rule) => declaration(rule.body, property))
-        .find((v) => v !== undefined);
+      const value = selectorDeclaration(selector, property);
       assert.ok(value, `${selector} must declare ${property}`);
       assert.doesNotMatch(
         value,
@@ -617,51 +592,54 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("reads --cartouche-toolbar-fg and -item-hover-bg in workbench.css (#354)", () => {
-    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     for (const token of [
       "--cartouche-toolbar-fg",
       "--cartouche-toolbar-item-hover-bg",
     ]) {
       assert.ok(
-        content.includes(`var(${token})`),
+        WORKBENCH_CSS.includes(`var(${token})`),
         `workbench.css must read ${token}`
       );
     }
   });
 
   it("defines the menubar title badge and status-bar separator Tier 2 tokens (#350)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
       "--cartouche-menubar-title-badge-bg": "--cartouche-theme-primary-hover",
       "--cartouche-statusbar-separator-bg": "--cartouche-theme-fg-subtle",
     };
-    for (const [token, base] of Object.entries(expected)) {
-      const match = content.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
+    assertMappings(expected);
   });
 
   it("reads only --cartouche-* tokens in workbench.css that theme-default.css defines (#350)", () => {
-    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const workbench = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    const defined = new Set(
-      [...theme.matchAll(/(--cartouche-[a-zA-Z0-9_-]+)\s*:/g)].map((m) => m[1])
-    );
+    const defined = definedTokens();
     const undefinedReads = [
-      ...new Set(
-        [...workbench.matchAll(/var\(\s*(--cartouche-[a-zA-Z0-9_-]+)/g)]
-          .map((m) => m[1])
-          .filter((token) => !defined.has(token))
-      ),
-    ];
+      ...readTokens(stripCssComments(WORKBENCH_CSS)),
+    ].filter(
+      (token) => token.startsWith("--cartouche-") && !defined.has(token)
+    );
     assert.deepEqual(
       undefinedReads,
       [],
       `workbench.css reads tokens no Theme defines: ${undefinedReads.join(", ")}`
+    );
+  });
+
+  it("reads only --cartouche-* and --dockview-* tokens in the TypeScript sources that theme-default.css defines (#349)", () => {
+    const defined = definedTokens();
+    const undefinedReads = sources.flatMap(({ file, text }) =>
+      [...readTokens(text)]
+        .filter(
+          (token) =>
+            /^--(?:cartouche|dockview)-/.test(token) && !defined.has(token)
+        )
+        .map((token) => `${file}: ${token}`)
+    );
+    assert.ok(sources.length > 100, "the TypeScript sources are scanned");
+    assert.deepEqual(
+      undefinedReads,
+      [],
+      `TypeScript sources read tokens no Theme defines:\n${undefinedReads.join("\n")}`
     );
   });
 
@@ -687,22 +665,17 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   const nonColourPropertiesReadingTier1 = ["font-family"];
 
   it("reads no --cartouche-theme-* Tier 1 primitive in any colour declaration of workbench.css (#360)", () => {
-    const workbench = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
     const offenders: string[] = [];
-    for (const match of workbench.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      const selector = match[1].replace(/\s+/g, " ").trim();
-      for (const decl of match[2].split(";")) {
-        const colon = decl.indexOf(":");
-        if (colon < 0) continue;
-        const property = decl.slice(0, colon).trim();
+    for (const rule of parseRules(WORKBENCH_CSS)) {
+      const selector = rule.selectors.join(", ");
+      for (const { property, value } of declarationsOf(rule.body)) {
         if (nonColourPropertiesReadingTier1.includes(property)) continue;
-        for (const read of decl.matchAll(
-          /var\(\s*(--cartouche-theme-[a-z0-9-]+)/g
-        )) {
-          if (!tier2TokensWithThemePrefix.includes(read[1]))
-            offenders.push(`${selector} { ${property}: … ${read[1]} }`);
+        for (const token of readTokens(value)) {
+          if (
+            token.startsWith("--cartouche-theme-")
+            && !tier2TokensWithThemePrefix.includes(token)
+          )
+            offenders.push(`${selector} { ${property}: … ${token} }`);
         }
       }
     }
@@ -713,21 +686,19 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     );
   });
 
-  it("reads every --cartouche-* and --dockview-* token theme-default.css defines, in theme-default.css or workbench.css (#360)", () => {
-    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
-    const sources = `${theme}\n${workbench}`.replace(/\/\*[\s\S]*?\*\//g, "");
-    const defined = [
-      ...new Set(
-        [
-          ...theme.matchAll(/^\s*(--(?:cartouche|dockview)-[a-z0-9-]+)\s*:/gm),
-        ].map((m) => m[1])
-      ),
-    ];
-    assert.ok(defined.length > 100, "theme-default.css defines its tokens");
-    const unread = defined.filter(
-      (token) => !new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(sources)
+  it("reads every --cartouche-* and --dockview-* token theme-default.css defines, in theme-default.css, workbench.css or the TypeScript sources (#360)", () => {
+    const defined = [...definedTokens()].filter((token) =>
+      /^--(?:cartouche|dockview)-/.test(token)
     );
+    assert.ok(defined.length > 100, "theme-default.css defines its tokens");
+    const read = readTokens(
+      [
+        stripCssComments(THEME_CSS),
+        stripCssComments(WORKBENCH_CSS),
+        ...sources.map(({ text }) => text),
+      ].join("\n")
+    );
+    const unread = defined.filter((token) => !read.has(token));
     assert.deepEqual(
       unread,
       [],
@@ -736,8 +707,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("removes the unread tokens and the rules that matched no element (#360)", () => {
-    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
     for (const token of [
       "--cartouche-theme-accent",
       "--cartouche-theme-accent-hover",
@@ -752,16 +721,11 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-theme-button-bg",
       "--cartouche-widget-content-fg",
       "--cartouche-cell-editor-fg",
-      "--cartouche-toolbar-container-bg",
-      "--cartouche-toolbar-container-border",
-      "--cartouche-toolbar-shadow",
-      "--cartouche-toolbar-bg",
-      "--cartouche-toolbar-border",
       "--cartouche-toolbar-drag-handle-hover-fg",
     ]) {
       assert.doesNotMatch(
-        theme,
-        new RegExp(`${token}\\s*:`),
+        THEME_CSS,
+        new RegExp(`(?<![\\w-])${token}\\s*:`),
         `theme-default.css must not define the unread ${token}`
       );
     }
@@ -774,26 +738,20 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       ".layer-tree-item",
     ]) {
       assert.ok(
-        !workbench.includes(dead),
+        !WORKBENCH_CSS.includes(dead),
         `workbench.css must not style the unrendered ${dead}`
       );
     }
   });
 
   it("defines the window close button and undocked Widget shadow Tier 2 tokens, rendering the same colours (#360)", () => {
-    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
       "--cartouche-menubar-window-close-hover-bg": "--cartouche-theme-danger",
       "--cartouche-menubar-window-close-hover-fg":
         "--cartouche-theme-fg-inverted",
       "--cartouche-widget-undocked-shadow": "--cartouche-theme-shadow-strong",
     };
-    for (const [token, base] of Object.entries(expected)) {
-      const match = theme.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
+    assertMappings(expected);
     const rendered: [string, string, string, string][] = [
       [".app-title-badge", "color", "var(--cartouche-menubar-fg)", "#ffffff"],
       [
@@ -835,9 +793,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       ],
     ];
     for (const [selector, property, value, colour] of rendered) {
-      const actual = rulesFor(selector)
-        .map((rule) => declaration(rule.body, property))
-        .find((v) => v !== undefined);
+      const actual = selectorDeclaration(selector, property);
       assert.equal(actual, value, `${selector} ${property}`);
       assert.equal(
         resolveThemeTokens(value),
@@ -848,7 +804,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines the PreferencesDialog Tier 2 tokens, each mapped to the primitive its rule read before (#358)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
       "--cartouche-preferences-border": "--cartouche-theme-border-strong",
       "--cartouche-preferences-shadow": "--cartouche-theme-shadow-strong",
@@ -924,40 +879,27 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-preferences-resize-handle-hover-fg":
         "--cartouche-theme-primary",
     };
-    for (const [token, base] of Object.entries(expected)) {
-      const match = content.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
+    assertMappings(expected);
   });
 
   it("reads only defined Tier 2 tokens in the PreferencesDialog colour declarations (#358)", () => {
-    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const css = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
     const colourProperty =
       /^(color|background(-color)?|border(-[a-z]+)*|box-shadow|outline(-color)?|fill|stroke|accent-color|caret-color)$/;
     let colourDeclarations = 0;
-    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      if (!/\.preferences?-/.test(selector)) continue;
-      for (const declaration of body.split(";")) {
-        const colon = declaration.indexOf(":");
-        if (colon < 0) continue;
-        const property = declaration.slice(0, colon).trim();
+    for (const rule of parseRules(WORKBENCH_CSS)) {
+      if (!rule.selectors.some((s) => /\.preferences?-/.test(s))) continue;
+      for (const { property, value } of declarationsOf(rule.body)) {
         if (!colourProperty.test(property)) continue;
-        for (const [, token] of declaration.matchAll(
-          /var\((--cartouche-[a-z0-9-]+)/g
-        )) {
+        for (const token of readTokens(value)) {
+          if (!token.startsWith("--cartouche-")) continue;
           colourDeclarations++;
-          const where = `${selector.trim()} { ${declaration.trim()} }`;
+          const where = `${rule.selectors.join(", ")} { ${property}: ${value} }`;
           assert.ok(
             !token.startsWith("--cartouche-theme-"),
             `${where} reads Tier 1 primitive ${token}`
           );
           assert.ok(
-            theme.includes(`${token}:`),
+            tokenValue(token) !== undefined,
             `${where} reads undefined token ${token}`
           );
         }
@@ -970,46 +912,41 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines the Dialog title bar and About ModalDialog Tier 2 tokens (#355)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
-
     // Each Dialog token mapped to the Tier 1 primitive its rule read before #355,
     // so no rendered colour changes.
     const dialogTokenMappings: Record<string, string> = {
-      "--cartouche-dialog-titlebar-bg": "var(--cartouche-theme-primary)",
-      "--cartouche-dialog-titlebar-fg": "var(--cartouche-theme-fg-inverted)",
-      "--cartouche-dialog-bg": "var(--cartouche-theme-surface)",
-      "--cartouche-dialog-fg": "var(--cartouche-theme-fg-primary)",
-      "--cartouche-dialog-border": "var(--cartouche-theme-border-strong)",
-      "--cartouche-dialog-shadow": "var(--cartouche-theme-shadow-strong)",
-      "--cartouche-dialog-header-bg": "var(--cartouche-theme-surface-subtle)",
-      "--cartouche-dialog-header-fg": "var(--cartouche-theme-fg)",
-      "--cartouche-dialog-header-border": "var(--cartouche-theme-border)",
-      "--cartouche-dialog-subtitle-fg": "var(--cartouche-theme-fg-muted)",
-      "--cartouche-dialog-inset-bg": "var(--cartouche-theme-surface-alt)",
-      "--cartouche-dialog-footer-bg": "var(--cartouche-theme-surface-subtle)",
-      "--cartouche-dialog-footer-border": "var(--cartouche-theme-border)",
-      "--cartouche-dialog-button-hover-bg":
-        "var(--cartouche-theme-primary-hover)",
+      "--cartouche-dialog-titlebar-bg": "--cartouche-theme-primary",
+      "--cartouche-dialog-titlebar-fg": "--cartouche-theme-fg-inverted",
+      "--cartouche-dialog-titlebar-button-hover-bg":
+        "--cartouche-theme-overlay-hover-on-primary",
+      "--cartouche-dialog-bg": "--cartouche-theme-surface",
+      "--cartouche-dialog-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-dialog-border": "--cartouche-theme-border-strong",
+      "--cartouche-dialog-shadow": "--cartouche-theme-shadow-strong",
+      "--cartouche-dialog-header-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-dialog-header-fg": "--cartouche-theme-fg",
+      "--cartouche-dialog-header-border": "--cartouche-theme-border",
+      "--cartouche-dialog-subtitle-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-dialog-inset-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-dialog-footer-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-dialog-footer-border": "--cartouche-theme-border",
+      "--cartouche-dialog-button-hover-bg": "--cartouche-theme-primary-hover",
     };
-    for (const [token, value] of Object.entries(dialogTokenMappings)) {
+    assertMappings(dialogTokenMappings);
+    for (const token of Object.keys(dialogTokenMappings)) {
       assert.ok(
-        content.includes(`${token}: ${value};`),
-        `theme-default.css must map ${token} to ${value}`
-      );
-      assert.ok(
-        workbench.includes(`var(${token})`),
+        WORKBENCH_CSS.includes(`var(${token})`),
         `workbench.css must read ${token}`
       );
     }
 
     // No colour declaration in the Dialog title bar or About ModalDialog rules
     // reads a Tier 1 primitive or another subsystem's (menubar) tokens.
-    // `.cartouche-dialog-close-btn:hover` is owned by #350.
     const selectors = [
       ".cartouche-dialog-header",
       ".picker-dialog-header",
       ".cartouche-dialog-close-btn",
+      ".cartouche-dialog-close-btn:hover",
       ".modal-dialog",
       ".modal-header",
       ".modal-subtitle",
@@ -1020,26 +957,26 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       ".modal-btn:hover",
     ];
     const colourProperty =
-      /^\s*(color|background(-color)?|border(-(top|right|bottom|left))?(-color)?|box-shadow|outline(-color)?)\s*:(.*)$/;
+      /^(color|background(-color)?|border(-(top|right|bottom|left))?(-color)?|box-shadow|outline(-color)?)$/;
     for (const selector of selectors) {
-      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const match = new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(
-        workbench
+      const rules = rulesFor(selector);
+      assert.ok(
+        rules.length > 0,
+        `workbench.css must contain a ${selector} rule`
       );
-      assert.ok(match, `workbench.css must contain a ${selector} rule`);
-      for (const line of match[1].split("\n")) {
-        const decl = colourProperty.exec(line);
-        if (!decl) continue;
-        assert.ok(
-          !/--cartouche-(theme|menubar)-/.test(decl[6]),
-          `${selector} must read Dialog Tier 2 tokens, not: ${line.trim()}`
-        );
+      for (const rule of rules) {
+        for (const { property, value } of declarationsOf(rule.body)) {
+          if (!colourProperty.test(property)) continue;
+          assert.ok(
+            !/--cartouche-(theme|menubar)-/.test(value),
+            `${selector} must read Dialog Tier 2 tokens, not: ${property}: ${value}`
+          );
+        }
       }
     }
   });
 
   it("defines the menu Tier 2 tokens (#353)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     // Each menu token maps to the Tier 1 primitive its rule read before #353, so no rendered colour changes.
     const menuTokens: Record<string, string> = {
       "--cartouche-menu-bg": "--cartouche-theme-surface",
@@ -1056,31 +993,22 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-menu-shortcut-hover-fg": "--cartouche-theme-border",
       "--cartouche-menu-separator": "--cartouche-theme-border",
     };
-    for (const [token, primitive] of Object.entries(menuTokens)) {
-      assert.match(
-        content,
-        new RegExp(`${token}:\\s*var\\(${primitive}\\);`),
-        `theme-default.css must define ${token} as var(${primitive})`
-      );
-    }
+    assertMappings(menuTokens);
   });
 
   it("reads no Tier 1 primitive in any colour declaration of the menubar menu and PopupMenu rules (#353)", () => {
-    const content = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
     const menuSelector =
       /\.(menu-dropdown(?!-trigger)|menu-submenu-dropdown|menu-item-check-slot|menu-shortcut-slot|menu-key-slot|toolbar-context-menu|context-menu-)/;
     const offenders: string[] = [];
     let menuRules = 0;
-    for (const match of content.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      const selector = match[1].trim();
-      if (!menuSelector.test(selector)) continue;
+    for (const rule of parseRules(WORKBENCH_CSS)) {
+      if (!rule.selectors.some((s) => menuSelector.test(s))) continue;
       menuRules++;
-      for (const decl of match[2].split(";")) {
-        if (/var\(--cartouche-theme-/.test(decl)) {
-          offenders.push(`${selector} { ${decl.trim()} }`);
-        }
+      for (const { property, value } of declarationsOf(rule.body)) {
+        if (/var\(--cartouche-theme-/.test(value))
+          offenders.push(
+            `${rule.selectors.join(", ")} { ${property}: ${value} }`
+          );
       }
     }
     assert.ok(menuRules >= 15, `expected the menu rules, found ${menuRules}`);
@@ -1088,7 +1016,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines the TimeFilterWidget, ColourButton, BasicWidget control and Workbench shell Tier 2 tokens (#359)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     // Each new token maps to the Tier 1 primitive its rule read before #359, so no rendered colour changes.
     const expectedMappings: Record<string, string> = {
       // Workbench shell
@@ -1125,32 +1052,22 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-picker-swatch-outline": "--cartouche-theme-fg-subtle",
     };
 
-    for (const [token, primitive] of Object.entries(expectedMappings)) {
-      const match = content.match(new RegExp(`${token}:\\s*([^;]+);`));
-      assert.ok(match, `theme-default.css must define Tier 2 token ${token}`);
-      assert.equal(
-        match[1].trim(),
-        `var(${primitive})`,
-        `${token} must map to ${primitive}`
-      );
-    }
+    assertMappings(expectedMappings);
   });
 
   it("reads no Tier 1 primitive in the TimeFilterWidget, ColourButton, BasicWidget control and Workbench shell rules (#359)", () => {
-    const css = fs
-      .readFileSync(workbenchCssPath, "utf-8")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
     const subsystemSelector =
       /\.time-filter-btn|\.time-filter-slider|\.picker-button|\.widget-control-btn:hover|\.widget-menu-item:hover|\.workbench-container|\.workbench-main|\.dockview-wrapper|\.ol-viewport|\.detached-portal-container/;
     const offenders: string[] = [];
     let ruleCount = 0;
-    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      if (!subsystemSelector.test(selector)) continue;
+    for (const rule of parseRules(WORKBENCH_CSS)) {
+      if (!rule.selectors.some((s) => subsystemSelector.test(s))) continue;
       ruleCount++;
-      for (const declaration of body.split(";")) {
-        if (declaration.includes("var(--cartouche-theme-")) {
-          offenders.push(`${selector.trim()} { ${declaration.trim()} }`);
-        }
+      for (const { property, value } of declarationsOf(rule.body)) {
+        if (value.includes("var(--cartouche-theme-"))
+          offenders.push(
+            `${rule.selectors.join(", ")} { ${property}: ${value} }`
+          );
       }
     }
     assert.ok(ruleCount > 20, "the subsystem rules must be found");
@@ -1158,12 +1075,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
-    assert.match(content, /--cartouche-theme-fg-secondary:\s*#475569;/);
+    assert.equal(tokenValue("--cartouche-theme-fg-secondary"), "#475569");
   });
 
   it("maps every TableWidget token to the base token the spec assigns it (Spec #322 / Ticket #323)", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
       "--cartouche-table-border": "--cartouche-theme-border-dark",
       "--cartouche-table-column-line": "--cartouche-theme-border-strong",
@@ -1181,34 +1096,14 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-table-readonly-selected-fg":
         "--cartouche-theme-fg-secondary",
     };
-    for (const [token, base] of Object.entries(expected)) {
-      const match = content.match(
-        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
-      );
-      assert.equal(match?.[1], base, `${token} must be var(${base})`);
-    }
+    assertMappings(expected);
   });
 
   it("guarantees referential integrity of all var() references within theme-default.css", () => {
-    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
-
-    // Extract all defined CSS custom property names
-    const definedProps = new Set<string>();
-    const propRegex = /(--[a-zA-Z0-9_-]+)\s*:/g;
-    let match: RegExpExecArray | null;
-    while ((match = propRegex.exec(content)) !== null) {
-      definedProps.add(match[1]);
-    }
-
-    // Extract all var(--name) usages
-    const varUsageRegex = /var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*[^)]+)?\)/g;
-    const unresolved: string[] = [];
-    while ((match = varUsageRegex.exec(content)) !== null) {
-      const referencedToken = match[1];
-      if (!definedProps.has(referencedToken)) {
-        unresolved.push(referencedToken);
-      }
-    }
+    const defined = definedTokens();
+    const unresolved = [...readTokens(THEME_CSS)].filter(
+      (token) => !defined.has(token)
+    );
 
     assert.deepEqual(
       unresolved,
@@ -1227,9 +1122,8 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it("ensures third-party structural dockview stylesheet is imported in workbench.css", () => {
-    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     assert.ok(
-      content.includes("dockview-react/dist/styles/dockview.css"),
+      WORKBENCH_CSS.includes("dockview-react/dist/styles/dockview.css"),
       "workbench.css must import dockview-react/dist/styles/dockview.css"
     );
   });
@@ -1247,19 +1141,18 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   it('verifies that @import "./theme.css" is removed from workbench.css (Ticket #198)', () => {
-    const content = fs.readFileSync(workbenchCssPath, "utf-8");
     assert.ok(
-      !content.includes('@import "./theme.css"'),
+      !WORKBENCH_CSS.includes('@import "./theme.css"'),
       "workbench.css must not import ./theme.css"
     );
     assert.ok(
-      !content.includes("@import './theme.css'"),
+      !WORKBENCH_CSS.includes("@import './theme.css'"),
       "workbench.css must not import ./theme.css"
     );
   });
 
   it("asserts that 0 bare hex, rgb, or rgba color literals remain in workbench.css outside comments (Ticket #198)", () => {
-    const content = fs.readFileSync(workbenchCssPath, "utf-8");
+    const content = WORKBENCH_CSS;
     // Strip multi-line comments preserving line counts
     const noComments = content.replace(/\/\*[\s\S]*?\*\//g, (m) =>
       m.replace(/[^\n]/g, " ")

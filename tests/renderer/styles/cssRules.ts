@@ -1,10 +1,10 @@
 /**
  * @file cssRules.ts
  * @module tests/renderer/styles/cssRules
- * @description Shared CSS-rule helpers for the stylesheet guardrail tests: loads theme-default.css and workbench.css, splits a flat stylesheet into rules, splits selector lists, and reads declarations and custom property values; and works out the value an element gets for a property from its inline style and the class-based workbench.css rules, so component tests can check the colours of class-styled elements; and resolves token-bound declarations back to the literal colours they render.
+ * @description Shared CSS-rule helpers for the stylesheet guardrail tests: loads theme-default.css and workbench.css, splits a flat stylesheet into rules, splits selector lists, and reads declarations and custom property values; and works out the value an element gets for a property from its inline style and the class-based workbench.css rules, so component tests can check the colours of class-styled elements; and resolves token-bound declarations back to the literal colours they render; and lists the tokens a stylesheet defines and reads, and the declarations of a rule, for the theme token guard tests.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see FocusIndicator.test.ts
  */
@@ -23,6 +23,33 @@ export const WORKBENCH_CSS = fs.readFileSync(
   path.resolve(process.cwd(), "src/renderer/styles/workbench.css"),
   "utf8"
 );
+
+/**
+ * @typedef {Object} SourceFile
+ * @property {string} file - Path relative to the repository root.
+ * @property {string} text - File contents.
+ */
+export interface SourceFile {
+  file: string;
+  text: string;
+}
+
+/**
+ * @function tsSources
+ * @description Reads every TypeScript source file (`.ts`, `.tsx`) under `src/`, so guard tests can check the custom properties components read in inline styles.
+ * @returns {SourceFile[]} The source files, sorted by path.
+ */
+export function tsSources(): SourceFile[] {
+  const srcDir = path.resolve(process.cwd(), "src");
+  return fs
+    .readdirSync(srcDir, { recursive: true, encoding: "utf8" })
+    .filter((file) => /\.tsx?$/.test(file))
+    .sort()
+    .map((file) => ({
+      file: path.join("src", file),
+      text: fs.readFileSync(path.join(srcDir, file), "utf8"),
+    }));
+}
 
 /**
  * @typedef {Object} CssRule
@@ -59,15 +86,23 @@ export function splitSelectors(list: string): string[] {
 }
 
 /**
+ * @function stripCssComments
+ * @description Removes every comment from a stylesheet.
+ * @param {string} css - Stylesheet text.
+ * @returns {string} The text without comments.
+ */
+export function stripCssComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/**
  * @function parseRules
  * @description Splits a flat stylesheet (no at-rule blocks) into rules, ignoring comments and `@import` lines.
  * @param {string} css - Stylesheet text.
  * @returns {CssRule[]} Parsed rules.
  */
 export function parseRules(css: string): CssRule[] {
-  const stripped = css
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/@import[^;]*;/g, "");
+  const stripped = stripCssComments(css).replace(/@import[^;]*;/g, "");
   const rules: CssRule[] = [];
   for (const match of stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     rules.push({ selectors: splitSelectors(match[1]), body: match[2] });
@@ -93,6 +128,35 @@ export function declaration(
 }
 
 /**
+ * @typedef {Object} CssDeclaration
+ * @property {string} property - Property name, trimmed.
+ * @property {string} value - Value, trimmed.
+ */
+export interface CssDeclaration {
+  property: string;
+  value: string;
+}
+
+/**
+ * @function declarationsOf
+ * @description Splits a declaration block into its declarations, skipping pieces without a colon.
+ * @param {string} body - Declaration block.
+ * @returns {CssDeclaration[]} The declarations, in source order.
+ */
+export function declarationsOf(body: string): CssDeclaration[] {
+  const out: CssDeclaration[] = [];
+  for (const piece of body.split(";")) {
+    const colon = piece.indexOf(":");
+    if (colon < 0) continue;
+    out.push({
+      property: piece.slice(0, colon).trim(),
+      value: piece.slice(colon + 1).trim(),
+    });
+  }
+  return out;
+}
+
+/**
  * @function rulesFor
  * @description Finds every workbench.css rule whose selector list contains the given selector.
  * @param {string} selector - Exact selector text (whitespace-normalised).
@@ -105,15 +169,35 @@ export function rulesFor(selector: string): CssRule[] {
 }
 
 /**
+ * @function selectorDeclaration
+ * @description Reads one declaration from the workbench.css rules whose selector list holds the given selector.
+ * @param {string} selector - Exact selector text (whitespace-normalised).
+ * @param {string} property - Property name.
+ * @returns {string | undefined} The first declared value, or undefined.
+ */
+export function selectorDeclaration(
+  selector: string,
+  property: string
+): string | undefined {
+  for (const rule of rulesFor(selector)) {
+    const value = declaration(rule.body, property);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/**
  * @function tokenValue
- * @description Reads a custom property's value from theme-default.css.
+ * @description Reads a custom property's value from theme-default.css, or from another stylesheet.
  * @param {string} token - Custom property name.
+ * @param {string} [css=THEME_CSS] - Stylesheet text to read it from.
  * @returns {string | undefined} The trimmed value, or undefined when not defined.
  */
-export function tokenValue(token: string): string | undefined {
-  const match = THEME_CSS.match(
-    new RegExp(`(?<![\\w-])${token}\\s*:\\s*([^;]+);`)
-  );
+export function tokenValue(
+  token: string,
+  css: string = THEME_CSS
+): string | undefined {
+  const match = css.match(new RegExp(`(?<![\\w-])${token}\\s*:\\s*([^;]+);`));
   return match ? match[1].trim() : undefined;
 }
 
@@ -125,6 +209,29 @@ export function tokenValue(token: string): string | undefined {
  */
 export function tokenMapping(token: string): string | undefined {
   return tokenValue(token)?.match(/^var\((--[a-z0-9-]+)\)$/)?.[1];
+}
+
+/**
+ * @function definedTokens
+ * @description Collects every custom property theme-default.css defines, outside comments.
+ * @returns {Set<string>} Custom property names.
+ */
+export function definedTokens(): Set<string> {
+  return new Set(
+    [...stripCssComments(THEME_CSS).matchAll(/(?<![\w-])(--[\w-]+)\s*:/g)].map(
+      (m) => m[1]
+    )
+  );
+}
+
+/**
+ * @function readTokens
+ * @description Collects every custom property a text reads through `var()`.
+ * @param {string} text - Stylesheet text, declaration block, CSS value or source code.
+ * @returns {Set<string>} Custom property names read.
+ */
+export function readTokens(text: string): Set<string> {
+  return new Set([...text.matchAll(/var\(\s*(--[\w-]+)/g)].map((m) => m[1]));
 }
 
 /**
@@ -155,11 +262,7 @@ export function classDeclaration(
   cls: string,
   property: string
 ): string | undefined {
-  for (const rule of rulesFor(`.${cls}`)) {
-    const value = declaration(rule.body, property);
-    if (value !== undefined) return value;
-  }
-  return undefined;
+  return selectorDeclaration(`.${cls}`, property);
 }
 
 /**
