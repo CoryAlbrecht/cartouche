@@ -1,16 +1,17 @@
 /**
  * @file Select.test.ts
  * @module tests/renderer/components/common/Select.test
- * @description Rendering tests for the shared Select dropdown: native customizable-select markup, controlled value, change callback, disabled and invalid states, density variant, attribute passthrough and rich option content mirrored into the trigger.
+ * @description Rendering tests for the shared Select dropdown: native customizable-select markup, controlled value, change callback, disabled and invalid states, density variant, attribute passthrough, rich option content mirrored into the trigger, and (#366) re-mirroring the trigger when the selected option is relabelled under an unchanged value.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Select}
  */
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { fromAny, fromPartial } from "@total-typescript/shoehorn";
 import { createRendererJiti } from "../../rendererJiti";
 
 const jiti = createRendererJiti(import.meta.url);
@@ -23,6 +24,7 @@ const {
   selectChangeHandler,
   selectKeyDownHandler,
   isWithinOpenSelect,
+  refreshSelectedContent,
   SELECT_SIZER_OPTION_LIMIT,
 } = jiti(
   "@renderer/components/common/Select"
@@ -214,5 +216,48 @@ describe("Select (Ticket #344)", () => {
       1,
       "an open list stops propagation, so ancestors do not act on its keys"
     );
+  });
+
+  it("re-mirrors the selected option into the trigger when its content changed but its value did not (#366)", () => {
+    /**
+     * @function fakeSelect
+     * @description A select whose trigger mirror holds `mirrored` while its selected option holds `current`, recording value assignments.
+     * @param {string} mirrored - Mirror (`<selectedcontent>`) markup.
+     * @param {string} current - Selected option markup.
+     * @returns {{ select: HTMLSelectElement, assigned: string[] }} The fake and its value assignments.
+     */
+    const fakeSelect = (mirrored: string, current: string) => {
+      const assigned: string[] = [];
+      const select = fromPartial<HTMLSelectElement>({
+        querySelector: fromAny((q: string) =>
+          q === "selectedcontent" ? { innerHTML: mirrored } : null
+        ),
+        selectedOptions: fromPartial<HTMLCollectionOf<HTMLOptionElement>>([
+          { innerHTML: current },
+        ]),
+        get value() {
+          return "b";
+        },
+        set value(v: string) {
+          assigned.push(v);
+        },
+      });
+      return { select, assigned };
+    };
+
+    const stale = fakeSelect("<span>50%</span>", "<span>75%</span>");
+    refreshSelectedContent(stale.select);
+    assert.deepEqual(
+      stale.assigned,
+      ["b"],
+      "a stale mirror is refreshed by re-assigning the unchanged value"
+    );
+
+    const fresh = fakeSelect("<span>75%</span>", "<span>75%</span>");
+    refreshSelectedContent(fresh.select);
+    assert.deepEqual(fresh.assigned, [], "an up-to-date mirror is left alone");
+
+    refreshSelectedContent(null);
+    refreshSelectedContent(fromPartial<HTMLSelectElement>({}));
   });
 });

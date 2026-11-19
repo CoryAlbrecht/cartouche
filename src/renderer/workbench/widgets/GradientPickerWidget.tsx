@@ -219,10 +219,10 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   const gradientCss = gradientStopsToCss(stops);
 
   /**
-   * @description Handles primary-click pointer down on a stop button or vertical guide line, selecting the stop and initializing horizontal dragging.
+   * @description Handles primary-click pointer down on a stop button or vertical guide line, selecting the stop and initializing horizontal dragging. The move and up listeners bind to the window that owns the widget's DOM (a detached dialog window or the Workbench window), falling back to the global `window`.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-08
-   * @updated 2026-11-09
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {React.PointerEvent} e - Pointer event.
    * @param {GradientStop} stop - Target gradient stop.
@@ -273,13 +273,17 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
       onChange?.(serialized);
     };
 
+    // Follow the pointer in the window that owns the widget's DOM: a detached
+    // dialog window's events never reach the global (Workbench) window.
+    const ownerWindow = bar.ownerDocument?.defaultView ?? window;
+
     const onPointerUp = () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
+      ownerWindow.removeEventListener("pointermove", onPointerMove);
+      ownerWindow.removeEventListener("pointerup", onPointerUp);
     };
 
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
+    ownerWindow.addEventListener("pointermove", onPointerMove);
+    ownerWindow.addEventListener("pointerup", onPointerUp);
   };
 
   /**

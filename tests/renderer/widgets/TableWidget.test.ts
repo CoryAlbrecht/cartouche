@@ -1,7 +1,7 @@
 /**
  * @file TableWidget.test.ts
  * @module tests/renderer/widgets/TableWidget.test
- * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324); and (Ticket #328) host cellStyle borders over the shared lines and on selected rows, and cell backgrounds ordered above plain and alternating rows and below the Selected Row and Active Row colours; and (#360) the row Hover colour, above plain and alternating rows and below the Selected Row and Active Row colours.
+ * @description Headless component tests for TableWidget as a host uses it (Spec #322 / Ticket #323): the BasicWidget header bar shown or hidden, rows with stable row IDs and column definitions (header text, alignment, display function), the --cartouche-table-* theme tokens on the outer border, column and row lines, header row, plain and alternating rows, 1rem font sizing, the Row Number Column, sticky header row and Row Number Column, and the empty table; (Ticket #326) row selection by primary, Ctrl/Cmd and Shift clicks and by ↑/↓, Shift+↑/↓ and Ctrl/Cmd+A, written to the host's selectedRowIds and activeRowId signals and reported through onSelectionChange with its kind, and the Selected Row and Active Row colours; and column resize handles, dragging and its minimum width, double-click auto-size (sort chevron included), resize handles never sorting, and host-owned and internal column widths (Ticket #324); and (Ticket #328) host cellStyle borders over the shared lines and on selected rows, and cell backgrounds ordered above plain and alternating rows and below the Selected Row and Active Row colours; and (#360) the row Hover colour, above plain and alternating rows and below the Selected Row and Active Row colours; and (#366) column resize drags followed in the window that owns the table (a detached dialog window), not the global window.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-19
@@ -1122,6 +1122,56 @@ describe("TableWidget column resizing and auto-size (Ticket #324)", () => {
       ["140px", "100px"]
     );
     assert.equal(table.style.width, "240px");
+  });
+
+  it("follows the drag in the window that owns the table, not the global window, and removes its listeners there on mouseup (#366)", async () => {
+    // A detached dialog window: the table's document has its own defaultView.
+    const childListeners: Record<string, Array<(e: any) => void>> = {};
+    const childWin: any = {
+      ...dom!.win,
+      addEventListener: (type: string, cb: (e: any) => void) => {
+        (childListeners[type] ??= []).push(cb);
+      },
+      removeEventListener: (type: string, cb: (e: any) => void) => {
+        childListeners[type] = (childListeners[type] ?? []).filter(
+          (l) => l !== cb
+        );
+      },
+    };
+    dom!.doc.defaultView = childWin;
+
+    await render({ columns: SIZED_COLUMNS, showRowNumberColumn: false });
+    await act(async () => {
+      resizeHandleOf(dataHeaders()[0]).dispatchEvent({
+        type: "mousedown",
+        button: 0,
+        clientX: 200,
+        bubbles: true,
+      });
+    });
+    assert.equal((childListeners["mousemove"] ?? []).length, 1);
+    assert.equal((childListeners["mouseup"] ?? []).length, 1);
+
+    await act(async () => {
+      for (const cb of childListeners["mousemove"].slice()) {
+        cb({ type: "mousemove", clientX: 260 });
+      }
+    });
+    assert.equal(dataHeaders()[0].style.width, "180px");
+
+    await act(async () => {
+      for (const cb of childListeners["mouseup"].slice()) {
+        cb({ type: "mouseup", clientX: 260 });
+      }
+    });
+    assert.equal(childListeners["mousemove"].length, 0);
+    assert.equal(childListeners["mouseup"].length, 0);
+
+    // The global window was never listened to: its mousemove resizes nothing.
+    await act(async () => {
+      dom!.win.dispatchEvent({ type: "mousemove", clientX: 400 });
+    });
+    assert.equal(dataHeaders()[0].style.width, "180px");
   });
 
   it("stops following the pointer after mouseup", async () => {

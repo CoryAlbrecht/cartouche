@@ -4,7 +4,7 @@
  * @description The canonical, reusable table Widget (Spec #322): a BasicWidget subclass a host (another Widget or a Dialog) embeds, usually with its header bar hidden, to show rows and columns. The host supplies the rows, each with a stable identity from `getRowId`, and the column definitions; TableWidget presents them with the `--cartouche-table-*` theme tokens through the `.table-widget-*` classes and state modifier classes in workbench.css (it sets no colour inline), a sticky header row, an optional sticky Row Number Column and optional alternating row colours, at a 1rem font size that follows the `ui.baseFont.size` preference. Clicking a sortable column's header sorts by that one column, cycling none → ascending → descending → none with dual, up and down chevrons; the sort state is the host's signal or TableWidget's own, and the rows are sorted in memory unless the host passes a `sortHandler` and sorts them itself. Each column header has a resizer that drags the column's width (never below its minimum) and auto-sizes it on double-click without ever sorting; the widths live in a host-owned signal when the host passes one, otherwise in TableWidget itself. Users select rows with primary/Ctrl/Shift clicks and ↑/↓, Shift+↑/↓ and Ctrl+A into host-owned Selected Row and Active Row signals, and each change is reported to the host with its kind. A host `cellStyle` function can give individual cells a 1px border colour, drawn over the shared row and column lines and shown on selected rows too, and a background that sits above the row colours and below the selection colours. Cells can be edited in place (double-click, or F2 / Enter in the focused column) with the default text and number editors or a column's own editor, unless they are Read-Only Cells through the table, their column, their row or themselves; each committed change goes to the host's `onCellEdit`, which can reject it. For embedded form-style tables (Ticket #335) a host can limit selection to a single row, turn off resizing per column, put an `id` and accessible name on the focusable table element, start an edit itself through an `editCell` signal, and mark cells with its own stylesheet classes through `cellClassName`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link AttributeTableWidget}
@@ -647,10 +647,10 @@ interface ColumnResizing<R> {
 
 /**
  * @function useColumnResizing
- * @description Holds TableWidget's column widths, in the host's `columnWidths` signal when given or else in TableWidget's own state, and drives the resizers: mousedown on a resizer follows the pointer through window mousemove events until mouseup, never below the column's minimum width, and double-click auto-sizes the column.
+ * @description Holds TableWidget's column widths, in the host's `columnWidths` signal when given or else in TableWidget's own state, and drives the resizers: mousedown on a resizer follows the pointer through mousemove events on the window that owns the table's DOM until mouseup, never below the column's minimum width, and double-click auto-sizes the column.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @template R
  * @param {readonly R[]} rows - The displayed rows, measured when auto-sizing.
@@ -698,10 +698,10 @@ function useColumnResizing<R>(
 
   /**
    * @function startResize
-   * @description Starts dragging a column's resizer on a primary-button mousedown: ends any drag still in progress, then follows the pointer through window `mousemove` events, never below the column's minimum width, until `mouseup`. The event never reaches the header, so resizing never sorts.
+   * @description Starts dragging a column's resizer on a primary-button mousedown: ends any drag still in progress, then follows the pointer through `mousemove` events on the window that owns the table's DOM (a detached dialog window or the Workbench window, falling back to the global `window`), never below the column's minimum width, until `mouseup`. The event never reaches the header, so resizing never sorts.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-16
-   * @updated 2026-11-17
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {React.MouseEvent<HTMLElement>} event - Mousedown on the column's resizer.
    * @param {TableColumn<R>} column - The column being resized.
@@ -725,9 +725,9 @@ function useColumnResizing<R>(
      * @description Resizes the column by how far the pointer has moved since the drag started, clamped to its minimum width.
      * @author Cory Albrecht <cory@albrecht.name>
      * @date 2026-11-16
-     * @updated 2026-11-17
+     * @updated 2026-11-19
      * @since 0.1.0-dev
-     * @param {MouseEvent} move - Window mousemove event.
+     * @param {MouseEvent} move - Owner window mousemove event.
      * @returns {void}
      */
     const onMove = (move: MouseEvent): void => {
@@ -736,21 +736,25 @@ function useColumnResizing<R>(
     };
     /**
      * @function onUp
-     * @description Ends the drag when the mouse button is released, removing the window listeners.
+     * @description Ends the drag when the mouse button is released, removing the owner window's listeners.
      * @author Cory Albrecht <cory@albrecht.name>
      * @date 2026-11-16
-     * @updated 2026-11-17
+     * @updated 2026-11-19
      * @since 0.1.0-dev
      * @returns {void}
      */
     const onUp = (): void => endDrag.current?.();
+    // Follow the pointer in the window that owns the table's DOM: a detached
+    // dialog window's events never reach the global (Workbench) window.
+    const ownerWindow =
+      event.currentTarget.ownerDocument?.defaultView ?? window;
     endDrag.current = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      ownerWindow.removeEventListener("mousemove", onMove);
+      ownerWindow.removeEventListener("mouseup", onUp);
       endDrag.current = null;
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    ownerWindow.addEventListener("mousemove", onMove);
+    ownerWindow.addEventListener("mouseup", onUp);
   };
 
   /**

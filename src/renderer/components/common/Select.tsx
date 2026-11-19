@@ -4,7 +4,7 @@
  * @description The shared single-choice dropdown control. Every dropdown in the Workbench, its dialogs and its widgets renders through {@link Select}, so all of them look, size, focus and behave identically. It renders a native `<select>` styled as a customizable select (`appearance: base-select`): the trigger and the drop-down list are ordinary page content styled only through Theme Component Tokens, while keyboard handling, type-ahead and accessibility semantics stay native. Options can carry rich content (an adornment after the label), which the trigger mirrors through `<selectedcontent>`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Select}
  */
@@ -164,11 +164,30 @@ export function selectKeyDownHandler(
 }
 
 /**
+ * @function refreshSelectedContent
+ * @description Brings the trigger's `<selectedcontent>` mirror back in line with the selected option when the option's content changed but the selected value did not, e.g. a gradient stop whose label shows its offset while it is dragged. The browser clones the selected option into the mirror only when the selection is set, and React does not set an unchanged value, so a relabelled selected option would otherwise keep showing its old content in the trigger. Re-assigning the unchanged value makes the browser clone it again; it fires no change event. A no-op when the mirror is already current or the select has no mirror or no selected option.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-19
+ * @updated 2026-11-19
+ * @since 0.1.0-dev
+ * @param {HTMLSelectElement | null} select - The rendered select, or null before mount.
+ * @returns {void}
+ */
+export function refreshSelectedContent(select: HTMLSelectElement | null): void {
+  const mirror = select?.querySelector?.("selectedcontent");
+  const selected = select?.selectedOptions?.[0];
+  if (!select || !mirror || !selected) return;
+  if (mirror.innerHTML === selected.innerHTML) return;
+  const { value } = select;
+  select.value = value;
+}
+
+/**
  * @component Select
- * @description The shared single-choice dropdown. Renders a native customizable `<select>` with the `cartouche-select` class, a trigger button that mirrors the selected option through `<selectedcontent>` beside an MDI caret, and one `<option>` per entry holding its label and optional adornment. An invisible sizer stacks every option's content under the selected one, so the trigger is as wide as its widest option, as a native select is, and does not change width when the value changes; lists longer than {@link SELECT_SIZER_OPTION_LIMIT} skip it and take their width from the layout. While its list is open, keystrokes stay with the list (see {@link selectKeyDownHandler}).
+ * @description The shared single-choice dropdown. Renders a native customizable `<select>` with the `cartouche-select` class, a trigger button that mirrors the selected option through `<selectedcontent>` beside an MDI caret, and one `<option>` per entry holding its label and optional adornment. An invisible sizer stacks every option's content under the selected one, so the trigger is as wide as its widest option, as a native select is, and does not change width when the value changes; lists longer than {@link SELECT_SIZER_OPTION_LIMIT} skip it and take their width from the layout. While its list is open, keystrokes stay with the list (see {@link selectKeyDownHandler}). After every render the trigger is re-mirrored if the selected option's content changed under an unchanged value (see {@link refreshSelectedContent}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @template V
  * @param {SelectProps<V>} props - Component properties.
@@ -181,8 +200,29 @@ export function Select<V extends string = string>({
   density = "normal",
   className,
   onKeyDown,
+  ref,
   ...rest
 }: SelectProps<V>): React.ReactElement {
+  const selectRef = React.useRef<HTMLSelectElement | null>(null);
+  /**
+   * @function setSelectRef
+   * @description Keeps the select element for {@link refreshSelectedContent} and forwards it to the caller's ref.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @param {HTMLSelectElement | null} node - The select element, or null on unmount.
+   * @returns {void}
+   */
+  const setSelectRef = React.useCallback(
+    (node: HTMLSelectElement | null): void => {
+      selectRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref]
+  );
+  React.useLayoutEffect(() => refreshSelectedContent(selectRef.current));
   const classes = [
     "cartouche-select",
     density === "compact" ? "is-compact" : "",
@@ -194,6 +234,7 @@ export function Select<V extends string = string>({
     <select
       className={classes}
       {...rest}
+      ref={setSelectRef}
       value={value}
       onChange={selectChangeHandler(onChange)}
       onKeyDown={selectKeyDownHandler(onKeyDown)}>

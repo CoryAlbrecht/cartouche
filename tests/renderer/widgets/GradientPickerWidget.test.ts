@@ -1,10 +1,10 @@
 /**
  * @file GradientPickerWidget.test.ts
  * @module tests/renderer/widgets/GradientPickerWidget.test
- * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, and UI preference scaling. The stop parsing and serialization helper tests live in tests/shared/colors/gradientStops.test.ts.
+ * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, UI preference scaling, and (#366) stop drags followed in the window that owns the widget (a detached dialog window), not the global window. The stop parsing and serialization helper tests live in tests/shared/colors/gradientStops.test.ts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -688,6 +688,83 @@ describe("GradientPickerWidget Component & Interactions (Ticket #207)", () => {
       "#008000ff 75%",
       "Offset must update to 75% on drag"
     );
+  });
+
+  it("drags a double-click-created stop through the window that owns the widget, not the global window, and removes its listeners there on pointerup (#366)", async () => {
+    // A detached dialog window: the widget's document has its own defaultView.
+    const childListeners: Record<string, Array<(e: any) => void>> = {};
+    const childWin: any = {
+      ...doc.defaultView,
+      addEventListener: (type: string, cb: (e: any) => void) => {
+        (childListeners[type] ??= []).push(cb);
+      },
+      removeEventListener: (type: string, cb: (e: any) => void) => {
+        childListeners[type] = (childListeners[type] ?? []).filter(
+          (l) => l !== cb
+        );
+      },
+    };
+    doc.defaultView = childWin;
+
+    let latestStops: string[] = [];
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
+          onChange: (stops: string[]) => {
+            latestStops = stops;
+          },
+        })
+      );
+    });
+
+    const previewBar = findElementsByClass(
+      container,
+      "gradient-picker-preview-bar"
+    )[0];
+    await act(async () => {
+      previewBar.dispatchEvent({
+        type: "dblclick",
+        button: 0,
+        clientX: 100,
+        bubbles: true,
+      });
+    });
+    assert.equal(latestStops[1], "#008000ff 50%");
+
+    const stopBtns = getStopButtonsSorted(container);
+    assert.equal(stopBtns.length, 3);
+    await act(async () => {
+      stopBtns[1].dispatchEvent({
+        type: "pointerdown",
+        button: 0,
+        clientX: 100,
+        pointerId: 1,
+        bubbles: true,
+      });
+    });
+
+    assert.equal(
+      (windowListeners["pointermove"] ?? []).length,
+      0,
+      "No drag listener may be added to the global window"
+    );
+    assert.equal((childListeners["pointermove"] ?? []).length, 1);
+    assert.equal((childListeners["pointerup"] ?? []).length, 1);
+
+    await act(async () => {
+      for (const cb of childListeners["pointermove"].slice()) {
+        cb({ clientX: 150 });
+      }
+    });
+    assert.equal(latestStops[1], "#008000ff 75%", "Stop must follow pointer");
+
+    await act(async () => {
+      for (const cb of childListeners["pointerup"].slice()) cb({});
+    });
+    assert.equal(childListeners["pointermove"].length, 0);
+    assert.equal(childListeners["pointerup"].length, 0);
+    assert.equal((windowListeners["pointerup"] ?? []).length, 0);
   });
 
   it("delete button deletes the active intermediate stop and re-selects an adjacent stop", async () => {
