@@ -375,9 +375,7 @@
   --cartouche-layer-properties-caption-fg: var(--cartouche-theme-fg-muted);
   --cartouche-layer-properties-error-fg: var(--cartouche-theme-danger-bright);
   --cartouche-layer-properties-toolbar-bg: var(--cartouche-theme-surface-alt);
-  --cartouche-layer-properties-toolbar-border: var(
-    --cartouche-theme-border-strong
-  );
+  --cartouche-layer-properties-toolbar-border: var(--cartouche-theme-border-strong);
   --cartouche-layer-properties-footer-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-layer-properties-footer-border: var(--cartouche-theme-border);
 
@@ -387,9 +385,7 @@
   --cartouche-snapping-options-fg: var(--cartouche-theme-fg);
   --cartouche-snapping-options-empty-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-snapping-options-empty-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-snapping-options-empty-border: var(
-    --cartouche-theme-border-strong
-  );
+  --cartouche-snapping-options-empty-border: var(--cartouche-theme-border-strong);
   --cartouche-snapping-options-header-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-snapping-options-header-line: var(--cartouche-theme-border);
   --cartouche-snapping-options-row-line: var(--cartouche-theme-border);
@@ -423,33 +419,21 @@
   --cartouche-preferences-toggle-fg: var(--cartouche-theme-fg);
   --cartouche-preferences-toggle-border: var(--cartouche-theme-border-strong);
   --cartouche-preferences-toggle-toggled-on-bg: var(--cartouche-theme-primary);
-  --cartouche-preferences-toggle-toggled-on-fg: var(
-    --cartouche-theme-fg-inverted
-  );
-  --cartouche-preferences-toggle-toggled-on-border: var(
-    --cartouche-theme-primary
-  );
+  --cartouche-preferences-toggle-toggled-on-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-preferences-toggle-toggled-on-border: var(--cartouche-theme-primary);
   --cartouche-preferences-switch-bg: var(--cartouche-theme-border-strong);
   --cartouche-preferences-switch-toggled-on-bg: var(--cartouche-theme-primary);
   --cartouche-preferences-switch-thumb-bg: var(--cartouche-theme-surface);
   --cartouche-preferences-switch-thumb-shadow: var(--cartouche-theme-shadow);
-  --cartouche-preferences-button-group-border: var(
-    --cartouche-theme-border-strong
-  );
+  --cartouche-preferences-button-group-border: var(--cartouche-theme-border-strong);
   --cartouche-preferences-button-group-item-bg: var(--cartouche-theme-surface);
   --cartouche-preferences-button-group-item-fg: var(--cartouche-theme-fg);
-  --cartouche-preferences-button-group-item-toggled-on-bg: var(
-    --cartouche-theme-primary
-  );
-  --cartouche-preferences-button-group-item-toggled-on-fg: var(
-    --cartouche-theme-fg-inverted
-  );
+  --cartouche-preferences-button-group-item-toggled-on-bg: var(--cartouche-theme-primary);
+  --cartouche-preferences-button-group-item-toggled-on-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-preferences-value-fg: var(--cartouche-theme-fg);
   --cartouche-preferences-image-picker-bg: var(--cartouche-theme-surface);
   --cartouche-preferences-image-picker-fg: var(--cartouche-theme-fg);
-  --cartouche-preferences-image-picker-border: var(
-    --cartouche-theme-border-strong
-  );
+  --cartouche-preferences-image-picker-border: var(--cartouche-theme-border-strong);
   --cartouche-preferences-radio-label-fg: var(--cartouche-theme-fg);
   --cartouche-preferences-checkbox-label-fg: var(--cartouche-theme-fg-primary);
   --cartouche-preferences-unit-fg: var(--cartouche-theme-fg-muted);
@@ -457,22 +441,12 @@
   --cartouche-preferences-footer-border: var(--cartouche-theme-border);
   --cartouche-preferences-shortcut-hint-fg: var(--cartouche-theme-fg-subtle);
   --cartouche-preferences-button-secondary-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-preferences-button-secondary-hover-bg: var(
-    --cartouche-theme-surface-alt
-  );
-  --cartouche-preferences-button-secondary-hover-fg: var(
-    --cartouche-theme-fg-primary
-  );
-  --cartouche-preferences-button-secondary-hover-border: var(
-    --cartouche-theme-fg-subtle
-  );
-  --cartouche-preferences-button-primary-hover-bg: var(
-    --cartouche-theme-primary-hover
-  );
+  --cartouche-preferences-button-secondary-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-preferences-button-secondary-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-button-secondary-hover-border: var(--cartouche-theme-fg-subtle);
+  --cartouche-preferences-button-primary-hover-bg: var(--cartouche-theme-primary-hover);
   --cartouche-preferences-resize-handle-fg: var(--cartouche-theme-fg-subtle);
-  --cartouche-preferences-resize-handle-hover-fg: var(
-    --cartouche-theme-primary
-  );
+  --cartouche-preferences-resize-handle-hover-fg: var(--cartouche-theme-primary);
 
   /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
@@ -508,15 +482,11 @@
   /* TimeFilterWidget: playback buttons (Normal reads the secondary button tokens)
      and the range scrubber slider track and thumb */
   --cartouche-time-filter-button-hover-bg: var(--cartouche-theme-surface-alt);
-  --cartouche-time-filter-button-pressed-bg: var(
-    --cartouche-theme-surface-active
-  );
+  --cartouche-time-filter-button-pressed-bg: var(--cartouche-theme-surface-active);
   --cartouche-time-filter-track-bg: var(--cartouche-theme-border-strong);
   --cartouche-time-filter-thumb-bg: var(--cartouche-theme-primary);
   --cartouche-time-filter-thumb-hover-bg: var(--cartouche-theme-primary-hover);
-  --cartouche-time-filter-thumb-pressed-bg: var(
-    --cartouche-theme-primary-active
-  );
+  --cartouche-time-filter-thumb-pressed-bg: var(--cartouche-theme-primary-active);
   --cartouche-time-filter-thumb-disabled-bg: var(--cartouche-theme-fg-muted);
 
   /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
