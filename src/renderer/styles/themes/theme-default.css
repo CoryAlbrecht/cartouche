@@ -163,11 +163,13 @@
   --cartouche-menubar-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-menubar-hover: rgba(255, 255, 255, 0.2);
   --cartouche-menubar-border: var(--cartouche-theme-border-dark);
+  --cartouche-menubar-title-badge-bg: var(--cartouche-theme-primary-hover);
 
   /* Status Bar */
   --cartouche-theme-status-bar-bg: var(--cartouche-theme-primary);
   --cartouche-theme-status-bar-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-theme-status-bar-border: var(--cartouche-theme-border-dark);
+  --cartouche-statusbar-separator-bg: var(--cartouche-theme-fg-subtle);
 
   /* Activity Bar */
   --cartouche-theme-activity-bar-bg: var(--cartouche-theme-surface-subtle);

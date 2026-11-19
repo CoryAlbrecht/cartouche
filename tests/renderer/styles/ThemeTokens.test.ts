@@ -223,6 +223,42 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     }
   });
 
+  it("defines the menubar title badge and status-bar separator Tier 2 tokens (#350)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const expected: Record<string, string> = {
+      "--cartouche-menubar-title-badge-bg": "--cartouche-theme-primary-hover",
+      "--cartouche-statusbar-separator-bg": "--cartouche-theme-fg-subtle",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads only --cartouche-* tokens in workbench.css that theme-default.css defines (#350)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const workbench = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const defined = new Set(
+      [...theme.matchAll(/(--cartouche-[a-zA-Z0-9_-]+)\s*:/g)].map((m) => m[1])
+    );
+    const undefinedReads = [
+      ...new Set(
+        [...workbench.matchAll(/var\(\s*(--cartouche-[a-zA-Z0-9_-]+)/g)]
+          .map((m) => m[1])
+          .filter((token) => !defined.has(token))
+      ),
+    ];
+    assert.deepEqual(
+      undefinedReads,
+      [],
+      `workbench.css reads tokens no Theme defines: ${undefinedReads.join(", ")}`
+    );
+  });
+
   it("defines the PreferencesDialog Tier 2 tokens, each mapped to the primitive its rule read before (#358)", () => {
     const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const expected: Record<string, string> = {
