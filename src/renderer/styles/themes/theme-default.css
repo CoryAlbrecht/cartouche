@@ -252,10 +252,17 @@
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);
-  --cartouche-menu-fg: var(--cartouche-theme-fg);
-  --cartouche-menu-border: var(--cartouche-theme-border-dropdown);
+  --cartouche-menu-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-menu-border: var(--cartouche-theme-border-strong);
+  --cartouche-menu-shadow: var(--cartouche-theme-shadow);
+  --cartouche-menu-title-fg: var(--cartouche-theme-fg-muted);
   --cartouche-menu-item-hover-bg: var(--cartouche-theme-primary);
   --cartouche-menu-item-hover-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-menu-item-disabled-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-menu-check-fg: var(--cartouche-theme-primary);
+  --cartouche-menu-check-hover-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-menu-shortcut-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-menu-shortcut-hover-fg: var(--cartouche-theme-border);
   --cartouche-menu-separator: var(--cartouche-theme-border);
   --cartouche-menu-focus-color: var(--cartouche-theme-primary);
 
