@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -256,13 +256,23 @@
   --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-hover);
   --cartouche-toolbar-item-active-bg: var(--cartouche-theme-surface-active);
 
-  /* Dialogs & Modals */
+  /* Dialogs & Modals: the primary-coloured title bar of every Dialog window and
+     PickerDialogFrame, then the light card of the About ModalDialog (dialog box,
+     branded header, subtitle, body text, inset panel, footer and Close button Hover) */
+  --cartouche-dialog-titlebar-bg: var(--cartouche-theme-primary);
+  --cartouche-dialog-titlebar-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-dialog-bg: var(--cartouche-theme-surface);
-  --cartouche-dialog-fg: var(--cartouche-theme-fg);
-  --cartouche-dialog-border: var(--cartouche-theme-border);
+  --cartouche-dialog-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-dialog-border: var(--cartouche-theme-border-strong);
+  --cartouche-dialog-shadow: var(--cartouche-theme-shadow-strong);
   --cartouche-dialog-header-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-dialog-header-fg: var(--cartouche-theme-fg);
   --cartouche-dialog-header-border: var(--cartouche-theme-border);
+  --cartouche-dialog-subtitle-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-dialog-inset-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-dialog-footer-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-dialog-footer-border: var(--cartouche-theme-border);
+  --cartouche-dialog-button-hover-bg: var(--cartouche-theme-primary-hover);
   --cartouche-dialog-backdrop: rgba(0, 0, 0, 0.4);
 
   /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Selected Row and Active Row backgrounds, and Read-Only Cell text */

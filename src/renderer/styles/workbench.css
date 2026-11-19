@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -1440,12 +1440,12 @@
 }
 
 .modal-dialog {
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-dialog-bg);
   border-radius: 8px;
   width: 490px;
   max-width: 90vw;
-  box-shadow: 0 12px 36px var(--cartouche-theme-shadow-strong);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  box-shadow: 0 12px 36px var(--cartouche-dialog-shadow);
+  border: 1px solid var(--cartouche-dialog-border);
   overflow: hidden;
 }
 
@@ -1454,8 +1454,9 @@
   align-items: center;
   gap: 14px;
   padding: 16px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-dialog-header-bg);
+  color: var(--cartouche-dialog-header-fg);
+  border-bottom: 1px solid var(--cartouche-dialog-header-border);
 }
 
 .modal-logo {
@@ -1465,21 +1466,21 @@
 
 .modal-subtitle {
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-dialog-subtitle-fg);
   margin-top: 2px;
 }
 
 .modal-body {
   padding: 20px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-dialog-fg);
   line-height: 1.5;
 }
 
 .modal-specs {
   margin-top: 14px;
   padding: 10px 14px;
-  background: var(--cartouche-theme-surface-alt);
+  background: var(--cartouche-dialog-inset-bg);
   border-radius: 6px;
   font-size: 0.8333rem;
   display: flex;
@@ -1491,13 +1492,13 @@
   display: flex;
   justify-content: flex-end;
   padding: 12px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-dialog-footer-bg);
+  border-top: 1px solid var(--cartouche-dialog-footer-border);
 }
 
 .modal-btn {
-  background: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background: var(--cartouche-button-primary-bg);
+  color: var(--cartouche-button-primary-fg);
   border: none;
   padding: 6px 18px;
   border-radius: 4px;
@@ -1508,7 +1509,7 @@
 }
 
 .modal-btn:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-dialog-button-hover-bg);
 }
 
 /* =========================================================================
@@ -2159,8 +2160,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--cartouche-menubar-bg);
-  color: var(--cartouche-menubar-fg);
+  background-color: var(--cartouche-dialog-titlebar-bg);
+  color: var(--cartouche-dialog-titlebar-fg);
   min-height: max(2em, calc(var(--cartouche-ui-icon-size, 24px) + 6px));
   padding: 0 10px;
   font-weight: 500;
@@ -2198,7 +2199,7 @@
 .cartouche-dialog-close-btn {
   background: none;
   border: none;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-dialog-titlebar-fg);
   cursor: pointer;
   padding: 2px 6px;
   display: flex;
@@ -3400,8 +3401,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.625rem 0.875rem;
-  background-color: var(--cartouche-menubar-bg);
-  color: var(--cartouche-menubar-fg);
+  background-color: var(--cartouche-dialog-titlebar-bg);
+  color: var(--cartouche-dialog-titlebar-fg);
   font-size: 0.9375rem;
   font-weight: 600;
   user-select: none;
