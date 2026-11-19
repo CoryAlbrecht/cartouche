@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality (Ticket #92, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-14
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -413,23 +413,23 @@ describe("LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
     };
   });
 
-  it("workbench.css reserves var(--cartouche-theme-info-subtle) background strictly for .selected and defines 4-state typography matrix", () => {
-    // 1. .selected must declare background-color: var(--cartouche-theme-info-subtle)
+  it("workbench.css reserves var(--cartouche-layer-tree-row-selected-bg) background strictly for .selected and defines 4-state typography matrix", () => {
+    // 1. .selected must declare background-color: var(--cartouche-layer-tree-row-selected-bg)
     assert.match(
       cssContent,
-      /\.tree-node-row\.selected[^{]*\{[^}]*background-color:\s*var\(--cartouche-theme-info-subtle\)/s,
-      ".tree-node-row.selected must declare background-color: var(--cartouche-theme-info-subtle)"
+      /\.tree-node-row\.selected[^{]*\{[^}]*background-color:\s*var\(--cartouche-layer-tree-row-selected-bg\)/s,
+      ".tree-node-row.selected must declare background-color: var(--cartouche-layer-tree-row-selected-bg)"
     );
 
-    // 2. .active must NOT declare background-color: var(--cartouche-theme-info-subtle)
+    // 2. .active must NOT declare background-color: var(--cartouche-layer-tree-row-selected-bg)
     const activeRowMatch = cssContent.match(
       /\.tree-node-row\.active\s*\{([^}]+)\}/
     );
     if (activeRowMatch) {
       assert.doesNotMatch(
         activeRowMatch[1],
-        /background-color:\s*var\(--cartouche-theme-info-subtle\)/,
-        ".tree-node-row.active must NOT declare background-color: var(--cartouche-theme-info-subtle)"
+        /background-color:\s*var\(--cartouche-layer-tree-row-selected-bg\)/,
+        ".tree-node-row.active must NOT declare background-color: var(--cartouche-layer-tree-row-selected-bg)"
       );
     }
 

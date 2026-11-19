@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -221,6 +221,70 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `theme-default.css must define Tier 2 component token: ${token}`
       );
     }
+  });
+
+  it("defines the LayerTreeWidget Tier 2 tokens (#356)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const expected: Record<string, string> = {
+      "--cartouche-layer-tree-bg": "--cartouche-theme-surface",
+      "--cartouche-layer-tree-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-layer-tree-header-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-layer-tree-row-hover-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-layer-tree-row-selected-bg": "--cartouche-theme-info-subtle",
+      "--cartouche-layer-tree-row-selected-fg": "--cartouche-theme-info",
+      "--cartouche-layer-tree-project-border":
+        "--cartouche-theme-border-subtle",
+      "--cartouche-layer-tree-chevron-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-layer-tree-meta-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-layer-tree-empty-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-layer-tree-empty-title-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-layer-tree-drop-marker-bg": "--cartouche-theme-primary",
+      "--cartouche-layer-tree-inline-input-border": "--cartouche-theme-primary",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads only Tier 2 tokens in the LayerTreeWidget colour declarations (#356)", () => {
+    const css = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const subsystem =
+      /\.(layer-tree-|tree-node-|tree-chevron|tree-drop-marker|tree-inline-input|empty-layers-|layer-meta)/;
+    const colourProperty =
+      /^(color|background(-color)?|border(-(top|right|bottom|left))?(-color)?|outline(-color)?|fill|stroke|box-shadow)$/;
+    const declarations = new Map<string, string>();
+    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!subsystem.test(selector)) continue;
+      for (const declaration of body.split(";")) {
+        const [property, ...rest] = declaration.split(":");
+        const name = property?.trim() ?? "";
+        if (!colourProperty.test(name)) continue;
+        const value = rest.join(":").trim();
+        assert.doesNotMatch(
+          value,
+          /--cartouche-theme-/,
+          `${selector.trim()} { ${name} } must read a Tier 2 token, not ${value}`
+        );
+        declarations.set(`${selector.trim()}|${name}`, value);
+      }
+    }
+    assert.match(
+      declarations.get(".tree-node-row:hover|background-color") ?? "",
+      /var\(--cartouche-layer-tree-row-hover-bg\)/
+    );
+    assert.match(
+      declarations.get(".tree-node-row.selected|background-color") ?? "",
+      /var\(--cartouche-layer-tree-row-selected-bg\)/
+    );
+    assert.match(
+      declarations.get(".tree-node-row.selected|color") ?? "",
+      /var\(--cartouche-layer-tree-row-selected-fg\)/
+    );
   });
 
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {

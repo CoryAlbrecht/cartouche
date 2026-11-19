@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -232,6 +232,23 @@
   --cartouche-widget-content-bg: var(--cartouche-theme-surface);
   --cartouche-widget-content-fg: var(--cartouche-theme-fg);
   --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
+
+  /* Layer Tree (LayerTreeWidget): panel and viewport, header bar, Tree Node Row Hover and
+     Selected, the project row's divider, chevrons, layer metadata, the empty-project state,
+     the drag-and-drop insertion marker and the inline rename input's border */
+  --cartouche-layer-tree-bg: var(--cartouche-theme-surface);
+  --cartouche-layer-tree-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-layer-tree-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-layer-tree-row-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-layer-tree-row-selected-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-layer-tree-row-selected-fg: var(--cartouche-theme-info);
+  --cartouche-layer-tree-project-border: var(--cartouche-theme-border-subtle);
+  --cartouche-layer-tree-chevron-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-tree-meta-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-tree-empty-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-tree-empty-title-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-layer-tree-drop-marker-bg: var(--cartouche-theme-primary);
+  --cartouche-layer-tree-inline-input-border: var(--cartouche-theme-primary);
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);

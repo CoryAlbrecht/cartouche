@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -896,7 +896,7 @@
 }
 
 .layer-tree-header {
-  background-color: var(--cartouche-theme-surface-subtle) !important;
+  background-color: var(--cartouche-layer-tree-header-bg) !important;
   cursor: grab;
 }
 
@@ -935,15 +935,15 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-layer-tree-bg);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .layer-tree-viewport {
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-layer-tree-bg);
   padding: 4px 0;
   container-type: inline-size;
 }
@@ -975,12 +975,12 @@
 }
 
 .tree-node-row:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-layer-tree-row-hover-bg);
 }
 
 .tree-node-row.selected {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-layer-tree-row-selected-bg);
+  color: var(--cartouche-layer-tree-row-selected-fg);
 }
 
 .tree-node-row .tree-node-title {
@@ -1015,7 +1015,7 @@
   width: 100cqw;
   max-width: 100cqw;
   height: 2px;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-layer-tree-drop-marker-bg);
   border-radius: 1px;
   margin: 1px 0;
   pointer-events: none;
@@ -1029,7 +1029,7 @@
   top: -3px;
   width: 8px;
   height: 8px;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-layer-tree-drop-marker-bg);
   border-radius: 50%;
 }
 
@@ -1038,29 +1038,29 @@
   min-width: 14rem;
   font-size: 0.9167rem;
   font-family: inherit;
-  border: 1px solid var(--cartouche-theme-primary);
+  border: 1px solid var(--cartouche-layer-tree-inline-input-border);
   border-radius: 2px;
   padding: 1px 4px;
-  color: var(--cartouche-theme-fg);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-input-fg);
+  background-color: var(--cartouche-input-bg);
 }
 
 .tree-node-project {
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
-  border-bottom: 1px solid var(--cartouche-theme-border-subtle);
+  color: var(--cartouche-layer-tree-fg);
+  border-bottom: 1px solid var(--cartouche-layer-tree-project-border);
   margin-bottom: 4px;
   padding-bottom: 6px;
 }
 
 .tree-node-group {
   font-weight: 500;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .tree-node-layer {
   font-weight: 400;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .tree-indent {
@@ -1075,7 +1075,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-chevron-fg);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -1137,12 +1137,12 @@
 }
 
 .layer-tree-item:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-layer-tree-row-hover-bg);
 }
 
 .layer-tree-item.active {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-layer-tree-row-selected-bg);
+  color: var(--cartouche-layer-tree-row-selected-fg);
 }
 
 .layer-kind-icon {
@@ -1171,7 +1171,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-meta-fg);
 }
 
 .opacity-control {
@@ -1194,19 +1194,19 @@
   height: calc(100% - 40px);
   padding: 24px 16px;
   text-align: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-empty-fg);
 }
 
 .empty-layers-title {
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-empty-title-fg);
   margin-bottom: 6px;
 }
 
 .empty-layers-desc {
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-empty-fg);
   line-height: 1.4;
   max-width: 200px;
 }
