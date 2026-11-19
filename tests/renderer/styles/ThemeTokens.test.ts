@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -22,6 +22,7 @@ import {
   selectorDeclaration,
   stripCssComments,
   THEME_CSS,
+  TIER2_TOKENS_WITH_THEME_PREFIX,
   tier2Tokens,
   tokenMapping,
   tokenValue,
@@ -644,21 +645,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   /**
-   * Tokens named `--cartouche-theme-*` that are Tier 2 Component Tokens, not Tier 1
-   * primitives: they sit in the Tier 2 Status Bar and Tab Groups groups of
-   * theme-default.css and keep their historical names, because renaming tokens is
-   * out of scope for Spec #349. The Tier 1 guard below allows exactly these.
-   */
-  const tier2TokensWithThemePrefix = [
-    "--cartouche-theme-status-bar-bg",
-    "--cartouche-theme-status-bar-fg",
-    "--cartouche-theme-tab-active-bg",
-    "--cartouche-theme-tab-active-fg",
-    "--cartouche-theme-tab-inactive-bg",
-    "--cartouche-theme-tab-inactive-fg",
-  ];
-
-  /**
    * Properties whose values are not colours and may read a Tier 1 primitive: the
    * monospace font stack is a typography primitive (ADR 0013), not a colour.
    */
@@ -673,7 +659,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         for (const token of readTokens(value)) {
           if (
             token.startsWith("--cartouche-theme-")
-            && !tier2TokensWithThemePrefix.includes(token)
+            && !TIER2_TOKENS_WITH_THEME_PREFIX.includes(token)
           )
             offenders.push(`${selector} { ${property}: … ${token} }`);
         }

@@ -4,7 +4,7 @@
  * @description Shared CSS-rule helpers for the stylesheet guardrail tests: loads theme-default.css and workbench.css, splits a flat stylesheet into rules, splits selector lists, and reads declarations and custom property values; and works out the value an element gets for a property from its inline style and the class-based workbench.css rules, so component tests can check the colours of class-styled elements; and resolves token-bound declarations back to the literal colours they render; and lists the tokens a stylesheet defines and reads, and the declarations of a rule, for the theme token guard tests.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see FocusIndicator.test.ts
  */
@@ -23,6 +23,21 @@ export const WORKBENCH_CSS = fs.readFileSync(
   path.resolve(process.cwd(), "src/renderer/styles/workbench.css"),
   "utf8"
 );
+
+/**
+ * Tokens named `--cartouche-theme-*` that are Tier 2 Component Tokens, not Tier 1
+ * primitives: they sit in the Tier 2 Status Bar and Tab Groups groups of
+ * theme-default.css and keep their historical names, because renaming tokens was
+ * out of scope for Spec #349. The Tier 1 read guards allow exactly these.
+ */
+export const TIER2_TOKENS_WITH_THEME_PREFIX: readonly string[] = [
+  "--cartouche-theme-status-bar-bg",
+  "--cartouche-theme-status-bar-fg",
+  "--cartouche-theme-tab-active-bg",
+  "--cartouche-theme-tab-active-fg",
+  "--cartouche-theme-tab-inactive-bg",
+  "--cartouche-theme-tab-inactive-fg",
+];
 
 /**
  * @typedef {Object} SourceFile
