@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -283,7 +283,7 @@
    3. Outer Toolbar Panels (Top, Bottom, Left, Right)
    ========================================================================= */
 .toolbar-panel {
-  background-color: var(--cartouche-theme-surface-subtle);
+  background-color: var(--cartouche-toolbar-container-bg);
   user-select: none;
   z-index: 20;
 }
@@ -296,7 +296,7 @@
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  border-bottom: 1px solid var(--cartouche-toolbar-container-border);
   padding: 2px 6px;
   min-height: 42px;
   gap: 4px;
@@ -309,7 +309,7 @@
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  border-top: 1px solid var(--cartouche-theme-border);
+  border-top: 1px solid var(--cartouche-toolbar-container-border);
   padding: 2px 6px;
   min-height: 42px;
   gap: 4px;
@@ -323,7 +323,7 @@
   align-items: flex-start;
   justify-content: flex-start;
   height: 100%;
-  border-right: 1px solid var(--cartouche-theme-border);
+  border-right: 1px solid var(--cartouche-toolbar-container-border);
   padding: 6px 3px;
   min-width: 42px;
   gap: 4px;
@@ -336,7 +336,7 @@
   align-items: flex-start;
   justify-content: flex-start;
   height: 100%;
-  border-left: 1px solid var(--cartouche-theme-border);
+  border-left: 1px solid var(--cartouche-toolbar-container-border);
   padding: 6px 3px;
   min-width: 42px;
   gap: 4px;
@@ -346,10 +346,10 @@
 .toolbar-item {
   display: inline-flex;
   align-items: center;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-toolbar-bg);
+  border: 1px solid var(--cartouche-toolbar-border);
   border-radius: 4px;
-  box-shadow: 0 1px 2px var(--cartouche-theme-shadow-subtle);
+  box-shadow: 0 1px 2px var(--cartouche-toolbar-shadow);
   padding: 1px 2px;
 }
 
@@ -367,14 +367,14 @@
   align-items: center;
   justify-content: center;
   cursor: grab;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-grabber-fg);
   padding: 3px 2px;
   border-radius: 2px;
   transition: color 0.12s ease;
 }
 
 .toolbar-drag-handle:hover {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-toolbar-drag-handle-hover-fg);
 }
 
 .toolbar-drag-handle:active {
@@ -415,7 +415,7 @@
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-toolbar-fg);
   cursor: pointer;
   padding: 0;
   transition:
@@ -425,14 +425,14 @@
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-alt);
-  border-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-toolbar-item-hover-bg);
+  border-color: var(--cartouche-toolbar-item-hover-border);
 }
 
 .toolbar-btn.active {
-  background-color: var(--cartouche-theme-info-subtle);
-  border-color: var(--cartouche-theme-info);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-toolbar-item-toggled-on-bg);
+  border-color: var(--cartouche-toolbar-item-toggled-on-border);
+  color: var(--cartouche-toolbar-item-toggled-on-fg);
 }
 
 .toolbar-btn:disabled {
@@ -653,7 +653,7 @@
 }
 
 .toolbar-grabber {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-grabber-fg);
   opacity: 0.5;
   transition:
     opacity 0.15s ease,
@@ -661,12 +661,12 @@
 }
 
 .toolbar-grabber:hover {
-  color: var(--cartouche-theme-info) !important;
+  color: var(--cartouche-toolbar-grabber-hover-fg) !important;
   opacity: 1 !important;
 }
 
 .toolbar-divider {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-divider-fg);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -762,7 +762,7 @@
 
 .toolbar-drop-marker {
   position: absolute;
-  background-color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-toolbar-drop-marker-bg);
   pointer-events: none;
   z-index: 10;
   border-radius: 1px;
