@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -221,6 +221,128 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `theme-default.css must define Tier 2 component token: ${token}`
       );
     }
+  });
+
+  it("defines the PreferencesDialog Tier 2 tokens, each mapped to the primitive its rule read before (#358)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const expected: Record<string, string> = {
+      "--cartouche-preferences-border": "--cartouche-theme-border-strong",
+      "--cartouche-preferences-shadow": "--cartouche-theme-shadow-strong",
+      "--cartouche-preferences-title-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-title-icon-fg": "--cartouche-theme-primary",
+      "--cartouche-preferences-close-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-preferences-close-hover-bg":
+        "--cartouche-theme-surface-active",
+      "--cartouche-preferences-close-hover-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-sidebar-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-preferences-sidebar-border": "--cartouche-theme-border",
+      "--cartouche-preferences-sidebar-title-fg": "--cartouche-theme-fg-subtle",
+      "--cartouche-preferences-tab-hover-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-preferences-tab-hover-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-tab-selected-fg": "--cartouche-theme-primary",
+      "--cartouche-preferences-section-title-fg":
+        "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-section-title-border":
+        "--cartouche-theme-border",
+      "--cartouche-preferences-empty-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-preferences-group-bg": "--cartouche-theme-surface",
+      "--cartouche-preferences-group-border": "--cartouche-theme-border-strong",
+      "--cartouche-preferences-group-legend-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-item-name-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-text-input-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-toggle-bg": "--cartouche-theme-surface",
+      "--cartouche-preferences-toggle-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-toggle-border":
+        "--cartouche-theme-border-strong",
+      "--cartouche-preferences-toggle-toggled-on-bg":
+        "--cartouche-theme-primary",
+      "--cartouche-preferences-toggle-toggled-on-fg":
+        "--cartouche-theme-fg-inverted",
+      "--cartouche-preferences-toggle-toggled-on-border":
+        "--cartouche-theme-primary",
+      "--cartouche-preferences-switch-bg": "--cartouche-theme-border-strong",
+      "--cartouche-preferences-switch-toggled-on-bg":
+        "--cartouche-theme-primary",
+      "--cartouche-preferences-switch-thumb-bg": "--cartouche-theme-surface",
+      "--cartouche-preferences-switch-thumb-shadow": "--cartouche-theme-shadow",
+      "--cartouche-preferences-button-group-border":
+        "--cartouche-theme-border-strong",
+      "--cartouche-preferences-button-group-item-bg":
+        "--cartouche-theme-surface",
+      "--cartouche-preferences-button-group-item-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-button-group-item-toggled-on-bg":
+        "--cartouche-theme-primary",
+      "--cartouche-preferences-button-group-item-toggled-on-fg":
+        "--cartouche-theme-fg-inverted",
+      "--cartouche-preferences-value-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-image-picker-bg": "--cartouche-theme-surface",
+      "--cartouche-preferences-image-picker-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-image-picker-border":
+        "--cartouche-theme-border-strong",
+      "--cartouche-preferences-radio-label-fg": "--cartouche-theme-fg",
+      "--cartouche-preferences-checkbox-label-fg":
+        "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-unit-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-preferences-footer-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-preferences-footer-border": "--cartouche-theme-border",
+      "--cartouche-preferences-shortcut-hint-fg": "--cartouche-theme-fg-subtle",
+      "--cartouche-preferences-button-secondary-fg":
+        "--cartouche-theme-fg-muted",
+      "--cartouche-preferences-button-secondary-hover-bg":
+        "--cartouche-theme-surface-alt",
+      "--cartouche-preferences-button-secondary-hover-fg":
+        "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-button-secondary-hover-border":
+        "--cartouche-theme-fg-subtle",
+      "--cartouche-preferences-button-primary-hover-bg":
+        "--cartouche-theme-primary-hover",
+      "--cartouche-preferences-resize-handle-fg": "--cartouche-theme-fg-subtle",
+      "--cartouche-preferences-resize-handle-hover-fg":
+        "--cartouche-theme-primary",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads only defined Tier 2 tokens in the PreferencesDialog colour declarations (#358)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const css = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const colourProperty =
+      /^(color|background(-color)?|border(-[a-z]+)*|box-shadow|outline(-color)?|fill|stroke|accent-color|caret-color)$/;
+    let colourDeclarations = 0;
+    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!/\.preferences?-/.test(selector)) continue;
+      for (const declaration of body.split(";")) {
+        const colon = declaration.indexOf(":");
+        if (colon < 0) continue;
+        const property = declaration.slice(0, colon).trim();
+        if (!colourProperty.test(property)) continue;
+        for (const [, token] of declaration.matchAll(
+          /var\((--cartouche-[a-z0-9-]+)/g
+        )) {
+          colourDeclarations++;
+          const where = `${selector.trim()} { ${declaration.trim()} }`;
+          assert.ok(
+            !token.startsWith("--cartouche-theme-"),
+            `${where} reads Tier 1 primitive ${token}`
+          );
+          assert.ok(
+            theme.includes(`${token}:`),
+            `${where} reads undefined token ${token}`
+          );
+        }
+      }
+    }
+    assert.ok(
+      colourDeclarations > 60,
+      `expected the PreferencesDialog colour declarations, found ${colourDeclarations}`
+    );
   });
 
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {

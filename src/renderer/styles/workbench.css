@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -1557,7 +1557,7 @@
   position: absolute;
   pointer-events: auto;
   user-select: auto;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-dialog-bg);
   border-radius: 8px;
   width: 720px;
   min-width: 480px;
@@ -1565,8 +1565,8 @@
   height: 520px;
   min-height: 360px;
   max-height: 95vh;
-  box-shadow: 0 12px 32px var(--cartouche-theme-shadow-strong);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  box-shadow: 0 12px 32px var(--cartouche-preferences-shadow);
+  border: 1px solid var(--cartouche-preferences-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1577,8 +1577,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-dialog-header-bg);
+  border-bottom: 1px solid var(--cartouche-dialog-header-border);
   user-select: none;
 }
 
@@ -1592,17 +1592,17 @@
   gap: 10px;
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-preferences-title-fg);
 }
 
 .preferences-title-icon {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-preferences-title-icon-fg);
 }
 
 .preferences-close-btn {
   background: transparent;
   border: none;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-preferences-close-fg);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -1615,8 +1615,8 @@
 }
 
 .preferences-close-btn:hover {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-preferences-close-hover-bg);
+  color: var(--cartouche-preferences-close-hover-fg);
 }
 
 .preferences-modal-body {
@@ -1627,8 +1627,8 @@
 
 .preferences-sidebar {
   width: 220px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-right: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-preferences-sidebar-bg);
+  border-right: 1px solid var(--cartouche-preferences-sidebar-border);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -1640,7 +1640,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-preferences-sidebar-title-fg);
   padding: 4px 8px 8px;
 }
 
@@ -1653,7 +1653,7 @@
   border: none;
   background: transparent;
   border-radius: 6px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-sidebar-tab-fg);
   font-size: 0.9167rem;
   font-weight: 500;
   cursor: pointer;
@@ -1664,13 +1664,13 @@
 }
 
 .preferences-tab-btn:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-preferences-tab-hover-bg);
+  color: var(--cartouche-preferences-tab-hover-fg);
 }
 
 .preferences-tab-btn.active {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-sidebar-tab-active-bg);
+  color: var(--cartouche-preferences-tab-selected-fg);
   font-weight: 600;
 }
 
@@ -1686,13 +1686,13 @@
 .preferences-section-title {
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
-  border-bottom: 2px solid var(--cartouche-theme-border);
+  color: var(--cartouche-preferences-section-title-fg);
+  border-bottom: 2px solid var(--cartouche-preferences-section-title-border);
   padding-bottom: 8px;
 }
 
 .preferences-empty-state {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-preferences-empty-fg);
   font-size: 0.9167rem;
   font-style: italic;
   padding: 20px 0;
@@ -1705,18 +1705,18 @@
 }
 
 .preference-group-box {
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-group-border);
   border-radius: 6px;
   padding: 12px 14px;
   margin: 0;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-preferences-group-bg);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .preference-group-box.ungrouped {
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-group-border);
   border-radius: 6px;
   padding: 12px 14px;
 }
@@ -1724,7 +1724,7 @@
 .preference-group-legend {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-group-legend-fg);
   padding: 0 6px;
   margin-left: 2px;
 }
@@ -1749,7 +1749,7 @@
 .preference-item-name {
   font-size: 0.95rem;
   font-weight: 400;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-item-name-fg);
   cursor: help;
   user-select: none;
 }
@@ -1765,11 +1765,11 @@
 
 .preference-textarea {
   padding: 6px 10px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-input-border);
   border-radius: 4px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-input-fg);
+  background-color: var(--cartouche-input-bg);
   resize: vertical;
   min-height: 4.5rem;
   width: 100%;
@@ -1848,7 +1848,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-input-icon-fg);
   line-height: 1;
 }
 
@@ -1867,10 +1867,10 @@
 
 .preference-btn-toggle {
   padding: 5px 12px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-toggle-border);
   border-radius: 4px;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg);
+  background-color: var(--cartouche-preferences-toggle-bg);
+  color: var(--cartouche-preferences-toggle-fg);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -1881,16 +1881,16 @@
 }
 
 .preference-btn-toggle.active {
-  background-color: var(--cartouche-theme-primary);
-  border-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-preferences-toggle-toggled-on-bg);
+  border-color: var(--cartouche-preferences-toggle-toggled-on-border);
+  color: var(--cartouche-preferences-toggle-toggled-on-fg);
 }
 
 .preference-switch-toggle {
   width: 38px;
   height: 22px;
   border-radius: 11px;
-  background-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-preferences-switch-bg);
   border: none;
   cursor: pointer;
   position: relative;
@@ -1901,7 +1901,7 @@
 }
 
 .preference-switch-toggle.active {
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-preferences-switch-toggled-on-bg);
 }
 
 .preference-switch-track {
@@ -1916,8 +1916,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: var(--cartouche-theme-surface);
-  box-shadow: 0 1px 3px var(--cartouche-theme-shadow);
+  background-color: var(--cartouche-preferences-switch-thumb-bg);
+  box-shadow: 0 1px 3px var(--cartouche-preferences-switch-thumb-shadow);
   transition: transform 0.15s ease;
 }
 
@@ -1929,15 +1929,15 @@
   display: inline-flex;
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-button-group-border);
 }
 
 .preference-btn-group-item {
   padding: 4px 10px;
   border: none;
-  border-right: 1px solid var(--cartouche-theme-border-strong);
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg);
+  border-right: 1px solid var(--cartouche-preferences-button-group-border);
+  background-color: var(--cartouche-preferences-button-group-item-bg);
+  color: var(--cartouche-preferences-button-group-item-fg);
   font-size: 0.85rem;
   cursor: pointer;
   transition: background-color 0.12s ease;
@@ -1948,8 +1948,8 @@
 }
 
 .preference-btn-group-item.active {
-  background-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-preferences-button-group-item-toggled-on-bg);
+  color: var(--cartouche-preferences-button-group-item-toggled-on-fg);
   font-weight: 500;
 }
 
@@ -1969,7 +1969,7 @@
 .preference-range-value,
 .preference-slider-label {
   font-size: 0.85rem;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-value-fg);
   min-width: 40px;
   text-align: right;
 }
@@ -1979,9 +1979,9 @@
   align-items: center;
   justify-content: center;
   padding: 4px 8px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-image-picker-border);
   border-radius: 4px;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-preferences-image-picker-bg);
   cursor: pointer;
   min-height: 32px;
 }
@@ -1994,7 +1994,7 @@
 
 .preference-image-empty {
   font-size: 0.8rem;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-image-picker-fg);
 }
 
 .preference-radio-group {
@@ -2008,7 +2008,7 @@
   align-items: center;
   gap: 4px;
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-radio-label-fg);
   cursor: pointer;
 }
 
@@ -2027,7 +2027,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-preferences-checkbox-label-fg);
   cursor: pointer;
   user-select: none;
 }
@@ -2041,11 +2041,11 @@
 .preference-input-number,
 .preference-input-text {
   padding: 6px 10px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-input-border);
   border-radius: 4px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-preferences-text-input-fg);
+  background-color: var(--cartouche-input-bg);
   transition:
     border-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -2076,7 +2076,7 @@
 
 .preference-unit-badge {
   font-size: 0.8333rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-preferences-unit-fg);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -2086,14 +2086,14 @@
   align-items: center;
   justify-content: flex-end;
   padding: 12px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-preferences-footer-bg);
+  border-top: 1px solid var(--cartouche-preferences-footer-border);
   min-height: 48px;
 }
 
 .preferences-shortcut-hint {
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-preferences-shortcut-hint-fg);
 }
 
 .preferences-footer-buttons {
@@ -2118,31 +2118,31 @@
 }
 
 .preferences-btn-secondary {
-  background: var(--cartouche-theme-surface);
-  border-color: var(--cartouche-theme-border-strong);
-  color: var(--cartouche-theme-fg-muted);
+  background: var(--cartouche-button-secondary-bg);
+  border-color: var(--cartouche-button-secondary-border);
+  color: var(--cartouche-preferences-button-secondary-fg);
 }
 
 .preferences-btn-secondary:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-  border-color: var(--cartouche-theme-fg-subtle);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-preferences-button-secondary-hover-bg);
+  border-color: var(--cartouche-preferences-button-secondary-hover-border);
+  color: var(--cartouche-preferences-button-secondary-hover-fg);
 }
 
 .preferences-btn-primary {
-  background: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background: var(--cartouche-button-primary-bg);
+  color: var(--cartouche-button-primary-fg);
 }
 
 .preferences-btn-primary:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-preferences-button-primary-hover-bg);
 }
 
 .preferences-resize-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-preferences-resize-handle-fg);
   cursor: se-resize;
   padding: 2px;
   user-select: none;
@@ -2151,7 +2151,7 @@
 }
 
 .preferences-resize-handle:hover {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-preferences-resize-handle-hover-fg);
 }
 
 /* Custom Frameless Dialog Header Bar */
