@@ -103,15 +103,15 @@
   top: 100%;
   left: 0;
   margin-top: 0;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
-  box-shadow: 0 6px 18px var(--cartouche-theme-shadow);
+  background-color: var(--cartouche-menu-bg);
+  border: 1px solid var(--cartouche-menu-border);
+  box-shadow: 0 6px 18px var(--cartouche-menu-shadow);
   border-radius: 4px;
   min-width: 220px;
   padding: 4px 0;
   z-index: 1000;
   -webkit-app-region: no-drag;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-menu-fg);
   /* Inside the menubar, but on a light surface: restore the surface focus colour. */
   --cartouche-focus-color: var(--cartouche-menu-focus-color);
 }
@@ -130,7 +130,7 @@
   align-items: center;
   padding: 5px 12px;
   font-size: 1rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-menu-fg);
   cursor: pointer;
   user-select: none;
   transition:
@@ -139,15 +139,15 @@
 }
 
 .menu-dropdown-item:hover {
-  background-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-menu-item-hover-bg);
+  color: var(--cartouche-menu-item-hover-fg);
 }
 
 .menu-dropdown-item.disabled {
   opacity: 0.4;
   cursor: default !important;
   pointer-events: none !important;
-  color: var(--cartouche-theme-fg-subtle) !important;
+  color: var(--cartouche-menu-item-disabled-fg) !important;
   background-color: transparent !important;
 }
 
@@ -173,11 +173,11 @@
   justify-content: center;
   margin-right: 8px;
   flex-shrink: 0;
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-menu-check-fg);
 }
 
 .menu-dropdown-item:hover .menu-item-check-slot {
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menu-check-hover-fg);
 }
 
 .menu-item-label {
@@ -189,12 +189,12 @@
   min-width: 40px;
   text-align: right;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-menu-shortcut-fg);
   margin-left: 12px;
 }
 
 .menu-dropdown-item:hover .menu-shortcut-slot {
-  color: var(--cartouche-theme-border);
+  color: var(--cartouche-menu-shortcut-hover-fg);
 }
 
 .menu-arrow {
@@ -204,7 +204,7 @@
 
 .menu-dropdown-separator {
   height: 1px;
-  background-color: var(--cartouche-theme-border);
+  background-color: var(--cartouche-menu-separator);
   margin: 4px 0;
 }
 
@@ -224,9 +224,9 @@
   top: -4px;
   left: 100%;
   margin-left: 2px;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
-  box-shadow: 0 6px 18px var(--cartouche-theme-shadow);
+  background-color: var(--cartouche-menu-bg);
+  border: 1px solid var(--cartouche-menu-border);
+  box-shadow: 0 6px 18px var(--cartouche-menu-shadow);
   border-radius: 4px;
   min-width: 190px;
   padding: 4px 0;
@@ -488,20 +488,20 @@
   min-width: 40px;
   text-align: right;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-menu-shortcut-fg);
   margin-left: 12px;
 }
 
 .menu-dropdown-item:hover .menu-key-slot {
-  color: var(--cartouche-theme-border);
+  color: var(--cartouche-menu-shortcut-hover-fg);
 }
 
 /* Floating Context Menu for Toolbars (Right Click) */
 .toolbar-context-menu {
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-menu-bg);
+  border: 1px solid var(--cartouche-menu-border);
   border-radius: 4px;
-  box-shadow: 0 6px 20px var(--cartouche-theme-shadow);
+  box-shadow: 0 6px 20px var(--cartouche-menu-shadow);
   min-width: 170px;
   padding: 4px 0;
   user-select: none;
@@ -510,13 +510,13 @@
 .context-menu-title {
   font-size: 0.8333rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-menu-title-fg);
   padding: 4px 12px;
 }
 
 .context-menu-separator {
   height: 1px;
-  background-color: var(--cartouche-theme-surface-active);
+  background-color: var(--cartouche-menu-separator);
   margin: 3px 0;
 }
 
@@ -526,14 +526,14 @@
   gap: 8px;
   padding: 5px 12px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-menu-fg);
   cursor: pointer;
   transition: background-color 0.1s ease;
 }
 
 .context-menu-item:hover {
-  background-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-menu-item-hover-bg);
+  color: var(--cartouche-menu-item-hover-fg);
 }
 
 .context-menu-check {
@@ -542,11 +542,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-menu-check-fg);
 }
 
 .context-menu-item:hover .context-menu-check {
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menu-check-hover-fg);
 }
 
 /* =========================================================================
