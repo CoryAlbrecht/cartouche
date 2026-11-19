@@ -1,10 +1,10 @@
 /**
  * @file DialogEscape.test.ts
  * @module tests/renderer/dialogs/DialogEscape.test
- * @description Unit tests verifying Dialog base container Escape key handling, onCancel with onClose fallback, DetachedWindowPortal keydown capturing, and active dialog stack management.
+ * @description Unit tests verifying Dialog base container Escape key handling, onCancel with onClose fallback, DetachedWindowPortal keydown capturing, and active dialog stack management, and Escape deferral to a picker dialog open over a Dialog in its detached window (Ticket #365).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link cancelTopDialog}
@@ -21,6 +21,9 @@ import { createRendererJiti } from "../rendererJiti";
 const jiti = createRendererJiti(import.meta.url);
 
 const { Dialog } = jiti("@renderer/workbench/dialogs/Dialog");
+const { PickerDialogFrame } = jiti(
+  "@renderer/workbench/dialogs/PickerDialogFrame"
+);
 const {
   activeDialogStackSignal,
   registerActiveDialog,
@@ -238,8 +241,17 @@ describe("Dialog Escape & Active Stack Handling", () => {
         childListeners[type] = childListeners[type].filter((l) => l.cb !== cb);
       },
       dispatchEvent: (event: any) => {
+        // Event on the window itself: its capture listeners run before its
+        // bubble listeners, and stopPropagation() in the capture pass skips
+        // the bubble pass, as in the DOM dispatch algorithm.
+        event.currentTarget = mockChildWindow;
         const listeners = childListeners[event.type] || [];
-        for (const l of listeners) {
+        const ordered = [
+          ...listeners.filter((l) => l.capture),
+          ...listeners.filter((l) => !l.capture),
+        ];
+        for (const l of ordered) {
+          if (event.propagationStopped) break;
           l.cb(event);
         }
         return true;
@@ -476,5 +488,147 @@ describe("Dialog Escape & Active Stack Handling", () => {
       true,
       "Escape must fall back to onClose when onCancel is omitted"
     );
+  });
+
+  /**
+   * @function escapeEvent
+   * @description Builds an Escape keydown event that records preventDefault() and stopPropagation() calls.
+   * @returns {any} Mock keyboard event.
+   */
+  function escapeEvent(): any {
+    return {
+      type: "keydown",
+      key: "Escape",
+      defaultPrevented: false,
+      propagationStopped: false,
+      preventDefault() {
+        this.defaultPrevented = true;
+      },
+      stopPropagation() {
+        this.propagationStopped = true;
+      },
+    };
+  }
+
+  /**
+   * @function renderDialogWithPicker
+   * @description Renders a Dialog whose body hosts a PickerDialogFrame portaled into the Dialog's detached window when `pickerOpen` is true, counting each dismissal callback.
+   * @param {{ pickerOpen: boolean }} options - Whether the picker is open.
+   * @returns {Promise<Record<string, number>>} Live call counts for the Dialog's onCancel / onClose and the picker's onCancel / onApply.
+   */
+  async function renderDialogWithPicker(options: {
+    pickerOpen: boolean;
+  }): Promise<Record<string, number>> {
+    const calls = {
+      dialogCancel: 0,
+      dialogClose: 0,
+      pickerCancel: 0,
+      pickerApply: 0,
+    };
+    const picker =
+      options.pickerOpen ?
+        React.createElement(
+          PickerDialogFrame,
+          {
+            title: "Pick a Colour",
+            classPrefix: "colour-picker-dialog",
+            container: mockChildWindow.document.body,
+            onApply: () => {
+              calls.pickerApply++;
+            },
+            onCancel: () => {
+              calls.pickerCancel++;
+            },
+          },
+          React.createElement("div", null, "Picker Body")
+        )
+      : null;
+    await act(async () => {
+      root!.render(
+        React.createElement(
+          Dialog,
+          {
+            name: "projectPropertiesWindow",
+            title: "Project Properties",
+            isOpen: true,
+            onClose: () => {
+              calls.dialogClose++;
+            },
+            onCancel: () => {
+              calls.dialogCancel++;
+            },
+          },
+          React.createElement("div", null, "Dialog Body"),
+          picker
+        )
+      );
+    });
+    return calls;
+  }
+
+  it("Escape with a picker dialog open over the Dialog cancels only the picker", async () => {
+    const calls = await renderDialogWithPicker({ pickerOpen: true });
+
+    await act(async () => {
+      mockChildWindow.dispatchEvent(escapeEvent());
+    });
+
+    assert.equal(calls.pickerCancel, 1, "Escape must cancel the picker");
+    assert.equal(
+      calls.pickerApply,
+      0,
+      "Escape must not apply the picked value"
+    );
+    assert.equal(
+      calls.dialogCancel,
+      0,
+      "the parent Dialog must not be cancelled"
+    );
+    assert.equal(calls.dialogClose, 0, "the parent Dialog must not be closed");
+  });
+
+  it("Escape after the picker dialog closes cancels the parent Dialog", async () => {
+    await renderDialogWithPicker({ pickerOpen: true });
+    const calls = await renderDialogWithPicker({ pickerOpen: false });
+
+    await act(async () => {
+      mockChildWindow.dispatchEvent(escapeEvent());
+    });
+
+    assert.equal(calls.dialogCancel, 1, "Escape must cancel the parent Dialog");
+    assert.equal(calls.pickerCancel, 0);
+  });
+
+  it("Escape inside an open dropdown list in the picker dialog dismisses neither the picker nor the Dialog", async () => {
+    const calls = await renderDialogWithPicker({ pickerOpen: true });
+    const openSelect = { matches: (q: string) => q === ":open" };
+    const event = escapeEvent();
+    event.target = {
+      closest: (q: string) => (q === "select" ? openSelect : null),
+    };
+
+    await act(async () => {
+      mockChildWindow.dispatchEvent(event);
+    });
+
+    assert.equal(calls.pickerCancel, 0, "the picker must stay open");
+    assert.equal(calls.dialogCancel, 0, "the parent Dialog must stay open");
+    assert.equal(calls.dialogClose, 0);
+  });
+
+  it("Escape inside an open dropdown list in the Dialog, with no picker dialog open, leaves the Dialog open", async () => {
+    const calls = await renderDialogWithPicker({ pickerOpen: false });
+    const openSelect = { matches: (q: string) => q === ":open" };
+    const event = escapeEvent();
+    event.target = {
+      closest: (q: string) => (q === "select" ? openSelect : null),
+    };
+
+    await act(async () => {
+      mockChildWindow.dispatchEvent(event);
+    });
+
+    assert.equal(calls.dialogCancel, 0, "the Dialog must stay open");
+    assert.equal(calls.dialogClose, 0);
   });
 });

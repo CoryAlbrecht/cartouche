@@ -1,7 +1,7 @@
 /**
  * @file PickerDialogFrame.tsx
  * @module renderer/workbench/dialogs/PickerDialogFrame
- * @description Shared modal frame for the picker dialogs (ColourPickerDialog, GradientPickerDialog): a backdrop portaled into a target container, a titled header with a close button, a scrolling body for the hosted picker widget, and localized Cancel / Apply footer buttons. Escape on the container's window and clicks on the backdrop cancel.
+ * @description Shared modal frame for the picker dialogs (ColourPickerDialog, GradientPickerDialog): a backdrop portaled into a target container, a titled header with a close button, a scrolling body for the hosted picker widget, and localized Cancel / Apply footer buttons. Escape on the container's window and clicks on the backdrop cancel. The frame registers on its window's in-window modal stack, so a Dialog hosting it leaves Escape to it.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-19
@@ -14,6 +14,10 @@ import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "@renderer/hooks/useTranslation";
 import { isWithinOpenSelect } from "@renderer/components/common/Select";
+import {
+  openInWindowModal,
+  type InWindowModalHandle,
+} from "./inWindowModalStack";
 
 /**
  * @typedef {Object} PickerDialogFrameProps
@@ -55,7 +59,7 @@ function resolveWindowContext(
 
 /**
  * @component PickerDialogFrame
- * @description Centered in-window modal frame hosting a picker widget, with a title, localized Cancel and Apply buttons (`dialog_cancel`, `dialog_apply`), Escape and backdrop-click cancellation, and ownerDocument container targeting. Render it only while the dialog is open.
+ * @description Centered in-window modal frame hosting a picker widget, with a title, localized Cancel and Apply buttons (`dialog_cancel`, `dialog_apply`), Escape and backdrop-click cancellation, and ownerDocument container targeting. While open it sits on its window's in-window modal stack: it takes Escape only while it is the topmost modal there, and a Dialog in the same window defers Escape to it. Render it only while the dialog is open.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
  * @updated 2026-11-19
@@ -77,12 +81,27 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
   const targetContainer =
     container ?? (typeof document !== "undefined" ? document.body : null);
   const targetWindow = resolveWindowContext(targetContainer);
+  const modalHandleRef = useRef<InWindowModalHandle | null>(null);
+
+  // Place on the target window's in-window modal stack while mounted
+  useEffect(() => {
+    if (!targetWindow) return;
+    const handle = openInWindowModal(targetWindow);
+    modalHandleRef.current = handle;
+    return () => {
+      handle.release();
+      if (modalHandleRef.current === handle) modalHandleRef.current = null;
+    };
+  }, [targetWindow]);
 
   // Keyboard Escape dismissal bound to the target container's window context
   useEffect(() => {
     if (!targetWindow) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
+      if (modalHandleRef.current && !modalHandleRef.current.isTopmost()) {
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault?.();
         e.stopPropagation?.();

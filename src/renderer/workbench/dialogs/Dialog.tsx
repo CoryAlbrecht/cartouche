@@ -24,6 +24,7 @@ import {
   focusActiveDialog,
 } from "@renderer/state/dialogSignals";
 import { isWithinOpenSelect } from "@renderer/components/common/Select";
+import { hasOpenInWindowModal } from "./inWindowModalStack";
 
 /**
  * @typedef {Object} DialogProps
@@ -100,10 +101,10 @@ export const Dialog: React.FC<DialogProps> = ({
   };
 
   /**
-   * @description Handles keydown events captured in the detached child window, cancelling or closing on Escape. Escape inside an open dropdown list only closes that list.
+   * @description Handles keydown events captured in the detached child window, cancelling or closing on Escape. Escape inside an open dropdown list only closes that list, and while an in-window modal (e.g. a picker dialog) is open in the child window Escape is left to that modal, wherever focus is.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-27
-   * @updated 2026-11-17
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {KeyboardEvent} e - DOM keyboard event.
    * @returns {void}
@@ -111,6 +112,7 @@ export const Dialog: React.FC<DialogProps> = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
     if (e.key === "Escape") {
+      if (hasOpenInWindowModal(e.currentTarget ?? e.view)) return;
       e.preventDefault();
       e.stopPropagation();
       dismissRef.current();
