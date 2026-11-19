@@ -111,8 +111,20 @@ export function rulesFor(selector: string): CssRule[] {
  * @returns {string | undefined} The trimmed value, or undefined when not defined.
  */
 export function tokenValue(token: string): string | undefined {
-  const match = THEME_CSS.match(new RegExp(`${token}\\s*:\\s*([^;]+);`));
+  const match = THEME_CSS.match(
+    new RegExp(`(?<![\\w-])${token}\\s*:\\s*([^;]+);`)
+  );
   return match ? match[1].trim() : undefined;
+}
+
+/**
+ * @function tokenMapping
+ * @description Reads the token a theme-default.css custom property maps to, when its whole value is a single `var(--other)` reference.
+ * @param {string} token - Custom property name.
+ * @returns {string | undefined} The referenced token's name, or undefined when the property is not defined or holds anything other than one `var()` reference.
+ */
+export function tokenMapping(token: string): string | undefined {
+  return tokenValue(token)?.match(/^var\((--[a-z0-9-]+)\)$/)?.[1];
 }
 
 /**

@@ -1037,25 +1037,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.layer-tree-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-}
-
-.layer-tree-item:hover {
-  background-color: var(--cartouche-layer-tree-row-hover-bg);
-}
-
-.layer-tree-item.active {
-  background-color: var(--cartouche-layer-tree-row-selected-bg);
-  color: var(--cartouche-layer-tree-row-selected-fg);
-}
-
 .layer-kind-icon {
   font-size: 1.0833rem;
   font-weight: bold;
@@ -2126,7 +2107,7 @@
 
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
-  background-color: var(--cartouche-menubar-hover);
+  background-color: var(--cartouche-dialog-titlebar-button-hover-bg);
 }
 
 /* =============================================================================
@@ -2316,11 +2297,13 @@
    colour, the host's cell background, the Hover colour (#360), the Selected Row
    colour, the Active Row colour. A host background from cellStyle (Ticket #328)
    arrives as the --table-widget-cell-bg custom property on the cell and replaces
-   only the row colour; the Hover and selection rules below ignore it. The Hover
-   rule wraps :hover in :where() so it keeps the specificity of the row rules and
-   source order places it below the Selected Row and Active Row colours. An Active Row is also a Selected
-   Row, so the active rules come after the selected ones at the same specificity
-   and win. Read-Only Cells (Ticket #327) have their own text colour, their own
+   only the row colour. The Hover, Selected Row and Active Row rules do not fall
+   back to it, so each covers a host cell background in the same way; the
+   cellStyle border overlay stays visible on all of them. The Hover rule wraps
+   :hover in :where() so it keeps the specificity of the row rules and source
+   order places it below the Selected Row and Active Row colours. An Active Row
+   is also a Selected Row, so the active rules come after the selected ones at
+   the same specificity and win. Read-Only Cells (Ticket #327) have their own text colour, their own
    selected colours, and the normal table text colour on the Active Row. */
 .table-widget-cell {
   background-color: var(--table-widget-cell-bg, var(--cartouche-table-bg));

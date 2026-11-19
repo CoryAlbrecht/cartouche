@@ -12,7 +12,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { declaration, resolveThemeTokens, rulesFor } from "./cssRules";
+import {
+  declaration,
+  resolveThemeTokens,
+  rulesFor,
+  tier2Tokens,
+  tokenMapping,
+  tokenValue,
+} from "./cssRules";
 
 describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #196)", () => {
   const rootDir = process.cwd();
@@ -259,6 +266,60 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `${selector} ${property} must still render ${rendered}`
       );
     }
+  });
+
+  it("maps the menubar, status bar and Dialog title bar Hover to one Tier 1 overlay primitive, rendering the same colour (#349)", () => {
+    assert.equal(
+      tokenValue("--cartouche-theme-overlay-hover-on-primary"),
+      "rgba(255, 255, 255, 0.2)"
+    );
+    for (const token of [
+      "--cartouche-menubar-hover",
+      "--cartouche-statusbar-item-hover-bg",
+      "--cartouche-dialog-titlebar-button-hover-bg",
+    ]) {
+      assert.equal(
+        tokenMapping(token),
+        "--cartouche-theme-overlay-hover-on-primary",
+        `${token} must map to the overlay primitive`
+      );
+    }
+    assert.equal(tokenValue("--cartouche-theme-backdrop"), "rgba(0, 0, 0, 0.4)");
+    assert.equal(
+      tokenMapping("--cartouche-dialog-backdrop"),
+      "--cartouche-theme-backdrop"
+    );
+  });
+
+  it("gives the Dialog close button Hover its own Dialog title bar token, not the menubar's (#349)", () => {
+    const value = rulesFor(".cartouche-dialog-close-btn:hover")
+      .map((rule) => declaration(rule.body, "background-color"))
+      .find((v) => v !== undefined);
+    assert.equal(value, "var(--cartouche-dialog-titlebar-button-hover-bg)");
+    assert.equal(resolveThemeTokens(value), "rgba(255, 255, 255, 0.2)");
+  });
+
+  /**
+   * Tier 2 tokens whose value is not a `var()` mapping: a CSS keyword, which names
+   * no colour a Theme would vary, and the non-colour Focus Indicator sizes.
+   */
+  const tier2TokensWithoutMapping: Record<string, string> = {
+    "--dockview-sash-bg": "transparent",
+    "--cartouche-focus-width": "0.125rem",
+    "--cartouche-focus-offset": "0.125rem",
+  };
+
+  it("maps every Tier 2 token to another token with var(), except the listed keyword and sizes (#349)", () => {
+    const literal = [...tier2Tokens()].filter(
+      (token) =>
+        tokenMapping(token) === undefined
+        && tier2TokensWithoutMapping[token] !== tokenValue(token)
+    );
+    assert.deepEqual(
+      literal,
+      [],
+      `Tier 2 tokens holding a literal value: ${literal.join(", ")}`
+    );
   });
 
   it("defines the Dockview Tier 2 tokens (#352)", () => {
@@ -710,6 +771,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       ".toolbar-item",
       ".toolbar-drag-handle",
       ".toolbar-buttons-group",
+      ".layer-tree-item",
     ]) {
       assert.ok(
         !workbench.includes(dead),

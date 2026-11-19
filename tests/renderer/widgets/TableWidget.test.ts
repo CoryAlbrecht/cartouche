@@ -24,7 +24,12 @@ import {
   type MockDom,
   type MockElement,
 } from "../mockDom";
-import { cascadedValue, parseRules, WORKBENCH_CSS } from "../styles/cssRules";
+import {
+  cascadedValue,
+  declaration,
+  parseRules,
+  WORKBENCH_CSS,
+} from "../styles/cssRules";
 import { COLOUR_LITERAL, stripSourceComments } from "../sourceText";
 
 const jiti = createRendererJiti(import.meta.url);
@@ -396,8 +401,15 @@ describe("TableWidget theme tokens and typography (Ticket #323)", () => {
     );
     assert.ok(hover >= 0, "workbench.css has a TableWidget row Hover rule");
     assert.equal(
-      rules[hover].body.match(/background-color\s*:\s*([^;]+)/)?.[1].trim(),
+      declaration(rules[hover].body, "background-color"),
       "var(--cartouche-table-row-hover-bg)"
+    );
+    // Like the Selected Row colour, Hover replaces a host cellStyle background
+    // (Ticket #328): neither rule falls back to --table-widget-cell-bg.
+    const selected = indexOf(".table-widget-row--selected > .table-widget-cell");
+    assert.equal(
+      declaration(rules[selected].body, "background-color"),
+      "var(--cartouche-table-row-selected-bg)"
     );
     // :where() keeps the Hover rule at the specificity of the row rules, so
     // source order decides: after the alternating row, before selection.
@@ -406,7 +418,7 @@ describe("TableWidget theme tokens and typography (Ticket #323)", () => {
       "Hover comes after the alternating row colour"
     );
     assert.ok(
-      hover < indexOf(".table-widget-row--selected > .table-widget-cell"),
+      hover < selected,
       "Hover comes before the Selected Row colour"
     );
     assert.ok(
