@@ -1390,8 +1390,8 @@
 .workbench-statusbar {
   display: flex;
   align-items: center;
-  background-color: var(--cartouche-menubar-bg);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-theme-status-bar-bg);
+  color: var(--cartouche-theme-status-bar-fg);
   height: 1.5rem;
   padding: 0 10px;
   font-size: 0.875rem;
@@ -1411,7 +1411,7 @@
 }
 
 .statusbar-item:hover {
-  background-color: var(--cartouche-menubar-hover);
+  background-color: var(--cartouche-statusbar-item-hover-bg);
 }
 
 .statusbar-separator {
