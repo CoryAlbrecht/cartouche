@@ -1,7 +1,7 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css reads only defined tokens, reads no Tier 1 primitive in a colour declaration, and that every defined token is read.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
  * @updated 2026-11-18
@@ -61,7 +61,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-theme-border-strong",
       "--cartouche-theme-border-widget",
       "--cartouche-theme-border-dark",
-      "--cartouche-theme-border-dropdown",
       // Foreground & Typography
       "--cartouche-theme-fg",
       "--cartouche-theme-fg-muted",
@@ -70,13 +69,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-theme-fg-inverted",
       "--cartouche-theme-fg-primary",
       // Accents & Interaction
-      "--cartouche-theme-accent",
-      "--cartouche-theme-accent-hover",
       "--cartouche-theme-accent-subtle",
       "--cartouche-theme-accent-focus",
       // Status Colors
       "--cartouche-theme-danger",
-      "--cartouche-theme-danger-hover",
       "--cartouche-theme-danger-subtle",
       "--cartouche-theme-danger-focus",
       "--cartouche-theme-warning",
@@ -110,30 +106,11 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       // Status Bar
       "--cartouche-theme-status-bar-bg",
       "--cartouche-theme-status-bar-fg",
-      // Activity Bar
-      "--cartouche-theme-activity-bar-bg",
-      "--cartouche-theme-activity-bar-fg",
-      "--cartouche-theme-activity-bar-inactive-fg",
-      "--cartouche-theme-activity-bar-active-border",
-      // Side Bar & Panels
-      "--cartouche-theme-side-bar-bg",
-      "--cartouche-theme-side-bar-fg",
-      "--cartouche-theme-side-bar-border",
-      "--cartouche-theme-editor-bg",
-      "--cartouche-theme-panel-bg",
-      "--cartouche-theme-panel-border",
       // Tab Groups & Headers
       "--cartouche-theme-tab-active-bg",
       "--cartouche-theme-tab-inactive-bg",
       "--cartouche-theme-tab-active-fg",
       "--cartouche-theme-tab-inactive-fg",
-      "--cartouche-theme-tab-border",
-      // Buttons & Badges
-      "--cartouche-theme-badge-bg",
-      "--cartouche-theme-badge-fg",
-      "--cartouche-theme-button-bg",
-      "--cartouche-theme-button-fg",
-      "--cartouche-theme-button-hover-bg",
       // Dialog Buttons
       "--cartouche-button-primary-bg",
       "--cartouche-button-primary-fg",
@@ -145,7 +122,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-widget-header-fg",
       "--cartouche-widget-header-border",
       "--cartouche-widget-content-bg",
-      "--cartouche-widget-content-fg",
       // Menus & Dropdowns
       "--cartouche-menu-bg",
       "--cartouche-menu-fg",
@@ -155,9 +131,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-menu-separator",
       "--cartouche-menu-focus-color",
       // Toolbars
-      "--cartouche-toolbar-bg",
       "--cartouche-toolbar-fg",
-      "--cartouche-toolbar-border",
       "--cartouche-toolbar-item-hover-bg",
       "--cartouche-toolbar-item-active-bg",
       // Dialogs
@@ -523,11 +497,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   it("defines the ToolbarWidget Tier 2 tokens (#354)", () => {
     const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     const toolbarTokens = [
-      "--cartouche-toolbar-container-bg",
-      "--cartouche-toolbar-container-border",
-      "--cartouche-toolbar-shadow",
       "--cartouche-toolbar-grabber-fg",
-      "--cartouche-toolbar-drag-handle-hover-fg",
       "--cartouche-toolbar-grabber-hover-fg",
       "--cartouche-toolbar-divider-fg",
       "--cartouche-toolbar-item-hover-border",
@@ -545,20 +515,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   });
 
   /**
-   * Colours the toolbar container, ToolbarWidget, SplitToolButton and toolbar
-   * drop-marker rules rendered before #354, keyed by selector and property.
+   * Colours the ToolbarWidget, SplitToolButton and toolbar drop-marker rules
+   * rendered before #354, keyed by selector and property.
    */
   const toolbarRenderedColours: [string, string, string][] = [
-    [".toolbar-panel", "background-color", "#f8fafc"],
-    [".toolbar-panel-top", "border-bottom", "1px solid #e2e8f0"],
-    [".toolbar-panel-bottom", "border-top", "1px solid #e2e8f0"],
-    [".toolbar-panel-left", "border-right", "1px solid #e2e8f0"],
-    [".toolbar-panel-right", "border-left", "1px solid #e2e8f0"],
-    [".toolbar-item", "background-color", "#ffffff"],
-    [".toolbar-item", "border", "1px solid #cbd5e1"],
-    [".toolbar-item", "box-shadow", "0 1px 2px rgba(0, 0, 0, 0.06)"],
-    [".toolbar-drag-handle", "color", "#94a3b8"],
-    [".toolbar-drag-handle:hover", "color", "#64748b"],
     [".toolbar-btn", "color", "#0f172a"],
     [".toolbar-btn:hover:not(:disabled)", "background-color", "#f1f5f9"],
     [".toolbar-btn:hover:not(:disabled)", "border-color", "#cbd5e1"],
@@ -595,12 +555,10 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     }
   });
 
-  it("reads --cartouche-toolbar-bg, -fg, -border and -item-hover-bg in workbench.css (#354)", () => {
+  it("reads --cartouche-toolbar-fg and -item-hover-bg in workbench.css (#354)", () => {
     const content = fs.readFileSync(workbenchCssPath, "utf-8");
     for (const token of [
-      "--cartouche-toolbar-bg",
       "--cartouche-toolbar-fg",
-      "--cartouche-toolbar-border",
       "--cartouche-toolbar-item-hover-bg",
     ]) {
       assert.ok(
@@ -644,6 +602,187 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       [],
       `workbench.css reads tokens no Theme defines: ${undefinedReads.join(", ")}`
     );
+  });
+
+  /**
+   * Tokens named `--cartouche-theme-*` that are Tier 2 Component Tokens, not Tier 1
+   * primitives: they sit in the Tier 2 Status Bar and Tab Groups groups of
+   * theme-default.css and keep their historical names, because renaming tokens is
+   * out of scope for Spec #349. The Tier 1 guard below allows exactly these.
+   */
+  const tier2TokensWithThemePrefix = [
+    "--cartouche-theme-status-bar-bg",
+    "--cartouche-theme-status-bar-fg",
+    "--cartouche-theme-tab-active-bg",
+    "--cartouche-theme-tab-active-fg",
+    "--cartouche-theme-tab-inactive-bg",
+    "--cartouche-theme-tab-inactive-fg",
+  ];
+
+  /**
+   * Properties whose values are not colours and may read a Tier 1 primitive: the
+   * monospace font stack is a typography primitive (ADR 0013), not a colour.
+   */
+  const nonColourPropertiesReadingTier1 = ["font-family"];
+
+  it("reads no --cartouche-theme-* Tier 1 primitive in any colour declaration of workbench.css (#360)", () => {
+    const workbench = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const offenders: string[] = [];
+    for (const match of workbench.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selector = match[1].replace(/\s+/g, " ").trim();
+      for (const decl of match[2].split(";")) {
+        const colon = decl.indexOf(":");
+        if (colon < 0) continue;
+        const property = decl.slice(0, colon).trim();
+        if (nonColourPropertiesReadingTier1.includes(property)) continue;
+        for (const read of decl.matchAll(
+          /var\(\s*(--cartouche-theme-[a-z0-9-]+)/g
+        )) {
+          if (!tier2TokensWithThemePrefix.includes(read[1]))
+            offenders.push(`${selector} { ${property}: … ${read[1]} }`);
+        }
+      }
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      `workbench.css colour declarations read Tier 1 primitives:\n${offenders.join("\n")}`
+    );
+  });
+
+  it("reads every --cartouche-* and --dockview-* token theme-default.css defines, in theme-default.css or workbench.css (#360)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
+    const sources = `${theme}\n${workbench}`.replace(/\/\*[\s\S]*?\*\//g, "");
+    const defined = [
+      ...new Set(
+        [
+          ...theme.matchAll(/^\s*(--(?:cartouche|dockview)-[a-z0-9-]+)\s*:/gm),
+        ].map((m) => m[1])
+      ),
+    ];
+    assert.ok(defined.length > 100, "theme-default.css defines its tokens");
+    const unread = defined.filter(
+      (token) => !new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(sources)
+    );
+    assert.deepEqual(
+      unread,
+      [],
+      `theme-default.css defines tokens nothing reads: ${unread.join(", ")}`
+    );
+  });
+
+  it("removes the unread tokens and the rules that matched no element (#360)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
+    for (const token of [
+      "--cartouche-theme-accent",
+      "--cartouche-theme-accent-hover",
+      "--cartouche-theme-danger-hover",
+      "--cartouche-theme-border-dropdown",
+      "--cartouche-theme-activity-bar-bg",
+      "--cartouche-theme-side-bar-bg",
+      "--cartouche-theme-editor-bg",
+      "--cartouche-theme-panel-bg",
+      "--cartouche-theme-tab-border",
+      "--cartouche-theme-badge-bg",
+      "--cartouche-theme-button-bg",
+      "--cartouche-widget-content-fg",
+      "--cartouche-cell-editor-fg",
+      "--cartouche-toolbar-container-bg",
+      "--cartouche-toolbar-container-border",
+      "--cartouche-toolbar-shadow",
+      "--cartouche-toolbar-bg",
+      "--cartouche-toolbar-border",
+      "--cartouche-toolbar-drag-handle-hover-fg",
+    ]) {
+      assert.doesNotMatch(
+        theme,
+        new RegExp(`${token}\\s*:`),
+        `theme-default.css must not define the unread ${token}`
+      );
+    }
+    // No component renders these classes, so their rules are removed.
+    for (const dead of [
+      ".toolbar-panel",
+      ".toolbar-item",
+      ".toolbar-drag-handle",
+      ".toolbar-buttons-group",
+    ]) {
+      assert.ok(
+        !workbench.includes(dead),
+        `workbench.css must not style the unrendered ${dead}`
+      );
+    }
+  });
+
+  it("defines the window close button and undocked Widget shadow Tier 2 tokens, rendering the same colours (#360)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const expected: Record<string, string> = {
+      "--cartouche-menubar-window-close-hover-bg": "--cartouche-theme-danger",
+      "--cartouche-menubar-window-close-hover-fg":
+        "--cartouche-theme-fg-inverted",
+      "--cartouche-widget-undocked-shadow": "--cartouche-theme-shadow-strong",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = theme.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+    const rendered: [string, string, string, string][] = [
+      [".app-title-badge", "color", "var(--cartouche-menubar-fg)", "#ffffff"],
+      [
+        ".menu-dropdown-trigger",
+        "color",
+        "var(--cartouche-menubar-fg)",
+        "#ffffff",
+      ],
+      [".win-btn", "color", "var(--cartouche-menubar-fg)", "#ffffff"],
+      [
+        ".win-btn.win-close:hover",
+        "background-color",
+        "var(--cartouche-menubar-window-close-hover-bg)",
+        "#dc2626",
+      ],
+      [
+        ".win-btn.win-close:hover",
+        "color",
+        "var(--cartouche-menubar-window-close-hover-fg)",
+        "#ffffff",
+      ],
+      [
+        ".cartouche-widget.is-undocked",
+        "box-shadow",
+        "0 8px 24px var(--cartouche-widget-undocked-shadow)",
+        "0 8px 24px rgba(0, 0, 0, 0.24)",
+      ],
+      [
+        ".layer-field-override-badge",
+        "background-color",
+        "var(--cartouche-field-type-overridden-bg)",
+        "#f0fdf4",
+      ],
+      [
+        ".layer-field-override-badge",
+        "color",
+        "var(--cartouche-field-type-overridden-fg)",
+        "#16a34a",
+      ],
+    ];
+    for (const [selector, property, value, colour] of rendered) {
+      const actual = rulesFor(selector)
+        .map((rule) => declaration(rule.body, property))
+        .find((v) => v !== undefined);
+      assert.equal(actual, value, `${selector} ${property}`);
+      assert.equal(
+        resolveThemeTokens(value),
+        colour,
+        `${selector} ${property} must still render ${colour}`
+      );
+    }
   });
 
   it("defines the PreferencesDialog Tier 2 tokens, each mapped to the primitive its rule read before (#358)", () => {

@@ -430,7 +430,6 @@ const MIGRATED_CONTROL_TOKENS = [
   "--cartouche-control-disabled-fg",
   "--cartouche-control-disabled-border",
   "--cartouche-cell-editor-bg",
-  "--cartouche-cell-editor-fg",
   "--cartouche-cell-editor-border",
   "--cartouche-button-primary-bg",
   "--cartouche-button-primary-fg",

@@ -57,7 +57,7 @@
 .app-title-badge {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menubar-fg);
   background-color: var(--cartouche-menubar-title-badge-bg);
   padding: 2px 7px;
   border-radius: 3px;
@@ -79,7 +79,7 @@
   cursor: pointer;
   border-radius: 3px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menubar-fg);
   transition: background-color 0.12s ease;
 }
 
@@ -264,7 +264,7 @@
   height: 100%;
   background: transparent;
   border: none;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menubar-fg);
   cursor: pointer;
   padding: 0;
   transition: background-color 0.12s ease;
@@ -275,123 +275,13 @@
 }
 
 .win-btn.win-close:hover {
-  background-color: var(--cartouche-theme-danger);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-menubar-window-close-hover-bg);
+  color: var(--cartouche-menubar-window-close-hover-fg);
 }
 
 /* =========================================================================
-   3. Outer Toolbar Panels (Top, Bottom, Left, Right)
+   3. Toolbar Buttons (ToolbarWidget, SplitToolButton, TimeFilterWidget)
    ========================================================================= */
-.toolbar-panel {
-  background-color: var(--cartouche-toolbar-container-bg);
-  user-select: none;
-  z-index: 20;
-}
-
-/* Top & Bottom: Horizontal toolbars, left-aligned, flex-wrap into new rows */
-.toolbar-panel-top {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  border-bottom: 1px solid var(--cartouche-toolbar-container-border);
-  padding: 2px 6px;
-  min-height: 42px;
-  gap: 4px;
-}
-
-.toolbar-panel-bottom {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  border-top: 1px solid var(--cartouche-toolbar-container-border);
-  padding: 2px 6px;
-  min-height: 42px;
-  gap: 4px;
-}
-
-/* Left & Right: Vertical toolbars, top-aligned, flex-wrap into new columns */
-.toolbar-panel-left {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  height: 100%;
-  border-right: 1px solid var(--cartouche-toolbar-container-border);
-  padding: 6px 3px;
-  min-width: 42px;
-  gap: 4px;
-}
-
-.toolbar-panel-right {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  height: 100%;
-  border-left: 1px solid var(--cartouche-toolbar-container-border);
-  padding: 6px 3px;
-  min-width: 42px;
-  gap: 4px;
-}
-
-/* Toolbar Sub-Item */
-.toolbar-item {
-  display: inline-flex;
-  align-items: center;
-  background-color: var(--cartouche-toolbar-bg);
-  border: 1px solid var(--cartouche-toolbar-border);
-  border-radius: 4px;
-  box-shadow: 0 1px 2px var(--cartouche-toolbar-shadow);
-  padding: 1px 2px;
-}
-
-.toolbar-item-horizontal {
-  flex-direction: row;
-}
-
-.toolbar-item-vertical {
-  flex-direction: column;
-}
-
-/* Dragger Handle */
-.toolbar-drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  color: var(--cartouche-toolbar-grabber-fg);
-  padding: 3px 2px;
-  border-radius: 2px;
-  transition: color 0.12s ease;
-}
-
-.toolbar-drag-handle:hover {
-  color: var(--cartouche-toolbar-drag-handle-hover-fg);
-}
-
-.toolbar-drag-handle:active {
-  cursor: grabbing;
-}
-
-/* Buttons inside Toolbar */
-.toolbar-buttons-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.toolbar-item-vertical .toolbar-buttons-group {
-  flex-direction: column;
-}
-
 .toolbar-btn {
   display: inline-flex;
   align-items: center;
@@ -633,7 +523,7 @@
 }
 
 .cartouche-widget.is-undocked {
-  box-shadow: 0 8px 24px var(--cartouche-theme-shadow-strong);
+  box-shadow: 0 8px 24px var(--cartouche-widget-undocked-shadow);
   z-index: 1000;
 }
 
@@ -2423,10 +2313,12 @@
 }
 
 /* Data cell colours, lowest to highest priority: the plain or alternating row
-   colour, the host's cell background, the Selected Row colour, the Active Row
-   colour. A host background from cellStyle (Ticket #328) arrives as the
-   --table-widget-cell-bg custom property on the cell and replaces only the row
-   colour; the selection rules below ignore it. An Active Row is also a Selected
+   colour, the host's cell background, the Hover colour (#360), the Selected Row
+   colour, the Active Row colour. A host background from cellStyle (Ticket #328)
+   arrives as the --table-widget-cell-bg custom property on the cell and replaces
+   only the row colour; the Hover and selection rules below ignore it. The Hover
+   rule wraps :hover in :where() so it keeps the specificity of the row rules and
+   source order places it below the Selected Row and Active Row colours. An Active Row is also a Selected
    Row, so the active rules come after the selected ones at the same specificity
    and win. Read-Only Cells (Ticket #327) have their own text colour, their own
    selected colours, and the normal table text colour on the Active Row. */
@@ -2441,6 +2333,10 @@
 
 .table-widget-cell.table-widget-cell--readonly {
   color: var(--cartouche-table-readonly-fg);
+}
+
+.table-widget-row:where(:hover) > .table-widget-cell {
+  background-color: var(--cartouche-table-row-hover-bg);
 }
 
 .table-widget-row--selected > .table-widget-cell {
@@ -2488,8 +2384,8 @@
   margin-left: 0.375rem;
   padding: 0.0625rem 0.3125rem;
   border-radius: 0.1875rem;
-  background-color: var(--cartouche-theme-success-subtle);
-  color: var(--cartouche-theme-success);
+  background-color: var(--cartouche-field-type-overridden-bg);
+  color: var(--cartouche-field-type-overridden-fg);
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.025rem;

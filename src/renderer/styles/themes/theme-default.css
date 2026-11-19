@@ -117,7 +117,6 @@
   --cartouche-theme-border-strong: #cbd5e1;
   --cartouche-theme-border-widget: #f3f3f3;
   --cartouche-theme-border-dark: #133346;
-  --cartouche-theme-border-dropdown: #cccccc;
 
   /* Foreground & Typography */
   --cartouche-theme-fg: #000000;
@@ -131,14 +130,11 @@
   --cartouche-theme-fg-strong: #334155;
 
   /* Accent & Interaction States */
-  --cartouche-theme-accent: #1b446c;
-  --cartouche-theme-accent-hover: #24588c;
   --cartouche-theme-accent-subtle: rgba(27, 68, 108, 0.08);
   --cartouche-theme-accent-focus: rgba(27, 68, 108, 0.25);
 
   /* Status Colors */
   --cartouche-theme-danger: #dc2626;
-  --cartouche-theme-danger-hover: #b91c1c;
   --cartouche-theme-danger-subtle: #fef2f2;
   --cartouche-theme-danger-focus: rgba(220, 38, 38, 0.25);
   /* Brighter danger text: inline validation messages */
@@ -158,12 +154,15 @@
   /* =========================================================================
      Tier 2: Component Tokens (Mapped to Tier 1 Primitives)
      ========================================================================= */
-  /* Menubar */
+  /* Menubar: bar, text (menu titles, title badge, window buttons), Hover, border,
+     the title badge, and the window close button's Hover */
   --cartouche-menubar-bg: var(--cartouche-theme-primary);
   --cartouche-menubar-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-menubar-hover: rgba(255, 255, 255, 0.2);
   --cartouche-menubar-border: var(--cartouche-theme-border-dark);
   --cartouche-menubar-title-badge-bg: var(--cartouche-theme-primary-hover);
+  --cartouche-menubar-window-close-hover-bg: var(--cartouche-theme-danger);
+  --cartouche-menubar-window-close-hover-fg: var(--cartouche-theme-fg-inverted);
 
   /* Status Bar */
   --cartouche-theme-status-bar-bg: var(--cartouche-theme-primary);
@@ -171,37 +170,15 @@
   --cartouche-statusbar-item-hover-bg: rgba(255, 255, 255, 0.2);
   --cartouche-statusbar-separator-bg: var(--cartouche-theme-fg-subtle);
 
-  /* Activity Bar */
-  --cartouche-theme-activity-bar-bg: var(--cartouche-theme-surface-subtle);
-  --cartouche-theme-activity-bar-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-theme-activity-bar-inactive-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-theme-activity-bar-active-border: var(--cartouche-theme-primary);
-
-  /* Side Bar & Panels */
-  --cartouche-theme-side-bar-bg: var(--cartouche-theme-surface);
-  --cartouche-theme-side-bar-fg: var(--cartouche-theme-fg);
-  --cartouche-theme-side-bar-border: var(--cartouche-theme-border);
-  --cartouche-theme-editor-bg: var(--cartouche-theme-surface);
-  --cartouche-theme-panel-bg: var(--cartouche-theme-surface);
-  --cartouche-theme-panel-border: var(--cartouche-theme-border);
-
   /* Tab Groups & Headers */
   --cartouche-theme-tab-active-bg: var(--cartouche-theme-surface);
   --cartouche-theme-tab-inactive-bg: var(--cartouche-theme-surface-alt);
   --cartouche-theme-tab-active-fg: var(--cartouche-theme-fg);
   --cartouche-theme-tab-inactive-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-theme-tab-border: var(--cartouche-theme-border);
   --cartouche-sidebar-tab-fg: var(--cartouche-theme-fg-muted);
   --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
   --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
   --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
-
-  /* Buttons & Badges */
-  --cartouche-theme-badge-bg: var(--cartouche-theme-primary);
-  --cartouche-theme-badge-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-theme-button-bg: var(--cartouche-theme-primary);
-  --cartouche-theme-button-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-theme-button-hover-bg: var(--cartouche-theme-primary-hover);
 
   /* Dialog Buttons: primary (OK, Apply, Add), secondary (Cancel, Browse…) and a pressed toggle (Toggle Layer Edit Mode) */
   --cartouche-button-primary-bg: var(--cartouche-theme-primary);
@@ -241,7 +218,7 @@
   --cartouche-widget-header-fg: var(--cartouche-theme-fg);
   --cartouche-widget-header-border: var(--cartouche-theme-border);
   --cartouche-widget-content-bg: var(--cartouche-theme-surface);
-  --cartouche-widget-content-fg: var(--cartouche-theme-fg);
+  --cartouche-widget-undocked-shadow: var(--cartouche-theme-shadow-strong);
   --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
   --cartouche-widget-control-hover-bg: var(--cartouche-theme-surface-alt);
   --cartouche-widget-control-hover-fg: var(--cartouche-theme-fg-primary);
@@ -294,18 +271,12 @@
   --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
   --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 
-  /* Toolbars: the outer toolbar containers, the ToolbarWidget box, its grabber,
-     dividers and button icons, button Hover and Toggled On states (also the
-     SplitToolButton), and the toolbar drop markers */
-  --cartouche-toolbar-container-bg: var(--cartouche-theme-surface-subtle);
-  --cartouche-toolbar-container-border: var(--cartouche-theme-border);
-  --cartouche-toolbar-bg: var(--cartouche-theme-surface);
+  /* Toolbars: the ToolbarWidget grabber, dividers and button icons,
+     button Hover and Toggled On states (also the SplitToolButton), and the
+     toolbar drop markers */
   --cartouche-toolbar-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-toolbar-border: var(--cartouche-theme-border-strong);
-  --cartouche-toolbar-shadow: var(--cartouche-theme-shadow-subtle);
   --cartouche-toolbar-grabber-fg: var(--cartouche-theme-fg-subtle);
   --cartouche-toolbar-grabber-hover-fg: var(--cartouche-theme-info);
-  --cartouche-toolbar-drag-handle-hover-fg: var(--cartouche-theme-fg-muted);
   --cartouche-toolbar-divider-fg: var(--cartouche-theme-fg-subtle);
   --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-alt);
   --cartouche-toolbar-item-hover-border: var(--cartouche-theme-border-strong);
@@ -334,7 +305,7 @@
   --cartouche-dialog-button-hover-bg: var(--cartouche-theme-primary-hover);
   --cartouche-dialog-backdrop: rgba(0, 0, 0, 0.4);
 
-  /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Selected Row and Active Row backgrounds, and Read-Only Cell text */
+  /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Hover, Selected Row and Active Row backgrounds, and Read-Only Cell text */
   --cartouche-table-bg: var(--cartouche-theme-surface);
   --cartouche-table-fg: var(--cartouche-theme-fg);
   --cartouche-table-header-bg: var(--cartouche-theme-surface-widget);
@@ -496,7 +467,6 @@
 
   /* Table Cell Editors (Attribute Table cells, Layer Properties field table) */
   --cartouche-cell-editor-bg: var(--cartouche-theme-surface);
-  --cartouche-cell-editor-fg: var(--cartouche-theme-fg-primary);
   --cartouche-cell-editor-border: var(--cartouche-theme-info);
 
   /* Chips (removable path tokens in Add Layers) */
