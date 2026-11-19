@@ -12,6 +12,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { declaration, resolveThemeTokens, rulesFor } from "./cssRules";
 
 describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #196)", () => {
   const rootDir = process.cwd();
@@ -299,6 +300,280 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
   it("has no dead .dockview-tab rules in workbench.css (#352)", () => {
     const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
     assert.doesNotMatch(workbench, /\.dockview-tab\b/);
+  });
+
+  it("defines the LayerTreeWidget Tier 2 tokens (#356)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const expected: Record<string, string> = {
+      "--cartouche-layer-tree-bg": "--cartouche-theme-surface",
+      "--cartouche-layer-tree-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-layer-tree-header-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-layer-tree-row-hover-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-layer-tree-row-selected-bg": "--cartouche-theme-info-subtle",
+      "--cartouche-layer-tree-row-selected-fg": "--cartouche-theme-info",
+      "--cartouche-layer-tree-project-border":
+        "--cartouche-theme-border-subtle",
+      "--cartouche-layer-tree-chevron-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-layer-tree-meta-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-layer-tree-empty-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-layer-tree-empty-title-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-layer-tree-drop-marker-bg": "--cartouche-theme-primary",
+      "--cartouche-layer-tree-inline-input-border": "--cartouche-theme-primary",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads only Tier 2 tokens in the LayerTreeWidget colour declarations (#356)", () => {
+    const css = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const subsystem =
+      /\.(layer-tree-|tree-node-|tree-chevron|tree-drop-marker|tree-inline-input|empty-layers-|layer-meta)/;
+    const colourProperty =
+      /^(color|background(-color)?|border(-(top|right|bottom|left))?(-color)?|outline(-color)?|fill|stroke|box-shadow)$/;
+    const declarations = new Map<string, string>();
+    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!subsystem.test(selector)) continue;
+      for (const declaration of body.split(";")) {
+        const [property, ...rest] = declaration.split(":");
+        const name = property?.trim() ?? "";
+        if (!colourProperty.test(name)) continue;
+        const value = rest.join(":").trim();
+        assert.doesNotMatch(
+          value,
+          /--cartouche-theme-/,
+          `${selector.trim()} { ${name} } must read a Tier 2 token, not ${value}`
+        );
+        declarations.set(`${selector.trim()}|${name}`, value);
+      }
+    }
+    assert.match(
+      declarations.get(".tree-node-row:hover|background-color") ?? "",
+      /var\(--cartouche-layer-tree-row-hover-bg\)/
+    );
+    assert.match(
+      declarations.get(".tree-node-row.selected|background-color") ?? "",
+      /var\(--cartouche-layer-tree-row-selected-bg\)/
+    );
+    assert.match(
+      declarations.get(".tree-node-row.selected|color") ?? "",
+      /var\(--cartouche-layer-tree-row-selected-fg\)/
+    );
+  });
+
+  it("defines the AttributeTableWidget frame, CRS Catalogue list box and console Tier 2 tokens (#357)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    // Each token maps to the Tier 1 primitive its rule read before #357, so no rendered colour changes.
+    const expected: Record<string, string> = {
+      "--cartouche-panel-toolbar-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-panel-toolbar-border": "--cartouche-theme-border",
+      "--cartouche-panel-subtitle-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-panel-icon-button-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-panel-icon-button-hover-bg":
+        "--cartouche-theme-surface-active",
+      "--cartouche-panel-icon-button-hover-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-panel-empty-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-attribute-table-bg": "--cartouche-theme-surface",
+      "--cartouche-attribute-table-header-bg":
+        "--cartouche-theme-surface-subtle",
+      "--cartouche-attribute-table-header-border": "--cartouche-theme-border",
+      "--cartouche-attribute-table-footer-bg":
+        "--cartouche-theme-surface-subtle",
+      "--cartouche-attribute-table-footer-border": "--cartouche-theme-border",
+      "--cartouche-attribute-table-muted-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-geometry-badge-bg": "--cartouche-theme-surface-alt",
+      "--cartouche-geometry-badge-border": "--cartouche-theme-border-strong",
+      "--cartouche-geometry-badge-fg": "--cartouche-theme-info",
+      "--cartouche-crs-list-option-selected-bg":
+        "--cartouche-theme-info-subtle",
+      "--cartouche-crs-list-option-selected-fg": "--cartouche-theme-info",
+      "--cartouche-console-bg": "--cartouche-theme-surface",
+      "--cartouche-console-time-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-console-source-fg": "--cartouche-theme-primary",
+      "--cartouche-console-message-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-console-empty-fg": "--cartouche-theme-fg-subtle",
+      "--cartouche-console-level-info-bg": "--cartouche-theme-info-subtle",
+      "--cartouche-console-level-info-fg": "--cartouche-theme-info",
+      "--cartouche-console-level-success-bg":
+        "--cartouche-theme-success-subtle",
+      "--cartouche-console-level-success-fg": "--cartouche-theme-success",
+      "--cartouche-console-level-warn-bg": "--cartouche-theme-warning-subtle",
+      "--cartouche-console-level-warn-fg": "--cartouche-theme-warning",
+      "--cartouche-console-level-error-bg": "--cartouche-theme-danger-subtle",
+      "--cartouche-console-level-error-fg": "--cartouche-theme-danger",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads no Tier 1 primitive in the AttributeTableWidget frame, CRS Catalogue list box or console colour rules (#357)", () => {
+    const css = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const subsystemSelector =
+      /(?<![\w-])\.(?:attribute-table-[\w-]+|panel-toolbar|panel-subtitle|icon-btn|geometry-badge|empty-filter-message|empty-panel-message|console-[\w-]+|log-[\w-]+|badge-(?:info|success|warn|error))(?![\w-])|\.project-prop-crs-[\w-]+(?::focus)?\s+option:checked/;
+    const colourProperty =
+      /^(?:color|background(?:-color)?|border(?:-[a-z]+)*|outline(?:-color)?|-webkit-text-fill-color|fill|stroke|box-shadow)$/;
+    const offenders: string[] = [];
+    let matchedRules = 0;
+    for (const block of css.split("}")) {
+      const [selector, body] = block.split("{");
+      if (body === undefined) continue;
+      if (!selector.split(",").some((s) => subsystemSelector.test(s.trim())))
+        continue;
+      matchedRules += 1;
+      for (const declaration of body.split(";")) {
+        const colon = declaration.indexOf(":");
+        if (colon < 0) continue;
+        const property = declaration.slice(0, colon).trim();
+        if (
+          colourProperty.test(property)
+          && declaration.includes("--cartouche-theme-")
+        ) {
+          offenders.push(`${selector.trim()} { ${declaration.trim()} }`);
+        }
+      }
+    }
+    assert.ok(
+      matchedRules >= 15,
+      `expected the #357 rules, found ${matchedRules}`
+    );
+    assert.deepEqual(offenders, []);
+  });
+
+  it("defines the ToolbarWidget Tier 2 tokens (#354)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const toolbarTokens = [
+      "--cartouche-toolbar-container-bg",
+      "--cartouche-toolbar-container-border",
+      "--cartouche-toolbar-shadow",
+      "--cartouche-toolbar-grabber-fg",
+      "--cartouche-toolbar-drag-handle-hover-fg",
+      "--cartouche-toolbar-grabber-hover-fg",
+      "--cartouche-toolbar-divider-fg",
+      "--cartouche-toolbar-item-hover-border",
+      "--cartouche-toolbar-item-toggled-on-bg",
+      "--cartouche-toolbar-item-toggled-on-fg",
+      "--cartouche-toolbar-item-toggled-on-border",
+      "--cartouche-toolbar-drop-marker-bg",
+    ];
+    for (const token of toolbarTokens) {
+      assert.ok(
+        content.includes(`${token}:`),
+        `theme-default.css must define toolbar token: ${token}`
+      );
+    }
+  });
+
+  /**
+   * Colours the toolbar container, ToolbarWidget, SplitToolButton and toolbar
+   * drop-marker rules rendered before #354, keyed by selector and property.
+   */
+  const toolbarRenderedColours: [string, string, string][] = [
+    [".toolbar-panel", "background-color", "#f8fafc"],
+    [".toolbar-panel-top", "border-bottom", "1px solid #e2e8f0"],
+    [".toolbar-panel-bottom", "border-top", "1px solid #e2e8f0"],
+    [".toolbar-panel-left", "border-right", "1px solid #e2e8f0"],
+    [".toolbar-panel-right", "border-left", "1px solid #e2e8f0"],
+    [".toolbar-item", "background-color", "#ffffff"],
+    [".toolbar-item", "border", "1px solid #cbd5e1"],
+    [".toolbar-item", "box-shadow", "0 1px 2px rgba(0, 0, 0, 0.06)"],
+    [".toolbar-drag-handle", "color", "#94a3b8"],
+    [".toolbar-drag-handle:hover", "color", "#64748b"],
+    [".toolbar-btn", "color", "#0f172a"],
+    [".toolbar-btn:hover:not(:disabled)", "background-color", "#f1f5f9"],
+    [".toolbar-btn:hover:not(:disabled)", "border-color", "#cbd5e1"],
+    [".toolbar-btn.active", "background-color", "#f0f9ff"],
+    [".toolbar-btn.active", "border-color", "#0284c7"],
+    [".toolbar-btn.active", "color", "#0284c7"],
+    [".toolbar-grabber", "color", "#94a3b8"],
+    [".toolbar-grabber:hover", "color", "#0284c7 !important"],
+    [".toolbar-divider", "color", "#94a3b8"],
+    [".toolbar-drop-marker", "background-color", "#0284c7"],
+  ];
+
+  it("toolbar rules read Tier 2 toolbar tokens, not Tier 1 primitives, and render the same colours (#354)", () => {
+    for (const [selector, property, rendered] of toolbarRenderedColours) {
+      const value = rulesFor(selector)
+        .map((rule) => declaration(rule.body, property))
+        .find((v) => v !== undefined);
+      assert.ok(value, `${selector} must declare ${property}`);
+      assert.doesNotMatch(
+        value,
+        /--cartouche-theme-/,
+        `${selector} ${property} must not read a Tier 1 primitive`
+      );
+      assert.match(
+        value,
+        /var\(--cartouche-toolbar-/,
+        `${selector} ${property} must read a --cartouche-toolbar-* token`
+      );
+      assert.equal(
+        resolveThemeTokens(value),
+        rendered,
+        `${selector} ${property} must still render ${rendered}`
+      );
+    }
+  });
+
+  it("reads --cartouche-toolbar-bg, -fg, -border and -item-hover-bg in workbench.css (#354)", () => {
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
+    for (const token of [
+      "--cartouche-toolbar-bg",
+      "--cartouche-toolbar-fg",
+      "--cartouche-toolbar-border",
+      "--cartouche-toolbar-item-hover-bg",
+    ]) {
+      assert.ok(
+        content.includes(`var(${token})`),
+        `workbench.css must read ${token}`
+      );
+    }
+  });
+
+  it("defines the menubar title badge and status-bar separator Tier 2 tokens (#350)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const expected: Record<string, string> = {
+      "--cartouche-menubar-title-badge-bg": "--cartouche-theme-primary-hover",
+      "--cartouche-statusbar-separator-bg": "--cartouche-theme-fg-subtle",
+    };
+    for (const [token, base] of Object.entries(expected)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+  });
+
+  it("reads only --cartouche-* tokens in workbench.css that theme-default.css defines (#350)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const workbench = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const defined = new Set(
+      [...theme.matchAll(/(--cartouche-[a-zA-Z0-9_-]+)\s*:/g)].map((m) => m[1])
+    );
+    const undefinedReads = [
+      ...new Set(
+        [...workbench.matchAll(/var\(\s*(--cartouche-[a-zA-Z0-9_-]+)/g)]
+          .map((m) => m[1])
+          .filter((token) => !defined.has(token))
+      ),
+    ];
+    assert.deepEqual(
+      undefinedReads,
+      [],
+      `workbench.css reads tokens no Theme defines: ${undefinedReads.join(", ")}`
+    );
   });
 
   it("defines the PreferencesDialog Tier 2 tokens, each mapped to the primitive its rule read before (#358)", () => {

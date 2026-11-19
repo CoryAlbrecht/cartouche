@@ -4,7 +4,7 @@
  * @description Unit and stylesheet tests for low-contrast idle toolbar grabbers and tail divider icons (Ticket #112).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
- * @updated 2026-11-14
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  */
@@ -72,8 +72,8 @@ describe("ToolbarChromeContrast (Ticket #112)", () => {
       ".toolbar-grabber must specify opacity: 0.5"
     );
     assert.ok(
-      grabberRules.includes("color: var(--cartouche-theme-fg-subtle)"),
-      ".toolbar-grabber must specify color: var(--cartouche-theme-fg-subtle)"
+      grabberRules.includes("color: var(--cartouche-toolbar-grabber-fg)"),
+      ".toolbar-grabber must specify color: var(--cartouche-toolbar-grabber-fg)"
     );
     assert.ok(
       grabberRules.includes("transition:"),
@@ -96,9 +96,9 @@ describe("ToolbarChromeContrast (Ticket #112)", () => {
     );
     assert.ok(
       grabberHoverRules.includes(
-        "color: var(--cartouche-theme-info) !important"
+        "color: var(--cartouche-toolbar-grabber-hover-fg) !important"
       ),
-      ".toolbar-grabber:hover must specify var(--cartouche-theme-info) !important"
+      ".toolbar-grabber:hover must specify var(--cartouche-toolbar-grabber-hover-fg) !important"
     );
   });
 
@@ -111,8 +111,8 @@ describe("ToolbarChromeContrast (Ticket #112)", () => {
       ".toolbar-divider must specify opacity: 0.5"
     );
     assert.ok(
-      dividerRules.includes("color: var(--cartouche-theme-fg-subtle)"),
-      ".toolbar-divider must specify color: var(--cartouche-theme-fg-subtle)"
+      dividerRules.includes("color: var(--cartouche-toolbar-divider-fg)"),
+      ".toolbar-divider must specify color: var(--cartouche-toolbar-divider-fg)"
     );
     assert.ok(
       dividerRules.includes("pointer-events: none"),

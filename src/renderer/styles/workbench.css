@@ -58,7 +58,7 @@
   font-size: 1rem;
   font-weight: 700;
   color: var(--cartouche-theme-fg-inverted);
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-title-badge-bg);
   padding: 2px 7px;
   border-radius: 3px;
   letter-spacing: 0.4px;
@@ -271,7 +271,7 @@
 }
 
 .win-btn:hover {
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 .win-btn.win-close:hover {
@@ -283,7 +283,7 @@
    3. Outer Toolbar Panels (Top, Bottom, Left, Right)
    ========================================================================= */
 .toolbar-panel {
-  background-color: var(--cartouche-theme-surface-subtle);
+  background-color: var(--cartouche-toolbar-container-bg);
   user-select: none;
   z-index: 20;
 }
@@ -296,7 +296,7 @@
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  border-bottom: 1px solid var(--cartouche-toolbar-container-border);
   padding: 2px 6px;
   min-height: 42px;
   gap: 4px;
@@ -309,7 +309,7 @@
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  border-top: 1px solid var(--cartouche-theme-border);
+  border-top: 1px solid var(--cartouche-toolbar-container-border);
   padding: 2px 6px;
   min-height: 42px;
   gap: 4px;
@@ -323,7 +323,7 @@
   align-items: flex-start;
   justify-content: flex-start;
   height: 100%;
-  border-right: 1px solid var(--cartouche-theme-border);
+  border-right: 1px solid var(--cartouche-toolbar-container-border);
   padding: 6px 3px;
   min-width: 42px;
   gap: 4px;
@@ -336,7 +336,7 @@
   align-items: flex-start;
   justify-content: flex-start;
   height: 100%;
-  border-left: 1px solid var(--cartouche-theme-border);
+  border-left: 1px solid var(--cartouche-toolbar-container-border);
   padding: 6px 3px;
   min-width: 42px;
   gap: 4px;
@@ -346,10 +346,10 @@
 .toolbar-item {
   display: inline-flex;
   align-items: center;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-toolbar-bg);
+  border: 1px solid var(--cartouche-toolbar-border);
   border-radius: 4px;
-  box-shadow: 0 1px 2px var(--cartouche-theme-shadow-subtle);
+  box-shadow: 0 1px 2px var(--cartouche-toolbar-shadow);
   padding: 1px 2px;
 }
 
@@ -367,14 +367,14 @@
   align-items: center;
   justify-content: center;
   cursor: grab;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-grabber-fg);
   padding: 3px 2px;
   border-radius: 2px;
   transition: color 0.12s ease;
 }
 
 .toolbar-drag-handle:hover {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-toolbar-drag-handle-hover-fg);
 }
 
 .toolbar-drag-handle:active {
@@ -415,7 +415,7 @@
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-toolbar-fg);
   cursor: pointer;
   padding: 0;
   transition:
@@ -425,14 +425,14 @@
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-alt);
-  border-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-toolbar-item-hover-bg);
+  border-color: var(--cartouche-toolbar-item-hover-border);
 }
 
 .toolbar-btn.active {
-  background-color: var(--cartouche-theme-info-subtle);
-  border-color: var(--cartouche-theme-info);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-toolbar-item-toggled-on-bg);
+  border-color: var(--cartouche-toolbar-item-toggled-on-border);
+  color: var(--cartouche-toolbar-item-toggled-on-fg);
 }
 
 .toolbar-btn:disabled {
@@ -674,7 +674,7 @@
 }
 
 .toolbar-grabber {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-grabber-fg);
   opacity: 0.5;
   transition:
     opacity 0.15s ease,
@@ -682,12 +682,12 @@
 }
 
 .toolbar-grabber:hover {
-  color: var(--cartouche-theme-info) !important;
+  color: var(--cartouche-toolbar-grabber-hover-fg) !important;
   opacity: 1 !important;
 }
 
 .toolbar-divider {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-divider-fg);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -783,7 +783,7 @@
 
 .toolbar-drop-marker {
   position: absolute;
-  background-color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-toolbar-drop-marker-bg);
   pointer-events: none;
   z-index: 10;
   border-radius: 1px;
@@ -910,14 +910,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-panel-toolbar-bg);
+  border-bottom: 1px solid var(--cartouche-panel-toolbar-border);
   font-size: 0.875rem;
   user-select: none;
 }
 
 .layer-tree-header {
-  background-color: var(--cartouche-theme-surface-subtle) !important;
+  background-color: var(--cartouche-layer-tree-header-bg) !important;
   cursor: grab;
 }
 
@@ -929,7 +929,7 @@
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-subtitle-fg);
 }
 
 .panel-toolbar-actions {
@@ -943,28 +943,28 @@
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-icon-button-fg);
   font-size: 0.9167rem;
 }
 
 .icon-btn:hover {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-panel-icon-button-hover-bg);
+  color: var(--cartouche-panel-icon-button-hover-fg);
 }
 
 .layer-tree-panel-widget {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-layer-tree-bg);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .layer-tree-viewport {
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-layer-tree-bg);
   padding: 4px 0;
   container-type: inline-size;
 }
@@ -996,12 +996,12 @@
 }
 
 .tree-node-row:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-layer-tree-row-hover-bg);
 }
 
 .tree-node-row.selected {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-layer-tree-row-selected-bg);
+  color: var(--cartouche-layer-tree-row-selected-fg);
 }
 
 .tree-node-row .tree-node-title {
@@ -1036,7 +1036,7 @@
   width: 100cqw;
   max-width: 100cqw;
   height: 2px;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-layer-tree-drop-marker-bg);
   border-radius: 1px;
   margin: 1px 0;
   pointer-events: none;
@@ -1050,7 +1050,7 @@
   top: -3px;
   width: 8px;
   height: 8px;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-layer-tree-drop-marker-bg);
   border-radius: 50%;
 }
 
@@ -1059,29 +1059,29 @@
   min-width: 14rem;
   font-size: 0.9167rem;
   font-family: inherit;
-  border: 1px solid var(--cartouche-theme-primary);
+  border: 1px solid var(--cartouche-layer-tree-inline-input-border);
   border-radius: 2px;
   padding: 1px 4px;
-  color: var(--cartouche-theme-fg);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-input-fg);
+  background-color: var(--cartouche-input-bg);
 }
 
 .tree-node-project {
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
-  border-bottom: 1px solid var(--cartouche-theme-border-subtle);
+  color: var(--cartouche-layer-tree-fg);
+  border-bottom: 1px solid var(--cartouche-layer-tree-project-border);
   margin-bottom: 4px;
   padding-bottom: 6px;
 }
 
 .tree-node-group {
   font-weight: 500;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .tree-node-layer {
   font-weight: 400;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .tree-indent {
@@ -1096,7 +1096,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-chevron-fg);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -1158,12 +1158,12 @@
 }
 
 .layer-tree-item:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-layer-tree-row-hover-bg);
 }
 
 .layer-tree-item.active {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-layer-tree-row-selected-bg);
+  color: var(--cartouche-layer-tree-row-selected-fg);
 }
 
 .layer-kind-icon {
@@ -1192,7 +1192,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-meta-fg);
 }
 
 .opacity-control {
@@ -1215,19 +1215,19 @@
   height: calc(100% - 40px);
   padding: 24px 16px;
   text-align: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-empty-fg);
 }
 
 .empty-layers-title {
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-empty-title-fg);
   margin-bottom: 6px;
 }
 
 .empty-layers-desc {
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-empty-fg);
   line-height: 1.4;
   max-width: 200px;
 }
@@ -1239,7 +1239,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-attribute-table-bg);
 }
 
 .attribute-table-header {
@@ -1250,8 +1250,8 @@
   flex-wrap: wrap;
   gap: 4px;
   padding: 2px 4px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-attribute-table-header-bg);
+  border-bottom: 1px solid var(--cartouche-attribute-table-header-border);
   font-size: 0.9167rem;
 }
 
@@ -1270,15 +1270,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 8px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-attribute-table-footer-bg);
+  border-top: 1px solid var(--cartouche-attribute-table-footer-border);
 }
 
 /* Attribute table muted text: the "no matching features" message under the
    table and the page range in the footer. */
 .empty-filter-message,
 .attribute-table-page-range {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-attribute-table-muted-fg);
 }
 
 /* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget,
@@ -1289,9 +1289,9 @@
 .project-prop-crs-predefined option:checked,
 .project-prop-crs-recent:focus option:checked,
 .project-prop-crs-predefined:focus option:checked {
-  background: var(--cartouche-theme-info-subtle) linear-gradient(var(--cartouche-theme-info-subtle), var(--cartouche-theme-info-subtle));
-  color: var(--cartouche-theme-info);
-  -webkit-text-fill-color: var(--cartouche-theme-info);
+  background: var(--cartouche-crs-list-option-selected-bg) linear-gradient(var(--cartouche-crs-list-option-selected-bg), var(--cartouche-crs-list-option-selected-bg));
+  color: var(--cartouche-crs-list-option-selected-fg);
+  -webkit-text-fill-color: var(--cartouche-crs-list-option-selected-fg);
 }
 
 /* Persistent FID values in the attribute table's # column; the colours are the table's. */
@@ -1302,11 +1302,11 @@
 .geometry-badge {
   display: inline-block;
   padding: 1px 5px;
-  background-color: var(--cartouche-theme-surface-alt);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-geometry-badge-bg);
+  border: 1px solid var(--cartouche-geometry-badge-border);
   border-radius: 3px;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-info);
+  color: var(--cartouche-geometry-badge-fg);
 }
 
 .empty-panel-message {
@@ -1314,7 +1314,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-empty-fg);
   font-size: 1rem;
 }
 
@@ -1323,7 +1323,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-console-bg);
   font-family: var(--cartouche-theme-font-family-mono);
 }
 
@@ -1345,12 +1345,12 @@
 }
 
 .log-time {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-console-time-fg);
   font-size: 0.7917rem;
 }
 
 .log-source {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-console-source-fg);
   font-size: 0.8333rem;
   font-weight: 600;
 }
@@ -1363,32 +1363,32 @@
 }
 
 .badge-info {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-console-level-info-bg);
+  color: var(--cartouche-console-level-info-fg);
 }
 
 .badge-success {
-  background-color: var(--cartouche-theme-success-subtle);
-  color: var(--cartouche-theme-success);
+  background-color: var(--cartouche-console-level-success-bg);
+  color: var(--cartouche-console-level-success-fg);
 }
 
 .badge-warn {
-  background-color: var(--cartouche-theme-warning-subtle);
-  color: var(--cartouche-theme-warning);
+  background-color: var(--cartouche-console-level-warn-bg);
+  color: var(--cartouche-console-level-warn-fg);
 }
 
 .badge-error {
-  background-color: var(--cartouche-theme-danger-subtle);
-  color: var(--cartouche-theme-danger);
+  background-color: var(--cartouche-console-level-error-bg);
+  color: var(--cartouche-console-level-error-fg);
 }
 
 .log-message {
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-console-message-fg);
   word-break: break-all;
 }
 
 .console-empty {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-console-empty-fg);
   font-style: italic;
   padding: 10px;
 }
@@ -1432,13 +1432,13 @@
 }
 
 .statusbar-item:hover {
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 .statusbar-separator {
   width: 1px;
   height: 0.875rem;
-  background-color: var(--cartouche-menubar-item-active-bg);
+  background-color: var(--cartouche-statusbar-separator-bg);
   margin: 0 4px;
 }
 
@@ -2236,7 +2236,7 @@
 
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 /* =============================================================================
