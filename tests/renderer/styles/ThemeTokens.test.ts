@@ -12,6 +12,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { declaration, resolveThemeTokens, rulesFor } from "./cssRules";
 
 describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #196)", () => {
   const rootDir = process.cwd();
@@ -219,6 +220,96 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       assert.ok(
         content.includes(`${token}:`),
         `theme-default.css must define Tier 2 component token: ${token}`
+      );
+    }
+  });
+
+  it("defines the ToolbarWidget Tier 2 tokens (#354)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const toolbarTokens = [
+      "--cartouche-toolbar-container-bg",
+      "--cartouche-toolbar-container-border",
+      "--cartouche-toolbar-shadow",
+      "--cartouche-toolbar-grabber-fg",
+      "--cartouche-toolbar-drag-handle-hover-fg",
+      "--cartouche-toolbar-grabber-hover-fg",
+      "--cartouche-toolbar-divider-fg",
+      "--cartouche-toolbar-item-hover-border",
+      "--cartouche-toolbar-item-toggled-on-bg",
+      "--cartouche-toolbar-item-toggled-on-fg",
+      "--cartouche-toolbar-item-toggled-on-border",
+      "--cartouche-toolbar-drop-marker-bg",
+    ];
+    for (const token of toolbarTokens) {
+      assert.ok(
+        content.includes(`${token}:`),
+        `theme-default.css must define toolbar token: ${token}`
+      );
+    }
+  });
+
+  /**
+   * Colours the toolbar container, ToolbarWidget, SplitToolButton and toolbar
+   * drop-marker rules rendered before #354, keyed by selector and property.
+   */
+  const toolbarRenderedColours: [string, string, string][] = [
+    [".toolbar-panel", "background-color", "#f8fafc"],
+    [".toolbar-panel-top", "border-bottom", "1px solid #e2e8f0"],
+    [".toolbar-panel-bottom", "border-top", "1px solid #e2e8f0"],
+    [".toolbar-panel-left", "border-right", "1px solid #e2e8f0"],
+    [".toolbar-panel-right", "border-left", "1px solid #e2e8f0"],
+    [".toolbar-item", "background-color", "#ffffff"],
+    [".toolbar-item", "border", "1px solid #cbd5e1"],
+    [".toolbar-item", "box-shadow", "0 1px 2px rgba(0, 0, 0, 0.06)"],
+    [".toolbar-drag-handle", "color", "#94a3b8"],
+    [".toolbar-drag-handle:hover", "color", "#64748b"],
+    [".toolbar-btn", "color", "#0f172a"],
+    [".toolbar-btn:hover:not(:disabled)", "background-color", "#f1f5f9"],
+    [".toolbar-btn:hover:not(:disabled)", "border-color", "#cbd5e1"],
+    [".toolbar-btn.active", "background-color", "#f0f9ff"],
+    [".toolbar-btn.active", "border-color", "#0284c7"],
+    [".toolbar-btn.active", "color", "#0284c7"],
+    [".toolbar-grabber", "color", "#94a3b8"],
+    [".toolbar-grabber:hover", "color", "#0284c7 !important"],
+    [".toolbar-divider", "color", "#94a3b8"],
+    [".toolbar-drop-marker", "background-color", "#0284c7"],
+  ];
+
+  it("toolbar rules read Tier 2 toolbar tokens, not Tier 1 primitives, and render the same colours (#354)", () => {
+    for (const [selector, property, rendered] of toolbarRenderedColours) {
+      const value = rulesFor(selector)
+        .map((rule) => declaration(rule.body, property))
+        .find((v) => v !== undefined);
+      assert.ok(value, `${selector} must declare ${property}`);
+      assert.doesNotMatch(
+        value,
+        /--cartouche-theme-/,
+        `${selector} ${property} must not read a Tier 1 primitive`
+      );
+      assert.match(
+        value,
+        /var\(--cartouche-toolbar-/,
+        `${selector} ${property} must read a --cartouche-toolbar-* token`
+      );
+      assert.equal(
+        resolveThemeTokens(value),
+        rendered,
+        `${selector} ${property} must still render ${rendered}`
+      );
+    }
+  });
+
+  it("reads --cartouche-toolbar-bg, -fg, -border and -item-hover-bg in workbench.css (#354)", () => {
+    const content = fs.readFileSync(workbenchCssPath, "utf-8");
+    for (const token of [
+      "--cartouche-toolbar-bg",
+      "--cartouche-toolbar-fg",
+      "--cartouche-toolbar-border",
+      "--cartouche-toolbar-item-hover-bg",
+    ]) {
+      assert.ok(
+        content.includes(`var(${token})`),
+        `workbench.css must read ${token}`
       );
     }
   });

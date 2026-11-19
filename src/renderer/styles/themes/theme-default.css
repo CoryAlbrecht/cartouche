@@ -268,12 +268,26 @@
   --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
   --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 
-  /* Toolbars */
+  /* Toolbars: the outer toolbar containers, the ToolbarWidget box, its grabber,
+     dividers and button icons, button Hover and Toggled On states (also the
+     SplitToolButton), and the toolbar drop markers */
+  --cartouche-toolbar-container-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-toolbar-container-border: var(--cartouche-theme-border);
   --cartouche-toolbar-bg: var(--cartouche-theme-surface);
-  --cartouche-toolbar-fg: var(--cartouche-theme-fg);
-  --cartouche-toolbar-border: var(--cartouche-theme-border);
-  --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-toolbar-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-toolbar-border: var(--cartouche-theme-border-strong);
+  --cartouche-toolbar-shadow: var(--cartouche-theme-shadow-subtle);
+  --cartouche-toolbar-grabber-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-toolbar-grabber-hover-fg: var(--cartouche-theme-info);
+  --cartouche-toolbar-drag-handle-hover-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-toolbar-divider-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-toolbar-item-hover-border: var(--cartouche-theme-border-strong);
+  --cartouche-toolbar-item-toggled-on-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-toolbar-item-toggled-on-fg: var(--cartouche-theme-info);
+  --cartouche-toolbar-item-toggled-on-border: var(--cartouche-theme-info);
   --cartouche-toolbar-item-active-bg: var(--cartouche-theme-surface-active);
+  --cartouche-toolbar-drop-marker-bg: var(--cartouche-theme-info);
 
   /* Dialogs & Modals: the primary-coloured title bar of every Dialog window and
      PickerDialogFrame, then the light card of the About ModalDialog (dialog box,
