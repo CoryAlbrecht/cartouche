@@ -4,7 +4,7 @@
  * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-16
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -138,13 +138,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-button-primary-bg",
       "--cartouche-button-primary-fg",
       "--cartouche-button-primary-border",
-      // Dockview Theme Overrides
-      "--dockview-theme-background-color",
-      "--dockview-theme-foreground-color",
-      "--dockview-theme-border-color",
-      "--dockview-theme-separator-color",
-      "--dockview-theme-splitter-color",
-      "--dockview-theme-active-border-color",
       // Widgets
       "--cartouche-widget-bg",
       "--cartouche-widget-border",
@@ -221,6 +214,91 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `theme-default.css must define Tier 2 component token: ${token}`
       );
     }
+  });
+
+  it("defines the Dockview Tier 2 tokens (#352)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const dockviewTokens: Record<string, string> = {
+      "--dockview-group-bg": "--cartouche-theme-surface",
+      "--dockview-group-border": "--cartouche-theme-border",
+      "--dockview-tab-strip-bg": "--cartouche-theme-surface-widget",
+      "--dockview-tab-divider": "--cartouche-theme-border-strong",
+      "--dockview-tab-front-bg": "--cartouche-theme-surface",
+      "--dockview-tab-front-fg": "--cartouche-theme-fg",
+      "--dockview-tab-background-bg": "--cartouche-theme-surface-alt",
+      "--dockview-tab-background-fg": "--cartouche-theme-fg-muted",
+      "--dockview-tab-hover-bg": "--cartouche-theme-surface-active",
+      "--dockview-tab-hover-fg": "--cartouche-theme-fg-primary",
+      "--dockview-sash-hover-bg": "--cartouche-theme-primary",
+    };
+    for (const [token, base] of Object.entries(dockviewTokens)) {
+      const match = content.match(
+        new RegExp(`${token}:\\s*var\\((--[a-z0-9-]+)\\);`)
+      );
+      assert.equal(match?.[1], base, `${token} must be var(${base})`);
+    }
+    assert.match(content, /--dockview-sash-bg:\s*transparent;/);
+  });
+
+  it("reads every --dockview-* token in workbench.css and sets Dockview's --dv-* colours only from Tier 2 tokens (#352)", () => {
+    const theme = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
+
+    const defined = [...theme.matchAll(/(--dockview-[a-z0-9-]+)\s*:/g)].map(
+      (m) => m[1]
+    );
+    assert.ok(
+      defined.length > 0,
+      "theme-default.css must define --dockview-* tokens"
+    );
+    const unread = defined.filter(
+      (t) => !new RegExp(`var\\(\\s*${t}\\s*[,)]`).test(workbench)
+    );
+    assert.deepEqual(
+      unread,
+      [],
+      `Unread --dockview-* tokens: ${unread.join(", ")}`
+    );
+
+    const dvColourVars = [
+      "--dv-group-view-background-color",
+      "--dv-tabs-and-actions-container-background-color",
+      "--dv-activegroup-visiblepanel-tab-background-color",
+      "--dv-activegroup-hiddenpanel-tab-background-color",
+      "--dv-inactivegroup-visiblepanel-tab-background-color",
+      "--dv-inactivegroup-hiddenpanel-tab-background-color",
+      "--dv-activegroup-visiblepanel-tab-color",
+      "--dv-activegroup-hiddenpanel-tab-color",
+      "--dv-inactivegroup-visiblepanel-tab-color",
+      "--dv-inactivegroup-hiddenpanel-tab-color",
+      "--dv-tab-divider-color",
+      "--dv-separator-border",
+      "--dv-sash-color",
+      "--dv-active-sash-color",
+      "--dv-drag-over-background-color",
+      "--dv-drag-over-border-color",
+      "--dv-drag-over-border",
+    ];
+    for (const dv of dvColourVars) {
+      const match = workbench.match(new RegExp(`${dv}:\\s*([^;]+);`));
+      assert.ok(match, `workbench.css must set ${dv}`);
+      const reads = [...match[1].matchAll(/var\(\s*(--[a-z0-9-]+)\s*\)/g)].map(
+        (m) => m[1]
+      );
+      assert.ok(reads.length > 0, `${dv} must read a token`);
+      for (const token of reads) {
+        assert.ok(
+          !token.startsWith("--cartouche-theme-"),
+          `${dv} must read a Tier 2 token, not ${token}`
+        );
+        assert.ok(theme.includes(`${token}:`), `${token} must be defined`);
+      }
+    }
+  });
+
+  it("has no dead .dockview-tab rules in workbench.css (#352)", () => {
+    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
+    assert.doesNotMatch(workbench, /\.dockview-tab\b/);
   });
 
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {

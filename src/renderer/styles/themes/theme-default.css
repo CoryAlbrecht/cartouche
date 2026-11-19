@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -213,15 +213,24 @@
   --cartouche-button-toggle-active-fg: var(--cartouche-theme-info);
   --cartouche-button-toggle-active-border: var(--cartouche-theme-info);
 
-  /* Dockview Theme Overrides */
-  --dockview-theme-background-color: var(--cartouche-theme-surface);
-  --dockview-theme-foreground-color: var(--cartouche-theme-fg);
-  --dockview-theme-border-color: var(--cartouche-theme-border);
-  --dockview-theme-separator-color: var(--cartouche-theme-border);
-  --dockview-theme-splitter-color: transparent;
-  --dockview-theme-active-border-color: var(--cartouche-theme-primary);
-  --dockview-tab-height: 2em;
-  --dockview-tab-font-size: 0.9rem;
+  /* Dockview (#352): Dockview reads only its own --dv-* variables, so workbench.css
+     sets them on the Dockview root from these tokens. Group panel and tab strip
+     backgrounds, the line between groups and between tabs, the Front Tab and
+     Background Tabs (matching the OverlapTabWidget tabs), a Background Tab's
+     Hover, and the sash at rest and on Hover. The drop overlay reads
+     --cartouche-drop-target-*. */
+  --dockview-group-bg: var(--cartouche-theme-surface);
+  --dockview-group-border: var(--cartouche-theme-border);
+  --dockview-tab-strip-bg: var(--cartouche-theme-surface-widget);
+  --dockview-tab-divider: var(--cartouche-theme-border-strong);
+  --dockview-tab-front-bg: var(--cartouche-theme-surface);
+  --dockview-tab-front-fg: var(--cartouche-theme-fg);
+  --dockview-tab-background-bg: var(--cartouche-theme-surface-alt);
+  --dockview-tab-background-fg: var(--cartouche-theme-fg-muted);
+  --dockview-tab-hover-bg: var(--cartouche-theme-surface-active);
+  --dockview-tab-hover-fg: var(--cartouche-theme-fg-primary);
+  --dockview-sash-bg: transparent;
+  --dockview-sash-hover-bg: var(--cartouche-theme-primary);
 
   /* Widgets */
   --cartouche-widget-bg: var(--cartouche-theme-surface-widget);
