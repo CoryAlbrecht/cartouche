@@ -307,6 +307,55 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     assert.deepEqual(offenders, []);
   });
 
+  it("defines the menu Tier 2 tokens (#353)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    // Each menu token maps to the Tier 1 primitive its rule read before #353, so no rendered colour changes.
+    const menuTokens: Record<string, string> = {
+      "--cartouche-menu-bg": "--cartouche-theme-surface",
+      "--cartouche-menu-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-menu-border": "--cartouche-theme-border-strong",
+      "--cartouche-menu-shadow": "--cartouche-theme-shadow",
+      "--cartouche-menu-title-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-menu-item-hover-bg": "--cartouche-theme-primary",
+      "--cartouche-menu-item-hover-fg": "--cartouche-theme-fg-inverted",
+      "--cartouche-menu-item-disabled-fg": "--cartouche-theme-fg-subtle",
+      "--cartouche-menu-check-fg": "--cartouche-theme-primary",
+      "--cartouche-menu-check-hover-fg": "--cartouche-theme-fg-inverted",
+      "--cartouche-menu-shortcut-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-menu-shortcut-hover-fg": "--cartouche-theme-border",
+      "--cartouche-menu-separator": "--cartouche-theme-border",
+    };
+    for (const [token, primitive] of Object.entries(menuTokens)) {
+      assert.match(
+        content,
+        new RegExp(`${token}:\\s*var\\(${primitive}\\);`),
+        `theme-default.css must define ${token} as var(${primitive})`
+      );
+    }
+  });
+
+  it("reads no Tier 1 primitive in any colour declaration of the menubar menu and PopupMenu rules (#353)", () => {
+    const content = fs
+      .readFileSync(workbenchCssPath, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const menuSelector =
+      /\.(menu-dropdown(?!-trigger)|menu-submenu-dropdown|menu-item-check-slot|menu-shortcut-slot|menu-key-slot|toolbar-context-menu|context-menu-)/;
+    const offenders: string[] = [];
+    let menuRules = 0;
+    for (const match of content.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selector = match[1].trim();
+      if (!menuSelector.test(selector)) continue;
+      menuRules++;
+      for (const decl of match[2].split(";")) {
+        if (/var\(--cartouche-theme-/.test(decl)) {
+          offenders.push(`${selector} { ${decl.trim()} }`);
+        }
+      }
+    }
+    assert.ok(menuRules >= 15, `expected the menu rules, found ${menuRules}`);
+    assert.deepEqual(offenders, []);
+  });
+
   it("defines --cartouche-theme-fg-secondary as #475569, an AA-contrast text colour on surface-alt (Spec #322)", () => {
     const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     assert.match(content, /--cartouche-theme-fg-secondary:\s*#475569;/);
