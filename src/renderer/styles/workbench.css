@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -58,7 +58,7 @@
   font-size: 1rem;
   font-weight: 700;
   color: var(--cartouche-theme-fg-inverted);
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-title-badge-bg);
   padding: 2px 7px;
   border-radius: 3px;
   letter-spacing: 0.4px;
@@ -271,7 +271,7 @@
 }
 
 .win-btn:hover {
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 .win-btn.win-close:hover {
@@ -1411,13 +1411,13 @@
 }
 
 .statusbar-item:hover {
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 .statusbar-separator {
   width: 1px;
   height: 0.875rem;
-  background-color: var(--cartouche-menubar-item-active-bg);
+  background-color: var(--cartouche-statusbar-separator-bg);
   margin: 0 4px;
 }
 
@@ -2214,7 +2214,7 @@
 
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 /* =============================================================================
