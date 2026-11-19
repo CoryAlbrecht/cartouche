@@ -110,7 +110,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       // Status Bar
       "--cartouche-theme-status-bar-bg",
       "--cartouche-theme-status-bar-fg",
-      "--cartouche-theme-status-bar-border",
       // Activity Bar
       "--cartouche-theme-activity-bar-bg",
       "--cartouche-theme-activity-bar-fg",
@@ -213,6 +212,77 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       assert.ok(
         content.includes(`${token}:`),
         `theme-default.css must define Tier 2 component token: ${token}`
+      );
+    }
+  });
+
+  it("defines the status bar Tier 2 tokens and drops the unread border token (#351)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const statusBarTokens = [
+      "--cartouche-theme-status-bar-bg",
+      "--cartouche-theme-status-bar-fg",
+      "--cartouche-statusbar-item-hover-bg",
+      "--cartouche-statusbar-separator-bg",
+    ];
+    for (const token of statusBarTokens) {
+      assert.ok(
+        content.includes(`${token}:`),
+        `theme-default.css must define status bar token: ${token}`
+      );
+    }
+    // The status bar draws no border, so its border token is removed rather than read.
+    assert.ok(
+      !content.includes("--cartouche-theme-status-bar-border"),
+      "theme-default.css must not define the unread --cartouche-theme-status-bar-border"
+    );
+  });
+
+  /**
+   * Colours the status bar rules rendered before #351, keyed by selector and property.
+   */
+  const statusBarRenderedColours: [string, string, string, RegExp][] = [
+    [
+      ".workbench-statusbar",
+      "background-color",
+      "#1b446c",
+      /^var\(--cartouche-theme-status-bar-bg\)$/,
+    ],
+    [
+      ".workbench-statusbar",
+      "color",
+      "#ffffff",
+      /^var\(--cartouche-theme-status-bar-fg\)$/,
+    ],
+    [
+      ".statusbar-item:hover",
+      "background-color",
+      "rgba(255, 255, 255, 0.2)",
+      /^var\(--cartouche-statusbar-item-hover-bg\)$/,
+    ],
+    [
+      ".statusbar-separator",
+      "background-color",
+      "#94a3b8",
+      /^var\(--cartouche-statusbar-separator-bg\)$/,
+    ],
+  ];
+
+  it("status bar rules read status bar tokens only and render the same colours (#351)", () => {
+    for (const [
+      selector,
+      property,
+      rendered,
+      token,
+    ] of statusBarRenderedColours) {
+      const value = rulesFor(selector)
+        .map((rule) => declaration(rule.body, property))
+        .find((v) => v !== undefined);
+      assert.ok(value, `${selector} must declare ${property}`);
+      assert.match(value, token, `${selector} ${property} must read ${token}`);
+      assert.equal(
+        resolveThemeTokens(value),
+        rendered,
+        `${selector} ${property} must still render ${rendered}`
       );
     }
   });

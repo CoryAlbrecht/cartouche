@@ -168,7 +168,7 @@
   /* Status Bar */
   --cartouche-theme-status-bar-bg: var(--cartouche-theme-primary);
   --cartouche-theme-status-bar-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-theme-status-bar-border: var(--cartouche-theme-border-dark);
+  --cartouche-statusbar-item-hover-bg: rgba(255, 255, 255, 0.2);
   --cartouche-statusbar-separator-bg: var(--cartouche-theme-fg-subtle);
 
   /* Activity Bar */
