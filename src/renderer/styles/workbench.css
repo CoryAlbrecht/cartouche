@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -17,8 +17,8 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg);
+  background-color: var(--cartouche-workbench-bg);
+  color: var(--cartouche-workbench-fg);
   font-size: var(--cartouche-ui-basefont-size);
 }
 
@@ -57,8 +57,8 @@
 .app-title-badge {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--cartouche-theme-fg-inverted);
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  color: var(--cartouche-menubar-fg);
+  background-color: var(--cartouche-menubar-title-badge-bg);
   padding: 2px 7px;
   border-radius: 3px;
   letter-spacing: 0.4px;
@@ -79,7 +79,7 @@
   cursor: pointer;
   border-radius: 3px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menubar-fg);
   transition: background-color 0.12s ease;
 }
 
@@ -103,15 +103,15 @@
   top: 100%;
   left: 0;
   margin-top: 0;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
-  box-shadow: 0 6px 18px var(--cartouche-theme-shadow);
+  background-color: var(--cartouche-menu-bg);
+  border: 1px solid var(--cartouche-menu-border);
+  box-shadow: 0 6px 18px var(--cartouche-menu-shadow);
   border-radius: 4px;
   min-width: 220px;
   padding: 4px 0;
   z-index: 1000;
   -webkit-app-region: no-drag;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-menu-fg);
   /* Inside the menubar, but on a light surface: restore the surface focus colour. */
   --cartouche-focus-color: var(--cartouche-menu-focus-color);
 }
@@ -130,7 +130,7 @@
   align-items: center;
   padding: 5px 12px;
   font-size: 1rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-menu-fg);
   cursor: pointer;
   user-select: none;
   transition:
@@ -139,15 +139,15 @@
 }
 
 .menu-dropdown-item:hover {
-  background-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-menu-item-hover-bg);
+  color: var(--cartouche-menu-item-hover-fg);
 }
 
 .menu-dropdown-item.disabled {
   opacity: 0.4;
   cursor: default !important;
   pointer-events: none !important;
-  color: var(--cartouche-theme-fg-subtle) !important;
+  color: var(--cartouche-menu-item-disabled-fg) !important;
   background-color: transparent !important;
 }
 
@@ -173,11 +173,11 @@
   justify-content: center;
   margin-right: 8px;
   flex-shrink: 0;
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-menu-check-fg);
 }
 
 .menu-dropdown-item:hover .menu-item-check-slot {
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menu-check-hover-fg);
 }
 
 .menu-item-label {
@@ -189,12 +189,12 @@
   min-width: 40px;
   text-align: right;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-menu-shortcut-fg);
   margin-left: 12px;
 }
 
 .menu-dropdown-item:hover .menu-shortcut-slot {
-  color: var(--cartouche-theme-border);
+  color: var(--cartouche-menu-shortcut-hover-fg);
 }
 
 .menu-arrow {
@@ -204,7 +204,7 @@
 
 .menu-dropdown-separator {
   height: 1px;
-  background-color: var(--cartouche-theme-border);
+  background-color: var(--cartouche-menu-separator);
   margin: 4px 0;
 }
 
@@ -224,9 +224,9 @@
   top: -4px;
   left: 100%;
   margin-left: 2px;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
-  box-shadow: 0 6px 18px var(--cartouche-theme-shadow);
+  background-color: var(--cartouche-menu-bg);
+  border: 1px solid var(--cartouche-menu-border);
+  box-shadow: 0 6px 18px var(--cartouche-menu-shadow);
   border-radius: 4px;
   min-width: 190px;
   padding: 4px 0;
@@ -264,134 +264,24 @@
   height: 100%;
   background: transparent;
   border: none;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menubar-fg);
   cursor: pointer;
   padding: 0;
   transition: background-color 0.12s ease;
 }
 
 .win-btn:hover {
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-menubar-hover);
 }
 
 .win-btn.win-close:hover {
-  background-color: var(--cartouche-theme-danger);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-menubar-window-close-hover-bg);
+  color: var(--cartouche-menubar-window-close-hover-fg);
 }
 
 /* =========================================================================
-   3. Outer Toolbar Panels (Top, Bottom, Left, Right)
+   3. Toolbar Buttons (ToolbarWidget, SplitToolButton, TimeFilterWidget)
    ========================================================================= */
-.toolbar-panel {
-  background-color: var(--cartouche-theme-surface-subtle);
-  user-select: none;
-  z-index: 20;
-}
-
-/* Top & Bottom: Horizontal toolbars, left-aligned, flex-wrap into new rows */
-.toolbar-panel-top {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  border-bottom: 1px solid var(--cartouche-theme-border);
-  padding: 2px 6px;
-  min-height: 42px;
-  gap: 4px;
-}
-
-.toolbar-panel-bottom {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  border-top: 1px solid var(--cartouche-theme-border);
-  padding: 2px 6px;
-  min-height: 42px;
-  gap: 4px;
-}
-
-/* Left & Right: Vertical toolbars, top-aligned, flex-wrap into new columns */
-.toolbar-panel-left {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  height: 100%;
-  border-right: 1px solid var(--cartouche-theme-border);
-  padding: 6px 3px;
-  min-width: 42px;
-  gap: 4px;
-}
-
-.toolbar-panel-right {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
-  height: 100%;
-  border-left: 1px solid var(--cartouche-theme-border);
-  padding: 6px 3px;
-  min-width: 42px;
-  gap: 4px;
-}
-
-/* Toolbar Sub-Item */
-.toolbar-item {
-  display: inline-flex;
-  align-items: center;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
-  border-radius: 4px;
-  box-shadow: 0 1px 2px var(--cartouche-theme-shadow-subtle);
-  padding: 1px 2px;
-}
-
-.toolbar-item-horizontal {
-  flex-direction: row;
-}
-
-.toolbar-item-vertical {
-  flex-direction: column;
-}
-
-/* Dragger Handle */
-.toolbar-drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  color: var(--cartouche-theme-fg-subtle);
-  padding: 3px 2px;
-  border-radius: 2px;
-  transition: color 0.12s ease;
-}
-
-.toolbar-drag-handle:hover {
-  color: var(--cartouche-theme-fg-muted);
-}
-
-.toolbar-drag-handle:active {
-  cursor: grabbing;
-}
-
-/* Buttons inside Toolbar */
-.toolbar-buttons-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.toolbar-item-vertical .toolbar-buttons-group {
-  flex-direction: column;
-}
-
 .toolbar-btn {
   display: inline-flex;
   align-items: center;
@@ -415,7 +305,7 @@
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-toolbar-fg);
   cursor: pointer;
   padding: 0;
   transition:
@@ -425,14 +315,14 @@
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-alt);
-  border-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-toolbar-item-hover-bg);
+  border-color: var(--cartouche-toolbar-item-hover-border);
 }
 
 .toolbar-btn.active {
-  background-color: var(--cartouche-theme-info-subtle);
-  border-color: var(--cartouche-theme-info);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-toolbar-item-toggled-on-bg);
+  border-color: var(--cartouche-toolbar-item-toggled-on-border);
+  color: var(--cartouche-toolbar-item-toggled-on-fg);
 }
 
 .toolbar-btn:disabled {
@@ -488,20 +378,20 @@
   min-width: 40px;
   text-align: right;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-menu-shortcut-fg);
   margin-left: 12px;
 }
 
 .menu-dropdown-item:hover .menu-key-slot {
-  color: var(--cartouche-theme-border);
+  color: var(--cartouche-menu-shortcut-hover-fg);
 }
 
 /* Floating Context Menu for Toolbars (Right Click) */
 .toolbar-context-menu {
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-menu-bg);
+  border: 1px solid var(--cartouche-menu-border);
   border-radius: 4px;
-  box-shadow: 0 6px 20px var(--cartouche-theme-shadow);
+  box-shadow: 0 6px 20px var(--cartouche-menu-shadow);
   min-width: 170px;
   padding: 4px 0;
   user-select: none;
@@ -510,13 +400,13 @@
 .context-menu-title {
   font-size: 0.8333rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-menu-title-fg);
   padding: 4px 12px;
 }
 
 .context-menu-separator {
   height: 1px;
-  background-color: var(--cartouche-theme-surface-active);
+  background-color: var(--cartouche-menu-separator);
   margin: 3px 0;
 }
 
@@ -526,14 +416,14 @@
   gap: 8px;
   padding: 5px 12px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-menu-fg);
   cursor: pointer;
   transition: background-color 0.1s ease;
 }
 
 .context-menu-item:hover {
-  background-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-menu-item-hover-bg);
+  color: var(--cartouche-menu-item-hover-fg);
 }
 
 .context-menu-check {
@@ -542,11 +432,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-menu-check-fg);
 }
 
 .context-menu-item:hover .context-menu-check {
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-menu-check-hover-fg);
 }
 
 /* =========================================================================
@@ -557,7 +447,7 @@
   flex: 1;
   overflow: hidden;
   position: relative;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-workbench-bg);
 }
 
 .dockview-wrapper {
@@ -565,37 +455,58 @@
   position: relative;
   overflow: hidden;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-workbench-bg);
 }
 
-/* Light Clean Dockview Overrides */
+/* Dockview colours (#352). Dockview reads only its own --dv-* variables, so they
+   are set here, on the Dockview root, from the --dockview-* Tier 2 tokens. This
+   rule follows the dockview.css import, so it overrides Dockview's built-in light
+   theme. The Front Tab and Background Tabs look the same in focused and unfocused
+   groups, like the OverlapTabWidget tabs. */
 .dockview-theme-light {
-  --dockview-tab-height: 2em;
-  --dockview-activegroup-visibleindicator-color: var(--cartouche-theme-primary);
+  --dv-group-view-background-color: var(--dockview-group-bg);
+  --dv-tabs-and-actions-container-background-color: var(
+    --dockview-tab-strip-bg
+  );
+  --dv-activegroup-visiblepanel-tab-background-color: var(
+    --dockview-tab-front-bg
+  );
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(
+    --dockview-tab-front-bg
+  );
+  --dv-activegroup-visiblepanel-tab-color: var(--dockview-tab-front-fg);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--dockview-tab-front-fg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(
+    --dockview-tab-background-bg
+  );
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(
+    --dockview-tab-background-bg
+  );
+  --dv-activegroup-hiddenpanel-tab-color: var(--dockview-tab-background-fg);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--dockview-tab-background-fg);
+  --dv-tab-divider-color: var(--dockview-tab-divider);
+  --dv-separator-border: var(--dockview-group-border);
+  --dv-sash-color: var(--dockview-sash-bg);
+  --dv-active-sash-color: var(--dockview-sash-hover-bg);
+  --dv-drag-over-background-color: var(--cartouche-drop-target-bg);
+  --dv-drag-over-border-color: var(--cartouche-drop-target-border);
+  --dv-drag-over-border: 0.0625rem solid var(--cartouche-drop-target-border);
 }
 
-.dockview-theme-light .dockview-tab {
-  background-color: var(--cartouche-theme-surface-alt);
-  color: var(--cartouche-theme-fg-muted);
-  border-right: 1px solid var(--cartouche-theme-border);
-  font-size: 0.9167rem;
-}
-
-.dockview-theme-light .dockview-tab:hover {
-  color: var(--cartouche-theme-fg-primary);
-  background-color: var(--cartouche-theme-surface-active);
-}
-
-.dockview-theme-light .dockview-tab.dockview-tab-selected {
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
-  font-weight: 500;
-  border-top: 2px solid var(--cartouche-theme-primary);
+/* Background Tab Hover. Dockview has no Hover variable; the selector matches the
+   specificity of Dockview's own tab colour rules plus one. */
+.dockview-theme-light
+  .dv-groupview
+  > .dv-tabs-and-actions-container
+  .dv-tabs-container
+  > .dv-tab.dv-inactive-tab:hover {
+  background-color: var(--dockview-tab-hover-bg);
+  color: var(--dockview-tab-hover-fg);
 }
 
 /* OpenLayers Canvas Container Styling */
 .ol-viewport {
-  background-color: var(--cartouche-theme-surface) !important;
+  background-color: var(--cartouche-map-viewport-bg) !important;
 }
 
 /* =========================================================================
@@ -612,7 +523,7 @@
 }
 
 .cartouche-widget.is-undocked {
-  box-shadow: 0 8px 24px var(--cartouche-theme-shadow-strong);
+  box-shadow: 0 8px 24px var(--cartouche-widget-undocked-shadow);
   z-index: 1000;
 }
 
@@ -644,16 +555,16 @@
 }
 
 .widget-control-btn:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-  color: var(--cartouche-theme-fg-primary) !important;
+  background-color: var(--cartouche-widget-control-hover-bg);
+  color: var(--cartouche-widget-control-hover-fg) !important;
 }
 
 .widget-menu-item:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-widget-menu-item-hover-bg);
 }
 
 .toolbar-grabber {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-grabber-fg);
   opacity: 0.5;
   transition:
     opacity 0.15s ease,
@@ -661,19 +572,42 @@
 }
 
 .toolbar-grabber:hover {
-  color: var(--cartouche-theme-info) !important;
+  color: var(--cartouche-toolbar-grabber-hover-fg) !important;
   opacity: 1 !important;
 }
 
 .toolbar-divider {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-toolbar-divider-fg);
   opacity: 0.5;
   pointer-events: none;
 }
 
-/* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area) */
+/* ToolbarContainerWidget and ToolbarWidget frames: their Widget's background,
+   border colour and (ToolbarWidget) shadow; the border width comes from the
+   Widget's border prop. */
+.cartouche-widget.toolbar-container-widget {
+  background-color: var(--cartouche-toolbar-container-bg);
+  border-color: var(--cartouche-toolbar-container-border);
+}
+
+.cartouche-widget.toolbar-widget {
+  background-color: var(--cartouche-toolbar-bg);
+  border-color: var(--cartouche-toolbar-border);
+  box-shadow: 0 1px 2px var(--cartouche-toolbar-shadow);
+}
+
+/* Toolbar Container Drop Target Hit Zones (1px collapsed line + invisible ::before hit area).
+   An empty ToolbarContainerWidget takes the container colours, and the drop target
+   colours while a toolbar is dragged over it. */
 .toolbar-container-widget-drop-target {
   position: relative;
+  background-color: var(--cartouche-toolbar-container-bg);
+  border-color: var(--cartouche-toolbar-container-border);
+}
+
+.toolbar-container-widget-drop-target.is-drag-over {
+  background-color: var(--cartouche-drop-target-bg);
+  border-color: var(--cartouche-drop-target-border);
 }
 
 .toolbar-container-widget-drop-target::before {
@@ -762,7 +696,7 @@
 
 .toolbar-drop-marker {
   position: absolute;
-  background-color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-toolbar-drop-marker-bg);
   pointer-events: none;
   z-index: 10;
   border-radius: 1px;
@@ -889,14 +823,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-panel-toolbar-bg);
+  border-bottom: 1px solid var(--cartouche-panel-toolbar-border);
   font-size: 0.875rem;
   user-select: none;
 }
 
 .layer-tree-header {
-  background-color: var(--cartouche-theme-surface-subtle) !important;
+  background-color: var(--cartouche-layer-tree-header-bg) !important;
   cursor: grab;
 }
 
@@ -908,7 +842,7 @@
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-subtitle-fg);
 }
 
 .panel-toolbar-actions {
@@ -922,28 +856,28 @@
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-icon-button-fg);
   font-size: 0.9167rem;
 }
 
 .icon-btn:hover {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-panel-icon-button-hover-bg);
+  color: var(--cartouche-panel-icon-button-hover-fg);
 }
 
 .layer-tree-panel-widget {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-layer-tree-bg);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .layer-tree-viewport {
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-layer-tree-bg);
   padding: 4px 0;
   container-type: inline-size;
 }
@@ -975,12 +909,12 @@
 }
 
 .tree-node-row:hover {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-layer-tree-row-hover-bg);
 }
 
 .tree-node-row.selected {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-layer-tree-row-selected-bg);
+  color: var(--cartouche-layer-tree-row-selected-fg);
 }
 
 .tree-node-row .tree-node-title {
@@ -1015,7 +949,7 @@
   width: 100cqw;
   max-width: 100cqw;
   height: 2px;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-layer-tree-drop-marker-bg);
   border-radius: 1px;
   margin: 1px 0;
   pointer-events: none;
@@ -1029,7 +963,7 @@
   top: -3px;
   width: 8px;
   height: 8px;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-layer-tree-drop-marker-bg);
   border-radius: 50%;
 }
 
@@ -1038,29 +972,29 @@
   min-width: 14rem;
   font-size: 0.9167rem;
   font-family: inherit;
-  border: 1px solid var(--cartouche-theme-primary);
+  border: 1px solid var(--cartouche-layer-tree-inline-input-border);
   border-radius: 2px;
   padding: 1px 4px;
-  color: var(--cartouche-theme-fg);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-input-fg);
+  background-color: var(--cartouche-input-bg);
 }
 
 .tree-node-project {
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
-  border-bottom: 1px solid var(--cartouche-theme-border-subtle);
+  color: var(--cartouche-layer-tree-fg);
+  border-bottom: 1px solid var(--cartouche-layer-tree-project-border);
   margin-bottom: 4px;
   padding-bottom: 6px;
 }
 
 .tree-node-group {
   font-weight: 500;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .tree-node-layer {
   font-weight: 400;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-fg);
 }
 
 .tree-indent {
@@ -1075,7 +1009,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-chevron-fg);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -1126,25 +1060,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.layer-tree-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-}
-
-.layer-tree-item:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-}
-
-.layer-tree-item.active {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
-}
-
 .layer-kind-icon {
   font-size: 1.0833rem;
   font-weight: bold;
@@ -1171,7 +1086,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-meta-fg);
 }
 
 .opacity-control {
@@ -1194,19 +1109,19 @@
   height: calc(100% - 40px);
   padding: 24px 16px;
   text-align: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-empty-fg);
 }
 
 .empty-layers-title {
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-layer-tree-empty-title-fg);
   margin-bottom: 6px;
 }
 
 .empty-layers-desc {
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-layer-tree-empty-fg);
   line-height: 1.4;
   max-width: 200px;
 }
@@ -1218,7 +1133,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-attribute-table-bg);
 }
 
 .attribute-table-header {
@@ -1229,8 +1144,8 @@
   flex-wrap: wrap;
   gap: 4px;
   padding: 2px 4px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-attribute-table-header-bg);
+  border-bottom: 1px solid var(--cartouche-attribute-table-header-border);
   font-size: 0.9167rem;
 }
 
@@ -1249,15 +1164,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 8px;
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background-color: var(--cartouche-attribute-table-footer-bg);
+  border-top: 1px solid var(--cartouche-attribute-table-footer-border);
 }
 
 /* Attribute table muted text: the "no matching features" message under the
    table and the page range in the footer. */
 .empty-filter-message,
 .attribute-table-page-range {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-attribute-table-muted-fg);
 }
 
 /* CRS tab list boxes (Project Properties): selected rows use the same colours as LayerTreeWidget,
@@ -1268,9 +1183,9 @@
 .project-prop-crs-predefined option:checked,
 .project-prop-crs-recent:focus option:checked,
 .project-prop-crs-predefined:focus option:checked {
-  background: var(--cartouche-theme-info-subtle) linear-gradient(var(--cartouche-theme-info-subtle), var(--cartouche-theme-info-subtle));
-  color: var(--cartouche-theme-info);
-  -webkit-text-fill-color: var(--cartouche-theme-info);
+  background: var(--cartouche-crs-list-option-selected-bg) linear-gradient(var(--cartouche-crs-list-option-selected-bg), var(--cartouche-crs-list-option-selected-bg));
+  color: var(--cartouche-crs-list-option-selected-fg);
+  -webkit-text-fill-color: var(--cartouche-crs-list-option-selected-fg);
 }
 
 /* Persistent FID values in the attribute table's # column; the colours are the table's. */
@@ -1281,11 +1196,11 @@
 .geometry-badge {
   display: inline-block;
   padding: 1px 5px;
-  background-color: var(--cartouche-theme-surface-alt);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-geometry-badge-bg);
+  border: 1px solid var(--cartouche-geometry-badge-border);
   border-radius: 3px;
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-info);
+  color: var(--cartouche-geometry-badge-fg);
 }
 
 .empty-panel-message {
@@ -1293,7 +1208,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-panel-empty-fg);
   font-size: 1rem;
 }
 
@@ -1302,7 +1217,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--cartouche-theme-surface);
+  background-color: var(--cartouche-console-bg);
   font-family: var(--cartouche-theme-font-family-mono);
 }
 
@@ -1324,12 +1239,12 @@
 }
 
 .log-time {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-console-time-fg);
   font-size: 0.7917rem;
 }
 
 .log-source {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-console-source-fg);
   font-size: 0.8333rem;
   font-weight: 600;
 }
@@ -1342,32 +1257,32 @@
 }
 
 .badge-info {
-  background-color: var(--cartouche-theme-info-subtle);
-  color: var(--cartouche-theme-info);
+  background-color: var(--cartouche-console-level-info-bg);
+  color: var(--cartouche-console-level-info-fg);
 }
 
 .badge-success {
-  background-color: var(--cartouche-theme-success-subtle);
-  color: var(--cartouche-theme-success);
+  background-color: var(--cartouche-console-level-success-bg);
+  color: var(--cartouche-console-level-success-fg);
 }
 
 .badge-warn {
-  background-color: var(--cartouche-theme-warning-subtle);
-  color: var(--cartouche-theme-warning);
+  background-color: var(--cartouche-console-level-warn-bg);
+  color: var(--cartouche-console-level-warn-fg);
 }
 
 .badge-error {
-  background-color: var(--cartouche-theme-danger-subtle);
-  color: var(--cartouche-theme-danger);
+  background-color: var(--cartouche-console-level-error-bg);
+  color: var(--cartouche-console-level-error-fg);
 }
 
 .log-message {
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-console-message-fg);
   word-break: break-all;
 }
 
 .console-empty {
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-console-empty-fg);
   font-style: italic;
   padding: 10px;
 }
@@ -1390,8 +1305,8 @@
 .workbench-statusbar {
   display: flex;
   align-items: center;
-  background-color: var(--cartouche-menubar-bg);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-theme-status-bar-bg);
+  color: var(--cartouche-theme-status-bar-fg);
   height: 1.5rem;
   padding: 0 10px;
   font-size: 0.875rem;
@@ -1411,13 +1326,13 @@
 }
 
 .statusbar-item:hover {
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-statusbar-item-hover-bg);
 }
 
 .statusbar-separator {
   width: 1px;
   height: 0.875rem;
-  background-color: var(--cartouche-menubar-item-active-bg);
+  background-color: var(--cartouche-statusbar-separator-bg);
   margin: 0 4px;
 }
 
@@ -1440,12 +1355,12 @@
 }
 
 .modal-dialog {
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-dialog-bg);
   border-radius: 8px;
   width: 490px;
   max-width: 90vw;
-  box-shadow: 0 12px 36px var(--cartouche-theme-shadow-strong);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  box-shadow: 0 12px 36px var(--cartouche-dialog-shadow);
+  border: 1px solid var(--cartouche-dialog-border);
   overflow: hidden;
 }
 
@@ -1454,8 +1369,9 @@
   align-items: center;
   gap: 14px;
   padding: 16px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-dialog-header-bg);
+  color: var(--cartouche-dialog-header-fg);
+  border-bottom: 1px solid var(--cartouche-dialog-header-border);
 }
 
 .modal-logo {
@@ -1465,21 +1381,21 @@
 
 .modal-subtitle {
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-dialog-subtitle-fg);
   margin-top: 2px;
 }
 
 .modal-body {
   padding: 20px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-dialog-fg);
   line-height: 1.5;
 }
 
 .modal-specs {
   margin-top: 14px;
   padding: 10px 14px;
-  background: var(--cartouche-theme-surface-alt);
+  background: var(--cartouche-dialog-inset-bg);
   border-radius: 6px;
   font-size: 0.8333rem;
   display: flex;
@@ -1491,13 +1407,13 @@
   display: flex;
   justify-content: flex-end;
   padding: 12px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-dialog-footer-bg);
+  border-top: 1px solid var(--cartouche-dialog-footer-border);
 }
 
 .modal-btn {
-  background: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background: var(--cartouche-button-primary-bg);
+  color: var(--cartouche-button-primary-fg);
   border: none;
   padding: 6px 18px;
   border-radius: 4px;
@@ -1508,7 +1424,7 @@
 }
 
 .modal-btn:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-dialog-button-hover-bg);
 }
 
 /* =========================================================================
@@ -1520,7 +1436,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-detached-window-bg);
 }
 
 .detached-portal-container .preferences-modal-backdrop {
@@ -1557,7 +1473,7 @@
   position: absolute;
   pointer-events: auto;
   user-select: auto;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-dialog-bg);
   border-radius: 8px;
   width: 720px;
   min-width: 480px;
@@ -1565,8 +1481,8 @@
   height: 520px;
   min-height: 360px;
   max-height: 95vh;
-  box-shadow: 0 12px 32px var(--cartouche-theme-shadow-strong);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  box-shadow: 0 12px 32px var(--cartouche-preferences-shadow);
+  border: 1px solid var(--cartouche-preferences-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1577,8 +1493,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-bottom: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-dialog-header-bg);
+  border-bottom: 1px solid var(--cartouche-dialog-header-border);
   user-select: none;
 }
 
@@ -1592,17 +1508,17 @@
   gap: 10px;
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-preferences-title-fg);
 }
 
 .preferences-title-icon {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-preferences-title-icon-fg);
 }
 
 .preferences-close-btn {
   background: transparent;
   border: none;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-preferences-close-fg);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -1615,8 +1531,8 @@
 }
 
 .preferences-close-btn:hover {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-preferences-close-hover-bg);
+  color: var(--cartouche-preferences-close-hover-fg);
 }
 
 .preferences-modal-body {
@@ -1627,8 +1543,8 @@
 
 .preferences-sidebar {
   width: 220px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-right: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-preferences-sidebar-bg);
+  border-right: 1px solid var(--cartouche-preferences-sidebar-border);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -1640,7 +1556,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-preferences-sidebar-title-fg);
   padding: 4px 8px 8px;
 }
 
@@ -1653,7 +1569,7 @@
   border: none;
   background: transparent;
   border-radius: 6px;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-sidebar-tab-fg);
   font-size: 0.9167rem;
   font-weight: 500;
   cursor: pointer;
@@ -1664,13 +1580,13 @@
 }
 
 .preferences-tab-btn:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-preferences-tab-hover-bg);
+  color: var(--cartouche-preferences-tab-hover-fg);
 }
 
 .preferences-tab-btn.active {
-  background-color: var(--cartouche-theme-surface-active);
-  color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-sidebar-tab-active-bg);
+  color: var(--cartouche-preferences-tab-selected-fg);
   font-weight: 600;
 }
 
@@ -1686,13 +1602,13 @@
 .preferences-section-title {
   font-size: 1.0833rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg-primary);
-  border-bottom: 2px solid var(--cartouche-theme-border);
+  color: var(--cartouche-preferences-section-title-fg);
+  border-bottom: 2px solid var(--cartouche-preferences-section-title-border);
   padding-bottom: 8px;
 }
 
 .preferences-empty-state {
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-preferences-empty-fg);
   font-size: 0.9167rem;
   font-style: italic;
   padding: 20px 0;
@@ -1705,18 +1621,18 @@
 }
 
 .preference-group-box {
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-group-border);
   border-radius: 6px;
   padding: 12px 14px;
   margin: 0;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-preferences-group-bg);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .preference-group-box.ungrouped {
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-group-border);
   border-radius: 6px;
   padding: 12px 14px;
 }
@@ -1724,7 +1640,7 @@
 .preference-group-legend {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-group-legend-fg);
   padding: 0 6px;
   margin-left: 2px;
 }
@@ -1749,7 +1665,7 @@
 .preference-item-name {
   font-size: 0.95rem;
   font-weight: 400;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-item-name-fg);
   cursor: help;
   user-select: none;
 }
@@ -1765,11 +1681,11 @@
 
 .preference-textarea {
   padding: 6px 10px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-input-border);
   border-radius: 4px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-input-fg);
+  background-color: var(--cartouche-input-bg);
   resize: vertical;
   min-height: 4.5rem;
   width: 100%;
@@ -1800,8 +1716,8 @@
   align-items: stretch;
   justify-content: stretch;
   padding: 0.1rem;
-  background-color: var(--cartouche-theme-surface);
-  border: 1px solid var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-picker-button-bg);
+  border: 1px solid var(--cartouche-picker-button-border);
   border-radius: 0.25rem;
   cursor: pointer;
   transition:
@@ -1811,14 +1727,14 @@
 }
 
 .picker-button:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-subtle);
-  border-color: var(--cartouche-theme-fg-subtle);
+  background-color: var(--cartouche-picker-button-hover-bg);
+  border-color: var(--cartouche-picker-button-hover-border);
 }
 
 .picker-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-picker-button-disabled-bg);
 }
 
 .picker-button-swatch {
@@ -1828,10 +1744,10 @@
   height: 100%;
   border-radius: 0.125rem;
   overflow: hidden;
-  background-color: var(--cartouche-theme-checker-light);
+  background-color: var(--cartouche-picker-swatch-checker-light);
   background-image:
-    linear-gradient(45deg, var(--cartouche-theme-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-theme-checker-dark) 75%),
-    linear-gradient(45deg, var(--cartouche-theme-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-theme-checker-dark) 75%);
+    linear-gradient(45deg, var(--cartouche-picker-swatch-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-picker-swatch-checker-dark) 75%),
+    linear-gradient(45deg, var(--cartouche-picker-swatch-checker-dark) 25%, transparent 25%, transparent 75%, var(--cartouche-picker-swatch-checker-dark) 75%);
   background-size: 0.5rem 0.5rem;
   background-position: 0 0, 0.25rem 0.25rem;
 }
@@ -1841,14 +1757,14 @@
   inset: 0;
   border-radius: inherit;
   /* Hairline outline keeps white and near-white colours distinct from the button face. */
-  box-shadow: inset 0 0 0 1px var(--cartouche-theme-fg-subtle);
+  box-shadow: inset 0 0 0 1px var(--cartouche-picker-swatch-outline);
 }
 
 .preference-color-chevron {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-input-icon-fg);
   line-height: 1;
 }
 
@@ -1867,10 +1783,10 @@
 
 .preference-btn-toggle {
   padding: 5px 12px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-toggle-border);
   border-radius: 4px;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg);
+  background-color: var(--cartouche-preferences-toggle-bg);
+  color: var(--cartouche-preferences-toggle-fg);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -1881,16 +1797,16 @@
 }
 
 .preference-btn-toggle.active {
-  background-color: var(--cartouche-theme-primary);
-  border-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-preferences-toggle-toggled-on-bg);
+  border-color: var(--cartouche-preferences-toggle-toggled-on-border);
+  color: var(--cartouche-preferences-toggle-toggled-on-fg);
 }
 
 .preference-switch-toggle {
   width: 38px;
   height: 22px;
   border-radius: 11px;
-  background-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-preferences-switch-bg);
   border: none;
   cursor: pointer;
   position: relative;
@@ -1901,7 +1817,7 @@
 }
 
 .preference-switch-toggle.active {
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-preferences-switch-toggled-on-bg);
 }
 
 .preference-switch-track {
@@ -1916,8 +1832,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: var(--cartouche-theme-surface);
-  box-shadow: 0 1px 3px var(--cartouche-theme-shadow);
+  background-color: var(--cartouche-preferences-switch-thumb-bg);
+  box-shadow: 0 1px 3px var(--cartouche-preferences-switch-thumb-shadow);
   transition: transform 0.15s ease;
 }
 
@@ -1929,15 +1845,15 @@
   display: inline-flex;
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-button-group-border);
 }
 
 .preference-btn-group-item {
   padding: 4px 10px;
   border: none;
-  border-right: 1px solid var(--cartouche-theme-border-strong);
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg);
+  border-right: 1px solid var(--cartouche-preferences-button-group-border);
+  background-color: var(--cartouche-preferences-button-group-item-bg);
+  color: var(--cartouche-preferences-button-group-item-fg);
   font-size: 0.85rem;
   cursor: pointer;
   transition: background-color 0.12s ease;
@@ -1948,8 +1864,8 @@
 }
 
 .preference-btn-group-item.active {
-  background-color: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background-color: var(--cartouche-preferences-button-group-item-toggled-on-bg);
+  color: var(--cartouche-preferences-button-group-item-toggled-on-fg);
   font-weight: 500;
 }
 
@@ -1969,7 +1885,7 @@
 .preference-range-value,
 .preference-slider-label {
   font-size: 0.85rem;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-value-fg);
   min-width: 40px;
   text-align: right;
 }
@@ -1979,9 +1895,9 @@
   align-items: center;
   justify-content: center;
   padding: 4px 8px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-preferences-image-picker-border);
   border-radius: 4px;
-  background: var(--cartouche-theme-surface);
+  background: var(--cartouche-preferences-image-picker-bg);
   cursor: pointer;
   min-height: 32px;
 }
@@ -1994,7 +1910,7 @@
 
 .preference-image-empty {
   font-size: 0.8rem;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-image-picker-fg);
 }
 
 .preference-radio-group {
@@ -2008,7 +1924,7 @@
   align-items: center;
   gap: 4px;
   font-size: 0.875rem;
-  color: var(--cartouche-theme-fg);
+  color: var(--cartouche-preferences-radio-label-fg);
   cursor: pointer;
 }
 
@@ -2027,7 +1943,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
+  color: var(--cartouche-preferences-checkbox-label-fg);
   cursor: pointer;
   user-select: none;
 }
@@ -2041,11 +1957,11 @@
 .preference-input-number,
 .preference-input-text {
   padding: 6px 10px;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-input-border);
   border-radius: 4px;
   font-size: 0.9167rem;
-  color: var(--cartouche-theme-fg-primary);
-  background-color: var(--cartouche-theme-surface);
+  color: var(--cartouche-preferences-text-input-fg);
+  background-color: var(--cartouche-input-bg);
   transition:
     border-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -2076,7 +1992,7 @@
 
 .preference-unit-badge {
   font-size: 0.8333rem;
-  color: var(--cartouche-theme-fg-muted);
+  color: var(--cartouche-preferences-unit-fg);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -2086,14 +2002,14 @@
   align-items: center;
   justify-content: flex-end;
   padding: 12px 20px;
-  background: var(--cartouche-theme-surface-subtle);
-  border-top: 1px solid var(--cartouche-theme-border);
+  background: var(--cartouche-preferences-footer-bg);
+  border-top: 1px solid var(--cartouche-preferences-footer-border);
   min-height: 48px;
 }
 
 .preferences-shortcut-hint {
   font-size: 0.7917rem;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-preferences-shortcut-hint-fg);
 }
 
 .preferences-footer-buttons {
@@ -2118,31 +2034,31 @@
 }
 
 .preferences-btn-secondary {
-  background: var(--cartouche-theme-surface);
-  border-color: var(--cartouche-theme-border-strong);
-  color: var(--cartouche-theme-fg-muted);
+  background: var(--cartouche-button-secondary-bg);
+  border-color: var(--cartouche-button-secondary-border);
+  color: var(--cartouche-preferences-button-secondary-fg);
 }
 
 .preferences-btn-secondary:hover {
-  background-color: var(--cartouche-theme-surface-alt);
-  border-color: var(--cartouche-theme-fg-subtle);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-preferences-button-secondary-hover-bg);
+  border-color: var(--cartouche-preferences-button-secondary-hover-border);
+  color: var(--cartouche-preferences-button-secondary-hover-fg);
 }
 
 .preferences-btn-primary {
-  background: var(--cartouche-theme-primary);
-  color: var(--cartouche-theme-fg-inverted);
+  background: var(--cartouche-button-primary-bg);
+  color: var(--cartouche-button-primary-fg);
 }
 
 .preferences-btn-primary:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-preferences-button-primary-hover-bg);
 }
 
 .preferences-resize-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--cartouche-theme-fg-subtle);
+  color: var(--cartouche-preferences-resize-handle-fg);
   cursor: se-resize;
   padding: 2px;
   user-select: none;
@@ -2151,7 +2067,7 @@
 }
 
 .preferences-resize-handle:hover {
-  color: var(--cartouche-theme-primary);
+  color: var(--cartouche-preferences-resize-handle-hover-fg);
 }
 
 /* Custom Frameless Dialog Header Bar */
@@ -2159,8 +2075,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--cartouche-menubar-bg);
-  color: var(--cartouche-menubar-fg);
+  background-color: var(--cartouche-dialog-titlebar-bg);
+  color: var(--cartouche-dialog-titlebar-fg);
   min-height: max(2em, calc(var(--cartouche-ui-icon-size, 24px) + 6px));
   padding: 0 10px;
   font-weight: 500;
@@ -2198,7 +2114,7 @@
 .cartouche-dialog-close-btn {
   background: none;
   border: none;
-  color: var(--cartouche-theme-fg-inverted);
+  color: var(--cartouche-dialog-titlebar-fg);
   cursor: pointer;
   padding: 2px 6px;
   display: flex;
@@ -2214,7 +2130,7 @@
 
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
-  background-color: var(--cartouche-menubar-item-hover-bg);
+  background-color: var(--cartouche-dialog-titlebar-button-hover-bg);
 }
 
 /* =============================================================================
@@ -2226,10 +2142,10 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid var(--cartouche-theme-border-strong);
+  border: 1px solid var(--cartouche-button-secondary-border);
   border-radius: 3px;
-  background-color: var(--cartouche-theme-surface);
-  color: var(--cartouche-theme-fg-primary);
+  background-color: var(--cartouche-button-secondary-bg);
+  color: var(--cartouche-button-secondary-fg);
   cursor: pointer;
   transition:
     background-color 0.12s ease,
@@ -2237,11 +2153,11 @@
 }
 
 .time-filter-btn:hover:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-alt);
+  background-color: var(--cartouche-time-filter-button-hover-bg);
 }
 
 .time-filter-btn:active:not(:disabled) {
-  background-color: var(--cartouche-theme-surface-active);
+  background-color: var(--cartouche-time-filter-button-pressed-bg);
   transform: translateY(1px);
 }
 
@@ -2274,7 +2190,7 @@
   height: 2px;
   border: none;
   border-radius: 1px;
-  background-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-time-filter-track-bg);
 }
 
 .time-filter-slider::-webkit-slider-thumb {
@@ -2283,7 +2199,7 @@
   margin-top: calc((2px - (var(--cartouche-ui-icon-size, 24px) * 0.8)) / 2);
   border: none;
   border-radius: 50%;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-time-filter-thumb-bg);
   cursor: pointer;
   transition:
     transform 0.1s ease,
@@ -2293,15 +2209,15 @@
 }
 
 .time-filter-slider:not(:disabled)::-webkit-slider-thumb:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-time-filter-thumb-hover-bg);
 }
 
 .time-filter-slider:not(:disabled)::-webkit-slider-thumb:active {
-  background-color: var(--cartouche-theme-primary-active);
+  background-color: var(--cartouche-time-filter-thumb-pressed-bg);
 }
 
 .time-filter-slider:disabled::-webkit-slider-thumb {
-  background-color: var(--cartouche-theme-fg-muted);
+  background-color: var(--cartouche-time-filter-thumb-disabled-bg);
   cursor: not-allowed;
 }
 
@@ -2311,7 +2227,7 @@
   height: 2px;
   border: none;
   border-radius: 1px;
-  background-color: var(--cartouche-theme-border-strong);
+  background-color: var(--cartouche-time-filter-track-bg);
 }
 
 .time-filter-slider::-moz-range-thumb {
@@ -2319,7 +2235,7 @@
   height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);
   border: none;
   border-radius: 50%;
-  background-color: var(--cartouche-theme-primary);
+  background-color: var(--cartouche-time-filter-thumb-bg);
   cursor: pointer;
   transition:
     transform 0.1s ease,
@@ -2327,15 +2243,15 @@
 }
 
 .time-filter-slider:not(:disabled)::-moz-range-thumb:hover {
-  background-color: var(--cartouche-theme-primary-hover);
+  background-color: var(--cartouche-time-filter-thumb-hover-bg);
 }
 
 .time-filter-slider:not(:disabled)::-moz-range-thumb:active {
-  background-color: var(--cartouche-theme-primary-active);
+  background-color: var(--cartouche-time-filter-thumb-pressed-bg);
 }
 
 .time-filter-slider:disabled::-moz-range-thumb {
-  background-color: var(--cartouche-theme-fg-muted);
+  background-color: var(--cartouche-time-filter-thumb-disabled-bg);
   cursor: not-allowed;
 }
 
@@ -2401,12 +2317,16 @@
 }
 
 /* Data cell colours, lowest to highest priority: the plain or alternating row
-   colour, the host's cell background, the Selected Row colour, the Active Row
-   colour. A host background from cellStyle (Ticket #328) arrives as the
-   --table-widget-cell-bg custom property on the cell and replaces only the row
-   colour; the selection rules below ignore it. An Active Row is also a Selected
-   Row, so the active rules come after the selected ones at the same specificity
-   and win. Read-Only Cells (Ticket #327) have their own text colour, their own
+   colour, the host's cell background, the Hover colour (#360), the Selected Row
+   colour, the Active Row colour. A host background from cellStyle (Ticket #328)
+   arrives as the --table-widget-cell-bg custom property on the cell and replaces
+   only the row colour. The Hover, Selected Row and Active Row rules do not fall
+   back to it, so each covers a host cell background in the same way; the
+   cellStyle border overlay stays visible on all of them. The Hover rule wraps
+   :hover in :where() so it keeps the specificity of the row rules and source
+   order places it below the Selected Row and Active Row colours. An Active Row
+   is also a Selected Row, so the active rules come after the selected ones at
+   the same specificity and win. Read-Only Cells (Ticket #327) have their own text colour, their own
    selected colours, and the normal table text colour on the Active Row. */
 .table-widget-cell {
   background-color: var(--table-widget-cell-bg, var(--cartouche-table-bg));
@@ -2419,6 +2339,10 @@
 
 .table-widget-cell.table-widget-cell--readonly {
   color: var(--cartouche-table-readonly-fg);
+}
+
+.table-widget-row:where(:hover) > .table-widget-cell {
+  background-color: var(--cartouche-table-row-hover-bg);
 }
 
 .table-widget-row--selected > .table-widget-cell {
@@ -2466,8 +2390,8 @@
   margin-left: 0.375rem;
   padding: 0.0625rem 0.3125rem;
   border-radius: 0.1875rem;
-  background-color: var(--cartouche-theme-success-subtle);
-  color: var(--cartouche-theme-success);
+  background-color: var(--cartouche-field-type-overridden-bg);
+  color: var(--cartouche-field-type-overridden-fg);
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.025rem;
@@ -3400,8 +3324,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.625rem 0.875rem;
-  background-color: var(--cartouche-menubar-bg);
-  color: var(--cartouche-menubar-fg);
+  background-color: var(--cartouche-dialog-titlebar-bg);
+  color: var(--cartouche-dialog-titlebar-fg);
   font-size: 0.9375rem;
   font-weight: 600;
   user-select: none;

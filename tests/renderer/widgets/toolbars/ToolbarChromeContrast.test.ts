@@ -1,12 +1,13 @@
 /**
  * @file ToolbarChromeContrast.test.ts
  * @module tests/renderer/widgets/toolbars/ToolbarChromeContrast.test
- * @description Unit and stylesheet tests for low-contrast idle toolbar grabbers and tail divider icons (Ticket #112).
+ * @description Unit and stylesheet tests for low-contrast idle toolbar grabbers and tail divider icons (Ticket #112); and (Spec #349) the ToolbarWidget and ToolbarContainerWidget frames taking their background and border colours from workbench.css classes and Tier 2 toolbar tokens, not inline styles, in the colours they rendered before.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-28
- * @updated 2026-11-14
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
+ * @see {@link ToolbarContainerWidget}
  */
 
 import { describe, it } from "node:test";
@@ -20,6 +21,8 @@ import type {
   ToolbarZone,
   ToolbarId,
 } from "../../../../src/renderer/state/gisSignals";
+import type { ToolbarContainerWidgetProps } from "../../../../src/renderer/workbench/widgets/ToolbarContainerWidget";
+import { resolveThemeTokens, selectorDeclaration } from "../../styles/cssRules";
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -32,6 +35,108 @@ const { ToolbarWidget } = jiti(
     children?: React.ReactNode;
   }>;
 };
+
+const {
+  ToolbarContainerWidget,
+}: { ToolbarContainerWidget: React.FC<ToolbarContainerWidgetProps> } = jiti(
+  "../../../../src/renderer/workbench/widgets/ToolbarContainerWidget"
+);
+
+/**
+ * @function widgetFrameTag
+ * @description Finds the opening tag of the Widget frame (the element with the `cartouche-widget` class) in static markup.
+ * @param {string} html - Rendered markup.
+ * @returns {string} The opening tag.
+ */
+function widgetFrameTag(html: string): string {
+  const tag = html.match(/<div[^>]*class="cartouche-widget[^"]*"[^>]*>/)?.[0];
+  assert.ok(tag, "renders a Widget frame");
+  return tag;
+}
+
+describe("ToolbarWidget and ToolbarContainerWidget frame colours (Spec #349)", () => {
+  /** Frame class, rule selector and the colours each frame rendered on main. */
+  const frames: [string, string, string, string][] = [
+    [
+      "toolbar-widget",
+      ".cartouche-widget.toolbar-widget",
+      "#ffffff",
+      "#e2e8f0",
+    ],
+    [
+      "toolbar-container-widget",
+      ".cartouche-widget.toolbar-container-widget",
+      "#f8fafc",
+      "#f8fafc",
+    ],
+  ];
+  const markup: Record<string, string> = {
+    "toolbar-widget": renderToStaticMarkup(
+      React.createElement(ToolbarWidget, { id: "project", zone: "top" }, "x")
+    ),
+    "toolbar-container-widget": renderToStaticMarkup(
+      React.createElement(ToolbarContainerWidget, { zone: "top" }, "x")
+    ),
+  };
+
+  for (const [cls, selector, background, border] of frames) {
+    it(`paints the .${cls} frame from workbench.css, not inline, in ${background} with a ${border} border`, () => {
+      const tag = widgetFrameTag(markup[cls]);
+      assert.match(tag, new RegExp(`class="(?:[^"]*\\s)?${cls}(?=[\\s"])`));
+      assert.doesNotMatch(tag, /background-color|border-color/);
+      const bg = selectorDeclaration(selector, "background-color");
+      const bc = selectorDeclaration(selector, "border-color");
+      assert.ok(bg && bc, `${selector} declares its colours`);
+      assert.match(bg, /^var\(--cartouche-toolbar-[a-z-]+\)$/);
+      assert.match(bc, /^var\(--cartouche-toolbar-[a-z-]+\)$/);
+      assert.equal(resolveThemeTokens(bg), background);
+      assert.equal(resolveThemeTokens(bc), border);
+    });
+  }
+
+  it("draws the ToolbarWidget frame shadow from workbench.css, not inline, as before", () => {
+    const tag = widgetFrameTag(markup["toolbar-widget"]);
+    assert.doesNotMatch(tag, /box-shadow/);
+    const shadow = selectorDeclaration(
+      ".cartouche-widget.toolbar-widget",
+      "box-shadow"
+    );
+    assert.equal(shadow, "0 1px 2px var(--cartouche-toolbar-shadow)");
+    assert.equal(resolveThemeTokens(shadow), "0 1px 2px rgba(0, 0, 0, 0.06)");
+  });
+
+  /** Drag state, rule selector and the colours the empty drop target rendered before. */
+  const emptyDropTarget: [boolean, string, string, string][] = [
+    [false, ".toolbar-container-widget-drop-target", "#f8fafc", "#f8fafc"],
+    [
+      true,
+      ".toolbar-container-widget-drop-target.is-drag-over",
+      "rgba(27, 68, 108, 0.08)",
+      "#1b446c",
+    ],
+  ];
+
+  for (const [isDragOver, selector, background, border] of emptyDropTarget) {
+    it(`paints the empty ToolbarContainerWidget drop target${isDragOver ? " during a drag" : ""} from workbench.css, not inline, in ${background} with a ${border} border`, () => {
+      const html = renderToStaticMarkup(
+        React.createElement(ToolbarContainerWidget, {
+          zone: "right",
+          isDragOver,
+        })
+      );
+      const tag = html.match(
+        /<div[^>]*class="toolbar-container-widget-drop-target[^"]*"[^>]*>/
+      )?.[0];
+      assert.ok(tag, "renders the empty drop target");
+      assert.doesNotMatch(tag, /background-color|border-color/);
+      const bg = selectorDeclaration(selector, "background-color");
+      const bc = selectorDeclaration(selector, "border-color");
+      assert.ok(bg && bc, `${selector} declares its colours`);
+      assert.equal(resolveThemeTokens(bg), background);
+      assert.equal(resolveThemeTokens(bc), border);
+    });
+  }
+});
 
 describe("ToolbarChromeContrast (Ticket #112)", () => {
   const workbenchCssPath = path.resolve(
@@ -72,8 +177,8 @@ describe("ToolbarChromeContrast (Ticket #112)", () => {
       ".toolbar-grabber must specify opacity: 0.5"
     );
     assert.ok(
-      grabberRules.includes("color: var(--cartouche-theme-fg-subtle)"),
-      ".toolbar-grabber must specify color: var(--cartouche-theme-fg-subtle)"
+      grabberRules.includes("color: var(--cartouche-toolbar-grabber-fg)"),
+      ".toolbar-grabber must specify color: var(--cartouche-toolbar-grabber-fg)"
     );
     assert.ok(
       grabberRules.includes("transition:"),
@@ -96,9 +201,9 @@ describe("ToolbarChromeContrast (Ticket #112)", () => {
     );
     assert.ok(
       grabberHoverRules.includes(
-        "color: var(--cartouche-theme-info) !important"
+        "color: var(--cartouche-toolbar-grabber-hover-fg) !important"
       ),
-      ".toolbar-grabber:hover must specify var(--cartouche-theme-info) !important"
+      ".toolbar-grabber:hover must specify var(--cartouche-toolbar-grabber-hover-fg) !important"
     );
   });
 
@@ -111,8 +216,8 @@ describe("ToolbarChromeContrast (Ticket #112)", () => {
       ".toolbar-divider must specify opacity: 0.5"
     );
     assert.ok(
-      dividerRules.includes("color: var(--cartouche-theme-fg-subtle)"),
-      ".toolbar-divider must specify color: var(--cartouche-theme-fg-subtle)"
+      dividerRules.includes("color: var(--cartouche-toolbar-divider-fg)"),
+      ".toolbar-divider must specify color: var(--cartouche-toolbar-divider-fg)"
     );
     assert.ok(
       dividerRules.includes("pointer-events: none"),

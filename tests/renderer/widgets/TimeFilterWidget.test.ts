@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -918,14 +918,14 @@ describe("TimeFilterWidget: Interactive Visual Feedback and VCR Boundary States 
     // 1. Hover styling with surface-alt
     assert.ok(
       css.includes(".time-filter-btn:hover:not(:disabled)")
-        && css.includes("var(--cartouche-theme-surface-alt)"),
-      ".time-filter-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)"
+        && css.includes("var(--cartouche-time-filter-button-hover-bg)"),
+      ".time-filter-btn:hover:not(:disabled) must apply var(--cartouche-time-filter-button-hover-bg)"
     );
 
     // 2. Active tactile feedback with subtle active background and 1px click offset
     assert.ok(
       css.includes(".time-filter-btn:active:not(:disabled)")
-        && css.includes("var(--cartouche-theme-surface-active)")
+        && css.includes("var(--cartouche-time-filter-button-pressed-bg)")
         && css.includes("translateY(1px)"),
       ".time-filter-btn:active:not(:disabled) must apply active background and 1px translateY offset"
     );
@@ -1155,22 +1155,22 @@ describe("TimeFilterWidget: Activation Toggle Button Alignment (Ticket #248)", (
     assert.ok(
       css.includes(".toolbar-btn {")
         && css.includes("background: transparent;")
-        && css.includes("var(--cartouche-theme-fg-primary)"),
+        && css.includes("var(--cartouche-toolbar-fg)"),
       ".toolbar-btn must have transparent background and primary fg color"
     );
 
     // Hover styling
     assert.ok(
       css.includes(".toolbar-btn:hover:not(:disabled)")
-        && css.includes("var(--cartouche-theme-surface-alt)"),
-      ".toolbar-btn:hover:not(:disabled) must apply var(--cartouche-theme-surface-alt)"
+        && css.includes("var(--cartouche-toolbar-item-hover-bg)"),
+      ".toolbar-btn:hover:not(:disabled) must apply var(--cartouche-toolbar-item-hover-bg)"
     );
 
     // Active styling
     assert.ok(
       css.includes(".toolbar-btn.active")
-        && css.includes("var(--cartouche-theme-info-subtle)")
-        && css.includes("var(--cartouche-theme-info)"),
+        && css.includes("var(--cartouche-toolbar-item-toggled-on-bg)")
+        && css.includes("var(--cartouche-toolbar-item-toggled-on-fg)"),
       ".toolbar-btn.active must apply info-subtle background and info border/color"
     );
   });
@@ -1655,12 +1655,12 @@ describe("TimeFilterWidget: Custom Range Slider Track and Thumb Styling (Ticket 
       ".time-filter-slider must reset appearance and use transparent background"
     );
 
-    // 2. WebKit track: narrow 2px dark line using theme border strong
+    // 2. WebKit track: narrow 2px dark line using the time filter track token
     assert.ok(
       css.includes(".time-filter-slider::-webkit-slider-runnable-track {")
         && css.includes("height: 2px;")
-        && css.includes("var(--cartouche-theme-border-strong)"),
-      ".time-filter-slider::-webkit-slider-runnable-track must define 2px height track with theme border strong"
+        && css.includes("var(--cartouche-time-filter-track-bg)"),
+      ".time-filter-slider::-webkit-slider-runnable-track must define 2px height track with the time filter track token"
     );
 
     // 3. WebKit thumb: sized to 80% of ui.icon.size and vertically centered with negative margin
@@ -1673,19 +1673,19 @@ describe("TimeFilterWidget: Custom Range Slider Track and Thumb Styling (Ticket 
           "height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);"
         )
         && css.includes("border-radius: 50%;")
-        && css.includes("var(--cartouche-theme-primary);")
+        && css.includes("var(--cartouche-time-filter-thumb-bg);")
         && css.includes(
           "margin-top: calc((2px - (var(--cartouche-ui-icon-size, 24px) * 0.8)) / 2);"
         ),
       ".time-filter-slider::-webkit-slider-thumb must be sized to 80% of ui.icon.size and vertically centered"
     );
 
-    // 4. Gecko track: narrow 2px dark line using theme border strong
+    // 4. Gecko track: narrow 2px dark line using the time filter track token
     assert.ok(
       css.includes(".time-filter-slider::-moz-range-track {")
         && css.includes("height: 2px;")
-        && css.includes("var(--cartouche-theme-border-strong)"),
-      ".time-filter-slider::-moz-range-track must define 2px height track with theme border strong"
+        && css.includes("var(--cartouche-time-filter-track-bg)"),
+      ".time-filter-slider::-moz-range-track must define 2px height track with the time filter track token"
     );
 
     // 5. Gecko thumb: sized to 80% of ui.icon.size
@@ -1698,7 +1698,7 @@ describe("TimeFilterWidget: Custom Range Slider Track and Thumb Styling (Ticket 
           "height: calc(var(--cartouche-ui-icon-size, 24px) * 0.8);"
         )
         && css.includes("border-radius: 50%;")
-        && css.includes("var(--cartouche-theme-primary);"),
+        && css.includes("var(--cartouche-time-filter-thumb-bg);"),
       ".time-filter-slider::-moz-range-thumb must be sized to 80% of ui.icon.size"
     );
 

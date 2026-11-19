@@ -4,7 +4,7 @@
  * @description Dockable toolbar widget subclass of Widget featuring MDI grabber drag handles, divider icons, and drag-and-drop reordering indicators.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see {@link Widget}
  * @see {@link resolveToolbarDropPosition}
@@ -50,7 +50,7 @@ export interface ToolbarWidgetProps {
  * @description Individual toolbar container widget rendered inside outer panel zones or embedded widget toolstrips with drag handles, drop target indicators, and orientation awareness.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-07
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @param {ToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Rendered toolbar widget element.
@@ -205,9 +205,8 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
       }}>
       <Widget
         id={`toolbar-widget-${id}`}
-        background='var(--cartouche-toolbar-bg)'
+        className='toolbar-widget'
         border={1}
-        borderColor='var(--cartouche-toolbar-border)'
         location={zone}
         minWidth={
           isHorizontal ? "auto" : (
@@ -226,7 +225,6 @@ export const ToolbarWidget: React.FC<ToolbarWidgetProps> = ({
           padding: isHorizontal ? "2px 4px" : "4px 2px",
           borderRadius: "3px",
           gap: "2px",
-          boxShadow: "0 1px 2px var(--cartouche-theme-shadow-subtle)",
           cursor: "default",
         }}>
         {/* Grabber Handle: MDI Icon 'drag' (horizontal) / 'drag-horizontal' (vertical) with low contrast */}

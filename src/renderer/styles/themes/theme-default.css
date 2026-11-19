@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  */
 
@@ -117,7 +117,6 @@
   --cartouche-theme-border-strong: #cbd5e1;
   --cartouche-theme-border-widget: #f3f3f3;
   --cartouche-theme-border-dark: #133346;
-  --cartouche-theme-border-dropdown: #cccccc;
 
   /* Foreground & Typography */
   --cartouche-theme-fg: #000000;
@@ -131,14 +130,14 @@
   --cartouche-theme-fg-strong: #334155;
 
   /* Accent & Interaction States */
-  --cartouche-theme-accent: #1b446c;
-  --cartouche-theme-accent-hover: #24588c;
   --cartouche-theme-accent-subtle: rgba(27, 68, 108, 0.08);
   --cartouche-theme-accent-focus: rgba(27, 68, 108, 0.25);
+  /* Translucent white laid over a primary-coloured bar: the Hover of menubar,
+     status bar and Dialog title bar buttons */
+  --cartouche-theme-overlay-hover-on-primary: rgba(255, 255, 255, 0.2);
 
   /* Status Colors */
   --cartouche-theme-danger: #dc2626;
-  --cartouche-theme-danger-hover: #b91c1c;
   --cartouche-theme-danger-subtle: #fef2f2;
   --cartouche-theme-danger-focus: rgba(220, 38, 38, 0.25);
   /* Brighter danger text: inline validation messages */
@@ -154,52 +153,37 @@
   --cartouche-theme-shadow: rgba(0, 0, 0, 0.16);
   --cartouche-theme-shadow-subtle: rgba(0, 0, 0, 0.06);
   --cartouche-theme-shadow-strong: rgba(0, 0, 0, 0.24);
+  /* Dimming laid over the Workbench behind a modal Dialog */
+  --cartouche-theme-backdrop: rgba(0, 0, 0, 0.4);
 
   /* =========================================================================
      Tier 2: Component Tokens (Mapped to Tier 1 Primitives)
      ========================================================================= */
-  /* Menubar */
+  /* Menubar: bar, text (menu titles, title badge, window buttons), Hover, border,
+     the title badge, and the window close button's Hover */
   --cartouche-menubar-bg: var(--cartouche-theme-primary);
   --cartouche-menubar-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-menubar-hover: rgba(255, 255, 255, 0.2);
+  --cartouche-menubar-hover: var(--cartouche-theme-overlay-hover-on-primary);
   --cartouche-menubar-border: var(--cartouche-theme-border-dark);
+  --cartouche-menubar-title-badge-bg: var(--cartouche-theme-primary-hover);
+  --cartouche-menubar-window-close-hover-bg: var(--cartouche-theme-danger);
+  --cartouche-menubar-window-close-hover-fg: var(--cartouche-theme-fg-inverted);
 
   /* Status Bar */
   --cartouche-theme-status-bar-bg: var(--cartouche-theme-primary);
   --cartouche-theme-status-bar-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-theme-status-bar-border: var(--cartouche-theme-border-dark);
-
-  /* Activity Bar */
-  --cartouche-theme-activity-bar-bg: var(--cartouche-theme-surface-subtle);
-  --cartouche-theme-activity-bar-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-theme-activity-bar-inactive-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-theme-activity-bar-active-border: var(--cartouche-theme-primary);
-
-  /* Side Bar & Panels */
-  --cartouche-theme-side-bar-bg: var(--cartouche-theme-surface);
-  --cartouche-theme-side-bar-fg: var(--cartouche-theme-fg);
-  --cartouche-theme-side-bar-border: var(--cartouche-theme-border);
-  --cartouche-theme-editor-bg: var(--cartouche-theme-surface);
-  --cartouche-theme-panel-bg: var(--cartouche-theme-surface);
-  --cartouche-theme-panel-border: var(--cartouche-theme-border);
+  --cartouche-statusbar-item-hover-bg: var(--cartouche-theme-overlay-hover-on-primary);
+  --cartouche-statusbar-separator-bg: var(--cartouche-theme-fg-subtle);
 
   /* Tab Groups & Headers */
   --cartouche-theme-tab-active-bg: var(--cartouche-theme-surface);
   --cartouche-theme-tab-inactive-bg: var(--cartouche-theme-surface-alt);
   --cartouche-theme-tab-active-fg: var(--cartouche-theme-fg);
   --cartouche-theme-tab-inactive-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-theme-tab-border: var(--cartouche-theme-border);
   --cartouche-sidebar-tab-fg: var(--cartouche-theme-fg-muted);
   --cartouche-sidebar-tab-active-bg: var(--cartouche-theme-surface-active);
   --cartouche-sidebar-tab-active-fg: var(--cartouche-theme-fg-primary);
   --cartouche-overlap-tab-border: var(--cartouche-theme-border-strong);
-
-  /* Buttons & Badges */
-  --cartouche-theme-badge-bg: var(--cartouche-theme-primary);
-  --cartouche-theme-badge-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-theme-button-bg: var(--cartouche-theme-primary);
-  --cartouche-theme-button-fg: var(--cartouche-theme-fg-inverted);
-  --cartouche-theme-button-hover-bg: var(--cartouche-theme-primary-hover);
 
   /* Dialog Buttons: primary (OK, Apply, Add), secondary (Cancel, Browse…) and a pressed toggle (Toggle Layer Edit Mode) */
   --cartouche-button-primary-bg: var(--cartouche-theme-primary);
@@ -213,15 +197,24 @@
   --cartouche-button-toggle-active-fg: var(--cartouche-theme-info);
   --cartouche-button-toggle-active-border: var(--cartouche-theme-info);
 
-  /* Dockview Theme Overrides */
-  --dockview-theme-background-color: var(--cartouche-theme-surface);
-  --dockview-theme-foreground-color: var(--cartouche-theme-fg);
-  --dockview-theme-border-color: var(--cartouche-theme-border);
-  --dockview-theme-separator-color: var(--cartouche-theme-border);
-  --dockview-theme-splitter-color: transparent;
-  --dockview-theme-active-border-color: var(--cartouche-theme-primary);
-  --dockview-tab-height: 2em;
-  --dockview-tab-font-size: 0.9rem;
+  /* Dockview (#352): Dockview reads only its own --dv-* variables, so workbench.css
+     sets them on the Dockview root from these tokens. Group panel and tab strip
+     backgrounds, the line between groups and between tabs, the Front Tab and
+     Background Tabs (matching the OverlapTabWidget tabs), a Background Tab's
+     Hover, and the sash at rest and on Hover. The drop overlay reads
+     --cartouche-drop-target-*. */
+  --dockview-group-bg: var(--cartouche-theme-surface);
+  --dockview-group-border: var(--cartouche-theme-border);
+  --dockview-tab-strip-bg: var(--cartouche-theme-surface-widget);
+  --dockview-tab-divider: var(--cartouche-theme-border-strong);
+  --dockview-tab-front-bg: var(--cartouche-theme-surface);
+  --dockview-tab-front-fg: var(--cartouche-theme-fg);
+  --dockview-tab-background-bg: var(--cartouche-theme-surface-alt);
+  --dockview-tab-background-fg: var(--cartouche-theme-fg-muted);
+  --dockview-tab-hover-bg: var(--cartouche-theme-surface-active);
+  --dockview-tab-hover-fg: var(--cartouche-theme-fg-primary);
+  --dockview-sash-bg: transparent;
+  --dockview-sash-hover-bg: var(--cartouche-theme-primary);
 
   /* Widgets */
   --cartouche-widget-bg: var(--cartouche-theme-surface-widget);
@@ -230,15 +223,49 @@
   --cartouche-widget-header-fg: var(--cartouche-theme-fg);
   --cartouche-widget-header-border: var(--cartouche-theme-border);
   --cartouche-widget-content-bg: var(--cartouche-theme-surface);
-  --cartouche-widget-content-fg: var(--cartouche-theme-fg);
+  --cartouche-widget-undocked-shadow: var(--cartouche-theme-shadow-strong);
   --cartouche-widget-control-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-widget-control-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-widget-control-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-widget-menu-item-hover-bg: var(--cartouche-theme-surface-alt);
+
+  /* Workbench Shell: the Workbench window, its main body and Dockview area, the
+     map canvas behind the layers, and a detached window hosting a dialog */
+  --cartouche-workbench-bg: var(--cartouche-theme-surface);
+  --cartouche-workbench-fg: var(--cartouche-theme-fg);
+  --cartouche-map-viewport-bg: var(--cartouche-theme-surface);
+  --cartouche-detached-window-bg: var(--cartouche-theme-surface);
+
+  /* Layer Tree (LayerTreeWidget): panel and viewport, header bar, Tree Node Row Hover and
+     Selected, the project row's divider, chevrons, layer metadata, the empty-project state,
+     the drag-and-drop insertion marker and the inline rename input's border */
+  --cartouche-layer-tree-bg: var(--cartouche-theme-surface);
+  --cartouche-layer-tree-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-layer-tree-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-layer-tree-row-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-layer-tree-row-selected-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-layer-tree-row-selected-fg: var(--cartouche-theme-info);
+  --cartouche-layer-tree-project-border: var(--cartouche-theme-border-subtle);
+  --cartouche-layer-tree-chevron-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-tree-meta-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-tree-empty-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-layer-tree-empty-title-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-layer-tree-drop-marker-bg: var(--cartouche-theme-primary);
+  --cartouche-layer-tree-inline-input-border: var(--cartouche-theme-primary);
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);
-  --cartouche-menu-fg: var(--cartouche-theme-fg);
-  --cartouche-menu-border: var(--cartouche-theme-border-dropdown);
+  --cartouche-menu-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-menu-border: var(--cartouche-theme-border-strong);
+  --cartouche-menu-shadow: var(--cartouche-theme-shadow);
+  --cartouche-menu-title-fg: var(--cartouche-theme-fg-muted);
   --cartouche-menu-item-hover-bg: var(--cartouche-theme-primary);
   --cartouche-menu-item-hover-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-menu-item-disabled-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-menu-check-fg: var(--cartouche-theme-primary);
+  --cartouche-menu-check-hover-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-menu-shortcut-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-menu-shortcut-hover-fg: var(--cartouche-theme-border);
   --cartouche-menu-separator: var(--cartouche-theme-border);
   --cartouche-menu-focus-color: var(--cartouche-theme-primary);
 
@@ -249,23 +276,49 @@
   --cartouche-listbox-shadow: var(--cartouche-theme-shadow);
   --cartouche-listbox-shadow-subtle: var(--cartouche-theme-shadow-subtle);
 
-  /* Toolbars */
+  /* Toolbars: the ToolbarContainerWidget frame and empty drop target (background
+     and border), the ToolbarWidget frame (background, border and shadow), the
+     ToolbarWidget grabber, dividers and button icons,
+     button Hover and Toggled On states (also the SplitToolButton), and the
+     toolbar drop markers */
+  --cartouche-toolbar-container-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-toolbar-container-border: var(--cartouche-theme-surface-subtle);
   --cartouche-toolbar-bg: var(--cartouche-theme-surface);
-  --cartouche-toolbar-fg: var(--cartouche-theme-fg);
   --cartouche-toolbar-border: var(--cartouche-theme-border);
-  --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-hover);
+  --cartouche-toolbar-shadow: var(--cartouche-theme-shadow-subtle);
+  --cartouche-toolbar-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-toolbar-grabber-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-toolbar-grabber-hover-fg: var(--cartouche-theme-info);
+  --cartouche-toolbar-divider-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-toolbar-item-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-toolbar-item-hover-border: var(--cartouche-theme-border-strong);
+  --cartouche-toolbar-item-toggled-on-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-toolbar-item-toggled-on-fg: var(--cartouche-theme-info);
+  --cartouche-toolbar-item-toggled-on-border: var(--cartouche-theme-info);
   --cartouche-toolbar-item-active-bg: var(--cartouche-theme-surface-active);
+  --cartouche-toolbar-drop-marker-bg: var(--cartouche-theme-info);
 
-  /* Dialogs & Modals */
+  /* Dialogs & Modals: the primary-coloured title bar of every Dialog window and
+     PickerDialogFrame and its close button Hover, then the light card of the About ModalDialog (dialog box,
+     branded header, subtitle, body text, inset panel, footer and Close button Hover) */
+  --cartouche-dialog-titlebar-bg: var(--cartouche-theme-primary);
+  --cartouche-dialog-titlebar-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-dialog-titlebar-button-hover-bg: var(--cartouche-theme-overlay-hover-on-primary);
   --cartouche-dialog-bg: var(--cartouche-theme-surface);
-  --cartouche-dialog-fg: var(--cartouche-theme-fg);
-  --cartouche-dialog-border: var(--cartouche-theme-border);
+  --cartouche-dialog-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-dialog-border: var(--cartouche-theme-border-strong);
+  --cartouche-dialog-shadow: var(--cartouche-theme-shadow-strong);
   --cartouche-dialog-header-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-dialog-header-fg: var(--cartouche-theme-fg);
   --cartouche-dialog-header-border: var(--cartouche-theme-border);
-  --cartouche-dialog-backdrop: rgba(0, 0, 0, 0.4);
+  --cartouche-dialog-subtitle-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-dialog-inset-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-dialog-footer-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-dialog-footer-border: var(--cartouche-theme-border);
+  --cartouche-dialog-button-hover-bg: var(--cartouche-theme-primary-hover);
+  --cartouche-dialog-backdrop: var(--cartouche-theme-backdrop);
 
-  /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Selected Row and Active Row backgrounds, and Read-Only Cell text */
+  /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Hover, Selected Row and Active Row backgrounds, and Read-Only Cell text */
   --cartouche-table-bg: var(--cartouche-theme-surface);
   --cartouche-table-fg: var(--cartouche-theme-fg);
   --cartouche-table-header-bg: var(--cartouche-theme-surface-widget);
@@ -281,6 +334,48 @@
   --cartouche-table-readonly-fg: var(--cartouche-theme-fg-muted);
   --cartouche-table-readonly-selected-bg: var(--cartouche-theme-surface-alt);
   --cartouche-table-readonly-selected-fg: var(--cartouche-theme-fg-secondary);
+
+  /* Panel Toolbars (AttributeTableWidget and Console Log Panel): the panel toolbar and its
+     subtitle, icon buttons and their Hover, and the empty-panel message */
+  --cartouche-panel-toolbar-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-panel-toolbar-border: var(--cartouche-theme-border);
+  --cartouche-panel-subtitle-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-panel-icon-button-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-panel-icon-button-hover-bg: var(--cartouche-theme-surface-active);
+  --cartouche-panel-icon-button-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-panel-empty-fg: var(--cartouche-theme-fg-muted);
+
+  /* AttributeTableWidget frame around its TableWidget: container, header and footer bars,
+     muted text (no-matching-features message, page range) and the geometry badge */
+  --cartouche-attribute-table-bg: var(--cartouche-theme-surface);
+  --cartouche-attribute-table-header-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-attribute-table-header-border: var(--cartouche-theme-border);
+  --cartouche-attribute-table-footer-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-attribute-table-footer-border: var(--cartouche-theme-border);
+  --cartouche-attribute-table-muted-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-geometry-badge-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-geometry-badge-border: var(--cartouche-theme-border-strong);
+  --cartouche-geometry-badge-fg: var(--cartouche-theme-info);
+
+  /* CRS Catalogue list boxes (ProjectPropertiesDialog CRS tab): the Selected option, focused or not */
+  --cartouche-crs-list-option-selected-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-crs-list-option-selected-fg: var(--cartouche-theme-info);
+
+  /* Console Log Panel: background, entry time, source, message and empty-state text,
+     and one fg/bg pair per Log Level badge */
+  --cartouche-console-bg: var(--cartouche-theme-surface);
+  --cartouche-console-time-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-console-source-fg: var(--cartouche-theme-primary);
+  --cartouche-console-message-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-console-empty-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-console-level-info-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-console-level-info-fg: var(--cartouche-theme-info);
+  --cartouche-console-level-success-bg: var(--cartouche-theme-success-subtle);
+  --cartouche-console-level-success-fg: var(--cartouche-theme-success);
+  --cartouche-console-level-warn-bg: var(--cartouche-theme-warning-subtle);
+  --cartouche-console-level-warn-fg: var(--cartouche-theme-warning);
+  --cartouche-console-level-error-bg: var(--cartouche-theme-danger-subtle);
+  --cartouche-console-level-error-fg: var(--cartouche-theme-danger);
 
   /* Layer Properties Dialog: form field labels and read-only values, captions and
      the loading message, the Layer ID validation message, the Fields tab toolbar
@@ -305,6 +400,64 @@
   --cartouche-snapping-options-header-line: var(--cartouche-theme-border);
   --cartouche-snapping-options-row-line: var(--cartouche-theme-border);
 
+  /* Preferences Dialog: the modal frame, header, category tabs (Hover and Selected; Normal
+     and the Selected background read --cartouche-sidebar-tab-*), section titles, Preference
+     Groups, toggle buttons, switches and button groups (Normal and Toggled On), value and
+     label text, the footer, its secondary and primary button Hover, and the resize handle */
+  --cartouche-preferences-border: var(--cartouche-theme-border-strong);
+  --cartouche-preferences-shadow: var(--cartouche-theme-shadow-strong);
+  --cartouche-preferences-title-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-title-icon-fg: var(--cartouche-theme-primary);
+  --cartouche-preferences-close-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-preferences-close-hover-bg: var(--cartouche-theme-surface-active);
+  --cartouche-preferences-close-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-sidebar-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-preferences-sidebar-border: var(--cartouche-theme-border);
+  --cartouche-preferences-sidebar-title-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-preferences-tab-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-preferences-tab-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-tab-selected-fg: var(--cartouche-theme-primary);
+  --cartouche-preferences-section-title-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-section-title-border: var(--cartouche-theme-border);
+  --cartouche-preferences-empty-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-preferences-group-bg: var(--cartouche-theme-surface);
+  --cartouche-preferences-group-border: var(--cartouche-theme-border-strong);
+  --cartouche-preferences-group-legend-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-item-name-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-text-input-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-toggle-bg: var(--cartouche-theme-surface);
+  --cartouche-preferences-toggle-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-toggle-border: var(--cartouche-theme-border-strong);
+  --cartouche-preferences-toggle-toggled-on-bg: var(--cartouche-theme-primary);
+  --cartouche-preferences-toggle-toggled-on-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-preferences-toggle-toggled-on-border: var(--cartouche-theme-primary);
+  --cartouche-preferences-switch-bg: var(--cartouche-theme-border-strong);
+  --cartouche-preferences-switch-toggled-on-bg: var(--cartouche-theme-primary);
+  --cartouche-preferences-switch-thumb-bg: var(--cartouche-theme-surface);
+  --cartouche-preferences-switch-thumb-shadow: var(--cartouche-theme-shadow);
+  --cartouche-preferences-button-group-border: var(--cartouche-theme-border-strong);
+  --cartouche-preferences-button-group-item-bg: var(--cartouche-theme-surface);
+  --cartouche-preferences-button-group-item-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-button-group-item-toggled-on-bg: var(--cartouche-theme-primary);
+  --cartouche-preferences-button-group-item-toggled-on-fg: var(--cartouche-theme-fg-inverted);
+  --cartouche-preferences-value-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-image-picker-bg: var(--cartouche-theme-surface);
+  --cartouche-preferences-image-picker-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-image-picker-border: var(--cartouche-theme-border-strong);
+  --cartouche-preferences-radio-label-fg: var(--cartouche-theme-fg);
+  --cartouche-preferences-checkbox-label-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-unit-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-preferences-footer-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-preferences-footer-border: var(--cartouche-theme-border);
+  --cartouche-preferences-shortcut-hint-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-preferences-button-secondary-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-preferences-button-secondary-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-preferences-button-secondary-hover-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-preferences-button-secondary-hover-border: var(--cartouche-theme-fg-subtle);
+  --cartouche-preferences-button-primary-hover-bg: var(--cartouche-theme-primary-hover);
+  --cartouche-preferences-resize-handle-fg: var(--cartouche-theme-fg-subtle);
+  --cartouche-preferences-resize-handle-hover-fg: var(--cartouche-theme-primary);
+
   /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
   --cartouche-input-fg: var(--cartouche-theme-fg);
@@ -327,7 +480,6 @@
 
   /* Table Cell Editors (Attribute Table cells, Layer Properties field table) */
   --cartouche-cell-editor-bg: var(--cartouche-theme-surface);
-  --cartouche-cell-editor-fg: var(--cartouche-theme-fg-primary);
   --cartouche-cell-editor-border: var(--cartouche-theme-info);
 
   /* Chips (removable path tokens in Add Layers) */
@@ -335,6 +487,16 @@
 
   /* Timestamp Spinner: highlight of the segment being edited */
   --cartouche-timestamp-segment-active-bg: var(--cartouche-theme-info-subtle);
+
+  /* TimeFilterWidget: playback buttons (Normal reads the secondary button tokens)
+     and the range scrubber slider track and thumb */
+  --cartouche-time-filter-button-hover-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-time-filter-button-pressed-bg: var(--cartouche-theme-surface-active);
+  --cartouche-time-filter-track-bg: var(--cartouche-theme-border-strong);
+  --cartouche-time-filter-thumb-bg: var(--cartouche-theme-primary);
+  --cartouche-time-filter-thumb-hover-bg: var(--cartouche-theme-primary-hover);
+  --cartouche-time-filter-thumb-pressed-bg: var(--cartouche-theme-primary-active);
+  --cartouche-time-filter-thumb-disabled-bg: var(--cartouche-theme-fg-muted);
 
   /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
   --cartouche-focus-color: var(--cartouche-theme-primary);
@@ -363,6 +525,16 @@
   --cartouche-gradient-stop-border: var(--cartouche-theme-fg-muted);
   --cartouche-gradient-stop-active-border: var(--cartouche-theme-primary);
   --cartouche-gradient-stop-active-ring: var(--cartouche-theme-accent-focus);
+  /* Picker buttons (ColourButton, GradientButton): face, border, the transparency
+     checkerboard under the swatch, and the hairline outline around the swatch */
+  --cartouche-picker-button-bg: var(--cartouche-theme-surface);
+  --cartouche-picker-button-border: var(--cartouche-theme-border-strong);
+  --cartouche-picker-button-hover-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-picker-button-hover-border: var(--cartouche-theme-fg-subtle);
+  --cartouche-picker-button-disabled-bg: var(--cartouche-theme-surface-alt);
+  --cartouche-picker-swatch-checker-light: var(--cartouche-theme-checker-light);
+  --cartouche-picker-swatch-checker-dark: var(--cartouche-theme-checker-dark);
+  --cartouche-picker-swatch-outline: var(--cartouche-theme-fg-subtle);
 }
 
 /* Global Reset & Theme Root Application */

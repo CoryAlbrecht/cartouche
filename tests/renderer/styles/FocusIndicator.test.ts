@@ -4,7 +4,7 @@
  * @description Guardrail tests for the stylesheet side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #317 / #318 / #319): the Tier 1 / Tier 2 focus, invalid-state and control-accent tokens in theme-default.css; the single global :focus-visible / aria-invalid rule set in workbench.css that replaces the scattered per-component focus styling; the map-canvas-only outline suppression; the invalid-state rules reading only the invalid tokens; and the workbench.css classes of the migrated focusable controls reading only Tier 2 Component Tokens, in rem.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-18
  * @since 0.1.0-dev
  * @see FocusableControlStyling.test.ts
  */
@@ -430,7 +430,6 @@ const MIGRATED_CONTROL_TOKENS = [
   "--cartouche-control-disabled-fg",
   "--cartouche-control-disabled-border",
   "--cartouche-cell-editor-bg",
-  "--cartouche-cell-editor-fg",
   "--cartouche-cell-editor-border",
   "--cartouche-button-primary-bg",
   "--cartouche-button-primary-fg",
@@ -572,7 +571,7 @@ const PRIMARY_SURFACES = [
 
 /** Background tokens that paint a primary-coloured surface. */
 const PRIMARY_SURFACE_BG =
-  /^var\(--cartouche-(?:menubar-bg|theme-status-bar-bg)\)$/;
+  /^var\(--cartouche-(?:menubar-bg|theme-status-bar-bg|dialog-titlebar-bg)\)$/;
 
 /**
  * @function rescopesFocusColour
