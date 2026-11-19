@@ -104,7 +104,7 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
 
   const portalContent = (
     <div
-      className={`${classPrefix}-backdrop`}
+      className={`${classPrefix}-backdrop dialog-backdrop`}
       onClick={handleBackdropClick}
       style={{
         position: "fixed",
@@ -112,7 +112,6 @@ export const PickerDialogFrame: React.FC<PickerDialogFrameProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.45)",
         backdropFilter: "blur(2px)",
         zIndex: 10000,
         display: "flex",

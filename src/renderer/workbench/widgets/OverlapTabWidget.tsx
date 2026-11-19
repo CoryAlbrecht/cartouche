@@ -34,7 +34,6 @@ import {
 const DEFAULT_TAB_TITLES: Record<string, string> = {
   "layer-tree": "Layers",
   "attribute-table": "Attributes",
-  "console": "Console",
 };
 
 /**

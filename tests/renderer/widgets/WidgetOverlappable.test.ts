@@ -1,15 +1,14 @@
 /**
  * @file WidgetOverlappable.test.ts
  * @module tests/renderer/widgets/WidgetOverlappable.test
- * @description Unit tests verifying the read-only overlappable property defaults to false on BasicWidget and is enabled on built-in tool widgets (LayerTreeWidget, AttributeTablePanel, ConsolePanel).
+ * @description Unit tests verifying the read-only overlappable property defaults to false on BasicWidget and is enabled on built-in tool widgets (LayerTreeWidget, AttributeTablePanel).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-14
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link LayerTreeWidget}
  * @see {@link AttributeTablePanel}
- * @see {@link ConsolePanel}
  */
 
 import { describe, it, beforeEach, afterEach } from "node:test";
@@ -302,9 +301,6 @@ const { LayerTreeWidget } = jiti(
 const { AttributeTableWidget: AttributeTablePanel } = jiti(
   "../../../src/renderer/workbench/widgets/AttributeTableWidget.tsx"
 );
-const { ConsolePanel } = jiti(
-  "../../../src/renderer/workbench/panels/ConsolePanel.tsx"
-);
 
 describe("Widget overlappable Property & Built-in Tool Defaults (Ticket #167)", () => {
   beforeEach(() => {
@@ -405,22 +401,6 @@ describe("Widget overlappable Property & Built-in Tool Defaults (Ticket #167)", 
       headerEl.getAttribute("data-overlappable"),
       "true",
       "AttributeTablePanel must configure overlappable={true}"
-    );
-  });
-
-  it("ConsolePanel defaults overlappable to true on its BasicWidget container", async () => {
-    await act(async () => {
-      root!.render(React.createElement(ConsolePanel, {}));
-    });
-
-    const headerEl = findAllNodes(container, (el) =>
-      el.className.includes("basic-widget-header")
-    )[0];
-    assert.ok(headerEl, "ConsolePanel header must exist");
-    assert.strictEqual(
-      headerEl.getAttribute("data-overlappable"),
-      "true",
-      "ConsolePanel must configure overlappable={true}"
     );
   });
 });

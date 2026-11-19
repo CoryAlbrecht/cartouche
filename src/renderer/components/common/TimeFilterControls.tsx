@@ -220,12 +220,8 @@ export const TimeFilterRangeStepControls: React.FC<
           userSelect: "text",
         }}>
         <span
-          style={{
-            fontWeight: 500,
-            fontSize: "0.75rem",
-            color: "#475569",
-            userSelect: "none",
-          }}>
+          className='time-filter-field-label'
+          style={{ fontWeight: 500, fontSize: "0.75rem", userSelect: "none" }}>
           From:
         </span>
         <TimestampSpinner
@@ -245,12 +241,8 @@ export const TimeFilterRangeStepControls: React.FC<
           userSelect: "text",
         }}>
         <span
-          style={{
-            fontWeight: 500,
-            fontSize: "0.75rem",
-            color: "#475569",
-            userSelect: "none",
-          }}>
+          className='time-filter-field-label'
+          style={{ fontWeight: 500, fontSize: "0.75rem", userSelect: "none" }}>
           To:
         </span>
         <TimestampSpinner
@@ -269,7 +261,8 @@ export const TimeFilterRangeStepControls: React.FC<
       {/* Step Input with discrete 1.00 arrow buttons */}
       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         <span
-          style={{ fontWeight: 500, fontSize: "0.75rem", color: "#475569" }}>
+          className='time-filter-field-label'
+          style={{ fontWeight: 500, fontSize: "0.75rem" }}>
           Step:
         </span>
         <div
@@ -363,7 +356,7 @@ export interface TimeFilterControlsProps extends TimeFilterRangeStepControlsProp
  * @description Stacked form of the shared controls for dialogs: an "Enabled:" row with the {@link TimeFilterEnabledToggle}, followed by the {@link TimeFilterRangeStepControls} row. No playhead control is included.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {TimeFilterControlsProps} props - Component properties.
  * @returns {React.ReactElement} The stacked controls.
@@ -381,18 +374,13 @@ export const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({
         flexDirection: "column",
         gap: "8px",
         fontSize: "0.8333rem",
-        color: "#000000",
       }}>
       <div
         className='time-filter-controls-enabled-row'
         style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <span
-          style={{
-            fontWeight: 500,
-            fontSize: "0.75rem",
-            color: "#475569",
-            userSelect: "none",
-          }}>
+          className='time-filter-field-label'
+          style={{ fontWeight: 500, fontSize: "0.75rem", userSelect: "none" }}>
           Enabled:
         </span>
         <TimeFilterEnabledToggle enabled={enabled} onChange={onEnabledChange} />

@@ -1,7 +1,7 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css.
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
  * @updated 2026-11-19
@@ -469,12 +469,9 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     );
   });
 
-  it("defines the AttributeTableWidget frame, CRS Catalogue list box and console Tier 2 tokens (#357)", () => {
+  it("defines the AttributeTableWidget frame and CRS Catalogue list box Tier 2 tokens (#357)", () => {
     // Each token maps to the Tier 1 primitive its rule read before #357, so no rendered colour changes.
     const expected: Record<string, string> = {
-      "--cartouche-panel-toolbar-bg": "--cartouche-theme-surface-subtle",
-      "--cartouche-panel-toolbar-border": "--cartouche-theme-border",
-      "--cartouche-panel-subtitle-fg": "--cartouche-theme-fg-muted",
       "--cartouche-panel-icon-button-fg": "--cartouche-theme-fg-muted",
       "--cartouche-panel-icon-button-hover-bg":
         "--cartouche-theme-surface-active",
@@ -494,27 +491,31 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       "--cartouche-crs-list-option-selected-bg":
         "--cartouche-theme-info-subtle",
       "--cartouche-crs-list-option-selected-fg": "--cartouche-theme-info",
-      "--cartouche-console-bg": "--cartouche-theme-surface",
-      "--cartouche-console-time-fg": "--cartouche-theme-fg-muted",
-      "--cartouche-console-source-fg": "--cartouche-theme-primary",
-      "--cartouche-console-message-fg": "--cartouche-theme-fg-primary",
-      "--cartouche-console-empty-fg": "--cartouche-theme-fg-subtle",
-      "--cartouche-console-level-info-bg": "--cartouche-theme-info-subtle",
-      "--cartouche-console-level-info-fg": "--cartouche-theme-info",
-      "--cartouche-console-level-success-bg":
-        "--cartouche-theme-success-subtle",
-      "--cartouche-console-level-success-fg": "--cartouche-theme-success",
-      "--cartouche-console-level-warn-bg": "--cartouche-theme-warning-subtle",
-      "--cartouche-console-level-warn-fg": "--cartouche-theme-warning",
-      "--cartouche-console-level-error-bg": "--cartouche-theme-danger-subtle",
-      "--cartouche-console-level-error-fg": "--cartouche-theme-danger",
     };
     assertMappings(expected);
   });
 
-  it("reads no Tier 1 primitive in the AttributeTableWidget frame, CRS Catalogue list box or console colour rules (#357)", () => {
+  it("removes the Console Panel's tokens and rules with the Console Panel (#362)", () => {
+    const css = stripCssComments(WORKBENCH_CSS);
+    for (const gone of [
+      "--cartouche-console-",
+      "--cartouche-panel-toolbar-",
+      "--cartouche-panel-subtitle-fg",
+    ])
+      assert.ok(
+        !THEME_CSS.includes(gone),
+        `theme-default.css still defines ${gone}*`
+      );
+    assert.doesNotMatch(
+      css,
+      /\.(?:console-[\w-]+|log-(?:time|source|badge|message)|badge-(?:info|success|warn|error)|panel-toolbar|panel-subtitle)\b/,
+      "workbench.css still has a Console Panel rule"
+    );
+  });
+
+  it("reads no Tier 1 primitive in the AttributeTableWidget frame or CRS Catalogue list box colour rules (#357)", () => {
     const subsystemSelector =
-      /(?<![\w-])\.(?:attribute-table-[\w-]+|panel-toolbar|panel-subtitle|icon-btn|geometry-badge|empty-filter-message|empty-panel-message|console-[\w-]+|log-[\w-]+|badge-(?:info|success|warn|error))(?![\w-])|\.project-prop-crs-[\w-]+(?::focus)?\s+option:checked/;
+      /(?<![\w-])\.(?:attribute-table-[\w-]+|icon-btn|geometry-badge|empty-filter-message|empty-panel-message)(?![\w-])|\.project-prop-crs-[\w-]+(?::focus)?\s+option:checked/;
     const colourProperty =
       /^(?:color|background(?:-color)?|border(?:-[a-z]+)*|outline(?:-color)?|-webkit-text-fill-color|fill|stroke|box-shadow)$/;
     const offenders: string[] = [];
@@ -533,7 +534,7 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       }
     }
     assert.ok(
-      matchedRules >= 15,
+      matchedRules >= 10,
       `expected the #357 rules, found ${matchedRules}`
     );
     assert.deepEqual(offenders, []);
@@ -686,13 +687,6 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         token: "--cartouche-theme-font-family-mono",
         reason:
           "inline font-family of the WKT box: a typography primitive (ADR 0013), not a colour",
-      },
-    ],
-    "src/renderer/workbench/panels/ConsolePanel.tsx": [
-      {
-        token: "--cartouche-theme-font-family-mono",
-        reason:
-          "inline font-family of the console log: a typography primitive (ADR 0013), not a colour",
       },
     ],
   };
@@ -904,6 +898,535 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         resolveThemeTokens(value),
         colour,
         `${selector} ${property} must still render ${colour}`
+      );
+    }
+  });
+
+  it("defines the Tier 2 tokens for the UI colour literals moved out of renderer TSX, each mapped to the nearest Tier 1 primitive (#362)", () => {
+    assertMappings({
+      "--cartouche-dialog-window-fg": "--cartouche-theme-fg",
+      "--cartouche-dialog-window-footer-border":
+        "--cartouche-theme-border-strong",
+      "--cartouche-dialog-sidebar-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-dialog-sidebar-border": "--cartouche-theme-border-strong",
+      "--cartouche-dialog-label-fg": "--cartouche-theme-fg-strong",
+      "--cartouche-dialog-tab-strip-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-dialog-tab-strip-border": "--cartouche-theme-border-strong",
+      "--cartouche-dialog-tab-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-dialog-tab-selected-bg": "--cartouche-theme-surface",
+      "--cartouche-dialog-tab-selected-fg": "--cartouche-theme-primary",
+      "--cartouche-dialog-tab-selected-border": "--cartouche-theme-primary",
+      "--cartouche-chip-bg": "--cartouche-theme-surface-active",
+      "--cartouche-chip-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-preferences-status-editing-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-preferences-status-saving-fg": "--cartouche-theme-primary",
+      "--cartouche-style-preview-bg": "--cartouche-theme-surface",
+      "--cartouche-style-preview-border": "--cartouche-theme-border-strong",
+      "--cartouche-layer-properties-secondary-fg":
+        "--cartouche-theme-fg-secondary",
+      "--cartouche-layer-properties-preview-bg":
+        "--cartouche-theme-surface-subtle",
+      "--cartouche-layer-properties-preview-border": "--cartouche-theme-border",
+      "--cartouche-style-validation-error-bg":
+        "--cartouche-theme-danger-subtle",
+      "--cartouche-style-validation-error-border":
+        "--cartouche-theme-danger-bright",
+      "--cartouche-style-validation-error-fg": "--cartouche-theme-danger",
+      "--cartouche-style-validation-valid-bg":
+        "--cartouche-theme-success-subtle",
+      "--cartouche-style-validation-valid-border": "--cartouche-theme-success",
+      "--cartouche-style-validation-valid-fg": "--cartouche-theme-success",
+      "--cartouche-component-stack-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-component-stack-border": "--cartouche-theme-border-strong",
+      "--cartouche-component-stack-item-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-component-stack-item-line": "--cartouche-theme-border",
+      "--cartouche-component-stack-item-selected-bg":
+        "--cartouche-theme-info-subtle",
+      "--cartouche-component-stack-item-selected-marker":
+        "--cartouche-theme-info",
+      "--cartouche-component-stack-lock-fg": "--cartouche-theme-fg-muted",
+      "--cartouche-component-locked-banner-bg":
+        "--cartouche-theme-warning-subtle",
+      "--cartouche-component-locked-banner-border": "--cartouche-theme-warning",
+      "--cartouche-component-locked-banner-fg": "--cartouche-theme-fg-primary",
+      "--cartouche-layer-tree-layer-icon-fg": "--cartouche-theme-info",
+      "--cartouche-time-filter-bg": "--cartouche-theme-surface-subtle",
+      "--cartouche-time-filter-fg": "--cartouche-theme-fg",
+      "--cartouche-time-filter-label-fg": "--cartouche-theme-fg-secondary",
+      "--cartouche-picker-handle-bg": "--cartouche-theme-bg",
+      "--cartouche-picker-handle-border": "--cartouche-theme-fg",
+      "--cartouche-picker-handle-shadow": "--cartouche-theme-shadow-strong",
+      "--cartouche-gradient-preview-border": "--cartouche-theme-fg-strong",
+      "--cartouche-gradient-stop-guide-bg": "--cartouche-theme-fg",
+    });
+  });
+
+  /**
+   * Each UI colour moved out of renderer TSX by #362: selector, property, the
+   * Tier 2 value its workbench.css rule declares, and the colour it renders in
+   * the default Theme. Literals with no equal primitive snap to the nearest one;
+   * the trailing comment gives the literal it replaced.
+   */
+  const literalsMovedFromTsx: [string, string, string, string][] = [
+    // Dialog, TabbedDialogShell and ModalDialog
+    [
+      ".cartouche-dialog-window",
+      "background-color",
+      "var(--cartouche-dialog-bg)",
+      "#ffffff",
+    ],
+    [
+      ".cartouche-dialog-window",
+      "color",
+      "var(--cartouche-dialog-window-fg)",
+      "#000000",
+    ],
+    [
+      ".dialog-tabbed-shell",
+      "background-color",
+      "var(--cartouche-dialog-bg)",
+      "#ffffff",
+    ],
+    [
+      ".dialog-tabbed-shell",
+      "color",
+      "var(--cartouche-dialog-window-fg)",
+      "#000000",
+    ],
+    [
+      ".cartouche-dialog-footer",
+      "background-color",
+      "var(--cartouche-dialog-footer-bg)",
+      "#f8fafc",
+    ],
+    [
+      ".cartouche-dialog-footer",
+      "border-top",
+      "0.0625rem solid var(--cartouche-dialog-window-footer-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".dialog-sidebar",
+      "background-color",
+      "var(--cartouche-dialog-sidebar-bg)",
+      "#f8fafc",
+    ],
+    [
+      ".dialog-sidebar",
+      "border-right",
+      "0.0625rem solid var(--cartouche-dialog-sidebar-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".dialog-backdrop",
+      "background-color",
+      "var(--cartouche-dialog-backdrop)",
+      "rgba(0, 0, 0, 0.4)",
+    ], // PickerDialogFrame was rgba(0, 0, 0, 0.45)
+    [
+      ".modal-dialog-box",
+      "box-shadow",
+      "0 0.25rem 0.75rem var(--cartouche-dialog-shadow)",
+      "0 0.25rem 0.75rem rgba(0, 0, 0, 0.24)",
+    ], // was rgba(0, 0, 0, 0.2)
+    [
+      ".cartouche-dialog-header",
+      "background-color",
+      "var(--cartouche-dialog-titlebar-bg)",
+      "#1b446c",
+    ],
+    [
+      ".dialog-field-label",
+      "color",
+      "var(--cartouche-dialog-label-fg)",
+      "#334155",
+    ],
+    // AddLayersDialog
+    [
+      ".add-layer-dialog-container",
+      "background-color",
+      "var(--cartouche-dialog-bg)",
+      "#ffffff",
+    ],
+    [
+      ".add-layers-source-tabs",
+      "background-color",
+      "var(--cartouche-dialog-tab-strip-bg)",
+      "#f8fafc",
+    ],
+    [
+      ".add-layers-source-tabs",
+      "border-bottom",
+      "0.0625rem solid var(--cartouche-dialog-tab-strip-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".add-layers-source-tab",
+      "color",
+      "var(--cartouche-dialog-tab-fg)",
+      "#64748b",
+    ],
+    [
+      ".add-layers-source-tab.selected",
+      "color",
+      "var(--cartouche-dialog-tab-selected-fg)",
+      "#1b446c",
+    ],
+    [
+      ".add-layers-source-tab.selected",
+      "background-color",
+      "var(--cartouche-dialog-tab-selected-bg)",
+      "#ffffff",
+    ],
+    [
+      ".add-layers-source-tab.selected",
+      "border-bottom-color",
+      "var(--cartouche-dialog-tab-selected-border)",
+      "#1b446c",
+    ],
+    [
+      ".add-layers-chip-box",
+      "background-color",
+      "var(--cartouche-input-bg)",
+      "#ffffff",
+    ],
+    [
+      ".add-layers-chip-box",
+      "border",
+      "0.0625rem solid var(--cartouche-input-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".add-layers-chip",
+      "background-color",
+      "var(--cartouche-chip-bg)",
+      "#e2e8f0",
+    ],
+    [".add-layers-chip", "color", "var(--cartouche-chip-fg)", "#0f172a"], // was #1e293b
+    // PreferencesDialog, ConsolePanel and MapViewportPanel
+    [
+      ".preferences-status-editing",
+      "color",
+      "var(--cartouche-preferences-status-editing-fg)",
+      "#64748b",
+    ],
+    [
+      ".preferences-status-saving",
+      "color",
+      "var(--cartouche-preferences-status-saving-fg)",
+      "#1b446c",
+    ],
+    [
+      ".map-viewport-container",
+      "background-color",
+      "var(--cartouche-map-viewport-bg)",
+      "#ffffff",
+    ],
+    // StyleEditor and StylePreviewCanvas
+    [
+      ".layer-prop-styling-preview-canvas",
+      "background-color",
+      "var(--cartouche-style-preview-bg)",
+      "#ffffff",
+    ],
+    [
+      ".layer-prop-styling-preview-canvas",
+      "border",
+      "0.0625rem solid var(--cartouche-style-preview-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".layer-prop-preview-container",
+      "background-color",
+      "var(--cartouche-layer-properties-preview-bg)",
+      "#f8fafc",
+    ],
+    [
+      ".layer-prop-preview-container",
+      "border",
+      "0.0625rem solid var(--cartouche-layer-properties-preview-border)",
+      "0.0625rem solid #e2e8f0",
+    ],
+    [
+      ".layer-prop-preview-title",
+      "color",
+      "var(--cartouche-layer-properties-secondary-fg)",
+      "#475569",
+    ],
+    [
+      ".layer-prop-opacity-value",
+      "color",
+      "var(--cartouche-layer-properties-secondary-fg)",
+      "#475569",
+    ],
+    [
+      ".style-validation-error",
+      "background-color",
+      "var(--cartouche-style-validation-error-bg)",
+      "#fef2f2",
+    ], // was #fee2e2
+    [
+      ".style-validation-error",
+      "border",
+      "0.0625rem solid var(--cartouche-style-validation-error-border)",
+      "0.0625rem solid #ef4444",
+    ], // was #f87171
+    [
+      ".style-validation-error",
+      "color",
+      "var(--cartouche-style-validation-error-fg)",
+      "#dc2626",
+    ], // was #b91c1c
+    [
+      ".style-validation-valid",
+      "background-color",
+      "var(--cartouche-style-validation-valid-bg)",
+      "#f0fdf4",
+    ], // was #dcfce7
+    [
+      ".style-validation-valid",
+      "border",
+      "0.0625rem solid var(--cartouche-style-validation-valid-border)",
+      "0.0625rem solid #16a34a",
+    ], // was #86efac
+    [
+      ".style-validation-valid",
+      "color",
+      "var(--cartouche-style-validation-valid-fg)",
+      "#16a34a",
+    ], // was #15803d
+    [
+      ".layer-prop-label",
+      "color",
+      "var(--cartouche-layer-properties-label-fg)",
+      "#334155",
+    ],
+    [
+      ".layer-prop-unit",
+      "color",
+      "var(--cartouche-layer-properties-caption-fg)",
+      "#64748b",
+    ],
+    // SimpleModeEditor
+    [
+      ".preference-group-box",
+      "background",
+      "var(--cartouche-preferences-group-bg)",
+      "#ffffff",
+    ],
+    [
+      ".preference-group-box",
+      "border",
+      "1px solid var(--cartouche-preferences-group-border)",
+      "1px solid #cbd5e1",
+    ],
+    [
+      ".preference-group-legend",
+      "color",
+      "var(--cartouche-preferences-group-legend-fg)",
+      "#000000",
+    ], // was #1e293b
+    [
+      ".layer-prop-component-stack-list",
+      "background-color",
+      "var(--cartouche-component-stack-bg)",
+      "#f8fafc",
+    ],
+    [
+      ".layer-prop-component-stack-list",
+      "border",
+      "0.0625rem solid var(--cartouche-component-stack-border)",
+      "0.0625rem solid #cbd5e1",
+    ],
+    [
+      ".layer-prop-component-item",
+      "color",
+      "var(--cartouche-component-stack-item-fg)",
+      "#0f172a",
+    ],
+    [
+      ".layer-prop-component-item",
+      "border-bottom",
+      "0.0625rem solid var(--cartouche-component-stack-item-line)",
+      "0.0625rem solid #e2e8f0",
+    ],
+    [
+      ".layer-prop-component-item.selected",
+      "background-color",
+      "var(--cartouche-component-stack-item-selected-bg)",
+      "#f0f9ff",
+    ], // was #e0f2fe
+    [
+      ".layer-prop-component-item.selected",
+      "border-left-color",
+      "var(--cartouche-component-stack-item-selected-marker)",
+      "#0284c7",
+    ],
+    [
+      ".layer-prop-component-swatch",
+      "border",
+      "0.0625rem solid var(--cartouche-picker-swatch-outline)",
+      "0.0625rem solid #94a3b8",
+    ],
+    [
+      ".layer-prop-component-lock",
+      "color",
+      "var(--cartouche-component-stack-lock-fg)",
+      "#64748b",
+    ],
+    [
+      ".component-locked-banner",
+      "background-color",
+      "var(--cartouche-component-locked-banner-bg)",
+      "#fffbeb",
+    ], // was #fef3c7
+    [
+      ".component-locked-banner",
+      "border",
+      "0.0625rem solid var(--cartouche-component-locked-banner-border)",
+      "0.0625rem solid #f59e0b",
+    ], // was #fcd34d
+    [
+      ".component-locked-banner",
+      "color",
+      "var(--cartouche-component-locked-banner-fg)",
+      "#0f172a",
+    ], // was #92400e
+    // LayerTreeWidget
+    [
+      ".tree-layer-icon-slot",
+      "color",
+      "var(--cartouche-layer-tree-layer-icon-fg)",
+      "#0284c7",
+    ], // was #2563eb
+    // TimeFilterWidget and TimeFilterControls
+    [
+      ".time-filter-widget-container",
+      "background-color",
+      "var(--cartouche-time-filter-bg)",
+      "#f8fafc",
+    ],
+    [
+      ".time-filter-widget-container",
+      "color",
+      "var(--cartouche-time-filter-fg)",
+      "#000000",
+    ],
+    [
+      ".time-filter-controls",
+      "color",
+      "var(--cartouche-time-filter-fg)",
+      "#000000",
+    ],
+    [
+      ".time-filter-field-label",
+      "color",
+      "var(--cartouche-time-filter-label-fg)",
+      "#475569",
+    ],
+    [
+      ".time-filter-divider",
+      "background-color",
+      "var(--cartouche-time-filter-divider-bg)",
+      "#e2e8f0",
+    ], // TimeFilterWidget dividers were #cbd5e1
+    // ColourPickerWidget
+    [
+      ".colour-picker-reticle",
+      "border",
+      "0.125rem solid var(--cartouche-picker-handle-bg)",
+      "0.125rem solid #ffffff",
+    ],
+    [
+      ".colour-picker-reticle",
+      "box-shadow",
+      "0 0 0.125rem var(--cartouche-picker-handle-border), inset 0 0 0.0625rem var(--cartouche-picker-handle-border)",
+      "0 0 0.125rem #000000, inset 0 0 0.0625rem #000000",
+    ],
+    [
+      ".colour-picker-hue-pip",
+      "background-color",
+      "var(--cartouche-picker-handle-bg)",
+      "#ffffff",
+    ],
+    [
+      ".colour-picker-hue-pip",
+      "border",
+      "0.0625rem solid var(--cartouche-picker-handle-border)",
+      "0.0625rem solid #000000",
+    ],
+    [
+      ".colour-picker-hue-pip",
+      "box-shadow",
+      "0 0 0.125rem var(--cartouche-picker-handle-shadow)",
+      "0 0 0.125rem rgba(0, 0, 0, 0.24)",
+    ], // was rgba(0,0,0,0.5)
+    [
+      ".colour-picker-alpha-pip",
+      "background-color",
+      "var(--cartouche-picker-handle-bg)",
+      "#ffffff",
+    ],
+    [
+      ".colour-picker-alpha-pip",
+      "border",
+      "0.0625rem solid var(--cartouche-picker-handle-border)",
+      "0.0625rem solid #000000",
+    ],
+    [
+      ".colour-picker-alpha-pip",
+      "box-shadow",
+      "0 0 0.125rem var(--cartouche-picker-handle-shadow)",
+      "0 0 0.125rem rgba(0, 0, 0, 0.24)",
+    ], // was rgba(0,0,0,0.5)
+    [
+      ".colour-picker-alpha-strip",
+      "background",
+      "linear-gradient(to right, transparent, var(--colour-picker-alpha-colour)), conic-gradient(var(--cartouche-picker-swatch-checker-dark) 90deg, var(--cartouche-picker-swatch-checker-light) 90deg 180deg, var(--cartouche-picker-swatch-checker-dark) 180deg 270deg, var(--cartouche-picker-swatch-checker-light) 270deg) 0 0 / 0.5rem 0.5rem",
+      "linear-gradient(to right, transparent, var(--colour-picker-alpha-colour)), conic-gradient(#cccccc 90deg, #ffffff 90deg 180deg, #cccccc 180deg 270deg, #ffffff 270deg) 0 0 / 0.5rem 0.5rem",
+    ],
+    // GradientPickerWidget
+    [
+      ".gradient-stop-swatch",
+      "border",
+      "0.0625rem solid var(--cartouche-picker-swatch-outline)",
+      "0.0625rem solid #94a3b8",
+    ], // was rgba(0, 0, 0, 0.3)
+    [
+      ".gradient-picker-preview-bar",
+      "border",
+      "0.0625rem solid var(--cartouche-gradient-preview-border)",
+      "0.0625rem solid #334155",
+    ], // was #333333
+    [
+      ".gradient-picker-preview-bar",
+      "background-image",
+      "linear-gradient(to right, var(--gradient-picker-stops)), repeating-conic-gradient(var(--cartouche-picker-swatch-checker-dark) 0% 25%, var(--cartouche-picker-swatch-checker-light) 0% 50%)",
+      "linear-gradient(to right, var(--gradient-picker-stops)), repeating-conic-gradient(#cccccc 0% 25%, #ffffff 0% 50%)",
+    ], // dark squares were #808080
+    [
+      ".gradient-picker-stop-guide",
+      "background-color",
+      "var(--cartouche-gradient-stop-guide-bg)",
+      "#000000",
+    ],
+  ];
+
+  it("declares the UI colours moved out of renderer TSX in workbench.css classes that read Tier 2 tokens (#362)", () => {
+    for (const [selector, property, value, colour] of literalsMovedFromTsx) {
+      assert.equal(
+        selectorDeclaration(selector, property),
+        value,
+        `${selector} ${property}`
+      );
+      // A non-Theme custom property is set inline by the component; keep it as var().
+      assert.equal(
+        resolveThemeTokens(value).replace(
+          /<undefined (--(?!cartouche-)[a-z0-9-]+)>/g,
+          "var($1)"
+        ),
+        colour,
+        `${selector} ${property} must render ${colour}`
       );
     }
   });

@@ -291,8 +291,6 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
           gap: "6px",
           padding: "6px 10px 8px 10px",
           boxSizing: "border-box",
-          background: "#f8fafc",
-          color: "#000000",
           fontSize: "0.8333rem",
           userSelect: "none",
         }}>
@@ -323,12 +321,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
           </div>
 
           <div
-            style={{
-              width: "1px",
-              height: "18px",
-              background: "#cbd5e1",
-              margin: "0 2px",
-            }}
+            className='time-filter-divider'
+            style={{ width: "1px", height: "18px", margin: "0 2px" }}
           />
 
           {/* VCR Transport Buttons */}
@@ -376,12 +370,8 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
           </div>
 
           <div
-            style={{
-              width: "1px",
-              height: "18px",
-              background: "#cbd5e1",
-              margin: "0 2px",
-            }}
+            className='time-filter-divider'
+            style={{ width: "1px", height: "18px", margin: "0 2px" }}
           />
 
           {/* Current Frame Display */}

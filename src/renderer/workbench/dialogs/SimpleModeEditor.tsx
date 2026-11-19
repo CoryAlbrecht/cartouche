@@ -4,7 +4,7 @@
  * @description Visual component stack manager and dynamic Style Options panel for Simple Cartouche Symbology mode in LayerPropertiesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  * @see {@link SimpleCartoucheStyle}
@@ -150,7 +150,7 @@ export function parseCartoucheStyleSafe(
  * @description Manages painter-order components rendered in reversed visual stack order with add, remove, reorder, duplicate, lock, and options editing. Colours are edited with ColourButtons that open a ColourPickerDialog, gradient stops with a GradientButton that opens a GradientPickerDialog, and a custom dash array with the DashArrayControl's embedded TableWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {SimpleModeEditorProps} props - Component properties.
  * @returns {JSX.Element}
@@ -478,7 +478,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
    * @description Renders a labelled option row: a flex row with a 1rem gap, a 9rem label column and then the given control. The label is a `<label htmlFor>` when `htmlFor` is given and a `<span>` otherwise, with `labelId` as its id and `onLabelClick` as its click handler when given.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-16
-   * @updated 2026-11-17
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {string} label - Localized field label.
    * @param {React.ReactNode} control - The row's control, which may be several elements (e.g. an input and its unit).
@@ -499,7 +499,6 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
     const labelStyle: React.CSSProperties = {
       width: "9rem",
       fontSize: "0.8125rem",
-      color: "#334155",
       ...(alignTop ? { paddingTop: "0.25rem" } : {}),
     };
     return (
@@ -516,10 +515,15 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             id={labelId}
             htmlFor={htmlFor}
             onClick={onLabelClick}
+            className='layer-prop-label'
             style={labelStyle}>
             {label}:
           </label>
-        : <span id={labelId} onClick={onLabelClick} style={labelStyle}>
+        : <span
+            id={labelId}
+            onClick={onLabelClick}
+            className='layer-prop-label'
+            style={labelStyle}>
             {label}:
           </span>
         }
@@ -569,18 +573,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
       {/* Visual Component Stack Section */}
       <fieldset
         className='preference-group-box'
-        style={{
-          border: "1px solid #cbd5e1",
-          borderRadius: "0.25rem",
-          padding: "0.75rem",
-          backgroundColor: "#ffffff",
-        }}>
+        style={{ borderRadius: "0.25rem", padding: "0.75rem" }}>
         <legend
           className='preference-group-legend'
           style={{
             fontWeight: 600,
             fontSize: "0.875rem",
-            color: "#1e293b",
             padding: "0 0.25rem",
           }}>
           {t("layer_properties_component_stack")}
@@ -596,9 +594,7 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             style={{
               flex: 1,
               minWidth: 0,
-              border: "1px solid #cbd5e1",
               borderRadius: "0.25rem",
-              backgroundColor: "#f8fafc",
               minHeight: "12rem",
               overflowY: "auto",
               display: "flex",
@@ -618,16 +614,10 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                     padding: "0.375rem 0.625rem",
                     gap: "0.5rem",
                     cursor: "pointer",
-                    backgroundColor: isSelected ? "#e0f2fe" : "transparent",
-                    borderLeft:
-                      isSelected ? "3px solid #0284c7" : (
-                        "3px solid transparent"
-                      ),
-                    borderBottom: "1px solid #e2e8f0",
                     fontSize: "0.8125rem",
-                    color: "#0f172a",
                   }}>
                   <span
+                    className='layer-prop-component-swatch'
                     style={{
                       display: "inline-block",
                       width: "0.75rem",
@@ -638,15 +628,19 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         (comp as any).color
                         || (comp as any).fillColor
                         || "#000000",
-                      border: "1px solid #94a3b8",
                     }}
                   />
                   <span style={{ fontWeight: isSelected ? 600 : 400, flex: 1 }}>
                     {getComponentTypeLabel(comp.type)}
                   </span>
                   {comp.locked && (
-                    <span title={t("layer_properties_component_locked_notice")}>
-                      <Icon path={mdiLockOutline} size='14px' color='#64748b' />
+                    <span
+                      className='layer-prop-component-lock'
+                      title={t("layer_properties_component_locked_notice")}>
+                      <Icon
+                        path={mdiLockOutline}
+                        size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5833)'
+                      />
                     </span>
                   )}
                 </div>
@@ -751,11 +745,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
           }}>
           <label
             htmlFor='layer-prop-component-type-select'
-            style={{
-              fontWeight: 500,
-              fontSize: "0.8125rem",
-              color: "#334155",
-            }}>
+            className='layer-prop-label'
+            style={{ fontWeight: 500, fontSize: "0.8125rem" }}>
             {t("layer_properties_component_type")}:
           </label>
           <Select<StyleComponent["type"]>
@@ -777,18 +768,12 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
       <fieldset
         id='layer-prop-component-options-card'
         className='preference-group-box'
-        style={{
-          border: "1px solid #cbd5e1",
-          borderRadius: "0.25rem",
-          padding: "0.75rem",
-          backgroundColor: "#ffffff",
-        }}>
+        style={{ borderRadius: "0.25rem", padding: "0.75rem" }}>
         <legend
           className='preference-group-legend'
           style={{
             fontWeight: 600,
             fontSize: "0.875rem",
-            color: "#1e293b",
             padding: "0 0.25rem",
           }}>
           {t("layer_properties_component_options")}
@@ -802,17 +787,17 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
             className='component-locked-banner'
             style={{
               padding: "0.375rem 0.625rem",
-              backgroundColor: "#fef3c7",
-              border: "1px solid #fcd34d",
               borderRadius: "0.25rem",
-              color: "#92400e",
               fontSize: "0.8125rem",
               marginBottom: "0.5rem",
               display: "flex",
               alignItems: "center",
               gap: "0.375rem",
             }}>
-            <Icon path={mdiLockOutline} size='14px' />
+            <Icon
+              path={mdiLockOutline}
+              size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5833)'
+            />
             <span>{t("layer_properties_component_locked_notice")}</span>
           </div>
         )}
@@ -856,11 +841,8 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                   }}>
                   <label
                     htmlFor='layer-prop-gradient-angle'
-                    style={{
-                      fontSize: "0.8125rem",
-                      fontWeight: 500,
-                      color: "#334155",
-                    }}>
+                    className='layer-prop-label'
+                    style={{ fontSize: "0.8125rem", fontWeight: 500 }}>
                     {t("layer_properties_styling_gradient_angle")
                       || "Gradient Angle"}
                     :
@@ -888,7 +870,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         });
                       }}
                     />
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                    <span
+                      className='layer-prop-unit'
+                      style={{ fontSize: "0.8125rem" }}>
                       °
                     </span>
                   </div>
@@ -971,7 +955,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           });
                         }}
                       />
-                      <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      <span
+                        className='layer-prop-unit'
+                        style={{ fontSize: "0.8125rem" }}>
                         px
                       </span>
                     </>,
@@ -995,7 +981,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           });
                         }}
                       />
-                      <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      <span
+                        className='layer-prop-unit'
+                        style={{ fontSize: "0.8125rem" }}>
                         px
                       </span>
                     </>,
@@ -1110,7 +1098,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                           });
                         }}
                       />
-                      <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      <span
+                        className='layer-prop-unit'
+                        style={{ fontSize: "0.8125rem" }}>
                         px
                       </span>
                     </>,
@@ -1198,7 +1188,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         })
                       }
                     />
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                    <span
+                      className='layer-prop-unit'
+                      style={{ fontSize: "0.8125rem" }}>
                       px
                     </span>
                   </>,
@@ -1280,7 +1272,9 @@ export const SimpleModeEditor: React.FC<SimpleModeEditorProps> = ({
                         })
                       }
                     />
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                    <span
+                      className='layer-prop-unit'
+                      style={{ fontSize: "0.8125rem" }}>
                       px
                     </span>
                   </>,

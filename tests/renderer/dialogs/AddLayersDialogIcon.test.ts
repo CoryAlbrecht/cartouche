@@ -1,10 +1,10 @@
 /**
  * @file AddLayersDialogIcon.test.ts
  * @module tests/renderer/dialogs/AddLayersDialogIcon.test
- * @description Regression tests verifying that custom file: SVG icons in AddLayersDialog (title bar and Add Layers button) render as inline SVGs with white fill instead of black external img tags.
+ * @description Regression tests verifying that custom file: SVG icons in AddLayersDialog (title bar and Add Layers button) render as inline SVGs filled with currentColor (white from the title bar and primary button classes, #362) instead of black external img tags.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-19
- * @updated 2026-11-14
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link AddLayersDialog}
  * @see {@link Icon}
@@ -90,7 +90,7 @@ describe("AddLayersDialog and file: SVG Icon Color Rendering", () => {
     );
   });
 
-  it("renders white icons in both the AddLayersDialog title bar and the Add Layers footer button", () => {
+  it("renders the AddLayersDialog title bar and Add Layers button icons in currentColor, so they take the white of the title bar and primary button (#362)", () => {
     isAddLayersOpenSignal.value = true;
     const html = renderToStaticMarkup(React.createElement(AddLayersDialog));
 
@@ -103,8 +103,8 @@ describe("AddLayersDialog and file: SVG Icon Color Rendering", () => {
     );
     assert.match(
       headerMatch[1],
-      /<svg[^>]*\bfill="#ffffff"/i,
-      "Expected AddLayersDialog title bar icon to be an inline <svg> with white fill (#ffffff)"
+      /<svg[^>]*\bfill="currentColor"/,
+      "Expected AddLayersDialog title bar icon to be an inline <svg> filled with currentColor"
     );
 
     const addBtnMatch = html.match(
@@ -116,8 +116,8 @@ describe("AddLayersDialog and file: SVG Icon Color Rendering", () => {
     );
     assert.match(
       addBtnMatch[1],
-      /<svg[^>]*\bfill="#ffffff"/i,
-      'Expected "Add Layers" button icon to be an inline <svg> with white fill (#ffffff)'
+      /<svg[^>]*\bfill="currentColor"/,
+      'Expected "Add Layers" button icon to be an inline <svg> filled with currentColor'
     );
   });
 });

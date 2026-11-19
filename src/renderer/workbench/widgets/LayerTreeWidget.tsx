@@ -1032,7 +1032,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
             title='Toggle layer visibility'
           />
 
-          <span className='tree-icon-slot' style={{ color: "#2563eb" }}>
+          <span className='tree-icon-slot tree-layer-icon-slot'>
             <Icon
               path={iconPath}
               size='calc(var(--cartouche-ui-icon-size, 24px))'
@@ -1042,7 +1042,6 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           {isEditMode && (
             <span
               className='tree-icon-slot tree-edit-icon-slot'
-              style={{ color: "#2563eb" }}
               title={
                 t("tree_node_layer_in_edit_mode") || "Layer is in edit mode"
               }>
@@ -1108,7 +1107,6 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           {hasTemporal && (
             <span
               className='tree-icon-slot tree-temporal-icon-slot'
-              style={{ color: "#2563eb" }}
               title={
                 t("tree_node_layer_temporal_enabled")
                 || "Dynamic temporal control enabled"

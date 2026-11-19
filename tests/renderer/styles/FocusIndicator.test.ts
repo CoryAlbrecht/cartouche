@@ -4,7 +4,7 @@
  * @description Guardrail tests for the stylesheet side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #317 / #318 / #319): the Tier 1 / Tier 2 focus, invalid-state and control-accent tokens in theme-default.css; the single global :focus-visible / aria-invalid rule set in workbench.css that replaces the scattered per-component focus styling; the map-canvas-only outline suppression; the invalid-state rules reading only the invalid tokens; and the workbench.css classes of the migrated focusable controls reading only Tier 2 Component Tokens, in rem.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see FocusableControlStyling.test.ts
  */
@@ -398,8 +398,17 @@ describe("Invalid-state rules read only the invalid tokens (Ticket #319)", () =>
 });
 
 /**
+ * Custom properties a component sets inline to pass a data colour (the user's
+ * colour or gradient) into its workbench.css rule, which a Theme cannot change.
+ */
+const INLINE_DATA_COLOUR_PROPERTIES = new Set([
+  "--colour-picker-alpha-colour",
+  "--gradient-picker-stops",
+]);
+
+/**
  * @function assertTokenBound
- * @description Asserts that a declaration block sets no outline and no px/pt length, and reads only Tier 2 Component Tokens or UI sizing tokens (`--cartouche-ui-*`), so its colours come from the theme's Component Tokens.
+ * @description Asserts that a declaration block sets no outline and no px/pt length, and reads only Tier 2 Component Tokens, UI sizing tokens (`--cartouche-ui-*`) or the listed inline data colour properties, so its UI colours come from the theme's Component Tokens.
  * @param {string} body - Declaration block.
  * @param {string} where - Rule label for assertion messages.
  * @param {Set<string>} tier2 - Tier 2 Component Token names.
@@ -414,7 +423,9 @@ function assertTokenBound(
   assert.doesNotMatch(body, /\d(?:px|pt)\b/, `${where} uses px/pt units`);
   for (const [, token] of body.matchAll(/var\((--[a-z0-9-]+)/g)) {
     assert.ok(
-      tier2.has(token) || token.startsWith("--cartouche-ui-"),
+      tier2.has(token)
+        || token.startsWith("--cartouche-ui-")
+        || INLINE_DATA_COLOUR_PROPERTIES.has(token),
       `${where} reads ${token}, which is not a Tier 2 Component Token or a UI sizing token`
     );
   }

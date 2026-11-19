@@ -4,7 +4,7 @@
  * @description Characterisation tests pinning the markup of the labelled option rows in SimpleModeEditor: the Fill Colour, Stroke Colour and Gradient Stops picker rows (element id and class, `<span>` label); the Simple Line rows Stroke Width, Line Offset, Line Cap, Line Join, Dash Pattern, Dash Offset and Dash Array; and the Simple Marker rows Point Shape, Radius, Fill Colour, Stroke Colour and Stroke Width (`<label htmlFor>` paired with the row's control). Every row is a flex row with a 1rem gap and a 9rem label column; the Dash Array row aligns to the top and pads its label, which names the first dash input when there is one.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link SimpleModeEditor}
  */
@@ -57,7 +57,7 @@ function render(
 function row(id: string, label: string, controlClass: string): RegExp {
   return new RegExp(
     `<div id="${id}" class="${id}" style="display:flex;align-items:center;gap:1rem">`
-      + `<span style="width:9rem;font-size:0.8125rem;color:#334155">${label}:</span>`
+      + `<span class="layer-prop-label" style="width:9rem;font-size:0.8125rem">${label}:</span>`
       + `<button type="button"[^>]* class="${controlClass}"[^>]*>`
   );
 }
@@ -123,8 +123,8 @@ describe("SimpleModeEditor labelled option rows (Ticket #311)", () => {
   });
 });
 
-/** Inline style of the 9rem label column. */
-const LABEL_STYLE = "width:9rem;font-size:0.8125rem;color:#334155";
+/** Inline style of the 9rem label column; its colour comes from the layer-prop-label class (#362). */
+const LABEL_STYLE = "width:9rem;font-size:0.8125rem";
 
 /**
  * @function labelledRow
@@ -141,7 +141,7 @@ function labelledRow(
 ): string {
   return (
     '<div style="display:flex;align-items:center;gap:1rem">'
-    + `<label for="${htmlFor}" style="${LABEL_STYLE}">${label}:</label>`
+    + `<label for="${htmlFor}" class="layer-prop-label" style="${LABEL_STYLE}">${label}:</label>`
     + controlStart
   );
 }
@@ -257,7 +257,7 @@ describe("SimpleModeEditor Simple Line option rows (Ticket #315)", () => {
     includesRow(
       html,
       '<div style="display:flex;align-items:flex-start;gap:1rem">'
-        + `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
+        + `<span id="layer-prop-dash-array-label" class="layer-prop-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
         + '<div class="dash-array-control">'
     );
     assert.match(
@@ -278,7 +278,7 @@ describe("SimpleModeEditor Simple Line option rows (Ticket #315)", () => {
     includesRow(
       html,
       '<div style="display:flex;align-items:flex-start;gap:1rem">'
-        + `<span id="layer-prop-dash-array-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
+        + `<span id="layer-prop-dash-array-label" class="layer-prop-label" style="${LABEL_STYLE};padding-top:0.25rem">Dash Array:</span>`
     );
     assert.match(
       html,

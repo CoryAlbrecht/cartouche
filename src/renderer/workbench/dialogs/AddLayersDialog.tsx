@@ -4,7 +4,7 @@
  * @description Non-modal, resizable Add Layers dialog component for selecting, browsing, and attaching Vector, Raster, or Database spatial data sources to the project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link isAddLayersOpenSignal}
@@ -64,7 +64,7 @@ const sourceTabs: SourceTab[] = [
  * @description Renders a non-modal, resizable dialog window allowing users to browse and attach Vector, Raster, or Database spatial layers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Add Layers dialog window element or null if closed.
  */
@@ -273,7 +273,6 @@ export const AddLayersDialog: React.FC = () => {
         <Icon
           name='file:layers-plus-outline.svg'
           size='calc(var(--cartouche-ui-icon-size, 24px) * 0.75)'
-          color='#ffffff'
         />
       }
       isOpen={isOpen}
@@ -296,7 +295,6 @@ export const AddLayersDialog: React.FC = () => {
             <Icon
               name='file:layers-plus-outline.svg'
               size='calc(var(--cartouche-ui-icon-size, 24px) * 0.67)'
-              color='#ffffff'
             />
             <span>Add Layers</span>
           </button>
@@ -309,21 +307,17 @@ export const AddLayersDialog: React.FC = () => {
           flexDirection: "column",
           flex: 1,
           height: "100%",
-          backgroundColor: "#ffffff",
         }}>
         {/* Source Type Selector Tabs */}
         <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid #cbd5e1",
-            backgroundColor: "#f8fafc",
-            flexShrink: 0,
-          }}>
+          className='add-layers-source-tabs'
+          style={{ display: "flex", flexShrink: 0 }}>
           {sourceTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <div
                 key={tab.id}
+                className={`add-layers-source-tab${isActive ? " selected" : ""}`}
                 onClick={() => {
                   activeTabSignal.value = tab.id;
                 }}
@@ -336,10 +330,6 @@ export const AddLayersDialog: React.FC = () => {
                   gap: "6px",
                   cursor: "pointer",
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#1b446c" : "#64748b",
-                  borderBottom:
-                    isActive ? "2px solid #1b446c" : "2px solid transparent",
-                  backgroundColor: isActive ? "#ffffff" : "transparent",
                   userSelect: "none",
                   transition: "color 0.15s ease",
                 }}>
@@ -365,11 +355,11 @@ export const AddLayersDialog: React.FC = () => {
           }}>
           <div>
             <label
+              className='dialog-field-label'
               style={{
                 display: "block",
                 fontWeight: 600,
                 fontSize: "0.875rem",
-                color: "#334155",
                 marginBottom: "6px",
               }}>
               Vector Layer Files
@@ -378,6 +368,7 @@ export const AddLayersDialog: React.FC = () => {
               style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
               {activeTab === "vector" ?
                 <div
+                  className='add-layers-chip-box'
                   style={{
                     flex: 1,
                     display: "flex",
@@ -385,10 +376,8 @@ export const AddLayersDialog: React.FC = () => {
                     alignItems: "center",
                     gap: "6px",
                     padding: "4px 8px",
-                    border: "1px solid #cbd5e1",
                     borderRadius: "4px",
                     minHeight: "38px",
-                    backgroundColor: "#ffffff",
                     boxSizing: "border-box",
                     cursor: "text",
                   }}
@@ -399,13 +388,12 @@ export const AddLayersDialog: React.FC = () => {
                       <span
                         key={pathItem}
                         title={pathItem}
+                        className='add-layers-chip'
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
                           gap: "4px",
                           padding: "2px 8px 2px 10px",
-                          backgroundColor: "#e2e8f0",
-                          color: "#1e293b",
                           borderRadius: "12px",
                           fontSize: "0.8125rem",
                           fontWeight: 500,

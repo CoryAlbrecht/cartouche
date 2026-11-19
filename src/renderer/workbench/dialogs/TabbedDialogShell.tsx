@@ -4,7 +4,7 @@
  * @description Reusable sidebar-tabbed dialog body shared by LayerPropertiesDialog and ProjectPropertiesDialog: a left column of tab buttons (icon plus label) and a scrollable content area for the active tab's pane. The shell is presentational only; the caller owns the active tab id and the pane content.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link ProjectPropertiesDialog}
@@ -58,7 +58,7 @@ export interface TabbedDialogShellProps<TId extends string = string> {
  * @description Renders the sidebar-tab layout used by property dialogs: a fixed-width left column of tab buttons and a flexible, vertically scrolling content column. Clicking a tab reports its id; the caller decides which pane to render as children.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @template TId - String literal union of tab identifiers.
  * @param {TabbedDialogShellProps<TId>} props - Component properties.
@@ -72,22 +72,13 @@ export function TabbedDialogShell<TId extends string = string>(
 
   return (
     <div
-      className={`${prefix}-container`}
-      style={{
-        display: "flex",
-        flex: 1,
-        height: "100%",
-        overflow: "hidden",
-        backgroundColor: "#ffffff",
-        color: "#000000",
-      }}>
+      className={`dialog-tabbed-shell ${prefix}-container`}
+      style={{ display: "flex", flex: 1, height: "100%", overflow: "hidden" }}>
       {/* Left Sidebar Tabs */}
       <div
-        className={`${prefix}-sidebar`}
+        className={`dialog-sidebar ${prefix}-sidebar`}
         style={{
           width: "13rem",
-          borderRight: "1px solid #cbd5e1",
-          backgroundColor: "#f8fafc",
           display: "flex",
           flexDirection: "column",
           gap: "4px",

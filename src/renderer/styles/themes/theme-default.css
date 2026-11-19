@@ -259,6 +259,8 @@
   --cartouche-layer-tree-empty-title-fg: var(--cartouche-theme-fg-primary);
   --cartouche-layer-tree-drop-marker-bg: var(--cartouche-theme-primary);
   --cartouche-layer-tree-inline-input-border: var(--cartouche-theme-primary);
+  /* Layer, edit-mode and temporal icons on a layer row */
+  --cartouche-layer-tree-layer-icon-fg: var(--cartouche-theme-info);
 
   /* Menus & Dropdowns */
   --cartouche-menu-bg: var(--cartouche-theme-surface);
@@ -324,6 +326,20 @@
   --cartouche-dialog-footer-border: var(--cartouche-theme-border);
   --cartouche-dialog-button-hover-bg: var(--cartouche-theme-primary-hover);
   --cartouche-dialog-backdrop: var(--cartouche-theme-backdrop);
+  /* Dialog windows (Dialog, TabbedDialogShell, ModalDialog): body text, the
+     footer line, the tab sidebar, form field labels, and the source tab strip
+     of the Add Layers dialog */
+  --cartouche-dialog-window-fg: var(--cartouche-theme-fg);
+  --cartouche-dialog-window-footer-border: var(--cartouche-theme-border-strong);
+  --cartouche-dialog-sidebar-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-dialog-sidebar-border: var(--cartouche-theme-border-strong);
+  --cartouche-dialog-label-fg: var(--cartouche-theme-fg-strong);
+  --cartouche-dialog-tab-strip-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-dialog-tab-strip-border: var(--cartouche-theme-border-strong);
+  --cartouche-dialog-tab-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-dialog-tab-selected-bg: var(--cartouche-theme-surface);
+  --cartouche-dialog-tab-selected-fg: var(--cartouche-theme-primary);
+  --cartouche-dialog-tab-selected-border: var(--cartouche-theme-primary);
 
   /* Tables (TableWidget, Spec #322): outer border, lines between columns and rows, header row and Row Number Column, plain, alternating, Hover, Selected Row and Active Row backgrounds, and Read-Only Cell text */
   --cartouche-table-bg: var(--cartouche-theme-surface);
@@ -342,11 +358,7 @@
   --cartouche-table-readonly-selected-bg: var(--cartouche-theme-surface-alt);
   --cartouche-table-readonly-selected-fg: var(--cartouche-theme-fg-secondary);
 
-  /* Panel Toolbars (AttributeTableWidget and Console Log Panel): the panel toolbar and its
-     subtitle, icon buttons and their Hover, and the empty-panel message */
-  --cartouche-panel-toolbar-bg: var(--cartouche-theme-surface-subtle);
-  --cartouche-panel-toolbar-border: var(--cartouche-theme-border);
-  --cartouche-panel-subtitle-fg: var(--cartouche-theme-fg-muted);
+  /* Panel icon buttons and their Hover, and the empty-panel message */
   --cartouche-panel-icon-button-fg: var(--cartouche-theme-fg-muted);
   --cartouche-panel-icon-button-hover-bg: var(--cartouche-theme-surface-active);
   --cartouche-panel-icon-button-hover-fg: var(--cartouche-theme-fg-primary);
@@ -368,22 +380,6 @@
   --cartouche-crs-list-option-selected-bg: var(--cartouche-theme-info-subtle);
   --cartouche-crs-list-option-selected-fg: var(--cartouche-theme-info);
 
-  /* Console Log Panel: background, entry time, source, message and empty-state text,
-     and one fg/bg pair per Log Level badge */
-  --cartouche-console-bg: var(--cartouche-theme-surface);
-  --cartouche-console-time-fg: var(--cartouche-theme-fg-muted);
-  --cartouche-console-source-fg: var(--cartouche-theme-primary);
-  --cartouche-console-message-fg: var(--cartouche-theme-fg-primary);
-  --cartouche-console-empty-fg: var(--cartouche-theme-fg-subtle);
-  --cartouche-console-level-info-bg: var(--cartouche-theme-info-subtle);
-  --cartouche-console-level-info-fg: var(--cartouche-theme-info);
-  --cartouche-console-level-success-bg: var(--cartouche-theme-success-subtle);
-  --cartouche-console-level-success-fg: var(--cartouche-theme-success);
-  --cartouche-console-level-warn-bg: var(--cartouche-theme-warning-subtle);
-  --cartouche-console-level-warn-fg: var(--cartouche-theme-warning);
-  --cartouche-console-level-error-bg: var(--cartouche-theme-danger-subtle);
-  --cartouche-console-level-error-fg: var(--cartouche-theme-danger);
-
   /* Layer Properties Dialog: form field labels and read-only values, captions and
      the loading message, the Layer ID validation message, the Fields tab toolbar
      and the New Field dialog footer */
@@ -395,6 +391,30 @@
   --cartouche-layer-properties-toolbar-border: var(--cartouche-theme-border-strong);
   --cartouche-layer-properties-footer-bg: var(--cartouche-theme-surface-subtle);
   --cartouche-layer-properties-footer-border: var(--cartouche-theme-border);
+  /* Styling tab: secondary text (opacity value, preview title), the preview
+     panel and the 120 x 120 style preview canvas frame, the style validation
+     banners, the Simple Mode component stack and the locked component banner */
+  --cartouche-layer-properties-secondary-fg: var(--cartouche-theme-fg-secondary);
+  --cartouche-layer-properties-preview-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-layer-properties-preview-border: var(--cartouche-theme-border);
+  --cartouche-style-preview-bg: var(--cartouche-theme-surface);
+  --cartouche-style-preview-border: var(--cartouche-theme-border-strong);
+  --cartouche-style-validation-error-bg: var(--cartouche-theme-danger-subtle);
+  --cartouche-style-validation-error-border: var(--cartouche-theme-danger-bright);
+  --cartouche-style-validation-error-fg: var(--cartouche-theme-danger);
+  --cartouche-style-validation-valid-bg: var(--cartouche-theme-success-subtle);
+  --cartouche-style-validation-valid-border: var(--cartouche-theme-success);
+  --cartouche-style-validation-valid-fg: var(--cartouche-theme-success);
+  --cartouche-component-stack-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-component-stack-border: var(--cartouche-theme-border-strong);
+  --cartouche-component-stack-item-fg: var(--cartouche-theme-fg-primary);
+  --cartouche-component-stack-item-line: var(--cartouche-theme-border);
+  --cartouche-component-stack-item-selected-bg: var(--cartouche-theme-info-subtle);
+  --cartouche-component-stack-item-selected-marker: var(--cartouche-theme-info);
+  --cartouche-component-stack-lock-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-component-locked-banner-bg: var(--cartouche-theme-warning-subtle);
+  --cartouche-component-locked-banner-border: var(--cartouche-theme-warning);
+  --cartouche-component-locked-banner-fg: var(--cartouche-theme-fg-primary);
 
   /* Snapping Options Dialog: the dialog body, the empty-project notice, and the
      per-layer Control Matrix header and row lines */
@@ -464,6 +484,9 @@
   --cartouche-preferences-button-primary-hover-bg: var(--cartouche-theme-primary-hover);
   --cartouche-preferences-resize-handle-fg: var(--cartouche-theme-fg-subtle);
   --cartouche-preferences-resize-handle-hover-fg: var(--cartouche-theme-primary);
+  /* Auto-save status icons in the footer: changes pending, saving */
+  --cartouche-preferences-status-editing-fg: var(--cartouche-theme-fg-muted);
+  --cartouche-preferences-status-saving-fg: var(--cartouche-theme-primary);
 
   /* Inputs & Controls */
   --cartouche-input-bg: var(--cartouche-theme-surface);
@@ -491,6 +514,9 @@
 
   /* Chips (removable path tokens in Add Layers) */
   --cartouche-chip-remove-fg: var(--cartouche-theme-fg-muted);
+  /* Path chips (Add Layers vector files) */
+  --cartouche-chip-bg: var(--cartouche-theme-surface-active);
+  --cartouche-chip-fg: var(--cartouche-theme-fg-primary);
 
   /* Timestamp Spinner: highlight of the segment being edited */
   --cartouche-timestamp-segment-active-bg: var(--cartouche-theme-info-subtle);
@@ -512,6 +538,10 @@
   --cartouche-time-filter-step-arrows-border: var(--cartouche-theme-border);
   --cartouche-time-filter-frame-caption-fg: var(--cartouche-theme-fg-muted);
   --cartouche-time-filter-frame-label-fg: var(--cartouche-theme-fg-primary);
+  /* TimeFilterWidget panel and controls: background, text and field labels */
+  --cartouche-time-filter-bg: var(--cartouche-theme-surface-subtle);
+  --cartouche-time-filter-fg: var(--cartouche-theme-fg);
+  --cartouche-time-filter-label-fg: var(--cartouche-theme-fg-secondary);
 
   /* Focus Indicator (Spec #316): outline ring on most elements, border plus halo on text-entry controls. Width and offset are shared with the Invalid Focus Indicator. */
   --cartouche-focus-color: var(--cartouche-theme-primary);
@@ -543,6 +573,9 @@
   --cartouche-gradient-stop-border: var(--cartouche-theme-fg-muted);
   --cartouche-gradient-stop-active-border: var(--cartouche-theme-primary);
   --cartouche-gradient-stop-active-ring: var(--cartouche-theme-accent-focus);
+  /* GradientPickerWidget preview bar frame and the stop guide lines through it */
+  --cartouche-gradient-preview-border: var(--cartouche-theme-fg-strong);
+  --cartouche-gradient-stop-guide-bg: var(--cartouche-theme-fg);
   /* Picker buttons (ColourButton, GradientButton): face, border, the transparency
      checkerboard under the swatch, and the hairline outline around the swatch */
   --cartouche-picker-button-bg: var(--cartouche-theme-surface);
@@ -555,6 +588,11 @@
   --cartouche-picker-swatch-outline: var(--cartouche-theme-fg-subtle);
   /* ColourPickerWidget channel labels under the channel inputs */
   --cartouche-picker-channel-label-fg: var(--cartouche-theme-fg-muted);
+  /* ColourPickerWidget handles (surface reticle, hue and alpha pips): fill,
+     outline and shadow that stay visible over any colour */
+  --cartouche-picker-handle-bg: var(--cartouche-theme-bg);
+  --cartouche-picker-handle-border: var(--cartouche-theme-fg);
+  --cartouche-picker-handle-shadow: var(--cartouche-theme-shadow-strong);
   /* Picker dialog frame (PickerDialogFrame): text, border and footer that
      differ from the Dialog tokens; its face, shadow and footer line read
      --cartouche-dialog-bg, -shadow and -footer-border */

@@ -4,7 +4,7 @@
  * @description Base non-modal, resizable dialog container component wrapping DetachedWindowPortal for standardized window portals, title bars, and key handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link DetachedWindowPortal}
  * @see {@link PreferencesDialog}
@@ -66,7 +66,7 @@ export interface DialogProps {
  * @description Base container component for all non-modal, resizable dialog windows in Cartouche, standardizing title headers, portals, active stack registration, and Escape key dismissal.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {DialogProps} props - Component properties.
  * @returns {React.ReactElement | null} Rendered detached portal dialog window or null if closed.
@@ -148,8 +148,6 @@ export const Dialog: React.FC<DialogProps> = ({
           flexDirection: "column",
           width: "100%",
           height: "100%",
-          backgroundColor: "#ffffff",
-          color: "#000000",
           fontSize: "1rem",
           fontFamily: "system-ui, -apple-system, sans-serif",
           overflow: "hidden",
@@ -208,8 +206,6 @@ export const Dialog: React.FC<DialogProps> = ({
               justifyContent: "flex-end",
               gap: "0.625rem",
               padding: "0.625rem 1rem",
-              backgroundColor: "#f8fafc",
-              borderTop: "1px solid #cbd5e1",
               flexShrink: 0,
             }}>
             {footer}

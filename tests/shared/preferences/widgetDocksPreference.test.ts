@@ -4,7 +4,7 @@
  * @description Unit tests verifying registration, defaults, and descriptor constraints of ui.workbench.widgetDocks preference.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-10
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link DEFAULT_WORKBENCH_WIDGET_DOCKS}
@@ -41,7 +41,7 @@ describe("ui.workbench.widgetDocks Preference Registration", () => {
     );
   });
 
-  it("defines default dock allocations for built-in panels (layer-tree, attribute-table, console)", () => {
+  it("defines default dock allocations for built-in panels (layer-tree, time-filter, attribute-table)", () => {
     const docks: WorkbenchWidgetDocksState = DEFAULT_WORKBENCH_WIDGET_DOCKS;
 
     // Left dock contains visible layer-tree with width 260
@@ -69,8 +69,8 @@ describe("ui.workbench.widgetDocks Preference Registration", () => {
     assert.strictEqual(timeFilter.isOverlapContainer, false);
     assert.strictEqual(timeFilter.dimensions.height, 74);
 
-    // Bottom dock contains attribute-table and console (both initially hidden)
-    assert.strictEqual(docks.bottom.length, 2);
+    // Bottom dock contains only the attribute-table (initially hidden); the Console Panel was removed (#362)
+    assert.strictEqual(docks.bottom.length, 1);
     const attrTable = docks.bottom[0];
     assert.strictEqual(attrTable.id, "attribute-table");
     assert.strictEqual(attrTable.dock, "bottom");
@@ -78,13 +78,5 @@ describe("ui.workbench.widgetDocks Preference Registration", () => {
     assert.strictEqual(attrTable.axisRatio, 1);
     assert.strictEqual(attrTable.visible, false);
     assert.strictEqual(attrTable.dimensions.height, 200);
-
-    const consolePanel = docks.bottom[1];
-    assert.strictEqual(consolePanel.id, "console");
-    assert.strictEqual(consolePanel.dock, "bottom");
-    assert.strictEqual(consolePanel.order, 1);
-    assert.strictEqual(consolePanel.axisRatio, 1);
-    assert.strictEqual(consolePanel.visible, false);
-    assert.strictEqual(consolePanel.dimensions.height, 160);
   });
 });

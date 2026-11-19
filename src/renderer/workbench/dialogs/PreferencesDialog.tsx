@@ -4,7 +4,7 @@
  * @description Preferences dialog component for editing UI styling, toolbar icons, rendering thresholds, and plugin options with debounced automatic saving.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link preferencesMapSignal}
@@ -173,7 +173,7 @@ function resolveDescription(key: string, item: PreferenceItem): string {
  * @description Renders the tabbed application preferences dialog in a detached window portal, automatically saving user settings after a configurable debounced idle delay.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {React.ReactElement | null} Rendered detached portal preferences dialog or null if closed.
  */
@@ -1038,7 +1038,7 @@ export const PreferencesDialog: React.FC = () => {
                 path={mdiFileEditOutline}
                 size='calc(var(--cartouche-ui-icon-size, 24px) * 0.83)'
                 title='Changes pending auto-save...'
-                style={{ color: "#64748b" }}
+                className='preferences-status-editing'
               />
             )}
             {saveStatus === "saving" && (
@@ -1046,7 +1046,7 @@ export const PreferencesDialog: React.FC = () => {
                 path={isSyncIcon ? mdiSync : mdiCached}
                 size='calc(var(--cartouche-ui-icon-size, 24px) * 0.83)'
                 title='Auto-saving changes...'
-                style={{ color: "#1b446c" }}
+                className='preferences-status-saving'
               />
             )}
           </div>

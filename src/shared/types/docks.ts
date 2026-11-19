@@ -4,7 +4,7 @@
  * @description Type definitions and interfaces for flex-proportional dock layout state and docked widget items.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-10
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link WorkbenchWidgetDocksState}
  */
@@ -77,7 +77,7 @@ export type WorkbenchWidgetDocksState = Record<WidgetDockId, WidgetDockItem[]>;
  * @description Default flex-proportional dock layout assignments and ratios for Cartouche workbench panels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-10
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @type {WorkbenchWidgetDocksState}
  */
@@ -112,15 +112,6 @@ export const DEFAULT_WORKBENCH_WIDGET_DOCKS: WorkbenchWidgetDocksState = {
       order: 0,
       axisRatio: 1,
       dimensions: { height: 200 },
-      visible: false,
-      isOverlapContainer: false,
-    },
-    {
-      id: "console",
-      dock: "bottom",
-      order: 1,
-      axisRatio: 1,
-      dimensions: { height: 160 },
       visible: false,
       isOverlapContainer: false,
     },

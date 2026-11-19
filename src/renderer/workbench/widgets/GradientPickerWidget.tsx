@@ -4,7 +4,7 @@
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link ColourPickerWidget}
@@ -100,7 +100,7 @@ function areStopsEqual(a?: string[], b?: string[] | null): boolean {
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {GradientPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} GradientPickerWidget React component.
@@ -491,7 +491,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
    * @description Renders a boundary stop button flanking the preview bar scaled to ui.icon.size.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-09
-   * @updated 2026-11-16
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {GradientStop} stop - Target boundary gradient stop.
    * @returns {React.ReactElement} Stop button element.
@@ -516,7 +516,6 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
             width: `${swatchSize}px`,
             height: `${swatchSize}px`,
             backgroundColor: stop.color,
-            border: "1px solid rgba(0, 0, 0, 0.3)",
             boxSizing: "border-box",
           }}
         />
@@ -577,7 +576,6 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
                   width: `${swatchSize}px`,
                   height: `${swatchSize}px`,
                   backgroundColor: stop.color,
-                  border: "1px solid rgba(0, 0, 0, 0.3)",
                   boxSizing: "border-box",
                 }}
               />
@@ -610,9 +608,7 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
             flex: 1,
             height: "2lh",
             borderRadius: "3px",
-            border: "1px solid #333333",
-            backgroundImage: `linear-gradient(to right, ${gradientCss}), repeating-conic-gradient(#808080 0% 25%, #ffffff 0% 50%)`,
-            backgroundSize: "100% 100%, 12px 12px",
+            ["--gradient-picker-stops" as string]: gradientCss,
             cursor: "crosshair",
             userSelect: "none",
             boxSizing: "border-box",
@@ -646,10 +642,10 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
                   boxSizing: "border-box",
                 }}>
                 <div
+                  className='gradient-picker-stop-guide'
                   style={{
                     width: "1px",
                     height: "100%",
-                    backgroundColor: "#000000",
                     pointerEvents: "none",
                   }}
                 />

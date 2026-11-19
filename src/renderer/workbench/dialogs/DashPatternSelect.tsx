@@ -4,7 +4,7 @@
  * @description Dash pattern dropdown for Simple Line styles, built on the shared Select: localized text labels on the left and 128px horizontal stroke samples on the right, in both the trigger and the drop-down list.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link DashPatternSelect}
  * @see {@link DashPatternSample}
@@ -76,7 +76,7 @@ export interface DashPatternSampleProps {
  * @description Renders a 128px horizontal line using fixed neutral 2px black stroke, displaying solid lines, repeating preset dash intervals, blank spaces for no-line, or custom dash arrays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-04
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {DashPatternSampleProps} props - Component properties.
  * @returns {JSX.Element}
@@ -126,7 +126,7 @@ export const DashPatternSample: React.FC<DashPatternSampleProps> = ({
         y1={7}
         x2={128}
         y2={7}
-        stroke='#000000'
+        stroke='currentColor'
         strokeWidth={2}
         strokeDasharray={strokeDasharray}
         strokeLinecap='butt'

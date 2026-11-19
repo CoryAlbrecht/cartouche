@@ -4,7 +4,7 @@
  * @description Component tests for the shared TabbedDialogShell: sidebar tab rendering, active-tab styling, class prefixing, tab change callbacks, and pane content passthrough.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-16
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link TabbedDialogShell}
  */
@@ -88,8 +88,10 @@ describe("TabbedDialogShell (Ticket #268)", () => {
       classPrefix: "layer-properties",
       children: null,
     });
-    assert.ok(html.includes('class="layer-properties-container"'));
-    assert.ok(html.includes('class="layer-properties-sidebar"'));
+    assert.ok(
+      html.includes('class="dialog-tabbed-shell layer-properties-container"')
+    );
+    assert.ok(html.includes('class="dialog-sidebar layer-properties-sidebar"'));
     assert.ok(
       html.includes(
         'class="dialog-sidebar-tab layer-properties-tab-btn active"'

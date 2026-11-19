@@ -4,7 +4,7 @@
  * @description Unit and rendering tests for DashPatternSelect and DashPatternSample components verifying 128px stroke sample rendering, preset dash arrays, blank space for no-line, custom dash arrays, and trigger button state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link DashPatternSelect}
  * @see {@link DashPatternSample}
@@ -30,8 +30,8 @@ describe("DashPatternSample Component (Ticket #159)", () => {
     assert.ok(html.includes("<svg"), "Must render svg");
     assert.ok(html.includes('width="128"'), "SVG width must be 128");
     assert.ok(
-      html.includes('stroke="#000000"'),
-      "Stroke color must be #000000"
+      html.includes('stroke="currentColor"'),
+      "Stroke takes the text colour (currentColor), not a hard-coded colour (#362)"
     );
     assert.ok(html.includes('stroke-width="2"'), "Stroke width must be 2");
     assert.ok(

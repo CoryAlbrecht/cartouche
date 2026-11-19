@@ -1,10 +1,10 @@
 /**
  * @file ModalDialog.tsx
  * @module renderer/workbench/dialogs/ModalDialog
- * @description Standardized React portal-based modal dialog to block interaction with parent window, plus the sequential UnsavedChangesModal confirmation component.
+ * @description Standardized React portal-based modal dialog to block interaction with parent window, plus the sequential UnsavedChangesModal confirmation component. Its colours come from the shared Dialog classes in workbench.css (backdrop, title bar, body and footer), so it follows the Theme.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @component ModalDialog
  * @see {@link UnsavedChangesModal}
@@ -40,10 +40,10 @@ export interface ModalDialogProps {
 
 /**
  * @component ModalDialog
- * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI.
+ * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI. It reads the Theme's Dialog title bar, body and footer colours through workbench.css classes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {ModalDialogProps} props - Component properties.
  * @returns {React.ReactPortal | null} Rendered portal or null when closed.
@@ -74,13 +74,13 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
 
   return createPortal(
     <div
+      className='dialog-backdrop'
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
         backdropFilter: "blur(2px)",
         zIndex: 9999,
         display: "flex",
@@ -88,21 +88,20 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
         justifyContent: "center",
       }}>
       <div
+        className='cartouche-dialog-window modal-dialog-box'
         style={{
           width,
-          backgroundColor: "#ffffff",
           borderRadius: "6px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
         }}>
         {/* Header */}
         <div
+          className='cartouche-dialog-header'
           style={{
             padding: "12px 16px",
-            backgroundColor: "#1b446c",
-            color: "#ffffff",
+            fontSize: "1rem",
             fontWeight: 600,
             display: "flex",
             justifyContent: "space-between",
@@ -113,22 +112,17 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
 
         {/* Body */}
         <div
-          style={{
-            padding: "16px",
-            color: "#000000",
-            fontSize: "1rem",
-            lineHeight: 1.5,
-          }}>
+          className='cartouche-dialog-body'
+          style={{ padding: "16px", fontSize: "1rem", lineHeight: 1.5 }}>
           {children}
         </div>
 
         {/* Footer */}
         {buttons && buttons.length > 0 && (
           <div
+            className='cartouche-dialog-footer'
             style={{
               padding: "12px 16px",
-              backgroundColor: "#f8fafc",
-              borderTop: "1px solid #cbd5e1",
               display: "flex",
               justifyContent: "flex-end",
               gap: "8px",

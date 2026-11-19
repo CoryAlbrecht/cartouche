@@ -4,7 +4,7 @@
  * @description Real-time 120×120px HTML5 Canvas 2D preview renderer displaying sample geometries styled with Cartouche Symbology, screen-anchored gradient fills, OpenLayers Flat Style, or OGC SLD rules.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-09
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link StylePreviewCanvas}
  * @see {@link renderStylePreviewToCanvas}
@@ -402,7 +402,7 @@ export interface StylePreviewCanvasProps {
  * @description Displays a 120×120px real-time preview of the active draft style on sample geometry.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {StylePreviewCanvasProps} props - Component properties.
  * @returns {JSX.Element}
@@ -444,8 +444,6 @@ export const StylePreviewCanvas: React.FC<StylePreviewCanvasProps> = ({
         width: "120px",
         height: "120px",
         borderRadius: "0.25rem",
-        border: "1px solid #cbd5e1",
-        backgroundColor: "#ffffff",
         display: "block",
       }}
     />

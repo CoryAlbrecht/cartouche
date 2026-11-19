@@ -509,6 +509,11 @@
   background-color: var(--cartouche-map-viewport-bg) !important;
 }
 
+/* MapViewportPanel host element around the OpenLayers viewport. */
+.map-viewport-container {
+  background-color: var(--cartouche-map-viewport-bg);
+}
+
 /* =========================================================================
    Widget System Styles
    ========================================================================= */
@@ -823,17 +828,6 @@
   display: none !important;
 }
 
-.panel-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  background-color: var(--cartouche-panel-toolbar-bg);
-  border-bottom: 1px solid var(--cartouche-panel-toolbar-border);
-  font-size: 0.875rem;
-  user-select: none;
-}
-
 .layer-tree-header {
   background-color: var(--cartouche-layer-tree-header-bg) !important;
   cursor: grab;
@@ -841,18 +835,6 @@
 
 .layer-tree-header:active {
   cursor: grabbing;
-}
-
-.panel-subtitle {
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--cartouche-panel-subtitle-fg);
-}
-
-.panel-toolbar-actions {
-  display: flex;
-  gap: 4px;
 }
 
 .icon-btn {
@@ -1036,6 +1018,13 @@
   flex-shrink: 0;
 }
 
+/* Layer, edit-mode and temporal icons on a layer row; group and project icons inherit the row text colour. */
+.tree-layer-icon-slot,
+.tree-edit-icon-slot,
+.tree-temporal-icon-slot {
+  color: var(--cartouche-layer-tree-layer-icon-fg);
+}
+
 .tree-edit-icon-slot {
   margin-left: 2px;
 }
@@ -1215,81 +1204,6 @@
   height: 100%;
   color: var(--cartouche-panel-empty-fg);
   font-size: 1rem;
-}
-
-/* Console Log Panel */
-.console-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: var(--cartouche-console-bg);
-  font-family: var(--cartouche-theme-font-family-mono);
-}
-
-.console-log-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.console-entry {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.log-time {
-  color: var(--cartouche-console-time-fg);
-  font-size: 0.7917rem;
-}
-
-.log-source {
-  color: var(--cartouche-console-source-fg);
-  font-size: 0.8333rem;
-  font-weight: 600;
-}
-
-.log-badge {
-  font-size: 0.7083rem;
-  padding: 0 4px;
-  border-radius: 2px;
-  font-weight: bold;
-}
-
-.badge-info {
-  background-color: var(--cartouche-console-level-info-bg);
-  color: var(--cartouche-console-level-info-fg);
-}
-
-.badge-success {
-  background-color: var(--cartouche-console-level-success-bg);
-  color: var(--cartouche-console-level-success-fg);
-}
-
-.badge-warn {
-  background-color: var(--cartouche-console-level-warn-bg);
-  color: var(--cartouche-console-level-warn-fg);
-}
-
-.badge-error {
-  background-color: var(--cartouche-console-level-error-bg);
-  color: var(--cartouche-console-level-error-fg);
-}
-
-.log-message {
-  color: var(--cartouche-console-message-fg);
-  word-break: break-all;
-}
-
-.console-empty {
-  color: var(--cartouche-console-empty-fg);
-  font-style: italic;
-  padding: 10px;
 }
 
 /* Tab Close Button protection */
@@ -2023,6 +1937,15 @@
   color: var(--cartouche-preferences-shortcut-hint-fg);
 }
 
+/* Auto-save status icons in the PreferencesDialog footer. */
+.preferences-status-editing {
+  color: var(--cartouche-preferences-status-editing-fg);
+}
+
+.preferences-status-saving {
+  color: var(--cartouche-preferences-status-saving-fg);
+}
+
 .preferences-footer-buttons {
   display: flex;
   align-items: center;
@@ -2142,6 +2065,35 @@
 .cartouche-dialog-close-btn:hover {
   opacity: 1;
   background-color: var(--cartouche-dialog-titlebar-button-hover-bg);
+}
+
+/* Dialog window surface and text (Dialog, TabbedDialogShell), the footer bar
+   of Dialog and ModalDialog, and the TabbedDialogShell tab sidebar. Layout
+   stays inline. */
+.cartouche-dialog-window,
+.dialog-tabbed-shell {
+  background-color: var(--cartouche-dialog-bg);
+  color: var(--cartouche-dialog-window-fg);
+}
+
+.cartouche-dialog-footer {
+  background-color: var(--cartouche-dialog-footer-bg);
+  border-top: 0.0625rem solid var(--cartouche-dialog-window-footer-border);
+}
+
+.dialog-sidebar {
+  background-color: var(--cartouche-dialog-sidebar-bg);
+  border-right: 0.0625rem solid var(--cartouche-dialog-sidebar-border);
+}
+
+/* Backdrop behind an in-window modal (ModalDialog, PickerDialogFrame). */
+.dialog-backdrop {
+  background-color: var(--cartouche-dialog-backdrop);
+}
+
+/* Form field labels in Dialogs (Project Properties, Project CRS, Add Layers). */
+.dialog-field-label {
+  color: var(--cartouche-dialog-label-fg);
 }
 
 /* =============================================================================
@@ -2478,6 +2430,37 @@
   font-size: 0.875rem;
 }
 
+/* Add Layers dialog body, source tab strip and tabs, and the vector path chip box and chips. */
+.add-layer-dialog-container {
+  background-color: var(--cartouche-dialog-bg);
+}
+
+.add-layers-source-tabs {
+  background-color: var(--cartouche-dialog-tab-strip-bg);
+  border-bottom: 0.0625rem solid var(--cartouche-dialog-tab-strip-border);
+}
+
+.add-layers-source-tab {
+  color: var(--cartouche-dialog-tab-fg);
+  border-bottom: 0.125rem solid transparent;
+}
+
+.add-layers-source-tab.selected {
+  color: var(--cartouche-dialog-tab-selected-fg);
+  background-color: var(--cartouche-dialog-tab-selected-bg);
+  border-bottom-color: var(--cartouche-dialog-tab-selected-border);
+}
+
+.add-layers-chip-box {
+  background-color: var(--cartouche-input-bg);
+  border: 0.0625rem solid var(--cartouche-input-border);
+}
+
+.add-layers-chip {
+  background-color: var(--cartouche-chip-bg);
+  color: var(--cartouche-chip-fg);
+}
+
 /* Time Filter Step input and its 1.00 arrows. The Unit dropdown beside it is
    a compact Select, whose height matches the Step input's. */
 .time-filter-step-input {
@@ -2517,6 +2500,20 @@
 
 .time-filter-step-arrows {
   border-left: 0.0625rem solid var(--cartouche-time-filter-step-arrows-border);
+}
+
+/* TimeFilterWidget panel, TimeFilterControls text and their field labels (From, To, Step, Enabled). */
+.time-filter-widget-container {
+  background-color: var(--cartouche-time-filter-bg);
+  color: var(--cartouche-time-filter-fg);
+}
+
+.time-filter-controls {
+  color: var(--cartouche-time-filter-fg);
+}
+
+.time-filter-field-label {
+  color: var(--cartouche-time-filter-label-fg);
 }
 
 .time-filter-current-frame-caption {
@@ -2867,6 +2864,7 @@
 
 .layer-properties-loading,
 .layer-prop-dialect-caption,
+.layer-prop-unit,
 .new-field-dialog-placeholder {
   color: var(--cartouche-layer-properties-caption-fg);
 }
@@ -2897,6 +2895,67 @@
 
 .new-field-dialog-btn.layer-prop-btn-primary {
   font-weight: 500;
+}
+
+/* Styling tab (StyleEditor): preview panel, its title, the opacity value, the
+   style preview canvas frame and the style validation banners. */
+.layer-prop-preview-container {
+  background-color: var(--cartouche-layer-properties-preview-bg);
+  border: 0.0625rem solid var(--cartouche-layer-properties-preview-border);
+}
+
+.layer-prop-preview-title,
+.layer-prop-opacity-value {
+  color: var(--cartouche-layer-properties-secondary-fg);
+}
+
+.layer-prop-styling-preview-canvas {
+  background-color: var(--cartouche-style-preview-bg);
+  border: 0.0625rem solid var(--cartouche-style-preview-border);
+}
+
+.style-validation-error {
+  background-color: var(--cartouche-style-validation-error-bg);
+  border: 0.0625rem solid var(--cartouche-style-validation-error-border);
+  color: var(--cartouche-style-validation-error-fg);
+}
+
+.style-validation-valid {
+  background-color: var(--cartouche-style-validation-valid-bg);
+  border: 0.0625rem solid var(--cartouche-style-validation-valid-border);
+  color: var(--cartouche-style-validation-valid-fg);
+}
+
+/* Simple Mode (SimpleModeEditor): component stack list and its rows, the
+   selected row, the row colour swatch and lock icon, and the locked banner. */
+.layer-prop-component-stack-list {
+  background-color: var(--cartouche-component-stack-bg);
+  border: 0.0625rem solid var(--cartouche-component-stack-border);
+}
+
+.layer-prop-component-item {
+  color: var(--cartouche-component-stack-item-fg);
+  border-bottom: 0.0625rem solid var(--cartouche-component-stack-item-line);
+  border-left: 0.1875rem solid transparent;
+}
+
+.layer-prop-component-item.selected {
+  background-color: var(--cartouche-component-stack-item-selected-bg);
+  border-left-color: var(--cartouche-component-stack-item-selected-marker);
+}
+
+.layer-prop-component-swatch {
+  border: 0.0625rem solid var(--cartouche-picker-swatch-outline);
+}
+
+.layer-prop-component-lock {
+  color: var(--cartouche-component-stack-lock-fg);
+}
+
+.component-locked-banner {
+  background-color: var(--cartouche-component-locked-banner-bg);
+  border: 0.0625rem solid var(--cartouche-component-locked-banner-border);
+  color: var(--cartouche-component-locked-banner-fg);
 }
 
 /* Primary button colours (secondary colours share the rule after .dialog-btn). */
@@ -3057,6 +3116,17 @@
   font-size: 1rem;
 }
 
+/* Generic in-window ModalDialog: it takes the Dialog window, title bar, body
+   and footer classes, adds a shadow, and its title bar does not drag the
+   Workbench window it sits in. */
+.modal-dialog-box {
+  box-shadow: 0 0.25rem 0.75rem var(--cartouche-dialog-shadow);
+}
+
+.modal-dialog-box .cartouche-dialog-header {
+  -webkit-app-region: no-drag;
+}
+
 /* Compact secondary button beside a text field (Project Properties Save As…). */
 .dialog-btn-compact {
   padding: 0.3125rem 0.75rem;
@@ -3070,12 +3140,6 @@
   align-items: center;
   justify-content: center;
   padding: 0.25rem 0.5rem;
-}
-
-/* Console panel toolbar buttons (no colours of their own). */
-.console-panel .small-action-btn {
-  padding: 0.125rem 0.5rem;
-  font-size: 0.75rem;
 }
 
 /* Tabbed dialog sidebar tabs (Project Properties, Layer Properties, pickers). */
@@ -3383,6 +3447,42 @@
 /* ColourPickerWidget channel label under each channel input. */
 .colour-picker-channel-label {
   color: var(--cartouche-picker-channel-label-fg);
+}
+
+/* ColourPickerWidget handles: they keep a light fill and dark outline over any colour. */
+.colour-picker-reticle {
+  border: 0.125rem solid var(--cartouche-picker-handle-bg);
+  box-shadow: 0 0 0.125rem var(--cartouche-picker-handle-border), inset 0 0 0.0625rem var(--cartouche-picker-handle-border);
+}
+
+.colour-picker-hue-pip,
+.colour-picker-alpha-pip {
+  background-color: var(--cartouche-picker-handle-bg);
+  border: 0.0625rem solid var(--cartouche-picker-handle-border);
+  box-shadow: 0 0 0.125rem var(--cartouche-picker-handle-shadow);
+}
+
+/* Transparency strip: the user's colour (--colour-picker-alpha-colour, set
+   inline) fading to transparent over the transparency checkerboard. */
+.colour-picker-alpha-strip {
+  background: linear-gradient(to right, transparent, var(--colour-picker-alpha-colour)), conic-gradient(var(--cartouche-picker-swatch-checker-dark) 90deg, var(--cartouche-picker-swatch-checker-light) 90deg 180deg, var(--cartouche-picker-swatch-checker-dark) 180deg 270deg, var(--cartouche-picker-swatch-checker-light) 270deg) 0 0 / 0.5rem 0.5rem;
+}
+
+/* GradientPickerWidget: stop swatch outline, and the preview bar showing the
+   gradient (--gradient-picker-stops, set inline) over the transparency
+   checkerboard, with a guide line through it at each stop. */
+.gradient-stop-swatch {
+  border: 0.0625rem solid var(--cartouche-picker-swatch-outline);
+}
+
+.gradient-picker-preview-bar {
+  border: 0.0625rem solid var(--cartouche-gradient-preview-border);
+  background-image: linear-gradient(to right, var(--gradient-picker-stops)), repeating-conic-gradient(var(--cartouche-picker-swatch-checker-dark) 0% 25%, var(--cartouche-picker-swatch-checker-light) 0% 50%);
+  background-size: 100% 100%, 0.75rem 0.75rem;
+}
+
+.gradient-picker-stop-guide {
+  background-color: var(--cartouche-gradient-stop-guide-bg);
 }
 
 /* Colour and Gradient picker dialog header bar (PickerDialogFrame). */

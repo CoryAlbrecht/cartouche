@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality (Ticket #92, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -1029,10 +1029,9 @@ describe("LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
       "Dynamic temporal control enabled",
       "Clock icon must have accessible tooltip"
     );
-    assert.strictEqual(
-      clockSpan.style.color,
-      "#2563eb",
-      "Clock icon must use #2563eb accent color"
+    assert.ok(
+      !clockSpan.style.color,
+      "Clock icon takes its colour from the tree-temporal-icon-slot class, not inline (#362)"
     );
 
     // Verify SVG icon path

@@ -4,7 +4,7 @@
  * @description Unit tests for dockLayoutEngine, validating flex-proportional sizing, minimum dimension floors, sash ratio synchronization, cross-axis unification, and dock transfer ratio resets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-05
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link calculateProportionalSizes}
  * @see {@link recalculateSashRatios}
@@ -237,8 +237,15 @@ describe("dockLayoutEngine", () => {
 
     it("synchronizes height across all panels in a horizontal dock", () => {
       const p1 = createMockPanel("attribute-table", 400, 200);
-      const p2 = createMockPanel("console", 400, 160);
+      const p2 = createMockPanel("time-filter", 400, 160);
       const api = createMockDockviewApi([p1, p2]);
+      // Two widgets in the bottom dock: the default attribute-table, and time-filter moved down from the top.
+      const { top, bottom } = widgetDocksSignal.value;
+      widgetDocksSignal.value = {
+        ...widgetDocksSignal.value,
+        top: [],
+        bottom: [...bottom, { ...top[0], dock: "bottom", order: 1 }],
+      };
 
       syncDockCrossAxis("bottom", 240, api);
       assert.equal(p1.api.height, 240);

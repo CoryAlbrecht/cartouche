@@ -598,8 +598,6 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               width: "12px",
               height: "12px",
               borderRadius: "50%",
-              border: "2px solid #ffffff",
-              boxShadow: "0 0 2px #000000, inset 0 0 1px #000000",
               transform: "translate(-50%, -50%)",
               pointerEvents: "none",
             }}
@@ -641,12 +639,9 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                 top: 0,
                 bottom: 0,
                 width: "4px",
-                backgroundColor: "#ffffff",
-                border: "1px solid #000000",
                 borderRadius: "1px",
                 transform: "translateX(-50%)",
                 pointerEvents: "none",
-                boxShadow: "0 0 2px rgba(0,0,0,0.5)",
               }}
             />
           </div>
@@ -660,10 +655,10 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
               onPointerMove={handleAlphaPointerMove}
               onPointerUp={handleAlphaPointerUp}
               style={{
+                ["--colour-picker-alpha-colour" as string]: `rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})`,
                 position: "relative",
                 height: "1lh",
                 minHeight: "16px",
-                background: `linear-gradient(to right, transparent, rgb(${currentSrgb.r}, ${currentSrgb.g}, ${currentSrgb.b})), conic-gradient(#cccccc 90deg, #ffffff 90deg 180deg, #cccccc 180deg 270deg, #ffffff 270deg) 0 0 / 8px 8px`,
                 borderRadius: "3px",
                 cursor: "ew-resize",
                 touchAction: "none",
@@ -677,12 +672,9 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
                   top: 0,
                   bottom: 0,
                   width: "4px",
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #000000",
                   borderRadius: "1px",
                   transform: "translateX(-50%)",
                   pointerEvents: "none",
-                  boxShadow: "0 0 2px rgba(0,0,0,0.5)",
                 }}
               />
             </div>

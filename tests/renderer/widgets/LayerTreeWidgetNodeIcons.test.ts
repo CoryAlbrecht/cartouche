@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget tree node line icons (layer geometry, group chevrons, folder outlines, and project root logo) scale to 80% of --cartouche-ui-icon-size via CSS custom properties and adapt row line slot dimensions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-14
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see {@link prefsUiIconSize}
@@ -801,10 +801,9 @@ describe("LayerTreeWidget Node Line Icon Sizing (Ticket #54)", () => {
       "Dynamic temporal control enabled",
       "Should display accessible tooltip"
     );
-    assert.strictEqual(
-      clockSpan.style.color,
-      "#2563eb",
-      "Should use #2563eb accent color"
+    assert.ok(
+      !clockSpan.style.color,
+      "Should take its colour from the tree-temporal-icon-slot class, not inline (#362)"
     );
 
     // Verify SVG icon path matches mdiClockTimeFourOutline

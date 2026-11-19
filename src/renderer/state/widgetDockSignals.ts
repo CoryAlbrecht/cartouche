@@ -4,7 +4,7 @@
  * @description Preact reactive signals store and helper operations for workbench flex-proportional dock layout state, axis ratios, display ordering, and overlap container persistence.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-05
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link WorkbenchWidgetDocksState}
  * @see {@link WidgetDockItem}
@@ -278,12 +278,57 @@ export async function setWidgetDockItemVisibility(
 }
 
 /**
+ * Widget ids that saved dock layouts may still hold but that no longer exist: the Console Panel (#362).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-19
+ * @updated 2026-11-19
+ * @since 0.1.0-dev
+ * @type {ReadonlySet<string>}
+ */
+const REMOVED_WIDGET_IDS: ReadonlySet<string> = new Set(["console"]);
+
+/**
+ * @function withoutRemovedWidgets
+ * @description Drops removed widgets from a saved dock layout: their dock items, and their tabs inside overlap containers (making the first remaining tab the Front Tab), then renumbers each dock's order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-19
+ * @updated 2026-11-19
+ * @since 0.1.0-dev
+ * @param {WorkbenchWidgetDocksState} docks - Saved dock layout.
+ * @returns {WorkbenchWidgetDocksState} The layout without removed widgets.
+ */
+function withoutRemovedWidgets(
+  docks: WorkbenchWidgetDocksState
+): WorkbenchWidgetDocksState {
+  const clean = (items: WidgetDockItem[]): WidgetDockItem[] =>
+    items
+      .filter((item) => !REMOVED_WIDGET_IDS.has(item.id))
+      .map((item, order) => {
+        if (!item.tabChildren) return { ...item, order };
+        const tabChildren = item.tabChildren.filter(
+          (id) => !REMOVED_WIDGET_IDS.has(id)
+        );
+        const activeTabId =
+          item.activeTabId && REMOVED_WIDGET_IDS.has(item.activeTabId) ?
+            tabChildren[0]
+          : item.activeTabId;
+        return { ...item, order, tabChildren, activeTabId };
+      });
+  return {
+    left: clean(docks.left),
+    right: clean(docks.right),
+    top: clean(docks.top),
+    bottom: clean(docks.bottom),
+  };
+}
+
+/**
  * Hydrates widgetDocksSignal from an incoming PreferenceMap if present.
  * @function hydrateWidgetDocksFromPreferences
- * @description Synchronizes widgetDocksSignal with persisted preference value from Main process.
+ * @description Synchronizes widgetDocksSignal with persisted preference value from Main process, dropping widgets that no longer exist (the Console Panel).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-04
- * @updated 2026-11-05
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {PreferenceMap} prefs - Loaded preferences map.
  */
@@ -292,7 +337,7 @@ export function hydrateWidgetDocksFromPreferences(prefs: PreferenceMap): void {
   if (pref && typeof pref.value === "object" && pref.value !== null) {
     const val = pref.value as WorkbenchWidgetDocksState;
     if (val.left && val.right && val.top && val.bottom) {
-      widgetDocksSignal.value = val;
+      widgetDocksSignal.value = withoutRemovedWidgets(val);
     }
   }
 }

@@ -4,7 +4,7 @@
  * @description Reusable style editor shared by the Layer Properties Styling Tab and the Project Properties Default Styles tab: the style format dropdown, Load / Export / Reset actions, the Cartouche Symbology component editor or the raw text editor (with validation banner and undo/redo history), and the live preview canvas. The editor is controlled: it receives a StyleEditorValue and a geometry kind and reports every change as a value patch through `onChange`, with no dependency on any dialog draft store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link SimpleModeEditor}
@@ -386,7 +386,7 @@ export interface StyleEditorProps {
  * @description Controlled editor for one style value: format selection with per-format text cache, file load/export/reset, Cartouche Symbology component editing or raw text editing with live validation, and a 120×120 preview.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {StyleEditorProps} props - Component properties.
  * @returns {JSX.Element} The editor controls.
@@ -558,7 +558,8 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <label
             htmlFor={`${idPrefix}-styling-format`}
-            style={{ fontWeight: 500, fontSize: "0.875rem", color: "#334155" }}>
+            className='layer-prop-label'
+            style={{ fontWeight: 500, fontSize: "0.875rem" }}>
             {t("layer_properties_styling_format")}:
           </label>
           <Select
@@ -639,11 +640,11 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
               style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <label
                 htmlFor={`${idPrefix}-layer-opacity`}
+                className='layer-prop-label'
                 style={{
                   width: "11rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
-                  color: "#334155",
                 }}>
                 {t("layer_properties_styling_layer_opacity")}:
               </label>
@@ -658,11 +659,11 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                 onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
               />
               <span
+                className='layer-prop-opacity-value'
                 style={{
                   width: "3.5rem",
                   textAlign: "right",
                   fontSize: "0.875rem",
-                  color: "#475569",
                 }}>
                 {Math.round(previewOpacity * 100)}%
               </span>
@@ -700,10 +701,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                   className='style-validation-banner style-validation-error'
                   style={{
                     padding: "0.5rem 0.75rem",
-                    backgroundColor: "#fee2e2",
-                    border: "1px solid #f87171",
                     borderRadius: "0.25rem",
-                    color: "#b91c1c",
                     fontSize: "0.875rem",
                     fontWeight: 500,
                   }}>
@@ -714,10 +712,7 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                   className='style-validation-banner style-validation-valid'
                   style={{
                     padding: "0.5rem 0.75rem",
-                    backgroundColor: "#dcfce7",
-                    border: "1px solid #86efac",
                     borderRadius: "0.25rem",
-                    color: "#15803d",
                     fontSize: "0.875rem",
                     fontWeight: 500,
                   }}>
@@ -734,11 +729,8 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
                 }}>
                 <label
                   htmlFor={`${idPrefix}-styling-raw-style`}
-                  style={{
-                    fontWeight: 500,
-                    fontSize: "0.875rem",
-                    color: "#334155",
-                  }}>
+                  className='layer-prop-label'
+                  style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                   {t("layer_properties_styling_raw_style")}
                 </label>
                 <textarea
@@ -767,17 +759,15 @@ export const StyleEditor: React.FC<StyleEditorProps> = ({
             alignItems: "center",
             gap: "0.5rem",
             padding: "0.75rem",
-            backgroundColor: "#f8fafc",
-            border: "1px solid #e2e8f0",
             borderRadius: "0.25rem",
             width: "140px",
             flexShrink: 0,
           }}>
           <div
+            className='layer-prop-preview-title'
             style={{
               fontWeight: 600,
               fontSize: "0.8125rem",
-              color: "#475569",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
             }}>

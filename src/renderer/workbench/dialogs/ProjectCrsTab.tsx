@@ -4,7 +4,7 @@
  * @description CRS tab of the Project Properties dialog: a "No CRS" checkbox (disabling the lists), a labelled filter box (cleared each time the dialog opens) matching name and `AUTH:code` case-insensitively on both lists, the Recently Used list (five rows, scrolling), the Predefined list from the CRS Catalogue (ten rows, scrolling, a building placeholder while the catalogue builds), and the "Hide Deprecated CRSs" checkbox bound to the `crs.hideDeprecated` app preference. Selecting in either list selects in the other, and a list that does not hold the selected CRS shows no row selected; selecting in Predefined adds the CRS to the top of the draft Recently Used list. The current Project CRS and Recently Used entries stay visible even when deprecated, marked "(deprecated)". Below the lists, the Coordinate Reference System Info panel shows the selected CRS as selectable plain text, built in the main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link selectDraftCrs}
@@ -72,17 +72,16 @@ const SECTION_STYLE: React.CSSProperties = {
 };
 
 /**
- * Shared section label style.
+ * Shared section label layout; the colour comes from the `dialog-field-label` class.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @type {React.CSSProperties}
  */
 const SECTION_LABEL_STYLE: React.CSSProperties = {
   fontWeight: 500,
   fontSize: "0.875rem",
-  color: "#334155",
 };
 
 /**
@@ -143,7 +142,7 @@ export function clearUnmatchedListSelection(
  * @description Renders the CRS tab bound to the project properties draft. After every render it clears any selection React left on a list that does not hold the selected CRS ({@link clearUnmatchedListSelection}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {Object} props - Component properties (none).
  * @returns {JSX.Element} The CRS tab pane.
@@ -229,7 +228,10 @@ export const ProjectCrsTab: React.FC = () => {
       </label>
 
       <div style={SECTION_STYLE}>
-        <label htmlFor='project-prop-crs-filter' style={SECTION_LABEL_STYLE}>
+        <label
+          htmlFor='project-prop-crs-filter'
+          className='dialog-field-label'
+          style={SECTION_LABEL_STYLE}>
           {t("project_properties_crs_filter")}
         </label>
         <input
@@ -246,7 +248,10 @@ export const ProjectCrsTab: React.FC = () => {
       </div>
 
       <div style={SECTION_STYLE}>
-        <label htmlFor='project-prop-crs-recent' style={SECTION_LABEL_STYLE}>
+        <label
+          htmlFor='project-prop-crs-recent'
+          className='dialog-field-label'
+          style={SECTION_LABEL_STYLE}>
           {t("project_properties_crs_recent")}
         </label>
         <select
@@ -272,6 +277,7 @@ export const ProjectCrsTab: React.FC = () => {
       <div style={SECTION_STYLE}>
         <label
           htmlFor='project-prop-crs-predefined'
+          className='dialog-field-label'
           style={SECTION_LABEL_STYLE}>
           {t("project_properties_crs_predefined")}
         </label>
@@ -301,7 +307,7 @@ export const ProjectCrsTab: React.FC = () => {
       </div>
 
       <div style={SECTION_STYLE}>
-        <span style={SECTION_LABEL_STYLE}>
+        <span className='dialog-field-label' style={SECTION_LABEL_STYLE}>
           {t("project_properties_crs_info")}
         </span>
         <pre
