@@ -345,6 +345,75 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
     );
   });
 
+  it("defines the Dialog title bar and About ModalDialog Tier 2 tokens (#355)", () => {
+    const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
+    const workbench = fs.readFileSync(workbenchCssPath, "utf-8");
+
+    // Each Dialog token mapped to the Tier 1 primitive its rule read before #355,
+    // so no rendered colour changes.
+    const dialogTokenMappings: Record<string, string> = {
+      "--cartouche-dialog-titlebar-bg": "var(--cartouche-theme-primary)",
+      "--cartouche-dialog-titlebar-fg": "var(--cartouche-theme-fg-inverted)",
+      "--cartouche-dialog-bg": "var(--cartouche-theme-surface)",
+      "--cartouche-dialog-fg": "var(--cartouche-theme-fg-primary)",
+      "--cartouche-dialog-border": "var(--cartouche-theme-border-strong)",
+      "--cartouche-dialog-shadow": "var(--cartouche-theme-shadow-strong)",
+      "--cartouche-dialog-header-bg": "var(--cartouche-theme-surface-subtle)",
+      "--cartouche-dialog-header-fg": "var(--cartouche-theme-fg)",
+      "--cartouche-dialog-header-border": "var(--cartouche-theme-border)",
+      "--cartouche-dialog-subtitle-fg": "var(--cartouche-theme-fg-muted)",
+      "--cartouche-dialog-inset-bg": "var(--cartouche-theme-surface-alt)",
+      "--cartouche-dialog-footer-bg": "var(--cartouche-theme-surface-subtle)",
+      "--cartouche-dialog-footer-border": "var(--cartouche-theme-border)",
+      "--cartouche-dialog-button-hover-bg":
+        "var(--cartouche-theme-primary-hover)",
+    };
+    for (const [token, value] of Object.entries(dialogTokenMappings)) {
+      assert.ok(
+        content.includes(`${token}: ${value};`),
+        `theme-default.css must map ${token} to ${value}`
+      );
+      assert.ok(
+        workbench.includes(`var(${token})`),
+        `workbench.css must read ${token}`
+      );
+    }
+
+    // No colour declaration in the Dialog title bar or About ModalDialog rules
+    // reads a Tier 1 primitive or another subsystem's (menubar) tokens.
+    // `.cartouche-dialog-close-btn:hover` is owned by #350.
+    const selectors = [
+      ".cartouche-dialog-header",
+      ".picker-dialog-header",
+      ".cartouche-dialog-close-btn",
+      ".modal-dialog",
+      ".modal-header",
+      ".modal-subtitle",
+      ".modal-body",
+      ".modal-specs",
+      ".modal-footer",
+      ".modal-btn",
+      ".modal-btn:hover",
+    ];
+    const colourProperty =
+      /^\s*(color|background(-color)?|border(-(top|right|bottom|left))?(-color)?|box-shadow|outline(-color)?)\s*:(.*)$/;
+    for (const selector of selectors) {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const match = new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`).exec(
+        workbench
+      );
+      assert.ok(match, `workbench.css must contain a ${selector} rule`);
+      for (const line of match[1].split("\n")) {
+        const decl = colourProperty.exec(line);
+        if (!decl) continue;
+        assert.ok(
+          !/--cartouche-(theme|menubar)-/.test(decl[6]),
+          `${selector} must read Dialog Tier 2 tokens, not: ${line.trim()}`
+        );
+      }
+    }
+  });
+
   it("defines the menu Tier 2 tokens (#353)", () => {
     const content = fs.readFileSync(defaultThemeCssPath, "utf-8");
     // Each menu token maps to the Tier 1 primitive its rule read before #353, so no rendered colour changes.
