@@ -4,7 +4,7 @@
  * @description Central registry managing GIS file format descriptors, magic byte sniffing, format identification, reader dispatching, and native file dialog filter generation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-12
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -23,6 +23,21 @@ export type FileLoaderFn = (
   descriptor: FileTypeDescriptor,
   options?: Record<string, unknown>
 ) => Promise<unknown>;
+
+/**
+ * @typedef {Object} ExtensionMatch
+ * @description A descriptor matched by file name, with the primary extension that matched.
+ * @property {FileTypeDescriptor} descriptor - Matched format descriptor.
+ * @property {string} extension - Lower-cased primary extension that matched, with its leading dot (e.g. ".gti.gpkg").
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-19
+ * @updated 2026-11-19
+ * @since 0.1.0-dev
+ */
+interface ExtensionMatch {
+  descriptor: FileTypeDescriptor;
+  extension: string;
+}
 
 /**
  * @class FileTypeRegistry
@@ -229,10 +244,12 @@ export class FileTypeRegistry {
   /**
    * Identifies the file type for a target file path using magic byte sniffing and extension matching.
    *
-   * @description Checks directory container flags first, then sniffs header magic bytes, and falls back to extension matching.
+   * @description Checks directory container flags first, then a compound primary extension (e.g. `.gti.gpkg`,
+   * `.shp.zip`, which name a format more precisely than the container's magic bytes), then sniffs header
+   * magic bytes, and falls back to extension matching.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {string} targetPath - Absolute path of file or directory container to inspect.
    * @returns {Promise<FileTypeDescriptor | undefined>} Matched format descriptor or undefined if unidentifiable.
@@ -255,6 +272,14 @@ export class FileTypeRegistry {
           }
         }
         return undefined;
+      }
+
+      // A compound extension outranks the container's magic (a .gti.gpkg is a GeoPackage on disk)
+      const extMatch = this.matchExtension(targetPath);
+      const isCompoundExtension =
+        extMatch !== undefined && extMatch.extension.lastIndexOf(".") > 0;
+      if (extMatch && isCompoundExtension) {
+        return extMatch.descriptor;
       }
 
       // Check binary magic numbers by inspecting initial bytes
@@ -308,35 +333,51 @@ export class FileTypeRegistry {
   /**
    * Matches a target file path against registered primary extensions.
    *
-   * @description Matches composite extensions first (e.g. .osm.pbf), then standard single extensions.
+   * @description Case-insensitively matches the longest registered primary extension the file name ends with,
+   * so a compound extension (e.g. `.shp.zip`, `.gti.gpkg`) wins over the single extension it ends with
+   * (`.zip`, `.gpkg`). Equal-length matches resolve to the first registered descriptor.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-10-03
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {string} filePath - Target file path string to match.
    * @returns {FileTypeDescriptor | undefined} Matched format descriptor or undefined.
    */
   public identifyByExtension(filePath: string): FileTypeDescriptor | undefined {
-    const lowerName = filePath.toLowerCase();
+    return this.matchExtension(filePath)?.descriptor;
+  }
 
-    // Check composite extensions first (e.g. .osm.pbf)
+  /**
+   * Finds the descriptor whose primary extension is the longest suffix of a file name.
+   *
+   * @description Compares the lower-cased base name against every descriptor's lower-cased primary extensions;
+   * the extension must be shorter than the base name so a bare `.shp` file name never matches.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @private
+   * @param {string} filePath - Target file path string to match.
+   * @returns {ExtensionMatch | undefined} Matched descriptor and the lower-cased extension that matched, or undefined.
+   */
+  private matchExtension(filePath: string): ExtensionMatch | undefined {
+    const baseName = path.basename(filePath).toLowerCase();
+    let best: ExtensionMatch | undefined;
+
     for (const desc of this.descriptors.values()) {
-      for (const ext of desc.primaryExtensions) {
-        if (ext.includes(".") && lowerName.endsWith(ext.toLowerCase())) {
-          return desc;
+      for (const rawExt of desc.primaryExtensions) {
+        const ext = rawExt.toLowerCase();
+        if (
+          baseName.length > ext.length
+          && baseName.endsWith(ext)
+          && (!best || ext.length > best.extension.length)
+        ) {
+          best = { descriptor: desc, extension: ext };
         }
       }
     }
 
-    // Check single standard extension
-    const ext = path.extname(lowerName);
-    for (const desc of this.descriptors.values()) {
-      if (desc.primaryExtensions.includes(ext)) {
-        return desc;
-      }
-    }
-
-    return undefined;
+    return best;
   }
 
   /**
