@@ -46,11 +46,18 @@ import {
   activeMapControllerSignal,
   selectedFeatureIdsSignal,
   activeLayerIdSignal,
+  activeToolSignal,
 } from "../state/gisSignals";
 import VectorLayer from "ol/layer/Vector.js";
 import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
 import type { MapCursorImages } from "./mapCursor";
 import { bindMapCursor } from "./mapCursorBinding";
+import {
+  MapToolInteractions,
+  applyNavigationToMap,
+  symbolReachFromStyles,
+  type SelectableLayer,
+} from "./mapToolInteractions";
 import {
   projectLayersSignal,
   layerStylesSignal,
@@ -361,7 +368,7 @@ export function attachFeaturePropertiesWithLazyGetters(
  * @description Imperative OpenLayers map canvas controller encapsulating native ol/Map and vector rendering completely insulated from React Virtual DOM.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export class MapController {
@@ -384,6 +391,7 @@ export class MapController {
   private pendingProjectViewport:
     Parameters<MapController["setViewport"]>[0] | null = null;
   private viewListenerKeys: Array<() => void> = [];
+  private toolInteractions: MapToolInteractions | null = null;
 
   /**
    * @constructor
@@ -535,10 +543,10 @@ export class MapController {
   }
 
   /**
-   * @description Binds reactive signal listeners for project layers and map navigation actions.
+   * @description Binds reactive signal listeners for project layers, map navigation actions and the active map tool (which drives the map interactions through MapToolInteractions).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @private
    * @returns {void}
@@ -627,6 +635,47 @@ export class MapController {
       this.refreshTemporalLayers();
     });
     this.disposeSignals.push(disposeTimeFilter);
+
+    // Drive map interactions (navigation gestures, Selection Tool handlers) from the active map tool
+    const toolInteractions = new MapToolInteractions({
+      map: this.map,
+      getSelectableLayer: () => this.getSelectableLayer(),
+      setNavigation: (state) => applyNavigationToMap(this.map, state),
+    });
+    this.toolInteractions = toolInteractions;
+    const disposeTool = effect(() => {
+      toolInteractions.setTool(activeToolSignal.value);
+    });
+    this.disposeSignals.push(disposeTool);
+  }
+
+  /**
+   * @description Returns the valid Active Layer as the Selection Tools see it: a loaded, visible vector layer's source plus a symbol-reach resolver at the current resolution (from the layer's style function), or null when there is no Active Layer, it is a raster, not on the map, or hidden.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {SelectableLayer | null} The selectable Active Layer, or null.
+   */
+  public getSelectableLayer(): SelectableLayer | null {
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry = activeLayerId ? this.vectorLayers.get(activeLayerId) : null;
+    if (!entry) return null;
+    if (entry.descriptor.layerKind === "raster") return null;
+    if (!entry.layer.getVisible()) return null;
+    const styleFunction = entry.layer.getStyleFunction();
+    const resolution = this.view.getResolution() ?? 1;
+    return {
+      source: entry.source,
+      symbolReachPx: (feature) => {
+        if (!styleFunction) return 0;
+        try {
+          return symbolReachFromStyles(styleFunction(feature, resolution));
+        } catch {
+          return 0;
+        }
+      },
+    };
   }
 
   /**
@@ -2278,14 +2327,16 @@ export class MapController {
   }
 
   /**
-   * @description Disposes all reactive signal subscriptions, clears layer sources, and detaches the map target.
+   * @description Disposes the map tool interactions and all reactive signal subscriptions, clears layer sources, and detaches the map target.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @returns {void}
    */
   public dispose(): void {
+    this.toolInteractions?.dispose();
+    this.toolInteractions = null;
     for (const dispose of this.disposeSignals) {
       try {
         dispose();
