@@ -904,6 +904,26 @@
   color: var(--cartouche-layer-tree-row-selected-fg);
 }
 
+/* Active Layer row fill (ADR 0016, amendment 2026-11-19): declared after .selected so it wins on an
+   active selected row; Hover keeps the fill and changes only the row's text colour. */
+.tree-node-row.active {
+  background-color: var(--cartouche-layer-tree-row-active-bg);
+  color: var(--cartouche-layer-tree-row-active-fg);
+}
+
+.tree-node-row.active:hover {
+  background-color: var(--cartouche-layer-tree-row-active-bg);
+  color: var(--cartouche-layer-tree-row-active-hover-fg);
+}
+
+/* On the active row every foreground element that sets its own colour takes the row's instead
+   (only layer rows are active, and they have no chevron). */
+.tree-node-row.active .tree-layer-icon-slot,
+.tree-node-row.active .tree-edit-icon-slot,
+.tree-node-row.active .tree-temporal-icon-slot {
+  color: inherit;
+}
+
 .tree-node-row .tree-node-title {
   font-weight: normal;
   font-style: normal;
@@ -1018,7 +1038,8 @@
   flex-shrink: 0;
 }
 
-/* Layer, edit-mode and temporal icons on a layer row; group and project icons inherit the row text colour. */
+/* Layer, edit-mode and temporal icons on a layer row; group and project icons inherit the row text colour.
+   A Tree Node Row element given its own colour must also join the .tree-node-row.active inherit list. */
 .tree-layer-icon-slot,
 .tree-edit-icon-slot,
 .tree-temporal-icon-slot {

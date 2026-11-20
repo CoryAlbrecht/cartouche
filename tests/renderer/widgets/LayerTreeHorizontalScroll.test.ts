@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying LayerTreeWidget horizontal and vertical viewport scrolling, intrinsic display name sizing without ellipsis shortening, full-width row selection highlights, sticky visible-width drop markers, and inline rename sizing transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0010-layer-tree-horizontal-scroll-and-nodeline-layout.md (ADR 0010)
@@ -805,7 +805,7 @@ describe("LayerTreeWidget Horizontal Scrolling & Tree Node Row Layout (Ticket #6
       "Active layer must have .active class"
     );
 
-    // .selected in CSS has full row background color var(--cartouche-layer-tree-row-selected-bg), while .active has bold italic title (ADR 0016)
+    // .selected in CSS has full row background color var(--cartouche-layer-tree-row-selected-bg), while .active has a bold title and its own row fill (ADR 0016, #368)
     assert.match(
       cssContent,
       /\.tree-node-row\.selected[^{]*\{[^}]*background-color:\s*var\(--cartouche-layer-tree-row-selected-bg\)/s,

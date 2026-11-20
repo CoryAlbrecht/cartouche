@@ -1,7 +1,7 @@
 /**
  * @file LayerTreeTitleAndActiveState.test.ts
  * @module tests/renderer/widgets/LayerTreeTitleAndActiveState.test
- * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality (Ticket #92, ADR 0016).
+ * @description Unit and component tests verifying Tree Node Row Title composite structure, feature count formatting, async loading placeholder, inline rename isolation, and active/selected visual orthogonality, including the Active Layer row fill (Ticket #92, #368, ADR 0016).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
  * @updated 2026-11-19
@@ -432,6 +432,13 @@ describe("LayerTreeWidget Title Structure & Active Layer Typography (Ticket #92,
         ".tree-node-row.active must NOT declare background-color: var(--cartouche-layer-tree-row-selected-bg)"
       );
     }
+
+    // 2b. .active declares its own row fill (ADR 0016 amendment 2026-11-19, #368)
+    assert.match(
+      cssContent,
+      /\.tree-node-row\.active\s*\{[^}]*background-color:\s*var\(--cartouche-layer-tree-row-active-bg\)/s,
+      ".tree-node-row.active must declare background-color: var(--cartouche-layer-tree-row-active-bg)"
+    );
 
     // 3. 4-state typography matrix on .tree-node-title
     // Active only: font-weight: bold, font-style: normal

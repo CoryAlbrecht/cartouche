@@ -1,7 +1,7 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive; and (#364) that the TableWidget outer border reads the input border colour.
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive; and (#364) that the TableWidget outer border reads the input border colour; and (#368) that the Active Layer's Tree Node Row reads the Layer Tree active fill, hover and inherited-foreground tokens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
  * @updated 2026-11-19
@@ -467,6 +467,49 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
       selectorDeclaration(".tree-node-row.selected", "color"),
       "var(--cartouche-layer-tree-row-selected-fg)"
     );
+  });
+
+  it("fills the Active Layer's Tree Node Row from the Layer Tree active tokens (#368)", () => {
+    assert.equal(tokenValue("--cartouche-theme-info-bright"), "#7ce8ff");
+    assertMappings({
+      "--cartouche-layer-tree-row-active-bg": "--cartouche-theme-primary",
+      "--cartouche-layer-tree-row-active-fg": "--cartouche-theme-fg-inverted",
+      "--cartouche-layer-tree-row-active-hover-fg":
+        "--cartouche-theme-info-bright",
+    });
+    // The active fill is declared after .selected with equal specificity, so it wins on an active selected row.
+    const activeAt = WORKBENCH_CSS.search(/\.tree-node-row\.active\s*[,{]/);
+    const selectedAt = WORKBENCH_CSS.search(/\.tree-node-row\.selected\s*\{/);
+    assert.ok(activeAt > selectedAt && selectedAt >= 0);
+    assert.equal(
+      selectorDeclaration(".tree-node-row.active", "background-color"),
+      "var(--cartouche-layer-tree-row-active-bg)"
+    );
+    assert.equal(
+      selectorDeclaration(".tree-node-row.active", "color"),
+      "var(--cartouche-layer-tree-row-active-fg)"
+    );
+    // Hover keeps the fill and switches the row's foreground.
+    assert.equal(
+      selectorDeclaration(".tree-node-row.active:hover", "background-color"),
+      "var(--cartouche-layer-tree-row-active-bg)"
+    );
+    assert.equal(
+      selectorDeclaration(".tree-node-row.active:hover", "color"),
+      "var(--cartouche-layer-tree-row-active-hover-fg)"
+    );
+    // Every foreground element that sets its own colour takes the row's instead.
+    for (const part of [
+      ".tree-layer-icon-slot",
+      ".tree-edit-icon-slot",
+      ".tree-temporal-icon-slot",
+    ]) {
+      assert.equal(
+        selectorDeclaration(`.tree-node-row.active ${part}`, "color"),
+        "inherit",
+        `.tree-node-row.active ${part} must inherit the row colour`
+      );
+    }
   });
 
   it("defines the AttributeTableWidget frame and CRS Catalogue list box Tier 2 tokens (#357)", () => {
