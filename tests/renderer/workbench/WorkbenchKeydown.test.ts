@@ -4,7 +4,7 @@
  * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-14
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  * @see {@link executeWorkbenchAction}
@@ -577,6 +577,22 @@ describe("Workbench Global Keyboard Listener", () => {
 
       executeWorkbenchAction("custom_main_action");
       assert.equal(forwardedAction, "custom_main_action");
+    });
+
+    it("pan_tool switches the active map tool to Pan in the renderer", () => {
+      let forwarded: string | null = null;
+      Reflect.set(globalThis, "window", {
+        ...Reflect.get(globalThis, "window"),
+        electronAPI: {
+          executeAction: (name: string) => {
+            forwarded = name;
+          },
+        },
+      });
+      activeToolSignal.value = "select_lasso";
+      executeWorkbenchAction("pan_tool");
+      assert.equal(activeToolSignal.value, "pan");
+      assert.equal(forwarded, null, "pan_tool is handled in the renderer");
     });
 
     it("executes project_properties when hasProject is true and ignores when false", () => {
