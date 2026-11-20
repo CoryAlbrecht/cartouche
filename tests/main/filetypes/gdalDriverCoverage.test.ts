@@ -1,7 +1,7 @@
 /**
  * @file gdalDriverCoverage.test.ts
  * @module tests/main/filetypes/gdalDriverCoverage.test
- * @description Enumerates the bundled gdal-async build's drivers and asserts that every file extension of every vector- or raster-capable driver that can open files is covered by a built-in file type descriptor, so a GDAL upgrade that adds a driver fails here until the driver is registered.
+ * @description Enumerates the bundled gdal-async build's drivers and checks built-in file type descriptors against them in both directions: every file extension of every vector- or raster-capable driver that can open files is covered by a descriptor, so a GDAL upgrade that adds a driver fails here until the driver is registered; and every primary extension of every GDAL-loaded descriptor is declared by a bundled driver or verified to open by content, so a descriptor advertising a format the build cannot read fails here.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-19
  * @updated 2026-11-19
@@ -11,6 +11,9 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import os from "node:os";
+import * as path from "node:path";
 import gdal from "gdal-async";
 import { BUILTIN_FILE_TYPES } from "../../../src/shared/filetypes/index";
 
@@ -48,6 +51,61 @@ const ACCESSORY_ONLY: AccessoryOnlyExtension[] = [
     extension: "mid",
     reason:
       "MIF attribute data; as a primary extension a .mif + .mid selection would add two layers.",
+  },
+];
+
+/**
+ * @typedef {Object} ContentOpenedExtension
+ * @property {string} extension - Extension without its leading dot, lower case.
+ * @property {string} driver - GDAL driver short name that opens the file by content.
+ * @property {Record<string, string>} creationOptions - Creation options producing a file of this kind.
+ * @property {string} reason - Why no driver declares the extension yet the file opens.
+ */
+interface ContentOpenedExtension {
+  extension: string;
+  driver: string;
+  creationOptions: Record<string, string>;
+  reason: string;
+}
+
+/**
+ * Primary extensions that no bundled driver declares but whose files the build opens by content.
+ * Each entry is verified below by creating a file with the driver and reopening it, and must stay
+ * undeclared by every driver, so the list holds only extensions that need it.
+ */
+const OPENS_BY_CONTENT: ContentOpenedExtension[] = [
+  {
+    extension: "bsq",
+    driver: "ENVI",
+    creationOptions: { INTERLEAVE: "BSQ" },
+    reason:
+      "ENVI band-sequential data; ENVI declares no extension and opens via the .hdr header.",
+  },
+  {
+    extension: "bip",
+    driver: "ENVI",
+    creationOptions: { INTERLEAVE: "BIP" },
+    reason: "ENVI band-interleaved-by-pixel data; opened via the .hdr header.",
+  },
+  {
+    extension: "raw",
+    driver: "ENVI",
+    creationOptions: {},
+    reason: "Generic ENVI raw data; opened via the .hdr header.",
+  },
+  {
+    extension: "nc4",
+    driver: "netCDF",
+    creationOptions: { FORMAT: "NC4" },
+    reason:
+      "netCDF-4 file; netCDF declares only .nc and identifies the HDF5 signature.",
+  },
+  {
+    extension: "jpf",
+    driver: "JP2OpenJPEG",
+    creationOptions: {},
+    reason:
+      "JPEG 2000 (JPX) file; JP2OpenJPEG declares .jp2 .j2k and identifies the signature.",
   },
 ];
 
@@ -93,6 +151,10 @@ const accessory = new Set(
   )
 );
 
+const driverDeclaredExtensions = new Set(
+  openableDriverExtensions().map(({ extension }) => extension)
+);
+
 describe("Bundled GDAL driver coverage", () => {
   it("finds file-based drivers in the bundled build", () => {
     assert.ok(openableDriverExtensions().length > 50);
@@ -115,6 +177,47 @@ describe("Bundled GDAL driver coverage", () => {
     for (const { extension } of ACCESSORY_ONLY) {
       assert.ok(accessory.has(extension), `.${extension} is an accessory`);
       assert.ok(!primary.has(extension), `.${extension} is not primary`);
+    }
+  });
+
+  it("declares or opens by content every primary extension of every GDAL-loaded descriptor", () => {
+    const allowed = new Set(OPENS_BY_CONTENT.map((e) => e.extension));
+    const unreadable = BUILTIN_FILE_TYPES.filter(
+      (d) => d.loaderId === "gdal:vector" || d.loaderId === "gdal:raster"
+    ).flatMap((d) =>
+      d.primaryExtensions
+        .map(normalise)
+        .filter(
+          (ext) => !driverDeclaredExtensions.has(ext) && !allowed.has(ext)
+        )
+        .map((ext) => `${d.id}: .${ext}`)
+    );
+    assert.deepEqual(unreadable, []);
+  });
+
+  it("lists in the opens-by-content allow-list only extensions no driver declares", () => {
+    for (const { extension } of OPENS_BY_CONTENT) {
+      assert.ok(
+        !driverDeclaredExtensions.has(extension),
+        `.${extension} is declared`
+      );
+    }
+  });
+
+  it("reopens a file of every opens-by-content extension with its driver", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-gdal-"));
+    try {
+      for (const { extension, driver, creationOptions } of OPENS_BY_CONTENT) {
+        const file = path.join(dir, `sample.${extension}`);
+        const mem = gdal.open("", "w", "MEM", 4, 4, 1, gdal.GDT_Byte);
+        gdal.drivers.get(driver).createCopy(file, mem, creationOptions).close();
+        mem.close();
+        const reopened = gdal.open(file);
+        assert.equal(reopened.driver.description, driver, `.${extension}`);
+        reopened.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 });

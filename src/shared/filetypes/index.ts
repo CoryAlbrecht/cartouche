@@ -182,23 +182,6 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     loaderId: "gdal:vector",
   },
   {
-    id: "autocad-dwg",
-    name: "AutoCAD DWG",
-    category: "vector",
-    primaryExtensions: [".dwg"],
-    accessoryExtensions: [],
-    mimeType: "application/acad",
-    magicNumbers: [
-      {
-        offset: 0,
-        bytes: [0x41, 0x43], // Starts with 'AC'
-      },
-    ],
-    canRead: true,
-    canWrite: false,
-    loaderId: "gdal:vector",
-  },
-  {
     id: "mapinfo-tab",
     name: "MapInfo TAB File",
     category: "vector",
@@ -320,26 +303,6 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     primaryExtensions: [".gdb"],
     accessoryExtensions: [],
     isDirectoryContainer: true,
-    canRead: true,
-    canWrite: false,
-    loaderId: "gdal:vector",
-  },
-  {
-    id: "esri-personal-gdb",
-    name: "ESRI Personal Geodatabase",
-    category: "vector",
-    primaryExtensions: [".mdb"],
-    accessoryExtensions: [],
-    mimeType: "application/x-msaccess",
-    magicNumbers: [
-      {
-        offset: 0,
-        bytes: [
-          0x00, 0x01, 0x00, 0x00, 0x53, 0x74, 0x61, 0x6e, 0x64, 0x61, 0x72,
-          0x64, 0x20, 0x4a, 0x65, 0x74, 0x20, 0x44, 0x42,
-        ], // 'Standard Jet DB'
-      },
-    ],
     canRead: true,
     canWrite: false,
     loaderId: "gdal:vector",
@@ -547,48 +510,6 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     loaderId: "gdal:raster",
   },
   {
-    id: "webp",
-    name: "WebP Imagery",
-    category: "raster",
-    primaryExtensions: [".webp"],
-    accessoryExtensions: [".wld", ".webp.aux.xml"],
-    mimeType: "image/webp",
-    magicNumbers: [
-      {
-        offset: 0,
-        bytes: [0x52, 0x49, 0x46, 0x46], // 'RIFF'
-      },
-      {
-        offset: 8,
-        bytes: [0x57, 0x45, 0x42, 0x50], // 'WEBP'
-      },
-    ],
-    canRead: true,
-    canWrite: true,
-    loaderId: "gdal:raster",
-  },
-  {
-    id: "gif",
-    name: "Graphics Interchange Format (GIF)",
-    category: "raster",
-    primaryExtensions: [".gif"],
-    accessoryExtensions: [".gfw", ".gif.aux.xml"],
-    mimeType: "image/gif",
-    magicNumbers: [
-      {
-        offset: 0,
-        bytes: [0x47, 0x49, 0x46, 0x38, 0x37, 0x61], // 'GIF87a'
-      },
-      {
-        offset: 0,
-        bytes: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], // 'GIF89a'
-      },
-    ],
-    canRead: true,
-    canWrite: true,
-    loaderId: "gdal:raster",
-  },
-  {
     id: "bmp",
     name: "Windows Bitmap (BMP)",
     category: "raster",
@@ -686,40 +607,6 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     loaderId: "gdal:raster",
   },
   {
-    id: "hdf4",
-    name: "Hierarchical Data Format 4 (HDF4)",
-    category: "raster",
-    primaryExtensions: [".hdf", ".h4"],
-    accessoryExtensions: [],
-    mimeType: "application/x-hdf",
-    magicNumbers: [{ offset: 0, bytes: [0x0e, 0x03, 0x13, 0x01] }],
-    canRead: true,
-    canWrite: true,
-    loaderId: "gdal:raster",
-  },
-  {
-    id: "fits",
-    name: "Flexible Image Transport System (FITS)",
-    category: "raster",
-    primaryExtensions: [".fits", ".fit"],
-    accessoryExtensions: [],
-    mimeType: "application/fits",
-    magicNumbers: [
-      {
-        offset: 0,
-        // ASCII: "SIMPLE  =                    T"
-        bytes: [
-          0x53, 0x49, 0x4d, 0x50, 0x4c, 0x45, 0x20, 0x20, 0x3d, 0x20, 0x20,
-          0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-          0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x54,
-        ],
-      },
-    ],
-    canRead: true,
-    canWrite: true,
-    loaderId: "gdal:raster",
-  },
-  {
     id: "pcidsk",
     name: "PCIDSK Database",
     category: "raster",
@@ -734,44 +621,6 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     ],
     canRead: true,
     canWrite: true,
-    loaderId: "gdal:raster",
-  },
-  {
-    id: "mrsid",
-    name: "Multi-resolution Seamless Image Database (MrSID)",
-    category: "raster",
-    primaryExtensions: [".sid"],
-    accessoryExtensions: [".sdw"],
-    mimeType: "image/x-mrsid",
-    magicNumbers: [
-      {
-        offset: 0,
-        bytes: [0x6d, 0x73, 0x69, 0x64], // 'msid'
-      },
-    ],
-    canRead: true,
-    canWrite: false,
-    loaderId: "gdal:raster",
-  },
-  {
-    id: "ecw",
-    name: "Enhanced Compression Wavelet (ECW)",
-    category: "raster",
-    primaryExtensions: [".ecw"],
-    accessoryExtensions: [".eww"],
-    mimeType: "image/ecw",
-    magicNumbers: [
-      {
-        offset: 0,
-        bytes: [0x65, 0x63, 0x77, 0x73], // 'ecws'
-      },
-      {
-        offset: 0,
-        bytes: [0x65, 0x63, 0x77, 0x70], // 'ecwp'
-      },
-    ],
-    canRead: true,
-    canWrite: false,
     loaderId: "gdal:raster",
   },
   {

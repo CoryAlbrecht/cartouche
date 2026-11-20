@@ -1,7 +1,7 @@
 /**
  * @file gdalFileTypes.test.ts
  * @module tests/main/filetypes/gdalFileTypes.test
- * @description Verifies the FileTypeRegistry identifies the file formats registered for every file-based driver of the bundled GDAL (including compound extensions such as `.shp.zip`, `.gti.gpkg` and `.mvt.gz`), offers them in the vector and raster file chooser filters, and loads a GDAL-written sample of a new vector and a new raster format through `addLayer()`.
+ * @description Verifies the FileTypeRegistry identifies the file formats registered for every file-based driver of the bundled GDAL (including compound extensions such as `.shp.zip`, `.gti.gpkg` and `.mvt.gz`), offers them in the vector and raster file chooser filters, neither identifies nor offers formats the build has no driver for, and loads a GDAL-written sample of a new vector and a new raster format through `addLayer()`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-19
  * @updated 2026-11-19
@@ -20,6 +20,20 @@ import { fileTypeRegistry } from "../../../src/main/filetypes/FileTypeRegistry";
 import { addLayer } from "../../../src/main/api/layers/addLayer";
 import { projectStore } from "../../../src/main/project/ProjectStore";
 import { geospatialService } from "../../../src/main/worker/GeospatialService";
+
+/** Extensions of the formats removed because the bundled GDAL build has no driver for them (#372). */
+const UNSUPPORTED_EXTENSIONS = [
+  "dwg",
+  "mdb",
+  "webp",
+  "gif",
+  "fits",
+  "fit",
+  "sid",
+  "ecw",
+  "hdf",
+  "h4",
+];
 
 describe("Bundled GDAL file types", () => {
   describe("identifyByExtension", () => {
@@ -82,6 +96,15 @@ describe("Bundled GDAL file types", () => {
         "pmtiles"
       );
     });
+
+    for (const ext of UNSUPPORTED_EXTENSIONS) {
+      it(`does not identify x.${ext}, which the bundled GDAL cannot open`, () => {
+        assert.equal(
+          fileTypeRegistry.identifyByExtension(`/data/x.${ext}`),
+          undefined
+        );
+      });
+    }
 
     it("still identifies plain single extensions", () => {
       assert.equal(
@@ -159,6 +182,17 @@ describe("Bundled GDAL file types", () => {
         2,
         "one .hdr format entry plus the all-supported filter"
       );
+    });
+
+    it("offers no vector or raster filter for a format the bundled GDAL cannot open", () => {
+      for (const category of ["vector", "raster"] as const) {
+        const offered = fileTypeRegistry
+          .getFileFilters(category)
+          .flatMap((f) => f.extensions);
+        for (const ext of UNSUPPORTED_EXTENSIONS) {
+          assert.ok(!offered.includes(ext), `${category} filters omit .${ext}`);
+        }
+      }
     });
   });
 

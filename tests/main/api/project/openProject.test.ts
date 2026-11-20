@@ -1,16 +1,16 @@
 /**
  * @file openProject.test.ts
  * @module tests/main/api/project/openProject.test
- * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors.
+ * @description Integration tests for openProject API hydrating native layer sessions via GeospatialService and enriching layer descriptors, and opening projects whose layers reference a file type Cartouche no longer registers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-04
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link openProject}
  * @see {@link GeospatialService}
  */
 
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import os from "node:os";
@@ -20,6 +20,7 @@ import openProject from "../../../../src/main/api/project/openProject";
 import { projectStore } from "../../../../src/main/project/ProjectStore";
 import { geospatialService } from "../../../../src/main/worker/GeospatialService";
 import { queryExtent } from "../../../../src/main/api/layers/queryExtent";
+import { logging } from "../../../../src/shared/logging";
 import {
   isProjectLayerStyleWrapper,
   type ProjectLayerItem,
@@ -390,5 +391,61 @@ describe("openProject Native Session Hydration", () => {
       undefined,
       "Raster layer must not receive vector style template"
     );
+  });
+
+  it("opens a project whose layers reference removed file types and logs each layer that cannot load (#372)", async () => {
+    const tempProjPath = path.join(
+      tempDir,
+      `removed_types_${Date.now()}.cproj`
+    );
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://cartouche.gis/schemas/project" version="0.1.0-dev">
+  <metadata>
+    <title>Removed File Types Project</title>
+  </metadata>
+  <layers>
+    <layer id="dwg-layer" visible="true" layerKind="vector" type="autocad-dwg">
+      <name>Drawing</name>
+      <source>${path.join(tempDir, "drawing.dwg")}</source>
+    </layer>
+    <layer id="hdf4-layer" visible="true" layerKind="raster" type="hdf4">
+      <name>Swath</name>
+      <source>${path.join(tempDir, "swath.hdf")}</source>
+    </layer>
+    <layer id="lakes-layer" visible="true" layerKind="vector" type="esri-shapefile">
+      <name>Lakes</name>
+      <source>${sampleShpPath}</source>
+    </layer>
+  </layers>
+</project>`;
+    fs.writeFileSync(tempProjPath, xmlContent, "utf-8");
+    const warn = mock.method(
+      logging,
+      "warn",
+      (_message: string, _meta?: { layerName?: string }) => {}
+    );
+
+    try {
+      const project = await openProject(tempProjPath);
+      assert.ok(project, "Project must be loaded");
+      assert.deepEqual(
+        project.layers.map((l) => l.id),
+        ["dwg-layer", "hdf4-layer", "lakes-layer"]
+      );
+      const lakes = project.layers[2];
+      assert.ok(lakes && !("children" in lakes), "lakes is a layer");
+      assert.equal(
+        lakes.geometryKind,
+        "Polygon",
+        "supported layer still loads"
+      );
+
+      const loggedLayers = warn.mock.calls
+        .filter((c) => c.arguments[0].includes("no registered file type"))
+        .map((c) => c.arguments[1]?.layerName);
+      assert.deepEqual(loggedLayers, ["Drawing", "Swath"]);
+    } finally {
+      warn.mock.restore();
+    }
   });
 });

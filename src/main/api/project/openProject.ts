@@ -4,7 +4,7 @@
  * @description Main Process API function for opening, deserializing, activating an existing project file, and hydrating native dataset sessions via GeospatialService.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-07
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link ProjectStore}
  * @see {@link ProjectLoaderRegistry}
@@ -130,7 +130,7 @@ export interface OpenProjectDialogInvoker {
  * @description Opens an existing Cartouche project document from disk, loads it into ProjectStore, hydrates native dataset sessions via GeospatialService, and broadcasts to renderer windows.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-02
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string} [filePath] - Optional path to the project document; if omitted, displays the non-modal system file open dialog.
  * @param {OpenProjectDialogInvoker} [dialogInvoker=dialog] - Optional dialog invoker override for testing.
@@ -251,6 +251,16 @@ export default async function openProject(
           }
           // Raster layers remain unstyled
         }
+      } else {
+        // E.g. a layer saved with a file type later removed because the bundled GDAL cannot read it.
+        logging.warn(
+          "Layer not loaded: no registered file type can open its source",
+          {
+            scope: "openProject",
+            layerName: layer.name,
+            filePath: layer.filePath,
+          }
+        );
       }
     }
 
