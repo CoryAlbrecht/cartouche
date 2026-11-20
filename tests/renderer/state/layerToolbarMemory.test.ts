@@ -356,7 +356,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     editableLayerIdsSignal.value = new Set([layerA]);
     activeLayerIdSignal.value = layerA;
-    activeToolSignal.value = "vertex_editor";
+    activeToolSignal.value = "line";
     activeSelectionModeSignal.value = "select_by_rectangle";
 
     // Clear active layer
@@ -369,7 +369,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "digitizingTool"),
-      "vertex_editor",
+      "line",
       "Outgoing layer digitizing tool must be captured when active layer is cleared"
     );
     assert.strictEqual(
@@ -420,7 +420,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     const layerA = "layer-in-place-toggle";
 
     // Pre-cache digitizing tool for layer A
-    setLayerToolbarPreference(layerA, "digitizingTool", "vertex_editor");
+    setLayerToolbarPreference(layerA, "digitizingTool", "polygon");
 
     // Make layer A active, not in edit mode, currently in pan mode
     activeLayerIdSignal.value = layerA;
@@ -431,7 +431,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     assert.strictEqual(
       activeToolSignal.value,
-      "vertex_editor",
+      "polygon",
       "Cached digitizing tool must be restored when editing is toggled ON for active layer"
     );
   });

@@ -39,6 +39,7 @@ import {
   toggleLayerEditingAction,
   saveActiveLayerAction,
   vertexEditorAction,
+  vertexEditorModeSignal,
   deleteSelectionAction,
   cutSelectionAction,
   copySelectionAction,
@@ -104,10 +105,10 @@ export function isDrawingToolEnabled(
 
 /**
  * @function isVertexEditorEnabled
- * @description Evaluates whether the vertex editor tool is enabled based on layer edit mode.
+ * @description Evaluates whether the Vertex Editor Mode toggle is enabled based on layer edit mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {boolean} inEditMode - Whether the active layer is in edit mode.
  * @returns {boolean} True if vertex editor is enabled, false otherwise.
@@ -279,7 +280,7 @@ export const DigitizingToolbarWidget: React.FC<
   const polygonLabel = "Add Polygon Feature";
 
   const vertexKey = getActionFormattedKey("vertex_editor", "V");
-  const vertexLabel = t("vertex_editor") || "Vertex Editor";
+  const vertexLabel = t("vertex_editor") || "Vertex Editor Mode";
   const vertexTitle = vertexKey ? `${vertexLabel} (${vertexKey})` : vertexLabel;
 
   const deleteKey = getActionFormattedKey("delete_selection", "Delete");
@@ -392,7 +393,7 @@ export const DigitizingToolbarWidget: React.FC<
         type='button'
         id='toolbar-tool-vertex-editor'
         className={getButtonClass(
-          activeToolSignal.value === "vertex_editor",
+          vertexEditorModeSignal.value,
           !isVertexEnabled
         )}
         title={vertexTitle}

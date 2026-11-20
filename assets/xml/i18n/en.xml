@@ -42,7 +42,7 @@
     <string name="select_all">Select All</string>
     <string name="deselect_all">Deselect All</string>
     <string name="toggle_layer_editing">Toggle Layer Editing</string>
-    <string name="vertex_editor">Vertex Editor</string>
+    <string name="vertex_editor">Vertex Editor Mode</string>
     <string name="delete_selection">Delete Selection</string>
     <string name="copy_selection">Copy Selection</string>
     <string name="cut_selection">Cut Selection</string>

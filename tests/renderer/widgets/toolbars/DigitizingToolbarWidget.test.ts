@@ -43,6 +43,7 @@ import {
   isProjectDirtySignal,
   toggleLayerEditingAction,
   vertexEditorAction,
+  vertexEditorModeSignal,
   deleteSelectionAction,
   cutSelectionAction,
   copySelectionAction,
@@ -386,6 +387,7 @@ describe("Digitizing State Management & Actions (gisSignals)", () => {
   beforeEach(() => {
     activeLayerIdSignal.value = null;
     activeToolSignal.value = "pan";
+    vertexEditorModeSignal.value = false;
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
     layersSignal.value = [];
@@ -432,15 +434,13 @@ describe("Digitizing State Management & Actions (gisSignals)", () => {
       "Must revert polygon to pan when editing toggled off"
     );
 
-    // Test with vertex_editor tool
+    // Vertex Editor Mode is turned off, the selection tool is kept
     editableLayerIdsSignal.value = new Set(["layer-x"]);
-    activeToolSignal.value = "vertex_editor";
+    activeToolSignal.value = "select_click";
+    vertexEditorModeSignal.value = true;
     toggleLayerEditingAction("layer-x");
-    assert.strictEqual(
-      activeToolSignal.value,
-      "pan",
-      "Must revert vertex_editor to pan when editing toggled off"
-    );
+    assert.strictEqual(vertexEditorModeSignal.value, false);
+    assert.strictEqual(activeToolSignal.value, "select_click");
   });
 
   it("toggleLayerEditingAction does nothing if activeLayerId is null and no argument provided", () => {
@@ -459,12 +459,17 @@ describe("Digitizing State Management & Actions (gisSignals)", () => {
     assert.strictEqual(activeToolSignal.value, "pan");
   });
 
-  it("vertexEditorAction toggles between vertex_editor and pan", () => {
+  it("vertexEditorAction toggles Vertex Editor Mode and keeps the active tool", () => {
+    activeLayerIdSignal.value = "layer-v";
+    editableLayerIdsSignal.value = new Set(["layer-v"]);
     activeToolSignal.value = "pan";
+    vertexEditorModeSignal.value = false;
     vertexEditorAction();
-    assert.strictEqual(activeToolSignal.value, "vertex_editor");
+    assert.strictEqual(vertexEditorModeSignal.value, true);
+    assert.strictEqual(activeToolSignal.value, "pan");
 
     vertexEditorAction();
+    assert.strictEqual(vertexEditorModeSignal.value, false);
     assert.strictEqual(activeToolSignal.value, "pan");
   });
 
@@ -558,6 +563,7 @@ describe("DigitizingToolbarWidget Static Markup Rendering", () => {
   beforeEach(() => {
     activeLayerIdSignal.value = null;
     activeToolSignal.value = "pan";
+    vertexEditorModeSignal.value = false;
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
     layersSignal.value = [];
@@ -965,6 +971,7 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
   beforeEach(() => {
     activeLayerIdSignal.value = null;
     activeToolSignal.value = "pan";
+    vertexEditorModeSignal.value = false;
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
     layersSignal.value = [];
@@ -1165,7 +1172,7 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
     assert.strictEqual(activeToolSignal.value, "point");
   });
 
-  it("clicking vertex editor button toggles activeToolSignal to vertex_editor", async () => {
+  it("clicking vertex editor button toggles Vertex Editor Mode and shows it as active", async () => {
     activeLayerIdSignal.value = "layer-interactive-3";
     editableLayerIdsSignal.value = new Set(["layer-interactive-3"]);
     layersSignal.value = [
@@ -1201,7 +1208,14 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
       );
     });
 
-    assert.strictEqual(activeToolSignal.value, "vertex_editor");
+    assert.strictEqual(vertexEditorModeSignal.value, true);
+    assert.strictEqual(activeToolSignal.value, "pan");
+    assert.ok(
+      renderToStaticMarkup(
+        React.createElement(DigitizingToolbarWidget, { zone: "top" })
+      ).includes('id="toolbar-tool-vertex-editor" class="toolbar-btn active"'),
+      "Vertex Editor button must show the toggled-on state"
+    );
 
     await act(async () => {
       vertexBtn.dispatchEvent(
@@ -1209,7 +1223,12 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
       );
     });
 
-    assert.strictEqual(activeToolSignal.value, "pan");
+    assert.strictEqual(vertexEditorModeSignal.value, false);
+    assert.ok(
+      renderToStaticMarkup(
+        React.createElement(DigitizingToolbarWidget, { zone: "top" })
+      ).includes('id="toolbar-tool-vertex-editor" class="toolbar-btn"')
+    );
   });
 
   it("clicking delete button deletes selected features", async () => {
@@ -1302,7 +1321,7 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
     });
     assert.strictEqual(editableLayerIdsSignal.value.has("key-layer-1"), true);
 
-    // 2. Dispatch V -> toggles vertex editor
+    // 2. Dispatch V -> toggles Vertex Editor Mode, tool unchanged
     handleWorkbenchKeyDown({
       key: "v",
       ctrlKey: false,
@@ -1313,7 +1332,8 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
       preventDefault: () => {},
       stopPropagation: () => {},
     });
-    assert.strictEqual(activeToolSignal.value, "vertex_editor");
+    assert.strictEqual(vertexEditorModeSignal.value, true);
+    assert.strictEqual(activeToolSignal.value, "pan");
 
     // 3. Dispatch Delete -> deletes selected features
     selectedFeatureIdsSignal.value = new Set(["f1"]);

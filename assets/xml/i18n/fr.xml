@@ -28,7 +28,7 @@
     <string name="select_all">Tout Sélectionner</string>
     <string name="deselect_all">Tout Désélectionner</string>
     <string name="toggle_layer_editing">Basculer l'Édition de la Couche</string>
-    <string name="vertex_editor">Éditeur de Sommets</string>
+    <string name="vertex_editor">Mode Éditeur de Sommets</string>
     <string name="delete_selection">Supprimer la Sélection</string>
     <string name="copy_selection">Copier la Sélection</string>
     <string name="cut_selection">Couper la Sélection</string>
