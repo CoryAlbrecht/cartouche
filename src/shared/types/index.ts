@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -186,26 +186,6 @@ export interface FlatGeobufLayerPayload {
   layerId: string;
   buffer: ArrayBuffer;
   flatStyle: OlFlatStyle;
-}
-
-/**
- * @typedef {Object} ConsoleLogEntry
- * @property {string} id - Log record UUID.
- * @property {string} timestamp - ISO time string.
- * @property {'info' | 'warn' | 'error' | 'success'} level - Severity level.
- * @property {string} message - Output log text.
- * @property {string} [source] - Sub-system origin module name.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-08
- * @since 0.1.0-dev
- */
-export interface ConsoleLogEntry {
-  id: string;
-  timestamp: string;
-  level: "info" | "warn" | "error" | "success";
-  message: string;
-  source?: string;
 }
 
 /**

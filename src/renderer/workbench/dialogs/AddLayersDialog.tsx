@@ -26,8 +26,8 @@ import {
 import {
   isAddLayersOpenSignal,
   closeAddLayersDialog,
-  addConsoleLog,
 } from "@renderer/state/gisSignals";
+import { logging } from "@shared/logging";
 import { Dialog } from "./Dialog";
 import { ModalDialog } from "./ModalDialog";
 import type { AddLayerParams } from "@shared/types";
@@ -139,13 +139,12 @@ export const AddLayersDialog: React.FC = () => {
    * @description Handles browsing local filesystem for spatial dataset files using native system multi-select dialog.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-01
-   * @updated 2026-10-12
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @returns {Promise<void>}
    */
   const handleBrowse = async (): Promise<void> => {
     if (activeTab === "vector") {
-      addConsoleLog("info", "Browsing for Vector data files...", "Layers");
       if (window.electronAPI?.openFiles) {
         try {
           const selected = await window.electronAPI.openFiles({
@@ -157,26 +156,14 @@ export const AddLayersDialog: React.FC = () => {
             const current = vectorFilesSignal.value;
             const merged = Array.from(new Set([...current, ...selected]));
             vectorFilesSignal.value = merged;
-            addConsoleLog(
-              "info",
-              `Selected ${selected.length} vector file(s)`,
-              "Layers"
-            );
           }
         } catch (err: any) {
-          addConsoleLog(
-            "error",
-            `Failed to browse vector files: ${err?.message || err}`,
-            "Layers"
-          );
+          logging.error("Failed to browse vector files", err, {
+            scope: "AddLayersDialog",
+          });
         }
       }
     } else {
-      addConsoleLog(
-        "info",
-        `Browsing for ${activeTab} data source...`,
-        "Layers"
-      );
       if (window.electronAPI?.openFiles) {
         try {
           const selected = await window.electronAPI.openFiles({
@@ -188,11 +175,10 @@ export const AddLayersDialog: React.FC = () => {
             filePathSignal.value = selected[0];
           }
         } catch (err: any) {
-          addConsoleLog(
-            "error",
-            `Failed to browse ${activeTab} file: ${err?.message || err}`,
-            "Layers"
-          );
+          logging.error("Failed to browse data source file", err, {
+            scope: "AddLayersDialog",
+            sourceType: activeTab,
+          });
         }
       }
     }
@@ -202,7 +188,7 @@ export const AddLayersDialog: React.FC = () => {
    * @description Confirms and attaches the selected layer dataset to the project state.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-01
-   * @updated 2026-10-15
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @returns {Promise<void>}
    */
@@ -211,7 +197,9 @@ export const AddLayersDialog: React.FC = () => {
     if (activeTab === "vector") {
       const files = vectorFilesSignal.value;
       if (files.length === 0 && !filePath.trim()) {
-        addConsoleLog("warn", "No vector files selected to add.", "Layers");
+        logging.warn("No vector files selected to add", {
+          scope: "AddLayersDialog",
+        });
         return;
       }
 
@@ -237,11 +225,6 @@ export const AddLayersDialog: React.FC = () => {
           filePath: file,
         }));
         await window.electronAPI?.addLayers?.(layersToAdd);
-        addConsoleLog(
-          "info",
-          `Added ${validFiles.length} vector layer(s)`,
-          "Layers"
-        );
       }
 
       if (invalidFiles.length === 0) {
@@ -252,11 +235,6 @@ export const AddLayersDialog: React.FC = () => {
         closeAddLayersDialog();
       }
     } else {
-      const name =
-        filePath ?
-          filePath.split(/[/\\]/).pop() || "New Layer"
-        : `New ${activeTab.toUpperCase()} Layer`;
-      addConsoleLog("info", `Adding ${activeTab} layer: "${name}"`, "Layers");
       vectorFilesSignal.value = [];
       vectorInputTextSignal.value = "";
       filePathSignal.value = "";

@@ -1,10 +1,10 @@
 /**
  * @file gisSignals.ts
  * @module renderer/state/gisSignals
- * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, toolbar placements, and system execution logs.
+ * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, and toolbar placements.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-15
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -19,7 +19,6 @@ import type {
   GisLayer,
   GisLayerGroup,
   GisFeature,
-  ConsoleLogEntry,
   BoundingBox,
   ProjectModel,
   ProjectViewport,
@@ -712,13 +711,12 @@ export const isSnappingOptionsOpenSignal = signal<boolean>(false);
  * @description Opens modeless Snapping Options dialog window.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function openSnappingOptionsDialog(): void {
   isSnappingOptionsOpenSignal.value = true;
-  addConsoleLog("info", "Snapping Options dialog opened.", "Snapping");
 }
 
 /**
@@ -726,13 +724,12 @@ export function openSnappingOptionsDialog(): void {
  * @description Closes modeless Snapping Options dialog window.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function closeSnappingOptionsDialog(): void {
   isSnappingOptionsOpenSignal.value = false;
-  addConsoleLog("info", "Snapping Options dialog closed.", "Snapping");
 }
 
 // Workbench window geometry & panel layout signals
@@ -977,26 +974,6 @@ export const editedFeatureIdsSignal = signal<Set<string | number>>(new Set());
  * @type {Signal<GisFeature[]>}
  */
 export const featuresSignal = signal<GisFeature[]>(initialFeatures);
-
-// Console logs
-/**
- * @signal consoleLogsSignal
- * @description Array signal of Workbench system output console log entries.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @type {Signal<ConsoleLogEntry[]>}
- */
-export const consoleLogsSignal = signal<ConsoleLogEntry[]>([
-  {
-    id: "log-1",
-    timestamp: new Date().toLocaleTimeString(),
-    level: "info",
-    message: "Cartouche Desktop Workbench initialized.",
-    source: "Kernel",
-  },
-]);
 
 /**
  * @description Resolves display name using 3-tier priority hierarchy (projectSettingsName > dataName > baseFileName > name).
@@ -1268,32 +1245,6 @@ export function toggleFeatureSelection(featureId: string | number) {
  */
 export function clearSelection() {
   selectedFeatureIdsSignal.value = new Set();
-}
-
-/**
- * @description Appends a console log entry to Workbench output console signal.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-09-21
- * @updated 2026-10-01
- * @since 0.1.0-dev
- * @param {ConsoleLogEntry['level']} level - Log severity level ('info' | 'warn' | 'error').
- * @param {string} message - Log entry text message.
- * @param {string} [source='App'] - Log entry source subsystem name.
- * @returns {void}
- */
-export function addConsoleLog(
-  level: ConsoleLogEntry["level"],
-  message: string,
-  source: string = "App"
-) {
-  const entry: ConsoleLogEntry = {
-    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-    timestamp: new Date().toLocaleTimeString(),
-    level,
-    message,
-    source,
-  };
-  consoleLogsSignal.value = [...consoleLogsSignal.value.slice(-199), entry];
 }
 
 // Toolbar management actions
@@ -1805,7 +1756,7 @@ export function resetToolbarsToDefault(): void {
  * @description Initializes a clean project state in Workbench shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string} [name='New Project'] - Project name string.
  * @returns {void}
@@ -1839,7 +1790,6 @@ export function createNewProject(name: string = "New Project") {
   undoStackSignal.value = [];
   redoStackSignal.value = [];
   viewportExtentSignal.value = [-180, -90, 180, 90];
-  addConsoleLog("info", `Project "${name}" initialized.`, "Project");
 }
 
 /**
@@ -1873,7 +1823,7 @@ export function getDefaultOlFlatStyle(
  * @description Action handler adding a new GIS layer to the project store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {Omit<GisLayer, 'id'> & { id?: string }} layerInput - Layer properties object.
  * @returns {GisLayer} Created GisLayer instance.
@@ -1897,11 +1847,6 @@ export function addLayerAction(
   if (!activeLayerIdSignal.value) {
     activeLayerIdSignal.value = id;
   }
-  addConsoleLog(
-    "info",
-    `Added layer "${getLayerDisplayName(newLayer)}".`,
-    "Layers"
-  );
   return newLayer;
 }
 
@@ -1909,7 +1854,7 @@ export function addLayerAction(
  * @description Action handler creating a new layer group node in the project store.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string} [name='New Group'] - Group node display name string.
  * @param {string | null} [parentId=null] - Optional parent group ID for nested groups.
@@ -1930,7 +1875,6 @@ export function addLayerGroupAction(
     parentId,
   };
   layerGroupsSignal.value = [...layerGroupsSignal.value, newGroup];
-  addConsoleLog("info", `Added layer group "${name}".`, "Layers");
   return newGroup;
 }
 
@@ -2095,7 +2039,7 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-11
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
@@ -2236,11 +2180,6 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
       resetTimeFilterState();
     }
   });
-  addConsoleLog(
-    "info",
-    `Loaded project "${projectNameSignal.value}" with ${layers.length} layer(s) and ${groups.length} group(s).`,
-    "Project"
-  );
 }
 
 /**
@@ -2271,12 +2210,11 @@ export async function newProjectAction(): Promise<boolean> {
  * if selected, closes existing project safely (saving if dirty) before opening the new project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-21
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {Promise<void>}
  */
 export async function openProjectAction(): Promise<void> {
-  addConsoleLog("info", "Open project requested.", "Project");
   try {
     if (!window.electronAPI?.openFiles) {
       logging.warn("Electron openFiles API is unavailable", {
@@ -2298,11 +2236,6 @@ export async function openProjectAction(): Promise<void> {
     if (hasProjectSignal.value) {
       const closed = await closeProjectAction();
       if (!closed) {
-        addConsoleLog(
-          "info",
-          "Open project aborted: previous project close was canceled.",
-          "Project"
-        );
         return;
       }
     }
@@ -2315,7 +2248,6 @@ export async function openProjectAction(): Promise<void> {
     }
   } catch (err) {
     logging.error("Failed to open project", err, { scope: "gisSignals" });
-    addConsoleLog("error", `Failed to open project: ${err}`, "Project");
   }
 }
 
@@ -2366,7 +2298,7 @@ function adoptFileNameForDefaultTitle(savedPath: string): void {
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-11
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2391,7 +2323,6 @@ export async function saveProjectAction(): Promise<boolean> {
     });
 
     if (!chosenPath) {
-      addConsoleLog("info", "Save project canceled.", "Project");
       return false;
     }
     targetPath = chosenPath;
@@ -2422,18 +2353,12 @@ export async function saveProjectAction(): Promise<boolean> {
     projectFilePathSignal.value = targetPath;
     adoptFileNameForDefaultTitle(targetPath);
     isProjectDirtySignal.value = false;
-    addConsoleLog(
-      "info",
-      `Project "${projectNameSignal.value || "Untitled"}" saved successfully.`,
-      "Project"
-    );
     return true;
   } catch (err) {
     logging.error("Failed to save project", err, {
       scope: "gisSignals",
       targetPath,
     });
-    addConsoleLog("error", `Failed to save project: ${String(err)}`, "Project");
     return false;
   }
 }
@@ -2442,7 +2367,7 @@ export async function saveProjectAction(): Promise<boolean> {
  * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-11
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2466,7 +2391,6 @@ export async function saveAsProjectAction(): Promise<boolean> {
   });
 
   if (!chosenPath) {
-    addConsoleLog("info", "Save As project canceled.", "Project");
     return false;
   }
 
@@ -2495,22 +2419,12 @@ export async function saveAsProjectAction(): Promise<boolean> {
     projectFilePathSignal.value = chosenPath;
     adoptFileNameForDefaultTitle(chosenPath);
     isProjectDirtySignal.value = false;
-    addConsoleLog(
-      "info",
-      `Project saved as "${projectNameSignal.value}" (${chosenPath}).`,
-      "Project"
-    );
     return true;
   } catch (err) {
     logging.error("Failed to save project as", err, {
       scope: "gisSignals",
       chosenPath,
     });
-    addConsoleLog(
-      "error",
-      `Failed to save project as: ${String(err)}`,
-      "Project"
-    );
     return false;
   }
 }
@@ -2615,7 +2529,7 @@ export function promptUnsavedChanges(
  * @description Discards uncommitted feature edits for the specified layer in Main, Worker, and Renderer state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier.
  * @returns {Promise<void>}
@@ -2633,11 +2547,6 @@ export async function discardLayerChangesAction(
   if (typeof api?.clearLayerEdits === "function") {
     await api.clearLayerEdits(layerId);
   }
-  addConsoleLog(
-    "info",
-    `Discarded uncommitted edits for layer "${layerId}".`,
-    "Layers"
-  );
 }
 
 /**
@@ -2645,7 +2554,7 @@ export async function discardLayerChangesAction(
  * @description Stub action saving uncommitted feature edits for the specified layer and clearing its Layer Dirty State.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier.
  * @returns {Promise<void>}
@@ -2661,11 +2570,6 @@ export async function saveLayerChangesAction(layerId: string): Promise<void> {
   if (typeof api?.clearLayerEdits === "function") {
     await api.clearLayerEdits(layerId);
   }
-  addConsoleLog(
-    "info",
-    `Saved changes (stub) for layer "${layerId}".`,
-    "Layers"
-  );
 }
 
 /**
@@ -2673,7 +2577,7 @@ export async function saveLayerChangesAction(layerId: string): Promise<void> {
  * @description Sequentially prompts the user with a <<Cancel, Don't Save Changes, Save Changes>> modal for each dirty layer followed by the dirty project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if all dirty layers and the project were saved or discarded, false if canceled.
  */
@@ -2719,11 +2623,6 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
     const choice = await promptUnsavedChanges("layer", layerName, layerId);
 
     if (choice === "cancel") {
-      addConsoleLog(
-        "info",
-        `Close/exit aborted by user at layer "${layerName}".`,
-        "Layers"
-      );
       return false;
     }
     if (choice === "discard") {
@@ -2739,11 +2638,6 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
     const choice = await promptUnsavedChanges("project", projName);
 
     if (choice === "cancel") {
-      addConsoleLog(
-        "info",
-        "Close/exit aborted by user at project prompt.",
-        "Project"
-      );
       return false;
     }
     if (choice === "discard") {
@@ -2751,11 +2645,6 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
     } else if (choice === "save") {
       const saved = await saveProjectAction();
       if (!saved) {
-        addConsoleLog(
-          "info",
-          "Close/exit aborted: unsaved project changes were not saved.",
-          "Project"
-        );
         return false;
       }
     }
@@ -2769,7 +2658,7 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
  * If saved or discarded, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-10
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project closed, false if aborted.
  */
@@ -2819,7 +2708,6 @@ export async function closeProjectAction(): Promise<boolean> {
   viewportExtentSignal.value = [-180, -90, 180, 90];
   resetTimeFilterState();
 
-  addConsoleLog("info", "Project closed. Returned to blank slate.", "Project");
   return true;
 }
 
@@ -2867,54 +2755,41 @@ export function saveActiveLayerAction(): void {
 }
 
 /**
- * @description Action handler saving active layer under a new destination path.
+ * @description Stub action handler for saving the active layer under a new destination path; it has no renderer-side behaviour yet.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function saveActiveLayerAsAction(): void {
-  if (!activeLayerIdSignal.value) return;
-  addConsoleLog(
-    "info",
-    `Save Active Layer As requested for "${activeLayerIdSignal.value}".`,
-    "Layers"
-  );
-}
+export function saveActiveLayerAsAction(): void {}
 
 // Edit Actions
 /**
- * @description Action handler performing edit undo action from undo history stack.
+ * @description Stub action handler for undoing the last edit from the undo history stack; it has no renderer-side behaviour yet.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function undoAction() {
-  if (undoStackSignal.value.length === 0) return;
-  addConsoleLog("info", "Undo performed.", "Edit");
-}
+export function undoAction() {}
 
 /**
- * @description Action handler performing edit redo action from redo history stack.
+ * @description Stub action handler for redoing the last undone edit from the redo history stack; it has no renderer-side behaviour yet.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function redoAction() {
-  if (redoStackSignal.value.length === 0) return;
-  addConsoleLog("info", "Redo performed.", "Edit");
-}
+export function redoAction() {}
 
 /**
  * @description Action handler cutting selected features to feature clipboard.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -2928,18 +2803,13 @@ export function cutAction() {
     (f) => !selectedFeatureIdsSignal.value.has(f.id)
   );
   selectedFeatureIdsSignal.value = new Set();
-  addConsoleLog(
-    "info",
-    `Cut ${selected.length} feature(s) to clipboard.`,
-    "Edit"
-  );
 }
 
 /**
  * @description Action handler copying selected features to feature clipboard.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -2949,18 +2819,13 @@ export function copyAction() {
     selectedFeatureIdsSignal.value.has(f.id)
   );
   clipboardFeaturesSignal.value = selected;
-  addConsoleLog(
-    "info",
-    `Copied ${selected.length} feature(s) to clipboard.`,
-    "Edit"
-  );
 }
 
 /**
  * @description Action handler pasting features from feature clipboard into current project.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -2971,25 +2836,17 @@ export function pasteAction() {
     id: `feature-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
   }));
   featuresSignal.value = [...featuresSignal.value, ...pasted];
-  addConsoleLog("info", `Pasted ${pasted.length} feature(s).`, "Edit");
 }
 
 /**
- * @description Action handler opening attribute table editor for selected feature records.
+ * @description Stub action handler for opening the attribute editor on the selected features; it has no renderer-side behaviour yet.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function editAttributesAction() {
-  if (selectedFeatureIdsSignal.value.size === 0) return;
-  addConsoleLog(
-    "info",
-    "Edit Attributes requested for selected feature(s).",
-    "Edit"
-  );
-}
+export function editAttributesAction() {}
 
 // View / Canvas actions
 /**
@@ -3063,33 +2920,31 @@ export const isAddLayersOpenSignal = signal<boolean>(false);
  * @description Opens non-modal Add Layers dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function openAddLayersDialog(): void {
   isAddLayersOpenSignal.value = true;
-  addConsoleLog("info", "Add Layers dialog opened.", "Layers");
 }
 
 /**
  * @description Closes non-modal Add Layers dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-01
- * @updated 2026-10-02
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function closeAddLayersDialog(): void {
   isAddLayersOpenSignal.value = false;
-  addConsoleLog("info", "Add Layers dialog closed.", "Layers");
 }
 
 /**
  * @description Action handler for cancelling active operations, reverting tools to pan, clearing feature selections, and clearing layer tree selections.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -3104,7 +2959,6 @@ export function cancelAction(): void {
   if (typeof window !== "undefined" && window.electronAPI?.executeAction) {
     window.electronAPI.executeAction("cancel_action");
   }
-  addConsoleLog("info", "Cancelled active operation.", "Workbench");
 }
 
 /**
@@ -3194,7 +3048,7 @@ export function computeCoordinatesExtent(
  * @description Triggers viewport fit to currently selected feature bounds with an 8px margin.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -3285,17 +3139,6 @@ export function zoomToSelectionAction(): void {
         timestamp: Date.now(),
       };
     }
-    addConsoleLog(
-      "info",
-      "Fitted viewport to selected features with 8px margin.",
-      "Map"
-    );
-  } else {
-    addConsoleLog(
-      "info",
-      "No spatial extent resolved for selected features.",
-      "Map"
-    );
   }
 }
 
@@ -3303,7 +3146,7 @@ export function zoomToSelectionAction(): void {
  * @description Triggers viewport fit to active layer spatial extent with an 8px margin.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -3383,17 +3226,11 @@ export function zoomToLayerAction(): void {
         timestamp: Date.now(),
       };
     }
-    addConsoleLog(
-      "info",
-      `Fitted viewport to active layer ${activeId} with 8px margin.`,
-      "Map"
-    );
   } else {
-    addConsoleLog(
-      "warn",
-      `Cannot zoom to layer ${activeId}: invalid or missing spatial bounds.`,
-      "Map"
-    );
+    logging.warn("Cannot zoom to the active layer: invalid or missing bounds", {
+      scope: "gisSignals",
+      layerId: activeId,
+    });
   }
 }
 
@@ -3401,7 +3238,7 @@ export function zoomToLayerAction(): void {
  * @description Selects all features belonging to the active layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -3412,42 +3249,34 @@ export function selectAllFeaturesAction(): void {
       featuresSignal.value.filter((f) => f.layerId === activeId)
     : featuresSignal.value;
   selectedFeatureIdsSignal.value = new Set(targetFeatures.map((f) => f.id));
-  addConsoleLog(
-    "info",
-    `Selected ${targetFeatures.length} feature(s).`,
-    "Selection"
-  );
 }
 
 /**
  * @description Deselects all currently selected spatial feature records.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function deselectAllFeaturesAction(): void {
   selectedFeatureIdsSignal.value = new Set();
-  addConsoleLog("info", "Deselected all features.", "Selection");
 }
 
 /**
  * @description Deletes selected spatial features from the active layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function deleteSelectedFeaturesAction(): void {
   if (selectedFeatureIdsSignal.value.size === 0) return;
-  const count = selectedFeatureIdsSignal.value.size;
   featuresSignal.value = featuresSignal.value.filter(
     (f) => !selectedFeatureIdsSignal.value.has(f.id)
   );
   selectedFeatureIdsSignal.value = new Set();
-  addConsoleLog("info", `Deleted ${count} selected feature(s).`, "Edit");
 }
 
 /**
@@ -3491,7 +3320,7 @@ export function pasteFeaturesAction(): void {
  * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-06
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
  * @param {Object} [options] - Optional toggle execution settings.
@@ -3523,11 +3352,6 @@ export function toggleLayerEditingAction(
       captureLayerToolbarState(targetId);
       activeToolSignal.value = "pan";
     }
-    addConsoleLog(
-      "info",
-      `Layer editing disabled for "${targetId}".`,
-      "Digitizing"
-    );
   } else {
     current.add(targetId);
     editableLayerIdsSignal.value = current;
@@ -3543,11 +3367,6 @@ export function toggleLayerEditingAction(
         activeToolSignal.value = cached;
       }
     }
-    addConsoleLog(
-      "info",
-      `Layer editing enabled for "${targetId}".`,
-      "Digitizing"
-    );
   }
 }
 
@@ -3555,7 +3374,7 @@ export function toggleLayerEditingAction(
  * @description Action handler toggling interactive vertex and edge editing mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -3565,7 +3384,6 @@ export function vertexEditorAction(): void {
   } else {
     activeToolSignal.value = "vertex_editor";
   }
-  addConsoleLog("info", "Vertex editor toggled.", "Digitizing");
 }
 
 /**
@@ -3583,26 +3401,24 @@ export const isSelectByValueOpenSignal = signal<boolean>(false);
  * @description Opens modeless Select Features by Value dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function openSelectByValueDialog(): void {
   isSelectByValueOpenSignal.value = true;
-  addConsoleLog("info", "Select Features by Value dialog opened.", "Selection");
 }
 
 /**
  * @description Closes modeless Select Features by Value dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function closeSelectByValueDialog(): void {
   isSelectByValueOpenSignal.value = false;
-  addConsoleLog("info", "Select Features by Value dialog closed.", "Selection");
 }
 
 /**
@@ -3657,26 +3473,24 @@ export const isCreateLayerOpenSignal = signal<boolean>(false);
  * @description Opens modeless Create Layer dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function openCreateLayerDialog(): void {
   isCreateLayerOpenSignal.value = true;
-  addConsoleLog("info", "Create Layer dialog opened.", "Layers");
 }
 
 /**
  * @description Closes modeless Create Layer dialog box.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-08
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function closeCreateLayerDialog(): void {
   isCreateLayerOpenSignal.value = false;
-  addConsoleLog("info", "Create Layer dialog closed.", "Layers");
 }
 
 /**

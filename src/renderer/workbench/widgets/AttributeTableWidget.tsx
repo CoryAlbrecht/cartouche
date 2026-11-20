@@ -4,7 +4,7 @@
  * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars. The records are shown through an embedded TableWidget (Spec #322 / Ticket #329) whose column definitions carry the attribute table's type-specific display and editors. Clicking a sortable column header sorts all of the layer's features through the Geospatial Worker's `orderBy` Sort Keys (Ticket #330).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TableWidget}
@@ -30,8 +30,8 @@ import {
   isProjectDirtySignal,
   viewportExtentSignal,
   openDockPanelsSignal,
-  addConsoleLog,
 } from "@renderer/state/gisSignals";
+import { logging } from "@shared/logging";
 import { prefsAttributeTableMaxRows } from "@renderer/state/preferencesSignals";
 import { activeLocaleSignal } from "@renderer/state/i18nSignals";
 import {
@@ -957,7 +957,7 @@ function orderByForSort(sort: TableSort, fidColumnName: string): SortKey[] {
  * @description Renders the interactive attribute table of the Active Layer: embedded selection and digitizing toolbars, a filter bar, pagination and chunk loading from the Geospatial Worker, and an embedded TableWidget (header bar and Row Number Column hidden) showing the records. Its own `#` column shows the Persistent FID where the layer has one, otherwise the Sequential Row Index across pages. It keeps the feature selection across chunks in `selectedFeatureIdsSignal`, shared with the map, and shows the part of it on the current page. Cells are read-only unless the layer is in Layer Edit Mode; edits are staged to the Main process and mark the layer dirty and the feature edited. Column widths are kept per layer. Clicking a physical attribute column's header (or the `#` column's, when the layer has a stored ID column) sorts every feature of the layer through the chunk query's `orderBy` Sort Keys and reloads from the first chunk; without `queryExtent` the features are sorted in memory before the page is sliced. The sort resets when the Active Layer changes, and is cleared and logged if the worker rejects its Sort Key.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {AttributeTableWidgetProps} props - Dockview panel properties.
  * @returns {React.ReactElement} AttributeTableWidget element.
@@ -1099,12 +1099,11 @@ export const AttributeTableWidget: React.FC<AttributeTableWidgetProps> = (
       .catch((err: unknown) => {
         if (cancelled || orderBy.length === 0) return;
         // A rejected Sort Key: clear the sort so the table reloads unsorted instead of staying empty
-        const fields = orderBy.map(([field]) => field).join(", ");
-        addConsoleLog(
-          "error",
-          `Failed to sort the attribute table of ${activeLayer.name} by ${fields}: ${err instanceof Error ? err.message : String(err)}`,
-          "Attribute Table"
-        );
+        logging.error("Failed to sort the attribute table", err, {
+          scope: "AttributeTableWidget",
+          layerId: targetLayerId,
+          fields: orderBy.map(([field]) => field),
+        });
         querySort.value = null;
         setPageStart(0);
       });

@@ -4,7 +4,7 @@
  * @description Headless component tests for sorting the AttributeTableWidget through the Geospatial Worker (Spec #322 / Ticket #330): header clicks reaching the chunk query as an `orderBy` Sort Key list and reloading from the first chunk, returning to unsorted in source order, the sort resetting when the Active Layer changes, Virtual Field columns staying unsortable, the `#` column sorting by the layer's stored ID column only, selection surviving a sort, a rejected Sort Key clearing the sort, and in-memory sorting before slicing when no `queryExtent` is available.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -34,8 +34,8 @@ const {
   selectedFeatureIdsSignal,
   editedFeatureIdsSignal,
   editableLayerIdsSignal,
-  consoleLogsSignal,
 } = jiti("@renderer/state/gisSignals.ts");
+const { setLogSink, resetLogSink } = jiti("@shared/logging/index.ts");
 const { prefsAttributeTableMaxRows } = jiti(
   "@renderer/state/preferencesSignals.ts"
 );
@@ -451,9 +451,14 @@ describe("AttributeTableWidget sorting through the Geospatial Worker (Ticket #33
       return worker(layerId, options);
     };
     await render();
-    const logs = consoleLogsSignal.value.length;
-    await clickHeader("name");
-    await act(async () => {});
+    const payloads: any[] = [];
+    setLogSink((payload: any) => payloads.push(payload));
+    try {
+      await clickHeader("name");
+      await act(async () => {});
+    } finally {
+      resetLogSink();
+    }
 
     assert.equal(
       dataHeader("name").getAttribute("aria-sort"),
@@ -462,11 +467,14 @@ describe("AttributeTableWidget sorting through the Geospatial Worker (Ticket #33
     );
     assert.equal(lastQuery().orderBy, undefined, "the table reloads unsorted");
     assert.deepEqual(displayedIds(), [101, 102]);
-    const added = consoleLogsSignal.value.slice(logs);
     assert.ok(
-      added.some(
-        (entry: any) =>
-          entry.level === "error" && entry.message.includes("name")
+      payloads.some(
+        (payload) =>
+          payload.level === "error"
+          && payload.meta?.some(
+            (item: any) =>
+              Array.isArray(item?.fields) && item.fields.includes("name")
+          )
       ),
       "an error naming the field is logged"
     );

@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-12
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -61,7 +61,6 @@ import {
   visibleToolbarsSignal,
   isWindowMaximizedSignal,
   openDockPanelsSignal,
-  addConsoleLog,
   newProjectAction,
   openProjectAction,
   closeProjectAction,
@@ -151,7 +150,7 @@ interface SavedPanelState {
  * @description Custom tab header renderer component that visually disables close action on the last remaining map viewport canvas tab.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-02
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {IDockviewPanelHeaderProps} props - Dockview tab header properties.
  * @returns {React.ReactElement} Tab header DOM node.
@@ -201,11 +200,9 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
           e.preventDefault();
           e.stopPropagation();
           if (isLastMapTab) {
-            addConsoleLog(
-              "warn",
-              "The last map canvas tab cannot be closed.",
-              "Workbench"
-            );
+            logging.warn("The last map canvas tab cannot be closed", {
+              scope: "Workbench",
+            });
             return;
           }
           api.close();
@@ -226,7 +223,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -579,11 +576,6 @@ export const Workbench: React.FC = () => {
         priority: "low",
       } as any);
 
-      addConsoleLog(
-        "info",
-        "Default GIS layout initialized: LayerTreeWidget (Left), Time Filter (Top), Map Viewport (Center).",
-        "Dockview"
-      );
       setWidgetDockItemVisibility("layer-tree", true);
       setWidgetDockItemVisibility("time-filter", true);
       updateOpenPanelsState(api);
@@ -603,7 +595,6 @@ export const Workbench: React.FC = () => {
       const existing = dockviewApi.getPanel(id);
       if (existing) {
         existing.api.setActive();
-        addConsoleLog("info", `Focused existing panel: ${title}`, "Dockview");
         return;
       }
 
@@ -631,11 +622,6 @@ export const Workbench: React.FC = () => {
           );
           if (containerPanel) {
             containerPanel.api.setActive();
-            addConsoleLog(
-              "info",
-              `Focused existing tab container for panel: ${title}`,
-              "Dockview"
-            );
             return;
           }
           // If container is not active in Dockview, restore as independent widget with axisRatio = 1
@@ -775,7 +761,6 @@ export const Workbench: React.FC = () => {
         }
       }
 
-      addConsoleLog("info", `Opened panel: ${title}`, "Dockview");
       updateOpenPanelsState(dockviewApi);
     },
     [dockviewApi, updateOpenPanelsState]
@@ -793,7 +778,6 @@ export const Workbench: React.FC = () => {
       const existing = dockviewApi.getPanel(id);
       if (existing) {
         existing.api.close();
-        addConsoleLog("info", `Closed panel: ${title}`, "Dockview");
       } else {
         openPanel(id, component, title, direction);
       }
@@ -844,11 +828,6 @@ export const Workbench: React.FC = () => {
       if (savedLayout) {
         try {
           api.fromJSON(JSON.parse(savedLayout));
-          addConsoleLog(
-            "info",
-            "Restored layout from persistent storage.",
-            "Dockview"
-          );
         } catch (err) {
           logging.warn(
             "Failed to parse saved layout, resetting to default",
@@ -875,11 +854,9 @@ export const Workbench: React.FC = () => {
                 || (p as any).view?.contentComponent === "map-viewport"
             );
             if (mapPanels.length <= 1) {
-              addConsoleLog(
-                "warn",
-                "The last map canvas tab cannot be closed.",
-                "Workbench"
-              );
+              logging.warn("The last map canvas tab cannot be closed", {
+                scope: "Workbench",
+              });
               return;
             }
           }
@@ -932,10 +909,9 @@ export const Workbench: React.FC = () => {
                 group: mapPanels[0].group,
                 position: direction,
               });
-              addConsoleLog(
-                "warn",
-                `Panels cannot be grouped with map canvases. Moved panel "${panel.title || panel.id}".`,
-                "Workbench"
+              logging.warn(
+                "Panels cannot be grouped with map canvases; moved panel",
+                { scope: "Workbench", panelId: panel.id }
               );
             });
           }

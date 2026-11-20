@@ -4,17 +4,14 @@
  * @description Preact reactive signals store for application preferences management and preferences dialog visibility.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-11-06
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
 
 import { signal, type Signal } from "@preact/signals-react";
 import type { PreferenceMap } from "@shared/types";
-import {
-  addConsoleLog,
-  hydrateToolbarSignalsFromPreferences,
-} from "./gisSignals";
+import { hydrateToolbarSignalsFromPreferences } from "./gisSignals";
 import { logging } from "../../shared/logging";
 
 /**
@@ -160,7 +157,7 @@ export async function loadPreferences(name?: string): Promise<PreferenceMap> {
  * @description Saves a single preference value via IPC and updates preferencesMapSignal reactively.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-10-28
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @param {string} name - Preference key identifier.
  * @param {any} value - New preference value to set.
@@ -180,22 +177,12 @@ export async function updatePreference(
       attachAndSyncSignals(merged);
       preferencesMapSignal.value = merged;
       hydrateToolbarSignalsFromPreferences(merged);
-      addConsoleLog(
-        "info",
-        `Preference updated: "${name}" = ${JSON.stringify(value)}`,
-        "Preferences"
-      );
     }
   } catch (err) {
     logging.error("Error setting preference value", err, {
       preference: name,
       scope: "preferencesSignals",
     });
-    addConsoleLog(
-      "error",
-      `Failed to update preference: ${name}`,
-      "Preferences"
-    );
   }
 }
 
@@ -203,14 +190,13 @@ export async function updatePreference(
  * @description Opens the Preferences Dialog modal and loads current preferences from Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-24
- * @updated 2026-09-30
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function openPreferencesDialog(): void {
   loadPreferences();
   isPreferencesOpenSignal.value = true;
-  addConsoleLog("info", "Preferences dialog opened.", "Preferences");
 }
 
 /**
@@ -229,7 +215,7 @@ export function closePreferencesDialog(): void {
  * @description Cancels pending preference edits, reverting any modified signals back to authoritative values and closing dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -241,5 +227,4 @@ export function cancelPreferencesEdits(): void {
     }
   }
   closePreferencesDialog();
-  addConsoleLog("info", "Preferences changes cancelled.", "Preferences");
 }

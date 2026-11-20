@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-13
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -44,7 +44,6 @@ import {
   scaleDenominatorSignal,
   mapActionSignal,
   activeMapControllerSignal,
-  addConsoleLog,
   selectedFeatureIdsSignal,
   activeLayerIdSignal,
 } from "../state/gisSignals";
@@ -389,7 +388,7 @@ export class MapController {
    * @description Initializes the isolated OpenLayers map instance, view, and reactive signal subscriptions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-10
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {HTMLElement} container - Target unmanaged DOM container element.
    * @param {Object} [options] - Optional map initialization options.
@@ -431,12 +430,6 @@ export class MapController {
     this.updateScaleSignal(true);
 
     activeMapControllerSignal.value = this;
-
-    addConsoleLog(
-      "info",
-      "MapController spatial canvas engine initialized.",
-      "OpenLayers"
-    );
   }
 
   /**
@@ -1184,7 +1177,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-11
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -1502,11 +1495,6 @@ export class MapController {
           scope: "MapController",
           layerId: descriptor.id,
         });
-        addConsoleLog(
-          "error",
-          `Failed to query features for layer "${descriptor.name || descriptor.id}": ${err}`,
-          "OpenLayers"
-        );
       }
 
       return newFeatures;
@@ -1953,7 +1941,7 @@ export class MapController {
    * @description Switches the map to another display CRS: registers it, replaces the OpenLayers view, keeps the camera in place by reprojecting its extent (or applies a pending Project CRS viewport), zooms to fit all layers when switching to or from No CRS, and reloads every layer in the new CRS. Queued so switches apply in order.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-13
-   * @updated 2026-11-13
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @param {DisplayCrs} next - Target display CRS.
    * @returns {Promise<void>}
@@ -1973,11 +1961,6 @@ export class MapController {
           logging.warn(
             "Project CRS cannot be registered; keeping the current display CRS",
             { scope: "MapController", crs: next.code }
-          );
-          addConsoleLog(
-            "warn",
-            `Cannot display in ${next.code}: no CRS definition available.`,
-            "Map"
           );
           return;
         }
@@ -2032,11 +2015,6 @@ export class MapController {
         this.refreshSelectionHighlight();
         this.updateViewportSignals();
         this.updateScaleSignal(true);
-        addConsoleLog(
-          "info",
-          `Map display CRS set to ${next.none ? "No CRS" : next.code}.`,
-          "Map"
-        );
       })
       .catch((err) => {
         logging.error("Display CRS switch failed", err, {
