@@ -50,8 +50,8 @@ import {
   vertexEditorModeSignal,
   activeLayerIdSignal,
   activeToolSignal,
-  type VertexEditTarget,
 } from "../state/gisSignals";
+import type { VertexEditTarget } from "./vertexEditing";
 import VectorLayer from "ol/layer/Vector.js";
 import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
 import {

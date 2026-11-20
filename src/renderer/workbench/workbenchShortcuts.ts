@@ -69,6 +69,7 @@ import {
 import { registeredActionsSignal } from "../state/actionSignals";
 import { cancelTopDialog } from "../state/dialogSignals";
 import { cancelSelectionShape } from "../map/selectionShapeCancel";
+import { SELECTION_ACTION_TO_TOOL_MAP } from "./widgets/toolbars/SelectionToolbarWidget";
 import {
   isCopySelectionEnabled,
   isCutSelectionEnabled,
@@ -334,16 +335,10 @@ export function executeWorkbenchAction(actionName: string): void {
       zoomToLayerAction();
       break;
     case "select_by_click":
-      activeSelectionModeSignal.value = "select_by_click";
-      activeToolSignal.value = "select_click";
-      break;
     case "select_by_rectangle":
-      activeSelectionModeSignal.value = "select_by_rectangle";
-      activeToolSignal.value = "select_rectangle";
-      break;
     case "select_by_lasso":
-      activeSelectionModeSignal.value = "select_by_lasso";
-      activeToolSignal.value = "select_lasso";
+      activeSelectionModeSignal.value = actionName;
+      activeToolSignal.value = SELECTION_ACTION_TO_TOOL_MAP[actionName];
       break;
     case "select_features_by_value":
       openSelectByValueDialog();

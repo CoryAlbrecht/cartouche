@@ -4,7 +4,7 @@
  * @description Background Electron utility process entry point listening on process.parentPort for geospatial dataset requests and delegating to GeospatialEngine.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link logging}
@@ -95,7 +95,7 @@ export function handleWorkerUnhandledRejection(port: any, reason: any): void {
  * @description Registers the message handler, lifecycle hooks, and error traps on the parent port for geospatial dataset requests.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {any} [port] - Parent communication port (defaults to process.parentPort).
  * @param {GeospatialEngine} [customEngine] - Optional custom GeospatialEngine instance for testing or isolation.

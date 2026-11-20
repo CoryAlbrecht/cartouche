@@ -21,7 +21,5 @@ import { logging } from "../../../shared/logging";
  * @returns {void}
  */
 export default function deleteSelection(): void {
-  logging.debug("Delete selected features requested", {
-    scope: "deleteSelection",
-  });
+  logging.debug("Delete selection requested", { scope: "deleteSelection" });
 }

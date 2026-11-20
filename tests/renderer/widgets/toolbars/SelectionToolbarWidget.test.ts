@@ -34,6 +34,7 @@ import {
 } from "../../../../src/renderer/state/gisSignals";
 import type { GisFeature } from "../../../../src/shared/types";
 import { registeredActionsSignal } from "../../../../src/renderer/state/actionSignals";
+import { projectTreeSignal } from "../../../../src/renderer/state/projectSignals";
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -511,13 +512,25 @@ describe("SelectionToolbarWidget Selection Actions & Mutual Exclusivity", () => 
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
 
-  it("cancelAction resets activeToolSignal to pan and clears selections", () => {
+  it("cancelAction keeps the selection tool and clears selections", () => {
+    // The Active Layer must exist in the layer tree, or clearing the tree selection drops it.
+    projectTreeSignal.value = [
+      {
+        id: "layer-1",
+        name: "Layer 1",
+        type: "vector",
+        source: "/path/to/layer-1.shp",
+        visible: true,
+        selected: false,
+      },
+    ];
+    activeLayerIdSignal.value = "layer-1";
     activeToolSignal.value = "select_rectangle";
     selectedFeatureIdsSignal.value = new Set(["feat-1", "feat-2"]);
 
     cancelAction();
 
-    assert.equal(activeToolSignal.value, "pan");
+    assert.equal(activeToolSignal.value, "select_rectangle");
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
 });

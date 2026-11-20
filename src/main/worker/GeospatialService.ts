@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-18
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}

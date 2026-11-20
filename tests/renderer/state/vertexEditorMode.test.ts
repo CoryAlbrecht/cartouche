@@ -24,7 +24,6 @@ import {
 } from "../../../src/renderer/state/gisSignals";
 import {
   getLayerToolbarPreference,
-  setLayerToolbarPreference,
   resetLayerToolbarMemoryState,
 } from "../../../src/renderer/state/layerToolbarMemory";
 import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
@@ -143,17 +142,5 @@ describe("Vertex Editor Mode (Ticket #377)", () => {
     activeLayerIdSignal.value = "layer-a";
 
     assert.equal(vertexEditorModeSignal.value, false);
-  });
-
-  it("a tool stored as vertex_editor by an older build restores as pan", () => {
-    editableLayerIdsSignal.value = new Set(["layer-a"]);
-    setLayerToolbarPreference("layer-a", "digitizingTool", "vertex_editor");
-
-    activeLayerIdSignal.value = "layer-a";
-    assert.equal(activeToolSignal.value, "pan");
-
-    toggleLayerEditingAction("layer-a");
-    toggleLayerEditingAction("layer-a");
-    assert.equal(activeToolSignal.value, "pan");
   });
 });

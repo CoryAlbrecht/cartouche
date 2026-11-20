@@ -87,10 +87,8 @@ import {
   computeFrameEnd,
 } from "../map/timeFilterMath";
 import { listVertexKeys, type VertexKey } from "../map/vertexSelection";
-import {
-  commitVertexDeletion,
-  type VertexEditProjections,
-} from "../map/vertexEditing";
+import type { VertexEditTarget } from "../map/vertexEditing";
+import { deleteSelectedVerticesAction } from "../map/vertexDeletionAction";
 import type { ProjectTimeFilterConfig } from "../../shared/types";
 import {
   getLayerToolbarPreference,
@@ -99,7 +97,6 @@ import {
   restoreLayerToolbarState,
   handleActiveLayerChange,
   resetLayerToolbarMemoryState,
-  migrateActiveTool,
   type LayerToolbarState,
 } from "./layerToolbarMemory";
 import {
@@ -916,23 +913,6 @@ export interface ActiveMapController {
   getView(): any;
   getSelectableLayer?(): { source: any } | null;
   getVertexEditTarget?(): VertexEditTarget | null;
-}
-
-/**
- * @typedef {Object} VertexEditTarget
- * @description The valid Active Layer as a vertex edit sees it: its id, OpenLayers source (features in the display CRS) and data/display CRS pair.
- * @property {string} layerId - Active Layer id.
- * @property {any} source - The layer's OpenLayers vector source.
- * @property {string} dataProjection - Layer data CRS.
- * @property {string} featureProjection - Display CRS.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- */
-export interface VertexEditTarget extends VertexEditProjections {
-  layerId: string;
-  source: any;
 }
 
 /**
@@ -3054,7 +3034,7 @@ export function closeAddLayersDialog(): void {
 }
 
 /**
- * @description Action handler for cancelling active operations, reverting tools to pan, clearing the selection of the current Selection Target (the vertex selection in Vertex Editor Mode, otherwise the feature selection), and clearing layer tree selections.
+ * @description Action handler for cancelling in-progress actions: clears the selection of the current Selection Target (the vertex selection in Vertex Editor Mode, otherwise the feature selection), and clears layer tree selections. Never switches the active tool or mode (a Selection Shape in progress is discarded earlier, by {@link cancelSelectionShape}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
  * @updated 2026-11-20
@@ -3062,9 +3042,6 @@ export function closeAddLayersDialog(): void {
  * @returns {void}
  */
 export function cancelAction(): void {
-  if (activeToolSignal.value !== "pan") {
-    activeToolSignal.value = "pan";
-  }
   if (selectionTargetSignal.value === "vertices") {
     clearVertexSelection();
   } else if (selectedFeatureIdsSignal.value.size > 0) {
@@ -3393,66 +3370,6 @@ export function deselectAllAction(): void {
 }
 
 /**
- * @function deleteSelectedVerticesAction
- * @description Deletes the selected vertices of the valid Active Layer as one atomic edit ({@link commitVertexDeletion}): parts left with too few vertices are removed and features left with none are deleted, the source is updated and every affected feature is staged with one `stageFeatureEdits` call. Then clears the vertex selection, drops deleted features from the feature selection and the Attribute Table rows, and marks the features edited and the layer and project dirty. No undo entry is recorded (Undo/Redo are still stubs).
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @returns {void}
- */
-export function deleteSelectedVerticesAction(): void {
-  const keys = selectedVertexKeysSignal.value;
-  if (keys.size === 0) return;
-  const target = activeMapControllerSignal.value?.getVertexEditTarget?.();
-  if (!target) return;
-  const api = (globalThis as any).window?.electronAPI;
-  const commit = commitVertexDeletion({
-    source: target.source,
-    keys,
-    projections: target,
-    stage: (edits) => {
-      if (typeof api?.stageFeatureEdits === "function") {
-        api
-          .stageFeatureEdits(target.layerId, edits)
-          ?.catch?.((err: unknown) =>
-            logging.error("Failed to stage vertex deletion", err, {
-              scope: "gisSignals",
-              layerId: target.layerId,
-            })
-          );
-      }
-    },
-  });
-  batch(() => {
-    selectedVertexKeysSignal.value = new Set();
-    if (!commit) return;
-    const deleted = new Set(commit.deletedIds);
-    if (deleted.size > 0) {
-      const selected = selectedFeatureIdsSignal.value;
-      if ([...selected].some((id) => deleted.has(id))) {
-        selectedFeatureIdsSignal.value = new Set(
-          [...selected].filter((id) => !deleted.has(id))
-        );
-      }
-      featuresSignal.value = featuresSignal.value.filter(
-        (f) => f.layerId !== target.layerId || !deleted.has(f.id)
-      );
-    }
-    editedFeatureIdsSignal.value = new Set([
-      ...editedFeatureIdsSignal.value,
-      ...commit.changedIds,
-      ...commit.deletedIds,
-    ]);
-    dirtyLayerIdsSignal.value = new Set([
-      ...dirtyLayerIdsSignal.value,
-      target.layerId,
-    ]);
-    isProjectDirtySignal.value = true;
-  });
-}
-
-/**
  * @function deleteSelectionAction
  * @description Deletes the selection of the current Selection Target: in Vertex Editor Mode the selected vertices ({@link deleteSelectedVerticesAction}), otherwise the selected spatial features of the active layer.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -3557,8 +3474,9 @@ export function toggleLayerEditingAction(
       activeLayerIdSignal.value === targetId
       && activeToolSignal.value === "pan"
     ) {
-      const cached = migrateActiveTool(
-        getLayerToolbarPreference<string>(targetId, "digitizingTool")
+      const cached = getLayerToolbarPreference<ActiveTool>(
+        targetId,
+        "digitizingTool"
       );
       if (cached) {
         activeToolSignal.value = cached;

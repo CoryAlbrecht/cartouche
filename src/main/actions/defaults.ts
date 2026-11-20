@@ -176,7 +176,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: "cancel_action",
     description:
-      "Cancels the active operation, reverts tool, or clears selection",
+      "Cancels the action in progress or clears the selection; never changes the tool or mode",
     icon: mdiCancel,
     keyCombination: { key: "Escape" },
     functionCall: ApiFunctions.cancelAction,

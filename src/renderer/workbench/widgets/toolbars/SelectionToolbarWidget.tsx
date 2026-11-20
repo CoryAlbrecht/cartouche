@@ -32,6 +32,7 @@ import {
   selectedItemCount,
 } from "@renderer/state/selectionCommands";
 import { SplitToolButton } from "@renderer/components/common/SplitToolButton";
+import { isSelectionTool } from "@renderer/map/mapToolInteractions";
 import { ToolbarWidget } from "../ToolbarWidget";
 
 /**
@@ -47,14 +48,14 @@ export interface SelectionToolbarWidgetProps {
 }
 
 /**
- * @description Map linking discrete selection action mode identifiers to corresponding ActiveTool modes.
+ * @description Map linking each selection action (`select_by_click`, `select_by_rectangle`, `select_by_lasso`) to the Selection Tool it activates: the single source used by this toolbar and by the keyboard shortcuts ({@link executeWorkbenchAction}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-20
  * @since 0.1.0-dev
- * @type {Record<string, ActiveTool>}
+ * @type {Record<SelectionMode, ActiveTool>}
  */
-export const SELECTION_ACTION_TO_TOOL_MAP: Record<string, ActiveTool> = {
+export const SELECTION_ACTION_TO_TOOL_MAP: Record<SelectionMode, ActiveTool> = {
   select_by_click: "select_click",
   select_by_rectangle: "select_rectangle",
   select_by_lasso: "select_lasso",
@@ -112,25 +113,13 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
   useSignals();
   const { t } = useTranslation();
 
-  const isSelectionActive =
-    activeToolSignal.value === "select_click"
-    || activeToolSignal.value === "select_rectangle"
-    || activeToolSignal.value === "select_lasso";
+  const isSelectionActive = isSelectionTool(activeToolSignal.value);
 
   const handleSelectionModeSelect = (actionId: string): void => {
-    activeSelectionModeSignal.value = actionId as SelectionMode;
-    const tool = SELECTION_ACTION_TO_TOOL_MAP[actionId];
-    if (tool) {
-      activeToolSignal.value = tool;
-    }
-  };
-
-  const handleSelectionExecute = (actionId: string): void => {
-    activeSelectionModeSignal.value = actionId as SelectionMode;
-    const tool = SELECTION_ACTION_TO_TOOL_MAP[actionId];
-    if (tool) {
-      activeToolSignal.value = tool;
-    }
+    if (!(actionId in SELECTION_ACTION_TO_TOOL_MAP)) return;
+    const mode = actionId as SelectionMode;
+    activeSelectionModeSignal.value = mode;
+    activeToolSignal.value = SELECTION_ACTION_TO_TOOL_MAP[mode];
   };
 
   const selectByValueShortcut = getActionFormattedKey(
@@ -174,7 +163,7 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
         zone={zone}
         active={isSelectionActive}
         onSelect={handleSelectionModeSelect}
-        onExecute={handleSelectionExecute}
+        onExecute={handleSelectionModeSelect}
       />
 
       <button

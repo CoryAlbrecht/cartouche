@@ -151,7 +151,8 @@
   /* Light info accent, legible on a primary fill */
   --cartouche-theme-info-bright: #7ce8ff;
 
-  /* Map Overlay Highlight: amber shapes drawn over the map while selecting */
+  /* Selection Shape colour: the amber Select by Rectangle / Select by Lasso
+     outline drawn over the map during the drag */
   --cartouche-theme-highlight: #f5a623;
 
   /* Box Shadows & Overlays */
@@ -246,7 +247,7 @@
   /* Selection Shape: the rectangle or lasso drawn while a Selection Tool drags
      (outline at full opacity, fill at 25 %) */
   --cartouche-map-selection-shape: var(--cartouche-theme-highlight);
-  /* Vertex markers: the squares on the Active Layer's vertices in Vertex Editor
+  /* Vertex Markers: the squares on the Active Layer's vertices in Vertex Editor
      Mode (selected vertices are filled with the project's Selection Colour) */
   --cartouche-map-vertex-marker: var(--cartouche-theme-fg);
   --cartouche-map-vertex-marker-fill: var(--cartouche-theme-surface);

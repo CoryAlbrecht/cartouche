@@ -28,6 +28,7 @@ import { PreferencesStore } from "./api/ui/preferences/PreferencesStore";
 import { geospatialService } from "./worker/GeospatialService";
 import { defaultLayerStyles } from "@shared/styles/defaultLayerStyles";
 import { fileTypeRegistry } from "./filetypes/FileTypeRegistry";
+import type { StagedFeatureEdit } from "../shared/types/project";
 import {
   clearLayerEdits,
   getDirtyLayerIds,
@@ -496,7 +497,7 @@ function createWindow() {
  * @description Initializes and boots the main application lifecycle, logging hub, and window managers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -906,14 +907,14 @@ function startApp(): void {
 
     handleIpc(
       "layers:stageFeatureEdit",
-      async (_event, layerId: string, edit: any) => {
+      async (_event, layerId: string, edit: StagedFeatureEdit) => {
         await stageFeatureEdit(layerId, edit);
       }
     );
 
     handleIpc(
       "layers:stageFeatureEdits",
-      async (_event, layerId: string, edits: any[]) => {
+      async (_event, layerId: string, edits: StagedFeatureEdit[]) => {
         await stageFeatureEdits(layerId, edits);
       }
     );

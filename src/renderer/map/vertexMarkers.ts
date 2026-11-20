@@ -22,41 +22,29 @@ import {
   parseVertexKey,
   type VertexKey,
 } from "./vertexSelection";
+import { readThemeTokens, type ThemeTokenReference } from "./themeTokenReader";
 
 /**
- * @description Theme token holding the vertex marker outline colour, written as a `var()` reference so the token read is visible to the Theme token guards like a CSS read.
+ * @description Theme token holding the vertex marker outline colour, as a {@link ThemeTokenReference} (see {@link readThemeTokens} for why the `var()` form).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
- * @type {string}
+ * @type {ThemeTokenReference}
  */
-export const VERTEX_MARKER_TOKEN = "var(--cartouche-map-vertex-marker)";
+export const VERTEX_MARKER_TOKEN: ThemeTokenReference =
+  "var(--cartouche-map-vertex-marker)";
 
 /**
- * @description Theme token holding the fill colour of an unselected vertex marker, as a `var()` reference.
+ * @description Theme token holding the fill colour of an unselected vertex marker, as a {@link ThemeTokenReference}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
- * @type {string}
+ * @type {ThemeTokenReference}
  */
-export const VERTEX_MARKER_FILL_TOKEN =
+export const VERTEX_MARKER_FILL_TOKEN: ThemeTokenReference =
   "var(--cartouche-map-vertex-marker-fill)";
-
-/**
- * @function tokenName
- * @description The custom property name inside a `var(--name)` reference.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {string} reference - A `var(--name)` reference.
- * @returns {string} The custom property name (`--name`).
- */
-function tokenName(reference: string): string {
-  return /var\((--[\w-]+)\)/.exec(reference)?.[1] ?? reference;
-}
 
 /**
  * @description Half the side of an unselected vertex marker square, in CSS pixels (its corner radius as an OpenLayers RegularShape).
@@ -97,7 +85,7 @@ export interface VertexMarkerColours {
 
 /**
  * @function readVertexMarkerColours
- * @description Resolves the vertex marker Theme tokens on an element (the map's target, so a scoped Theme applies).
+ * @description Resolves the Vertex Marker Theme tokens on an element (the map's target, so a scoped Theme applies) with {@link readThemeTokens}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -109,14 +97,10 @@ export function readVertexMarkerColours(element: Element | null | undefined): {
   outline: string;
   fill: string;
 } {
-  if (!element || typeof getComputedStyle !== "function") {
-    return { outline: "", fill: "" };
-  }
-  const style = getComputedStyle(element);
-  return {
-    outline: style.getPropertyValue(tokenName(VERTEX_MARKER_TOKEN)).trim(),
-    fill: style.getPropertyValue(tokenName(VERTEX_MARKER_FILL_TOKEN)).trim(),
-  };
+  return readThemeTokens(element, {
+    outline: VERTEX_MARKER_TOKEN,
+    fill: VERTEX_MARKER_FILL_TOKEN,
+  });
 }
 
 /**

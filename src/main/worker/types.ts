@@ -4,7 +4,7 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-13
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 

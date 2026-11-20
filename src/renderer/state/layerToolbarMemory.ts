@@ -55,76 +55,6 @@ export interface LayerToolbarState {
 }
 
 /**
- * @description Stored Selection Tool action identifiers written before the
- * selection actions were renamed (#376), mapped to their current identifiers,
- * so Ephemeral Layer Toolbar State saved by an older build still restores.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @type {Readonly<Record<string, SelectionMode>>}
- */
-export const LEGACY_SELECTION_MODE_MAP: Readonly<
-  Record<string, SelectionMode>
-> = {
-  select_feature: "select_by_click",
-  select_features_by_drag: "select_by_rectangle",
-  select_features_by_freehand: "select_by_lasso",
-};
-
-/**
- * @description Stored ActiveTool values written before the selection tool
- * values were renamed (#376), mapped to their current values.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @type {Readonly<Record<string, ActiveTool>>}
- */
-export const LEGACY_ACTIVE_TOOL_MAP: Readonly<Record<string, ActiveTool>> = {
-  select: "select_click",
-  select_drag: "select_rectangle",
-  select_freehand: "select_lasso",
-};
-
-/**
- * @function migrateSelectionMode
- * @description Reads a stored selection mode, translating a pre-#376 action
- * identifier to its renamed Selection Tool action.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {string | undefined} stored - Stored selection mode value, if any.
- * @returns {SelectionMode | undefined} Current selection mode identifier.
- */
-export function migrateSelectionMode(
-  stored: string | undefined
-): SelectionMode | undefined {
-  if (stored === undefined) return undefined;
-  return LEGACY_SELECTION_MODE_MAP[stored] ?? (stored as SelectionMode);
-}
-
-/**
- * @function migrateActiveTool
- * @description Reads a stored tool value, translating a pre-#376 selection
- * tool value to its renamed value. A stored `vertex_editor` (a tool before
- * Vertex Editor Mode became a toggle, #377) reads as no stored tool.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {string | undefined} stored - Stored tool value, if any.
- * @returns {ActiveTool | undefined} Current tool value.
- */
-export function migrateActiveTool(
-  stored: string | undefined
-): ActiveTool | undefined {
-  if (stored === undefined || stored === "vertex_editor") return undefined;
-  return LEGACY_ACTIVE_TOOL_MAP[stored] ?? (stored as ActiveTool);
-}
-
-/**
  * @function getLayerToolbarPreference
  * @description Retrieves a cached ephemeral toolbar preference for a given layer.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -239,8 +169,9 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   ) {
     digitizingTool = currentTool;
   } else {
-    digitizingTool = migrateActiveTool(
-      getLayerToolbarPreference<string>(layerId, "digitizingTool")
+    digitizingTool = getLayerToolbarPreference<ActiveTool>(
+      layerId,
+      "digitizingTool"
     );
   }
 
@@ -292,8 +223,9 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
 export function restoreLayerToolbarState(layerId: string): void {
   if (!layerId) return;
 
-  const cachedSelectionMode = migrateSelectionMode(
-    getLayerToolbarPreference<string>(layerId, "selectionMode")
+  const cachedSelectionMode = getLayerToolbarPreference<SelectionMode>(
+    layerId,
+    "selectionMode"
   );
   if (cachedSelectionMode !== undefined) {
     activeSelectionModeSignal.value = cachedSelectionMode;
@@ -347,8 +279,9 @@ export function restoreLayerToolbarState(layerId: string): void {
     snappingDistanceSignal.value = cachedSnappingDistance;
   }
 
-  const cachedDigitizingTool = migrateActiveTool(
-    getLayerToolbarPreference<string>(layerId, "digitizingTool")
+  const cachedDigitizingTool = getLayerToolbarPreference<ActiveTool>(
+    layerId,
+    "digitizingTool"
   );
   const isEditable = editableLayerIdsSignal.value.has(layerId);
   if (isEditable) {

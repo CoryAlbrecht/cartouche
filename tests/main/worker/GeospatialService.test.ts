@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialService process lifecycle, correlated request-response message bridge, timeout handling, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-12
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  */

@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, styles, and feature query options including multi-column Sort Keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 

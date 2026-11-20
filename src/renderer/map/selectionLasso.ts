@@ -16,6 +16,7 @@ import Style, { type RenderFunction } from "ol/style/Style.js";
 import type { PreferenceMap } from "@shared/types";
 import { preferencesMapSignal } from "../state/preferencesSignals";
 import type { SelectionFillRule } from "./selectionRegion";
+import { readThemeTokens, type ThemeTokenReference } from "./themeTokenReader";
 
 /**
  * @description Preference key of the Lasso Fill Rule.
@@ -28,14 +29,15 @@ import type { SelectionFillRule } from "./selectionRegion";
 export const LASSO_FILL_RULE_PREFERENCE = "mapTools.selection.lassoFillRule";
 
 /**
- * @description Theme token holding the Selection Shape colour.
+ * @description Theme token holding the Selection Shape colour, as a {@link ThemeTokenReference} (see {@link readThemeTokens} for why the `var()` form).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
- * @type {string}
+ * @type {ThemeTokenReference}
  */
-export const SELECTION_SHAPE_TOKEN = "--cartouche-map-selection-shape";
+export const SELECTION_SHAPE_TOKEN: ThemeTokenReference =
+  "var(--cartouche-map-selection-shape)";
 
 /**
  * @description Selection Shape outline width in CSS pixels.
@@ -114,7 +116,7 @@ export function readLassoFillRule(
 
 /**
  * @function readSelectionShapeColour
- * @description Resolves the `--cartouche-map-selection-shape` Theme token on an element (the map's target, so a scoped Theme applies) for drawing on the canvas.
+ * @description Resolves the `--cartouche-map-selection-shape` Theme token on an element (the map's target, so a scoped Theme applies) for drawing on the canvas, with {@link readThemeTokens}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -125,10 +127,7 @@ export function readLassoFillRule(
 export function readSelectionShapeColour(
   element: Element | null | undefined
 ): string {
-  if (!element || typeof getComputedStyle !== "function") return "";
-  return getComputedStyle(element)
-    .getPropertyValue(SELECTION_SHAPE_TOKEN)
-    .trim();
+  return readThemeTokens(element, { colour: SELECTION_SHAPE_TOKEN }).colour;
 }
 
 /**

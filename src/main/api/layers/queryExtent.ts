@@ -4,7 +4,7 @@
  * @description Main Process spatial query and feature edit cache handler routing extent queries and uncommitted feature edits through GeospatialService across IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  * @see {@link QueryExtentResult}

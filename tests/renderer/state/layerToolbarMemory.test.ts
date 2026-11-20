@@ -205,52 +205,6 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
   });
 
-  it("reads a selection mode stored under a pre-#376 action ID as the renamed Selection Tool", () => {
-    const layerA = "layer-legacy-mode-a";
-    const layerB = "layer-legacy-mode-b";
-    const legacy: Array<[string, string]> = [
-      ["select_feature", "select_by_click"],
-      ["select_features_by_drag", "select_by_rectangle"],
-      ["select_features_by_freehand", "select_by_lasso"],
-    ];
-
-    for (const [stored, expected] of legacy) {
-      setLayerToolbarPreference(layerA, "selectionMode", stored);
-      activeLayerIdSignal.value = layerB;
-      activeSelectionModeSignal.value = "select_by_click";
-      activeLayerIdSignal.value = layerA;
-      assert.strictEqual(
-        activeSelectionModeSignal.value,
-        expected,
-        `Stored '${stored}' must restore as '${expected}'`
-      );
-      activeLayerIdSignal.value = null;
-    }
-  });
-
-  it("reads a tool stored under a pre-#376 tool value as the renamed tool value", () => {
-    const layerA = "layer-legacy-tool-a";
-    const layerB = "layer-legacy-tool-b";
-    editableLayerIdsSignal.value = new Set([layerA, layerB]);
-    const legacy: Array<[string, string]> = [
-      ["select", "select_click"],
-      ["select_drag", "select_rectangle"],
-      ["select_freehand", "select_lasso"],
-    ];
-
-    for (const [stored, expected] of legacy) {
-      setLayerToolbarPreference(layerA, "digitizingTool", stored);
-      activeLayerIdSignal.value = layerB;
-      activeLayerIdSignal.value = layerA;
-      assert.strictEqual(
-        activeToolSignal.value,
-        expected,
-        `Stored tool '${stored}' must restore as '${expected}'`
-      );
-      activeLayerIdSignal.value = null;
-    }
-  });
-
   it("restores last chosen digitizing tool, selection mode, and snapping parameters when switching back to a layer with cached preferences", () => {
     const layerA = "layer-restore-a";
     const layerB = "layer-restore-b";

@@ -18,6 +18,7 @@
 import type OlMap from "ol/Map.js";
 import type MapBrowserEvent from "ol/MapBrowserEvent.js";
 import type VectorSource from "ol/source/Vector.js";
+import type { Signal } from "@preact/signals-react";
 import type Style from "ol/style/Style.js";
 import type { Coordinate } from "ol/coordinate.js";
 import { buffer as bufferExtent } from "ol/extent.js";
@@ -278,8 +279,35 @@ export function resolveClickHits(
 }
 
 /**
+ * @function publishMergedSelection
+ * @description Merges a Selection Tool gesture's hits into a selection signal with {@link mergeSelection} and publishes the result as a new `Set`. Does not republish when the merge leaves the selection unchanged, so subscribers (the map highlight, the Attribute Table, the Vertex Markers) do not redraw for a no-op gesture. Shared by {@link publishFeatureSelection} and {@link publishVertexSelection}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @template T
+ * @param {Signal<Set<T>>} target - The selection signal to merge into.
+ * @param {T[]} hits - Items the gesture hit.
+ * @param {SelectionModifiers} modifiers - Modifiers held during the gesture.
+ * @returns {void}
+ */
+function publishMergedSelection<T>(
+  target: Signal<Set<T>>,
+  hits: readonly T[],
+  modifiers: SelectionModifiers
+): void {
+  const current = target.peek();
+  const next = mergeSelection(current, hits, modifiers);
+  if (next === current) return;
+  if (next.size === current.size && [...next].every((h) => current.has(h))) {
+    return;
+  }
+  target.value = new Set(next);
+}
+
+/**
  * @function publishFeatureSelection
- * @description Merges a Selection Tool gesture's feature hits into the shared feature selection (`selectedFeatureIdsSignal`, read by the map highlight and the Attribute Table) with {@link mergeSelection}. Does not republish when the merge leaves the selection unchanged.
+ * @description Merges a Selection Tool gesture's feature hits into the shared feature selection (`selectedFeatureIdsSignal`, read by the map highlight and the Attribute Table) with {@link publishMergedSelection}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -292,13 +320,7 @@ export function publishFeatureSelection(
   hits: Array<string | number>,
   modifiers: SelectionModifiers
 ): void {
-  const current = selectedFeatureIdsSignal.peek();
-  const next = mergeSelection(current, hits, modifiers);
-  if (next === current) return;
-  if (next.size === current.size && [...next].every((id) => current.has(id))) {
-    return;
-  }
-  selectedFeatureIdsSignal.value = new Set(next);
+  publishMergedSelection(selectedFeatureIdsSignal, hits, modifiers);
 }
 
 /**
@@ -329,7 +351,7 @@ export function selectByClickAt(
 
 /**
  * @function publishVertexSelection
- * @description Merges a Selection Tool gesture's vertex hits into the vertex selection (`selectedVertexKeysSignal`, drawn as highlighted vertex markers) with {@link mergeSelection}. Does not republish when the merge leaves the selection unchanged. The feature selection is not touched.
+ * @description Merges a Selection Tool gesture's vertex hits into the vertex selection (`selectedVertexKeysSignal`, drawn as highlighted Vertex Markers) with {@link publishMergedSelection}. The feature selection is not touched.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -342,13 +364,7 @@ export function publishVertexSelection(
   hits: VertexKey[],
   modifiers: SelectionModifiers
 ): void {
-  const current = selectedVertexKeysSignal.peek();
-  const next = mergeSelection(current, hits, modifiers);
-  if (next === current) return;
-  if (next.size === current.size && [...next].every((k) => current.has(k))) {
-    return;
-  }
-  selectedVertexKeysSignal.value = new Set(next);
+  publishMergedSelection(selectedVertexKeysSignal, hits, modifiers);
 }
 
 /**

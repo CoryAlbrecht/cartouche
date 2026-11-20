@@ -136,7 +136,7 @@ describe("Workbench Global Keyboard Listener", () => {
       {
         name: "cancel_action",
         description:
-          "Cancels the active operation, reverts tool, or clears selection",
+          "Cancels the action in progress or clears the selection; never changes the tool or mode",
         keyCombination: { key: "Escape" },
       },
     ];
@@ -158,7 +158,11 @@ describe("Workbench Global Keyboard Listener", () => {
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
-    assert.equal(activeToolSignal.value, "pan");
+    assert.equal(
+      activeToolSignal.value,
+      "polygon",
+      "Escape never switches tools"
+    );
     assert.deepEqual(selectedNodeIdsSignal.value, []);
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
@@ -184,7 +188,7 @@ describe("Workbench Global Keyboard Listener", () => {
       // A further Escape is the ordinary cancel_action.
       handleWorkbenchKeyDown(createMockKeyEvent({ key: "Escape" }));
       assert.equal(cancelled, 1);
-      assert.equal(activeToolSignal.value, "pan");
+      assert.equal(activeToolSignal.value, "select_rectangle");
       assert.equal(selectedFeatureIdsSignal.value.size, 0);
     }
   });

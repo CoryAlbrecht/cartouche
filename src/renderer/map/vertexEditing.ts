@@ -33,6 +33,23 @@ export interface VertexEditProjections {
 }
 
 /**
+ * @typedef {Object} VertexEditTarget
+ * @description The valid Active Layer as a vertex edit sees it: its id, OpenLayers source (features in the display CRS) and data/display CRS pair.
+ * @property {string} layerId - Active Layer id.
+ * @property {VectorSource} source - The layer's OpenLayers vector source.
+ * @property {string} dataProjection - Layer data CRS.
+ * @property {string} featureProjection - Display CRS.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ */
+export interface VertexEditTarget extends VertexEditProjections {
+  layerId: string;
+  source: VectorSource;
+}
+
+/**
  * @typedef {Object} VertexDeletionCommit
  * @description What a committed vertex deletion changed.
  * @property {StagedFeatureEdit[]} edits - The edits staged in the single call.
