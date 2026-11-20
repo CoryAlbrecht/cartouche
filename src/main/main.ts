@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -59,6 +59,7 @@ import { loggingHub } from "./logging/LoggingHub";
 import { bindLoggingPreferences } from "./logging/loggingPreferences";
 import { logging } from "../shared/logging";
 import { configureBundledGdalData } from "./gdal/bundledGdalData";
+import { attachWorkbenchMemoryMeter } from "./memory/workbenchMemoryMeter";
 
 let cliLogConfig: LogCliConfig;
 
@@ -149,10 +150,10 @@ Categories=Graphics;Science;Geoscience;
 }
 
 /**
- * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, and attaching IPC event handlers.
+ * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, attaching IPC event handlers, and starting the status bar memory meter.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -236,6 +237,7 @@ function createWindow() {
   mainWindow.setMenu(null);
   mainWindow.setAutoHideMenuBar(true);
   mainWindow.setMenuBarVisibility(false);
+  attachWorkbenchMemoryMeter(mainWindow);
 
   mainWindow.webContents.on("before-input-event", async (event, input) => {
     if (input.type !== "keyDown") return;

@@ -360,4 +360,17 @@
     <string name="gradient_picker_dialog_title">Choisir un dégradé</string>
     <string name="boolean_true">Vrai</string>
     <string name="boolean_false">Faux</string>
+    <!-- Status Bar Memory Meter -->
+    <string name="statusbar_memory_label">Mémoire : ≈{size}</string>
+    <string name="statusbar_memory_tooltip_total">Mémoire utilisée, total approximatif : {size}</string>
+    <string name="statusbar_memory_tooltip_row">{process} : {current} (pic {peak})</string>
+    <string name="statusbar_memory_tooltip_note">La mémoire partagée entre processus est comptée dans chacun d’eux, le total est donc quelque peu surestimé.</string>
+    <string name="statusbar_memory_main">Principal</string>
+    <string name="statusbar_memory_workbench">Workbench (PID {pid})</string>
+    <string name="statusbar_memory_renderer">Rendu (PID {pid})</string>
+    <string name="statusbar_memory_worker">Processus géospatial</string>
+    <string name="statusbar_memory_gpu">GPU</string>
+    <string name="statusbar_memory_other">Autres</string>
+    <string name="memory_size_mb">{value} Mo</string>
+    <string name="memory_size_gb">{value} Go</string>
 </ci18n:localization>

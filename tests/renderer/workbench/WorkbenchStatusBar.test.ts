@@ -1,10 +1,10 @@
 /**
  * @file WorkbenchStatusBar.test.ts
  * @module tests/renderer/workbench/WorkbenchStatusBar.test
- * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, and the Project CRS item (ADR 0033 display rules and tooltips), while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
+ * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, the Project CRS item (ADR 0033 display rules and tooltips), and the memory meter item and its per-process tooltip, while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-15
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link WorkbenchStatusBar}
  * @see {@link Workbench}
@@ -217,6 +217,7 @@ function findAllNodes(
 let doc: any;
 let container: MockElement;
 let root: Root | null = null;
+let memoryListener: ((snapshot: any) => void) | null = null;
 
 /**
  * @function setupDom
@@ -293,6 +294,12 @@ function setupDom(): void {
       isWindowMaximized: async () => false,
       onMaximizedState: () => () => {},
       onLayerAdded: () => () => {},
+      onMemoryUsage: (callback: (snapshot: any) => void) => {
+        memoryListener = callback;
+        return () => {
+          memoryListener = null;
+        };
+      },
     },
   };
 
@@ -462,6 +469,76 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
     });
     assert.equal(crsItem().textContent, "No CRS");
     assert.match(crsItem().getAttribute("title") ?? "", /no reprojection/i);
+  });
+
+  it("shows the memory meter total and its per-process tooltip once Main pushes a sample", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    );
+
+    await act(async () => {
+      root!.render(React.createElement(WorkbenchStatusBar));
+    });
+
+    /**
+     * @function memoryItem
+     * @description Finds the status bar memory item.
+     * @returns {any} The memory item element, if rendered.
+     */
+    const memoryItem = () =>
+      findAllNodes(container, (el) =>
+        String(el.className).split(" ").includes("statusbar-memory")
+      )[0];
+
+    assert.equal(memoryItem(), undefined, "No memory item before a sample");
+    assert.ok(memoryListener, "Status bar subscribes to memory samples");
+
+    await act(async () => {
+      memoryListener!({
+        totalKb: 1.2 * 1024 * 1024,
+        rows: [
+          { kind: "main", pid: 10, currentKb: 200 * 1024, peakKb: 250 * 1024 },
+          {
+            kind: "workbench",
+            pid: 20,
+            currentKb: 300 * 1024,
+            peakKb: 310 * 1024,
+          },
+          {
+            kind: "worker",
+            pid: 50,
+            currentKb: 400 * 1024,
+            peakKb: 2 * 1024 * 1024,
+          },
+          { kind: "gpu", pid: 30, currentKb: 100 * 1024, peakKb: 120 * 1024 },
+          { kind: "other", currentKb: 1024, peakKb: 2048 },
+        ],
+      });
+    });
+
+    assert.equal(memoryItem().textContent, "Memory: ≈1.2 GB");
+    const lines = (memoryItem().getAttribute("title") ?? "").split("\n");
+    assert.match(lines[0], /approximate/i);
+    assert.ok(lines.includes("Main: 200 MB (peak 250 MB)"), lines.join(" | "));
+    assert.ok(lines.includes("Workbench (PID 20): 300 MB (peak 310 MB)"));
+    assert.ok(lines.includes("Geospatial Worker: 400 MB (peak 2.0 GB)"));
+    assert.ok(lines.includes("GPU: 100 MB (peak 120 MB)"));
+    assert.ok(lines.includes("Other: 1 MB (peak 2 MB)"));
+
+    await act(async () => {
+      memoryListener!({
+        totalKb: 512 * 1024,
+        rows: [
+          { kind: "main", pid: 10, currentKb: 512 * 1024, peakKb: 512 * 1024 },
+        ],
+      });
+    });
+    assert.equal(memoryItem().textContent, "Memory: ≈512 MB");
+    assert.doesNotMatch(
+      memoryItem().getAttribute("title") ?? "",
+      /Geospatial Worker/,
+      "Worker row omitted when the sample has none"
+    );
   });
 
   it("isolates coordinate and status bar signal mutations from Workbench and ToolbarPanel re-renders", async () => {

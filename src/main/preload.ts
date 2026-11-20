@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-13
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -14,6 +14,7 @@ import type {
   DropPosition,
   ElectronAPI,
   LayerTemporalConfig,
+  MemoryUsageSnapshot,
   ProjectLayerStyleItem,
   StagedFeatureEdit,
 } from "@shared/types";
@@ -22,7 +23,7 @@ import type {
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -55,6 +56,17 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on("window-maximized-state", handler);
     return () => {
       ipcRenderer.removeListener("window-maximized-state", handler);
+    };
+  },
+  /** @ipc app:memory-usage */
+  onMemoryUsage: (callback: (snapshot: MemoryUsageSnapshot) => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      snapshot: MemoryUsageSnapshot
+    ) => callback(snapshot);
+    ipcRenderer.on("app:memory-usage", handler);
+    return () => {
+      ipcRenderer.removeListener("app:memory-usage", handler);
     };
   },
   /** @ipc gis:fetch-layer-flatgeobuf */

@@ -63,8 +63,10 @@
     <string name="remove_group_title">Remove Group</string>
     <string name="remove_items_title">Remove Selected Items</string>
     <string name="remove_layer_prompt">Are you sure you want to remove layer '{0}' from the project?</string>
-    <string name="remove_group_prompt">Are you sure you want to remove group '{0}'? This will also remove all items inside it.</string>
-    <string name="remove_items_prompt">Are you sure you want to remove the {0} selected items from the project? Any groups will also have their contents removed.</string>
+    <string name="remove_group_prompt">Are you sure you want to remove group '{0}'? This will also
+        remove all items inside it.</string>
+    <string name="remove_items_prompt">Are you sure you want to remove the {0} selected items from
+        the project? Any groups will also have their contents removed.</string>
     <string name="dialog_remove">Remove</string>
     <string name="dialog_apply">Apply</string>
     <string name="dialog_cancel">Cancel</string>
@@ -99,49 +101,71 @@
     <string name="prefs_group_snapping">Snapping</string>
     <!-- Preferences Settings -->
     <string name="prefs_general_logging_location">Log File Location</string>
-    <string name="prefs_general_logging_location_descr">Path to persistent application log file. If omitted or empty, logs are directed to stderr.</string>
+    <string name="prefs_general_logging_location_descr">Path to persistent application log file. If
+        omitted or empty, logs are directed to stderr.</string>
     <string name="prefs_general_logging_colours_console">Console Colors</string>
-    <string name="prefs_general_logging_colours_console_descr">Enables or disables ANSI colors when printing log messages to stderr.</string>
+    <string name="prefs_general_logging_colours_console_descr">Enables or disables ANSI colors when
+        printing log messages to stderr.</string>
     <string name="prefs_general_logging_colours_file">File Colors</string>
-    <string name="prefs_general_logging_colours_file_descr">Preserves ANSI color escape codes when writing log output to file.</string>
+    <string name="prefs_general_logging_colours_file_descr">Preserves ANSI color escape codes when
+        writing log output to file.</string>
     <string name="prefs_general_logging_colours_pattern">Colorization Pattern</string>
-    <string name="prefs_general_logging_colours_pattern_descr">Determines which segments of each log line receive color styling.</string>
+    <string name="prefs_general_logging_colours_pattern_descr">Determines which segments of each log
+        line receive color styling.</string>
     <string name="prefs_general_logging_colours_level_critical">Critical Level Color</string>
-    <string name="prefs_general_logging_colours_level_critical_descr">Color styling for critical severity log messages (bold combined automatically).</string>
+    <string name="prefs_general_logging_colours_level_critical_descr">Color styling for critical
+        severity log messages (bold combined automatically).</string>
     <string name="prefs_general_logging_colours_level_error">Error Level Color</string>
-    <string name="prefs_general_logging_colours_level_error_descr">Color styling for error severity log messages.</string>
+    <string name="prefs_general_logging_colours_level_error_descr">Color styling for error severity
+        log messages.</string>
     <string name="prefs_general_logging_colours_level_warn">Warning Level Color</string>
-    <string name="prefs_general_logging_colours_level_warn_descr">Color styling for warning severity log messages.</string>
+    <string name="prefs_general_logging_colours_level_warn_descr">Color styling for warning severity
+        log messages.</string>
     <string name="prefs_general_logging_colours_level_info">Info Level Color</string>
-    <string name="prefs_general_logging_colours_level_info_descr">Color styling for informational operational log messages.</string>
+    <string name="prefs_general_logging_colours_level_info_descr">Color styling for informational
+        operational log messages.</string>
     <string name="prefs_general_logging_colours_level_debug">Debug Level Color</string>
-    <string name="prefs_general_logging_colours_level_debug_descr">Color styling for verbose diagnostic log messages.</string>
+    <string name="prefs_general_logging_colours_level_debug_descr">Color styling for verbose
+        diagnostic log messages.</string>
     <string name="prefs_general_autosave_preferences">Preferences Autosave Timeout</string>
-    <string name="prefs_general_autosave_preferences_descr">Time in seconds to wait after editing a preference before automatically saving changes to disk.</string>
+    <string name="prefs_general_autosave_preferences_descr">Time in seconds to wait after editing a
+        preference before automatically saving changes to disk.</string>
     <string name="prefs_general_paths_absolute">Use Absolute Paths</string>
-    <string name="prefs_general_paths_absolute_descr">When true save all external pathnames as absolute paths. Otherwise save as relative to the project file location.</string>
+    <string name="prefs_general_paths_absolute_descr">When true save all external pathnames as
+        absolute paths. Otherwise save as relative to the project file location.</string>
     <string name="prefs_general_project_defaults_author">Default Project Author</string>
-    <string name="prefs_general_project_defaults_author_descr">The "author" field in project metadata is set to this for new projects.</string>
+    <string name="prefs_general_project_defaults_author_descr">The "author" field in project
+        metadata is set to this for new projects.</string>
     <string name="prefs_general_mapViewport_zoomAmount">Map Zoom Step Amount</string>
-    <string name="prefs_general_mapViewport_zoomAmount_descr">Factor used to scale map resolution during zoom-in and zoom-out operations.</string>
+    <string name="prefs_general_mapViewport_zoomAmount_descr">Factor used to scale map resolution
+        during zoom-in and zoom-out operations.</string>
     <string name="prefs_ui_basefont_size">Base Font Size</string>
-    <string name="prefs_ui_basefont_size_descr">Default workbench font size across panels and controls</string>
+    <string name="prefs_ui_basefont_size_descr">Default workbench font size across panels and
+        controls</string>
     <string name="prefs_ui_icon_size">Toolbar Icon Size</string>
     <string name="prefs_ui_icon_size_descr">Dimensions for toolbar and panel action icons</string>
     <string name="prefs_ui_attribute_table_max_rows">Attribute Table Maximum Rows</string>
-    <string name="prefs_ui_attribute_table_max_rows_descr">Maximum number of feature rows fetched and displayed per page in the Attribute Table.</string>
-    <string name="prefs_ui_layer_properties_fields_show_native_type">Show Native Type in Layer Fields</string>
-    <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Toggles visibility of raw native storage types in the Layer Properties Fields tab.</string>
+    <string name="prefs_ui_attribute_table_max_rows_descr">Maximum number of feature rows fetched
+        and displayed per page in the Attribute Table.</string>
+    <string name="prefs_ui_layer_properties_fields_show_native_type">Show Native Type in Layer
+        Fields</string>
+    <string name="prefs_ui_layer_properties_fields_show_native_type_descr">Toggles visibility of raw
+        native storage types in the Layer Properties Fields tab.</string>
     <string name="prefs_rendering_simplification_threshold">Simplification Threshold</string>
-    <string name="prefs_rendering_simplification_threshold_descr">Tolerance threshold for rendering vector feature geometries</string>
+    <string name="prefs_rendering_simplification_threshold_descr">Tolerance threshold for rendering
+        vector feature geometries</string>
     <string name="prefs_rendering_layer_scan_background_validation">Background Field Validation</string>
-    <string name="prefs_rendering_layer_scan_background_validation_descr">Enables cooperative background scanning to verify and refine inferred field types across vector layer features.</string>
+    <string name="prefs_rendering_layer_scan_background_validation_descr">Enables cooperative
+        background scanning to verify and refine inferred field types across vector layer features.</string>
     <string name="prefs_plugin_debug_enable">Enable Plugin Debug Mode</string>
-    <string name="prefs_plugin_debug_enable_descr">Enable verbose logging for extension host execution and RPC channels</string>
+    <string name="prefs_plugin_debug_enable_descr">Enable verbose logging for extension host
+        execution and RPC channels</string>
     <string name="prefs_mapTools_mapViewport_zoomAmount">Zoom Step Factor</string>
-    <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Factor determining viewport resolution scaling on zoom in or zoom out operations.</string>
+    <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Factor determining viewport
+        resolution scaling on zoom in or zoom out operations.</string>
     <string name="prefs_mapTools_snapping_distance">Snapping Distance</string>
-    <string name="prefs_mapTools_snapping_distance_descr">Search tolerance radius in screen pixels for snapping vector features to vertices, midpoints, and segments.</string>
+    <string name="prefs_mapTools_snapping_distance_descr">Search tolerance radius in screen pixels
+        for snapping vector features to vertices, midpoints, and segments.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Layer Properties</string>
     <string name="layer_properties_tab_information">Information</string>
@@ -176,8 +200,10 @@
     <string name="layer_properties_source_crs">Assigned CRS</string>
     <string name="layer_properties_source_group_filter">Provider Feature Filter</string>
     <string name="layer_properties_source_filter_placeholder">Enter subset expression...</string>
-    <string name="layer_properties_dialect_ogr_sql">Filter expression uses OGR SQL syntax (e.g. "POP_EST" &gt; 1000000).</string>
-    <string name="layer_properties_dialect_native_sql">Filter expression uses native SQL WHERE clause syntax.</string>
+    <string name="layer_properties_dialect_ogr_sql">Filter expression uses OGR SQL syntax (e.g.
+        "POP_EST" &gt; 1000000).</string>
+    <string name="layer_properties_dialect_native_sql">Filter expression uses native SQL WHERE
+        clause syntax.</string>
     <string name="layer_properties_dialect_nosql">Filter expression uses NoSQL JSON query syntax.</string>
     <string name="layer_properties_dialect_generic">Filter expression uses provider query syntax.</string>
     <string name="layer_properties_error_empty_id">Layer ID cannot be empty.</string>
@@ -191,7 +217,8 @@
     <string name="layer_properties_fields_reset_type">Reset data type to default</string>
     <string name="layer_properties_fields_show_native_type">Show Native Type</string>
     <string name="layer_properties_fields_discard_title">Discard Unapplied Field Changes?</string>
-    <string name="layer_properties_fields_discard_warning">You have unapplied changes to attribute fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?</string>
+    <string name="layer_properties_fields_discard_warning">You have unapplied changes to attribute
+        fields. Turning off Layer Edit Mode will discard these changes. Do you want to proceed?</string>
     <string name="tree_node_layer_in_edit_mode">Layer is in edit mode</string>
     <string name="tree_node_layer_temporal_enabled">Dynamic temporal control enabled</string>
     <string name="layer_properties_time_enable">Enable dynamic temporal control</string>
@@ -325,7 +352,8 @@
     <string name="layer_properties_dash_array_move_up">Move Up</string>
     <string name="layer_properties_dash_array_move_down">Move Down</string>
     <string name="layer_properties_dash_array_invalid_value">Enter a number of 0 or more.</string>
-    <string name="layer_properties_dash_array_all_zero">A dash array needs at least one value above 0.</string>
+    <string name="layer_properties_dash_array_all_zero">A dash array needs at least one value above
+        0.</string>
     <string name="layer_properties_styling_point_shape">Point Shape</string>
     <string name="layer_properties_styling_point_radius">Point Size</string>
     <string name="layer_properties_styling_layer_opacity">Layer Opacity</string>
@@ -341,7 +369,8 @@
     <string name="layer_properties_styling_preview">Preview</string>
     <string name="layer_properties_styling_preview_legend">Style Preview</string>
     <string name="layer_properties_styling_simple_mode_title">Simple Symbology</string>
-    <string name="layer_properties_styling_simple_mode_desc">Manage visual styling components stack and symbolizer options.</string>
+    <string name="layer_properties_styling_simple_mode_desc">Manage visual styling components stack
+        and symbolizer options.</string>
     <string name="layer_properties_component_stack">Component Stack</string>
     <string name="layer_properties_component_add">Add Component</string>
     <string name="layer_properties_component_remove">Remove Component</string>
@@ -362,7 +391,8 @@
     <string name="filter_show_selected">Show selected features</string>
     <string name="filter_show_visible">Show features visible on map</string>
     <string name="filter_show_edited_new">Show edited and new features</string>
-    <string name="attribute_table_select_layer_prompt">Select a layer from the Layers panel to inspect attributes.</string>
+    <string name="attribute_table_select_layer_prompt">Select a layer from the Layers panel to
+        inspect attributes.</string>
     <string name="attribute_table_empty_filtered">No features match the current filter.</string>
     <string name="attribute_table_title">Attribute Table</string>
     <string name="attribute_table_title_format">Attributes — {name} ({count} features)</string>
@@ -375,8 +405,10 @@
     <string name="attribute_table_page_last">Last page</string>
     <string name="attribute_table_page_range">{start}–{end} of {total}</string>
     <string name="unsaved_changes_title">Unsaved Changes</string>
-    <string name="unsaved_layer_changes_prompt">Layer "{name}" has unsaved changes. Do you want to save them before continuing?</string>
-    <string name="unsaved_project_changes_prompt">Project "{name}" has unsaved changes. Do you want to save them before continuing?</string>
+    <string name="unsaved_layer_changes_prompt">Layer "{name}" has unsaved changes. Do you want to
+        save them before continuing?</string>
+    <string name="unsaved_project_changes_prompt">Project "{name}" has unsaved changes. Do you want
+        to save them before continuing?</string>
     <string name="unsaved_changes_cancel">Cancel</string>
     <string name="unsaved_changes_dont_save">Don't Save Changes</string>
     <string name="unsaved_changes_save">Save Changes</string>
@@ -385,4 +417,18 @@
     <string name="gradient_picker_dialog_title">Pick Gradient</string>
     <string name="boolean_true">True</string>
     <string name="boolean_false">False</string>
+    <!-- Status Bar Memory Meter -->
+    <string name="statusbar_memory_label">Memory: ≈{size}</string>
+    <string name="statusbar_memory_tooltip_total">Memory use, approximate total: {size}</string>
+    <string name="statusbar_memory_tooltip_row">{process}: {current} (peak {peak})</string>
+    <string name="statusbar_memory_tooltip_note">Memory shared between processes is counted in each
+        of them, so the total is overstated somewhat.</string>
+    <string name="statusbar_memory_main">Main</string>
+    <string name="statusbar_memory_workbench">Workbench (PID {pid})</string>
+    <string name="statusbar_memory_renderer">Renderer (PID {pid})</string>
+    <string name="statusbar_memory_worker">Geospatial Worker</string>
+    <string name="statusbar_memory_gpu">GPU</string>
+    <string name="statusbar_memory_other">Other</string>
+    <string name="memory_size_mb">{value} MB</string>
+    <string name="memory_size_gb">{value} GB</string>
 </ci18n:localization>

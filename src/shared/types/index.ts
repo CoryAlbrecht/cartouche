@@ -4,7 +4,7 @@
  * @description Central TypeScript type definitions and interfaces for GIS spatial data, layer models, IPC payloads, user preferences, and Electron window contextBridge bindings.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -20,6 +20,7 @@ export * from "./styling";
 export * from "./i18n";
 export * from "./layers";
 export * from "./docks";
+export * from "./memory";
 export * from "../dialogs";
 
 /**
@@ -301,6 +302,7 @@ export type DropPosition = "before" | "after" | "into" | "append-root";
  * @property {(callback: () => void) => () => void} [onRequestClose] - Registers listener for OS or window-level close requests.
  * @property {() => Promise<boolean>} isWindowMaximized - Queries window maximized state.
  * @property {(callback: (isMaximized: boolean) => void) => () => void} onMaximizedState - Registers window maximized state change listener.
+ * @property {(callback: (snapshot: import('./memory').MemoryUsageSnapshot) => void) => () => void} [onMemoryUsage] - Subscribes to the memory meter samples Main pushes about every 2 s while the Workbench is visible.
  * @property {(layerId: string) => Promise<FlatGeobufLayerPayload | null>} fetchLayerFlatGeobuf - Fetches binary layer FlatGeobuf data.
  * @property {(features: GisFeature[], geometryKind: GeometryKind) => Promise<ArrayBuffer>} encodeFeaturesToFlatGeobuf - Encodes feature collection to FlatGeobuf binary buffer.
  * @property {(name: string) => Promise<void>} executeAction - Triggers main process keyboard shortcut by name.
@@ -330,7 +332,7 @@ export type DropPosition = "before" | "after" | "into" | "append-root";
  * @property {(layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>} [setFeatureSelection] - Synchronizes selected feature IDs for the active or target layer to the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-10
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -351,6 +353,10 @@ export interface ElectronAPI {
   isWindowMaximized: () => Promise<boolean>;
   /** @ipc window-maximized-state */
   onMaximizedState: (callback: (isMaximized: boolean) => void) => () => void;
+  /** @ipc app:memory-usage */
+  onMemoryUsage?: (
+    callback: (snapshot: import("./memory").MemoryUsageSnapshot) => void
+  ) => () => void;
   /** @ipc gis:fetch-layer-flatgeobuf */
   fetchLayerFlatGeobuf: (
     layerId: string
