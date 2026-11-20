@@ -27,6 +27,7 @@ import {
   activeLayerIdSignal,
   scaleDenominatorSignal,
   activeToolSignal,
+  vertexEditorModeSignal,
 } from "../../../src/renderer/state/gisSignals";
 import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
 import {
@@ -2987,6 +2988,19 @@ describe("MapController drives map interactions from the active tool (Ticket #37
     activeLayerIdSignal.value = null;
     click([9e6, 9e6]);
     assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+
+  it("leaves the feature selection alone while the Selection Target is vertices", () => {
+    activeToolSignal.value = "select_click";
+    selectedFeatureIdsSignal.value = new Set([1]);
+    vertexEditorModeSignal.value = true;
+    try {
+      click([7.5e5, 7.5e5]);
+      click([9e6, 9e6]);
+      assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    } finally {
+      vertexEditorModeSignal.value = false;
+    }
   });
 
   it("stops listening once disposed", () => {

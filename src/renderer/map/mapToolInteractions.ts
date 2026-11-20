@@ -19,7 +19,11 @@ import { buffer as bufferExtent } from "ol/extent.js";
 import { unByKey } from "ol/Observable.js";
 import DragPan from "ol/interaction/DragPan.js";
 import DragZoom from "ol/interaction/DragZoom.js";
-import { selectedFeatureIdsSignal, type ActiveTool } from "../state/gisSignals";
+import {
+  selectedFeatureIdsSignal,
+  selectionTargetSignal,
+  type ActiveTool,
+} from "../state/gisSignals";
 import {
   mergeSelection,
   readSelectionModifiers,
@@ -287,7 +291,7 @@ export function selectByClickAt(
 
 /**
  * @function activateSelectByClick
- * @description {@link MapToolHandler} for Select by Click: each primary click on the map (OpenLayers fires `click` only for the primary button and not after a drag, so drags do nothing) runs {@link selectByClickAt} at the click coordinate with the event's Shift/Ctrl modifiers.
+ * @description {@link MapToolHandler} for Select by Click: each primary click on the map (OpenLayers fires `click` only for the primary button and not after a drag, so drags do nothing) runs {@link selectByClickAt} at the click coordinate with the event's Shift/Ctrl modifiers, while the Selection Target is features. While it is vertices (Vertex Editor Mode) a click leaves the feature selection alone; vertex selection branches here on `selectionTargetSignal`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -299,6 +303,7 @@ export const activateSelectByClick: MapToolHandler = (context) => {
   const key = context.map.on(
     "click",
     (evt: MapBrowserEvent<PointerEvent | KeyboardEvent | WheelEvent>) => {
+      if (selectionTargetSignal.peek() !== "features") return;
       const resolution = context.map.getView().getResolution();
       if (!resolution || !evt.coordinate) return;
       selectByClickAt(
