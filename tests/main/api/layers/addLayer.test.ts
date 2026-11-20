@@ -4,7 +4,7 @@
  * @description Integration tests for vector layer ingestion via GeospatialService, LayerDescriptor extraction, and IPC broadcasting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -23,6 +23,10 @@ import { isProjectLayerStyleWrapper } from "../../../../src/shared/styles/defaul
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const sampleShpPath = path.resolve(__dirname, "../../../data/ne_10m_lakes.shp");
+const sampleGeoJsonSeqPath = path.resolve(
+  __dirname,
+  "../../../data/geojsonseq_points.geojsonl"
+);
 
 describe("addLayer API & Ingestion Pipeline", () => {
   let sentEvents: Array<{ channel: string; payload: any }> = [];
@@ -203,5 +207,19 @@ describe("addLayer API & Ingestion Pipeline", () => {
 
     l1[Symbol.dispose]();
     l2[Symbol.dispose]();
+  });
+
+  it("adds a GeoJSON Sequence (.geojsonl) file as a vector layer", async () => {
+    const layer = await addLayer({
+      sourceType: "vector",
+      filePath: sampleGeoJsonSeqPath,
+    });
+
+    assert.equal(layer.layerKind, "vector");
+    assert.equal(layer.geometryKind, "Point");
+    const added = sentEvents.find((e) => e.channel === "project:layer-added");
+    assert.equal(added?.payload.featureCount, 3);
+
+    layer[Symbol.dispose]();
   });
 });

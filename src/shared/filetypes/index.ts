@@ -4,7 +4,7 @@
  * @description Built-in geospatial raster, vector, project, and tabular format definitions for the Cartouche File Types Registry.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 
@@ -17,7 +17,7 @@ import type { FileTypeDescriptor } from "@shared/types";
  * @type {FileTypeDescriptor[]}
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-10-29
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  */
 export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
@@ -94,6 +94,17 @@ export const BUILTIN_FILE_TYPES: FileTypeDescriptor[] = [
     primaryExtensions: [".geojson", ".json"],
     accessoryExtensions: [],
     mimeType: "application/geo+json",
+    canRead: true,
+    canWrite: true,
+    loaderId: "gdal:vector",
+  },
+  {
+    id: "geojsonseq",
+    name: "GeoJSON Sequence",
+    category: "vector",
+    primaryExtensions: [".geojsonl", ".geojsons"],
+    accessoryExtensions: [],
+    mimeType: "application/geo+json-seq",
     canRead: true,
     canWrite: true,
     loaderId: "gdal:vector",

@@ -79,6 +79,11 @@
     <string name="copy_layer_style">Copy Style</string>
     <string name="paste_layer_style">Paste Style</string>
     <string name="style_load_error_title">Style Load Error</string>
+    <string name="add_layers_load_failed_title">Layer Not Added</string>
+    <string name="add_layers_load_failed_file">{file} could not be added as a layer.</string>
+    <string name="add_layers_reason_missing">The file does not exist.</string>
+    <string name="add_layers_reason_unavailable">Adding layers is not available.</string>
+    <string name="add_layers_reason_unknown">The file could not be read.</string>
     <!-- Preferences Tabs -->
     <string name="prefs_tab_general_name">General</string>
     <string name="prefs_tab_ui_name">UI &amp; Display</string>

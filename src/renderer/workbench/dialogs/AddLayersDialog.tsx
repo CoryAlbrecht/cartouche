@@ -30,7 +30,19 @@ import {
 import { logging } from "@shared/logging";
 import { Dialog } from "./Dialog";
 import { ModalDialog } from "./ModalDialog";
-import type { AddLayerParams } from "@shared/types";
+import { useTranslation } from "@renderer/hooks/useTranslation";
+import { addLayersOneByOne, type LayerLoadFailure } from "./addLayersBatch";
+
+/**
+ * @typedef {Object} PendingLoadWarning
+ * @description The load warning currently shown, and the callback that lets the batch continue once the user acknowledges it.
+ * @property {LayerLoadFailure} failure - The file that failed and why.
+ * @property {() => void} acknowledge - Resolves the batch's wait for this warning.
+ */
+interface PendingLoadWarning {
+  failure: LayerLoadFailure;
+  acknowledge: () => void;
+}
 
 /**
  * @typedef {'vector' | 'raster' | 'database'} SourceType
@@ -75,17 +87,47 @@ export const AddLayersDialog: React.FC = () => {
   const filePathSignal = useSignal<string>("");
   const vectorFilesSignal = useSignal<string[]>([]);
   const vectorInputTextSignal = useSignal<string>("");
-  const invalidFilesSignal = useSignal<string[]>([]);
+  const loadWarningSignal = useSignal<PendingLoadWarning | null>(null);
+  const isAddingSignal = useSignal<boolean>(false);
+  const { t } = useTranslation();
 
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  /**
+   * @description Clears the vector file chips, typed path text and single path input.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const resetInputs = (): void => {
+    vectorFilesSignal.value = [];
+    vectorInputTextSignal.value = "";
+    filePathSignal.value = "";
+  };
+
+  /**
+   * @description Dismisses the current load warning and lets the batch continue with the next file.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const acknowledgeLoadWarning = (): void => {
+    const pending = loadWarningSignal.value;
+    loadWarningSignal.value = null;
+    pending?.acknowledge();
+  };
 
   // Reset input fields whenever the dialog is opened to prevent residual chips
   React.useEffect(() => {
     if (isOpen) {
-      vectorFilesSignal.value = [];
-      vectorInputTextSignal.value = "";
-      filePathSignal.value = "";
-      invalidFilesSignal.value = [];
+      resetInputs();
+    } else {
+      // Never leave a batch waiting on a warning the closed dialog can no longer show.
+      acknowledgeLoadWarning();
     }
   }, [isOpen]);
 
@@ -98,15 +140,12 @@ export const AddLayersDialog: React.FC = () => {
    * @description Clears pending vector files, file path input, and draft state before closing Add Layers dialog.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-27
-   * @updated 2026-10-27
+   * @updated 2026-11-19
    * @since 0.1.0-dev
    * @returns {void}
    */
   const handleCancel = React.useCallback(() => {
-    vectorFilesSignal.value = [];
-    vectorInputTextSignal.value = "";
-    filePathSignal.value = "";
-    invalidFilesSignal.value = [];
+    resetInputs();
     closeAddLayersDialog();
   }, []);
 
@@ -185,7 +224,27 @@ export const AddLayersDialog: React.FC = () => {
   };
 
   /**
-   * @description Confirms and attaches the selected layer dataset to the project state.
+   * @description Shows the load warning for one failed file and resolves once the user acknowledges it.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @param {LayerLoadFailure} failure - The file that failed and why.
+   * @returns {Promise<void>} Resolves when the warning is dismissed, or at once if the dialog has been closed.
+   */
+  const showLoadWarning = (failure: LayerLoadFailure): Promise<void> =>
+    new Promise<void>((resolve) => {
+      if (!isAddLayersOpenSignal.value) {
+        resolve();
+        return;
+      }
+      loadWarningSignal.value = { failure, acknowledge: resolve };
+    });
+
+  /**
+   * @description Adds the chosen vector files as layers one at a time, warning about each file that
+   * can't be loaded and waiting for acknowledgement before the next, then closes the dialog however
+   * many files loaded.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-01
    * @updated 2026-11-19
@@ -193,55 +252,59 @@ export const AddLayersDialog: React.FC = () => {
    * @returns {Promise<void>}
    */
   const handleAdd = async (): Promise<void> => {
+    if (isAddingSignal.value) return;
     addTypedPaths();
     if (activeTab === "vector") {
       const files = vectorFilesSignal.value;
-      if (files.length === 0 && !filePath.trim()) {
+      if (files.length === 0) {
         logging.warn("No vector files selected to add", {
           scope: "AddLayersDialog",
         });
         return;
       }
 
-      const validFiles: string[] = [];
-      const invalidFiles: string[] = [];
-
-      for (const file of files) {
-        const exists = await window.electronAPI?.pathExists?.(file);
-        if (exists) {
-          validFiles.push(file);
-        } else {
-          invalidFiles.push(file);
+      isAddingSignal.value = true;
+      try {
+        const api = window.electronAPI;
+        const result = await addLayersOneByOne(files, {
+          pathExists: api?.pathExists,
+          addLayer: async (params) => {
+            if (!api?.addLayers) {
+              throw new Error(
+                t("add_layers_reason_unavailable")
+                  || "Adding layers is not available."
+              );
+            }
+            await api.addLayers([params]);
+          },
+          warn: showLoadWarning,
+          isCancelled: () => !isAddLayersOpenSignal.value,
+        });
+        for (const failure of result.failed) {
+          logging.warn("Layer could not be added", {
+            scope: "AddLayersDialog",
+            filePath: failure.filePath,
+            reason: failure.reason,
+            message: failure.message,
+          });
         }
-      }
-
-      if (invalidFiles.length > 0) {
-        invalidFilesSignal.value = invalidFiles;
-      }
-
-      if (validFiles.length > 0) {
-        const layersToAdd: AddLayerParams[] = validFiles.map((file) => ({
-          sourceType: "vector",
-          filePath: file,
-        }));
-        await window.electronAPI?.addLayers?.(layersToAdd);
-      }
-
-      if (invalidFiles.length === 0) {
-        vectorFilesSignal.value = [];
-        vectorInputTextSignal.value = "";
-        filePathSignal.value = "";
-        invalidFilesSignal.value = [];
+      } finally {
+        isAddingSignal.value = false;
+        resetInputs();
         closeAddLayersDialog();
       }
     } else {
-      vectorFilesSignal.value = [];
-      vectorInputTextSignal.value = "";
-      filePathSignal.value = "";
-      invalidFilesSignal.value = [];
+      resetInputs();
       closeAddLayersDialog();
     }
   };
+
+  const loadWarning = loadWarningSignal.value;
+  const loadWarningFileName =
+    loadWarning ?
+      loadWarning.failure.filePath.split(/[/\\]/).pop()
+      || loadWarning.failure.filePath
+    : "";
 
   return (
     <Dialog
@@ -467,25 +530,32 @@ export const AddLayersDialog: React.FC = () => {
         </div>
       </div>
       <ModalDialog
-        title='Missing Files'
-        isOpen={invalidFilesSignal.value.length > 0}
-        onClose={() => {
-          invalidFilesSignal.value = [];
-          closeAddLayersDialog();
-        }}
+        title={t("add_layers_load_failed_title") || "Layer Not Added"}
+        isOpen={loadWarning !== null}
+        onClose={acknowledgeLoadWarning}
         buttons={[
           {
-            label: "OK",
+            label: t("dialog_ok") || "OK",
             primary: true,
-            onClick: () => {
-              invalidFilesSignal.value = [];
-              closeAddLayersDialog();
-            },
+            onClick: acknowledgeLoadWarning,
           },
         ]}>
-        <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>
-          {`The following files could not be found and will be skipped:\n\n${invalidFilesSignal.value.join("\n")}`}
-        </p>
+        {loadWarning && (
+          <div className='add-layers-load-warning'>
+            <p title={loadWarning.failure.filePath}>
+              {t("add_layers_load_failed_file", { file: loadWarningFileName })
+                || `${loadWarningFileName} could not be added as a layer.`}
+            </p>
+            <p>
+              {loadWarning.failure.reason === "missing" ?
+                t("add_layers_reason_missing") || "The file does not exist."
+              : loadWarning.failure.message
+                || t("add_layers_reason_unknown")
+                || "The file could not be read."
+              }
+            </p>
+          </div>
+        )}
       </ModalDialog>
     </Dialog>
   );

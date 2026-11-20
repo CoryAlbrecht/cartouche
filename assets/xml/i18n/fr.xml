@@ -51,6 +51,11 @@
     <string name="copy_layer_style">Copier le style</string>
     <string name="paste_layer_style">Coller le style</string>
     <string name="style_load_error_title">Erreur de chargement du style</string>
+    <string name="add_layers_load_failed_title">Couche non ajoutée</string>
+    <string name="add_layers_load_failed_file">{file} n'a pas pu être ajouté comme couche.</string>
+    <string name="add_layers_reason_missing">Le fichier n'existe pas.</string>
+    <string name="add_layers_reason_unavailable">L'ajout de couches n'est pas disponible.</string>
+    <string name="add_layers_reason_unknown">Le fichier n'a pas pu être lu.</string>
     <string name="quit">Quitter</string>
     <string name="hello_name">Bonjour {name}</string>
     <string name="shortcut_save">Appuyez sur <kbd>Ctrl</kbd> + <kbd>S</kbd> pour enregistrer.</string>

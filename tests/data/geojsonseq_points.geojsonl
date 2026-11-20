@@ -1,0 +1,3 @@
+{"type":"Feature","properties":{"name":"Alpha","rank":1},"geometry":{"type":"Point","coordinates":[-75.69,45.42]}}
+{"type":"Feature","properties":{"name":"Bravo","rank":2},"geometry":{"type":"Point","coordinates":[-79.38,43.65]}}
+{"type":"Feature","properties":{"name":"Charlie","rank":3},"geometry":{"type":"Point","coordinates":[-73.57,45.5]}}

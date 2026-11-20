@@ -2451,6 +2451,16 @@
   font-size: 0.875rem;
 }
 
+/* Per-file load warning in the Add Layers dialog: long paths wrap instead of widening the modal. */
+.add-layers-load-warning p {
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.add-layers-load-warning p:last-child {
+  margin-bottom: 0;
+}
+
 /* Single path input for raster and database sources. */
 .add-layers-path-input {
   flex: 1;
