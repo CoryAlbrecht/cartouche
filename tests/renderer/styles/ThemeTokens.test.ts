@@ -510,6 +510,21 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         `.tree-node-row.active ${part} must inherit the row colour`
       );
     }
+    // The visibility checkbox takes a light accent; an unchecked box keeps the light native scheme.
+    assertMappings({
+      "--cartouche-layer-tree-row-active-checkbox-accent":
+        "--cartouche-theme-fg-inverted",
+    });
+    const checkbox = ".tree-node-row.active .tree-checkbox";
+    assert.equal(
+      selectorDeclaration(checkbox, "--cartouche-control-accent"),
+      "var(--cartouche-layer-tree-row-active-checkbox-accent)"
+    );
+    assert.equal(
+      selectorDeclaration(checkbox, "accent-color"),
+      "var(--cartouche-control-accent)"
+    );
+    assert.equal(selectorDeclaration(checkbox, "color-scheme"), undefined);
   });
 
   it("defines the AttributeTableWidget frame and CRS Catalogue list box Tier 2 tokens (#357)", () => {

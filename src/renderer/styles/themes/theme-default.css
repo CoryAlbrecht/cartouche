@@ -258,6 +258,8 @@
   --cartouche-layer-tree-row-active-bg: var(--cartouche-theme-primary);
   --cartouche-layer-tree-row-active-fg: var(--cartouche-theme-fg-inverted);
   --cartouche-layer-tree-row-active-hover-fg: var(--cartouche-theme-info-bright);
+  /* Native accent of the visibility checkbox on the Active Layer's row */
+  --cartouche-layer-tree-row-active-checkbox-accent: var(--cartouche-theme-fg-inverted);
   --cartouche-layer-tree-project-border: var(--cartouche-theme-border-subtle);
   --cartouche-layer-tree-chevron-fg: var(--cartouche-theme-fg-muted);
   --cartouche-layer-tree-meta-fg: var(--cartouche-theme-fg-muted);

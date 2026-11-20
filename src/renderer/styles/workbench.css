@@ -924,6 +924,15 @@
   color: inherit;
 }
 
+/* The visibility checkbox on the active row takes a light accent, so a checked box is white with a
+   dark check mark; an unchecked box stays the usual white. The accent is re-mapped here rather than
+   set directly, so every accent-color still reads --cartouche-control-accent. */
+.tree-node-row.active .tree-checkbox {
+  --cartouche-control-accent: var(--cartouche-layer-tree-row-active-checkbox-accent);
+
+  accent-color: var(--cartouche-control-accent);
+}
+
 .tree-node-row .tree-node-title {
   font-weight: normal;
   font-style: normal;
