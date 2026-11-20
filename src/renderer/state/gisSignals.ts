@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, and toolbar placements.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -174,18 +174,18 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
- * @typedef {'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor'} ActiveTool
+ * @typedef {'pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon' | 'vertex_editor'} ActiveTool
  * @description Supported interactive canvas tool modes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export type ActiveTool =
   | "pan"
-  | "select"
-  | "select_drag"
-  | "select_freehand"
+  | "select_click"
+  | "select_rectangle"
+  | "select_lasso"
   | "point"
   | "line"
   | "polygon"
@@ -193,10 +193,10 @@ export type ActiveTool =
 
 /**
  * @signal activeToolSignal
- * @description Active canvas interactive tool mode ('pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor').
+ * @description Active canvas interactive tool mode ('pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon' | 'vertex_editor').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {Signal<ActiveTool>}
  */
@@ -233,27 +233,27 @@ export function isLayerInEditMode(
 }
 
 /**
- * @typedef {'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand'} SelectionMode
- * @description Discrete spatial feature selection mode identifiers.
+ * @typedef {'select_by_click' | 'select_by_rectangle' | 'select_by_lasso'} SelectionMode
+ * @description Selection Tool action identifiers (Select by Click, Select by Rectangle, Select by Lasso).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export type SelectionMode =
-  "select_feature" | "select_features_by_drag" | "select_features_by_freehand";
+  "select_by_click" | "select_by_rectangle" | "select_by_lasso";
 
 /**
  * @signal activeSelectionModeSignal
- * @description Currently active selection mode option for SplitToolButton ('select_feature' | 'select_features_by_drag' | 'select_features_by_freehand').
+ * @description Currently active selection mode option for SplitToolButton ('select_by_click' | 'select_by_rectangle' | 'select_by_lasso').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {Signal<SelectionMode>}
  */
 export const activeSelectionModeSignal =
-  signal<SelectionMode>("select_feature");
+  signal<SelectionMode>("select_by_click");
 
 export { activeSelectionModeSignal as selectionModeSignal };
 
@@ -3235,14 +3235,15 @@ export function zoomToLayerAction(): void {
 }
 
 /**
+ * @function selectAllAction
  * @description Selects all features belonging to the active layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function selectAllFeaturesAction(): void {
+export function selectAllAction(): void {
   const activeId = activeLayerIdSignal.value;
   const targetFeatures =
     activeId ?
@@ -3252,26 +3253,28 @@ export function selectAllFeaturesAction(): void {
 }
 
 /**
+ * @function deselectAllAction
  * @description Deselects all currently selected spatial feature records.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function deselectAllFeaturesAction(): void {
+export function deselectAllAction(): void {
   selectedFeatureIdsSignal.value = new Set();
 }
 
 /**
+ * @function deleteSelectionAction
  * @description Deletes selected spatial features from the active layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function deleteSelectedFeaturesAction(): void {
+export function deleteSelectionAction(): void {
   if (selectedFeatureIdsSignal.value.size === 0) return;
   featuresSignal.value = featuresSignal.value.filter(
     (f) => !selectedFeatureIdsSignal.value.has(f.id)
@@ -3280,26 +3283,28 @@ export function deleteSelectedFeaturesAction(): void {
 }
 
 /**
+ * @function copySelectionAction
  * @description Copies selected features to feature clipboard.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function copySelectedFeaturesAction(): void {
+export function copySelectionAction(): void {
   copyAction();
 }
 
 /**
+ * @function cutSelectionAction
  * @description Cuts selected features to feature clipboard.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function cutSelectedFeaturesAction(): void {
+export function cutSelectionAction(): void {
   cutAction();
 }
 

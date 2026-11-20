@@ -4,7 +4,7 @@
  * @description Unit and component tests for DigitizingToolbarWidget verifying layer edit mode toggling, geometry enablement guards, vertex editing, active tool reverting, clipboard operations, and button disabled states.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-14
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link DigitizingToolbarWidget}
  * @see {@link isDrawingToolEnabled}
@@ -43,9 +43,9 @@ import {
   isProjectDirtySignal,
   toggleLayerEditingAction,
   vertexEditorAction,
-  deleteSelectedFeaturesAction,
-  cutSelectedFeaturesAction,
-  copySelectedFeaturesAction,
+  deleteSelectionAction,
+  cutSelectionAction,
+  copySelectionAction,
   pasteFeaturesAction,
   saveActiveLayerAction,
   featuresSignal,
@@ -70,9 +70,9 @@ const {
   isDrawingToolEnabled,
   isVertexEditorEnabled,
   isSaveActiveLayerEnabled,
-  isDeleteSelectedFeaturesEnabled,
-  isCutSelectedFeaturesEnabled,
-  isCopySelectedFeaturesEnabled,
+  isDeleteSelectionEnabled,
+  isCutSelectionEnabled,
+  isCopySelectionEnabled,
   isPasteFeaturesEnabled,
 } = jiti(
   "../../../../src/renderer/workbench/widgets/toolbars/DigitizingToolbarWidget"
@@ -94,12 +94,12 @@ const {
     inEditMode: boolean,
     isModified?: boolean
   ) => boolean;
-  isDeleteSelectedFeaturesEnabled: (selectedCount: number) => boolean;
-  isCutSelectedFeaturesEnabled: (
+  isDeleteSelectionEnabled: (selectedCount: number) => boolean;
+  isCutSelectionEnabled: (
     inEditMode: boolean,
     selectedCount: number
   ) => boolean;
-  isCopySelectedFeaturesEnabled: (selectedCount: number) => boolean;
+  isCopySelectionEnabled: (selectedCount: number) => boolean;
   isPasteFeaturesEnabled: (inEditMode: boolean) => boolean;
 };
 
@@ -359,21 +359,21 @@ describe("DigitizingToolbarWidget Predicates & Helper Functions", () => {
     );
   });
 
-  it("isDeleteSelectedFeaturesEnabled returns true only when selected count > 0", () => {
-    assert.strictEqual(isDeleteSelectedFeaturesEnabled(0), false);
-    assert.strictEqual(isDeleteSelectedFeaturesEnabled(1), true);
-    assert.strictEqual(isDeleteSelectedFeaturesEnabled(5), true);
+  it("isDeleteSelectionEnabled returns true only when selected count > 0", () => {
+    assert.strictEqual(isDeleteSelectionEnabled(0), false);
+    assert.strictEqual(isDeleteSelectionEnabled(1), true);
+    assert.strictEqual(isDeleteSelectionEnabled(5), true);
   });
 
-  it("isCutSelectedFeaturesEnabled returns true only when in edit mode and selected count > 0", () => {
-    assert.strictEqual(isCutSelectedFeaturesEnabled(false, 3), false);
-    assert.strictEqual(isCutSelectedFeaturesEnabled(true, 0), false);
-    assert.strictEqual(isCutSelectedFeaturesEnabled(true, 2), true);
+  it("isCutSelectionEnabled returns true only when in edit mode and selected count > 0", () => {
+    assert.strictEqual(isCutSelectionEnabled(false, 3), false);
+    assert.strictEqual(isCutSelectionEnabled(true, 0), false);
+    assert.strictEqual(isCutSelectionEnabled(true, 2), true);
   });
 
-  it("isCopySelectedFeaturesEnabled returns true only when selected count > 0", () => {
-    assert.strictEqual(isCopySelectedFeaturesEnabled(0), false);
-    assert.strictEqual(isCopySelectedFeaturesEnabled(1), true);
+  it("isCopySelectionEnabled returns true only when selected count > 0", () => {
+    assert.strictEqual(isCopySelectionEnabled(0), false);
+    assert.strictEqual(isCopySelectionEnabled(1), true);
   });
 
   it("isPasteFeaturesEnabled returns true only when in edit mode", () => {
@@ -538,10 +538,10 @@ describe("Digitizing State Management & Actions (gisSignals)", () => {
     ];
     selectedFeatureIdsSignal.value = new Set(["f-1"]);
 
-    copySelectedFeaturesAction();
+    copySelectionAction();
     assert.strictEqual(clipboardFeaturesSignal.value.length, 1);
 
-    deleteSelectedFeaturesAction();
+    deleteSelectionAction();
     assert.strictEqual(featuresSignal.value.length, 1);
     assert.strictEqual(featuresSignal.value[0].id, "f-2");
 
@@ -549,7 +549,7 @@ describe("Digitizing State Management & Actions (gisSignals)", () => {
     assert.strictEqual(featuresSignal.value.length, 2);
 
     selectedFeatureIdsSignal.value = new Set(["f-2"]);
-    cutSelectedFeaturesAction();
+    cutSelectionAction();
     assert.strictEqual(featuresSignal.value.length, 1);
   });
 });
@@ -569,9 +569,9 @@ describe("DigitizingToolbarWidget Static Markup Rendering", () => {
       toggle_layer_editing: "Toggle Layer Editing",
       save_active_layer: "Save Active Layer",
       vertex_editor: "Vertex Editor",
-      delete_selected_features: "Delete Selected Features",
-      cut_selected_features: "Cut Selected Features",
-      copy_selected_features: "Copy Selected Features",
+      delete_selection: "Delete Selection",
+      cut_selection: "Cut Selection",
+      copy_selection: "Copy Selection",
       paste_features: "Paste Features",
     };
 
@@ -598,22 +598,22 @@ describe("DigitizingToolbarWidget Static Markup Rendering", () => {
         keyCombination: { key: "v" },
       },
       {
-        name: "delete_selected_features",
-        description: "Delete Selected Features",
+        name: "delete_selection",
+        description: "Delete Selection",
         icon: mdiTrashCanOutline,
         formattedKey: "Delete",
         keyCombination: { key: "Delete" },
       },
       {
-        name: "cut_selected_features",
-        description: "Cut Selected Features",
+        name: "cut_selection",
+        description: "Cut Selection",
         icon: mdiContentCut,
         formattedKey: "Ctrl+X",
         keyCombination: { key: "x", ctrl: true },
       },
       {
-        name: "copy_selected_features",
-        description: "Copy Selected Features",
+        name: "copy_selection",
+        description: "Copy Selection",
         icon: mdiContentCopy,
         formattedKey: "Ctrl+C",
         keyCombination: { key: "c", ctrl: true },
@@ -1261,20 +1261,20 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
         keyCombination: { key: "v" },
       },
       {
-        name: "delete_selected_features",
-        description: "Delete Selected Features",
+        name: "delete_selection",
+        description: "Delete Selection",
         icon: mdiTrashCanOutline,
         keyCombination: { key: "Delete" },
       },
       {
-        name: "cut_selected_features",
-        description: "Cut Selected Features",
+        name: "cut_selection",
+        description: "Cut Selection",
         icon: mdiContentCut,
         keyCombination: { key: "x", ctrl: true },
       },
       {
-        name: "copy_selected_features",
-        description: "Copy Selected Features",
+        name: "copy_selection",
+        description: "Copy Selection",
         icon: mdiContentCopy,
         keyCombination: { key: "c", ctrl: true },
       },

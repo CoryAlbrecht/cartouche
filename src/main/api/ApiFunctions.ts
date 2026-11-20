@@ -4,7 +4,7 @@
  * @description Master aggregation barrel module re-exporting main process core API actions for project management, editing, layers, and preferences.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-23
- * @updated 2026-11-10
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link newProject}
  * @see {@link openProject}
@@ -27,7 +27,7 @@
  * @see {@link saveStyleFile}
  * @see {@link projectProperties}
  * @see {@link vertexEditor}
- * @see {@link deleteSelectedFeatures}
+ * @see {@link deleteSelection}
  * @see {@link selectFeaturesByValue}
  * @see {@link resetToolbarLayout}
  */
@@ -45,7 +45,7 @@ export { default as cancelAction } from "./edit/cancelAction";
 export { default as undoAction } from "./edit/undoAction";
 export { default as redoAction } from "./edit/redoAction";
 export { default as vertexEditor } from "./edit/vertexEditor";
-export { default as deleteSelectedFeatures } from "./edit/deleteSelectedFeatures";
+export { default as deleteSelection } from "./edit/deleteSelection";
 export { default as selectFeaturesByValue } from "./layers/selectFeaturesByValue";
 export { default as getPreferenceValue } from "./ui/preferences/GetPreferenceValue";
 export { default as setPreferenceValue } from "./ui/preferences/SetPreferenceValue";

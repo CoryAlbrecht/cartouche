@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-18
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -473,7 +473,7 @@ describe("AttributeTableWidget Header Embedded Toolbars (Ticket #176)", () => {
     projectTreeSignal.value = [];
     featuresSignal.value = [];
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
     editedFeatureIdsSignal.value = new Set();
@@ -943,7 +943,7 @@ describe("AttributeTableWidget Filtering, minHeight, and Localization (Ticket #1
     projectTreeSignal.value = [];
     featuresSignal.value = [];
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
     editedFeatureIdsSignal.value = new Set();
@@ -1484,7 +1484,7 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
     projectTreeSignal.value = [];
     featuresSignal.value = [];
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     editableLayerIdsSignal.value = new Set();
     selectedFeatureIdsSignal.value = new Set();
     editedFeatureIdsSignal.value = new Set();

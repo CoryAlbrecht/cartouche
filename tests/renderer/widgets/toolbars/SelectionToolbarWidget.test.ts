@@ -4,7 +4,7 @@
  * @description Unit and component tests for SelectionToolbarWidget verifying SplitToolButton selection modes, SelectByValue dialog trigger, select all / deselect all actions, and active/disabled button states.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link SelectionToolbarWidget}
  * @see {@link isDeselectAllDisabled}
@@ -26,8 +26,8 @@ import {
   selectedFeatureIdsSignal,
   featuresSignal,
   cancelAction,
-  selectAllFeaturesAction,
-  deselectAllFeaturesAction,
+  selectAllAction,
+  deselectAllAction,
   type ToolbarZone,
 } from "../../../../src/renderer/state/gisSignals";
 import type { GisFeature } from "../../../../src/shared/types";
@@ -94,40 +94,40 @@ describe("SelectionToolbarWidget Disabled State Logic (isDeselectAllDisabled)", 
 describe("SelectionToolbarWidget Component Rendering and Controls", () => {
   beforeEach(() => {
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     activeLayerIdSignal.value = null;
     selectedFeatureIdsSignal.value = new Set();
     featuresSignal.value = [];
     isSelectByValueOpenSignal.value = false;
 
     dictionarySignal.value = {
-      select_feature: "Select Feature",
-      select_features_by_drag: "Select Features by Drag",
-      select_features_by_freehand: "Select Features by Freehand",
+      select_by_click: "Select by Click",
+      select_by_rectangle: "Select by Rectangle",
+      select_by_lasso: "Select by Lasso",
       select_features_by_value: "Select Features by Value...",
-      select_all_features: "Select All Features",
-      deselect_all_features: "Deselect All Features",
+      select_all: "Select All",
+      deselect_all: "Deselect All",
       more_options: "More options",
     };
 
     registeredActionsSignal.value = [
       {
-        name: "select_feature",
-        description: "Select Feature",
+        name: "select_by_click",
+        description: "Select by Click",
         icon: "file:select-primary-click.svg",
         formattedKey: "Q",
         keyCombination: { key: "q" },
       },
       {
-        name: "select_features_by_drag",
-        description: "Select Features by Drag",
+        name: "select_by_rectangle",
+        description: "Select by Rectangle",
         icon: mdiSelectDrag,
         formattedKey: "Shift+Q",
         keyCombination: { key: "q", shift: true },
       },
       {
-        name: "select_features_by_freehand",
-        description: "Select Features by Freehand",
+        name: "select_by_lasso",
+        description: "Select by Lasso",
         icon: mdiSelectionEllipse,
         formattedKey: "Alt+Q",
         keyCombination: { key: "q", alt: true },
@@ -140,15 +140,15 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
         keyCombination: { key: "F6" },
       },
       {
-        name: "select_all_features",
-        description: "Select All Features",
+        name: "select_all",
+        description: "Select All",
         icon: mdiSelectAll,
         formattedKey: "Ctrl+A",
         keyCombination: { key: "a", ctrl: true },
       },
       {
-        name: "deselect_all_features",
-        description: "Deselect All Features",
+        name: "deselect_all",
+        description: "Deselect All",
         icon: mdiSelectionOff,
         formattedKey: "Ctrl+Shift+A",
         keyCombination: { key: "a", ctrl: true, shift: true },
@@ -187,7 +187,7 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
       "Expected SplitToolButton chevron button segment"
     );
 
-    // Custom SVG icon: default select_feature icon
+    // Custom SVG icon: default select_by_click icon
     const selectPrimaryPaths =
       BUILTIN_CUSTOM_SVG_ICONS["select-primary-click"].paths;
     assert.ok(
@@ -196,18 +196,18 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
       "Expected select-primary-click icon path geometries on primary split button"
     );
 
-    // Discrete action buttons: select_features_by_value, select_all_features, deselect_all_features
+    // Discrete action buttons: select_features_by_value, select_all, deselect_all
     assert.ok(
       html.includes('id="toolbar-tool-select-by-value"'),
       "Missing select_features_by_value button"
     );
     assert.ok(
       html.includes('id="toolbar-tool-select-all"'),
-      "Missing select_all_features button"
+      "Missing select_all button"
     );
     assert.ok(
       html.includes('id="toolbar-tool-deselect-all"'),
-      "Missing deselect_all_features button"
+      "Missing deselect_all button"
     );
 
     // Icons on discrete buttons
@@ -217,11 +217,11 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
     );
     assert.ok(
       html.includes(mdiSelectAll),
-      "Expected mdiSelectAll icon on select_all_features"
+      "Expected mdiSelectAll icon on select_all"
     );
     assert.ok(
       html.includes(mdiSelectionOff),
-      "Expected mdiSelectionOff icon on deselect_all_features"
+      "Expected mdiSelectionOff icon on deselect_all"
     );
   });
 
@@ -230,7 +230,7 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
     const { renderToStaticMarkup } = jiti("react-dom/server");
 
     // Drag mode
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeSelectionModeSignal.value = "select_by_rectangle";
     const dragHtml = renderToStaticMarkup(
       React.createElement(SelectionToolbarWidget, { zone: "top" })
     );
@@ -239,12 +239,12 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
       "Expected mdiSelectDrag icon in drag mode"
     );
     assert.ok(
-      dragHtml.includes("Select Features by Drag (Shift+Q)"),
+      dragHtml.includes("Select by Rectangle (Shift+Q)"),
       "Expected drag mode title"
     );
 
     // Freehand mode
-    activeSelectionModeSignal.value = "select_features_by_freehand";
+    activeSelectionModeSignal.value = "select_by_lasso";
     const freehandHtml = renderToStaticMarkup(
       React.createElement(SelectionToolbarWidget, { zone: "top" })
     );
@@ -253,7 +253,7 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
       "Expected mdiSelectionEllipse icon in freehand mode"
     );
     assert.ok(
-      freehandHtml.includes("Select Features by Freehand (Alt+Q)"),
+      freehandHtml.includes("Select by Lasso (Alt+Q)"),
       "Expected freehand mode title"
     );
   });
@@ -283,7 +283,7 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
     );
 
     // Active when select
-    activeToolSignal.value = "select";
+    activeToolSignal.value = "select_click";
     const selectHtml = renderToStaticMarkup(
       React.createElement(SelectionToolbarWidget, { zone: "top" })
     );
@@ -292,28 +292,28 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
       "SplitToolButton should be active when tool is select"
     );
 
-    // Active when select_drag
-    activeToolSignal.value = "select_drag";
+    // Active when select_rectangle
+    activeToolSignal.value = "select_rectangle";
     const dragHtml = renderToStaticMarkup(
       React.createElement(SelectionToolbarWidget, { zone: "top" })
     );
     assert.ok(
       dragHtml.includes("split-tool-primary active"),
-      "SplitToolButton should be active when tool is select_drag"
+      "SplitToolButton should be active when tool is select_rectangle"
     );
 
-    // Active when select_freehand
-    activeToolSignal.value = "select_freehand";
+    // Active when select_lasso
+    activeToolSignal.value = "select_lasso";
     const freehandHtml = renderToStaticMarkup(
       React.createElement(SelectionToolbarWidget, { zone: "top" })
     );
     assert.ok(
       freehandHtml.includes("split-tool-primary active"),
-      "SplitToolButton should be active when tool is select_freehand"
+      "SplitToolButton should be active when tool is select_lasso"
     );
   });
 
-  it("renders deselect_all_features button disabled when selectedFeatureIdsSignal is empty and enabled when non-empty", () => {
+  it("renders deselect_all button disabled when selectedFeatureIdsSignal is empty and enabled when non-empty", () => {
     const React = jiti("react");
     const { renderToStaticMarkup } = jiti("react-dom/server");
 
@@ -346,7 +346,7 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
 describe("SelectionToolbarWidget Selection Actions & Mutual Exclusivity", () => {
   beforeEach(() => {
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     activeLayerIdSignal.value = "layer-1";
     selectedFeatureIdsSignal.value = new Set();
     isSelectByValueOpenSignal.value = false;
@@ -378,14 +378,17 @@ describe("SelectionToolbarWidget Selection Actions & Mutual Exclusivity", () => 
   });
 
   it("SELECTION_ACTION_TO_TOOL_MAP maps selection modes to ActiveTool types correctly", () => {
-    assert.equal(SELECTION_ACTION_TO_TOOL_MAP["select_feature"], "select");
     assert.equal(
-      SELECTION_ACTION_TO_TOOL_MAP["select_features_by_drag"],
-      "select_drag"
+      SELECTION_ACTION_TO_TOOL_MAP["select_by_click"],
+      "select_click"
     );
     assert.equal(
-      SELECTION_ACTION_TO_TOOL_MAP["select_features_by_freehand"],
-      "select_freehand"
+      SELECTION_ACTION_TO_TOOL_MAP["select_by_rectangle"],
+      "select_rectangle"
+    );
+    assert.equal(
+      SELECTION_ACTION_TO_TOOL_MAP["select_by_lasso"],
+      "select_lasso"
     );
   });
 
@@ -394,19 +397,19 @@ describe("SelectionToolbarWidget Selection Actions & Mutual Exclusivity", () => 
     assert.equal(activeToolSignal.value, "polygon");
 
     // Activate click select
-    activeSelectionModeSignal.value = "select_feature";
-    activeToolSignal.value = "select";
-    assert.equal(activeToolSignal.value, "select");
+    activeSelectionModeSignal.value = "select_by_click";
+    activeToolSignal.value = "select_click";
+    assert.equal(activeToolSignal.value, "select_click");
 
     // Switch to drag select
-    activeSelectionModeSignal.value = "select_features_by_drag";
-    activeToolSignal.value = "select_drag";
-    assert.equal(activeToolSignal.value, "select_drag");
+    activeSelectionModeSignal.value = "select_by_rectangle";
+    activeToolSignal.value = "select_rectangle";
+    assert.equal(activeToolSignal.value, "select_rectangle");
 
     // Switch to freehand select
-    activeSelectionModeSignal.value = "select_features_by_freehand";
-    activeToolSignal.value = "select_freehand";
-    assert.equal(activeToolSignal.value, "select_freehand");
+    activeSelectionModeSignal.value = "select_by_lasso";
+    activeToolSignal.value = "select_lasso";
+    assert.equal(activeToolSignal.value, "select_lasso");
   });
 
   it("openSelectByValueDialog opens dialog and closeSelectByValueDialog closes it", () => {
@@ -463,24 +466,24 @@ describe("SelectionToolbarWidget Selection Actions & Mutual Exclusivity", () => 
     }
   });
 
-  it("selectAllFeaturesAction selects all features belonging to the active layer", () => {
+  it("selectAllAction selects all features belonging to the active layer", () => {
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
-    selectAllFeaturesAction();
+    selectAllAction();
     assert.equal(selectedFeatureIdsSignal.value.size, 2);
     assert.ok(selectedFeatureIdsSignal.value.has("feat-1"));
     assert.ok(selectedFeatureIdsSignal.value.has("feat-2"));
     assert.ok(!selectedFeatureIdsSignal.value.has("feat-3"));
   });
 
-  it("deselectAllFeaturesAction clears all selected features", () => {
-    selectAllFeaturesAction();
+  it("deselectAllAction clears all selected features", () => {
+    selectAllAction();
     assert.equal(selectedFeatureIdsSignal.value.size, 2);
-    deselectAllFeaturesAction();
+    deselectAllAction();
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
 
   it("cancelAction resets activeToolSignal to pan and clears selections", () => {
-    activeToolSignal.value = "select_drag";
+    activeToolSignal.value = "select_rectangle";
     selectedFeatureIdsSignal.value = new Set(["feat-1", "feat-2"]);
 
     cancelAction();

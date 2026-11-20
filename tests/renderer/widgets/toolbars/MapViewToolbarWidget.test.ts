@@ -4,7 +4,7 @@
  * @description Unit and component tests for MapViewToolbarWidget verifying map navigation tools, MDI icons, accelerator key combinations, pan active toggle, zoom in/out resolution scaling, and zoom to selection/layer extent fitting with 8px margin.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link MapViewToolbarWidget}
  * @see {@link isZoomToSelectionDisabled}
@@ -213,8 +213,8 @@ describe("MapViewToolbarWidget Component Rendering and Controls", () => {
   });
 
   it("clicking pan_tool sets activeToolSignal to pan enforcing mutual exclusivity", () => {
-    activeToolSignal.value = "select";
-    assert.equal(activeToolSignal.value, "select");
+    activeToolSignal.value = "select_click";
+    assert.equal(activeToolSignal.value, "select_click");
 
     // Clicking pan_tool reverts to pan
     activeToolSignal.value = "pan";

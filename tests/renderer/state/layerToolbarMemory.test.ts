@@ -4,7 +4,7 @@
  * @description Unit and component tests for ephemeral per-layer toolbar state conservation, caching, restoration, and fallback mechanisms (Ticket #107).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-18
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link captureLayerToolbarState}
  * @see {@link restoreLayerToolbarState}
@@ -91,7 +91,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     // Reset GIS signals
     activeLayerIdSignal.value = null;
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     editableLayerIdsSignal.value = new Set();
     snappingEnabledSignal.value = false;
     snappingScopeSignal.value = "snap_to_active";
@@ -130,7 +130,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     // Mutate tools and snapping parameters
     activeToolSignal.value = "polygon";
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeSelectionModeSignal.value = "select_by_rectangle";
     snappingEnabledSignal.value = true;
     snappingScopeSignal.value = "snap_to_all";
     snapToVerticesSignal.value = true;
@@ -177,7 +177,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "selectionMode"),
-      "select_features_by_drag"
+      "select_by_rectangle"
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "snappingEnabled"),
@@ -205,17 +205,59 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
   });
 
+  it("reads a selection mode stored under a pre-#376 action ID as the renamed Selection Tool", () => {
+    const layerA = "layer-legacy-mode-a";
+    const layerB = "layer-legacy-mode-b";
+    const legacy: Array<[string, string]> = [
+      ["select_feature", "select_by_click"],
+      ["select_features_by_drag", "select_by_rectangle"],
+      ["select_features_by_freehand", "select_by_lasso"],
+    ];
+
+    for (const [stored, expected] of legacy) {
+      setLayerToolbarPreference(layerA, "selectionMode", stored);
+      activeLayerIdSignal.value = layerB;
+      activeSelectionModeSignal.value = "select_by_click";
+      activeLayerIdSignal.value = layerA;
+      assert.strictEqual(
+        activeSelectionModeSignal.value,
+        expected,
+        `Stored '${stored}' must restore as '${expected}'`
+      );
+      activeLayerIdSignal.value = null;
+    }
+  });
+
+  it("reads a tool stored under a pre-#376 tool value as the renamed tool value", () => {
+    const layerA = "layer-legacy-tool-a";
+    const layerB = "layer-legacy-tool-b";
+    editableLayerIdsSignal.value = new Set([layerA, layerB]);
+    const legacy: Array<[string, string]> = [
+      ["select", "select_click"],
+      ["select_drag", "select_rectangle"],
+      ["select_freehand", "select_lasso"],
+    ];
+
+    for (const [stored, expected] of legacy) {
+      setLayerToolbarPreference(layerA, "digitizingTool", stored);
+      activeLayerIdSignal.value = layerB;
+      activeLayerIdSignal.value = layerA;
+      assert.strictEqual(
+        activeToolSignal.value,
+        expected,
+        `Stored tool '${stored}' must restore as '${expected}'`
+      );
+      activeLayerIdSignal.value = null;
+    }
+  });
+
   it("restores last chosen digitizing tool, selection mode, and snapping parameters when switching back to a layer with cached preferences", () => {
     const layerA = "layer-restore-a";
     const layerB = "layer-restore-b";
 
     // Populate layer A preferences
     setLayerToolbarPreference(layerA, "digitizingTool", "line");
-    setLayerToolbarPreference(
-      layerA,
-      "selectionMode",
-      "select_features_by_freehand"
-    );
+    setLayerToolbarPreference(layerA, "selectionMode", "select_by_lasso");
     setLayerToolbarPreference(layerA, "snappingEnabled", true);
     setLayerToolbarPreference(layerA, "snappingScope", "snap_to_advanced");
     setLayerToolbarPreference(layerA, "snapToVertices", false);
@@ -229,7 +271,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     // Initially on layer B with default settings
     activeLayerIdSignal.value = layerB;
     activeToolSignal.value = "point";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     snappingEnabledSignal.value = false;
 
     // Transition to layer A
@@ -242,7 +284,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       activeSelectionModeSignal.value,
-      "select_features_by_freehand",
+      "select_by_lasso",
       "Selection mode must be restored"
     );
     assert.strictEqual(
@@ -315,7 +357,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     editableLayerIdsSignal.value = new Set([layerA]);
     activeLayerIdSignal.value = layerA;
     activeToolSignal.value = "vertex_editor";
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeSelectionModeSignal.value = "select_by_rectangle";
 
     // Clear active layer
     activeLayerIdSignal.value = null;
@@ -332,7 +374,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "selectionMode"),
-      "select_features_by_drag",
+      "select_by_rectangle",
       "Outgoing layer selection mode must be captured when active layer is cleared"
     );
   });
@@ -345,7 +387,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     toggleLayerEditingAction(layerA);
     activeLayerIdSignal.value = layerA;
     activeToolSignal.value = "polygon";
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeSelectionModeSignal.value = "select_by_rectangle";
 
     // Deselect layer A by switching to layer B
     activeLayerIdSignal.value = layerB;
@@ -369,7 +411,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       activeSelectionModeSignal.value,
-      "select_features_by_drag",
+      "select_by_rectangle",
       "Selection mode must be restored upon re-selecting layer A"
     );
   });

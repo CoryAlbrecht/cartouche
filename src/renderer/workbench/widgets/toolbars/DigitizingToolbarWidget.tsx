@@ -4,7 +4,7 @@
  * @description Toolbar widget providing vector feature digitizing tools (Point, Line, Polygon), layer edit mode toggles, vertex editing, and spatial feature clipboard / deletion actions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -39,9 +39,9 @@ import {
   toggleLayerEditingAction,
   saveActiveLayerAction,
   vertexEditorAction,
-  deleteSelectedFeaturesAction,
-  cutSelectedFeaturesAction,
-  copySelectedFeaturesAction,
+  deleteSelectionAction,
+  cutSelectionAction,
+  copySelectionAction,
   pasteFeaturesAction,
 } from "@renderer/state/gisSignals";
 import { getActionFormattedKey } from "@renderer/state/actionSignals";
@@ -137,33 +137,31 @@ export function isSaveActiveLayerEnabled(
 }
 
 /**
- * @function isDeleteSelectedFeaturesEnabled
- * @description Evaluates whether deleting selected features is enabled based on selection count.
+ * @function isDeleteSelectionEnabled
+ * @description Evaluates whether Delete Selection is enabled based on selection count.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {number} selectedCount - Count of currently selected spatial features.
  * @returns {boolean} True if delete is enabled, false otherwise.
  */
-export function isDeleteSelectedFeaturesEnabled(
-  selectedCount: number
-): boolean {
+export function isDeleteSelectionEnabled(selectedCount: number): boolean {
   return selectedCount > 0;
 }
 
 /**
- * @function isCutSelectedFeaturesEnabled
- * @description Evaluates whether cutting selected features to clipboard is enabled based on edit mode and selection count.
+ * @function isCutSelectionEnabled
+ * @description Evaluates whether Cut Selection is enabled based on edit mode and selection count.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {boolean} inEditMode - Whether the active layer is in edit mode.
  * @param {number} selectedCount - Count of currently selected spatial features.
  * @returns {boolean} True if cut is enabled, false otherwise.
  */
-export function isCutSelectedFeaturesEnabled(
+export function isCutSelectionEnabled(
   inEditMode: boolean,
   selectedCount: number
 ): boolean {
@@ -171,16 +169,16 @@ export function isCutSelectedFeaturesEnabled(
 }
 
 /**
- * @function isCopySelectedFeaturesEnabled
- * @description Evaluates whether copying selected features to clipboard is enabled based on selection count.
+ * @function isCopySelectionEnabled
+ * @description Evaluates whether Copy Selection is enabled based on selection count.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {number} selectedCount - Count of currently selected spatial features.
  * @returns {boolean} True if copy is enabled, false otherwise.
  */
-export function isCopySelectedFeaturesEnabled(selectedCount: number): boolean {
+export function isCopySelectionEnabled(selectedCount: number): boolean {
   return selectedCount > 0;
 }
 
@@ -221,7 +219,7 @@ export function getButtonClass(isActive = false, isDisabled = false): string {
  * @description Renders spatial digitizing and vector editing buttons for toggling edit mode, saving active layer, drawing new features (Point, Line, Polygon), vertex editing, feature deletion, and clipboard operations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {DigitizingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} DigitizingToolbarWidget instance.
@@ -262,9 +260,9 @@ export const DigitizingToolbarWidget: React.FC<
     isEditMode
   );
   const isVertexEnabled = isVertexEditorEnabled(isEditMode);
-  const isDeleteEnabled = isDeleteSelectedFeaturesEnabled(selectedCount);
-  const isCutEnabled = isCutSelectedFeaturesEnabled(isEditMode, selectedCount);
-  const isCopyEnabled = isCopySelectedFeaturesEnabled(selectedCount);
+  const isDeleteEnabled = isDeleteSelectionEnabled(selectedCount);
+  const isCutEnabled = isCutSelectionEnabled(isEditMode, selectedCount);
+  const isCopyEnabled = isCopySelectionEnabled(selectedCount);
   const isPasteEnabled = isPasteFeaturesEnabled(isEditMode);
 
   // Formatted key combination titles
@@ -284,17 +282,16 @@ export const DigitizingToolbarWidget: React.FC<
   const vertexLabel = t("vertex_editor") || "Vertex Editor";
   const vertexTitle = vertexKey ? `${vertexLabel} (${vertexKey})` : vertexLabel;
 
-  const deleteKey = getActionFormattedKey("delete_selected_features", "Delete");
-  const deleteLabel =
-    t("delete_selected_features") || "Delete Selected Features";
+  const deleteKey = getActionFormattedKey("delete_selection", "Delete");
+  const deleteLabel = t("delete_selection") || "Delete Selection";
   const deleteTitle = deleteKey ? `${deleteLabel} (${deleteKey})` : deleteLabel;
 
-  const cutKey = getActionFormattedKey("cut_selected_features", "Ctrl+X");
-  const cutLabel = t("cut_selected_features") || "Cut Selected Features";
+  const cutKey = getActionFormattedKey("cut_selection", "Ctrl+X");
+  const cutLabel = t("cut_selection") || "Cut Selection";
   const cutTitle = cutKey ? `${cutLabel} (${cutKey})` : cutLabel;
 
-  const copyKey = getActionFormattedKey("copy_selected_features", "Ctrl+C");
-  const copyLabel = t("copy_selected_features") || "Copy Selected Features";
+  const copyKey = getActionFormattedKey("copy_selection", "Ctrl+C");
+  const copyLabel = t("copy_selection") || "Copy Selection";
   const copyTitle = copyKey ? `${copyLabel} (${copyKey})` : copyLabel;
 
   const pasteKey = getActionFormattedKey("paste_features", "Ctrl+V");
@@ -418,7 +415,7 @@ export const DigitizingToolbarWidget: React.FC<
         disabled={!isDeleteEnabled}
         onClick={() => {
           if (isDeleteEnabled) {
-            deleteSelectedFeaturesAction();
+            deleteSelectionAction();
           }
         }}>
         <Icon path={mdiTrashCanOutline} />
@@ -433,7 +430,7 @@ export const DigitizingToolbarWidget: React.FC<
         disabled={!isCutEnabled}
         onClick={() => {
           if (isCutEnabled) {
-            cutSelectedFeaturesAction();
+            cutSelectionAction();
           }
         }}>
         <Icon path={mdiContentCut} />
@@ -448,7 +445,7 @@ export const DigitizingToolbarWidget: React.FC<
         disabled={!isCopyEnabled}
         onClick={() => {
           if (isCopyEnabled) {
-            copySelectedFeaturesAction();
+            copySelectionAction();
           }
         }}>
         <Icon path={mdiContentCopy} />

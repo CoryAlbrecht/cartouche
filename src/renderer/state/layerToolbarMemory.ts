@@ -4,7 +4,7 @@
  * @description Manages ephemeral per-layer toolbar state caching and restoration on active layer transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link LayerToolbarState}
  * @see {@link activeLayerIdSignal}
@@ -49,6 +49,75 @@ export interface LayerToolbarState {
   snapToMidpoint?: boolean;
   snapToSegment?: boolean;
   snappingDistance?: number;
+}
+
+/**
+ * @description Stored Selection Tool action identifiers written before the
+ * selection actions were renamed (#376), mapped to their current identifiers,
+ * so Ephemeral Layer Toolbar State saved by an older build still restores.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {Readonly<Record<string, SelectionMode>>}
+ */
+export const LEGACY_SELECTION_MODE_MAP: Readonly<
+  Record<string, SelectionMode>
+> = {
+  select_feature: "select_by_click",
+  select_features_by_drag: "select_by_rectangle",
+  select_features_by_freehand: "select_by_lasso",
+};
+
+/**
+ * @description Stored ActiveTool values written before the selection tool
+ * values were renamed (#376), mapped to their current values.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {Readonly<Record<string, ActiveTool>>}
+ */
+export const LEGACY_ACTIVE_TOOL_MAP: Readonly<Record<string, ActiveTool>> = {
+  select: "select_click",
+  select_drag: "select_rectangle",
+  select_freehand: "select_lasso",
+};
+
+/**
+ * @function migrateSelectionMode
+ * @description Reads a stored selection mode, translating a pre-#376 action
+ * identifier to its renamed Selection Tool action.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {string | undefined} stored - Stored selection mode value, if any.
+ * @returns {SelectionMode | undefined} Current selection mode identifier.
+ */
+export function migrateSelectionMode(
+  stored: string | undefined
+): SelectionMode | undefined {
+  if (stored === undefined) return undefined;
+  return LEGACY_SELECTION_MODE_MAP[stored] ?? (stored as SelectionMode);
+}
+
+/**
+ * @function migrateActiveTool
+ * @description Reads a stored tool value, translating a pre-#376 selection
+ * tool value to its renamed value.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {string | undefined} stored - Stored tool value, if any.
+ * @returns {ActiveTool | undefined} Current tool value.
+ */
+export function migrateActiveTool(
+  stored: string | undefined
+): ActiveTool | undefined {
+  if (stored === undefined) return undefined;
+  return LEGACY_ACTIVE_TOOL_MAP[stored] ?? (stored as ActiveTool);
 }
 
 /**
@@ -147,7 +216,7 @@ export function setLayerToolbarPreference(
  * @description Captures active digitizing tool, selection mode, and snapping parameters for an outgoing layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier to capture toolbar state for.
  * @returns {LayerToolbarState} Structured captured layer toolbar state.
@@ -167,9 +236,8 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   ) {
     digitizingTool = currentTool;
   } else {
-    digitizingTool = getLayerToolbarPreference<ActiveTool>(
-      layerId,
-      "digitizingTool"
+    digitizingTool = migrateActiveTool(
+      getLayerToolbarPreference<string>(layerId, "digitizingTool")
     );
   }
 
@@ -209,7 +277,7 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
  * @description Restores cached digitizing tool, selection mode, and snapping parameters for an incoming layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string} layerId - Incoming layer identifier.
  * @returns {void}
@@ -217,9 +285,8 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
 export function restoreLayerToolbarState(layerId: string): void {
   if (!layerId) return;
 
-  const cachedSelectionMode = getLayerToolbarPreference<SelectionMode>(
-    layerId,
-    "selectionMode"
+  const cachedSelectionMode = migrateSelectionMode(
+    getLayerToolbarPreference<string>(layerId, "selectionMode")
   );
   if (cachedSelectionMode !== undefined) {
     activeSelectionModeSignal.value = cachedSelectionMode;
@@ -273,9 +340,8 @@ export function restoreLayerToolbarState(layerId: string): void {
     snappingDistanceSignal.value = cachedSnappingDistance;
   }
 
-  const cachedDigitizingTool = getLayerToolbarPreference<ActiveTool>(
-    layerId,
-    "digitizingTool"
+  const cachedDigitizingTool = migrateActiveTool(
+    getLayerToolbarPreference<string>(layerId, "digitizingTool")
   );
   const isEditable = editableLayerIdsSignal.value.has(layerId);
   if (isEditable) {

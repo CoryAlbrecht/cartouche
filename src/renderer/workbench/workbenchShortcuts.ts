@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -39,14 +39,14 @@ import {
   zoomOutAction,
   zoomToSelectionAction,
   zoomToLayerAction,
-  selectAllFeaturesAction,
-  deselectAllFeaturesAction,
+  selectAllAction,
+  deselectAllAction,
   openSelectByValueDialog,
   activeToolSignal,
   activeSelectionModeSignal,
-  deleteSelectedFeaturesAction,
-  copySelectedFeaturesAction,
-  cutSelectedFeaturesAction,
+  deleteSelectionAction,
+  copySelectionAction,
+  cutSelectionAction,
   pasteFeaturesAction,
   toggleLayerEditingAction,
   vertexEditorAction,
@@ -234,7 +234,7 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
  * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string} actionName - Registered action name identifier.
  * @returns {void}
@@ -316,35 +316,35 @@ export function executeWorkbenchAction(actionName: string): void {
     case "zoom_to_layer":
       zoomToLayerAction();
       break;
-    case "select_feature":
-      activeSelectionModeSignal.value = "select_feature";
-      activeToolSignal.value = "select";
+    case "select_by_click":
+      activeSelectionModeSignal.value = "select_by_click";
+      activeToolSignal.value = "select_click";
       break;
-    case "select_features_by_drag":
-      activeSelectionModeSignal.value = "select_features_by_drag";
-      activeToolSignal.value = "select_drag";
+    case "select_by_rectangle":
+      activeSelectionModeSignal.value = "select_by_rectangle";
+      activeToolSignal.value = "select_rectangle";
       break;
-    case "select_features_by_freehand":
-      activeSelectionModeSignal.value = "select_features_by_freehand";
-      activeToolSignal.value = "select_freehand";
+    case "select_by_lasso":
+      activeSelectionModeSignal.value = "select_by_lasso";
+      activeToolSignal.value = "select_lasso";
       break;
     case "select_features_by_value":
       openSelectByValueDialog();
       break;
-    case "select_all_features":
-      selectAllFeaturesAction();
+    case "select_all":
+      selectAllAction();
       break;
-    case "deselect_all_features":
-      deselectAllFeaturesAction();
+    case "deselect_all":
+      deselectAllAction();
       break;
-    case "delete_selected_features":
-      deleteSelectedFeaturesAction();
+    case "delete_selection":
+      deleteSelectionAction();
       break;
-    case "copy_selected_features":
-      copySelectedFeaturesAction();
+    case "copy_selection":
+      copySelectionAction();
       break;
-    case "cut_selected_features":
-      cutSelectedFeaturesAction();
+    case "cut_selection":
+      cutSelectionAction();
       break;
     case "paste_features":
       pasteFeaturesAction();
