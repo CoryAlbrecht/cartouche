@@ -362,9 +362,17 @@
     <string name="boolean_false">Faux</string>
     <!-- Status Bar Memory Meter -->
     <string name="statusbar_memory_label">Mémoire : ≈{size}</string>
-    <string name="statusbar_memory_tooltip_total">Mémoire utilisée, total approximatif : {size}</string>
+    <string name="statusbar_memory_label_exact">Mémoire : {size}</string>
+    <string name="statusbar_memory_tooltip_total">Mémoire utilisée, résidente, total approximatif : {size}</string>
     <string name="statusbar_memory_tooltip_row">{process} : {current} (pic {peak})</string>
-    <string name="statusbar_memory_tooltip_note">La mémoire partagée entre processus est comptée dans chacun d’eux, le total est donc quelque peu surestimé.</string>
+    <string name="statusbar_memory_tooltip_total_exact">Mémoire utilisée, {measure}, mémoire partagée comptée une seule fois : {size}</string>
+    <string name="statusbar_memory_tooltip_total_mixed">Mémoire utilisée, total approximatif : {size} ({measure} si elle a pu être lue, sinon mémoire résidente)</string>
+    <string name="statusbar_memory_measure_proportional">taille d’ensemble proportionnelle (PSS)</string>
+    <string name="statusbar_memory_measure_private">mémoire privée</string>
+    <string name="statusbar_memory_tooltip_row_proportional">{process} : {current} (privée {private}, partagée {shared}, pic résident {peak})</string>
+    <string name="statusbar_memory_tooltip_row_private">{process} : {current} (plage de travail {resident}, pic de plage de travail {peak})</string>
+    <string name="statusbar_memory_tooltip_row_fallback">{process} : {current} approximatif, mémoire résidente incluse (pic {peak})</string>
+    <string name="statusbar_memory_tooltip_note">La mémoire résidente compte la mémoire partagée entre processus dans chacun d’eux, le total est donc quelque peu surestimé.</string>
     <string name="statusbar_memory_main">Principal</string>
     <string name="statusbar_memory_workbench">Workbench (PID {pid})</string>
     <string name="statusbar_memory_renderer">Rendu (PID {pid})</string>

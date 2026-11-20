@@ -26,31 +26,6 @@ import { formatMemorySize } from "@shared/memory/memoryUsage";
 import type { MemoryUsageRow, MemoryUsageSnapshot } from "@shared/types";
 
 /**
- * @description Translates a key, falling back to English when the dictionary lacks it.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {string} key - Dictionary key.
- * @param {string} fallback - English text, with the same `{param}` placeholders.
- * @param {Record<string, string | number>} [params] - Interpolation parameters.
- * @returns {string} Translated text.
- */
-function translateWithFallback(
-  key: string,
-  fallback: string,
-  params?: Record<string, string | number>
-): string {
-  const text = t(key, params);
-  if (text !== key) return text;
-  let out = fallback;
-  for (const [name, val] of Object.entries(params ?? {})) {
-    out = out.split(`{${name}}`).join(String(val));
-  }
-  return out;
-}
-
-/**
  * @description Formats a kilobyte figure as a localized `512 MB` / `1.2 GB` string.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
@@ -62,8 +37,8 @@ function translateWithFallback(
 function memorySize(kb: number): string {
   const { unit, value } = formatMemorySize(kb, activeLocaleSignal.value);
   return unit === "gb" ?
-      translateWithFallback("memory_size_gb", "{value} GB", { value })
-    : translateWithFallback("memory_size_mb", "{value} MB", { value });
+      t("memory_size_gb", { value })
+    : t("memory_size_mb", { value });
 }
 
 /**
@@ -79,33 +54,83 @@ function memoryRowLabel(row: MemoryUsageRow): string {
   const pid = row.pid ?? "";
   switch (row.kind) {
     case "main":
-      return translateWithFallback("statusbar_memory_main", "Main");
+      return t("statusbar_memory_main");
     case "workbench":
-      return translateWithFallback(
-        "statusbar_memory_workbench",
-        "Workbench (PID {pid})",
-        { pid }
-      );
+      return t("statusbar_memory_workbench", { pid });
     case "renderer":
-      return translateWithFallback(
-        "statusbar_memory_renderer",
-        "Renderer (PID {pid})",
-        { pid }
-      );
+      return t("statusbar_memory_renderer", { pid });
     case "worker":
-      return translateWithFallback(
-        "statusbar_memory_worker",
-        "Geospatial Worker"
-      );
+      return t("statusbar_memory_worker");
     case "gpu":
-      return translateWithFallback("statusbar_memory_gpu", "GPU");
+      return t("statusbar_memory_gpu");
     default:
-      return translateWithFallback("statusbar_memory_other", "Other");
+      return t("statusbar_memory_other");
   }
 }
 
 /**
- * @description Builds the memory item's multi-line tooltip: the approximate total, one line per process with current and peak memory, and a note on why the total is approximate.
+ * @description Tooltip line for the total: names the measure, and says when the total is approximate.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {MemoryUsageSnapshot} snapshot - Latest memory sample.
+ * @returns {string} The line.
+ */
+function memoryTotalLine(snapshot: MemoryUsageSnapshot): string {
+  const size = memorySize(snapshot.totalKb);
+  if (snapshot.measure === "resident") {
+    return t("statusbar_memory_tooltip_total", { size });
+  }
+  const measure =
+    snapshot.measure === "proportional" ?
+      t("statusbar_memory_measure_proportional")
+    : t("statusbar_memory_measure_private");
+  return snapshot.approximate ?
+      t("statusbar_memory_tooltip_total_mixed", { size, measure })
+    : t("statusbar_memory_tooltip_total_exact", { size, measure });
+}
+
+/**
+ * @description Tooltip line for one breakdown row: its counted memory and peak resident memory, plus private and shared memory for a PSS row or the working set for a private-bytes row. A row that counts resident memory under a precise measure (a process whose precise figure could not be read, or an Other row summing some) says so.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {MemoryUsageRow} row - Breakdown row.
+ * @param {MemoryUsageSnapshot["measure"]} measure - The snapshot's measure.
+ * @returns {string} The line.
+ */
+function memoryRowLine(
+  row: MemoryUsageRow,
+  measure: MemoryUsageSnapshot["measure"]
+): string {
+  const params = {
+    process: memoryRowLabel(row),
+    current: memorySize(row.currentKb),
+    peak: memorySize(row.peakKb),
+  };
+  if (measure === "resident") {
+    return t("statusbar_memory_tooltip_row", params);
+  }
+  if (row.approximate) {
+    return t("statusbar_memory_tooltip_row_fallback", params);
+  }
+  if (measure === "private") {
+    return t("statusbar_memory_tooltip_row_private", {
+      ...params,
+      resident: memorySize(row.residentKb),
+    });
+  }
+  return t("statusbar_memory_tooltip_row_proportional", {
+    ...params,
+    private: memorySize(row.privateKb ?? 0),
+    shared: memorySize(row.sharedKb ?? 0),
+  });
+}
+
+/**
+ * @description Builds the memory item's multi-line tooltip: the total in its measure, one line per process, and, when the total is approximate, a note on why.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -114,33 +139,19 @@ function memoryRowLabel(row: MemoryUsageRow): string {
  * @returns {string} Tooltip text.
  */
 function memoryTooltip(snapshot: MemoryUsageSnapshot): string {
-  return [
-    translateWithFallback(
-      "statusbar_memory_tooltip_total",
-      "Memory use, approximate total: {size}",
-      { size: memorySize(snapshot.totalKb) }
-    ),
-    ...snapshot.rows.map((row) =>
-      translateWithFallback(
-        "statusbar_memory_tooltip_row",
-        "{process}: {current} (peak {peak})",
-        {
-          process: memoryRowLabel(row),
-          current: memorySize(row.currentKb),
-          peak: memorySize(row.peakKb),
-        }
-      )
-    ),
-    translateWithFallback(
-      "statusbar_memory_tooltip_note",
-      "Memory shared between processes is counted in each of them, so the total is overstated somewhat."
-    ),
-  ].join("\n");
+  const lines = [
+    memoryTotalLine(snapshot),
+    ...snapshot.rows.map((row) => memoryRowLine(row, snapshot.measure)),
+  ];
+  if (snapshot.approximate) {
+    lines.push(t("statusbar_memory_tooltip_note"));
+  }
+  return lines.join("\n");
 }
 
 /**
  * @component MemoryStatusItem
- * @description Status bar memory meter: the app's approximate total memory, with a per-process breakdown in its tooltip. Main samples memory and pushes it over `onMemoryUsage` about every 2 s while the Workbench is visible; nothing renders until the first sample arrives. Its own state keeps the 2 s updates from re-rendering the rest of the status bar.
+ * @description Status bar memory meter: the app's total memory (PSS on Linux, private bytes on Windows; marked approximate when any process is counted by resident memory), with a per-process breakdown in its tooltip. Main samples memory and pushes it over `onMemoryUsage` about every 2 s while the Workbench is visible; nothing renders until the first sample arrives. Its own state keeps the 2 s updates from re-rendering the rest of the status bar.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -165,9 +176,12 @@ const MemoryStatusItem: React.FC = () => {
       <div
         className='statusbar-item statusbar-memory'
         title={memoryTooltip(snapshot)}>
-        {translateWithFallback("statusbar_memory_label", "Memory: ~{size}", {
-          size: memorySize(snapshot.totalKb),
-        })}
+        {t(
+          snapshot.approximate ?
+            "statusbar_memory_label"
+          : "statusbar_memory_label_exact",
+          { size: memorySize(snapshot.totalKb) }
+        )}
       </div>
     </>
   );

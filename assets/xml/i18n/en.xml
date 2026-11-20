@@ -419,10 +419,17 @@
     <string name="boolean_false">False</string>
     <!-- Status Bar Memory Meter -->
     <string name="statusbar_memory_label">Memory: ≈{size}</string>
-    <string name="statusbar_memory_tooltip_total">Memory use, approximate total: {size}</string>
+    <string name="statusbar_memory_label_exact">Memory: {size}</string>
+    <string name="statusbar_memory_tooltip_total">Memory use, resident, approximate total: {size}</string>
     <string name="statusbar_memory_tooltip_row">{process}: {current} (peak {peak})</string>
-    <string name="statusbar_memory_tooltip_note">Memory shared between processes is counted in each
-        of them, so the total is overstated somewhat.</string>
+    <string name="statusbar_memory_tooltip_total_exact">Memory use, {measure}, shared memory counted once: {size}</string>
+    <string name="statusbar_memory_tooltip_total_mixed">Memory use, approximate total: {size} ({measure} where it could be read, otherwise resident)</string>
+    <string name="statusbar_memory_measure_proportional">proportional set size</string>
+    <string name="statusbar_memory_measure_private">private bytes</string>
+    <string name="statusbar_memory_tooltip_row_proportional">{process}: {current} (private {private}, shared {shared}, peak resident {peak})</string>
+    <string name="statusbar_memory_tooltip_row_private">{process}: {current} (working set {resident}, peak working set {peak})</string>
+    <string name="statusbar_memory_tooltip_row_fallback">{process}: {current} approximate, including resident memory (peak {peak})</string>
+    <string name="statusbar_memory_tooltip_note">Resident memory counts memory shared between processes in each of them, so the total is overstated somewhat.</string>
     <string name="statusbar_memory_main">Main</string>
     <string name="statusbar_memory_workbench">Workbench (PID {pid})</string>
     <string name="statusbar_memory_renderer">Renderer (PID {pid})</string>

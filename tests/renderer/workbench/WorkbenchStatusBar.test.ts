@@ -1,7 +1,7 @@
 /**
  * @file WorkbenchStatusBar.test.ts
  * @module tests/renderer/workbench/WorkbenchStatusBar.test
- * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, the Project CRS item (ADR 0033 display rules and tooltips), and the memory meter item and its per-process tooltip, while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
+ * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, the Project CRS item (ADR 0033 display rules and tooltips), and the memory meter item and its per-process tooltip (approximate resident totals, and exact PSS and private-bytes totals) rendered with the real en.xml strings, every memory meter string key present in en.xml and fr.xml, while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
  * @updated 2026-11-20
@@ -13,6 +13,10 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import fs from "node:fs";
+import path from "node:path";
+import { XMLParser } from "fast-xml-parser";
+import { decodeXmlEntities } from "../../../src/main/i18n/xmlEntityDecoder";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createRendererJiti } from "../rendererJiti";
@@ -36,6 +40,36 @@ const {
   selectedFeaturesCountSignal,
 } = jiti("@renderer/state/gisSignals");
 const { dictionarySignal } = jiti("@renderer/state/i18nSignals");
+
+/**
+ * @function loadDictionary
+ * @description Reads a locale's `assets/xml/i18n/<locale>.xml` into a key → string dictionary, parsing it as `I18nStore` does (I18nStore itself imports electron).
+ * @param {string} locale - Locale file name without extension.
+ * @returns {Record<string, string>} The dictionary.
+ */
+function loadDictionary(locale: string): Record<string, string> {
+  const xml = fs.readFileSync(
+    path.resolve(process.cwd(), `assets/xml/i18n/${locale}.xml`),
+    "utf-8"
+  );
+  const parsed = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+    textNodeName: "#text",
+    processEntities: false,
+    stopNodes: ["*.string", "ci18n:localization.string"],
+  }).parse(xml);
+  const root = parsed["ci18n:localization"] ?? parsed.localization;
+  const dictionary: Record<string, string> = {};
+  for (const entry of [root.string].flat()) {
+    if (entry?.["@_name"]) {
+      dictionary[entry["@_name"]] = decodeXmlEntities(entry["#text"] ?? "");
+    }
+  }
+  return dictionary;
+}
+
+const EN_DICTIONARY = loadDictionary("en");
 const { setProjectCrs } = jiti("@renderer/state/projectSignals");
 
 /**
@@ -220,6 +254,31 @@ let root: Root | null = null;
 let memoryListener: ((snapshot: any) => void) | null = null;
 
 /**
+ * @function residentRow
+ * @description Builds a memory breakdown row counted by resident memory (approximate).
+ * @param {string} kind - Breakdown group.
+ * @param {number | undefined} pid - OS pid, or undefined for the Other row.
+ * @param {number} currentKb - Current resident memory in kB.
+ * @param {number} peakKb - Peak resident memory in kB.
+ * @returns {object} The row.
+ */
+function residentRow(
+  kind: string,
+  pid: number | undefined,
+  currentKb: number,
+  peakKb: number
+) {
+  return {
+    kind,
+    pid,
+    currentKb,
+    peakKb,
+    residentKb: currentKb,
+    approximate: true,
+  };
+}
+
+/**
  * @function setupDom
  * @description Initializes headless mock DOM environment for React 19 testing.
  * @returns {void}
@@ -321,7 +380,7 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
     scaleDenominatorSignal.value = 25000000;
     setProjectCrs(null);
     selectedFeatureIdsSignal.value = new Set();
-    dictionarySignal.value = {};
+    dictionarySignal.value = EN_DICTIONARY;
   });
 
   afterEach(() => {
@@ -496,22 +555,14 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
     await act(async () => {
       memoryListener!({
         totalKb: 1.2 * 1024 * 1024,
+        measure: "resident",
+        approximate: true,
         rows: [
-          { kind: "main", pid: 10, currentKb: 200 * 1024, peakKb: 250 * 1024 },
-          {
-            kind: "workbench",
-            pid: 20,
-            currentKb: 300 * 1024,
-            peakKb: 310 * 1024,
-          },
-          {
-            kind: "worker",
-            pid: 50,
-            currentKb: 400 * 1024,
-            peakKb: 2 * 1024 * 1024,
-          },
-          { kind: "gpu", pid: 30, currentKb: 100 * 1024, peakKb: 120 * 1024 },
-          { kind: "other", currentKb: 1024, peakKb: 2048 },
+          residentRow("main", 10, 200 * 1024, 250 * 1024),
+          residentRow("workbench", 20, 300 * 1024, 310 * 1024),
+          residentRow("worker", 50, 400 * 1024, 2 * 1024 * 1024),
+          residentRow("gpu", 30, 100 * 1024, 120 * 1024),
+          residentRow("other", undefined, 1024, 2048),
         ],
       });
     });
@@ -521,16 +572,17 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
     assert.match(lines[0], /approximate/i);
     assert.ok(lines.includes("Main: 200 MB (peak 250 MB)"), lines.join(" | "));
     assert.ok(lines.includes("Workbench (PID 20): 300 MB (peak 310 MB)"));
-    assert.ok(lines.includes("Geospatial Worker: 400 MB (peak 2.0 GB)"));
+    assert.ok(lines.includes("Geospatial Worker: 400 MB (peak 2 GB)"));
     assert.ok(lines.includes("GPU: 100 MB (peak 120 MB)"));
     assert.ok(lines.includes("Other: 1 MB (peak 2 MB)"));
+    assert.match(lines[lines.length - 1], /in each of them/);
 
     await act(async () => {
       memoryListener!({
         totalKb: 512 * 1024,
-        rows: [
-          { kind: "main", pid: 10, currentKb: 512 * 1024, peakKb: 512 * 1024 },
-        ],
+        measure: "resident",
+        approximate: true,
+        rows: [residentRow("main", 10, 512 * 1024, 512 * 1024)],
       });
     });
     assert.equal(memoryItem().textContent, "Memory: ≈512 MB");
@@ -539,6 +591,122 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
       /Geospatial Worker/,
       "Worker row omitted when the sample has none"
     );
+  });
+
+  it("shows an exact PSS total without the approximate mark, with private and shared memory per row, on Linux", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    );
+    await act(async () => {
+      root!.render(React.createElement(WorkbenchStatusBar));
+    });
+    await act(async () => {
+      memoryListener!({
+        totalKb: 700 * 1024,
+        measure: "proportional",
+        approximate: false,
+        rows: [
+          {
+            kind: "main",
+            pid: 10,
+            currentKb: 600 * 1024,
+            peakKb: 950 * 1024,
+            residentKb: 900 * 1024,
+            privateKb: 550 * 1024,
+            sharedKb: 350 * 1024,
+            approximate: false,
+          },
+        ],
+      });
+    });
+
+    const item = findAllNodes(container, (el) =>
+      String(el.className).split(" ").includes("statusbar-memory")
+    )[0];
+    assert.equal(item.textContent, "Memory: 700 MB");
+    const lines = (item.getAttribute("title") ?? "").split("\n");
+    assert.match(lines[0], /proportional/i);
+    assert.doesNotMatch(lines[0], /approximate/i);
+    assert.ok(
+      lines.includes(
+        "Main: 600 MB (private 550 MB, shared 350 MB, peak resident 950 MB)"
+      ),
+      lines.join(" | ")
+    );
+    assert.equal(
+      lines.some((line) => /in each of them/.test(line)),
+      false,
+      "No shared-pages note on an exact total"
+    );
+  });
+
+  it("names the resident fallback for a process whose precise figure could not be read, and marks the total approximate", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    );
+    await act(async () => {
+      root!.render(React.createElement(WorkbenchStatusBar));
+    });
+    await act(async () => {
+      memoryListener!({
+        totalKb: 900 * 1024,
+        measure: "private",
+        approximate: true,
+        rows: [
+          {
+            kind: "main",
+            pid: 10,
+            currentKb: 600 * 1024,
+            peakKb: 950 * 1024,
+            residentKb: 900 * 1024,
+            approximate: false,
+          },
+          residentRow("gpu", 30, 300 * 1024, 310 * 1024),
+        ],
+      });
+    });
+
+    const item = findAllNodes(container, (el) =>
+      String(el.className).split(" ").includes("statusbar-memory")
+    )[0];
+    assert.equal(item.textContent, "Memory: ≈900 MB");
+    const lines = (item.getAttribute("title") ?? "").split("\n");
+    assert.match(lines[0], /approximate/i);
+    assert.match(lines[0], /private bytes/i);
+    assert.ok(
+      lines.includes(
+        "Main: 600 MB (working set 900 MB, peak working set 950 MB)"
+      ),
+      lines.join(" | ")
+    );
+    assert.ok(
+      lines.includes(
+        "GPU: 300 MB approximate, including resident memory (peak 310 MB)"
+      ),
+      lines.join(" | ")
+    );
+    assert.match(lines[lines.length - 1], /in each of them/);
+  });
+
+  it("finds every memory meter string key it uses in en.xml and fr.xml", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        "src/renderer/workbench/WorkbenchStatusBar.tsx"
+      ),
+      "utf-8"
+    );
+    const keys = new Set(
+      [...source.matchAll(/"((?:statusbar_memory|memory_size)_\w+)"/g)].map(
+        (match) => match[1]
+      )
+    );
+    assert.ok(keys.size >= 20, `Expected the memory keys, found ${keys.size}`);
+    const fr = loadDictionary("fr");
+    for (const key of keys) {
+      assert.ok(key in EN_DICTIONARY, `en.xml lacks ${key}`);
+      assert.ok(key in fr, `fr.xml lacks ${key}`);
+    }
   });
 
   it("isolates coordinate and status bar signal mutations from Workbench and ToolbarPanel re-renders", async () => {
