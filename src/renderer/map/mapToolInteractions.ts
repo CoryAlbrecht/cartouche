@@ -377,11 +377,11 @@ export function selectFeaturesInRegion(
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
- * @param {MapBrowserEvent<PointerEvent>} evt - Pointer-down map browser event.
+ * @param {MapBrowserEvent<PointerEvent | KeyboardEvent | WheelEvent>} evt - Pointer-down map browser event.
  * @returns {boolean} True when the drag draws a Selection Shape.
  */
 export function isSelectionShapeDragStart(
-  evt: MapBrowserEvent<PointerEvent>
+  evt: MapBrowserEvent<PointerEvent | KeyboardEvent | WheelEvent>
 ): boolean {
   return primaryAction(evt) && !evt.originalEvent.altKey;
 }

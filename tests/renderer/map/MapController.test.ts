@@ -3082,11 +3082,13 @@ describe("MapController drives map interactions from the active tool (Ticket #37
     }
 
     beforeEach(() => {
-      const map = controller.getMap() as any;
-      map.getCoordinateFromPixelInternal = (pixel: number[]) => [
-        pixel[0] * SCALE,
-        pixel[1] * SCALE,
-      ];
+      // Headless map has no frame state: map test pixels to coordinates directly.
+      Object.assign(controller.getMap(), {
+        getCoordinateFromPixelInternal: (pixel: number[]) => [
+          pixel[0] * SCALE,
+          pixel[1] * SCALE,
+        ],
+      });
       activeToolSignal.value = "select_rectangle";
     });
 
