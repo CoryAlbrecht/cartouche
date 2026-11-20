@@ -14,6 +14,7 @@
 import { effect } from "@preact/signals-react";
 import { logging } from "../../shared/logging";
 import OlMap from "ol/Map.js";
+import { unByKey } from "ol/Observable.js";
 import View from "ol/View.js";
 import VectorImageLayer from "ol/layer/VectorImage.js";
 import VectorSource from "ol/source/Vector.js";
@@ -45,11 +46,19 @@ import {
   mapActionSignal,
   activeMapControllerSignal,
   selectedFeatureIdsSignal,
+  selectedVertexKeysSignal,
+  vertexEditorModeSignal,
   activeLayerIdSignal,
   activeToolSignal,
+  type VertexEditTarget,
 } from "../state/gisSignals";
 import VectorLayer from "ol/layer/Vector.js";
 import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
+import {
+  createVertexMarkerStyleFunction,
+  groupVertexKeysByFeature,
+  readVertexMarkerColours,
+} from "./vertexMarkers";
 import type { MapCursorImages } from "./mapCursor";
 import { bindMapCursor } from "./mapCursorBinding";
 import {
@@ -386,6 +395,8 @@ export class MapController {
   private lastScaleUpdateTime = 0;
   private selectionHighlightLayer: VectorLayer<VectorSource> | null = null;
   private selectionHighlightSource: VectorSource | null = null;
+  private vertexMarkerLayer: VectorLayer<VectorSource> | null = null;
+  private vertexMarkerUnbind: (() => void) | null = null;
   private displayCrs: DisplayCrs = { code: DEFAULT_DISPLAY_CRS, none: false };
   private displayCrsTask: Promise<void> = Promise.resolve();
   private pendingProjectViewport:
@@ -626,6 +637,17 @@ export class MapController {
     });
     this.disposeSignals.push(disposeSelection);
 
+    // Show the Active Layer's vertex markers in Vertex Editor Mode, the selected ones in the Selection Colour
+    const disposeVertexMarkers = effect(() => {
+      void vertexEditorModeSignal.value;
+      void activeLayerIdSignal.value;
+      void selectedVertexKeysSignal.value;
+      void selectionColourSignal.value;
+      void projectLayersSignal.value;
+      this.refreshVertexMarkers();
+    });
+    this.disposeSignals.push(disposeVertexMarkers);
+
     // Trigger visual refresh of temporal layers when time filter is toggled or frame advances
     const disposeTimeFilter = effect(() => {
       // Read reactive signals to establish dependency tracking
@@ -676,6 +698,119 @@ export class MapController {
         }
       },
     };
+  }
+
+  /**
+   * @description Returns the valid Active Layer as a vertex edit sees it ({@link getSelectableLayer} plus its id and the data/display CRS pair its features were read with), or null when there is no valid Active Layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {VertexEditTarget | null} The vertex edit target, or null.
+   */
+  public getVertexEditTarget(): VertexEditTarget | null {
+    const layer = this.getSelectableLayer();
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry = activeLayerId ? this.vectorLayers.get(activeLayerId) : null;
+    if (!layer || !activeLayerId || !entry) return null;
+    const projectionCode =
+      this.view.getProjection()?.getCode?.() || "EPSG:3857";
+    const params = resolveFeatureQueryParameters(
+      entry.descriptor,
+      [0, 0, 0, 0],
+      projectionCode
+    );
+    return {
+      layerId: activeLayerId,
+      source: layer.source,
+      dataProjection: params.dataProjection,
+      featureProjection: params.featureProjection,
+    };
+  }
+
+  /**
+   * @description Returns the vertex marker overlay layer, or null while Vertex Editor Mode is off or there is no vector Active Layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {VectorLayer<VectorSource> | null} The overlay layer.
+   */
+  public getVertexMarkerLayer(): VectorLayer<VectorSource> | null {
+    return this.vertexMarkerLayer;
+  }
+
+  /**
+   * @description Rebuilds the vertex marker overlay: in Vertex Editor Mode with a vector Active Layer on the map, a layer sharing that layer's source (so markers follow loaded and edited features) is drawn above the selection highlight, visible exactly while the Active Layer is, styled by {@link createVertexMarkerStyleFunction} with the Theme's vertex marker colours and the Selection Colour for the selected vertices. Otherwise the overlay is removed. Called from the vertex marker effect.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public refreshVertexMarkers(): void {
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry =
+      vertexEditorModeSignal.peek() && activeLayerId ?
+        this.vectorLayers.get(activeLayerId)
+      : undefined;
+    if (!entry || entry.descriptor.layerKind === "raster") {
+      this.removeVertexMarkers();
+      return;
+    }
+    if (
+      !this.vertexMarkerLayer
+      || this.vertexMarkerLayer.getSource() !== entry.source
+    ) {
+      this.removeVertexMarkers();
+      const overlay = new VectorLayer({
+        source: entry.source,
+        zIndex: 5001,
+        updateWhileInteracting: true,
+      });
+      overlay.set("cartoucheRole", "vertex-markers");
+      const followVisibility = (): void => {
+        overlay.setVisible(entry.layer.getVisible());
+      };
+      followVisibility();
+      const key = entry.layer.on("change:visible", followVisibility);
+      this.vertexMarkerUnbind = () => unByKey(key);
+      this.vertexMarkerLayer = overlay;
+      this.map.addLayer(overlay);
+    }
+    const target =
+      (this.map.getTargetElement?.() as Element | null | undefined)
+      ?? this.container;
+    this.vertexMarkerLayer.setStyle(
+      createVertexMarkerStyleFunction(
+        {
+          ...readVertexMarkerColours(target),
+          selection: selectionColourSignal.peek(),
+        },
+        groupVertexKeysByFeature(selectedVertexKeysSignal.peek())
+      )
+    );
+  }
+
+  /**
+   * @description Removes the vertex marker overlay and its visibility listener, if present.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  private removeVertexMarkers(): void {
+    this.vertexMarkerUnbind?.();
+    this.vertexMarkerUnbind = null;
+    if (this.vertexMarkerLayer) {
+      try {
+        this.map.removeLayer(this.vertexMarkerLayer);
+      } catch {
+        // Suppress overlay cleanup errors
+      }
+      this.vertexMarkerLayer = null;
+    }
   }
 
   /**
@@ -2360,6 +2495,8 @@ export class MapController {
       }
     }
     this.vectorLayers.clear();
+
+    this.removeVertexMarkers();
 
     if (this.selectionHighlightLayer) {
       try {

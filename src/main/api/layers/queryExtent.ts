@@ -60,6 +60,23 @@ export async function stageFeatureEdit(
 }
 
 /**
+ * @description Stages several feature edits of one layer as one operation (e.g. a vertex deletion changing and deleting several features) into Main's crash-resilient edit cache and forwards them to the Geospatial Worker in a single request.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {string} layerId - Target layer identifier.
+ * @param {StagedFeatureEdit[]} edits - Feature edits, applied in order.
+ * @returns {Promise<void>}
+ */
+export async function stageFeatureEdits(
+  layerId: string,
+  edits: StagedFeatureEdit[]
+): Promise<void> {
+  await geospatialService.stageFeatureEdits(layerId, edits);
+}
+
+/**
  * @description Clears all staged uncommitted feature edits and newly added features for a layer in Main's cache and the Geospatial Worker.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06

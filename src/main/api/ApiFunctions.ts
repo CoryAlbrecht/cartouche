@@ -53,6 +53,7 @@ export { addLayer, addLayers } from "./layers/addLayer";
 export {
   queryExtent,
   stageFeatureEdit,
+  stageFeatureEdits,
   clearLayerEdits,
   getDirtyLayerIds,
 } from "./layers/queryExtent";

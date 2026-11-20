@@ -22,12 +22,15 @@ import {
   type SelectionMode,
   activeToolSignal,
   activeSelectionModeSignal,
-  selectedFeatureIdsSignal,
   openSelectByValueDialog,
   selectAllAction,
   deselectAllAction,
 } from "@renderer/state/gisSignals";
 import { getActionFormattedKey } from "@renderer/state/actionSignals";
+import {
+  readSelectionCommandState,
+  selectedItemCount,
+} from "@renderer/state/selectionCommands";
 import { SplitToolButton } from "@renderer/components/common/SplitToolButton";
 import { ToolbarWidget } from "../ToolbarWidget";
 
@@ -93,7 +96,7 @@ export function isDeselectAllDisabled(
 
 /**
  * @component SelectionToolbarWidget
- * @description Renders spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All.
+ * @description Renders spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All (disabled while nothing of the current Selection Target is selected).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-20
@@ -154,8 +157,9 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
       `${t("deselect_all")} (${deselectAllShortcut})`
     : t("deselect_all");
 
+  // Counts the current Selection Target's items: vertices in Vertex Editor Mode
   const deselectDisabled = isDeselectAllDisabled(
-    selectedFeatureIdsSignal.value
+    selectedItemCount(readSelectionCommandState())
   );
 
   return (

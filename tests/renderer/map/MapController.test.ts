@@ -28,6 +28,7 @@ import {
   scaleDenominatorSignal,
   activeToolSignal,
   vertexEditorModeSignal,
+  selectedVertexKeysSignal,
 } from "../../../src/renderer/state/gisSignals";
 import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
 import {
@@ -49,6 +50,7 @@ import { cancelSelectionShape } from "../../../src/renderer/map/selectionShapeCa
 import { fromLonLat, transformExtent, transform } from "ol/proj.js";
 import { generateDefaultVectorStyleJson } from "../../../src/shared/styles/defaultLayerStyles";
 import { NO_CRS_CODE } from "../../../src/renderer/map/projectionRegistry";
+import { vertexKey } from "../../../src/renderer/map/vertexSelection";
 import { WKB_PACKET_MAGIC } from "../../../src/shared/types";
 import type { LayerDescriptor } from "../../../src/shared/types";
 
@@ -3001,17 +3003,70 @@ describe("MapController drives map interactions from the active tool (Ticket #37
     assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
   });
 
-  it("leaves the feature selection alone while the Selection Target is vertices", () => {
+  it("selects vertices and leaves the feature selection alone while the Selection Target is vertices (Ticket #382)", () => {
     activeToolSignal.value = "select_click";
     selectedFeatureIdsSignal.value = new Set([1]);
     vertexEditorModeSignal.value = true;
     try {
-      click([7.5e5, 7.5e5]);
+      click([5e5, 5e5]);
+      assert.deepEqual(
+        [...selectedVertexKeysSignal.value],
+        [vertexKey(2, [0, 0])]
+      );
+      click([1e6, 0], { shiftKey: true });
+      assert.equal(selectedVertexKeysSignal.value.size, 2);
       click([9e6, 9e6]);
+      assert.equal(selectedVertexKeysSignal.value.size, 0);
       assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
     } finally {
       vertexEditorModeSignal.value = false;
     }
+  });
+
+  it("shows the Active Layer's vertex markers only in Vertex Editor Mode, following its visibility (Ticket #382)", () => {
+    const entry = controller.getLayer(descriptor.id)!;
+    // Compare identities and booleans: a failing assert would try to print whole OpenLayers objects.
+    assert.equal(controller.getVertexMarkerLayer() === null, true);
+    vertexEditorModeSignal.value = true;
+    try {
+      const overlay = controller.getVertexMarkerLayer();
+      assert.equal(overlay !== null, true, "overlay in Vertex Editor Mode");
+      assert.equal(
+        overlay!.getSource() === entry.source,
+        true,
+        "shares the source"
+      );
+      assert.equal(
+        controller.getMap().getLayers().getArray().includes(overlay!),
+        true
+      );
+      entry.layer.setVisible(false);
+      assert.equal(overlay!.getVisible(), false);
+      entry.layer.setVisible(true);
+      assert.equal(overlay!.getVisible(), true);
+      selectedVertexKeysSignal.value = new Set([vertexKey(1, [0, 0])]);
+      assert.equal(
+        controller.getVertexMarkerLayer() === overlay,
+        true,
+        "restyled, not rebuilt"
+      );
+    } finally {
+      vertexEditorModeSignal.value = false;
+    }
+    assert.equal(controller.getVertexMarkerLayer() === null, true);
+  });
+
+  it("names the Active Layer, its source and CRS pair as the vertex edit target (Ticket #382)", () => {
+    const target = controller.getVertexEditTarget();
+    assert.equal(target?.layerId, descriptor.id);
+    assert.equal(
+      target?.source === controller.getLayer(descriptor.id)!.source,
+      true
+    );
+    assert.equal(typeof target?.dataProjection, "string");
+    assert.equal(target?.featureProjection, "EPSG:3857");
+    controller.getLayer(descriptor.id)!.layer.setVisible(false);
+    assert.equal(controller.getVertexEditTarget() === null, true);
   });
 
   describe("Select by Rectangle (Ticket #380)", () => {
@@ -3128,7 +3183,7 @@ describe("MapController drives map interactions from the active tool (Ticket #37
       assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
     });
 
-    it("draws the shape but selects nothing while the Active Layer is hidden or while the Selection Target is vertices", () => {
+    it("draws the shape but selects nothing while the Active Layer is hidden, and selects vertices while the Selection Target is vertices", () => {
       selectedFeatureIdsSignal.value = new Set([2]);
       const layer = controller.getLayer(descriptor.id)!.layer;
       layer.setVisible(false);
@@ -3137,8 +3192,12 @@ describe("MapController drives map interactions from the active tool (Ticket #37
       layer.setVisible(true);
       vertexEditorModeSignal.value = true;
       try {
-        drag([1, 1], [10, 10]);
+        drag([-1, -1], [10, 10]);
         assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+        assert.deepEqual(
+          [...selectedVertexKeysSignal.value],
+          [vertexKey(1, [0, 0])]
+        );
       } finally {
         vertexEditorModeSignal.value = false;
       }

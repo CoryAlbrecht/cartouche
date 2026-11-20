@@ -85,6 +85,11 @@ import {
   requestAppExitAction,
 } from "@renderer/state/gisSignals";
 import { openLayerPropertiesDialog } from "@renderer/state/layerPropertiesSignals";
+import {
+  isCopySelectionEnabled,
+  isCutSelectionEnabled,
+  readSelectionCommandState,
+} from "@renderer/state/selectionCommands";
 import { workbenchWindowTitleSignal } from "@renderer/state/projectSignals";
 import {
   loadActionsFromMain,
@@ -220,10 +225,10 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
 
 /**
  * @component Workbench
- * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays.
+ * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays. Edit menu Cut and Copy availability comes from the shared selection command predicates (disabled for vertices in Vertex Editor Mode).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -1005,6 +1010,9 @@ export const Workbench: React.FC = () => {
   const canUndo = undoStackSignal.value.length > 0;
   const canRedo = redoStackSignal.value.length > 0;
   const hasSelectedFeatures = selectedFeatureIdsSignal.value.size > 0;
+  const selectionCommands = readSelectionCommandState();
+  const isCutEnabled = isCutSelectionEnabled(selectionCommands);
+  const isCopyEnabled = isCopySelectionEnabled(selectionCommands);
   const hasClipboard = clipboardFeaturesSignal.value.length > 0;
   const visibleToolbars = visibleToolbarsSignal.value;
 
@@ -1285,12 +1293,10 @@ export const Workbench: React.FC = () => {
 
                 <div className='menu-dropdown-separator' />
 
-                {/* * Cut (greyed out if no selection) */}
+                {/* * Cut (greyed out unless features are selected in Layer Edit Mode; never for vertices) */}
                 <div
-                  className={`menu-dropdown-item ${!hasSelectedFeatures ? "disabled" : ""}`}
-                  onClick={() =>
-                    hasSelectedFeatures && handleMenuClick(cutAction)
-                  }>
+                  className={`menu-dropdown-item ${!isCutEnabled ? "disabled" : ""}`}
+                  onClick={() => isCutEnabled && handleMenuClick(cutAction)}>
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiContentCut} size={MENU_ITEM_ICON_SIZE} />
                   </span>
@@ -1298,12 +1304,10 @@ export const Workbench: React.FC = () => {
                   <span className='menu-shortcut-slot' />
                 </div>
 
-                {/* * Copy (greyed out if no selection) */}
+                {/* * Copy (greyed out unless features are selected; never for vertices) */}
                 <div
-                  className={`menu-dropdown-item ${!hasSelectedFeatures ? "disabled" : ""}`}
-                  onClick={() =>
-                    hasSelectedFeatures && handleMenuClick(copyAction)
-                  }>
+                  className={`menu-dropdown-item ${!isCopyEnabled ? "disabled" : ""}`}
+                  onClick={() => isCopyEnabled && handleMenuClick(copyAction)}>
                   <span className='menu-item-icon-slot'>
                     <Icon path={mdiContentCopy} size={MENU_ITEM_ICON_SIZE} />
                   </span>

@@ -246,6 +246,10 @@
   /* Selection Shape: the rectangle or lasso drawn while a Selection Tool drags
      (outline at full opacity, fill at 25 %) */
   --cartouche-map-selection-shape: var(--cartouche-theme-highlight);
+  /* Vertex markers: the squares on the Active Layer's vertices in Vertex Editor
+     Mode (selected vertices are filled with the project's Selection Colour) */
+  --cartouche-map-vertex-marker: var(--cartouche-theme-fg);
+  --cartouche-map-vertex-marker-fill: var(--cartouche-theme-surface);
   --cartouche-detached-window-bg: var(--cartouche-theme-surface);
   /* Detached window document body, behind the portal container */
   --cartouche-detached-window-body-bg: var(--cartouche-theme-bg);

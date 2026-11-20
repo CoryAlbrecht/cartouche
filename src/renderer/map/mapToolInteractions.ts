@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.ts
  * @module renderer/map/mapToolInteractions
- * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click, Select by Rectangle and Select by Lasso have handlers; vertex selection branches on the Selection Target inside them. All Selection Tools publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow.
+ * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click, Select by Rectangle and Select by Lasso have handlers, which branch on the Selection Target at gesture time. With features they publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow; with vertices (Vertex Editor Mode) through {@link publishVertexSelection} to `selectedVertexKeysSignal`, leaving the feature selection alone.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -11,6 +11,8 @@
  * @see {@link findFeaturesOverlappingRegion}
  * @see {@link beginSelectionShape}
  * @see {@link createLassoShapeStyle}
+ * @see {@link findTopmostVertexAt}
+ * @see {@link findVerticesInRegion}
  */
 
 import type OlMap from "ol/Map.js";
@@ -31,9 +33,15 @@ import type { FlatStyleLike } from "ol/style/flat.js";
 import { primaryAction } from "ol/events/condition.js";
 import {
   selectedFeatureIdsSignal,
+  selectedVertexKeysSignal,
   selectionTargetSignal,
   type ActiveTool,
 } from "../state/gisSignals";
+import {
+  findTopmostVertexAt,
+  findVerticesInRegion,
+  type VertexKey,
+} from "./vertexSelection";
 import {
   mergeSelection,
   readSelectionModifiers,
@@ -320,8 +328,64 @@ export function selectByClickAt(
 }
 
 /**
+ * @function publishVertexSelection
+ * @description Merges a Selection Tool gesture's vertex hits into the vertex selection (`selectedVertexKeysSignal`, drawn as highlighted vertex markers) with {@link mergeSelection}. Does not republish when the merge leaves the selection unchanged. The feature selection is not touched.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {VertexKey[]} hits - Vertex keys the gesture hit.
+ * @param {SelectionModifiers} modifiers - Modifiers held during the gesture.
+ * @returns {void}
+ */
+export function publishVertexSelection(
+  hits: VertexKey[],
+  modifiers: SelectionModifiers
+): void {
+  const current = selectedVertexKeysSignal.peek();
+  const next = mergeSelection(current, hits, modifiers);
+  if (next === current) return;
+  if (next.size === current.size && [...next].every((k) => current.has(k))) {
+    return;
+  }
+  selectedVertexKeysSignal.value = new Set(next);
+}
+
+/**
+ * @function selectVertexByClickAt
+ * @description Performs one Select by Click on vertices: with a valid Active Layer, publishes the vertex hit by {@link findTopmostVertexAt} within the 3 px tolerance (or no hit) under the given modifiers, so a plain click away from vertices clears the vertex selection; without one, changes nothing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {SelectableLayer | null} layer - The valid Active Layer, or null.
+ * @param {Coordinate} coordinate - Click coordinate in the display CRS.
+ * @param {number} resolution - View resolution in map units per pixel.
+ * @param {SelectionModifiers} modifiers - Modifiers held during the click.
+ * @returns {void}
+ */
+export function selectVertexByClickAt(
+  layer: SelectableLayer | null,
+  coordinate: Coordinate,
+  resolution: number,
+  modifiers: SelectionModifiers
+): void {
+  if (!layer) return;
+  const searchExtent = bufferExtent(
+    [coordinate[0], coordinate[1], coordinate[0], coordinate[1]],
+    SELECTION_HIT_TOLERANCE_PX * resolution
+  );
+  const hit = findTopmostVertexAt(
+    layer.source.getFeaturesInExtent(searchExtent),
+    coordinate,
+    resolution
+  );
+  publishVertexSelection(hit === null ? [] : [hit], modifiers);
+}
+
+/**
  * @function activateSelectByClick
- * @description {@link MapToolHandler} for Select by Click: each primary click on the map (OpenLayers fires `click` only for the primary button and not after a drag, so drags do nothing) runs {@link selectByClickAt} at the click coordinate with the event's Shift/Ctrl modifiers, while the Selection Target is features. While it is vertices (Vertex Editor Mode) a click leaves the feature selection alone; vertex selection branches here on `selectionTargetSignal`.
+ * @description {@link MapToolHandler} for Select by Click: each primary click on the map (OpenLayers fires `click` only for the primary button and not after a drag, so drags do nothing) runs {@link selectByClickAt} at the click coordinate with the event's Shift/Ctrl modifiers while the Selection Target is features, or {@link selectVertexByClickAt} while it is vertices (Vertex Editor Mode), which leaves the feature selection alone.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -333,10 +397,13 @@ export const activateSelectByClick: MapToolHandler = (context) => {
   const key = context.map.on(
     "click",
     (evt: MapBrowserEvent<PointerEvent | KeyboardEvent | WheelEvent>) => {
-      if (selectionTargetSignal.peek() !== "features") return;
       const resolution = context.map.getView().getResolution();
       if (!resolution || !evt.coordinate) return;
-      selectByClickAt(
+      const select =
+        selectionTargetSignal.peek() === "vertices" ?
+          selectVertexByClickAt
+        : selectByClickAt;
+      select(
         context.getSelectableLayer(),
         evt.coordinate,
         resolution,
@@ -382,6 +449,37 @@ export function selectFeaturesInRegion(
 }
 
 /**
+ * @function selectInRegion
+ * @description Performs one area selection for the current Selection Target: the features overlapping the region ({@link selectFeaturesInRegion}), or in Vertex Editor Mode the vertices inside it ({@link findVerticesInRegion}, candidates from the source's spatial index), merged under the given modifiers. Without a valid Active Layer, changes nothing.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {SelectableLayer | null} layer - The valid Active Layer, or null.
+ * @param {SelectionRegion} region - The Selection Shape's region in the display CRS.
+ * @param {SelectionModifiers} modifiers - Modifiers held at the end of the gesture.
+ * @returns {void}
+ */
+export function selectInRegion(
+  layer: SelectableLayer | null,
+  region: SelectionRegion,
+  modifiers: SelectionModifiers
+): void {
+  if (selectionTargetSignal.peek() !== "vertices") {
+    selectFeaturesInRegion(layer, region, modifiers);
+    return;
+  }
+  if (!layer) return;
+  publishVertexSelection(
+    findVerticesInRegion(
+      layer.source.getFeaturesInExtent(region.extent),
+      region
+    ),
+    modifiers
+  );
+}
+
+/**
  * @function isSelectionShapeDragStart
  * @description Whether a pointer-down starts drawing a Selection Shape: the primary button of the primary pointer, with or without Shift/Ctrl, but not with Alt (Alt+Shift+drag stays OpenLayers' rotation).
  * @author Cory Albrecht <cory@albrecht.name>
@@ -399,7 +497,7 @@ export function isSelectionShapeDragStart(
 
 /**
  * @function activateSelectByRectangle
- * @description {@link MapToolHandler} for Select by Rectangle: adds an OpenLayers DragBox (class {@link SELECTION_SHAPE_CLASS}) whose primary drag spans the rectangle's diagonal, shown live as the Selection Shape. On release, while the Selection Target is features, the features of the Active Layer overlapping the rectangle (its four corners as a ring, so a rotated view stays exact) are merged into the selection with the Shift/Ctrl held at release ({@link selectFeaturesInRegion}). While a drag is in progress it is registered with {@link beginSelectionShape}, so Escape discards the shape without selecting and keeps the tool. Drags shorter than OpenLayers' minimum box (8 px diagonal) select nothing. With no valid Active Layer, or while the Selection Target is vertices, the shape is still drawn but nothing is selected.
+ * @description {@link MapToolHandler} for Select by Rectangle: adds an OpenLayers DragBox (class {@link SELECTION_SHAPE_CLASS}) whose primary drag spans the rectangle's diagonal, shown live as the Selection Shape. On release the features of the Active Layer overlapping the rectangle (its four corners as a ring, so a rotated view stays exact), or in Vertex Editor Mode its vertices inside it, are merged into the selection with the Shift/Ctrl held at release ({@link selectInRegion}). While a drag is in progress it is registered with {@link beginSelectionShape}, so Escape discards the shape without selecting and keeps the tool. Drags shorter than OpenLayers' minimum box (8 px diagonal) select nothing. With no valid Active Layer the shape is still drawn but nothing is selected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -428,10 +526,9 @@ export const activateSelectByRectangle: MapToolHandler = (context) => {
   dragBox.on("boxcancel", finishShape);
   dragBox.on("boxend", (evt: DragBoxEvent) => {
     finishShape();
-    if (selectionTargetSignal.peek() !== "features") return;
     const ring = dragBox.getGeometry()?.getCoordinates()[0];
     if (!ring) return;
-    selectFeaturesInRegion(
+    selectInRegion(
       context.getSelectableLayer(),
       createSelectionRegion(ring),
       readSelectionModifiers(evt.mapBrowserEvent?.originalEvent as PointerEvent)
@@ -560,7 +657,7 @@ export class SelectionLassoDraw extends Draw {
 
 /**
  * @function activateSelectByLasso
- * @description {@link MapToolHandler} for Select by Lasso: adds a {@link SelectionLassoDraw} whose primary drag traces a freehand outline, shown live as the Selection Shape with {@link createLassoShapeStyle} (the `--cartouche-map-selection-shape` colour and fill rule are read when the lasso starts, so a changed Lasso Fill Rule takes effect on the next lasso). On release the outline is closed back to its start and, while the Selection Target is features, the features of the Active Layer overlapping the area it encloses under the Lasso Fill Rule are merged into the selection with the Shift/Ctrl held at release ({@link selectFeaturesInRegion}). While a lasso is drawn it is registered with {@link beginSelectionShape}, so Escape discards it without selecting and keeps the tool. A click without a drag selects nothing. With no valid Active Layer, or while the Selection Target is vertices, the shape is still drawn but nothing is selected.
+ * @description {@link MapToolHandler} for Select by Lasso: adds a {@link SelectionLassoDraw} whose primary drag traces a freehand outline, shown live as the Selection Shape with {@link createLassoShapeStyle} (the `--cartouche-map-selection-shape` colour and fill rule are read when the lasso starts, so a changed Lasso Fill Rule takes effect on the next lasso). On release the outline is closed back to its start and the features of the Active Layer overlapping the area it encloses under the Lasso Fill Rule, or in Vertex Editor Mode the vertices inside it, are merged into the selection with the Shift/Ctrl held at release ({@link selectInRegion}). While a lasso is drawn it is registered with {@link beginSelectionShape}, so Escape discards it without selecting and keeps the tool. A click without a drag selects nothing. With no valid Active Layer the shape is still drawn but nothing is selected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -589,12 +686,11 @@ export const activateSelectByLasso: MapToolHandler = (context) => {
   lasso.on("drawabort", finishShape);
   lasso.on("drawend", (evt: DrawEvent) => {
     finishShape();
-    if (selectionTargetSignal.peek() !== "features") return;
     const geometry = evt.feature.getGeometry();
     if (!(geometry instanceof Polygon)) return;
     const ring = geometry.getCoordinates()[0];
     if (!ring || ring.length < 3) return;
-    selectFeaturesInRegion(
+    selectInRegion(
       context.getSelectableLayer(),
       createSelectionRegion(ring, paint.fillRule),
       lasso.getModifiersAtRelease()

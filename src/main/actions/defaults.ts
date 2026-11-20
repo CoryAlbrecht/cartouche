@@ -275,20 +275,23 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   },
   {
     name: "delete_selection",
-    description: "Deletes the selected items from the active layer",
+    description:
+      "Deletes the selected items (features, or vertices in Vertex Editor Mode) from the active layer",
     icon: mdiTrashCanOutline,
     keyCombination: { key: "Delete" },
     functionCall: ApiFunctions.deleteSelection,
   },
   {
     name: "copy_selection",
-    description: "Copies the selected items to the clipboard",
+    description:
+      "Copies the selected items to the clipboard (unavailable in Vertex Editor Mode)",
     icon: mdiContentCopy,
     keyCombination: { key: "c", ctrl: true },
   },
   {
     name: "cut_selection",
-    description: "Cuts the selected items to the clipboard",
+    description:
+      "Cuts the selected items to the clipboard (unavailable in Vertex Editor Mode)",
     icon: mdiContentCut,
     keyCombination: { key: "x", ctrl: true },
   },

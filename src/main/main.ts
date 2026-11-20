@@ -40,6 +40,7 @@ import {
   saveStyleFile,
   setLayerStyle,
   stageFeatureEdit,
+  stageFeatureEdits,
   updateDialogLocation,
   updateLayerFields,
   updateLayerTemporalConfig,
@@ -907,6 +908,13 @@ function startApp(): void {
       "layers:stageFeatureEdit",
       async (_event, layerId: string, edit: any) => {
         await stageFeatureEdit(layerId, edit);
+      }
+    );
+
+    handleIpc(
+      "layers:stageFeatureEdits",
+      async (_event, layerId: string, edits: any[]) => {
+        await stageFeatureEdits(layerId, edits);
       }
     );
 

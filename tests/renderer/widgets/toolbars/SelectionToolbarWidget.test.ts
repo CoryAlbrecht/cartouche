@@ -24,6 +24,8 @@ import {
   activeToolSignal,
   activeLayerIdSignal,
   selectedFeatureIdsSignal,
+  selectedVertexKeysSignal,
+  vertexEditorModeSignal,
   featuresSignal,
   cancelAction,
   selectAllAction,
@@ -339,6 +341,33 @@ describe("SelectionToolbarWidget Component Rendering and Controls", () => {
     assert.ok(
       !/id="toolbar-tool-deselect-all"[^>]*disabled=""/.test(populatedHtml),
       "Expected enabled button when features are selected"
+    );
+  });
+
+  it("enables deselect_all from the vertex selection in Vertex Editor Mode (Ticket #382)", () => {
+    const React = jiti("react");
+    const { renderToStaticMarkup } = jiti("react-dom/server");
+
+    selectedFeatureIdsSignal.value = new Set(["feature-1"]);
+    vertexEditorModeSignal.value = true;
+    selectedVertexKeysSignal.value = new Set();
+    const noVertices = renderToStaticMarkup(
+      React.createElement(SelectionToolbarWidget, { zone: "top" })
+    );
+    selectedVertexKeysSignal.value = new Set(['["feature-1",[0]]']);
+    const withVertex = renderToStaticMarkup(
+      React.createElement(SelectionToolbarWidget, { zone: "top" })
+    );
+    vertexEditorModeSignal.value = false;
+    selectedFeatureIdsSignal.value = new Set();
+
+    assert.ok(
+      /id="toolbar-tool-deselect-all"[^>]*disabled=""/.test(noVertices),
+      "Expected disabled with no vertex selected, despite selected features"
+    );
+    assert.ok(
+      !/id="toolbar-tool-deselect-all"[^>]*disabled=""/.test(withVertex),
+      "Expected enabled with a vertex selected"
     );
   });
 });

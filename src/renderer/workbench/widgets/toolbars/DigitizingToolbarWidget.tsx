@@ -34,7 +34,6 @@ import {
   activeLayerSignal,
   editableLayerIdsSignal,
   isLayerInEditMode,
-  selectedFeatureIdsSignal,
   isProjectDirtySignal,
   toggleLayerEditingAction,
   saveActiveLayerAction,
@@ -46,6 +45,12 @@ import {
   pasteFeaturesAction,
 } from "@renderer/state/gisSignals";
 import { getActionFormattedKey } from "@renderer/state/actionSignals";
+import {
+  isCopySelectionEnabled,
+  isCutSelectionEnabled,
+  isDeleteSelectionEnabled,
+  readSelectionCommandState,
+} from "@renderer/state/selectionCommands";
 import { ToolbarWidget } from "../ToolbarWidget";
 
 /**
@@ -138,52 +143,6 @@ export function isSaveActiveLayerEnabled(
 }
 
 /**
- * @function isDeleteSelectionEnabled
- * @description Evaluates whether Delete Selection is enabled based on selection count.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {number} selectedCount - Count of currently selected spatial features.
- * @returns {boolean} True if delete is enabled, false otherwise.
- */
-export function isDeleteSelectionEnabled(selectedCount: number): boolean {
-  return selectedCount > 0;
-}
-
-/**
- * @function isCutSelectionEnabled
- * @description Evaluates whether Cut Selection is enabled based on edit mode and selection count.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {boolean} inEditMode - Whether the active layer is in edit mode.
- * @param {number} selectedCount - Count of currently selected spatial features.
- * @returns {boolean} True if cut is enabled, false otherwise.
- */
-export function isCutSelectionEnabled(
-  inEditMode: boolean,
-  selectedCount: number
-): boolean {
-  return inEditMode && selectedCount > 0;
-}
-
-/**
- * @function isCopySelectionEnabled
- * @description Evaluates whether Copy Selection is enabled based on selection count.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-11-20
- * @since 0.1.0-dev
- * @param {number} selectedCount - Count of currently selected spatial features.
- * @returns {boolean} True if copy is enabled, false otherwise.
- */
-export function isCopySelectionEnabled(selectedCount: number): boolean {
-  return selectedCount > 0;
-}
-
-/**
  * @function isPasteFeaturesEnabled
  * @description Evaluates whether pasting features into the active layer is enabled based on edit mode.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -237,7 +196,7 @@ export const DigitizingToolbarWidget: React.FC<
   const isEditMode = isLayerInEditMode(activeLayerId, editableIds);
   const geometryKind = activeLayer?.geometryKind;
   const isRaster = geometryKind === "Raster";
-  const selectedCount = selectedFeatureIdsSignal.value.size;
+  const selectionCommands = readSelectionCommandState();
 
   const isToggleDisabled = activeLayerId === null || isRaster;
   const isSaveEnabled = isSaveActiveLayerEnabled(
@@ -261,9 +220,9 @@ export const DigitizingToolbarWidget: React.FC<
     isEditMode
   );
   const isVertexEnabled = isVertexEditorEnabled(isEditMode);
-  const isDeleteEnabled = isDeleteSelectionEnabled(selectedCount);
-  const isCutEnabled = isCutSelectionEnabled(isEditMode, selectedCount);
-  const isCopyEnabled = isCopySelectionEnabled(selectedCount);
+  const isDeleteEnabled = isDeleteSelectionEnabled(selectionCommands);
+  const isCutEnabled = isCutSelectionEnabled(selectionCommands);
+  const isCopyEnabled = isCopySelectionEnabled(selectionCommands);
   const isPasteEnabled = isPasteFeaturesEnabled(isEditMode);
 
   // Formatted key combination titles

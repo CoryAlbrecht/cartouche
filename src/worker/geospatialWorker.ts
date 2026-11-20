@@ -198,6 +198,16 @@ export function initGeospatialWorker(
           break;
         }
 
+        case "stageFeatureEdits": {
+          engine.stageFeatureEdits(request.layerId, request.edits);
+          postResponse(port, {
+            id: request.id,
+            success: true,
+            result: { success: true },
+          });
+          break;
+        }
+
         case "clearLayerEdits": {
           engine.clearLayerEdits(request.layerId);
           postResponse(port, {

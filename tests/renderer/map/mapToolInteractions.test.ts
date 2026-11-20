@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.test.ts
  * @module tests/renderer/map/mapToolInteractions.test
- * @description Tests for the tool-driven map interactions: which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, how Select by Lasso selects what its freehand outline encloses under the Lasso Fill Rule (with release modifiers, Escape, pass-through of other buttons and Alt drags, and no selectable layer), and how the tool's handler is swapped as the active tool changes.
+ * @description Tests for the tool-driven map interactions (including vertex selection in Vertex Editor Mode, Ticket #382): which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, how Select by Lasso selects what its freehand outline encloses under the Lasso Fill Rule (with release modifiers, Escape, pass-through of other buttons and Alt drags, and no selectable layer), and how the tool's handler is swapped as the active tool changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -24,9 +24,11 @@ import View from "ol/View.js";
 import type Interaction from "ol/interaction/Interaction.js";
 import {
   selectedFeatureIdsSignal,
+  selectedVertexKeysSignal,
   selectionTargetSignal,
   vertexEditorModeSignal,
 } from "../../../src/renderer/state/gisSignals";
+import { vertexKey } from "../../../src/renderer/map/vertexSelection";
 import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
 import { cancelSelectionShape } from "../../../src/renderer/map/selectionShapeCancel";
 import {
@@ -39,6 +41,8 @@ import {
   selectByClickAt,
   symbolReachFromStyles,
   selectFeaturesInRegion,
+  selectInRegion,
+  selectVertexByClickAt,
   isSelectionShapeDragStart,
   MapToolInteractions,
   type MapToolContext,
@@ -303,6 +307,83 @@ describe("selectFeaturesInRegion", () => {
   });
 });
 
+describe("vertex selection (Selection Target vertices)", () => {
+  /**
+   * @function layerWithSquares
+   * @description A selectable layer with squares 1 ([0,10]) and 2 ([20,30]).
+   * @returns {{ source: VectorSource }} Layer.
+   */
+  function layerWithSquares(): { source: VectorSource } {
+    const source = new VectorSource();
+    source.addFeatures([polygonFeature(1, 0, 10), polygonFeature(2, 20, 30)]);
+    return { source };
+  }
+
+  beforeEach(() => {
+    vertexEditorModeSignal.value = true;
+    selectedFeatureIdsSignal.value = new Set([2]);
+    selectedVertexKeysSignal.value = new Set([vertexKey(2, [0, 0])]);
+  });
+
+  it("selects the vertex under a click, merging with Shift and Ctrl", () => {
+    const layer = layerWithSquares();
+    selectVertexByClickAt(layer, [10.5, 10.5], 1, NONE);
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value],
+      [vertexKey(1, [0, 2])]
+    );
+    selectVertexByClickAt(layer, [0, 0], 1, { shift: true, ctrl: false });
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value].sort(),
+      [vertexKey(1, [0, 0]), vertexKey(1, [0, 2])].sort()
+    );
+    selectVertexByClickAt(layer, [0, 0], 1, { shift: false, ctrl: true });
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value],
+      [vertexKey(1, [0, 2])]
+    );
+    assert.deepEqual(
+      [...selectedFeatureIdsSignal.value],
+      [2],
+      "features untouched"
+    );
+  });
+
+  it("clears the vertex selection on a plain click away from vertices, changes nothing without a layer", () => {
+    selectVertexByClickAt(null, [0, 0], 1, NONE);
+    assert.equal(selectedVertexKeysSignal.value.size, 1);
+    selectVertexByClickAt(layerWithSquares(), [5, 5], 1, NONE);
+    assert.equal(selectedVertexKeysSignal.value.size, 0);
+  });
+
+  it("selects the vertices inside a region instead of features", () => {
+    selectInRegion(
+      layerWithSquares(),
+      createRectangleRegion([5, 5, 25, 25]),
+      NONE
+    );
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value],
+      [vertexKey(1, [0, 2]), vertexKey(2, [0, 0])]
+    );
+    assert.deepEqual(
+      [...selectedFeatureIdsSignal.value],
+      [2],
+      "features untouched"
+    );
+  });
+
+  it("selects features from a region while the Selection Target is features", () => {
+    vertexEditorModeSignal.value = false;
+    selectInRegion(
+      layerWithSquares(),
+      createRectangleRegion([5, 5, 15, 15]),
+      NONE
+    );
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+});
+
 describe("activateSelectByLasso", () => {
   /**
    * @class FakeMap
@@ -456,6 +537,7 @@ describe("activateSelectByLasso", () => {
 
   beforeEach(() => {
     selectedFeatureIdsSignal.value = new Set([99]);
+    selectedVertexKeysSignal.value = new Set();
     vertexEditorModeSignal.value = false;
     preferencesMapSignal.value = {};
   });
@@ -522,7 +604,7 @@ describe("activateSelectByLasso", () => {
     assert.equal(selectedFeatureIdsSignal.value === before, true);
   });
 
-  it("draws but selects nothing without a valid Active Layer or while the Selection Target is vertices", () => {
+  it("draws but selects nothing without a valid Active Layer, and selects vertices while the Selection Target is vertices", () => {
     const before = selectedFeatureIdsSignal.value;
     const noLayer = setUp(false);
     noLayer.lasso.handleEvent(
@@ -540,6 +622,11 @@ describe("activateSelectByLasso", () => {
     const vertices = setUp();
     trace(vertices.lasso, vertices.map, pentagram());
     assert.equal(selectedFeatureIdsSignal.value === before, true);
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value],
+      [vertexKey(2, [])],
+      "selects the tip's vertex instead (Ticket #382)"
+    );
   });
 
   it("removes its interaction and abandons a drag in progress on deactivation", () => {

@@ -144,6 +144,9 @@ const electronAPI: ElectronAPI = {
   /** @ipc layers:stageFeatureEdit */
   stageFeatureEdit: (layerId: string, edit: StagedFeatureEdit) =>
     ipcRenderer.invoke("layers:stageFeatureEdit", layerId, edit),
+  /** @ipc layers:stageFeatureEdits */
+  stageFeatureEdits: (layerId: string, edits: StagedFeatureEdit[]) =>
+    ipcRenderer.invoke("layers:stageFeatureEdits", layerId, edits),
   /** @ipc layers:clearLayerEdits */
   clearLayerEdits: (layerId: string) =>
     ipcRenderer.invoke("layers:clearLayerEdits", layerId),

@@ -16,6 +16,7 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createRendererJiti } from "../../rendererJiti";
+import { fromPartial } from "@total-typescript/shoehorn";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -37,6 +38,7 @@ import {
   activeLayerSignal,
   editableLayerIdsSignal,
   selectedFeatureIdsSignal,
+  selectedVertexKeysSignal,
   layersSignal,
   projectLayersSignal,
   projectTreeSignal,
@@ -56,6 +58,7 @@ import {
   type GisLayer,
 } from "../../../../src/renderer/state/gisSignals";
 import type {
+  GisFeature,
   LayerDescriptor,
   ProjectLayerItem,
 } from "../../../../src/shared/types";
@@ -71,9 +74,6 @@ const {
   isDrawingToolEnabled,
   isVertexEditorEnabled,
   isSaveActiveLayerEnabled,
-  isDeleteSelectionEnabled,
-  isCutSelectionEnabled,
-  isCopySelectionEnabled,
   isPasteFeaturesEnabled,
 } = jiti(
   "../../../../src/renderer/workbench/widgets/toolbars/DigitizingToolbarWidget"
@@ -95,12 +95,6 @@ const {
     inEditMode: boolean,
     isModified?: boolean
   ) => boolean;
-  isDeleteSelectionEnabled: (selectedCount: number) => boolean;
-  isCutSelectionEnabled: (
-    inEditMode: boolean,
-    selectedCount: number
-  ) => boolean;
-  isCopySelectionEnabled: (selectedCount: number) => boolean;
   isPasteFeaturesEnabled: (inEditMode: boolean) => boolean;
 };
 
@@ -358,23 +352,6 @@ describe("DigitizingToolbarWidget Predicates & Helper Functions", () => {
       isSaveActiveLayerEnabled("layer-1", false, false),
       false
     );
-  });
-
-  it("isDeleteSelectionEnabled returns true only when selected count > 0", () => {
-    assert.strictEqual(isDeleteSelectionEnabled(0), false);
-    assert.strictEqual(isDeleteSelectionEnabled(1), true);
-    assert.strictEqual(isDeleteSelectionEnabled(5), true);
-  });
-
-  it("isCutSelectionEnabled returns true only when in edit mode and selected count > 0", () => {
-    assert.strictEqual(isCutSelectionEnabled(false, 3), false);
-    assert.strictEqual(isCutSelectionEnabled(true, 0), false);
-    assert.strictEqual(isCutSelectionEnabled(true, 2), true);
-  });
-
-  it("isCopySelectionEnabled returns true only when selected count > 0", () => {
-    assert.strictEqual(isCopySelectionEnabled(0), false);
-    assert.strictEqual(isCopySelectionEnabled(1), true);
   });
 
   it("isPasteFeaturesEnabled returns true only when in edit mode", () => {
@@ -946,6 +923,35 @@ describe("DigitizingToolbarWidget Static Markup Rendering", () => {
     );
   });
 
+  it("disables cut and copy but enables delete for selected vertices in Vertex Editor Mode (Ticket #382)", () => {
+    activeLayerIdSignal.value = "active-layer";
+    editableLayerIdsSignal.value = new Set(["active-layer"]);
+    selectedFeatureIdsSignal.value = new Set(["f1"]);
+    vertexEditorModeSignal.value = true;
+    selectedVertexKeysSignal.value = new Set(['["f1",[0]]']);
+
+    const html = renderToStaticMarkup(
+      React.createElement(DigitizingToolbarWidget, { zone: "top" })
+    );
+    vertexEditorModeSignal.value = false;
+
+    assert.ok(
+      html.includes(
+        'id="toolbar-tool-cut-selected" class="toolbar-btn disabled"'
+      )
+    );
+    assert.ok(
+      html.includes(
+        'id="toolbar-tool-copy-selected" class="toolbar-btn disabled"'
+      )
+    );
+    assert.ok(
+      !html.includes(
+        'id="toolbar-tool-delete-selected" class="toolbar-btn disabled"'
+      )
+    );
+  });
+
   it("enables save active layer button when project is dirty even if not in edit mode", () => {
     activeLayerIdSignal.value = "active-layer";
     isProjectDirtySignal.value = true;
@@ -1334,6 +1340,38 @@ describe("DigitizingToolbarWidget Component Interaction & Key Combinations", () 
     });
     assert.strictEqual(vertexEditorModeSignal.value, true);
     assert.strictEqual(activeToolSignal.value, "pan");
+
+    // 2b. In Vertex Editor Mode Ctrl+C and Ctrl+X do nothing (Ticket #382); V turns it off again
+    selectedFeatureIdsSignal.value = new Set(["f0"]);
+    featuresSignal.value = [
+      fromPartial<GisFeature>({ id: "f0", properties: {} }),
+    ];
+    const clipboardBefore = clipboardFeaturesSignal.value;
+    for (const key of ["c", "x"]) {
+      handleWorkbenchKeyDown({
+        key,
+        ctrlKey: true,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        defaultPrevented: false,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      });
+    }
+    assert.strictEqual(clipboardFeaturesSignal.value === clipboardBefore, true);
+    assert.strictEqual(featuresSignal.value.length, 1);
+    handleWorkbenchKeyDown({
+      key: "v",
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+      metaKey: false,
+      defaultPrevented: false,
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    });
+    assert.strictEqual(vertexEditorModeSignal.value, false);
 
     // 3. Dispatch Delete -> deletes selected features
     selectedFeatureIdsSignal.value = new Set(["f1"]);

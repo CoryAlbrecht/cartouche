@@ -69,6 +69,11 @@ import {
 import { registeredActionsSignal } from "../state/actionSignals";
 import { cancelTopDialog } from "../state/dialogSignals";
 import { cancelSelectionShape } from "../map/selectionShapeCancel";
+import {
+  isCopySelectionEnabled,
+  isCutSelectionEnabled,
+  readSelectionCommandState,
+} from "../state/selectionCommands";
 import type { KeyCombination } from "@shared/types";
 
 /**
@@ -240,7 +245,7 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
 
 /**
  * @function executeWorkbenchAction
- * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name.
+ * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name. Cut and Copy run only when the shared selection command predicates allow them, so their shortcuts do nothing in Vertex Editor Mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
  * @updated 2026-11-20
@@ -353,10 +358,15 @@ export function executeWorkbenchAction(actionName: string): void {
       deleteSelectionAction();
       break;
     case "copy_selection":
-      copySelectionAction();
+      // Same availability as the Edit menu and toolbar: none for vertices (Vertex Editor Mode)
+      if (isCopySelectionEnabled(readSelectionCommandState())) {
+        copySelectionAction();
+      }
       break;
     case "cut_selection":
-      cutSelectionAction();
+      if (isCutSelectionEnabled(readSelectionCommandState())) {
+        cutSelectionAction();
+      }
       break;
     case "paste_features":
       pasteFeaturesAction();

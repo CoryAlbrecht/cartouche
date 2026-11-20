@@ -13,6 +13,7 @@
 import * as path from "node:path";
 import gdal from "gdal-async";
 import { logging } from "../../shared/logging";
+import { mergeStagedFeatureEdit } from "./stagedFeatureEdits";
 import type {
   BoundingBox,
   GeometryKind,
@@ -782,10 +783,10 @@ export class GeospatialEngine {
   ) => void;
 
   /**
-   * @description Stages an uncommitted feature modification or newly added feature into the engine's per-layer edit cache so subsequent queries reflect the edit immediately.
+   * @description Stages an uncommitted feature modification, deletion or newly added feature into the engine's per-layer edit cache (see {@link mergeStagedFeatureEdit}) so subsequent queries reflect the edit immediately.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-06
-   * @updated 2026-11-18
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {string} layerId - Target layer identifier.
    * @param {StagedFeatureEdit} edit - Feature edit or addition payload.
@@ -800,38 +801,21 @@ export class GeospatialEngine {
       };
       this.layerEdits.set(layerId, entry);
     }
+    mergeStagedFeatureEdit(entry, edit);
+  }
 
-    const idKey = String(edit.id);
-    const existingAddedIdx = entry.addedFeatures.findIndex(
-      (f) => String(f.id) === idKey
-    );
-
-    if (edit.isNew || existingAddedIdx !== -1) {
-      if (existingAddedIdx !== -1) {
-        const prev = entry.addedFeatures[existingAddedIdx];
-        entry.addedFeatures[existingAddedIdx] = {
-          ...prev,
-          ...edit,
-          isNew: true,
-          properties: { ...prev.properties, ...edit.properties },
-        };
-      } else {
-        entry.addedFeatures.push({
-          ...edit,
-          isNew: true,
-          properties: { ...edit.properties },
-        });
-      }
-      return;
-    }
-
-    const prevMod = entry.modifiedFeatures.get(idKey);
-    entry.modifiedFeatures.set(idKey, {
-      ...prevMod,
-      ...edit,
-      id: edit.id,
-      properties: { ...prevMod?.properties, ...edit.properties },
-    });
+  /**
+   * @description Stages several feature edits of one layer as one operation (e.g. a vertex deletion changing and deleting several features), in order, with the same rules as {@link GeospatialEngine#stageFeatureEdit}.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @param {StagedFeatureEdit[]} edits - Feature edits.
+   * @returns {void}
+   */
+  public stageFeatureEdits(layerId: string, edits: StagedFeatureEdit[]): void {
+    for (const edit of edits) this.stageFeatureEdit(layerId, edit);
   }
 
   /**
@@ -1739,10 +1723,10 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits, applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer. On SQLite-dialect layers (GeoPackage, SQLite) without a `featureIds` filter the start/max window is pushed into SQL `LIMIT`/`OFFSET` (see {@link buildPagedSelectSql}), so unsorted pages come back in stored ID order and `totalMatched` is counted from the filtered session layer; all SQL runs on a short-lived handle (see `executeSessionSql`).
+   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits (staged deletions are left out), applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer. On SQLite-dialect layers (GeoPackage, SQLite) without a `featureIds` filter the start/max window is pushed into SQL `LIMIT`/`OFFSET` (see {@link buildPagedSelectSql}), so unsorted pages come back in stored ID order and `totalMatched` is counted from the filtered session layer; all SQL runs on a short-lived handle (see `executeSessionSql`).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-17
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy extent [minX, minY, maxX, maxY].
@@ -1938,6 +1922,10 @@ export class GeospatialEngine {
               const fidKey = String(rawFid);
 
               if (allowedIdSet !== null && !allowedIdSet.has(fidKey)) {
+                return;
+              }
+              // A staged deletion hides the feature until the edits are saved or discarded.
+              if (layerEditEntry?.modifiedFeatures.get(fidKey)?.deleted) {
                 return;
               }
 
