@@ -4,7 +4,7 @@
  * @description Shared default preferences definitions for workbench layout, font scaling, icon dimensions, rendering thresholds, and plugin options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-08
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link PreferenceMap}
  */
@@ -26,10 +26,23 @@ const LOG_PATTERN_OPTIONS = [
 ];
 
 /**
- * @description Default preference definitions for workbench styling, icon sizes, window coordinates, and rendering threshold defaults.
+ * @description Dropdown options for the Lasso Fill Rule preference (`mapTools.selection.lassoFillRule`): which areas a self-crossing Select by Lasso outline encloses.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {Array<{ label: string; value: string }>}
+ */
+const LASSO_FILL_RULE_OPTIONS = [
+  { label: "Even-Odd", value: "evenodd" },
+  { label: "Non-Zero", value: "nonzero" },
+];
+
+/**
+ * @description Default preference definitions for workbench styling, icon sizes, window coordinates, rendering threshold defaults and map tool options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-02
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {PreferenceMap}
  */
@@ -975,6 +988,23 @@ export const BUILTIN_PREFERENCES: PreferenceMap = {
     group: "snapping",
     groupOrder: 2,
     order: 1,
+  },
+  "mapTools.selection.lassoFillRule": {
+    displayName: "Lasso Fill Rule",
+    value: "evenodd",
+    defaultValue: "evenodd",
+    ephemeral: false,
+    hidden: false,
+    category: "map_tools",
+    description:
+      "Which areas a self-crossing Select by Lasso outline encloses. Even-Odd leaves areas circled an even number of times (such as a star's centre) unselected; Non-Zero selects every area the outline circles.",
+    type: "select",
+    controls: ["dropdown"],
+    i18nId: "prefs_mapTools_selection_lassoFillRule",
+    group: "selection",
+    groupOrder: 4,
+    order: 1,
+    options: LASSO_FILL_RULE_OPTIONS,
   },
 };
 

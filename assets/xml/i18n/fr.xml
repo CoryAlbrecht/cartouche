@@ -72,6 +72,7 @@
     <string name="prefs_group_display">Affichage</string>
     <string name="prefs_group_scaling">Échelle</string>
     <string name="prefs_group_snapping">Accrochage</string>
+    <string name="prefs_group_selection">Sélection</string>
 
     <string name="prefs_general_logging_location">Emplacement du Fichier Journal</string>
     <string name="prefs_general_logging_location_descr">Chemin du fichier journal persistant de l'application. Si omis ou vide, les journaux sont dirigés vers stderr.</string>
@@ -117,6 +118,8 @@
     <string name="prefs_mapTools_mapViewport_zoomAmount_descr">Facteur déterminant la mise à l'échelle de la résolution de la vue lors des opérations de zoom avant ou arrière.</string>
     <string name="prefs_mapTools_snapping_distance">Distance d'accrochage</string>
     <string name="prefs_mapTools_snapping_distance_descr">Rayon de tolérance de recherche en pixels écran pour l'accrochage d'entités vectorielles aux sommets, milieux et segments.</string>
+    <string name="prefs_mapTools_selection_lassoFillRule">Règle de remplissage du lasso</string>
+    <string name="prefs_mapTools_selection_lassoFillRule_descr">Détermine les zones englobées par un contour de Sélection au lasso qui se recoupe. Even-Odd laisse non sélectionnées les zones entourées un nombre pair de fois (comme le centre d'une étoile) ; Non-Zero sélectionne toutes les zones entourées par le contour.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Propriétés de la couche</string>
     <string name="layer_properties_tab_information">Information</string>

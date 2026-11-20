@@ -1,10 +1,10 @@
 /**
  * @file PreferencesDialogComponent.test.ts
  * @module tests/renderer/dialogs/PreferencesDialogComponent.test
- * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks.
+ * @description Component and reactive tests for PreferencesDialog verifying group fieldsets, ordering, compound controls, regex format validation, and i18n resolution fallbacks; and (#381) that the Lasso Fill Rule renders as a dropdown in the Selection group of the Map Tools tab.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-22
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link PreferencesDialog}
  * @see {@link PreferenceItem}
@@ -778,6 +778,28 @@ describe("PreferencesDialog Component & Reactive Architecture (Ticket #52)", () 
       html.includes("preference-unit-badge"),
       "Must render px unit badge for snappingDistance"
     );
+  });
+
+  it("renders the Lasso Fill Rule as a dropdown in the Selection group of the Map Tools tab (Ticket #381)", () => {
+    const { BUILTIN_PREFERENCES } = jiti(
+      "../../../src/shared/preferences/index.ts"
+    );
+    dictionarySignal.value = {
+      prefs_tab_map_tools_name: "Map Tools",
+      prefs_group_selection: "Selection",
+      prefs_mapTools_selection_lassoFillRule: "Lasso Fill Rule",
+    };
+    preferencesMapSignal.value = {
+      "mapTools.selection.lassoFillRule":
+        BUILTIN_PREFERENCES["mapTools.selection.lassoFillRule"],
+    };
+    activeCategorySignal.value = "map_tools";
+    const html = renderToStaticMarkup(React.createElement(PreferencesDialog));
+
+    assert.ok(html.includes("Lasso Fill Rule"), "renders its label");
+    assert.ok(html.includes("<legend"), "renders a group box");
+    assert.ok(html.includes("Selection"), "in the Selection group");
+    assert.ok(html.includes("Even-Odd"), "shows the default Even-Odd");
   });
 
   it("renders sidebar category tab icons at 100% ui.icon.size without 0.75 multiplier (Ticket #172)", () => {

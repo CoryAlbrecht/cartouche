@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.test.ts
  * @module tests/renderer/map/mapToolInteractions.test
- * @description Tests for the tool-driven map interactions: which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, and how the tool's handler is swapped as the active tool changes.
+ * @description Tests for the tool-driven map interactions: which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, how Select by Lasso selects what its freehand outline encloses under the Lasso Fill Rule (with release modifiers, Escape, pass-through of other buttons and Alt drags, and no selectable layer), and how the tool's handler is swapped as the active tool changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -19,8 +19,19 @@ import VectorSource from "ol/source/Vector.js";
 import CircleStyle from "ol/style/Circle.js";
 import Stroke from "ol/style/Stroke.js";
 import Style from "ol/style/Style.js";
-import { selectedFeatureIdsSignal } from "../../../src/renderer/state/gisSignals";
+import Target from "ol/events/Target.js";
+import View from "ol/View.js";
+import type Interaction from "ol/interaction/Interaction.js";
 import {
+  selectedFeatureIdsSignal,
+  selectionTargetSignal,
+  vertexEditorModeSignal,
+} from "../../../src/renderer/state/gisSignals";
+import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
+import { cancelSelectionShape } from "../../../src/renderer/map/selectionShapeCancel";
+import {
+  activateSelectByLasso,
+  MAP_TOOL_HANDLERS,
   isSelectionTool,
   resolveNavigationForTool,
   resolveClickHits,
@@ -289,6 +300,254 @@ describe("selectFeaturesInRegion", () => {
     const before = selectedFeatureIdsSignal.value;
     selectFeaturesInRegion(null, createRectangleRegion([0, 0, 50, 50]), NONE);
     assert.equal(selectedFeatureIdsSignal.value, before);
+  });
+});
+
+describe("activateSelectByLasso", () => {
+  /**
+   * @class FakeMap
+   * @description The parts of an OpenLayers map the lasso's Draw interaction touches, with pixels equal to map coordinates; records added interactions.
+   */
+  class FakeMap extends Target {
+    readonly view = new View({ center: [0, 0], resolution: 1 });
+    readonly interactions: Interaction[] = [];
+    /** @returns {View} The view. */
+    getView(): View {
+      return this.view;
+    }
+    /** @returns {void} */
+    render(): void {}
+    /** @returns {undefined} No DOM target in tests. */
+    getTargetElement(): undefined {
+      return undefined;
+    }
+    /**
+     * @param {number[]} coordinate - Map coordinate.
+     * @returns {number[]} The same pixel.
+     */
+    getPixelFromCoordinate(coordinate: number[]): number[] {
+      return coordinate.slice();
+    }
+    /**
+     * @param {Interaction} interaction - Interaction to add.
+     * @returns {void}
+     */
+    addInteraction(interaction: Interaction): void {
+      this.interactions.push(interaction);
+      interaction.setMap(fromPartial(this));
+    }
+    /**
+     * @param {Interaction} interaction - Interaction to remove.
+     * @returns {void}
+     */
+    removeInteraction(interaction: Interaction): void {
+      const i = this.interactions.indexOf(interaction);
+      if (i >= 0) this.interactions.splice(i, 1);
+      interaction.setMap(null);
+    }
+  }
+
+  /**
+   * @function pointer
+   * @description A map browser event stand-in (pixel = coordinate) for the lasso interaction.
+   * @param {FakeMap} map - Map.
+   * @param {string} type - Map browser event type.
+   * @param {number[]} at - Coordinate.
+   * @param {object} [extra] - Extra pointer event fields (button, modifiers).
+   * @returns {any} Event.
+   */
+  const pointer = (
+    map: FakeMap,
+    type: string,
+    at: number[],
+    extra: object = {}
+  ): any => ({
+    type,
+    map,
+    coordinate: at.slice(),
+    pixel: at.slice(),
+    frameState: null,
+    preventDefault() {},
+    originalEvent: {
+      type: type === "pointerdrag" ? "pointermove" : type,
+      pointerId: 1,
+      isPrimary: true,
+      button: type === "pointerdrag" || type === "pointermove" ? -1 : 0,
+      pointerType: "mouse",
+      preventDefault() {},
+      ...extra,
+    },
+  });
+
+  /**
+   * @function drag
+   * @description Moves the pressed primary pointer to a coordinate: OpenLayers relays a `pointermove` and then a `pointerdrag` for each move during a drag.
+   * @param {Interaction} lasso - The lasso interaction.
+   * @param {FakeMap} map - Map.
+   * @param {number[]} at - Coordinate.
+   * @returns {void}
+   */
+  function drag(lasso: Interaction, map: FakeMap, at: number[]): void {
+    lasso.handleEvent(pointer(map, "pointermove", at));
+    lasso.handleEvent(pointer(map, "pointerdrag", at));
+  }
+
+  /**
+   * @function pentagram
+   * @description A one-stroke five-pointed star of radius 10 around the origin.
+   * @returns {number[][]} Tips in stroke order.
+   */
+  function pentagram(): number[][] {
+    const tips = [0, 1, 2, 3, 4].map((i) => {
+      const angle = Math.PI / 2 + (i * 2 * Math.PI) / 5;
+      return [10 * Math.cos(angle), 10 * Math.sin(angle)];
+    });
+    return [0, 2, 4, 1, 3].map((i) => tips[i]);
+  }
+
+  /**
+   * @function trace
+   * @description Drags a lasso through the outline's points with the primary button and releases at its start.
+   * @param {Interaction} lasso - The lasso interaction.
+   * @param {FakeMap} map - Map.
+   * @param {number[][]} outline - Outline points.
+   * @param {object} [release] - Modifiers held at release.
+   * @returns {void}
+   */
+  function trace(
+    lasso: Interaction,
+    map: FakeMap,
+    outline: number[][],
+    release: object = {}
+  ): void {
+    lasso.handleEvent(pointer(map, "pointerdown", outline[0]));
+    for (const at of [...outline.slice(1), outline[0], outline[0]]) {
+      drag(lasso, map, at);
+    }
+    lasso.handleEvent(pointer(map, "pointerup", outline[0], release));
+  }
+
+  /**
+   * @function setUp
+   * @description Activates Select by Lasso on a fake map whose Active Layer holds a point at the star's centre (id 1) and one in its top tip (id 2).
+   * @param {boolean} [selectable=true] - Whether there is a valid Active Layer.
+   * @returns {{ map: FakeMap, lasso: Interaction, deactivate: () => void }} Fixture.
+   */
+  function setUp(selectable = true): {
+    map: FakeMap;
+    lasso: Interaction;
+    deactivate: () => void;
+  } {
+    const source = new VectorSource();
+    const centre = new Feature(new Point([0, 0]));
+    centre.setId(1);
+    const tip = new Feature(new Point([0, 8]));
+    tip.setId(2);
+    source.addFeatures([centre, tip]);
+    const map = new FakeMap();
+    const deactivate = activateSelectByLasso({
+      map: fromPartial(map),
+      getSelectableLayer: () => (selectable ? { source } : null),
+      setNavigation: () => {},
+    });
+    assert.equal(map.interactions.length, 1, "adds one interaction");
+    return { map, lasso: map.interactions[0], deactivate };
+  }
+
+  beforeEach(() => {
+    selectedFeatureIdsSignal.value = new Set([99]);
+    vertexEditorModeSignal.value = false;
+    preferencesMapSignal.value = {};
+  });
+
+  it("is Select by Lasso's handler", () => {
+    assert.equal(
+      MAP_TOOL_HANDLERS.select_lasso === activateSelectByLasso,
+      true
+    );
+  });
+
+  it("selects what a pentagram encloses under Even-Odd (default): the tip, not the centre", () => {
+    const { map, lasso } = setUp();
+    trace(lasso, map, pentagram());
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+  });
+
+  it("selects the pentagram's centre too under Non-Zero, read when the lasso starts", () => {
+    const { map, lasso } = setUp();
+    preferencesMapSignal.value = {
+      "mapTools.selection.lassoFillRule": fromPartial({ value: "nonzero" }),
+    };
+    trace(lasso, map, pentagram());
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [1, 2]);
+  });
+
+  it("merges with the Shift held at release", () => {
+    const { map, lasso } = setUp();
+    trace(lasso, map, pentagram(), { shiftKey: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [2, 99]);
+  });
+
+  it("discards the shape on Escape mid-drag, then lassos normally again", () => {
+    const { map, lasso } = setUp();
+    const before = selectedFeatureIdsSignal.value;
+    const star = pentagram();
+    lasso.handleEvent(pointer(map, "pointerdown", star[0]));
+    drag(lasso, map, star[1]);
+    assert.equal(cancelSelectionShape(), true, "a shape was in progress");
+    for (const at of star.slice(2)) {
+      drag(lasso, map, at);
+    }
+    lasso.handleEvent(pointer(map, "pointerup", star[0]));
+    assert.equal(selectedFeatureIdsSignal.value === before, true);
+    assert.equal(cancelSelectionShape(), false, "nothing left to cancel");
+
+    trace(lasso, map, star);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+  });
+
+  it("lets other buttons and Alt drags through without drawing", () => {
+    const { map, lasso } = setUp();
+    const before = selectedFeatureIdsSignal.value;
+    const right = lasso.handleEvent(
+      pointer(map, "pointerdown", [0, 0], { button: 2 })
+    );
+    assert.equal(right, true, "right-button down passes on");
+    assert.equal(cancelSelectionShape(), false, "no shape started");
+    lasso.handleEvent(pointer(map, "pointerup", [0, 0], { button: 2 }));
+    const alt = lasso.handleEvent(
+      pointer(map, "pointerdown", [0, 0], { altKey: true, shiftKey: true })
+    );
+    assert.equal(alt, true, "Alt+Shift down passes on (rotation)");
+    assert.equal(selectedFeatureIdsSignal.value === before, true);
+  });
+
+  it("draws but selects nothing without a valid Active Layer or while the Selection Target is vertices", () => {
+    const before = selectedFeatureIdsSignal.value;
+    const noLayer = setUp(false);
+    noLayer.lasso.handleEvent(
+      pointer(noLayer.map, "pointerdown", pentagram()[0])
+    );
+    assert.equal(cancelSelectionShape(), true, "the shape is drawn");
+    noLayer.lasso.handleEvent(
+      pointer(noLayer.map, "pointerup", pentagram()[0])
+    );
+    trace(noLayer.lasso, noLayer.map, pentagram());
+    assert.equal(selectedFeatureIdsSignal.value === before, true);
+
+    vertexEditorModeSignal.value = true;
+    assert.equal(selectionTargetSignal.value, "vertices");
+    const vertices = setUp();
+    trace(vertices.lasso, vertices.map, pentagram());
+    assert.equal(selectedFeatureIdsSignal.value === before, true);
+  });
+
+  it("removes its interaction and abandons a drag in progress on deactivation", () => {
+    const { map, lasso, deactivate } = setUp();
+    lasso.handleEvent(pointer(map, "pointerdown", [0, 10]));
+    deactivate();
+    assert.equal(map.interactions.length, 0);
+    assert.equal(cancelSelectionShape(), false, "no shape left registered");
   });
 });
 

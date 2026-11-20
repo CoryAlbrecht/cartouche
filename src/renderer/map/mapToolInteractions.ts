@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.ts
  * @module renderer/map/mapToolInteractions
- * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click and Select by Rectangle have handlers; Select by Lasso adds its own entry, and vertex selection branches on the Selection Target inside them. All Selection Tools publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow.
+ * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click, Select by Rectangle and Select by Lasso have handlers; vertex selection branches on the Selection Target inside them. All Selection Tools publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -10,6 +10,7 @@
  * @see {@link findTopmostFeatureAt}
  * @see {@link findFeaturesOverlappingRegion}
  * @see {@link beginSelectionShape}
+ * @see {@link createLassoShapeStyle}
  */
 
 import type OlMap from "ol/Map.js";
@@ -23,6 +24,10 @@ import DragPan from "ol/interaction/DragPan.js";
 import DragZoom from "ol/interaction/DragZoom.js";
 import DoubleClickZoom from "ol/interaction/DoubleClickZoom.js";
 import DragBox, { type DragBoxEvent } from "ol/interaction/DragBox.js";
+import Draw, { type DrawEvent } from "ol/interaction/Draw.js";
+import Polygon from "ol/geom/Polygon.js";
+import type { StyleLike } from "ol/style/Style.js";
+import type { FlatStyleLike } from "ol/style/flat.js";
 import { primaryAction } from "ol/events/condition.js";
 import {
   selectedFeatureIdsSignal,
@@ -45,6 +50,12 @@ import {
   type SelectionRegion,
 } from "./selectionRegion";
 import { beginSelectionShape } from "./selectionShapeCancel";
+import {
+  createLassoShapeStyle,
+  readLassoFillRule,
+  readSelectionShapeColour,
+  type SelectionShapePaint,
+} from "./selectionLasso";
 
 /**
  * @description Largest symbol reach, in pixels, considered when gathering click candidates from the source's spatial index: features whose extent lies farther than this plus the hit tolerance from the pointer are never tested.
@@ -348,7 +359,7 @@ export const SELECTION_SHAPE_CLASS = "cartouche-selection-shape";
 
 /**
  * @function selectFeaturesInRegion
- * @description Performs one area selection (Select by Rectangle, and later Select by Lasso): with a valid Active Layer, publishes the ids of its features overlapping the region under the given modifiers, so a plain gesture overlapping nothing clears the selection; without one, changes nothing. The region is tested against the features in the renderer's source: a Selection Shape lies within the visible map, which every loading strategy has loaded.
+ * @description Performs one area selection (Select by Rectangle, Select by Lasso): with a valid Active Layer, publishes the ids of its features overlapping the region under the given modifiers, so a plain gesture overlapping nothing clears the selection; without one, changes nothing. The region is tested against the features in the renderer's source: a Selection Shape lies within the visible map, which every loading strategy has loaded.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -434,7 +445,170 @@ export const activateSelectByRectangle: MapToolHandler = (context) => {
 };
 
 /**
- * @description The tool handler table: the behaviour each map tool adds on the map. Tools without an entry only get their navigation state. Select by Lasso registers here.
+ * @class SelectionLassoDraw
+ * @description OpenLayers' freehand polygon Draw, narrowed to Select by Lasso's needs: a pointer-down starts a lasso only when {@link isSelectionShapeDragStart} accepts it, so other buttons and Alt+Shift+drag (rotation) pass on to the map's other interactions, as do drags and context menus while no lasso is drawn; it remembers the Shift/Ctrl held at release for the `drawend` listener; and {@link SelectionLassoDraw#discard} abandons a lasso in progress, ignoring the rest of that drag (so the release does not start a new sketch).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @extends Draw
+ */
+export class SelectionLassoDraw extends Draw {
+  private drawing = false;
+  private discarding = false;
+  private modifiersAtRelease: SelectionModifiers = {
+    shift: false,
+    ctrl: false,
+  };
+
+  /**
+   * @constructor
+   * @description Creates a freehand polygon Draw with the given sketch style.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @param {StyleLike | FlatStyleLike} style - Sketch style (see {@link createLassoShapeStyle}).
+   */
+  constructor(style: StyleLike | FlatStyleLike) {
+    super({ type: "Polygon", freehand: true, style });
+    this.on("drawstart", () => {
+      this.drawing = true;
+    });
+    this.on(["drawend", "drawabort"], () => {
+      this.drawing = false;
+    });
+  }
+
+  /**
+   * @description The Shift/Ctrl held when the last lasso was released.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {SelectionModifiers} Modifiers at release.
+   */
+  public getModifiersAtRelease(): SelectionModifiers {
+    return this.modifiersAtRelease;
+  }
+
+  /**
+   * @description Abandons the lasso being drawn, if any (firing `drawabort`), and ignores the rest of its drag.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public discard(): void {
+    if (!this.drawing) return;
+    this.discarding = true;
+    this.abortDrawing();
+  }
+
+  /**
+   * @description Passes on events that do not belong to a lasso before Draw sees them, swallows the drag of a discarded lasso, and otherwise defers to Draw.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @param {MapBrowserEvent<PointerEvent>} event - Map browser event.
+   * @returns {boolean} False to stop the event reaching other interactions.
+   * @override
+   */
+  public override handleEvent(event: MapBrowserEvent<PointerEvent>): boolean {
+    if (this.discarding) {
+      if (event.type === "pointerdrag") return false;
+    } else if (!this.drawing) {
+      if (
+        event.type === "pointerdown"
+        && !isSelectionShapeDragStart(
+          event as Parameters<typeof isSelectionShapeDragStart>[0]
+        )
+      ) {
+        return true;
+      }
+      if (
+        event.type === "pointerdrag"
+        || event.originalEvent?.type === "contextmenu"
+      ) {
+        return true;
+      }
+    }
+    return super.handleEvent(event);
+  }
+
+  /**
+   * @description Ends a discarded lasso's drag without starting a sketch; otherwise records the release modifiers and lets Draw finish the lasso.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @param {MapBrowserEvent<PointerEvent>} event - Pointer-up map browser event.
+   * @returns {boolean} Whether the down/up sequence continues.
+   * @override
+   */
+  public override handleUpEvent(event: MapBrowserEvent<PointerEvent>): boolean {
+    if (this.discarding) {
+      this.discarding = false;
+      return false;
+    }
+    this.modifiersAtRelease = readSelectionModifiers(event.originalEvent);
+    return super.handleUpEvent(event);
+  }
+}
+
+/**
+ * @function activateSelectByLasso
+ * @description {@link MapToolHandler} for Select by Lasso: adds a {@link SelectionLassoDraw} whose primary drag traces a freehand outline, shown live as the Selection Shape with {@link createLassoShapeStyle} (the `--cartouche-map-selection-shape` colour and fill rule are read when the lasso starts, so a changed Lasso Fill Rule takes effect on the next lasso). On release the outline is closed back to its start and, while the Selection Target is features, the features of the Active Layer overlapping the area it encloses under the Lasso Fill Rule are merged into the selection with the Shift/Ctrl held at release ({@link selectFeaturesInRegion}). While a lasso is drawn it is registered with {@link beginSelectionShape}, so Escape discards it without selecting and keeps the tool. A click without a drag selects nothing. With no valid Active Layer, or while the Selection Target is vertices, the shape is still drawn but nothing is selected.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {MapToolContext} context - Map tool context.
+ * @returns {() => void} Removes the lasso interaction (abandoning a lasso in progress).
+ */
+export const activateSelectByLasso: MapToolHandler = (context) => {
+  let paint: SelectionShapePaint = { colour: "", fillRule: "evenodd" };
+  const lasso = new SelectionLassoDraw(createLassoShapeStyle(() => paint));
+  let endShape: (() => void) | null = null;
+  const finishShape = (): void => {
+    endShape?.();
+    endShape = null;
+  };
+  lasso.on("drawstart", () => {
+    paint = {
+      colour: readSelectionShapeColour(context.map.getTargetElement?.()),
+      fillRule: readLassoFillRule(),
+    };
+    endShape = beginSelectionShape(() => {
+      finishShape();
+      lasso.discard();
+    });
+  });
+  lasso.on("drawabort", finishShape);
+  lasso.on("drawend", (evt: DrawEvent) => {
+    finishShape();
+    if (selectionTargetSignal.peek() !== "features") return;
+    const geometry = evt.feature.getGeometry();
+    if (!(geometry instanceof Polygon)) return;
+    const ring = geometry.getCoordinates()[0];
+    if (!ring || ring.length < 3) return;
+    selectFeaturesInRegion(
+      context.getSelectableLayer(),
+      createSelectionRegion(ring, paint.fillRule),
+      lasso.getModifiersAtRelease()
+    );
+  });
+  context.map.addInteraction(lasso);
+  return () => {
+    finishShape();
+    context.map.removeInteraction(lasso);
+  };
+};
+
+/**
+ * @description The tool handler table: the behaviour each map tool adds on the map. Tools without an entry only get their navigation state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -444,6 +618,7 @@ export const activateSelectByRectangle: MapToolHandler = (context) => {
 export const MAP_TOOL_HANDLERS: Partial<Record<ActiveTool, MapToolHandler>> = {
   select_click: activateSelectByClick,
   select_rectangle: activateSelectByRectangle,
+  select_lasso: activateSelectByLasso,
 };
 
 /**

@@ -99,6 +99,7 @@
     <string name="prefs_group_display">Display</string>
     <string name="prefs_group_scaling">Scaling</string>
     <string name="prefs_group_snapping">Snapping</string>
+    <string name="prefs_group_selection">Selection</string>
     <!-- Preferences Settings -->
     <string name="prefs_general_logging_location">Log File Location</string>
     <string name="prefs_general_logging_location_descr">Path to persistent application log file. If
@@ -166,6 +167,10 @@
     <string name="prefs_mapTools_snapping_distance">Snapping Distance</string>
     <string name="prefs_mapTools_snapping_distance_descr">Search tolerance radius in screen pixels
         for snapping vector features to vertices, midpoints, and segments.</string>
+    <string name="prefs_mapTools_selection_lassoFillRule">Lasso Fill Rule</string>
+    <string name="prefs_mapTools_selection_lassoFillRule_descr">Which areas a self-crossing Select by Lasso
+        outline encloses. Even-Odd leaves areas circled an even number of times (such as a star's
+        centre) unselected; Non-Zero selects every area the outline circles.</string>
     <!-- Layer Properties Dialog -->
     <string name="layer_properties_dialog_title">Layer Properties</string>
     <string name="layer_properties_tab_information">Information</string>
