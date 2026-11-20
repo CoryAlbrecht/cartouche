@@ -313,6 +313,9 @@ export function executeWorkbenchAction(actionName: string): void {
     case "rename_layer_tree_node":
       requestRenameSelectedNode();
       break;
+    case "pan_tool":
+      activeToolSignal.value = "pan";
+      break;
     case "zoom_in":
       zoomInAction();
       break;

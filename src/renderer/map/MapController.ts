@@ -50,6 +50,8 @@ import {
 } from "../state/gisSignals";
 import VectorLayer from "ol/layer/Vector.js";
 import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
+import type { MapCursorImages } from "./mapCursor";
+import { bindMapCursor } from "./mapCursorBinding";
 import {
   MapToolInteractions,
   applyNavigationToMap,
@@ -396,13 +398,17 @@ export class MapController {
    * @description Initializes the isolated OpenLayers map instance, view, and reactive signal subscriptions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-19
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {HTMLElement} container - Target unmanaged DOM container element.
    * @param {Object} [options] - Optional map initialization options.
    * @param {View} [options.view] - Custom OpenLayers View instance.
+   * @param {MapCursorImages} [options.cursorImages] - Custom Selection Tool Map Cursor image URLs (keyword cursors without them).
    */
-  constructor(container: HTMLElement, options?: { view?: View }) {
+  constructor(
+    container: HTMLElement,
+    options?: { view?: View; cursorImages?: MapCursorImages }
+  ) {
     this.container = container;
 
     const initialCrs = resolveDisplayCrs(
@@ -435,6 +441,10 @@ export class MapController {
     this.bindEvents();
     this.initProjectViewport();
     this.bindSignals();
+    // Map Cursor follows the active tool, Selection Target and drag state (#378)
+    this.disposeSignals.push(
+      bindMapCursor(container, this.map, options?.cursorImages)
+    );
     this.updateScaleSignal(true);
 
     activeMapControllerSignal.value = this;

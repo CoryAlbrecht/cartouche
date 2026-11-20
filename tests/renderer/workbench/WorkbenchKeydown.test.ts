@@ -618,6 +618,22 @@ describe("Workbench Global Keyboard Listener", () => {
       assert.equal(forwardedAction, "custom_main_action");
     });
 
+    it("pan_tool switches the active map tool to Pan in the renderer", () => {
+      let forwarded: string | null = null;
+      Reflect.set(globalThis, "window", {
+        ...Reflect.get(globalThis, "window"),
+        electronAPI: {
+          executeAction: (name: string) => {
+            forwarded = name;
+          },
+        },
+      });
+      activeToolSignal.value = "select_lasso";
+      executeWorkbenchAction("pan_tool");
+      assert.equal(activeToolSignal.value, "pan");
+      assert.equal(forwarded, null, "pan_tool is handled in the renderer");
+    });
+
     it("executes project_properties when hasProject is true and ignores when false", () => {
       isProjectPropertiesOpenSignal.value = false;
       hasProjectSignal.value = false;

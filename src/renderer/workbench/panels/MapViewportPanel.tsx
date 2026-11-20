@@ -4,13 +4,14 @@
  * @description Isolated OpenLayers map canvas viewport panel mounting MapController in an unmanaged container, strictly insulated from React Virtual DOM reconciliation loops.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
 
 import React, { useEffect, useRef } from "react";
 import { MapController } from "@renderer/map/MapController";
+import { MAP_CURSOR_IMAGES } from "@renderer/map/mapCursorAssets";
 import type { IDockviewPanelProps } from "dockview-react";
 import "ol/ol.css";
 
@@ -19,7 +20,7 @@ import "ol/ol.css";
  * @description Renders unobstructed OpenLayers map viewport canvas inside Dockview layout, mounted via unmanaged DOM ref.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {IDockviewPanelProps} props - Dockview panel properties.
  * @returns {React.ReactElement} Map viewport panel element.
@@ -32,7 +33,9 @@ export const MapViewportPanel: React.FC<IDockviewPanelProps | any> = React.memo(
       if (!containerRef.current) return;
 
       // Instantiate imperative MapController isolated from React VDOM
-      const controller = new MapController(containerRef.current);
+      const controller = new MapController(containerRef.current, {
+        cursorImages: MAP_CURSOR_IMAGES,
+      });
 
       // Handle container resizing
       const observer = new ResizeObserver(() => {
