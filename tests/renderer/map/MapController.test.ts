@@ -4,13 +4,14 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-13
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
 
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { fromPartial } from "@total-typescript/shoehorn";
 import {
   projectLayersSignal,
   layerStylesSignal,
@@ -25,6 +26,7 @@ import {
   selectedFeatureIdsSignal,
   activeLayerIdSignal,
   scaleDenominatorSignal,
+  activeToolSignal,
 } from "../../../src/renderer/state/gisSignals";
 import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
 import {
@@ -34,6 +36,11 @@ import {
 } from "../../../src/renderer/map/MapController";
 import Feature from "ol/Feature.js";
 import VectorImageLayer from "ol/layer/VectorImage.js";
+import Polygon from "ol/geom/Polygon.js";
+import MapBrowserEvent from "ol/MapBrowserEvent.js";
+import DragPan from "ol/interaction/DragPan.js";
+import DragZoom from "ol/interaction/DragZoom.js";
+import MouseWheelZoom from "ol/interaction/MouseWheelZoom.js";
 import { fromLonLat, transformExtent, transform } from "ol/proj.js";
 import { generateDefaultVectorStyleJson } from "../../../src/shared/styles/defaultLayerStyles";
 import { NO_CRS_CODE } from "../../../src/renderer/map/projectionRegistry";
@@ -2836,5 +2843,156 @@ describe("MapController draws in the Project CRS (Ticket #278)", () => {
       Math.abs(c[0] - 700000) < 1e-6 && Math.abs(c[1] - 6600000) < 1e-6,
       `pending project viewport applied: ${c}`
     );
+  });
+});
+
+describe("MapController drives map interactions from the active tool (Ticket #379)", () => {
+  let container: any;
+  let controller: MapController;
+  const descriptor: LayerDescriptor = {
+    id: "layer-click-test",
+    name: "Click Test",
+    type: "shp",
+    source: "/path/to/click.shp",
+    geometryKind: "Polygon",
+    layerKind: "vector",
+    extent: [-90, 40, -80, 50],
+    featureCount: 2,
+  };
+
+  /**
+   * @function square
+   * @description Builds a square polygon feature in map units.
+   * @param {number} id - Feature id.
+   * @param {number} min - Lower-left x and y.
+   * @param {number} max - Upper-right x and y.
+   * @returns {Feature} Polygon feature.
+   */
+  function square(id: number, min: number, max: number): Feature {
+    const f = new Feature(
+      new Polygon([
+        [
+          [min, min],
+          [max, min],
+          [max, max],
+          [min, max],
+          [min, min],
+        ],
+      ])
+    );
+    f.setId(id);
+    return f;
+  }
+
+  /**
+   * @function click
+   * @description Dispatches a primary click map event at a coordinate.
+   * @param {number[]} coordinate - Click coordinate in map units.
+   * @param {object} [modifiers] - Modifier flags of the original event.
+   * @returns {void}
+   */
+  function click(
+    coordinate: number[],
+    modifiers: { shiftKey?: boolean; ctrlKey?: boolean } = {}
+  ): void {
+    const map = controller.getMap();
+    const evt = new MapBrowserEvent(
+      "click",
+      map,
+      fromPartial<PointerEvent>({
+        shiftKey: false,
+        ctrlKey: false,
+        ...modifiers,
+      })
+    );
+    evt.coordinate = coordinate;
+    map.dispatchEvent(evt);
+  }
+
+  /**
+   * @function interactionActive
+   * @description Reads whether the map's interaction of a class is active.
+   * @param {Function} type - Interaction class.
+   * @returns {boolean | undefined} Active state, undefined when absent.
+   */
+  function interactionActive(type: Function): boolean | undefined {
+    return controller
+      .getMap()
+      .getInteractions()
+      .getArray()
+      .find((i) => i instanceof type)
+      ?.getActive();
+  }
+
+  beforeEach(() => {
+    projectLayersSignal.value = [];
+    activeToolSignal.value = "pan";
+    container = document.createElement("div");
+    controller = new MapController(container);
+    projectLayersSignal.value = [descriptor];
+    controller
+      .getLayer(descriptor.id)!
+      .source.addFeatures([square(1, 0, 1e6), square(2, 5e5, 1.5e6)]);
+    activeLayerIdSignal.value = descriptor.id;
+    selectedFeatureIdsSignal.value = new Set();
+  });
+
+  afterEach(() => {
+    controller.dispose();
+    activeToolSignal.value = "pan";
+    projectLayersSignal.value = [];
+    selectedFeatureIdsSignal.value = new Set();
+    activeLayerIdSignal.value = null;
+  });
+
+  it("turns off drag-pan and Shift+drag zoom while a Selection Tool is active, and restores them for Pan", () => {
+    assert.equal(interactionActive(DragPan), true);
+    assert.equal(interactionActive(DragZoom), true);
+    activeToolSignal.value = "select_click";
+    assert.equal(interactionActive(DragPan), false);
+    assert.equal(interactionActive(DragZoom), false);
+    assert.equal(
+      interactionActive(MouseWheelZoom),
+      true,
+      "wheel zoom stays on"
+    );
+    activeToolSignal.value = "pan";
+    assert.equal(interactionActive(DragPan), true);
+    assert.equal(interactionActive(DragZoom), true);
+  });
+
+  it("selects the topmost Active Layer feature on click, Shift adds, Ctrl toggles, empty map clears", () => {
+    activeToolSignal.value = "select_click";
+    click([7.5e5, 7.5e5]);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+    click([2.5e5, 2.5e5], { shiftKey: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [1, 2]);
+    click([7.5e5, 7.5e5], { ctrlKey: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    click([9e6, 9e6]);
+    assert.equal(selectedFeatureIdsSignal.value.size, 0);
+  });
+
+  it("does not select on click with the Pan tool", () => {
+    click([7.5e5, 7.5e5]);
+    assert.equal(selectedFeatureIdsSignal.value.size, 0);
+  });
+
+  it("changes nothing when the Active Layer is hidden or there is none", () => {
+    activeToolSignal.value = "select_click";
+    selectedFeatureIdsSignal.value = new Set([1]);
+    controller.getLayer(descriptor.id)!.layer.setVisible(false);
+    click([9e6, 9e6]);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    activeLayerIdSignal.value = null;
+    click([9e6, 9e6]);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+
+  it("stops listening once disposed", () => {
+    activeToolSignal.value = "select_click";
+    controller.dispose();
+    click([7.5e5, 7.5e5]);
+    assert.equal(selectedFeatureIdsSignal.value.size, 0);
   });
 });
