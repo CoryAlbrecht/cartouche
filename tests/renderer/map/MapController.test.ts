@@ -42,6 +42,10 @@ import MapBrowserEvent from "ol/MapBrowserEvent.js";
 import DragPan from "ol/interaction/DragPan.js";
 import DragZoom from "ol/interaction/DragZoom.js";
 import MouseWheelZoom from "ol/interaction/MouseWheelZoom.js";
+import DoubleClickZoom from "ol/interaction/DoubleClickZoom.js";
+import DragRotate from "ol/interaction/DragRotate.js";
+import DragBox from "ol/interaction/DragBox.js";
+import { cancelSelectionShape } from "../../../src/renderer/map/selectionShapeCancel";
 import { fromLonLat, transformExtent, transform } from "ol/proj.js";
 import { generateDefaultVectorStyleJson } from "../../../src/shared/styles/defaultLayerStyles";
 import { NO_CRS_CODE } from "../../../src/renderer/map/projectionRegistry";
@@ -2946,20 +2950,27 @@ describe("MapController drives map interactions from the active tool (Ticket #37
     activeLayerIdSignal.value = null;
   });
 
-  it("turns off drag-pan and Shift+drag zoom while a Selection Tool is active, and restores them for Pan", () => {
+  it("turns off drag-pan, Shift+drag zoom and double-click zoom while a Selection Tool is active, and restores them for Pan", () => {
     assert.equal(interactionActive(DragPan), true);
     assert.equal(interactionActive(DragZoom), true);
     activeToolSignal.value = "select_click";
     assert.equal(interactionActive(DragPan), false);
     assert.equal(interactionActive(DragZoom), false);
     assert.equal(
+      interactionActive(DoubleClickZoom),
+      false,
+      "double-click zoom is off, so quick clicks do not zoom"
+    );
+    assert.equal(
       interactionActive(MouseWheelZoom),
       true,
       "wheel zoom stays on"
     );
+    assert.equal(interactionActive(DragRotate), true, "rotation stays on");
     activeToolSignal.value = "pan";
     assert.equal(interactionActive(DragPan), true);
     assert.equal(interactionActive(DragZoom), true);
+    assert.equal(interactionActive(DoubleClickZoom), true);
   });
 
   it("selects the topmost Active Layer feature on click, Shift adds, Ctrl toggles, empty map clears", () => {
@@ -3001,6 +3012,141 @@ describe("MapController drives map interactions from the active tool (Ticket #37
     } finally {
       vertexEditorModeSignal.value = false;
     }
+  });
+
+  describe("Select by Rectangle (Ticket #380)", () => {
+    /** Map units per test pixel. */
+    const SCALE = 1e4;
+
+    /**
+     * @function dragBox
+     * @description The Selection Shape DragBox on the map, if any (DragZoom is also a DragBox).
+     * @returns {DragBox | undefined} The interaction.
+     */
+    function dragBox(): DragBox | undefined {
+      return controller
+        .getMap()
+        .getInteractions()
+        .getArray()
+        .find(
+          (i): i is DragBox => i instanceof DragBox && !(i instanceof DragZoom)
+        );
+    }
+
+    /**
+     * @function pointer
+     * @description Feeds one pointer map event at a pixel to the DragBox.
+     * @param {string} type - Map browser event type.
+     * @param {number[]} pixel - Pixel (map coordinate = pixel × SCALE).
+     * @param {object} [modifiers] - Modifier flags of the pointer event.
+     * @returns {void}
+     */
+    function pointer(
+      type: "pointerdown" | "pointerdrag" | "pointerup",
+      pixel: number[],
+      modifiers: object = {}
+    ): void {
+      const map = controller.getMap();
+      const evt = new MapBrowserEvent(
+        type,
+        map,
+        fromPartial<PointerEvent>({
+          type,
+          pointerId: 1,
+          isPrimary: true,
+          button: 0,
+          shiftKey: false,
+          ctrlKey: false,
+          altKey: false,
+          preventDefault: () => {},
+          ...modifiers,
+        })
+      );
+      evt.pixel = pixel;
+      evt.coordinate = [pixel[0] * SCALE, pixel[1] * SCALE];
+      dragBox()!.handleEvent(evt);
+    }
+
+    /**
+     * @function drag
+     * @description Drags a rectangle between two pixels and releases.
+     * @param {number[]} from - Start pixel.
+     * @param {number[]} to - End pixel.
+     * @param {object} [modifiers] - Modifier flags held throughout.
+     * @returns {void}
+     */
+    function drag(from: number[], to: number[], modifiers: object = {}): void {
+      pointer("pointerdown", from, modifiers);
+      pointer("pointerdrag", to, modifiers);
+      pointer("pointerup", to, modifiers);
+    }
+
+    beforeEach(() => {
+      const map = controller.getMap() as any;
+      map.getCoordinateFromPixelInternal = (pixel: number[]) => [
+        pixel[0] * SCALE,
+        pixel[1] * SCALE,
+      ];
+      activeToolSignal.value = "select_rectangle";
+    });
+
+    it("adds a DragBox drawn as the Selection Shape only while the tool is active", () => {
+      // Compare booleans: a failing assert would try to print the whole map.
+      assert.equal(dragBox() !== undefined, true, "DragBox while active");
+      activeToolSignal.value = "select_click";
+      assert.equal(dragBox() !== undefined, false, "no DragBox for Click");
+      activeToolSignal.value = "select_rectangle";
+      assert.equal(dragBox() !== undefined, true);
+    });
+
+    it("selects every Active Layer feature overlapping the rectangle; Shift adds, Ctrl toggles, empty clears", () => {
+      drag([1, 1], [10, 10]);
+      assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+      drag([120, 120], [140, 140], { shiftKey: true });
+      assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [1, 2]);
+      drag([60, 60], [70, 70], { ctrlKey: true });
+      assert.equal(selectedFeatureIdsSignal.value.size, 0, "both toggled off");
+      drag([60, 60], [70, 70]);
+      assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [1, 2]);
+      drag([500, 500], [600, 600]);
+      assert.equal(selectedFeatureIdsSignal.value.size, 0);
+    });
+
+    it("abandons the drag on Escape: nothing selected, tool kept, next drag works", () => {
+      selectedFeatureIdsSignal.value = new Set([2]);
+      pointer("pointerdown", [1, 1]);
+      pointer("pointerdrag", [10, 10]);
+      assert.equal(cancelSelectionShape(), true);
+      pointer("pointerdrag", [12, 12]);
+      pointer("pointerup", [12, 12]);
+      assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+      assert.equal(activeToolSignal.value, "select_rectangle");
+      assert.equal(cancelSelectionShape(), false, "nothing left to abandon");
+      drag([1, 1], [10, 10]);
+      assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    });
+
+    it("draws the shape but selects nothing while the Active Layer is hidden or while the Selection Target is vertices", () => {
+      selectedFeatureIdsSignal.value = new Set([2]);
+      const layer = controller.getLayer(descriptor.id)!.layer;
+      layer.setVisible(false);
+      drag([1, 1], [10, 10]);
+      assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+      layer.setVisible(true);
+      vertexEditorModeSignal.value = true;
+      try {
+        drag([1, 1], [10, 10]);
+        assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+      } finally {
+        vertexEditorModeSignal.value = false;
+      }
+    });
+
+    it("forgets a drag in progress when the tool changes", () => {
+      pointer("pointerdown", [1, 1]);
+      activeToolSignal.value = "pan";
+      assert.equal(cancelSelectionShape(), false);
+    });
   });
 
   it("stops listening once disposed", () => {

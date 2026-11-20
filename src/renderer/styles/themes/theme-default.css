@@ -4,7 +4,7 @@
  * @description Canonical default theme for Cartouche GIS desktop application, implementing the Two-Tier CSS token hierarchy (Tier 1 Theme Primitives and Tier 2 Component Tokens), statically bundled font declarations (ADR 0013), and Dockview color tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -151,6 +151,9 @@
   /* Light info accent, legible on a primary fill */
   --cartouche-theme-info-bright: #7ce8ff;
 
+  /* Map Overlay Highlight: amber shapes drawn over the map while selecting */
+  --cartouche-theme-highlight: #f5a623;
+
   /* Box Shadows & Overlays */
   --cartouche-theme-shadow: rgba(0, 0, 0, 0.16);
   --cartouche-theme-shadow-subtle: rgba(0, 0, 0, 0.06);
@@ -240,6 +243,9 @@
   --cartouche-workbench-bg: var(--cartouche-theme-surface);
   --cartouche-workbench-fg: var(--cartouche-theme-fg);
   --cartouche-map-viewport-bg: var(--cartouche-theme-surface);
+  /* Selection Shape: the rectangle or lasso drawn while a Selection Tool drags
+     (outline at full opacity, fill at 25 %) */
+  --cartouche-map-selection-shape: var(--cartouche-theme-highlight);
   --cartouche-detached-window-bg: var(--cartouche-theme-surface);
   /* Detached window document body, behind the portal container */
   --cartouche-detached-window-body-bg: var(--cartouche-theme-bg);

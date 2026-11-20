@@ -12,6 +12,7 @@
  * @see {@link matchesKeyCombination}
  * @see {@link cancelAction}
  * @see {@link cancelTopDialog}
+ * @see {@link cancelSelectionShape}
  */
 
 import { setProjectCrsFromLayerAction } from "../state/projectPropertiesSignals";
@@ -67,6 +68,7 @@ import {
 } from "../state/projectSignals";
 import { registeredActionsSignal } from "../state/actionSignals";
 import { cancelTopDialog } from "../state/dialogSignals";
+import { cancelSelectionShape } from "../map/selectionShapeCancel";
 import type { KeyCombination } from "@shared/types";
 
 /**
@@ -158,15 +160,22 @@ export function matchesKeyCombination(
  * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
  * Bypasses dispatching when focused on text inputs, dropdowns or the options of an open dropdown list, active inline rename editors, modal dialogs, or active PopupMenu instances.
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
+ * Before anything else, Escape (with any modifiers, wherever focus is) abandons a Selection Shape being drawn on the map and stops there, so the selection and tool are kept and only a further Escape runs cancel_action.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
  */
 export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
   if (e.defaultPrevented) {
+    return;
+  }
+
+  // Escape mid-drag discards the Selection Shape (Shift/Ctrl may still be held)
+  if (e.key === "Escape" && cancelSelectionShape()) {
+    e.preventDefault();
     return;
   }
 

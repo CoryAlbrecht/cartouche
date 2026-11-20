@@ -1,10 +1,10 @@
 /**
  * @file ThemeTokens.test.ts
  * @module tests/renderer/styles/ThemeTokens.test
- * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive; and (#364) that the TableWidget outer border reads the input border colour; and (#368) that the Active Layer's Tree Node Row reads the Layer Tree active fill, hover and inherited-foreground tokens.
+ * @description Automated verification test suite for Cartouche Two-Tier CSS theme token architecture (Tier 1 Theme Primitives and Tier 2 Component Tokens), verifying token definition, syntax validity, referential integrity, and decoupling from structural workbench stylesheet (ADR 0027 / Spec #195); and (Spec #349) that workbench.css and the TypeScript sources read only defined tokens, workbench.css reads no Tier 1 primitive in a colour declaration, every Tier 2 token maps to another token, and every defined token is read; and (#361) that the TypeScript sources read no Tier 1 primitive except the listed font-family reads, and the colours moved out of renderer TSX render unchanged from workbench.css; and (#362) that the UI colour literals moved out of renderer TSX live in workbench.css classes that read Tier 2 tokens, each mapped to the nearest Tier 1 primitive; and (#364) that the TableWidget outer border reads the input border colour; and (#368) that the Active Layer's Tree Node Row reads the Layer Tree active fill, hover and inherited-foreground tokens; and (#380) that the Selection Shape reads its map token.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-07
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -1900,6 +1900,33 @@ describe("Cartouche Two-Tier CSS Theme Token Architecture (ADR 0027 / Ticket #19
         "--cartouche-theme-fg-secondary",
     };
     assertMappings(expected);
+  });
+
+  it("styles the Selection Shape from --cartouche-map-selection-shape: amber, 2 px outline dashed 6 on / 4 off, 0.25 fill (Ticket #380)", () => {
+    assert.equal(tokenValue("--cartouche-theme-highlight"), "#f5a623");
+    assertMappings({
+      "--cartouche-map-selection-shape": "--cartouche-theme-highlight",
+    });
+    const selector = ".ol-box.cartouche-selection-shape";
+    assert.equal(
+      selectorDeclaration(selector, "background-color"),
+      "color-mix(in srgb, var(--cartouche-map-selection-shape) 25%, transparent)"
+    );
+    const dash = (direction: string): string =>
+      `repeating-linear-gradient(to ${direction}, var(--cartouche-map-selection-shape) 0 6px, transparent 6px 10px)`;
+    assert.equal(
+      selectorDeclaration(selector, "background-image")?.replace(/\s+/g, " "),
+      [dash("right"), dash("right"), dash("bottom"), dash("bottom")].join(", ")
+    );
+    assert.equal(
+      selectorDeclaration(selector, "background-size"),
+      "100% 2px, 100% 2px, 2px 100%, 2px 100%"
+    );
+    assert.equal(
+      selectorDeclaration(selector, "background-position"),
+      "left top, left bottom, left top, right top"
+    );
+    assert.equal(selectorDeclaration(selector, "border"), "none");
   });
 
   it("guarantees referential integrity of all var() references within theme-default.css", () => {

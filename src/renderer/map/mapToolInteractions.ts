@@ -1,13 +1,15 @@
 /**
  * @file mapToolInteractions.ts
  * @module renderer/map/mapToolInteractions
- * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click is the first handler; Select by Rectangle and Select by Lasso add their own entries, and vertex selection branches on the Selection Target inside them. All Selection Tools publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow.
+ * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click and Select by Rectangle have handlers; Select by Lasso adds its own entry, and vertex selection branches on the Selection Target inside them. All Selection Tools publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link mergeSelection}
  * @see {@link findTopmostFeatureAt}
+ * @see {@link findFeaturesOverlappingRegion}
+ * @see {@link beginSelectionShape}
  */
 
 import type OlMap from "ol/Map.js";
@@ -19,6 +21,9 @@ import { buffer as bufferExtent } from "ol/extent.js";
 import { unByKey } from "ol/Observable.js";
 import DragPan from "ol/interaction/DragPan.js";
 import DragZoom from "ol/interaction/DragZoom.js";
+import DoubleClickZoom from "ol/interaction/DoubleClickZoom.js";
+import DragBox, { type DragBoxEvent } from "ol/interaction/DragBox.js";
+import { primaryAction } from "ol/events/condition.js";
 import {
   selectedFeatureIdsSignal,
   selectionTargetSignal,
@@ -34,6 +39,12 @@ import {
   SELECTION_HIT_TOLERANCE_PX,
   type SymbolReachResolver,
 } from "./selectionHitTest";
+import {
+  createSelectionRegion,
+  findFeaturesOverlappingRegion,
+  type SelectionRegion,
+} from "./selectionRegion";
+import { beginSelectionShape } from "./selectionShapeCancel";
 
 /**
  * @description Largest symbol reach, in pixels, considered when gathering click candidates from the source's spatial index: features whose extent lies farther than this plus the hit tolerance from the pointer are never tested.
@@ -75,9 +86,10 @@ export function isSelectionTool(tool: ActiveTool): boolean {
 
 /**
  * @typedef {Object} MapNavigationState
- * @description Which of OpenLayers' default drag gestures are on.
+ * @description Which of OpenLayers' default pointer navigation gestures are on.
  * @property {boolean} dragPan - Primary-button drag pans the map.
  * @property {boolean} dragZoom - Shift+drag draws a box and zooms to it.
+ * @property {boolean} doubleClickZoom - Double-click zooms in (Shift+double-click out).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -86,11 +98,12 @@ export function isSelectionTool(tool: ActiveTool): boolean {
 export interface MapNavigationState {
   dragPan: boolean;
   dragZoom: boolean;
+  doubleClickZoom: boolean;
 }
 
 /**
  * @function resolveNavigationForTool
- * @description Decides which default drag gestures a map tool leaves on. A Selection Tool owns primary drags (and Shift+drag, which adds to the selection), so drag-pan and Shift+drag box zoom are off; every other tool keeps them (panning in other tools is deferred). Wheel zoom and keyboard navigation are never touched.
+ * @description Decides which default pointer navigation gestures a map tool leaves on. A Selection Tool owns primary clicks and drags (and Shift/Ctrl, which add and toggle), so drag-pan, Shift+drag box zoom and double-click zoom (which quick successive or Ctrl-clicks would trigger) are off; every other tool keeps them (panning in other tools is deferred). Wheel zoom, Alt+Shift+drag rotation and keyboard navigation are never touched.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -100,12 +113,16 @@ export interface MapNavigationState {
  */
 export function resolveNavigationForTool(tool: ActiveTool): MapNavigationState {
   const selecting = isSelectionTool(tool);
-  return { dragPan: !selecting, dragZoom: !selecting };
+  return {
+    dragPan: !selecting,
+    dragZoom: !selecting,
+    doubleClickZoom: !selecting,
+  };
 }
 
 /**
  * @function applyNavigationToMap
- * @description Activates or deactivates the map's DragPan and DragZoom interactions to match a navigation state.
+ * @description Activates or deactivates the map's DragPan, DragZoom and DoubleClickZoom interactions to match a navigation state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -122,6 +139,8 @@ export function applyNavigationToMap(
     if (interaction instanceof DragPan) interaction.setActive(state.dragPan);
     else if (interaction instanceof DragZoom) {
       interaction.setActive(state.dragZoom);
+    } else if (interaction instanceof DoubleClickZoom) {
+      interaction.setActive(state.doubleClickZoom);
     }
   }
 }
@@ -318,7 +337,104 @@ export const activateSelectByClick: MapToolHandler = (context) => {
 };
 
 /**
- * @description The tool handler table: the behaviour each map tool adds on the map. Tools without an entry only get their navigation state. Select by Rectangle and Select by Lasso register here.
+ * @description CSS class of the Selection Shape element OpenLayers' DragBox draws for Select by Rectangle; workbench.css styles it from the `--cartouche-map-selection-shape` Theme token.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {string}
+ */
+export const SELECTION_SHAPE_CLASS = "cartouche-selection-shape";
+
+/**
+ * @function selectFeaturesInRegion
+ * @description Performs one area selection (Select by Rectangle, and later Select by Lasso): with a valid Active Layer, publishes the ids of its features overlapping the region under the given modifiers, so a plain gesture overlapping nothing clears the selection; without one, changes nothing. The region is tested against the features in the renderer's source: a Selection Shape lies within the visible map, which every loading strategy has loaded.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {SelectableLayer | null} layer - The valid Active Layer, or null.
+ * @param {SelectionRegion} region - The Selection Shape's region in the display CRS.
+ * @param {SelectionModifiers} modifiers - Modifiers held at the end of the gesture.
+ * @returns {void}
+ */
+export function selectFeaturesInRegion(
+  layer: SelectableLayer | null,
+  region: SelectionRegion,
+  modifiers: SelectionModifiers
+): void {
+  if (!layer) return;
+  publishFeatureSelection(
+    findFeaturesOverlappingRegion(layer.source, region),
+    modifiers
+  );
+}
+
+/**
+ * @function isSelectionShapeDragStart
+ * @description Whether a pointer-down starts drawing a Selection Shape: the primary button of the primary pointer, with or without Shift/Ctrl, but not with Alt (Alt+Shift+drag stays OpenLayers' rotation).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {MapBrowserEvent<PointerEvent>} evt - Pointer-down map browser event.
+ * @returns {boolean} True when the drag draws a Selection Shape.
+ */
+export function isSelectionShapeDragStart(
+  evt: MapBrowserEvent<PointerEvent>
+): boolean {
+  return primaryAction(evt) && !evt.originalEvent.altKey;
+}
+
+/**
+ * @function activateSelectByRectangle
+ * @description {@link MapToolHandler} for Select by Rectangle: adds an OpenLayers DragBox (class {@link SELECTION_SHAPE_CLASS}) whose primary drag spans the rectangle's diagonal, shown live as the Selection Shape. On release, while the Selection Target is features, the features of the Active Layer overlapping the rectangle (its four corners as a ring, so a rotated view stays exact) are merged into the selection with the Shift/Ctrl held at release ({@link selectFeaturesInRegion}). While a drag is in progress it is registered with {@link beginSelectionShape}, so Escape discards the shape without selecting and keeps the tool. Drags shorter than OpenLayers' minimum box (8 px diagonal) select nothing. With no valid Active Layer, or while the Selection Target is vertices, the shape is still drawn but nothing is selected.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {MapToolContext} context - Map tool context.
+ * @returns {() => void} Removes the DragBox (abandoning a drag in progress).
+ */
+export const activateSelectByRectangle: MapToolHandler = (context) => {
+  const dragBox = new DragBox({
+    className: SELECTION_SHAPE_CLASS,
+    condition: isSelectionShapeDragStart,
+  });
+  let endShape: (() => void) | null = null;
+  const finishShape = (): void => {
+    endShape?.();
+    endShape = null;
+  };
+  dragBox.on("boxstart", () => {
+    endShape = beginSelectionShape(() => {
+      finishShape();
+      // Deactivating drops the box (firing boxcancel); the rest of the drag is ignored.
+      dragBox.setActive(false);
+      dragBox.setActive(true);
+    });
+  });
+  dragBox.on("boxcancel", finishShape);
+  dragBox.on("boxend", (evt: DragBoxEvent) => {
+    finishShape();
+    if (selectionTargetSignal.peek() !== "features") return;
+    const ring = dragBox.getGeometry()?.getCoordinates()[0];
+    if (!ring) return;
+    selectFeaturesInRegion(
+      context.getSelectableLayer(),
+      createSelectionRegion(ring),
+      readSelectionModifiers(evt.mapBrowserEvent?.originalEvent as PointerEvent)
+    );
+  });
+  context.map.addInteraction(dragBox);
+  return () => {
+    finishShape();
+    context.map.removeInteraction(dragBox);
+  };
+};
+
+/**
+ * @description The tool handler table: the behaviour each map tool adds on the map. Tools without an entry only get their navigation state. Select by Lasso registers here.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -327,6 +443,7 @@ export const activateSelectByClick: MapToolHandler = (context) => {
  */
 export const MAP_TOOL_HANDLERS: Partial<Record<ActiveTool, MapToolHandler>> = {
   select_click: activateSelectByClick,
+  select_rectangle: activateSelectByRectangle,
 };
 
 /**

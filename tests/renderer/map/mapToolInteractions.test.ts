@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.test.ts
  * @module tests/renderer/map/mapToolInteractions.test
- * @description Tests for the tool-driven map interactions: which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, and how the tool's handler is swapped as the active tool changes.
+ * @description Tests for the tool-driven map interactions: which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, and how the tool's handler is swapped as the active tool changes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -27,10 +27,13 @@ import {
   publishFeatureSelection,
   selectByClickAt,
   symbolReachFromStyles,
+  selectFeaturesInRegion,
+  isSelectionShapeDragStart,
   MapToolInteractions,
   type MapToolContext,
   type MapToolHandler,
 } from "../../../src/renderer/map/mapToolInteractions";
+import { createRectangleRegion } from "../../../src/renderer/map/selectionRegion";
 
 const NONE = { shift: false, ctrl: false };
 
@@ -67,7 +70,7 @@ describe("isSelectionTool / resolveNavigationForTool", () => {
     assert.equal(isSelectionTool("point"), false);
   });
 
-  it("turns off drag-pan and Shift+drag zoom while a Selection Tool is active", () => {
+  it("turns off drag-pan, Shift+drag zoom and double-click zoom while a Selection Tool is active", () => {
     for (const tool of [
       "select_click",
       "select_rectangle",
@@ -76,15 +79,17 @@ describe("isSelectionTool / resolveNavigationForTool", () => {
       assert.deepEqual(resolveNavigationForTool(tool), {
         dragPan: false,
         dragZoom: false,
+        doubleClickZoom: false,
       });
     }
   });
 
-  it("leaves drag-pan and Shift+drag zoom on for Pan and the other tools", () => {
+  it("leaves drag-pan, Shift+drag zoom and double-click zoom on for Pan and the other tools", () => {
     for (const tool of ["pan", "point", "line", "polygon"] as const) {
       assert.deepEqual(resolveNavigationForTool(tool), {
         dragPan: true,
         dragZoom: true,
+        doubleClickZoom: true,
       });
     }
   });
@@ -188,14 +193,22 @@ describe("MapToolInteractions", () => {
     });
 
     interactions.setTool("select_click");
-    assert.deepEqual(navigation.at(-1), { dragPan: false, dragZoom: false });
+    assert.deepEqual(navigation.at(-1), {
+      dragPan: false,
+      dragZoom: false,
+      doubleClickZoom: false,
+    });
     assert.deepEqual(log, ["activate"]);
 
     interactions.setTool("select_click");
     assert.deepEqual(log, ["activate"], "same tool does not reactivate");
 
     interactions.setTool("pan");
-    assert.deepEqual(navigation.at(-1), { dragPan: true, dragZoom: true });
+    assert.deepEqual(navigation.at(-1), {
+      dragPan: true,
+      dragZoom: true,
+      doubleClickZoom: true,
+    });
     assert.deepEqual(log, ["activate", "deactivate"]);
 
     interactions.setTool("select_click");
@@ -222,5 +235,85 @@ describe("selectByClickAt", () => {
     const before = selectedFeatureIdsSignal.value;
     selectByClickAt(null, [50, 50], 1, NONE);
     assert.equal(selectedFeatureIdsSignal.value, before);
+  });
+});
+
+describe("selectFeaturesInRegion", () => {
+  /**
+   * @function layerWithSquares
+   * @description A selectable layer with squares 1 ([0,10]) and 2 ([20,30]).
+   * @returns {{ source: VectorSource }} Layer.
+   */
+  function layerWithSquares(): { source: VectorSource } {
+    const source = new VectorSource();
+    source.addFeatures([polygonFeature(1, 0, 10), polygonFeature(2, 20, 30)]);
+    return { source };
+  }
+
+  beforeEach(() => {
+    selectedFeatureIdsSignal.value = new Set([2]);
+  });
+
+  it("replaces the selection with the features overlapping the region", () => {
+    selectFeaturesInRegion(
+      layerWithSquares(),
+      createRectangleRegion([5, 5, 15, 15]),
+      NONE
+    );
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+
+  it("adds with Shift and toggles each with Ctrl", () => {
+    const layer = layerWithSquares();
+    const both = createRectangleRegion([5, 5, 25, 25]);
+    selectFeaturesInRegion(layer, createRectangleRegion([5, 5, 15, 15]), {
+      shift: true,
+      ctrl: false,
+    });
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [1, 2]);
+    selectedFeatureIdsSignal.value = new Set([2]);
+    selectFeaturesInRegion(layer, both, { shift: false, ctrl: true });
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+
+  it("clears the selection when a plain rectangle overlaps nothing", () => {
+    selectFeaturesInRegion(
+      layerWithSquares(),
+      createRectangleRegion([100, 100, 200, 200]),
+      NONE
+    );
+    assert.equal(selectedFeatureIdsSignal.value.size, 0);
+  });
+
+  it("changes nothing without a valid Active Layer", () => {
+    const before = selectedFeatureIdsSignal.value;
+    selectFeaturesInRegion(null, createRectangleRegion([0, 0, 50, 50]), NONE);
+    assert.equal(selectedFeatureIdsSignal.value, before);
+  });
+});
+
+describe("isSelectionShapeDragStart", () => {
+  /**
+   * @function down
+   * @description A map browser event stand-in carrying a pointer event.
+   * @param {object} pointer - Pointer event fields.
+   * @returns {any} Event.
+   */
+  const down = (pointer: object): any => ({
+    originalEvent: { pointerId: 1, isPrimary: true, button: 0, ...pointer },
+  });
+
+  it("starts on a primary-button drag, also with Shift or Ctrl", () => {
+    assert.equal(isSelectionShapeDragStart(down({})), true);
+    assert.equal(isSelectionShapeDragStart(down({ shiftKey: true })), true);
+    assert.equal(isSelectionShapeDragStart(down({ ctrlKey: true })), true);
+  });
+
+  it("does not start on other buttons or with Alt held (Alt+Shift+drag rotates)", () => {
+    assert.equal(isSelectionShapeDragStart(down({ button: 2 })), false);
+    assert.equal(
+      isSelectionShapeDragStart(down({ altKey: true, shiftKey: true })),
+      false
+    );
   });
 });
