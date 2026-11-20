@@ -267,7 +267,8 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   },
   {
     name: "vertex_editor",
-    description: "Toggles interactive vertex and edge editing mode",
+    description:
+      "Toggles Vertex Editor Mode, in which the Selection Tools select vertices",
     icon: mdiVectorPointSelect,
     keyCombination: { key: "v" },
     functionCall: ApiFunctions.vertexEditor,

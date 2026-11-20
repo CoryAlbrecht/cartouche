@@ -94,6 +94,7 @@ import {
   restoreLayerToolbarState,
   handleActiveLayerChange,
   resetLayerToolbarMemoryState,
+  migrateActiveTool,
   type LayerToolbarState,
 } from "./layerToolbarMemory";
 import {
@@ -174,8 +175,9 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
- * @typedef {'pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon' | 'vertex_editor'} ActiveTool
- * @description Supported interactive canvas tool modes.
+ * @typedef {'pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon'} ActiveTool
+ * @description Supported interactive canvas tool modes. Vertex Editor Mode is a
+ * separate toggle ({@link vertexEditorModeSignal}), not a tool.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-11-20
@@ -188,12 +190,11 @@ export type ActiveTool =
   | "select_lasso"
   | "point"
   | "line"
-  | "polygon"
-  | "vertex_editor";
+  | "polygon";
 
 /**
  * @signal activeToolSignal
- * @description Active canvas interactive tool mode ('pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon' | 'vertex_editor').
+ * @description Active canvas interactive tool mode ('pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
  * @updated 2026-11-20
@@ -263,10 +264,57 @@ activeLayerIdSignal.subscribe((activeId) => {
     activeId === null
     && (activeToolSignal.value === "point"
       || activeToolSignal.value === "line"
-      || activeToolSignal.value === "polygon"
-      || activeToolSignal.value === "vertex_editor")
+      || activeToolSignal.value === "polygon")
   ) {
     activeToolSignal.value = "pan";
+  }
+});
+
+/**
+ * @signal vertexEditorModeSignal
+ * @description Vertex Editor Mode toggle: while true, the Selection Tools and
+ * selection actions act on the Active Layer's vertices instead of its features.
+ * Independent of {@link activeToolSignal}; only on while the Active Layer is in
+ * Layer Edit Mode, and stored per layer as Ephemeral Layer Toolbar State.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const vertexEditorModeSignal = signal<boolean>(false);
+
+/**
+ * @typedef {'features' | 'vertices'} SelectionTarget
+ * @description The kind of item the Selection Tools and selection actions act on.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ */
+export type SelectionTarget = "features" | "vertices";
+
+/**
+ * @signal selectionTargetSignal
+ * @description Derived Selection Target: `vertices` exactly when Vertex Editor
+ * Mode is on, otherwise `features`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {ReadonlySignal<SelectionTarget>}
+ */
+export const selectionTargetSignal = computed<SelectionTarget>(() =>
+  vertexEditorModeSignal.value ? "vertices" : "features"
+);
+
+// Leaving Layer Edit Mode on the Active Layer, by any route, turns Vertex Editor Mode off
+editableLayerIdsSignal.subscribe((editableIds) => {
+  if (
+    vertexEditorModeSignal.peek()
+    && !isLayerInEditMode(activeLayerIdSignal.peek(), editableIds)
+  ) {
+    vertexEditorModeSignal.value = false;
   }
 });
 
@@ -3323,9 +3371,11 @@ export function pasteFeaturesAction(): void {
 /**
  * @description Action handler toggling vector feature editing mode for the active or specified layer.
  * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
+ * Toggling editing off also turns Vertex Editor Mode off for that layer, including its stored
+ * Ephemeral Layer Toolbar State.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
  * @param {Object} [options] - Optional toggle execution settings.
@@ -3347,12 +3397,12 @@ export function toggleLayerEditingAction(
     }
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
+    setLayerToolbarPreference(targetId, "vertexEditorMode", false);
     if (
       activeLayerIdSignal.value === targetId
       && (activeToolSignal.value === "point"
         || activeToolSignal.value === "line"
-        || activeToolSignal.value === "polygon"
-        || activeToolSignal.value === "vertex_editor")
+        || activeToolSignal.value === "polygon")
     ) {
       captureLayerToolbarState(targetId);
       activeToolSignal.value = "pan";
@@ -3364,9 +3414,8 @@ export function toggleLayerEditingAction(
       activeLayerIdSignal.value === targetId
       && activeToolSignal.value === "pan"
     ) {
-      const cached = getLayerToolbarPreference<ActiveTool>(
-        targetId,
-        "digitizingTool"
+      const cached = migrateActiveTool(
+        getLayerToolbarPreference<string>(targetId, "digitizingTool")
       );
       if (cached) {
         activeToolSignal.value = cached;
@@ -3376,19 +3425,21 @@ export function toggleLayerEditingAction(
 }
 
 /**
- * @description Action handler toggling interactive vertex and edge editing mode.
+ * @description Action handler (`vertex_editor`, V) toggling Vertex Editor Mode without
+ * changing the active map tool. Does nothing unless the Active Layer is in Layer Edit Mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function vertexEditorAction(): void {
-  if (activeToolSignal.value === "vertex_editor") {
-    activeToolSignal.value = "pan";
-  } else {
-    activeToolSignal.value = "vertex_editor";
+  if (
+    !isLayerInEditMode(activeLayerIdSignal.value, editableLayerIdsSignal.value)
+  ) {
+    return;
   }
+  vertexEditorModeSignal.value = !vertexEditorModeSignal.value;
 }
 
 /**
