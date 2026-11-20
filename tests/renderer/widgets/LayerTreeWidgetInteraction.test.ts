@@ -1,10 +1,10 @@
 /**
  * @file LayerTreeWidgetInteraction.test.ts
  * @module tests/renderer/widgets/LayerTreeWidgetInteraction.test
- * @description Component tests for LayerTreeWidget interaction triggers verifying active layer transitions on primary click, double click, arrow navigation, PopupMenu preservation, and empty viewport clicks.
+ * @description Component tests for LayerTreeWidget interaction triggers verifying active layer transitions on primary click, double click, arrow navigation, PopupMenu preservation, and empty viewport clicks, plus Tree Node Row Title multi-selection rules: plain, Ctrl and Shift clicks, and the selection snapshot restored by a rename double-click (#369).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-18
+ * @updated 2026-11-19
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -218,6 +218,58 @@ function findAllNodes(node: any, predicate: (el: any) => boolean): any[] {
   return result;
 }
 
+/**
+ * @function titleOf
+ * @description Finds the Tree Node Row Title of the layer, group or project node row whose text contains the given display name.
+ * @param {any} root - Rendered container to search.
+ * @param {string} name - Display name of the target node.
+ * @returns {any} The `.tree-node-title` element of the matching row.
+ */
+function titleOf(root: any, name: string): any {
+  const row = findAllNodes(
+    root,
+    (el) =>
+      el.className.includes("tree-node-row") && el.textContent.includes(name)
+  )[0];
+  assert.ok(row, `Row for "${name}" must exist`);
+  const title = findAllNodes(row, (el) =>
+    el.className.includes("tree-node-title")
+  )[0];
+  assert.ok(title, `Title for "${name}" must exist`);
+  return title;
+}
+
+/**
+ * @function fireMouse
+ * @description Dispatches a bubbling mock mouse event on an element inside React's act().
+ * @param {any} el - Target element.
+ * @param {string} type - Event type (`click`, `dblclick`, ...).
+ * @param {Object} [init] - Extra event init fields (modifiers, `detail` click count).
+ * @returns {Promise<void>}
+ */
+async function fireMouse(
+  el: any,
+  type: string,
+  init: Record<string, unknown> = {}
+): Promise<void> {
+  const MouseEventCtor = Reflect.get(window, "MouseEvent");
+  await act(async () => {
+    el.dispatchEvent(new MouseEventCtor(type, { bubbles: true, ...init }));
+  });
+}
+
+/**
+ * @function doubleClick
+ * @description Replays the browser's native double-click sequence on an element: `click` (detail 1), `click` (detail 2), then `dblclick`.
+ * @param {any} el - Target element.
+ * @returns {Promise<void>}
+ */
+async function doubleClick(el: any): Promise<void> {
+  await fireMouse(el, "click", { detail: 1 });
+  await fireMouse(el, "click", { detail: 2 });
+  await fireMouse(el, "dblclick", { detail: 2 });
+}
+
 describe("LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)", () => {
   let container: MockElement;
   let root: Root | null = null;
@@ -387,6 +439,7 @@ describe("LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)", () => {
         ctrlKey: boolean;
         metaKey: boolean;
         shiftKey: boolean;
+        detail: number;
         constructor(type: string, init?: any) {
           this.type = type;
           this.bubbles = Boolean(init?.bubbles);
@@ -397,6 +450,7 @@ describe("LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)", () => {
           this.ctrlKey = Boolean(init?.ctrlKey);
           this.metaKey = Boolean(init?.metaKey);
           this.shiftKey = Boolean(init?.shiftKey);
+          this.detail = init?.detail ?? 1;
         }
         preventDefault() {}
         stopPropagation() {}
@@ -866,38 +920,200 @@ describe("LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)", () => {
     assert.strictEqual(editingNodeIdSignal.value, "group-transport");
   });
 
-  it("primary click on already-selected leaf layer title designates it active while preserving multi-selection set", async () => {
-    // Select both layers
-    setNodeSelection(["layer-roads", "layer-rail"]);
+  it("plain click on an already-selected leaf layer title collapses the multi-selection to that layer and designates it active (#369)", async () => {
+    setNodeSelection(["layer-roads", "layer-rail", "layer-boundary"]);
     activeLayerIdSignal.value = "layer-roads";
 
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
     });
 
-    const railRow = findAllNodes(
-      container,
-      (el) =>
-        el.className.includes("tree-node-layer")
-        && el.textContent.includes("Railway Lines")
-    )[0];
-    const railTitle = findAllNodes(railRow, (el) =>
-      el.className.includes("tree-node-title")
-    )[0];
-    assert.ok(railTitle, "Rail title element must exist");
+    await fireMouse(titleOf(container, "Railway Lines"), "click");
+
+    assert.strictEqual(activeLayerIdSignal.value, "layer-rail");
+    assert.deepEqual(selectedNodeIdsSignal.value, ["layer-rail"]);
+  });
+
+  it("plain click on an already-selected group or project node title collapses the multi-selection to that node and clears the active layer (#369)", async () => {
+    setNodeSelection(["group-transport", "layer-boundary", "project"]);
+    activeLayerIdSignal.value = "layer-boundary";
 
     await act(async () => {
-      railTitle.dispatchEvent(
-        new (window as any).MouseEvent("click", { bubbles: true })
-      );
+      root!.render(React.createElement(LayerTreeWidget));
     });
 
-    // Active layer updates to layer-rail
-    assert.strictEqual(activeLayerIdSignal.value, "layer-rail");
-    // Multi-selection set is preserved
-    assert.deepEqual(selectedNodeIdsSignal.value.slice().sort(), [
-      "layer-rail",
+    await fireMouse(titleOf(container, "Transportation"), "click");
+    assert.deepEqual(selectedNodeIdsSignal.value, ["group-transport"]);
+    assert.strictEqual(activeLayerIdSignal.value, null);
+
+    setNodeSelection(["group-transport", "layer-boundary", "project"]);
+    activeLayerIdSignal.value = "layer-boundary";
+    await fireMouse(titleOf(container, "Urban Transit Study"), "click");
+    assert.deepEqual(selectedNodeIdsSignal.value, ["project"]);
+    assert.strictEqual(activeLayerIdSignal.value, null);
+  });
+
+  it("Shift-click and Ctrl-click on Tree Node Row Titles select a range and toggle selected nodes (#369)", async () => {
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    await fireMouse(titleOf(container, "Road Network"), "click");
+    await fireMouse(titleOf(container, "City Boundary"), "click", {
+      shiftKey: true,
+    });
+    assert.deepEqual(selectedNodeIdsSignal.value, [
       "layer-roads",
+      "layer-rail",
+      "layer-boundary",
+    ]);
+
+    await fireMouse(titleOf(container, "Railway Lines"), "click", {
+      ctrlKey: true,
+    });
+    assert.deepEqual(selectedNodeIdsSignal.value.slice().sort(), [
+      "layer-boundary",
+      "layer-roads",
+    ]);
+  });
+
+  it("double-clicking the title of one selected node renames it and restores the multi-selection, for layers, groups and the project node (#369)", async () => {
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const cases: Array<{
+      name: string;
+      id: string;
+      expectedActive: string | null;
+    }> = [
+      { name: "Railway Lines", id: "layer-rail", expectedActive: "layer-rail" },
+      { name: "Transportation", id: "group-transport", expectedActive: null },
+      { name: "Urban Transit Study", id: "project", expectedActive: null },
+    ];
+    for (const { name, id, expectedActive } of cases) {
+      editingNodeIdSignal.value = null;
+      const selection = ["project", "group-transport", "layer-rail"];
+      setNodeSelection(selection);
+      await act(async () => {});
+
+      await doubleClick(titleOf(container, name));
+
+      assert.strictEqual(editingNodeIdSignal.value, id, `${name} renaming`);
+      assert.deepEqual(
+        selectedNodeIdsSignal.value.slice().sort(),
+        selection.slice().sort(),
+        `${name}: multi-selection restored`
+      );
+      assert.strictEqual(activeLayerIdSignal.value, expectedActive);
+    }
+  });
+
+  it("a stale selection snapshot is never restored by a later double-click (#369)", async () => {
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    // Later double-click on the node that collapsed the selection
+    setNodeSelection(["layer-roads", "layer-rail", "layer-boundary"]);
+    await fireMouse(titleOf(container, "Railway Lines"), "click");
+    assert.deepEqual(selectedNodeIdsSignal.value, ["layer-rail"]);
+    await doubleClick(titleOf(container, "Railway Lines"));
+    assert.deepEqual(selectedNodeIdsSignal.value, ["layer-rail"]);
+    assert.strictEqual(editingNodeIdSignal.value, "layer-rail");
+
+    // Double-click on a different node
+    editingNodeIdSignal.value = null;
+    setNodeSelection(["layer-roads", "layer-rail", "layer-boundary"]);
+    await fireMouse(titleOf(container, "Railway Lines"), "click");
+    await doubleClick(titleOf(container, "Road Network"));
+    assert.deepEqual(selectedNodeIdsSignal.value, ["layer-roads"]);
+    assert.strictEqual(editingNodeIdSignal.value, "layer-roads");
+  });
+
+  it("a key press or a double-click on a group or project node row outside its title discards the selection snapshot (#369)", async () => {
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+    const selection = ["project", "group-transport", "layer-rail"];
+    const rowOf = (title: any): any => title.parentNode;
+
+    // Synthetic order: the snapshot must already be gone before the repeat click and dblclick
+    const cases: Array<{
+      name: string;
+      id: string;
+      discard: () => Promise<void>;
+    }> = [
+      {
+        name: "Transportation",
+        id: "group-transport",
+        discard: () =>
+          fireMouse(rowOf(titleOf(container, "Transportation")), "dblclick", {
+            detail: 2,
+          }),
+      },
+      {
+        name: "Urban Transit Study",
+        id: "project",
+        discard: () =>
+          fireMouse(
+            rowOf(titleOf(container, "Urban Transit Study")),
+            "dblclick",
+            { detail: 2 }
+          ),
+      },
+      {
+        name: "Railway Lines",
+        id: "layer-rail",
+        discard: async () => {
+          const tree = findAllNodes(container, (el) =>
+            el.className.includes("layer-tree-container")
+          )[0];
+          await act(async () => {
+            tree.dispatchEvent(
+              new (Reflect.get(window, "KeyboardEvent"))("keydown", {
+                bubbles: true,
+                key: "Shift",
+              })
+            );
+          });
+        },
+      },
+    ];
+    for (const { name, id, discard } of cases) {
+      editingNodeIdSignal.value = null;
+      setNodeSelection(selection);
+      await act(async () => {});
+
+      const title = titleOf(container, name);
+      await fireMouse(title, "click", { detail: 1 });
+      await discard();
+      await fireMouse(title, "click", { detail: 2 });
+      await fireMouse(title, "dblclick", { detail: 2 });
+
+      assert.deepEqual(
+        selectedNodeIdsSignal.value,
+        [id],
+        `${name}: not restored`
+      );
+    }
+  });
+
+  it("a drag gesture starting on a selected title does not collapse the multi-selection (#369)", async () => {
+    setNodeSelection(["layer-roads", "layer-rail", "layer-boundary"]);
+
+    await act(async () => {
+      root!.render(React.createElement(LayerTreeWidget));
+    });
+
+    const railTitle = titleOf(container, "Railway Lines");
+    await fireMouse(railTitle, "mousedown", { clientX: 0, clientY: 0 });
+    await fireMouse(railTitle, "click", { clientX: 40, clientY: 0 });
+
+    assert.deepEqual(selectedNodeIdsSignal.value, [
+      "layer-roads",
+      "layer-rail",
+      "layer-boundary",
     ]);
   });
 

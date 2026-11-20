@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useRef, useCallback } from "react";
+import { batch } from "@preact/signals-react";
 import { useSignals } from "@preact/signals-react/runtime";
 import { BasicWidget } from "./BasicWidget";
 import Icon from "@renderer/components/common/Icon";
@@ -73,6 +74,7 @@ import {
   selectSingleNode,
   toggleNodeSelection,
   selectRangeNodes,
+  setNodeSelection,
   clearNodeSelection,
   renameNode,
   isProjectDirtySignal,
@@ -167,6 +169,23 @@ const MOUSE_DRAG_MOVE_THRESHOLD_PX = 5;
 const MOUSE_CLICK_HOLD_TIMEOUT_MS = 800;
 
 /**
+ * @typedef {Object} SelectionSnapshot
+ * @description Multi-selection saved when a plain primary-click collapsed it onto one of its nodes (#369).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-19
+ * @updated 2026-11-19
+ * @since 0.1.0-dev
+ * @property {string} nodeId - Node whose click collapsed the selection.
+ * @property {string[]} selectedNodeIds - Selected node identifiers before the collapse.
+ * @property {string | null} anchorId - Shift-click range anchor before the collapse.
+ */
+interface SelectionSnapshot {
+  readonly nodeId: string;
+  readonly selectedNodeIds: string[];
+  readonly anchorId: string | null;
+}
+
+/**
  * @typedef {Object} LayerTreeWidgetProps
  * @property {boolean} [overlappable=true] - Whether this widget can be grouped into an OverlapTabWidget container.
  * @property {() => void} [onClose] - Callback when widget is closed.
@@ -216,6 +235,28 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
 
   // Selection range anchor reference
   const selectionAnchorRef = useRef<string | null>(null);
+
+  /**
+   * @description Multi-selection saved when a plain primary-click collapses it onto one of its nodes, so that a double-click on that node's Tree Node Row Title can restore it before inline renaming (#369). Cleared by any later single click, modified click, key press or row double-click.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @type {React.MutableRefObject<SelectionSnapshot | null>}
+   */
+  const selectionSnapshotRef = useRef<SelectionSnapshot | null>(null);
+
+  /**
+   * @description Discards the saved multi-selection in {@link selectionSnapshotRef}. Called on every event that invalidates it: a key press in the tree, a single or modified click, and a Tree Node Row double-click outside the title (#369).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  const discardSelectionSnapshot = useCallback((): void => {
+    selectionSnapshotRef.current = null;
+  }, []);
 
   // Drag and drop state
   const draggedNodeIdsRef = useRef<string[]>([]);
@@ -292,6 +333,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   // Keyboard navigation handler
   const handleTreeKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      discardSelectionSnapshot();
       // Ignore tree keyboard shortcuts when editing a node title or when focused on editable input elements
       if (editingNodeIdSignal.value !== null) {
         return;
@@ -400,10 +442,20 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
         }
       }
     },
-    [tree]
+    [tree, discardSelectionSnapshot]
   );
 
-  // Row selection handler
+  /**
+   * @description Applies desktop multi-selection rules to a primary click on a Tree Node Row (Ctrl/Cmd toggles, Shift selects a range from the anchor, a plain click selects only the clicked node) and updates the Active Layer per ADR 0016. A plain single click that collapses a multi-selection saves it in {@link selectionSnapshotRef}; the second click of a double-click on the same node keeps that snapshot.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-10-09
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @param {React.MouseEvent} e - Mouse event; `detail` is the native click count.
+   * @param {string} nodeId - Target node identifier.
+   * @param {boolean} isLayer - True if target node is a leaf layer.
+   * @returns {void}
+   */
   const handleRowClick = (
     e: React.MouseEvent,
     nodeId: string,
@@ -411,12 +463,34 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
   ) => {
     e.stopPropagation();
 
+    const isModified = e.ctrlKey || e.metaKey || e.shiftKey;
+    const isRepeatClick = e.detail > 1;
+    if (
+      isModified
+      || !isRepeatClick
+      || selectionSnapshotRef.current?.nodeId !== nodeId
+    ) {
+      discardSelectionSnapshot();
+    }
+
     if (e.ctrlKey || e.metaKey) {
       toggleNodeSelection(nodeId);
       selectionAnchorRef.current = nodeId;
     } else if (e.shiftKey && selectionAnchorRef.current) {
       selectRangeNodes(selectionAnchorRef.current, nodeId);
     } else {
+      const currentSelection = selectedNodeIdsSignal.value;
+      if (
+        !isRepeatClick
+        && currentSelection.length > 1
+        && currentSelection.includes(nodeId)
+      ) {
+        selectionSnapshotRef.current = {
+          nodeId,
+          selectedNodeIds: [...currentSelection],
+          anchorId: selectionAnchorRef.current,
+        };
+      }
       selectSingleNode(nodeId);
       selectionAnchorRef.current = nodeId;
     }
@@ -426,6 +500,23 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
     } else {
       setActiveLayer(null);
     }
+  };
+
+  /**
+   * @description Restores the multi-selection saved by {@link handleRowClick} when the double-clicked Tree Node Row Title belongs to the node that collapsed it, then discards the snapshot either way (#369).
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-19
+   * @updated 2026-11-19
+   * @since 0.1.0-dev
+   * @param {string} nodeId - Node whose title was double-clicked.
+   * @returns {void}
+   */
+  const restoreSelectionSnapshot = (nodeId: string): void => {
+    const snapshot = selectionSnapshotRef.current;
+    discardSelectionSnapshot();
+    if (snapshot?.nodeId !== nodeId) return;
+    setNodeSelection(snapshot.selectedNodeIds);
+    selectionAnchorRef.current = snapshot.anchorId;
   };
 
   /**
@@ -1016,6 +1107,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           onClick={(e) => handleRowClickWithEditCheck(e, layer.id, true)}
           onDoubleClick={(e) => {
             e.stopPropagation();
+            discardSelectionSnapshot();
             if (layer.id) {
               openLayerPropertiesDialog(layer.id);
             }
@@ -1055,30 +1147,28 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           <span
             className='tree-node-title'
             title={resolvedName}
-            onClick={(e) => {
-              if (layer.id) {
-                setActiveLayer(layer.id);
-              }
-              if (isSelected) {
-                e.stopPropagation();
-              }
-            }}
             onDoubleClick={(e) => {
-              if (layer.id) {
-                setActiveLayer(layer.id);
-              }
               const target = e.target as HTMLElement | null;
               if (
                 target
                 && typeof target.className === "string"
                 && target.className.includes("tree-node-count")
               ) {
+                if (layer.id) {
+                  setActiveLayer(layer.id);
+                }
                 return;
               }
               e.stopPropagation();
-              if (layer.id && !isEditing) {
-                setEditingNodeId(layer.id);
-              }
+              batch(() => {
+                if (layer.id) {
+                  setActiveLayer(layer.id);
+                }
+                restoreSelectionSnapshot(layer.id);
+                if (layer.id && !isEditing) {
+                  setEditingNodeId(layer.id);
+                }
+              });
             }}>
             {isEditing ?
               <InlineRenameInput
@@ -1155,6 +1245,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           onDrop={(e) => handleDrop(e, group)}
           onMouseDown={(e) => handleRowMouseDown(e, groupId, false)}
           onClick={(e) => handleRowClickWithEditCheck(e, groupId, false)}
+          onDoubleClick={discardSelectionSnapshot}
           onContextMenu={(e) => handleContextMenu(e, group)}>
           <span
             className='tree-chevron'
@@ -1187,18 +1278,15 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
           <span
             className='tree-node-title'
             title={group.name}
-            onClick={(e) => {
-              setActiveLayer(null);
-              if (isSelected) {
-                e.stopPropagation();
-              }
-            }}
             onDoubleClick={(e) => {
               e.stopPropagation();
-              setActiveLayer(null);
-              if (groupId && !isEditing) {
-                setEditingNodeId(groupId);
-              }
+              batch(() => {
+                setActiveLayer(null);
+                restoreSelectionSnapshot(groupId);
+                if (groupId && !isEditing) {
+                  setEditingNodeId(groupId);
+                }
+              });
             }}>
             {isEditing ?
               <InlineRenameInput
@@ -1367,6 +1455,7 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 onClick={(e) =>
                   handleRowClickWithEditCheck(e, "project", false)
                 }
+                onDoubleClick={discardSelectionSnapshot}
                 onContextMenu={handleProjectContextMenu}>
                 <input
                   type='checkbox'
@@ -1386,18 +1475,15 @@ export const LayerTreeWidget: React.FC<LayerTreeWidgetProps> = (props) => {
                 <span
                   className='tree-node-title project-title'
                   title={projectName}
-                  onClick={(e) => {
-                    setActiveLayer(null);
-                    if (selectedNodeIds.includes("project")) {
-                      e.stopPropagation();
-                    }
-                  }}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
-                    setActiveLayer(null);
-                    if (editingNodeId !== "project") {
-                      setEditingNodeId("project");
-                    }
+                    batch(() => {
+                      setActiveLayer(null);
+                      restoreSelectionSnapshot("project");
+                      if (editingNodeId !== "project") {
+                        setEditingNodeId("project");
+                      }
+                    });
                   }}>
                   {editingNodeId === "project" ?
                     <InlineRenameInput
