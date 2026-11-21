@@ -4,7 +4,7 @@
  * @description Component tests for LayerTreeWidget interaction triggers verifying active layer transitions on primary click, double click, arrow navigation, PopupMenu preservation, and empty viewport clicks, plus Tree Node Row Title multi-selection rules: plain, Ctrl and Shift clicks, and the selection snapshot restored by a rename double-click (#369).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-26
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link LayerTreeWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -691,7 +691,7 @@ describe("LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)", () => {
 
   it("secondary click on group or project root opens PopupMenu, and Escape key dismisses it", async () => {
     selectSingleNode("group-transport");
-    activeToolSignal.value = "select";
+    activeToolSignal.value = "select_click";
 
     await act(async () => {
       root!.render(React.createElement(LayerTreeWidget));
@@ -742,7 +742,7 @@ describe("LayerTreeWidget Interaction Triggers (Ticket #92, ADR 0016)", () => {
       "PopupMenu must be dismissed after Escape key on group"
     );
     assert.deepEqual(selectedNodeIdsSignal.value, ["group-transport"]);
-    assert.strictEqual(activeToolSignal.value, "select");
+    assert.strictEqual(activeToolSignal.value, "select_click");
 
     // 2. Project root row
     const projectRow = findAllNodes(container, (el) =>

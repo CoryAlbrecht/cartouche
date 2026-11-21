@@ -4,7 +4,7 @@
  * @description Unit tests verifying action registry parity, ensuring every BUILTIN_ACTION maps to a localized string in en.xml and has a valid functionCall where expected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-12
- * @updated 2026-11-08
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link BUILTIN_ACTIONS}
  */
@@ -46,6 +46,32 @@ describe("actionParity", () => {
       [],
       `The following builtin actions are missing <string name="..."> entries in assets/xml/i18n/en.xml: ${missingKeys.join(", ")}`
     );
+  });
+
+  it("labels the selection actions without naming features (#376)", () => {
+    const expected: Record<string, string> = {
+      select_by_click: "Select by Click",
+      select_by_rectangle: "Select by Rectangle",
+      select_by_lasso: "Select by Lasso",
+      select_all: "Select All",
+      deselect_all: "Deselect All",
+      copy_selection: "Copy Selection",
+      cut_selection: "Cut Selection",
+      delete_selection: "Delete Selection",
+    };
+    for (const [name, label] of Object.entries(expected)) {
+      const m = new RegExp(`<string\\s+name="${name}">([^<]*)</string>`).exec(
+        enXmlContent
+      );
+      assert.equal(m?.[1], label, `en.xml label for ${name}`);
+      const action = BUILTIN_ACTIONS.find((a) => a.name === name);
+      assert.ok(action, `Missing action ${name}`);
+      assert.doesNotMatch(
+        action.description,
+        /^Selects? (individual )?features|selected features/i,
+        `${name} description must not be feature-specific`
+      );
+    }
   });
 
   it("ensures core project and layer actions have matching entries in fr.xml", () => {
@@ -164,17 +190,17 @@ describe("actionParity", () => {
       "zoom_out",
       "zoom_to_selection",
       "zoom_to_layer",
-      "select_feature",
-      "select_features_by_drag",
-      "select_features_by_freehand",
+      "select_by_click",
+      "select_by_rectangle",
+      "select_by_lasso",
       "select_features_by_value",
-      "select_all_features",
-      "deselect_all_features",
+      "select_all",
+      "deselect_all",
       "toggle_layer_editing",
       "vertex_editor",
-      "delete_selected_features",
-      "copy_selected_features",
-      "cut_selected_features",
+      "delete_selection",
+      "copy_selection",
+      "cut_selection",
       "paste_features",
       "snapping",
       "snap_to_active",
@@ -214,26 +240,26 @@ describe("actionParity", () => {
       ctrl: true,
       alt: true,
     });
-    assert.deepEqual(actionsMap.get("select_feature")?.keyCombination, {
+    assert.deepEqual(actionsMap.get("select_by_click")?.keyCombination, {
       key: "q",
     });
-    assert.deepEqual(
-      actionsMap.get("select_features_by_drag")?.keyCombination,
-      { key: "q", shift: true }
-    );
-    assert.deepEqual(
-      actionsMap.get("select_features_by_freehand")?.keyCombination,
-      { key: "q", alt: true }
-    );
+    assert.deepEqual(actionsMap.get("select_by_rectangle")?.keyCombination, {
+      key: "q",
+      shift: true,
+    });
+    assert.deepEqual(actionsMap.get("select_by_lasso")?.keyCombination, {
+      key: "q",
+      alt: true,
+    });
     assert.deepEqual(
       actionsMap.get("select_features_by_value")?.keyCombination,
       { key: "F6" }
     );
-    assert.deepEqual(actionsMap.get("select_all_features")?.keyCombination, {
+    assert.deepEqual(actionsMap.get("select_all")?.keyCombination, {
       key: "a",
       ctrl: true,
     });
-    assert.deepEqual(actionsMap.get("deselect_all_features")?.keyCombination, {
+    assert.deepEqual(actionsMap.get("deselect_all")?.keyCombination, {
       key: "a",
       ctrl: true,
       shift: true,
@@ -245,15 +271,14 @@ describe("actionParity", () => {
     assert.deepEqual(actionsMap.get("vertex_editor")?.keyCombination, {
       key: "v",
     });
-    assert.deepEqual(
-      actionsMap.get("delete_selected_features")?.keyCombination,
-      { key: "Delete" }
-    );
-    assert.deepEqual(actionsMap.get("copy_selected_features")?.keyCombination, {
+    assert.deepEqual(actionsMap.get("delete_selection")?.keyCombination, {
+      key: "Delete",
+    });
+    assert.deepEqual(actionsMap.get("copy_selection")?.keyCombination, {
       key: "c",
       ctrl: true,
     });
-    assert.deepEqual(actionsMap.get("cut_selected_features")?.keyCombination, {
+    assert.deepEqual(actionsMap.get("cut_selection")?.keyCombination, {
       key: "x",
       ctrl: true,
     });

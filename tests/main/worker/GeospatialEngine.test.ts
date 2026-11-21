@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -1725,6 +1725,46 @@ describe("GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)"
       });
       assert.equal(page1Cleared.totalMatched, 1353);
       assert.equal(page1Cleared.features[2].properties?.name, originalName);
+    });
+
+    it("stages a batch of edits at once: deleted features drop out of queries, a deleted new feature is forgotten, geometry edits replace the WKB (Ticket #382)", async () => {
+      const before = await engine.queryExtent("lakes-paginated", {
+        start: 0,
+        max: 5,
+      });
+      const [first, second, third] = before.features;
+      const replacementWkb = Uint8Array.from(
+        before.features[4].wkb ?? new Uint8Array()
+      );
+      engine.stageFeatureEdit("lakes-paginated", {
+        id: 999999,
+        isNew: true,
+        properties: { name: "Doomed Lake" },
+      });
+
+      engine.stageFeatureEdits("lakes-paginated", [
+        { id: first.id, deleted: true },
+        { id: second.id, wkb: replacementWkb },
+        { id: 999999, deleted: true },
+      ]);
+
+      const after = await engine.queryExtent("lakes-paginated", {
+        start: 0,
+        max: 5,
+      });
+      assert.equal(after.totalMatched, 1352);
+      assert.deepEqual(
+        after.features.slice(0, 2).map((f) => f.id),
+        [second.id, third.id]
+      );
+      assert.deepEqual(
+        Array.from(after.features[0].wkb ?? []),
+        Array.from(replacementWkb)
+      );
+      assert.equal(
+        engine.getLayerEdits("lakes-paginated")?.addedFeatures.length,
+        0
+      );
     });
   });
 

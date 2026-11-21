@@ -4,7 +4,7 @@
  * @description Singleton service in the Main process managing the background Electron utility process lifecycle, typed request-response message bridge, request timeouts, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-18
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  * @see {@link WorkerRequest}
@@ -27,6 +27,7 @@ import type {
   StagedFeatureEdit,
 } from "@shared/types";
 import { GeospatialEngine } from "./GeospatialEngine";
+import { mergeStagedFeatureEdit } from "./stagedFeatureEdits";
 import { projectStore } from "../project/ProjectStore";
 import {
   LoggingHub,
@@ -988,6 +989,11 @@ export class GeospatialService {
           result = { success: true };
           break;
 
+        case "stageFeatureEdits":
+          this.engine.stageFeatureEdits(req.layerId, req.edits);
+          result = { success: true };
+          break;
+
         case "clearLayerEdits":
           this.engine.clearLayerEdits(req.layerId);
           result = { success: true };
@@ -1150,10 +1156,10 @@ export class GeospatialService {
   }
 
   /**
-   * @description Stages a feature modification or new feature addition into Main's crash-resilient edit cache and forwards it to the Geospatial Worker.
+   * @description Stages a feature modification, deletion or new feature addition into Main's crash-resilient edit cache and forwards it to the Geospatial Worker.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-06
-   * @updated 2026-11-18
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {string} layerId - Target layer identifier.
    * @param {StagedFeatureEdit} edit - Feature edit or addition payload.
@@ -1165,6 +1171,49 @@ export class GeospatialService {
     edit: StagedFeatureEdit,
     timeoutMs?: number
   ): Promise<void> {
+    this.cacheFeatureEdit(layerId, edit);
+    await this.sendRequest(
+      { type: "stageFeatureEdit", layerId, edit },
+      timeoutMs
+    );
+  }
+
+  /**
+   * @description Stages several feature edits of one layer as one operation (e.g. a vertex deletion changing and deleting several features): all are cached in Main's crash-resilient edit cache, then forwarded to the Geospatial Worker in a single request.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @param {string} layerId - Target layer identifier.
+   * @param {StagedFeatureEdit[]} edits - Feature edits, applied in order.
+   * @param {number} [timeoutMs] - Optional timeout override.
+   * @returns {Promise<void>}
+   */
+  public async stageFeatureEdits(
+    layerId: string,
+    edits: StagedFeatureEdit[],
+    timeoutMs?: number
+  ): Promise<void> {
+    if (edits.length === 0) return;
+    for (const edit of edits) this.cacheFeatureEdit(layerId, edit);
+    await this.sendRequest(
+      { type: "stageFeatureEdits", layerId, edits },
+      timeoutMs
+    );
+  }
+
+  /**
+   * @description Merges one edit into Main's edit cache for a layer (see {@link mergeStagedFeatureEdit}), creating the layer's entry on first use.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @private
+   * @param {string} layerId - Target layer identifier.
+   * @param {StagedFeatureEdit} edit - Feature edit.
+   * @returns {void}
+   */
+  private cacheFeatureEdit(layerId: string, edit: StagedFeatureEdit): void {
     let entry = this.layerEdits.get(layerId);
     if (!entry) {
       entry = {
@@ -1173,42 +1222,7 @@ export class GeospatialService {
       };
       this.layerEdits.set(layerId, entry);
     }
-
-    const idKey = String(edit.id);
-    const existingAddedIdx = entry.addedFeatures.findIndex(
-      (f) => String(f.id) === idKey
-    );
-
-    if (edit.isNew || existingAddedIdx !== -1) {
-      if (existingAddedIdx !== -1) {
-        const prev = entry.addedFeatures[existingAddedIdx];
-        entry.addedFeatures[existingAddedIdx] = {
-          ...prev,
-          ...edit,
-          isNew: true,
-          properties: { ...prev.properties, ...edit.properties },
-        };
-      } else {
-        entry.addedFeatures.push({
-          ...edit,
-          isNew: true,
-          properties: { ...edit.properties },
-        });
-      }
-    } else {
-      const prevMod = entry.modifiedFeatures.get(idKey);
-      entry.modifiedFeatures.set(idKey, {
-        ...prevMod,
-        ...edit,
-        id: edit.id,
-        properties: { ...prevMod?.properties, ...edit.properties },
-      });
-    }
-
-    await this.sendRequest(
-      { type: "stageFeatureEdit", layerId, edit },
-      timeoutMs
-    );
+    mergeStagedFeatureEdit(entry, edit);
   }
 
   /**

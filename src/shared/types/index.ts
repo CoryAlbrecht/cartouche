@@ -327,6 +327,7 @@ export type DropPosition = "before" | "after" | "into" | "append-root";
  * @property {(filePath?: string) => Promise<import('./project').ProjectLayerStyleItem | null>} [loadStyleFile] - Loads an OGC SLD (.sld/.se) or OpenLayers Flat Style (.json) file from disk or native open dialog.
  * @property {(style: import('./project').ProjectLayerStyleItem, defaultPath?: string) => Promise<string | null>} [saveStyleFile] - Saves a ProjectLayerStyleItem to disk via explicit path or native save dialog.
  * @property {(layerId: string, edit: import('./project').StagedFeatureEdit) => Promise<void>} [stageFeatureEdit] - Stages an uncommitted feature modification or addition into Main's crash-resilient edit cache.
+ * @property {(layerId: string, edits: import('./project').StagedFeatureEdit[]) => Promise<void>} [stageFeatureEdits] - Stages several feature edits of one layer (modifications, deletions, additions) as one operation.
  * @property {(layerId: string) => Promise<void>} [clearLayerEdits] - Clears all staged uncommitted feature edits for a layer.
  * @property {() => Promise<string[]>} [getDirtyLayerIds] - Retrieves the list of layer identifiers with uncommitted feature edits.
  * @property {(layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>} [setFeatureSelection] - Synchronizes selected feature IDs for the active or target layer to the Main process.
@@ -542,6 +543,11 @@ export interface ElectronAPI {
   stageFeatureEdit?: (
     layerId: string,
     edit: import("./project").StagedFeatureEdit
+  ) => Promise<void>;
+  /** @ipc layers:stageFeatureEdits */
+  stageFeatureEdits?: (
+    layerId: string,
+    edits: import("./project").StagedFeatureEdit[]
   ) => Promise<void>;
   /** @ipc layers:clearLayerEdits */
   clearLayerEdits?: (layerId: string) => Promise<void>;

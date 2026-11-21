@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialService process lifecycle, correlated request-response message bridge, timeout handling, and in-process fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-12
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  */
@@ -954,6 +954,81 @@ describe("GeospatialService In-Process Engine Fallback on Repeated Crashes", () 
     assert.equal(service.isInProcessFallback(), true);
     assert.equal(res.features.length, 5);
     assert.equal(res.features[0].properties?.name, "Fallback Edited Lake");
+
+    service.dispose();
+  });
+
+  it("stages a batch of feature edits in one worker request and caches deletions for replay (Ticket #382)", async () => {
+    const spawnedWorkers: MockWorker[] = [];
+    const service = new GeospatialService({
+      mockWorkerFactory: () => {
+        const w = new MockWorker();
+        spawnedWorkers.push(w);
+        return w;
+      },
+      defaultTimeoutMs: 1000,
+    });
+    const worker1 = spawnedWorkers[0];
+    const openP = service.openDataset("layer-batch", lakesShpPath);
+    worker1.replySuccess(worker1.messages[0].id, {
+      layerId: "layer-batch",
+      name: "lakes",
+      extent: [-180, -90, 180, 90],
+      featureCount: 1353,
+      geometryKind: "Polygon",
+    });
+    await openP;
+
+    const addP = service.stageFeatureEdit("layer-batch", {
+      id: 777,
+      isNew: true,
+      properties: { name: "Temporary" },
+    });
+    worker1.replySuccess(worker1.messages[worker1.messages.length - 1].id, {
+      success: true,
+    });
+    await addP;
+
+    const sentBefore = worker1.messages.length;
+    const batchP = service.stageFeatureEdits("layer-batch", [
+      { id: 3, deleted: true },
+      { id: 4, wkb: new Uint8Array([1, 2, 3]) },
+      { id: 777, deleted: true },
+    ]);
+    assert.equal(worker1.messages.length, sentBefore + 1, "one request");
+    const batchMsg = worker1.messages[worker1.messages.length - 1];
+    assert.ok(batchMsg.type === "stageFeatureEdits");
+    assert.equal(batchMsg.edits.length, 3);
+    worker1.replySuccess(batchMsg.id, { success: true });
+    await batchP;
+
+    // A crash replays the cached deletion and geometry edit; the deleted new feature is gone.
+    worker1.emit("exit", 139);
+    const worker2 = spawnedWorkers[1];
+    const rehydrateMsg = worker2.messages.find((m) => m.type === "rehydrate");
+    assert.ok(rehydrateMsg);
+    worker2.replySuccess(rehydrateMsg.id, {
+      rehydrated: ["layer-batch"],
+      failed: [],
+    });
+    const answered = new Set<string>();
+    for (let i = 0; i < 4; i++) {
+      await new Promise((resolve) => setImmediate(resolve));
+      for (const m of worker2.messages) {
+        if (m.type !== "stageFeatureEdit" || answered.has(m.id)) continue;
+        answered.add(m.id);
+        worker2.replySuccess(m.id, { success: true });
+      }
+    }
+    const replayed = worker2.messages.flatMap((m) =>
+      m.type === "stageFeatureEdit" ?
+        [[m.edit.id, Boolean(m.edit.deleted)]]
+      : []
+    );
+    assert.deepEqual(replayed, [
+      [3, true],
+      [4, false],
+    ]);
 
     service.dispose();
   });

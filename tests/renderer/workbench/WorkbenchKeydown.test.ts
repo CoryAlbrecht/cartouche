@@ -1,10 +1,10 @@
 /**
  * @file WorkbenchKeydown.test.ts
  * @module tests/renderer/workbench/WorkbenchKeydown.test
- * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass.
+ * @description Unit tests for global keyboard dispatching in Workbench, verifying cancel_action invocation on Escape and input/modal bypass, and that Escape abandons a Selection Shape in progress first.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-14
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link handleWorkbenchKeyDown}
  * @see {@link executeWorkbenchAction}
@@ -34,6 +34,7 @@ import { isPreferencesOpenSignal } from "../../../src/renderer/state/preferences
 import { activeLayerPropertiesIdSignal } from "../../../src/renderer/state/layerPropertiesSignals";
 import { activeDialogStackSignal } from "../../../src/renderer/state/dialogSignals";
 import { registeredActionsSignal } from "../../../src/renderer/state/actionSignals";
+import { beginSelectionShape } from "../../../src/renderer/map/selectionShapeCancel";
 
 const jiti = createRendererJiti(import.meta.url);
 
@@ -135,7 +136,7 @@ describe("Workbench Global Keyboard Listener", () => {
       {
         name: "cancel_action",
         description:
-          "Cancels the active operation, reverts tool, or clears selection",
+          "Cancels the action in progress or clears the selection; never changes the tool or mode",
         keyCombination: { key: "Escape" },
       },
     ];
@@ -157,9 +158,51 @@ describe("Workbench Global Keyboard Listener", () => {
     handleWorkbenchKeyDown(event);
 
     assert.equal(event.defaultPrevented, true);
-    assert.equal(activeToolSignal.value, "pan");
+    assert.equal(
+      activeToolSignal.value,
+      "polygon",
+      "Escape never switches tools"
+    );
     assert.deepEqual(selectedNodeIdsSignal.value, []);
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
+  });
+
+  it("abandons a Selection Shape in progress on Escape, with or without modifiers, instead of running cancel_action (Ticket #380)", () => {
+    for (const modifiers of [{}, { shiftKey: true }, { ctrlKey: true }]) {
+      activeToolSignal.value = "select_rectangle";
+      selectedFeatureIdsSignal.value = new Set([1]);
+      let cancelled = 0;
+      const end = beginSelectionShape(() => {
+        cancelled++;
+        end();
+      });
+
+      const event = createMockKeyEvent({ key: "Escape", ...modifiers });
+      handleWorkbenchKeyDown(event);
+
+      assert.equal(cancelled, 1);
+      assert.equal(event.defaultPrevented, true);
+      assert.equal(activeToolSignal.value, "select_rectangle");
+      assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+
+      // A further Escape is the ordinary cancel_action.
+      handleWorkbenchKeyDown(createMockKeyEvent({ key: "Escape" }));
+      assert.equal(cancelled, 1);
+      assert.equal(activeToolSignal.value, "select_rectangle");
+      assert.equal(selectedFeatureIdsSignal.value.size, 0);
+    }
+  });
+
+  it("abandons a Selection Shape on Escape even while focus is in a text field (Ticket #380)", () => {
+    let cancelled = 0;
+    const end = beginSelectionShape(() => {
+      cancelled++;
+      end();
+    });
+    handleWorkbenchKeyDown(
+      createMockKeyEvent({ key: "Escape", target: { tagName: "INPUT" } })
+    );
+    assert.equal(cancelled, 1);
   });
 
   it("bypasses cancel_action when editingNodeIdSignal is active (inline rename)", () => {
@@ -577,6 +620,22 @@ describe("Workbench Global Keyboard Listener", () => {
 
       executeWorkbenchAction("custom_main_action");
       assert.equal(forwardedAction, "custom_main_action");
+    });
+
+    it("pan_tool switches the active map tool to Pan in the renderer", () => {
+      let forwarded: string | null = null;
+      Reflect.set(globalThis, "window", {
+        ...Reflect.get(globalThis, "window"),
+        electronAPI: {
+          executeAction: (name: string) => {
+            forwarded = name;
+          },
+        },
+      });
+      activeToolSignal.value = "select_lasso";
+      executeWorkbenchAction("pan_tool");
+      assert.equal(activeToolSignal.value, "pan");
+      assert.equal(forwarded, null, "pan_tool is handled in the renderer");
     });
 
     it("executes project_properties when hasProject is true and ignores when false", () => {

@@ -4,7 +4,7 @@
  * @description Main Process spatial query and feature edit cache handler routing extent queries and uncommitted feature edits through GeospatialService across IPC.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GeospatialService}
  * @see {@link QueryExtentResult}
@@ -57,6 +57,23 @@ export async function stageFeatureEdit(
   edit: StagedFeatureEdit
 ): Promise<void> {
   await geospatialService.stageFeatureEdit(layerId, edit);
+}
+
+/**
+ * @description Stages several feature edits of one layer as one operation (e.g. a vertex deletion changing and deleting several features) into Main's crash-resilient edit cache and forwards them to the Geospatial Worker in a single request.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {string} layerId - Target layer identifier.
+ * @param {StagedFeatureEdit[]} edits - Feature edits, applied in order.
+ * @returns {Promise<void>}
+ */
+export async function stageFeatureEdits(
+  layerId: string,
+  edits: StagedFeatureEdit[]
+): Promise<void> {
+  await geospatialService.stageFeatureEdits(layerId, edits);
 }
 
 /**

@@ -4,7 +4,7 @@
  * @description Manages ephemeral per-layer toolbar state caching and restoration on active layer transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link LayerToolbarState}
  * @see {@link activeLayerIdSignal}
@@ -24,6 +24,7 @@ import {
   snapToMidpointSignal,
   snapToSegmentSignal,
   snappingDistanceSignal,
+  vertexEditorModeSignal,
   type ActiveTool,
   type SelectionMode,
   type SnappingScope,
@@ -31,7 +32,7 @@ import {
 
 /**
  * @typedef {Object} LayerToolbarState
- * @property {ActiveTool} [digitizingTool] - Last active digitizing cursor tool ('point' | 'line' | 'polygon' | 'vertex_editor').
+ * @property {ActiveTool} [digitizingTool] - Last active digitizing cursor tool ('point' | 'line' | 'polygon').
  * @property {SelectionMode} [selectionMode] - Last active spatial feature selection mode.
  * @property {boolean} [snappingEnabled] - Toggle state for vertex and segment snapping.
  * @property {SnappingScope} [snappingScope] - Target layer scope for snapping operations.
@@ -39,6 +40,7 @@ import {
  * @property {boolean} [snapToMidpoint] - Snapping to segment midpoints enabled.
  * @property {boolean} [snapToSegment] - Snapping to feature segments enabled.
  * @property {number} [snappingDistance] - Snapping tolerance distance in screen pixels.
+ * @property {boolean} [vertexEditorMode] - Vertex Editor Mode toggle state.
  */
 export interface LayerToolbarState {
   digitizingTool?: ActiveTool;
@@ -49,6 +51,7 @@ export interface LayerToolbarState {
   snapToMidpoint?: boolean;
   snapToSegment?: boolean;
   snappingDistance?: number;
+  vertexEditorMode?: boolean;
 }
 
 /**
@@ -144,10 +147,10 @@ export function setLayerToolbarPreference(
 
 /**
  * @function captureLayerToolbarState
- * @description Captures active digitizing tool, selection mode, and snapping parameters for an outgoing layer.
+ * @description Captures active digitizing tool, selection mode, snapping parameters and Vertex Editor Mode for an outgoing layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier to capture toolbar state for.
  * @returns {LayerToolbarState} Structured captured layer toolbar state.
@@ -163,7 +166,6 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
     currentTool === "point"
     || currentTool === "line"
     || currentTool === "polygon"
-    || currentTool === "vertex_editor"
   ) {
     digitizingTool = currentTool;
   } else {
@@ -180,6 +182,7 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   const snapToMidpoint = snapToMidpointSignal.value;
   const snapToSegment = snapToSegmentSignal.value;
   const snappingDistance = snappingDistanceSignal.value;
+  const vertexEditorMode = vertexEditorModeSignal.value;
 
   if (digitizingTool !== undefined) {
     setLayerToolbarPreference(layerId, "digitizingTool", digitizingTool);
@@ -191,6 +194,7 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   setLayerToolbarPreference(layerId, "snapToMidpoint", snapToMidpoint);
   setLayerToolbarPreference(layerId, "snapToSegment", snapToSegment);
   setLayerToolbarPreference(layerId, "snappingDistance", snappingDistance);
+  setLayerToolbarPreference(layerId, "vertexEditorMode", vertexEditorMode);
 
   return {
     digitizingTool,
@@ -201,15 +205,17 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
     snapToMidpoint,
     snapToSegment,
     snappingDistance,
+    vertexEditorMode,
   };
 }
 
 /**
  * @function restoreLayerToolbarState
- * @description Restores cached digitizing tool, selection mode, and snapping parameters for an incoming layer.
+ * @description Restores cached digitizing tool, selection mode, snapping parameters and Vertex Editor Mode for an incoming layer.
+ * Vertex Editor Mode and the digitizing tool are only restored while the layer is in Layer Edit Mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string} layerId - Incoming layer identifier.
  * @returns {void}
@@ -283,6 +289,10 @@ export function restoreLayerToolbarState(layerId: string): void {
   } else {
     activeToolSignal.value = "pan";
   }
+
+  vertexEditorModeSignal.value =
+    isEditable
+    && getLayerToolbarPreference<boolean>(layerId, "vertexEditorMode") === true;
 }
 
 /**
@@ -295,7 +305,7 @@ let previousActiveLayerId: string | null = activeLayerIdSignal.peek();
  * @description Coordinates capturing the outgoing active layer toolbar state and restoring the incoming active layer state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string | null} newLayerId - Newly active layer identifier, or null if active layer is cleared.
  * @param {string | null} prevLayerId - Previously active layer identifier, or null if none was active.
@@ -317,6 +327,7 @@ export function handleActiveLayerChange(
 
   if (newLayerId === null) {
     activeToolSignal.value = "pan";
+    vertexEditorModeSignal.value = false;
     return;
   }
 

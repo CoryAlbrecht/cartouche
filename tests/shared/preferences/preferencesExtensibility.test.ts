@@ -4,7 +4,7 @@
  * @description Unit tests verifying declarative preference controls, grouping attributes, order sorting, and i18n XML localization dictionary parity across en.xml and fr.xml.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-21
- * @updated 2026-11-18
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link BUILTIN_PREFERENCES}
  * @see {@link PreferenceItem}
@@ -196,6 +196,26 @@ describe("Extensible Preferences Subsystem Contracts", () => {
     assert.equal(snapPref.group, "snapping");
     assert.equal(snapPref.groupOrder, 2);
     assert.equal(snapPref.order, 1);
+  });
+
+  it("registers the Lasso Fill Rule as a Map Tools dropdown defaulting to Even-Odd", () => {
+    const pref = BUILTIN_PREFERENCES["mapTools.selection.lassoFillRule"];
+    assert.ok(pref, "mapTools.selection.lassoFillRule must be registered");
+    assert.equal(pref.category, "map_tools");
+    assert.equal(pref.displayName, "Lasso Fill Rule");
+    assert.equal(pref.type, "select");
+    assert.deepEqual(pref.controls, ["dropdown"]);
+    assert.equal(pref.defaultValue, "evenodd");
+    assert.equal(pref.value, "evenodd");
+    assert.equal(pref.ephemeral, false);
+    assert.equal(pref.hidden, false);
+    assert.ok(pref.description, "has a description");
+    assert.equal(pref.i18nId, "prefs_mapTools_selection_lassoFillRule");
+    assert.equal(pref.group, "selection");
+    assert.deepEqual(pref.options, [
+      { label: "Even-Odd", value: "evenodd" },
+      { label: "Non-Zero", value: "nonzero" },
+    ]);
   });
 
   it("validates schema, default values, and bounds constraints for general.mapViewport.zoomAmount", () => {

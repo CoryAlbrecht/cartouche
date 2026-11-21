@@ -1,10 +1,10 @@
 /**
  * @file MapControllerReactivity.test.ts
  * @module tests/renderer/map/MapControllerReactivity.test
- * @description Unit and integration tests for MapController visual reactivity: dynamic tree stacking order (zIndex = 1000 - flatIndex), 60 FPS live styling updates, layer/group visibility cascading, and opacity adjustments.
+ * @description Unit and integration tests for MapController visual reactivity: dynamic tree stacking order (zIndex = 1000 - flatIndex), 60 FPS live styling updates, layer/group visibility cascading, opacity adjustments, and the Map Cursor binding.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-21
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -21,6 +21,7 @@ import {
   currentProjectSignal,
 } from "../../../src/renderer/state/projectSignals";
 import { MapController } from "../../../src/renderer/map/MapController";
+import { activeToolSignal } from "../../../src/renderer/state/gisSignals";
 import type {
   LayerDescriptor,
   ProjectGroupItem,
@@ -485,5 +486,36 @@ describe("MapController Reactivity & Visual Synchronization", () => {
       1,
       "Features must remain in source"
     );
+  });
+});
+
+describe("MapController Map Cursor", () => {
+  it("writes the Map Cursor on its container and follows the active tool until disposed", () => {
+    activeToolSignal.value = "pan";
+    const container = Reflect.get(globalThis, "document").createElement("div");
+    const controller = new MapController(container, {
+      cursorImages: {
+        selectClick: "click.svg",
+        selectClickVertices: "click-v.svg",
+        selectRectangle: "rect.svg",
+        selectRectangleVertices: "rect-v.svg",
+        selectLasso: "lasso.svg",
+        selectLassoVertices: "lasso-v.svg",
+      },
+    });
+    try {
+      assert.equal(container.style.cursor, "grab");
+      activeToolSignal.value = "select_lasso";
+      assert.equal(container.style.cursor, 'url("lasso.svg") 11 11, crosshair');
+    } finally {
+      controller.dispose();
+    }
+    activeToolSignal.value = "line";
+    assert.equal(
+      container.style.cursor,
+      'url("lasso.svg") 11 11, crosshair',
+      "Disposed controller must stop writing the cursor"
+    );
+    activeToolSignal.value = "pan";
   });
 });

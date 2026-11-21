@@ -4,7 +4,7 @@
  * @description Unit and component tests for SplitToolButton verifying composite rendering, chevron PopupMenu toggling, option selection, orientation layout, and action dispatching.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-14
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link SplitToolButton}
  */
@@ -315,30 +315,30 @@ describe("SplitToolButton component", () => {
 
     // Mock i18n dictionary
     dictionarySignal.value = {
-      select_feature: "Select Feature",
-      select_features_by_drag: "Select Features by Drag",
-      select_features_by_freehand: "Select Features by Freehand",
+      select_by_click: "Select by Click",
+      select_by_rectangle: "Select by Rectangle",
+      select_by_lasso: "Select by Lasso",
     };
 
     // Mock registered actions
     registeredActionsSignal.value = [
       {
-        name: "select_feature",
-        description: "Select Feature",
+        name: "select_by_click",
+        description: "Select by Click",
         icon: "M-SELECT-PATH",
         formattedKey: "Q",
         keyCombination: { key: "q" },
       },
       {
-        name: "select_features_by_drag",
-        description: "Select Features by Drag",
+        name: "select_by_rectangle",
+        description: "Select by Rectangle",
         icon: "M-DRAG-PATH",
         formattedKey: "Shift+Q",
         keyCombination: { key: "q", shift: true },
       },
       {
-        name: "select_features_by_freehand",
-        description: "Select Features by Freehand",
+        name: "select_by_lasso",
+        description: "Select by Lasso",
         icon: "M-FREEHAND-PATH",
         formattedKey: "Alt+Q",
         keyCombination: { key: "q", alt: true },
@@ -359,11 +359,11 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
+          activeAction: "select_by_click",
           options: [
-            "select_feature",
-            "select_features_by_drag",
-            "select_features_by_freehand",
+            "select_by_click",
+            "select_by_rectangle",
+            "select_by_lasso",
           ],
         })
       );
@@ -390,7 +390,7 @@ describe("SplitToolButton component", () => {
 
     // Title should format with localized name and key combination
     const title = primaryBtn.getAttribute("title");
-    assert.equal(title, "Select Feature (Q)");
+    assert.equal(title, "Select by Click (Q)");
 
     // Primary button should render the active action icon
     const svgs = findAllNodes(primaryBtn, (n) => n.tagName === "SVG");
@@ -403,11 +403,11 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
+          activeAction: "select_by_click",
           options: [
-            "select_feature",
-            "select_features_by_drag",
-            "select_features_by_freehand",
+            "select_by_click",
+            "select_by_rectangle",
+            "select_by_lasso",
           ],
           onExecute: (action: string) => {
             executedAction = action;
@@ -432,8 +432,8 @@ describe("SplitToolButton component", () => {
 
     assert.equal(
       executedAction,
-      "select_feature",
-      "Clicking primary should execute select_feature"
+      "select_by_click",
+      "Clicking primary should execute select_by_click"
     );
   });
 
@@ -441,11 +441,11 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
+          activeAction: "select_by_click",
           options: [
-            "select_feature",
-            "select_features_by_drag",
-            "select_features_by_freehand",
+            "select_by_click",
+            "select_by_rectangle",
+            "select_by_lasso",
           ],
         })
       );
@@ -487,7 +487,7 @@ describe("SplitToolButton component", () => {
     const dragLabel = findAllNodes(dragItem, (n) =>
       n.className.includes("menu-item-label")
     )[0];
-    assert.equal(dragLabel.textContent, "Select Features by Drag");
+    assert.equal(dragLabel.textContent, "Select by Rectangle");
 
     const dragKeySlot = findAllNodes(dragItem, (n) =>
       n.className.includes("menu-key-slot")
@@ -507,11 +507,11 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
+          activeAction: "select_by_click",
           options: [
-            "select_feature",
-            "select_features_by_drag",
-            "select_features_by_freehand",
+            "select_by_click",
+            "select_by_rectangle",
+            "select_by_lasso",
           ],
           onSelect: (action: string) => {
             selectedAction = action;
@@ -558,12 +558,12 @@ describe("SplitToolButton component", () => {
 
     assert.equal(
       selectedAction,
-      "select_features_by_freehand",
+      "select_by_lasso",
       "onSelect should receive selected option"
     );
     assert.equal(
       executedAction,
-      "select_features_by_freehand",
+      "select_by_lasso",
       "onExecute should immediately dispatch selected action"
     );
 
@@ -571,10 +571,7 @@ describe("SplitToolButton component", () => {
     const primaryBtn = findAllNodes(container, (n) =>
       n.className.includes("split-tool-primary")
     )[0];
-    assert.equal(
-      primaryBtn.getAttribute("title"),
-      "Select Features by Freehand (Alt+Q)"
-    );
+    assert.equal(primaryBtn.getAttribute("title"), "Select by Lasso (Alt+Q)");
 
     // Menu should be closed
     const closedMenu = findAllNodes(doc.body, (n) =>
@@ -591,8 +588,8 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
-          options: ["select_feature"],
+          activeAction: "select_by_click",
+          options: ["select_by_click"],
           zone: "top",
         })
       );
@@ -609,8 +606,8 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
-          options: ["select_feature"],
+          activeAction: "select_by_click",
+          options: ["select_by_click"],
           zone: "left",
         })
       );
@@ -629,8 +626,8 @@ describe("SplitToolButton component", () => {
     await act(async () => {
       root!.render(
         React.createElement(SplitToolButton, {
-          activeAction: "select_feature",
-          options: ["select_feature"],
+          activeAction: "select_by_click",
+          options: ["select_by_click"],
           disabled: true,
           active: true,
         })

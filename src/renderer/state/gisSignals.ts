@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, and toolbar placements.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -86,6 +86,13 @@ import {
   autoDetectTemporalRange,
   computeFrameEnd,
 } from "../map/timeFilterMath";
+import { listVertexKeys, type VertexKey } from "../map/vertexSelection";
+import type { VertexEditTarget } from "../map/vertexEditing";
+import {
+  displayedFeaturesInExtent,
+  type SelectableLayer,
+} from "../map/selectableLayer";
+import { deleteSelectedVerticesAction } from "../map/vertexDeletionAction";
 import type { ProjectTimeFilterConfig } from "../../shared/types";
 import {
   getLayerToolbarPreference,
@@ -174,29 +181,29 @@ export const clipboardFeaturesSignal = signal<GisFeature[]>([]);
 
 // Active interactive tool ('pan' is default drag canvas mode)
 /**
- * @typedef {'pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor'} ActiveTool
- * @description Supported interactive canvas tool modes.
+ * @typedef {'pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon'} ActiveTool
+ * @description Supported interactive canvas tool modes. Vertex Editor Mode is a
+ * separate toggle ({@link vertexEditorModeSignal}), not a tool.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export type ActiveTool =
   | "pan"
-  | "select"
-  | "select_drag"
-  | "select_freehand"
+  | "select_click"
+  | "select_rectangle"
+  | "select_lasso"
   | "point"
   | "line"
-  | "polygon"
-  | "vertex_editor";
+  | "polygon";
 
 /**
  * @signal activeToolSignal
- * @description Active canvas interactive tool mode ('pan' | 'select' | 'select_drag' | 'select_freehand' | 'point' | 'line' | 'polygon' | 'vertex_editor').
+ * @description Active canvas interactive tool mode ('pan' | 'select_click' | 'select_rectangle' | 'select_lasso' | 'point' | 'line' | 'polygon').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {Signal<ActiveTool>}
  */
@@ -233,27 +240,27 @@ export function isLayerInEditMode(
 }
 
 /**
- * @typedef {'select_feature' | 'select_features_by_drag' | 'select_features_by_freehand'} SelectionMode
- * @description Discrete spatial feature selection mode identifiers.
+ * @typedef {'select_by_click' | 'select_by_rectangle' | 'select_by_lasso'} SelectionMode
+ * @description Selection Tool action identifiers (Select by Click, Select by Rectangle, Select by Lasso).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export type SelectionMode =
-  "select_feature" | "select_features_by_drag" | "select_features_by_freehand";
+  "select_by_click" | "select_by_rectangle" | "select_by_lasso";
 
 /**
  * @signal activeSelectionModeSignal
- * @description Currently active selection mode option for SplitToolButton ('select_feature' | 'select_features_by_drag' | 'select_features_by_freehand').
+ * @description Currently active selection mode option for SplitToolButton ('select_by_click' | 'select_by_rectangle' | 'select_by_lasso').
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {Signal<SelectionMode>}
  */
 export const activeSelectionModeSignal =
-  signal<SelectionMode>("select_feature");
+  signal<SelectionMode>("select_by_click");
 
 export { activeSelectionModeSignal as selectionModeSignal };
 
@@ -263,10 +270,96 @@ activeLayerIdSignal.subscribe((activeId) => {
     activeId === null
     && (activeToolSignal.value === "point"
       || activeToolSignal.value === "line"
-      || activeToolSignal.value === "polygon"
-      || activeToolSignal.value === "vertex_editor")
+      || activeToolSignal.value === "polygon")
   ) {
     activeToolSignal.value = "pan";
+  }
+});
+
+/**
+ * @signal vertexEditorModeSignal
+ * @description Vertex Editor Mode toggle: while true, the Selection Tools and
+ * selection actions act on the Active Layer's vertices instead of its features.
+ * Independent of {@link activeToolSignal}; only on while the Active Layer is in
+ * Layer Edit Mode, and stored per layer as Ephemeral Layer Toolbar State.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {Signal<boolean>}
+ */
+export const vertexEditorModeSignal = signal<boolean>(false);
+
+/**
+ * @typedef {'features' | 'vertices'} SelectionTarget
+ * @description The kind of item the Selection Tools and selection actions act on.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ */
+export type SelectionTarget = "features" | "vertices";
+
+/**
+ * @signal selectionTargetSignal
+ * @description Derived Selection Target: `vertices` exactly when Vertex Editor
+ * Mode is on, otherwise `features`.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {ReadonlySignal<SelectionTarget>}
+ */
+export const selectionTargetSignal = computed<SelectionTarget>(() =>
+  vertexEditorModeSignal.value ? "vertices" : "features"
+);
+
+/**
+ * @signal selectedVertexKeysSignal
+ * @description The vertex selection: the Active Layer's selected vertices while Vertex
+ * Editor Mode is on, each a {@link VertexKey} (feature id + vertex path). Separate from
+ * {@link selectedFeatureIdsSignal}, which Vertex Editor Mode leaves untouched; cleared when
+ * Vertex Editor Mode turns off or the Active Layer changes.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {Signal<Set<VertexKey>>}
+ */
+export const selectedVertexKeysSignal = signal<Set<VertexKey>>(new Set());
+
+/**
+ * @function clearVertexSelection
+ * @description Empties the vertex selection (no republish when already empty).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @returns {void}
+ */
+export function clearVertexSelection(): void {
+  if (selectedVertexKeysSignal.peek().size > 0) {
+    selectedVertexKeysSignal.value = new Set();
+  }
+}
+
+// Turning Vertex Editor Mode off clears the vertex selection
+vertexEditorModeSignal.subscribe((on) => {
+  if (!on) clearVertexSelection();
+});
+
+// Vertex keys name the Active Layer's features, so a new Active Layer starts with none
+activeLayerIdSignal.subscribe(() => {
+  clearVertexSelection();
+});
+
+// Leaving Layer Edit Mode on the Active Layer, by any route, turns Vertex Editor Mode off
+editableLayerIdsSignal.subscribe((editableIds) => {
+  if (
+    vertexEditorModeSignal.peek()
+    && !isLayerInEditMode(activeLayerIdSignal.peek(), editableIds)
+  ) {
+    vertexEditorModeSignal.value = false;
   }
 });
 
@@ -800,6 +893,8 @@ export interface MapActionPayload {
  * @property {() => Map<string, any>} getVectorLayers - Returns all registered vector layer entries.
  * @property {() => any} getMap - Returns underlying OpenLayers map instance.
  * @property {() => any} getView - Returns OpenLayers view instance.
+ * @property {() => (SelectableLayer | null)} [getSelectableLayer] - The valid Active Layer (vector, on the map, visible) the Selection Tools act on, with its display predicate, or null.
+ * @property {() => (VertexEditTarget | null)} [getVertexEditTarget] - The valid Active Layer with its id and CRS pair, for committing vertex edits, or null.
  */
 export interface ActiveMapController {
   fitExtent(
@@ -820,6 +915,8 @@ export interface ActiveMapController {
   getVectorLayers(): Map<string, any>;
   getMap(): any;
   getView(): any;
+  getSelectableLayer?(): SelectableLayer | null;
+  getVertexEditTarget?(): VertexEditTarget | null;
 }
 
 /**
@@ -2941,18 +3038,17 @@ export function closeAddLayersDialog(): void {
 }
 
 /**
- * @description Action handler for cancelling active operations, reverting tools to pan, clearing feature selections, and clearing layer tree selections.
+ * @description Action handler for cancelling in-progress actions: clears the selection of the current Selection Target (the vertex selection in Vertex Editor Mode, otherwise the feature selection), and clears layer tree selections. Never switches the active tool or mode (a Selection Shape in progress is discarded earlier, by {@link cancelSelectionShape}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function cancelAction(): void {
-  if (activeToolSignal.value !== "pan") {
-    activeToolSignal.value = "pan";
-  }
-  if (selectedFeatureIdsSignal.value.size > 0) {
+  if (selectionTargetSignal.value === "vertices") {
+    clearVertexSelection();
+  } else if (selectedFeatureIdsSignal.value.size > 0) {
     selectedFeatureIdsSignal.value = new Set();
   }
   clearNodeSelection();
@@ -3235,43 +3331,69 @@ export function zoomToLayerAction(): void {
 }
 
 /**
- * @description Selects all features belonging to the active layer.
+ * @function selectAllAction
+ * @description Selects all items of the active layer that the map displays now: in Vertex Editor Mode every vertex of the valid Active Layer's displayed features on the map (nothing without one), otherwise all its features, skipping those the Time Filter hides (the selectable layer's display predicate, tested on each Attribute Table row's attributes).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function selectAllFeaturesAction(): void {
+export function selectAllAction(): void {
+  if (selectionTargetSignal.value === "vertices") {
+    const layer = activeMapControllerSignal.value?.getSelectableLayer?.();
+    if (!layer) return;
+    selectedVertexKeysSignal.value = new Set(
+      listVertexKeys(displayedFeaturesInExtent(layer))
+    );
+    return;
+  }
   const activeId = activeLayerIdSignal.value;
+  const isDisplayed =
+    activeId ?
+      activeMapControllerSignal.value?.getSelectableLayer?.()?.isDisplayed
+    : undefined;
   const targetFeatures =
     activeId ?
-      featuresSignal.value.filter((f) => f.layerId === activeId)
+      featuresSignal.value.filter(
+        (f) =>
+          f.layerId === activeId && (!isDisplayed || isDisplayed(f.properties))
+      )
     : featuresSignal.value;
   selectedFeatureIdsSignal.value = new Set(targetFeatures.map((f) => f.id));
 }
 
 /**
- * @description Deselects all currently selected spatial feature records.
+ * @function deselectAllAction
+ * @description Clears the selection of the current Selection Target: the vertex selection in Vertex Editor Mode (the feature selection stays), otherwise the feature selection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function deselectAllFeaturesAction(): void {
+export function deselectAllAction(): void {
+  if (selectionTargetSignal.value === "vertices") {
+    clearVertexSelection();
+    return;
+  }
   selectedFeatureIdsSignal.value = new Set();
 }
 
 /**
- * @description Deletes selected spatial features from the active layer.
+ * @function deleteSelectionAction
+ * @description Deletes the selection of the current Selection Target: in Vertex Editor Mode the selected vertices ({@link deleteSelectedVerticesAction}), otherwise the selected spatial features of the active layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function deleteSelectedFeaturesAction(): void {
+export function deleteSelectionAction(): void {
+  if (selectionTargetSignal.value === "vertices") {
+    deleteSelectedVerticesAction();
+    return;
+  }
   if (selectedFeatureIdsSignal.value.size === 0) return;
   featuresSignal.value = featuresSignal.value.filter(
     (f) => !selectedFeatureIdsSignal.value.has(f.id)
@@ -3280,26 +3402,28 @@ export function deleteSelectedFeaturesAction(): void {
 }
 
 /**
+ * @function copySelectionAction
  * @description Copies selected features to feature clipboard.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function copySelectedFeaturesAction(): void {
+export function copySelectionAction(): void {
   copyAction();
 }
 
 /**
+ * @function cutSelectionAction
  * @description Cuts selected features to feature clipboard.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
-export function cutSelectedFeaturesAction(): void {
+export function cutSelectionAction(): void {
   cutAction();
 }
 
@@ -3318,9 +3442,11 @@ export function pasteFeaturesAction(): void {
 /**
  * @description Action handler toggling vector feature editing mode for the active or specified layer.
  * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
+ * Toggling editing off also turns Vertex Editor Mode off for that layer, including its stored
+ * Ephemeral Layer Toolbar State.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
  * @param {Object} [options] - Optional toggle execution settings.
@@ -3342,12 +3468,12 @@ export function toggleLayerEditingAction(
     }
     current.delete(targetId);
     editableLayerIdsSignal.value = current;
+    setLayerToolbarPreference(targetId, "vertexEditorMode", false);
     if (
       activeLayerIdSignal.value === targetId
       && (activeToolSignal.value === "point"
         || activeToolSignal.value === "line"
-        || activeToolSignal.value === "polygon"
-        || activeToolSignal.value === "vertex_editor")
+        || activeToolSignal.value === "polygon")
     ) {
       captureLayerToolbarState(targetId);
       activeToolSignal.value = "pan";
@@ -3371,19 +3497,21 @@ export function toggleLayerEditingAction(
 }
 
 /**
- * @description Action handler toggling interactive vertex and edge editing mode.
+ * @description Action handler (`vertex_editor`, V) toggling Vertex Editor Mode without
+ * changing the active map tool. Does nothing unless the Active Layer is in Layer Edit Mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @returns {void}
  */
 export function vertexEditorAction(): void {
-  if (activeToolSignal.value === "vertex_editor") {
-    activeToolSignal.value = "pan";
-  } else {
-    activeToolSignal.value = "vertex_editor";
+  if (
+    !isLayerInEditMode(activeLayerIdSignal.value, editableLayerIdsSignal.value)
+  ) {
+    return;
   }
+  vertexEditorModeSignal.value = !vertexEditorModeSignal.value;
 }
 
 /**

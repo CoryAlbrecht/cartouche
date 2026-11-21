@@ -1,10 +1,10 @@
 /**
  * @file cancelActionSignals.test.ts
  * @module tests/renderer/state/cancelActionSignals.test
- * @description Unit tests for renderer fallback cancelAction in gisSignals, verifying tool reversion, feature selection clearing, and layer tree selection clearing.
+ * @description Unit tests for renderer fallback cancelAction in gisSignals, verifying the active tool is kept, feature selection clearing, and layer tree selection clearing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-13
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link cancelAction}
  */
@@ -48,13 +48,12 @@ describe("cancelAction in Renderer Signals", () => {
     setNodeSelection([]);
   });
 
-  it('reverts activeToolSignal from digitizing or selection tool back to "pan"', () => {
+  it("keeps the active tool: Escape never switches tools", () => {
     activeToolSignal.value = "polygon";
-    assert.equal(activeToolSignal.value, "polygon");
 
     cancelAction();
 
-    assert.equal(activeToolSignal.value, "pan");
+    assert.equal(activeToolSignal.value, "polygon");
   });
 
   it("clears spatial feature selections in selectedFeatureIdsSignal", () => {

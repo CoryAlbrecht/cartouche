@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, styles, and feature query options including multi-column Sort Keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -665,9 +665,10 @@ export interface QueryExtentFeature {
  * @property {Uint8Array} [wkb] - Optional updated OGC Well-Known Binary geometry bytes.
  * @property {Record<string, unknown>} [geojson] - Optional updated GeoJSON geometry object.
  * @property {boolean} [isNew] - True if the feature is newly added and not yet persisted in the dataset.
+ * @property {boolean} [deleted] - True when the feature is deleted: an existing feature is left out of queries until the edits are saved or discarded; a newly added one is forgotten.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export interface StagedFeatureEdit {
@@ -676,6 +677,7 @@ export interface StagedFeatureEdit {
   wkb?: Uint8Array;
   geojson?: Record<string, unknown>;
   isNew?: boolean;
+  deleted?: boolean;
 }
 
 /**

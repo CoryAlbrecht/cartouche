@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -14,6 +14,7 @@
 import { effect } from "@preact/signals-react";
 import { logging } from "../../shared/logging";
 import OlMap from "ol/Map.js";
+import { unByKey } from "ol/Observable.js";
 import View from "ol/View.js";
 import VectorImageLayer from "ol/layer/VectorImage.js";
 import VectorSource from "ol/source/Vector.js";
@@ -45,10 +46,34 @@ import {
   mapActionSignal,
   activeMapControllerSignal,
   selectedFeatureIdsSignal,
+  selectedVertexKeysSignal,
+  vertexEditorModeSignal,
   activeLayerIdSignal,
+  activeToolSignal,
+  featuresSignal,
 } from "../state/gisSignals";
+import {
+  ALWAYS_DISPLAYED,
+  createFeatureDisplayPredicate,
+  type FeatureDisplayPredicate,
+} from "./temporalPredicate";
+import { removeHiddenFromSelection } from "./timeFilteredSelection";
+import type { VertexEditTarget } from "./vertexEditing";
 import VectorLayer from "ol/layer/Vector.js";
 import { createSelectionHighlightStyleFunction } from "./selectionHighlight";
+import {
+  createVertexMarkerStyleFunction,
+  groupVertexKeysByFeature,
+  readVertexMarkerColours,
+} from "./vertexMarkers";
+import type { MapCursorImages } from "./mapCursor";
+import { bindMapCursor } from "./mapCursorBinding";
+import {
+  MapToolInteractions,
+  applyNavigationToMap,
+  symbolReachFromStyles,
+  type SelectableLayer,
+} from "./mapToolInteractions";
 import {
   projectLayersSignal,
   layerStylesSignal,
@@ -184,10 +209,11 @@ export function flattenTreeLayers(
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
  * @property {Record<string, InferredFieldType>} [fieldSchema] - Dictionary of attribute names to canonical inferred field types for lazy deserialization.
  * @property {LayerTemporalConfig} [activeTemporalConfig] - Most recently compiled dynamic temporal configuration.
+ * @property {FeatureDisplayPredicate} [isDisplayed] - Whether a feature is displayed now under the Time Filter, built from `activeTemporalConfig` with {@link createFeatureDisplayPredicate} (the predicate the layer's style uses); the Selection Tools and Vertex Markers skip features it rejects.
  * @property {boolean} [hasGradientFill] - True if the layer currently utilizes an active screen-anchored gradient fill style.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-11
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
@@ -199,6 +225,7 @@ export interface VectorLayerEntry {
   allFieldsLoaded?: boolean;
   activeRawStyle?: unknown;
   activeTemporalConfig?: LayerTemporalConfig;
+  isDisplayed?: FeatureDisplayPredicate;
   styleRevision?: number;
   fieldSchema?: Record<string, InferredFieldType>;
   hasGradientFill?: boolean;
@@ -359,7 +386,7 @@ export function attachFeaturePropertiesWithLazyGetters(
  * @description Imperative OpenLayers map canvas controller encapsulating native ol/Map and vector rendering completely insulated from React Virtual DOM.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-01
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 export class MapController {
@@ -377,24 +404,31 @@ export class MapController {
   private lastScaleUpdateTime = 0;
   private selectionHighlightLayer: VectorLayer<VectorSource> | null = null;
   private selectionHighlightSource: VectorSource | null = null;
+  private vertexMarkerLayer: VectorLayer<VectorSource> | null = null;
+  private vertexMarkerUnbind: (() => void) | null = null;
   private displayCrs: DisplayCrs = { code: DEFAULT_DISPLAY_CRS, none: false };
   private displayCrsTask: Promise<void> = Promise.resolve();
   private pendingProjectViewport:
     Parameters<MapController["setViewport"]>[0] | null = null;
   private viewListenerKeys: Array<() => void> = [];
+  private toolInteractions: MapToolInteractions | null = null;
 
   /**
    * @constructor
    * @description Initializes the isolated OpenLayers map instance, view, and reactive signal subscriptions.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-19
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {HTMLElement} container - Target unmanaged DOM container element.
    * @param {Object} [options] - Optional map initialization options.
    * @param {View} [options.view] - Custom OpenLayers View instance.
+   * @param {MapCursorImages} [options.cursorImages] - Custom Selection Tool Map Cursor image URLs (keyword cursors without them).
    */
-  constructor(container: HTMLElement, options?: { view?: View }) {
+  constructor(
+    container: HTMLElement,
+    options?: { view?: View; cursorImages?: MapCursorImages }
+  ) {
     this.container = container;
 
     const initialCrs = resolveDisplayCrs(
@@ -427,6 +461,10 @@ export class MapController {
     this.bindEvents();
     this.initProjectViewport();
     this.bindSignals();
+    // Map Cursor follows the active tool, Selection Target and drag state (#378)
+    this.disposeSignals.push(
+      bindMapCursor(container, this.map, options?.cursorImages)
+    );
     this.updateScaleSignal(true);
 
     activeMapControllerSignal.value = this;
@@ -525,10 +563,10 @@ export class MapController {
   }
 
   /**
-   * @description Binds reactive signal listeners for project layers and map navigation actions.
+   * @description Binds reactive signal listeners for project layers, map navigation actions and the active map tool (which drives the map interactions through MapToolInteractions).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-10-13
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @private
    * @returns {void}
@@ -608,15 +646,183 @@ export class MapController {
     });
     this.disposeSignals.push(disposeSelection);
 
-    // Trigger visual refresh of temporal layers when time filter is toggled or frame advances
+    // Show the Active Layer's vertex markers in Vertex Editor Mode, the selected ones in the Selection Colour
+    const disposeVertexMarkers = effect(() => {
+      void vertexEditorModeSignal.value;
+      void activeLayerIdSignal.value;
+      void selectedVertexKeysSignal.value;
+      void selectionColourSignal.value;
+      void projectLayersSignal.value;
+      this.refreshVertexMarkers();
+    });
+    this.disposeSignals.push(disposeVertexMarkers);
+
+    // Redraw temporal layers when the time filter is toggled or the frame advances, and drop newly hidden features from the selection
     const disposeTimeFilter = effect(() => {
       // Read reactive signals to establish dependency tracking
       void isTimeFilterActiveSignal.value;
       void timeFilterFrameStartSignal.value;
       void timeFilterFrameEndSignal.value;
       this.refreshTemporalLayers();
+      this.removeTimeFilteredSelection();
     });
     this.disposeSignals.push(disposeTimeFilter);
+
+    // Drive map interactions (navigation gestures, Selection Tool handlers) from the active map tool
+    const toolInteractions = new MapToolInteractions({
+      map: this.map,
+      getSelectableLayer: () => this.getSelectableLayer(),
+      setNavigation: (state) => applyNavigationToMap(this.map, state),
+    });
+    this.toolInteractions = toolInteractions;
+    const disposeTool = effect(() => {
+      toolInteractions.setTool(activeToolSignal.value);
+    });
+    this.disposeSignals.push(disposeTool);
+  }
+
+  /**
+   * @description Returns the valid Active Layer as the Selection Tools see it: a loaded, visible vector layer's source, a symbol-reach resolver at the current resolution (from the layer's style function) and its "is this feature displayed now" predicate (the one its style's Time Filter wrapper uses), or null when there is no Active Layer, it is a raster, not on the map, or hidden.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {SelectableLayer | null} The selectable Active Layer, or null.
+   */
+  public getSelectableLayer(): SelectableLayer | null {
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry = activeLayerId ? this.vectorLayers.get(activeLayerId) : null;
+    if (!entry) return null;
+    if (entry.descriptor.layerKind === "raster") return null;
+    if (!entry.layer.getVisible()) return null;
+    const styleFunction = entry.layer.getStyleFunction();
+    const resolution = this.view.getResolution() ?? 1;
+    return {
+      source: entry.source,
+      isDisplayed: entry.isDisplayed ?? ALWAYS_DISPLAYED,
+      symbolReachPx: (feature) => {
+        if (!styleFunction) return 0;
+        try {
+          return symbolReachFromStyles(styleFunction(feature, resolution));
+        } catch {
+          return 0;
+        }
+      },
+    };
+  }
+
+  /**
+   * @description Returns the valid Active Layer as a vertex edit sees it ({@link getSelectableLayer} plus its id and the data/display CRS pair its features were read with), or null when there is no valid Active Layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {VertexEditTarget | null} The vertex edit target, or null.
+   */
+  public getVertexEditTarget(): VertexEditTarget | null {
+    const layer = this.getSelectableLayer();
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry = activeLayerId ? this.vectorLayers.get(activeLayerId) : null;
+    if (!layer || !activeLayerId || !entry) return null;
+    const projectionCode =
+      this.view.getProjection()?.getCode?.() || "EPSG:3857";
+    const params = resolveFeatureQueryParameters(
+      entry.descriptor,
+      [0, 0, 0, 0],
+      projectionCode
+    );
+    return {
+      layerId: activeLayerId,
+      source: layer.source,
+      dataProjection: params.dataProjection,
+      featureProjection: params.featureProjection,
+    };
+  }
+
+  /**
+   * @description Returns the vertex marker overlay layer, or null while Vertex Editor Mode is off or there is no vector Active Layer.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {VectorLayer<VectorSource> | null} The overlay layer.
+   */
+  public getVertexMarkerLayer(): VectorLayer<VectorSource> | null {
+    return this.vertexMarkerLayer;
+  }
+
+  /**
+   * @description Rebuilds the vertex marker overlay: in Vertex Editor Mode with a vector Active Layer on the map, a layer sharing that layer's source (so markers follow loaded and edited features) is drawn above the selection highlight, visible exactly while the Active Layer is, styled by {@link createVertexMarkerStyleFunction} with the Theme's vertex marker colours, the Selection Colour for the selected vertices and the layer's display predicate (no markers on features the Time Filter hides). Otherwise the overlay is removed. Called from the vertex marker effect.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public refreshVertexMarkers(): void {
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry =
+      vertexEditorModeSignal.peek() && activeLayerId ?
+        this.vectorLayers.get(activeLayerId)
+      : undefined;
+    if (!entry || entry.descriptor.layerKind === "raster") {
+      this.removeVertexMarkers();
+      return;
+    }
+    if (
+      !this.vertexMarkerLayer
+      || this.vertexMarkerLayer.getSource() !== entry.source
+    ) {
+      this.removeVertexMarkers();
+      const overlay = new VectorLayer({
+        source: entry.source,
+        zIndex: 5001,
+        updateWhileInteracting: true,
+      });
+      overlay.set("cartoucheRole", "vertex-markers");
+      const followVisibility = (): void => {
+        overlay.setVisible(entry.layer.getVisible());
+      };
+      followVisibility();
+      const key = entry.layer.on("change:visible", followVisibility);
+      this.vertexMarkerUnbind = () => unByKey(key);
+      this.vertexMarkerLayer = overlay;
+      this.map.addLayer(overlay);
+    }
+    const target =
+      (this.map.getTargetElement?.() as Element | null | undefined)
+      ?? this.container;
+    this.vertexMarkerLayer.setStyle(
+      createVertexMarkerStyleFunction(
+        {
+          ...readVertexMarkerColours(target),
+          selection: selectionColourSignal.peek(),
+        },
+        groupVertexKeysByFeature(selectedVertexKeysSignal.peek()),
+        (feature) => (entry.isDisplayed ?? ALWAYS_DISPLAYED)(feature)
+      )
+    );
+  }
+
+  /**
+   * @description Removes the vertex marker overlay and its visibility listener, if present.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  private removeVertexMarkers(): void {
+    this.vertexMarkerUnbind?.();
+    this.vertexMarkerUnbind = null;
+    if (this.vertexMarkerLayer) {
+      try {
+        this.map.removeLayer(this.vertexMarkerLayer);
+      } catch {
+        // Suppress overlay cleanup errors
+      }
+      this.vertexMarkerLayer = null;
+    }
   }
 
   /**
@@ -707,10 +913,10 @@ export class MapController {
   }
 
   /**
-   * @description Triggers visual redraw across all registered layers with dynamic temporal control enabled.
+   * @description Triggers visual redraw across all registered layers with dynamic temporal control enabled, and of the vertex marker overlay, whose markers follow the Time Filter too.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-10
-   * @updated 2026-11-10
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @returns {void}
    */
@@ -723,6 +929,36 @@ export class MapController {
         entry.layer.changed();
       }
     }
+    this.vertexMarkerLayer?.changed();
+  }
+
+  /**
+   * @description Removes the Active Layer's features that the Time Filter now hides from the feature selection, and their vertices from the vertex selection ({@link removeHiddenFromSelection}), testing them with the layer's display predicate. A selected id is looked up in the layer's source, then in the Attribute Table rows; one found in neither is kept. Nothing is restored when features are displayed again. Called when the Time Filter state or the Active Layer's temporal configuration changes; reads signals with `peek()`.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-20
+   * @updated 2026-11-20
+   * @since 0.1.0-dev
+   * @returns {void}
+   */
+  public removeTimeFilteredSelection(): void {
+    const activeLayerId = activeLayerIdSignal.peek();
+    const entry = activeLayerId ? this.vectorLayers.get(activeLayerId) : null;
+    const isDisplayed = entry?.isDisplayed;
+    if (!entry || !isDisplayed || isDisplayed === ALWAYS_DISPLAYED) return;
+    let rows: Map<string | number, unknown> | null = null;
+    removeHiddenFromSelection((id) => {
+      let feature: unknown = entry.source.getFeatureById(id);
+      if (!feature) {
+        rows ??= new Map(
+          featuresSignal
+            .peek()
+            .filter((f) => f.layerId === activeLayerId)
+            .map((f) => [f.id, f.properties])
+        );
+        feature = rows.get(id);
+      }
+      return feature !== undefined && feature !== null && !isDisplayed(feature);
+    });
   }
 
   /**
@@ -815,10 +1051,10 @@ export class MapController {
   }
 
   /**
-   * @description Applies dynamic OpenLayers Flat Style rules or SLD XML styles to registered vector layers, reloading missing attribute fields on demand before passing the compiled style to OpenLayers.
+   * @description Applies dynamic OpenLayers Flat Style rules or SLD XML styles to registered vector layers, reloading missing attribute fields on demand before passing the compiled style to OpenLayers. When the Active Layer's temporal configuration changed, removes the features it now hides from the selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-11
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {Record<string, any>} styles - Style descriptors or rules map keyed by layer UUID.
    * @returns {void}
@@ -842,6 +1078,9 @@ export class MapController {
 
       if (styleChanged || temporalChanged) {
         this.applySingleLayerStyle(entry, rawStyle, false);
+      }
+      if (temporalChanged && id === activeLayerIdSignal.peek()) {
+        this.removeTimeFilteredSelection();
       }
     }
   }
@@ -924,10 +1163,10 @@ export class MapController {
   }
 
   /**
-   * @description Compiles and applies a style to a single vector layer entry, executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
+   * @description Compiles and applies a style to a single vector layer entry (recording its temporal configuration and display predicate), executing synchronously on the fast path when `format === 'openlayers'` and `requiredFields ⊆ loadedFields`, or asynchronously when SLD compilation or missing field reload is needed.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-29
-   * @updated 2026-11-11
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @param {VectorLayerEntry} entry - Target vector layer entry.
    * @param {unknown} rawStyle - Raw style descriptor or wrapper.
@@ -953,6 +1192,9 @@ export class MapController {
       : undefined);
     entry.activeTemporalConfig =
       temporalConfig ? { ...temporalConfig } : undefined;
+    entry.isDisplayed = createFeatureDisplayPredicate(
+      entry.activeTemporalConfig
+    );
 
     const temporalFields: string[] = [];
     if (temporalConfig?.enabled) {
@@ -2268,14 +2510,16 @@ export class MapController {
   }
 
   /**
-   * @description Disposes all reactive signal subscriptions, clears layer sources, and detaches the map target.
+   * @description Disposes the map tool interactions and all reactive signal subscriptions, clears layer sources, and detaches the map target.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-01
+   * @updated 2026-11-20
    * @since 0.1.0-dev
    * @returns {void}
    */
   public dispose(): void {
+    this.toolInteractions?.dispose();
+    this.toolInteractions = null;
     for (const dispose of this.disposeSignals) {
       try {
         dispose();
@@ -2299,6 +2543,8 @@ export class MapController {
       }
     }
     this.vectorLayers.clear();
+
+    this.removeVertexMarkers();
 
     if (this.selectionHighlightLayer) {
       try {

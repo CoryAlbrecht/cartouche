@@ -4,7 +4,7 @@
  * @description Toolbar widget providing vector feature digitizing tools (Point, Line, Polygon), layer edit mode toggles, vertex editing, and spatial feature clipboard / deletion actions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see docs/adr/0016-active-layer-vs-selected-layer-and-tree-node-title.md (ADR 0016)
@@ -34,17 +34,23 @@ import {
   activeLayerSignal,
   editableLayerIdsSignal,
   isLayerInEditMode,
-  selectedFeatureIdsSignal,
   isProjectDirtySignal,
   toggleLayerEditingAction,
   saveActiveLayerAction,
   vertexEditorAction,
-  deleteSelectedFeaturesAction,
-  cutSelectedFeaturesAction,
-  copySelectedFeaturesAction,
+  vertexEditorModeSignal,
+  deleteSelectionAction,
+  cutSelectionAction,
+  copySelectionAction,
   pasteFeaturesAction,
 } from "@renderer/state/gisSignals";
 import { getActionFormattedKey } from "@renderer/state/actionSignals";
+import {
+  isCopySelectionEnabled,
+  isCutSelectionEnabled,
+  isDeleteSelectionEnabled,
+  readSelectionCommandState,
+} from "@renderer/state/selectionCommands";
 import { ToolbarWidget } from "../ToolbarWidget";
 
 /**
@@ -104,10 +110,10 @@ export function isDrawingToolEnabled(
 
 /**
  * @function isVertexEditorEnabled
- * @description Evaluates whether the vertex editor tool is enabled based on layer edit mode.
+ * @description Evaluates whether the Vertex Editor Mode toggle is enabled based on layer edit mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {boolean} inEditMode - Whether the active layer is in edit mode.
  * @returns {boolean} True if vertex editor is enabled, false otherwise.
@@ -134,54 +140,6 @@ export function isSaveActiveLayerEnabled(
   isModified?: boolean
 ): boolean {
   return layerId !== null && (inEditMode || Boolean(isModified));
-}
-
-/**
- * @function isDeleteSelectedFeaturesEnabled
- * @description Evaluates whether deleting selected features is enabled based on selection count.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
- * @since 0.1.0-dev
- * @param {number} selectedCount - Count of currently selected spatial features.
- * @returns {boolean} True if delete is enabled, false otherwise.
- */
-export function isDeleteSelectedFeaturesEnabled(
-  selectedCount: number
-): boolean {
-  return selectedCount > 0;
-}
-
-/**
- * @function isCutSelectedFeaturesEnabled
- * @description Evaluates whether cutting selected features to clipboard is enabled based on edit mode and selection count.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
- * @since 0.1.0-dev
- * @param {boolean} inEditMode - Whether the active layer is in edit mode.
- * @param {number} selectedCount - Count of currently selected spatial features.
- * @returns {boolean} True if cut is enabled, false otherwise.
- */
-export function isCutSelectedFeaturesEnabled(
-  inEditMode: boolean,
-  selectedCount: number
-): boolean {
-  return inEditMode && selectedCount > 0;
-}
-
-/**
- * @function isCopySelectedFeaturesEnabled
- * @description Evaluates whether copying selected features to clipboard is enabled based on selection count.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-27
- * @updated 2026-10-27
- * @since 0.1.0-dev
- * @param {number} selectedCount - Count of currently selected spatial features.
- * @returns {boolean} True if copy is enabled, false otherwise.
- */
-export function isCopySelectedFeaturesEnabled(selectedCount: number): boolean {
-  return selectedCount > 0;
 }
 
 /**
@@ -221,7 +179,7 @@ export function getButtonClass(isActive = false, isDisabled = false): string {
  * @description Renders spatial digitizing and vector editing buttons for toggling edit mode, saving active layer, drawing new features (Point, Line, Polygon), vertex editing, feature deletion, and clipboard operations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-05
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {DigitizingToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} DigitizingToolbarWidget instance.
@@ -238,7 +196,7 @@ export const DigitizingToolbarWidget: React.FC<
   const isEditMode = isLayerInEditMode(activeLayerId, editableIds);
   const geometryKind = activeLayer?.geometryKind;
   const isRaster = geometryKind === "Raster";
-  const selectedCount = selectedFeatureIdsSignal.value.size;
+  const selectionCommands = readSelectionCommandState();
 
   const isToggleDisabled = activeLayerId === null || isRaster;
   const isSaveEnabled = isSaveActiveLayerEnabled(
@@ -262,9 +220,9 @@ export const DigitizingToolbarWidget: React.FC<
     isEditMode
   );
   const isVertexEnabled = isVertexEditorEnabled(isEditMode);
-  const isDeleteEnabled = isDeleteSelectedFeaturesEnabled(selectedCount);
-  const isCutEnabled = isCutSelectedFeaturesEnabled(isEditMode, selectedCount);
-  const isCopyEnabled = isCopySelectedFeaturesEnabled(selectedCount);
+  const isDeleteEnabled = isDeleteSelectionEnabled(selectionCommands);
+  const isCutEnabled = isCutSelectionEnabled(selectionCommands);
+  const isCopyEnabled = isCopySelectionEnabled(selectionCommands);
   const isPasteEnabled = isPasteFeaturesEnabled(isEditMode);
 
   // Formatted key combination titles
@@ -281,20 +239,19 @@ export const DigitizingToolbarWidget: React.FC<
   const polygonLabel = "Add Polygon Feature";
 
   const vertexKey = getActionFormattedKey("vertex_editor", "V");
-  const vertexLabel = t("vertex_editor") || "Vertex Editor";
+  const vertexLabel = t("vertex_editor") || "Vertex Editor Mode";
   const vertexTitle = vertexKey ? `${vertexLabel} (${vertexKey})` : vertexLabel;
 
-  const deleteKey = getActionFormattedKey("delete_selected_features", "Delete");
-  const deleteLabel =
-    t("delete_selected_features") || "Delete Selected Features";
+  const deleteKey = getActionFormattedKey("delete_selection", "Delete");
+  const deleteLabel = t("delete_selection") || "Delete Selection";
   const deleteTitle = deleteKey ? `${deleteLabel} (${deleteKey})` : deleteLabel;
 
-  const cutKey = getActionFormattedKey("cut_selected_features", "Ctrl+X");
-  const cutLabel = t("cut_selected_features") || "Cut Selected Features";
+  const cutKey = getActionFormattedKey("cut_selection", "Ctrl+X");
+  const cutLabel = t("cut_selection") || "Cut Selection";
   const cutTitle = cutKey ? `${cutLabel} (${cutKey})` : cutLabel;
 
-  const copyKey = getActionFormattedKey("copy_selected_features", "Ctrl+C");
-  const copyLabel = t("copy_selected_features") || "Copy Selected Features";
+  const copyKey = getActionFormattedKey("copy_selection", "Ctrl+C");
+  const copyLabel = t("copy_selection") || "Copy Selection";
   const copyTitle = copyKey ? `${copyLabel} (${copyKey})` : copyLabel;
 
   const pasteKey = getActionFormattedKey("paste_features", "Ctrl+V");
@@ -395,7 +352,7 @@ export const DigitizingToolbarWidget: React.FC<
         type='button'
         id='toolbar-tool-vertex-editor'
         className={getButtonClass(
-          activeToolSignal.value === "vertex_editor",
+          vertexEditorModeSignal.value,
           !isVertexEnabled
         )}
         title={vertexTitle}
@@ -418,7 +375,7 @@ export const DigitizingToolbarWidget: React.FC<
         disabled={!isDeleteEnabled}
         onClick={() => {
           if (isDeleteEnabled) {
-            deleteSelectedFeaturesAction();
+            deleteSelectionAction();
           }
         }}>
         <Icon path={mdiTrashCanOutline} />
@@ -433,7 +390,7 @@ export const DigitizingToolbarWidget: React.FC<
         disabled={!isCutEnabled}
         onClick={() => {
           if (isCutEnabled) {
-            cutSelectedFeaturesAction();
+            cutSelectionAction();
           }
         }}>
         <Icon path={mdiContentCut} />
@@ -448,7 +405,7 @@ export const DigitizingToolbarWidget: React.FC<
         disabled={!isCopyEnabled}
         onClick={() => {
           if (isCopyEnabled) {
-            copySelectedFeaturesAction();
+            copySelectionAction();
           }
         }}>
         <Icon path={mdiContentCopy} />

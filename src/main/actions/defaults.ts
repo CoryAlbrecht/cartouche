@@ -4,7 +4,7 @@
  * @description Centralized default action definitions for Cartouche.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-11-13
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -54,7 +54,7 @@ import {
  * @description Array of built-in action descriptors defining names, descriptions, icons, keyboard shortcuts, and API handlers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-04
- * @updated 2026-11-08
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {ActionDefinition[]}
  */
@@ -176,7 +176,7 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   {
     name: "cancel_action",
     description:
-      "Cancels the active operation, reverts tool, or clears selection",
+      "Cancels the action in progress or clears the selection; never changes the tool or mode",
     icon: mdiCancel,
     keyCombination: { key: "Escape" },
     functionCall: ApiFunctions.cancelAction,
@@ -219,20 +219,23 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     keyCombination: { key: "l", ctrl: true, alt: true },
   },
   {
-    name: "select_feature",
-    description: "Selects individual features on click",
+    name: "select_by_click",
+    description:
+      "Selects the topmost item (feature, or vertex in Vertex Editor Mode) under the pointer on click",
     icon: "file:select-primary-click.svg",
     keyCombination: { key: "q" },
   },
   {
-    name: "select_features_by_drag",
-    description: "Selects features within a drawn rectangle",
+    name: "select_by_rectangle",
+    description:
+      "Selects every item (features, or vertices in Vertex Editor Mode) overlapping a dragged rectangle",
     icon: mdiSelectDrag,
     keyCombination: { key: "q", shift: true },
   },
   {
-    name: "select_features_by_freehand",
-    description: "Selects features within a freehand lasso region",
+    name: "select_by_lasso",
+    description:
+      "Selects every item (features, or vertices in Vertex Editor Mode) inside a freehand lasso outline",
     icon: mdiSelectionEllipse,
     keyCombination: { key: "q", alt: true },
   },
@@ -244,14 +247,15 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
     functionCall: ApiFunctions.selectFeaturesByValue,
   },
   {
-    name: "select_all_features",
-    description: "Selects all features in the active layer",
+    name: "select_all",
+    description:
+      "Selects every item (features, or vertices in Vertex Editor Mode) in the active layer",
     icon: mdiSelectAll,
     keyCombination: { key: "a", ctrl: true },
   },
   {
-    name: "deselect_all_features",
-    description: "Clears all feature selections in the active layer",
+    name: "deselect_all",
+    description: "Clears the selection in the active layer",
     icon: mdiSelectionOff,
     keyCombination: { key: "a", ctrl: true, shift: true },
   },
@@ -263,27 +267,31 @@ export const BUILTIN_ACTIONS: ActionDefinition[] = [
   },
   {
     name: "vertex_editor",
-    description: "Toggles interactive vertex and edge editing mode",
+    description:
+      "Toggles Vertex Editor Mode, in which the Selection Tools select vertices",
     icon: mdiVectorPointSelect,
     keyCombination: { key: "v" },
     functionCall: ApiFunctions.vertexEditor,
   },
   {
-    name: "delete_selected_features",
-    description: "Deletes selected features from the active layer",
+    name: "delete_selection",
+    description:
+      "Deletes the selected items (features, or vertices in Vertex Editor Mode) from the active layer",
     icon: mdiTrashCanOutline,
     keyCombination: { key: "Delete" },
-    functionCall: ApiFunctions.deleteSelectedFeatures,
+    functionCall: ApiFunctions.deleteSelection,
   },
   {
-    name: "copy_selected_features",
-    description: "Copies selected features to the clipboard",
+    name: "copy_selection",
+    description:
+      "Copies the selected items to the clipboard (unavailable in Vertex Editor Mode)",
     icon: mdiContentCopy,
     keyCombination: { key: "c", ctrl: true },
   },
   {
-    name: "cut_selected_features",
-    description: "Cuts selected features to the clipboard",
+    name: "cut_selection",
+    description:
+      "Cuts the selected items to the clipboard (unavailable in Vertex Editor Mode)",
     icon: mdiContentCut,
     keyCombination: { key: "x", ctrl: true },
   },

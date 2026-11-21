@@ -4,7 +4,7 @@
  * @description Centralized global keyboard shortcut event dispatcher for the Workbench window shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link registeredActionsSignal}
  * @see {@link executeWorkbenchAction}
@@ -12,6 +12,7 @@
  * @see {@link matchesKeyCombination}
  * @see {@link cancelAction}
  * @see {@link cancelTopDialog}
+ * @see {@link cancelSelectionShape}
  */
 
 import { setProjectCrsFromLayerAction } from "../state/projectPropertiesSignals";
@@ -39,14 +40,14 @@ import {
   zoomOutAction,
   zoomToSelectionAction,
   zoomToLayerAction,
-  selectAllFeaturesAction,
-  deselectAllFeaturesAction,
+  selectAllAction,
+  deselectAllAction,
   openSelectByValueDialog,
   activeToolSignal,
   activeSelectionModeSignal,
-  deleteSelectedFeaturesAction,
-  copySelectedFeaturesAction,
-  cutSelectedFeaturesAction,
+  deleteSelectionAction,
+  copySelectionAction,
+  cutSelectionAction,
   pasteFeaturesAction,
   toggleLayerEditingAction,
   vertexEditorAction,
@@ -67,6 +68,13 @@ import {
 } from "../state/projectSignals";
 import { registeredActionsSignal } from "../state/actionSignals";
 import { cancelTopDialog } from "../state/dialogSignals";
+import { cancelSelectionShape } from "../map/selectionShapeCancel";
+import { SELECTION_ACTION_TO_TOOL_MAP } from "./widgets/toolbars/SelectionToolbarWidget";
+import {
+  isCopySelectionEnabled,
+  isCutSelectionEnabled,
+  readSelectionCommandState,
+} from "../state/selectionCommands";
 import type { KeyCombination } from "@shared/types";
 
 /**
@@ -158,15 +166,22 @@ export function matchesKeyCombination(
  * @description Global keyboard event listener dispatching registered action shortcuts across the Workbench.
  * Bypasses dispatching when focused on text inputs, dropdowns or the options of an open dropdown list, active inline rename editors, modal dialogs, or active PopupMenu instances.
  * Prioritizes dismissing open modeless dialogs upon Escape keydown.
+ * Before anything else, Escape (with any modifiers, wherever focus is) abandons a Selection Shape being drawn on the map and stops there, so the selection and tool are kept and only a further Escape runs cancel_action.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-17
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {KeyboardEvent} e - Native DOM keyboard event.
  * @returns {void}
  */
 export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
   if (e.defaultPrevented) {
+    return;
+  }
+
+  // Escape mid-drag discards the Selection Shape (Shift/Ctrl may still be held)
+  if (e.key === "Escape" && cancelSelectionShape()) {
+    e.preventDefault();
     return;
   }
 
@@ -231,10 +246,10 @@ export function handleWorkbenchKeyDown(e: KeyboardEvent): void {
 
 /**
  * @function executeWorkbenchAction
- * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name.
+ * @description Executes the renderer action or forwards to Main process action handler corresponding to the given action name. Cut and Copy run only when the shared selection command predicates allow them, so their shortcuts do nothing in Vertex Editor Mode.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-01
- * @updated 2026-11-06
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {string} actionName - Registered action name identifier.
  * @returns {void}
@@ -304,6 +319,9 @@ export function executeWorkbenchAction(actionName: string): void {
     case "rename_layer_tree_node":
       requestRenameSelectedNode();
       break;
+    case "pan_tool":
+      activeToolSignal.value = "pan";
+      break;
     case "zoom_in":
       zoomInAction();
       break;
@@ -316,35 +334,34 @@ export function executeWorkbenchAction(actionName: string): void {
     case "zoom_to_layer":
       zoomToLayerAction();
       break;
-    case "select_feature":
-      activeSelectionModeSignal.value = "select_feature";
-      activeToolSignal.value = "select";
-      break;
-    case "select_features_by_drag":
-      activeSelectionModeSignal.value = "select_features_by_drag";
-      activeToolSignal.value = "select_drag";
-      break;
-    case "select_features_by_freehand":
-      activeSelectionModeSignal.value = "select_features_by_freehand";
-      activeToolSignal.value = "select_freehand";
+    case "select_by_click":
+    case "select_by_rectangle":
+    case "select_by_lasso":
+      activeSelectionModeSignal.value = actionName;
+      activeToolSignal.value = SELECTION_ACTION_TO_TOOL_MAP[actionName];
       break;
     case "select_features_by_value":
       openSelectByValueDialog();
       break;
-    case "select_all_features":
-      selectAllFeaturesAction();
+    case "select_all":
+      selectAllAction();
       break;
-    case "deselect_all_features":
-      deselectAllFeaturesAction();
+    case "deselect_all":
+      deselectAllAction();
       break;
-    case "delete_selected_features":
-      deleteSelectedFeaturesAction();
+    case "delete_selection":
+      deleteSelectionAction();
       break;
-    case "copy_selected_features":
-      copySelectedFeaturesAction();
+    case "copy_selection":
+      // Same availability as the Edit menu and toolbar: none for vertices (Vertex Editor Mode)
+      if (isCopySelectionEnabled(readSelectionCommandState())) {
+        copySelectionAction();
+      }
       break;
-    case "cut_selected_features":
-      cutSelectedFeaturesAction();
+    case "cut_selection":
+      if (isCutSelectionEnabled(readSelectionCommandState())) {
+        cutSelectionAction();
+      }
       break;
     case "paste_features":
       pasteFeaturesAction();

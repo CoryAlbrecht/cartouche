@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -512,6 +512,25 @@
 /* MapViewportPanel host element around the OpenLayers viewport. */
 .map-viewport-container {
   background-color: var(--cartouche-map-viewport-bg);
+}
+
+/* Selection Shape of Select by Rectangle (#380): the element OpenLayers' DragBox
+   draws. A 2 px outline dashed 6 px on / 4 px off (CSS border dashes cannot be
+   sized, so each edge is a repeating gradient) at full opacity, over the same
+   colour at 25 % opacity. Overrides ol.css's .ol-box border and fill. */
+.ol-box.cartouche-selection-shape {
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--cartouche-map-selection-shape) 25%, transparent);
+  background-image:
+    repeating-linear-gradient(to right, var(--cartouche-map-selection-shape) 0 6px, transparent 6px 10px),
+    repeating-linear-gradient(to right, var(--cartouche-map-selection-shape) 0 6px, transparent 6px 10px),
+    repeating-linear-gradient(to bottom, var(--cartouche-map-selection-shape) 0 6px, transparent 6px 10px),
+    repeating-linear-gradient(to bottom, var(--cartouche-map-selection-shape) 0 6px, transparent 6px 10px);
+  background-size: 100% 2px, 100% 2px, 2px 100%, 2px 100%;
+  background-position: left top, left bottom, left top, right top;
+  background-repeat: no-repeat;
 }
 
 /* =========================================================================

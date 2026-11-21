@@ -4,7 +4,7 @@
  * @description Toolbar widget hosting spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-05
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link ToolbarWidget}
  * @see {@link SplitToolButton}
@@ -22,13 +22,17 @@ import {
   type SelectionMode,
   activeToolSignal,
   activeSelectionModeSignal,
-  selectedFeatureIdsSignal,
   openSelectByValueDialog,
-  selectAllFeaturesAction,
-  deselectAllFeaturesAction,
+  selectAllAction,
+  deselectAllAction,
 } from "@renderer/state/gisSignals";
 import { getActionFormattedKey } from "@renderer/state/actionSignals";
+import {
+  readSelectionCommandState,
+  selectedItemCount,
+} from "@renderer/state/selectionCommands";
 import { SplitToolButton } from "@renderer/components/common/SplitToolButton";
+import { isSelectionTool } from "@renderer/map/mapToolInteractions";
 import { ToolbarWidget } from "../ToolbarWidget";
 
 /**
@@ -44,40 +48,40 @@ export interface SelectionToolbarWidgetProps {
 }
 
 /**
- * @description Map linking discrete selection action mode identifiers to corresponding ActiveTool modes.
+ * @description Map linking each selection action (`select_by_click`, `select_by_rectangle`, `select_by_lasso`) to the Selection Tool it activates: the single source used by this toolbar and by the keyboard shortcuts ({@link executeWorkbenchAction}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
- * @type {Record<string, ActiveTool>}
+ * @type {Record<SelectionMode, ActiveTool>}
  */
-export const SELECTION_ACTION_TO_TOOL_MAP: Record<string, ActiveTool> = {
-  select_feature: "select",
-  select_features_by_drag: "select_drag",
-  select_features_by_freehand: "select_freehand",
+export const SELECTION_ACTION_TO_TOOL_MAP: Record<SelectionMode, ActiveTool> = {
+  select_by_click: "select_click",
+  select_by_rectangle: "select_rectangle",
+  select_by_lasso: "select_lasso",
 };
 
 /**
  * @description Available selection mode option action names for the SplitToolButton composite control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @type {string[]}
  */
 export const SELECTION_TOOL_OPTIONS: string[] = [
-  "select_feature",
-  "select_features_by_drag",
-  "select_features_by_freehand",
+  "select_by_click",
+  "select_by_rectangle",
+  "select_by_lasso",
 ];
 
 /**
  * @function isDeselectAllDisabled
- * @description Evaluates whether the Deselect All Features toolbar button should be disabled.
+ * @description Evaluates whether the Deselect All toolbar button should be disabled.
  * Disabled when there are no features currently selected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {Set<string | number> | number} selectedFeatures - Set of selected feature IDs or count of selected features.
  * @returns {boolean} True if disabled, false otherwise.
@@ -93,10 +97,10 @@ export function isDeselectAllDisabled(
 
 /**
  * @component SelectionToolbarWidget
- * @description Renders spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All.
+ * @description Renders spatial feature selection tools: SplitToolButton for selection modes, Select by Value dialog trigger, Select All, and Deselect All (disabled while nothing of the current Selection Target is selected).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-05
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {SelectionToolbarWidgetProps} props - Component properties.
  * @returns {React.ReactElement} SelectionToolbarWidget instance.
@@ -109,25 +113,13 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
   useSignals();
   const { t } = useTranslation();
 
-  const isSelectionActive =
-    activeToolSignal.value === "select"
-    || activeToolSignal.value === "select_drag"
-    || activeToolSignal.value === "select_freehand";
+  const isSelectionActive = isSelectionTool(activeToolSignal.value);
 
   const handleSelectionModeSelect = (actionId: string): void => {
-    activeSelectionModeSignal.value = actionId as SelectionMode;
-    const tool = SELECTION_ACTION_TO_TOOL_MAP[actionId];
-    if (tool) {
-      activeToolSignal.value = tool;
-    }
-  };
-
-  const handleSelectionExecute = (actionId: string): void => {
-    activeSelectionModeSignal.value = actionId as SelectionMode;
-    const tool = SELECTION_ACTION_TO_TOOL_MAP[actionId];
-    if (tool) {
-      activeToolSignal.value = tool;
-    }
+    if (!(actionId in SELECTION_ACTION_TO_TOOL_MAP)) return;
+    const mode = actionId as SelectionMode;
+    activeSelectionModeSignal.value = mode;
+    activeToolSignal.value = SELECTION_ACTION_TO_TOOL_MAP[mode];
   };
 
   const selectByValueShortcut = getActionFormattedKey(
@@ -139,26 +131,24 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
       `${t("select_features_by_value")} (${selectByValueShortcut})`
     : t("select_features_by_value");
 
-  const selectAllShortcut = getActionFormattedKey(
-    "select_all_features",
-    "Ctrl+A"
-  );
+  const selectAllShortcut = getActionFormattedKey("select_all", "Ctrl+A");
   const selectAllTitle =
     selectAllShortcut ?
-      `${t("select_all_features")} (${selectAllShortcut})`
-    : t("select_all_features");
+      `${t("select_all")} (${selectAllShortcut})`
+    : t("select_all");
 
   const deselectAllShortcut = getActionFormattedKey(
-    "deselect_all_features",
+    "deselect_all",
     "Ctrl+Shift+A"
   );
   const deselectAllTitle =
     deselectAllShortcut ?
-      `${t("deselect_all_features")} (${deselectAllShortcut})`
-    : t("deselect_all_features");
+      `${t("deselect_all")} (${deselectAllShortcut})`
+    : t("deselect_all");
 
+  // Counts the current Selection Target's items: vertices in Vertex Editor Mode
   const deselectDisabled = isDeselectAllDisabled(
-    selectedFeatureIdsSignal.value
+    selectedItemCount(readSelectionCommandState())
   );
 
   return (
@@ -173,7 +163,7 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
         zone={zone}
         active={isSelectionActive}
         onSelect={handleSelectionModeSelect}
-        onExecute={handleSelectionExecute}
+        onExecute={handleSelectionModeSelect}
       />
 
       <button
@@ -193,8 +183,8 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
         id='toolbar-tool-select-all'
         className='toolbar-btn'
         title={selectAllTitle}
-        aria-label={t("select_all_features") || "Select All Features"}
-        onClick={selectAllFeaturesAction}>
+        aria-label={t("select_all") || "Select All"}
+        onClick={selectAllAction}>
         <Icon path={mdiSelectAll} />
       </button>
 
@@ -203,9 +193,9 @@ export const SelectionToolbarWidget: React.FC<SelectionToolbarWidgetProps> = ({
         id='toolbar-tool-deselect-all'
         className={`toolbar-btn ${deselectDisabled ? "disabled" : ""}`}
         title={deselectAllTitle}
-        aria-label={t("deselect_all_features") || "Deselect All Features"}
+        aria-label={t("deselect_all") || "Deselect All"}
         disabled={deselectDisabled}
-        onClick={deselectAllFeaturesAction}>
+        onClick={deselectAllAction}>
         <Icon path={mdiSelectionOff} />
       </button>
     </ToolbarWidget>

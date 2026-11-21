@@ -4,7 +4,7 @@
  * @description Domain types and IPC message definitions for the Geospatial Worker utility process communication protocol.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-13
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  */
 
@@ -235,6 +235,25 @@ export interface StageFeatureEditRequest {
 }
 
 /**
+ * @typedef {Object} StageFeatureEditsRequest
+ * @description Stages several feature edits of one layer in a single request (one atomic edit, e.g. a vertex deletion).
+ * @property {string} id - Unique correlation identifier.
+ * @property {'stageFeatureEdits'} type - Request message discriminator.
+ * @property {string} layerId - Target layer UUID.
+ * @property {StagedFeatureEdit[]} edits - Staged feature modifications, deletions or additions, applied in order.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ */
+export interface StageFeatureEditsRequest {
+  id: string;
+  type: "stageFeatureEdits";
+  layerId: string;
+  edits: StagedFeatureEdit[];
+}
+
+/**
  * @typedef {Object} ClearLayerEditsRequest
  * @property {string} id - Unique correlation identifier.
  * @property {'clearLayerEdits'} type - Request message discriminator.
@@ -251,7 +270,7 @@ export interface ClearLayerEditsRequest {
 }
 
 /**
- * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest | SetBackgroundScanEnabledRequest | StageFeatureEditRequest | ClearLayerEditsRequest} WorkerRequest
+ * @typedef {OpenDatasetRequest | QueryExtentRequest | CloseDatasetRequest | CloseAllRequest | RehydrateRequest | PingRequest | GetLayerInfoRequest | RekeySessionRequest | SetBackgroundScanEnabledRequest | StageFeatureEditRequest | StageFeatureEditsRequest | ClearLayerEditsRequest} WorkerRequest
  * Discriminated union of all request messages dispatched from Main to the Geospatial Worker.
  */
 /**
@@ -283,6 +302,7 @@ export type WorkerRequest =
   | PingRequest
   | SetBackgroundScanEnabledRequest
   | StageFeatureEditRequest
+  | StageFeatureEditsRequest
   | ClearLayerEditsRequest;
 
 /**

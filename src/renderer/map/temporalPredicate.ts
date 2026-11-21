@@ -1,12 +1,13 @@
 /**
  * @file temporalPredicate.ts
  * @module renderer/map/temporalPredicate
- * @description Pure temporal predicate evaluation engine testing vector feature attributes against the active temporal frame window.
+ * @description Pure temporal predicate evaluation engine testing vector feature attributes against the active temporal frame window, and the one "is this feature displayed now" predicate ({@link createFeatureDisplayPredicate}) that both the layer style's Time Filter wrapper and the Selection Tools use, so what is selectable is exactly what is drawn.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link evaluateTemporalPredicate}
+ * @see {@link createFeatureDisplayPredicate}
  * @see {@link parseTemporalValue}
  * @see {@link extractFeatureTemporalProperties}
  */
@@ -211,4 +212,39 @@ export function evaluateTemporalPredicate(
   }
 
   return true;
+}
+
+/**
+ * @callback FeatureDisplayPredicate
+ * @description Whether a feature of a layer is displayed now under the Time Filter (true when the layer has no Dynamic Temporal Control or the Time Filter is off). Reads the live Time Filter state on every call.
+ * @param {unknown} featureOrProps - OpenLayers Feature or attribute key-value map.
+ * @returns {boolean} True when the feature is displayed.
+ */
+export type FeatureDisplayPredicate = (featureOrProps: unknown) => boolean;
+
+/**
+ * @description The {@link FeatureDisplayPredicate} of a layer without Dynamic Temporal Control: every feature is displayed.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @type {FeatureDisplayPredicate}
+ */
+export const ALWAYS_DISPLAYED: FeatureDisplayPredicate = () => true;
+
+/**
+ * @function createFeatureDisplayPredicate
+ * @description Builds a layer's "is this feature displayed now" predicate from its temporal configuration: {@link evaluateTemporalPredicate} against the live Time Filter signals (active flag, frame start/end), including the Undated Feature rule. The layer style's Time Filter wrapper hides exactly the features this predicate rejects, and every Selection Tool, Select All and the Vertex Markers skip them, so selection and display never disagree. Without Dynamic Temporal Control it is {@link ALWAYS_DISPLAYED}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-20
+ * @updated 2026-11-20
+ * @since 0.1.0-dev
+ * @param {LayerTemporalConfig | undefined | null} config - Layer temporal configuration.
+ * @returns {FeatureDisplayPredicate} The layer's display predicate.
+ */
+export function createFeatureDisplayPredicate(
+  config: LayerTemporalConfig | undefined | null
+): FeatureDisplayPredicate {
+  if (!config || !config.enabled) return ALWAYS_DISPLAYED;
+  return (featureOrProps) => evaluateTemporalPredicate(featureOrProps, config);
 }

@@ -4,7 +4,7 @@
  * @description Unit and component tests for ephemeral per-layer toolbar state conservation, caching, restoration, and fallback mechanisms (Ticket #107).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-18
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link captureLayerToolbarState}
  * @see {@link restoreLayerToolbarState}
@@ -91,7 +91,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     // Reset GIS signals
     activeLayerIdSignal.value = null;
     activeToolSignal.value = "pan";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     editableLayerIdsSignal.value = new Set();
     snappingEnabledSignal.value = false;
     snappingScopeSignal.value = "snap_to_active";
@@ -130,7 +130,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     // Mutate tools and snapping parameters
     activeToolSignal.value = "polygon";
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeSelectionModeSignal.value = "select_by_rectangle";
     snappingEnabledSignal.value = true;
     snappingScopeSignal.value = "snap_to_all";
     snapToVerticesSignal.value = true;
@@ -177,7 +177,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "selectionMode"),
-      "select_features_by_drag"
+      "select_by_rectangle"
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "snappingEnabled"),
@@ -211,11 +211,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     // Populate layer A preferences
     setLayerToolbarPreference(layerA, "digitizingTool", "line");
-    setLayerToolbarPreference(
-      layerA,
-      "selectionMode",
-      "select_features_by_freehand"
-    );
+    setLayerToolbarPreference(layerA, "selectionMode", "select_by_lasso");
     setLayerToolbarPreference(layerA, "snappingEnabled", true);
     setLayerToolbarPreference(layerA, "snappingScope", "snap_to_advanced");
     setLayerToolbarPreference(layerA, "snapToVertices", false);
@@ -229,7 +225,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     // Initially on layer B with default settings
     activeLayerIdSignal.value = layerB;
     activeToolSignal.value = "point";
-    activeSelectionModeSignal.value = "select_feature";
+    activeSelectionModeSignal.value = "select_by_click";
     snappingEnabledSignal.value = false;
 
     // Transition to layer A
@@ -242,7 +238,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       activeSelectionModeSignal.value,
-      "select_features_by_freehand",
+      "select_by_lasso",
       "Selection mode must be restored"
     );
     assert.strictEqual(
@@ -314,8 +310,8 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     editableLayerIdsSignal.value = new Set([layerA]);
     activeLayerIdSignal.value = layerA;
-    activeToolSignal.value = "vertex_editor";
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeToolSignal.value = "line";
+    activeSelectionModeSignal.value = "select_by_rectangle";
 
     // Clear active layer
     activeLayerIdSignal.value = null;
@@ -327,12 +323,12 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "digitizingTool"),
-      "vertex_editor",
+      "line",
       "Outgoing layer digitizing tool must be captured when active layer is cleared"
     );
     assert.strictEqual(
       getLayerToolbarPreference(layerA, "selectionMode"),
-      "select_features_by_drag",
+      "select_by_rectangle",
       "Outgoing layer selection mode must be captured when active layer is cleared"
     );
   });
@@ -345,7 +341,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     toggleLayerEditingAction(layerA);
     activeLayerIdSignal.value = layerA;
     activeToolSignal.value = "polygon";
-    activeSelectionModeSignal.value = "select_features_by_drag";
+    activeSelectionModeSignal.value = "select_by_rectangle";
 
     // Deselect layer A by switching to layer B
     activeLayerIdSignal.value = layerB;
@@ -369,7 +365,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     );
     assert.strictEqual(
       activeSelectionModeSignal.value,
-      "select_features_by_drag",
+      "select_by_rectangle",
       "Selection mode must be restored upon re-selecting layer A"
     );
   });
@@ -378,7 +374,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     const layerA = "layer-in-place-toggle";
 
     // Pre-cache digitizing tool for layer A
-    setLayerToolbarPreference(layerA, "digitizingTool", "vertex_editor");
+    setLayerToolbarPreference(layerA, "digitizingTool", "polygon");
 
     // Make layer A active, not in edit mode, currently in pan mode
     activeLayerIdSignal.value = layerA;
@@ -389,7 +385,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
 
     assert.strictEqual(
       activeToolSignal.value,
-      "vertex_editor",
+      "polygon",
       "Cached digitizing tool must be restored when editing is toggled ON for active layer"
     );
   });
