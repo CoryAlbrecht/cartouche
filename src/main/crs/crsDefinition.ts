@@ -4,9 +4,9 @@
  * @description Resolves a CRS identifier (`AUTH:code`) to its proj4 and WKT definitions with GDAL, so the renderer can register any Project CRS or Layer CRS with OpenLayers through `proj4`.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-21
  * @since 0.1.0-dev
- * @see {@link ensureProjectionRegistered}
+ * @see {@link registerCrs}
  */
 
 import gdal from "gdal-async";

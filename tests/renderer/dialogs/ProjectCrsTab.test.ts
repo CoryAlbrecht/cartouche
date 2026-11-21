@@ -4,7 +4,7 @@
  * @description Component and draft tests for the Project Properties CRS tab: No CRS disabling the lists, the case-insensitive filter on name and `AUTH:code`, the five / ten visible rows, selection staying in sync between the two lists, Predefined selections added to the top of the draft Recently Used list, Apply committing the Project CRS (or No CRS) and the list trimmed to 20, Cancel discarding both, Hide Deprecated bound to the app preference with the current and recent CRSs always shown and marked, and the catalogue-building state. Ticket #296 adds: a list that does not hold the selected CRS keeps no row selected (React's first-row fallback is cleared), the Filter box has a visible label and placeholder, and the filter is cleared each time the dialog opens.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-14
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link ProjectCrsTab}
  * @see {@link selectDraftCrs}
@@ -182,6 +182,15 @@ describe("Project Properties CRS tab (Ticket #280)", () => {
           patches.push(p);
           return true;
         },
+        // Apply checks that the map can draw a changed Project CRS (#384).
+        getCrsDefinition: async (authId: string) =>
+          authId === "EPSG:2154" ?
+            {
+              authId,
+              proj4:
+                "+proj=lcc +lat_0=46.5 +lon_0=3 +lat_1=49 +lat_2=44 +x_0=700000 +y_0=6600000 +ellps=GRS80 +units=m +no_defs",
+            }
+          : null,
       },
     };
     preferencesMapSignal.value = {};

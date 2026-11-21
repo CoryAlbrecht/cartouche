@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-18
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -101,6 +101,7 @@ export {
   type UseRawStyleTextEditorHistoryOptions,
   type UseRawStyleTextEditorHistoryResult,
 } from "./StyleEditor";
+import { UndrawableCrsAlert } from "./UndrawableCrsAlert";
 
 /**
  * Names of well-known CRSs keyed by upper-cased `AUTH:code`, used to label the current CRS while the CRS Catalogue is still building.
@@ -631,7 +632,7 @@ function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-17
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1661,6 +1662,7 @@ export const LayerPropertiesDialog: React.FC = () => {
             </div>
           )}
         </TabbedDialogShell>
+        <UndrawableCrsAlert host='layer-properties' />
       </Dialog>
       <Dialog
         name='newFieldWindow'

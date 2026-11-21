@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-18
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -58,6 +58,8 @@ import {
 import { logging } from "../../shared/logging";
 import { computeStyleFormatSwitch } from "../../shared/styles/styleFormatSwitch";
 import { findCrsCatalogueEntry } from "./crsCatalogueSignals";
+import { registerCrs } from "../map/projectionRegistry";
+import { reportUndrawableCrs } from "./crsAlertSignals";
 
 /**
  * @typedef {'information' | 'source' | 'fields' | 'time_filter' | 'styling'} LayerPropertiesTabId
@@ -749,7 +751,7 @@ export function updateLayerPropertiesInTree(
  * @description Commits active draft modifications (name, ID, CRS, filter, temporalEnabled, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-18
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -767,6 +769,31 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
 
   const trimmedName = draft.layerName.trim() || currentLayer.name;
   const trimmedId = draft.layerId.trim() || activeId;
+
+  // 0. Refuse a Layer CRS change the map cannot draw before anything is committed (#384)
+  const draftCrs = draft.crsAuthId.trim().toUpperCase();
+  if (
+    draftCrs
+    && draftCrs !== (currentLayer.crs?.authId ?? "").trim().toUpperCase()
+  ) {
+    const registration = await registerCrs(draftCrs);
+    if (!registration.ok) {
+      logging.warn("Layer CRS refused: the map cannot draw it", {
+        scope: "layerPropertiesSignals",
+        layerId: activeId,
+        crs: draftCrs,
+      });
+      reportUndrawableCrs({
+        context: "layer-change",
+        code: draftCrs,
+        failure: registration.failure,
+        layerId: activeId,
+        layerName: currentLayer.name,
+        host: "layer-properties",
+      });
+      return false;
+    }
+  }
 
   // 1. If layerId has changed, execute atomic re-keying across main & renderer
   if (trimmedId !== activeId) {

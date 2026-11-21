@@ -4,7 +4,7 @@
  * @description Standardized React portal-based modal dialog to block interaction with parent window, plus the sequential UnsavedChangesModal confirmation component. Its colours come from the shared Dialog classes in workbench.css (backdrop, title bar, body and footer), so it follows the Theme.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-19
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @component ModalDialog
  * @see {@link UnsavedChangesModal}
@@ -15,6 +15,10 @@ import { createPortal } from "react-dom";
 import { useSignals } from "@preact/signals-react/runtime";
 import { useTranslation } from "@renderer/hooks/useTranslation";
 import { isWithinOpenSelect } from "@renderer/components/common/Select";
+import {
+  openInWindowModal,
+  type InWindowModalHandle,
+} from "./inWindowModalStack";
 import {
   unsavedChangesModalSignal,
   resolveUnsavedChangesModal,
@@ -28,6 +32,7 @@ import {
  * @property {React.ReactNode} children - Main content rendered inside the modal body.
  * @property {Array<{label: string, onClick: () => void, primary?: boolean}>} [buttons] - Action buttons for the modal footer.
  * @property {string} [width] - CSS width for the modal container (e.g. '400px').
+ * @property {HTMLElement | null} [container] - Element to render into, e.g. a detached Dialog window's `body`, so the modal shows over that window. Its window then takes the modal's Escape key, and the modal sits on that window's in-window modal stack so the Dialog defers Escape to it. Defaults to the Workbench's `document.body`.
  */
 export interface ModalDialogProps {
   title: string;
@@ -36,17 +41,18 @@ export interface ModalDialogProps {
   children: React.ReactNode;
   buttons?: Array<{ label: string; onClick: () => void; primary?: boolean }>;
   width?: string;
+  container?: HTMLElement | null;
 }
 
 /**
  * @component ModalDialog
- * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI. It reads the Theme's Dialog title bar, body and footer colours through workbench.css classes.
+ * @description In-window centered modal dialog with backdrop overlay blocking interactions with background UI, rendered over the Workbench or, given `container`, over a detached Dialog window. It reads the Theme's Dialog title bar, body and footer colours through workbench.css classes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-08
- * @updated 2026-11-19
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @param {ModalDialogProps} props - Component properties.
- * @returns {React.ReactPortal | null} Rendered portal or null when closed.
+ * @returns {React.ReactNode} Rendered portal (inline content when no container is available), or null when closed.
  */
 export const ModalDialog: React.FC<ModalDialogProps> = ({
   title,
@@ -55,24 +61,46 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
   children,
   buttons,
   width = "400px",
+  container,
 }) => {
+  const targetContainer =
+    container ?? (typeof document !== "undefined" ? document.body : null);
+  const targetWindow =
+    targetContainer?.ownerDocument?.defaultView
+    ?? (typeof window !== "undefined" ? window : null);
+  const modalHandleRef = React.useRef<InWindowModalHandle | null>(null);
+
+  // Over a detached Dialog window, sit on its in-window modal stack so the Dialog defers Escape
   React.useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !container || !targetWindow) return;
+    const handle = openInWindowModal(targetWindow);
+    modalHandleRef.current = handle;
+    return () => {
+      handle.release();
+      if (modalHandleRef.current === handle) modalHandleRef.current = null;
+    };
+  }, [isOpen, container, targetWindow]);
+
+  React.useEffect(() => {
+    if (!isOpen || !targetWindow) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isWithinOpenSelect(e.target)) return;
+      if (modalHandleRef.current && !modalHandleRef.current.isTopmost()) {
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         onClose();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+    targetWindow.addEventListener("keydown", handleKeyDown);
+    return () => targetWindow.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, targetWindow]);
 
   if (!isOpen) return null;
 
-  return createPortal(
+  const content = (
     <div
       className='dialog-backdrop'
       style={{
@@ -139,9 +167,9 @@ export const ModalDialog: React.FC<ModalDialogProps> = ({
           </div>
         )}
       </div>
-    </div>,
-    document.body
+    </div>
   );
+  return targetContainer ? createPortal(content, targetContainer) : content;
 };
 
 /**

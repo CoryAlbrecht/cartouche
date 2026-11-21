@@ -352,6 +352,15 @@
     <string name="attribute_table_page_next">Page suivante</string>
     <string name="attribute_table_page_last">Dernière page</string>
     <string name="attribute_table_page_range">{start}–{end} sur {total}</string>
+    <string name="undrawable_crs_title">SCR impossible à afficher</string>
+    <string name="undrawable_crs_project_change">La carte ne peut pas afficher {crs} ; le SCR du projet n'a donc pas été modifié.</string>
+    <string name="undrawable_crs_project_display">La carte ne peut pas afficher le SCR de ce projet, {crs}. Elle est affichée en {kept} à la place ; le SCR enregistré dans le projet n'est pas modifié.</string>
+    <string name="undrawable_crs_layer_change">La carte ne peut pas afficher {crs} ; le SCR de la couche « {layer} » n'a donc pas été modifié.</string>
+    <string name="undrawable_crs_layer_skipped">La couche « {layer} » n'est pas affichée : la carte ne peut pas afficher son SCR, {crs}.</string>
+    <string name="undrawable_crs_reason_unsupported_method">Cartouche ne sait pas encore afficher les SCR qui utilisent la méthode « {method} ».</string>
+    <string name="undrawable_crs_reason_invalid_definition">Sa définition a été refusée : {message}</string>
+    <string name="undrawable_crs_reason_no_definition">Aucune définition n'est disponible pour ce SCR.</string>
+    <string name="undrawable_crs_reason_fetch_failed">Sa définition n'a pas pu être chargée : {message}</string>
     <string name="unsaved_changes_title">Modifications non enregistrées</string>
     <string name="unsaved_layer_changes_prompt">La couche « {name} » comporte des modifications non enregistrées. Voulez-vous les enregistrer avant de continuer ?</string>
     <string name="unsaved_project_changes_prompt">Le projet « {name} » comporte des modifications non enregistrées. Voulez-vous les enregistrer avant de continuer ?</string>

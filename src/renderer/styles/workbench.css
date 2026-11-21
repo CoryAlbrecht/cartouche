@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  */
 
@@ -3184,6 +3184,17 @@
 
 .modal-dialog-box .cartouche-dialog-header {
   -webkit-app-region: no-drag;
+}
+
+/* Undrawable CRS Alert: one list item per CRS the map cannot draw, its
+   report line above its reason line. */
+.undrawable-crs-alert-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.undrawable-crs-alert-item p {
+  margin: 0;
 }
 
 /* Compact secondary button beside a text field (Project Properties Save As…). */

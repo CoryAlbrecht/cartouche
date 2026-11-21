@@ -409,6 +409,15 @@
     <string name="attribute_table_page_next">Next page</string>
     <string name="attribute_table_page_last">Last page</string>
     <string name="attribute_table_page_range">{start}–{end} of {total}</string>
+    <string name="undrawable_crs_title">CRS Cannot Be Drawn</string>
+    <string name="undrawable_crs_project_change">The map can't draw {crs}, so the Project CRS was not changed.</string>
+    <string name="undrawable_crs_project_display">The map can't draw this project's CRS, {crs}. The map is shown in {kept} instead; the Project CRS saved in the project is unchanged.</string>
+    <string name="undrawable_crs_layer_change">The map can't draw {crs}, so the CRS of layer "{layer}" was not changed.</string>
+    <string name="undrawable_crs_layer_skipped">Layer "{layer}" is not drawn: the map can't draw its CRS, {crs}.</string>
+    <string name="undrawable_crs_reason_unsupported_method">Cartouche can't yet draw CRSs that use the "{method}" method.</string>
+    <string name="undrawable_crs_reason_invalid_definition">Its definition was rejected: {message}</string>
+    <string name="undrawable_crs_reason_no_definition">No definition is available for it.</string>
+    <string name="undrawable_crs_reason_fetch_failed">Its definition could not be loaded: {message}</string>
     <string name="unsaved_changes_title">Unsaved Changes</string>
     <string name="unsaved_layer_changes_prompt">Layer "{name}" has unsaved changes. Do you want to
         save them before continuing?</string>

@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit, Project CRS / No CRS and the Recently Used CRSs, Project Default Styles). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-18
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link projectPropertiesDraftSignal}
@@ -56,6 +56,11 @@ import {
   setProjectRecentCrs,
 } from "./projectSignals";
 import { findCrsCatalogueEntry } from "./crsCatalogueSignals";
+import { registerCrs } from "../map/projectionRegistry";
+import {
+  reportUndrawableCrs,
+  type UndrawableCrsAlertHost,
+} from "./crsAlertSignals";
 import {
   MAX_RECENT_CRS,
   addToRecentCrsIfMissing,
@@ -642,17 +647,55 @@ export function applyTimeFilterDraft(draft: ProjectPropertiesDraft): void {
 }
 
 /**
+ * @function isProjectCrsDrawable
+ * @description Checks that the map can draw a Project CRS before it is committed (#384). When it can't, raises the Undrawable CRS Alert and returns false, so the caller commits nothing and the Project CRS stays as it was. "No CRS" is always drawable.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-21
+ * @updated 2026-11-21
+ * @since 0.1.0-dev
+ * @param {ProjectCrs} crs - Project CRS about to be committed.
+ * @param {UndrawableCrsAlertHost} [host] - Dialog to show the alert over; the Workbench when absent.
+ * @returns {Promise<boolean>} True when the map can draw it.
+ */
+async function isProjectCrsDrawable(
+  crs: ProjectCrs,
+  host?: UndrawableCrsAlertHost
+): Promise<boolean> {
+  if (crs.none || !crs.authId) return true;
+  const code = crs.authId.toUpperCase();
+  const registration = await registerCrs(code, crs.proj4);
+  if (registration.ok) return true;
+  logging.warn("Project CRS refused: the map cannot draw it", {
+    scope: "projectProperties",
+    crs: code,
+  });
+  reportUndrawableCrs({
+    context: "project-change",
+    code,
+    failure: registration.failure,
+    ...(host ? { host } : {}),
+  });
+  return false;
+}
+
+/**
  * @function applyProjectPropertiesEdits
  * @description Apply: commits the whole draft to the Project Store in one IPC round trip, mirrors it into the renderer signals, and sets the Project Dirty State. The dialog stays open with the committed values as its new baseline.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True when the draft was committed.
  */
 export async function applyProjectPropertiesEdits(): Promise<boolean> {
   if (!hasProjectSignal.value) return false;
   const patch = buildProjectPropertiesPatch(projectPropertiesDraftSignal.value);
+  if (
+    patch.crs
+    && !(await isProjectCrsDrawable(patch.crs, "project-properties"))
+  ) {
+    return false;
+  }
   try {
     patch.defaultStyles = await resolveDefaultStylesPatch(
       projectPropertiesDraftSignal.value.defaultStyles
@@ -743,7 +786,7 @@ export async function commitAndCloseProjectPropertiesDialog(): Promise<boolean> 
  * @description "Set Project CRS from Layer": adopts a layer's CRS, with its proj4 and WKT definitions, as the explicit Project CRS, commits it to the Project Store (which fills in a missing proj4), sets the Project Dirty State, and lets the map redraw in it (camera kept in place). Layers without a declared CRS are refused because the EPSG:3857 assumption is never saved.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-15
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @param {string | null | undefined} layerId - Layer whose CRS is adopted.
  * @returns {Promise<boolean>} True when the Project CRS was set.
@@ -772,6 +815,7 @@ export async function setProjectCrsFromLayerAction(
     ...(layerCrs.proj4 ? { proj4: layerCrs.proj4 } : {}),
     ...(layerCrs.wkt ? { wkt: layerCrs.wkt } : {}),
   };
+  if (!(await isProjectCrsDrawable(crs))) return false;
   if (window.electronAPI?.updateProjectProperties) {
     try {
       const ok = await window.electronAPI.updateProjectProperties({ crs });

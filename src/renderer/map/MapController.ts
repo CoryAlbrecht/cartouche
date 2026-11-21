@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-20
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -33,10 +33,11 @@ import {
   resolveLayerDataCrs,
   isProjectionRegistered,
   registerProjectionDefinition,
-  ensureProjectionRegistered,
+  registerCrs,
   ensureNoCrsProjection,
   type DisplayCrs,
 } from "./projectionRegistry";
+import { reportUndrawableCrs } from "../state/crsAlertSignals";
 import Feature from "ol/Feature.js";
 import { getScale } from "./getScale";
 import {
@@ -1419,7 +1420,7 @@ export class MapController {
    * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-19
+   * @updated 2026-11-21
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -1527,20 +1528,29 @@ export class MapController {
         if (
           queryParams.dataProjection !== NO_CRS_CODE
           && !isProjectionRegistered(queryParams.dataProjection)
-          && !(await ensureProjectionRegistered(
+        ) {
+          const registration = await registerCrs(
             queryParams.dataProjection,
             descriptor.crs?.proj4
-          ))
-        ) {
-          logging.warn(
-            "Layer CRS cannot be registered for display; skipping layer",
-            {
-              scope: "MapController",
-              layerId: descriptor.id,
-              crs: queryParams.dataProjection,
-            }
           );
-          return [];
+          if (!registration.ok) {
+            logging.warn(
+              "Layer CRS cannot be registered for display; skipping layer",
+              {
+                scope: "MapController",
+                layerId: descriptor.id,
+                crs: queryParams.dataProjection,
+              }
+            );
+            reportUndrawableCrs({
+              context: "layer-skipped",
+              code: queryParams.dataProjection,
+              failure: registration.failure,
+              layerId: descriptor.id,
+              layerName: descriptor.name,
+            });
+            return [];
+          }
         }
 
         const options: QueryExtentOptions = {
@@ -2183,7 +2193,7 @@ export class MapController {
    * @description Switches the map to another display CRS: registers it, replaces the OpenLayers view, keeps the camera in place by reprojecting its extent (or applies a pending Project CRS viewport), zooms to fit all layers when switching to or from No CRS, and reloads every layer in the new CRS. Queued so switches apply in order.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-13
-   * @updated 2026-11-19
+   * @updated 2026-11-21
    * @since 0.1.0-dev
    * @param {DisplayCrs} next - Target display CRS.
    * @returns {Promise<void>}
@@ -2196,15 +2206,21 @@ export class MapController {
           this.displayCrs = next;
           return;
         }
-        if (
-          !next.none
-          && !(await ensureProjectionRegistered(next.code, next.proj4))
-        ) {
-          logging.warn(
-            "Project CRS cannot be registered; keeping the current display CRS",
-            { scope: "MapController", crs: next.code }
-          );
-          return;
+        if (!next.none) {
+          const registration = await registerCrs(next.code, next.proj4);
+          if (!registration.ok) {
+            logging.warn(
+              "Project CRS cannot be registered; keeping the current display CRS",
+              { scope: "MapController", crs: next.code }
+            );
+            reportUndrawableCrs({
+              context: "project-display",
+              code: next.code,
+              failure: registration.failure,
+              keptCode: currentCode ?? this.displayCrs.code,
+            });
+            return;
+          }
         }
         if (next.none) ensureNoCrsProjection();
 

@@ -112,6 +112,7 @@ import {
   resolveProjectDisplayName,
   isDefaultProjectTitle,
 } from "../../shared/project/projectTitle";
+import { resetUndrawableCrsAlerts } from "./crsAlertSignals";
 import {
   DEFAULT_MAP_BACKGROUND_COLOUR,
   DEFAULT_SELECTION_COLOUR,
@@ -1853,12 +1854,13 @@ export function resetToolbarsToDefault(): void {
  * @description Initializes a clean project state in Workbench shell.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @param {string} [name='New Project'] - Project name string.
  * @returns {void}
  */
 export function createNewProject(name: string = "New Project") {
+  resetUndrawableCrsAlerts();
   currentProjectSignal.value = {
     format: "cartouche-xml",
     pathMode: DEFAULT_NEW_PROJECT_PATH_MODE,
@@ -2136,12 +2138,13 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-19
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
  */
 export function loadProjectIntoSignals(project: ProjectModel): void {
+  resetUndrawableCrsAlerts();
   const { groups, layers } = projectToGisHierarchy(project);
   batch(() => {
     currentProjectSignal.value = project;
@@ -2755,7 +2758,7 @@ export async function confirmUnsavedChangesFlow(): Promise<boolean> {
  * If saved or discarded, closes project in Main (disposing native C++ layer handles) and resets Renderer signals to blank-slate state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-19
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project closed, false if aborted.
  */
@@ -2777,6 +2780,7 @@ export async function closeProjectAction(): Promise<boolean> {
     await window.electronAPI.executeAction("close_project");
   }
 
+  resetUndrawableCrsAlerts();
   hasProjectSignal.value = false;
   projectNameSignal.value = null;
   projectTitleSignal.value = "";

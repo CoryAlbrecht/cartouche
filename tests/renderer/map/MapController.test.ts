@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, viewport auto-fitting, and keeping features the Time Filter hides out of the selection (Ticket #386).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-20
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -55,6 +55,11 @@ import { cancelSelectionShape } from "../../../src/renderer/map/selectionShapeCa
 import { fromLonLat, transformExtent, transform } from "ol/proj.js";
 import { generateDefaultVectorStyleJson } from "../../../src/shared/styles/defaultLayerStyles";
 import { NO_CRS_CODE } from "../../../src/renderer/map/projectionRegistry";
+import {
+  undrawableCrsAlertSignal,
+  flushUndrawableCrsReports,
+  resetUndrawableCrsAlerts,
+} from "../../../src/renderer/state/crsAlertSignals";
 import { vertexKey } from "../../../src/renderer/map/vertexSelection";
 import { WKB_PACKET_MAGIC } from "../../../src/shared/types";
 import type { LayerDescriptor } from "../../../src/shared/types";
@@ -2737,6 +2742,33 @@ describe("MapController draws in the Project CRS (Ticket #278)", () => {
     projectCrsSignal.value = { authId: "EPSG:2154", proj4: LAMBERT_93 };
     controller = new MapController(newContainer());
     assert.equal(controller.getView().getProjection().getCode(), "EPSG:2154");
+  });
+
+  it("keeps the current display CRS and raises the Undrawable CRS Alert for a Project CRS it cannot draw (#384)", async () => {
+    resetUndrawableCrsAlerts();
+    controller = new MapController(newContainer());
+    const eckert = {
+      authId: "ESRI:54012",
+      proj4: "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs",
+    };
+    projectCrsSignal.value = eckert;
+    await controller.whenDisplayCrsSettled();
+    assert.equal(controller.getView().getProjection().getCode(), "EPSG:3857");
+    assert.equal(
+      projectCrsSignal.value,
+      eckert,
+      "the saved Project CRS is not rewritten"
+    );
+    flushUndrawableCrsReports();
+    assert.deepEqual(undrawableCrsAlertSignal.value, [
+      {
+        context: "project-display",
+        code: "ESRI:54012",
+        failure: { kind: "unsupported-method", method: "eck4" },
+        keptCode: "EPSG:3857",
+      },
+    ]);
+    resetUndrawableCrsAlerts();
   });
 
   it("switches the view to a new Project CRS and keeps the camera on the same place", async () => {

@@ -4,7 +4,7 @@
  * @description Primary window shell component for the Cartouche Renderer process, containing the frameless menubar, window controls, 4-edge dockable outer toolbars, Dockview panel grid, status bar, and dialog modals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link DockviewReact}
  * @see {@link ToolbarPanel}
@@ -111,6 +111,7 @@ import { ProjectPropertiesDialog } from "./dialogs/ProjectPropertiesDialog";
 import { SelectByValueDialog } from "./dialogs/SelectByValueDialog";
 import { SnappingOptionsDialog } from "./dialogs/SnappingOptionsDialog";
 import { UnsavedChangesModal } from "./dialogs/ModalDialog";
+import { UndrawableCrsAlert } from "./dialogs/UndrawableCrsAlert";
 import {
   handleWorkbenchKeyDown,
   executeWorkbenchAction,
@@ -1970,6 +1971,9 @@ export const Workbench: React.FC = () => {
 
       {/* Sequential Confirmation Modal for Layer Dirty State and Project Dirty State */}
       <UnsavedChangesModal />
+
+      {/* Undrawable CRS Alert: a CRS the map cannot draw was refused or skipped (#384) */}
+      <UndrawableCrsAlert />
     </div>
   );
 };
